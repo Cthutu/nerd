@@ -135,8 +135,8 @@ void cli_print_help(const CliParser* parser)
     arena_init(&arena);
 
     {
-        TableCell row[] = {table_cell_text(s("-h, --help")),
-                           table_cell_text(s("Show this help message"))};
+        TableCell row[] = {table_cell_string(s("-h, --help")),
+                           table_cell_string(s("Show this help message"))};
         table_add_row(&table, row);
     }
 
@@ -150,8 +150,8 @@ void cli_print_help(const CliParser* parser)
             option_str = string_format(&arena, "--%s", flag->long_name);
         }
 
-        TableCell row[] = {table_cell_text(option_str),
-                           table_cell_text(s(flag->description))};
+        TableCell row[] = {table_cell_string(option_str),
+                           table_cell_string(s(flag->description))};
         table_add_row(&table, row);
     }
 

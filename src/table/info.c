@@ -102,34 +102,34 @@ void dump_info(void)
     table_reserve_rows(&table, 6);
 
     {
-        TableCell row[] = {table_cell_text(s("OS")),
-                           table_cell_text(s(info_os_string()))};
+        TableCell row[] = {table_cell_string(s("OS")),
+                           table_cell_string(s(info_os_string()))};
         table_add_row(&table, row);
     }
     {
-        TableCell row[] = {table_cell_text(s("CPU/Arch")),
-                           table_cell_text(s(info_arch_string()))};
+        TableCell row[] = {table_cell_string(s("CPU/Arch")),
+                           table_cell_string(s(info_arch_string()))};
         table_add_row(&table, row);
     }
     {
-        TableCell row[] = {table_cell_text(s("Compiler")),
-                           table_cell_text(s(info_compiler_string()))};
+        TableCell row[] = {table_cell_string(s("Compiler")),
+                           table_cell_string(s(info_compiler_string()))};
         table_add_row(&table, row);
     }
     {
-        TableCell row[] = {table_cell_text(s("Build")),
-                           table_cell_text(s(info_build_string()))};
+        TableCell row[] = {table_cell_string(s("Build")),
+                           table_cell_string(s(info_build_string()))};
         table_add_row(&table, row);
     }
     {
-        TableCell row[] = {table_cell_text(s("Time API")),
-                           table_cell_text(s(info_time_source_string()))};
+        TableCell row[] = {table_cell_string(s("Time API")),
+                           table_cell_string(s(info_time_source_string()))};
         table_add_row(&table, row);
     }
     {
         TableCell row[] = {
-            table_cell_text(s("Per-thread timing")),
-            table_cell_text(s(info_thread_time_support_string()))};
+            table_cell_string(s("Per-thread timing")),
+            table_cell_string(s(info_thread_time_support_string()))};
         table_add_row(&table, row);
     }
 

@@ -129,8 +129,8 @@ internal void table_add_timing_row(Table*       table,
     Array(TableCell) cells = NULL;
     array_requires_capacity(cells, 3);
     array_push(cells,
-               table_cell_text(s(stage)),
-               table_cell_text(s(phase)),
+               table_cell_string(s(stage)),
+               table_cell_string(s(phase)),
                table_cell_time(duration));
 
     table_add_row(table, cells, .divider_before = divider_before);
@@ -149,8 +149,8 @@ internal void table_add_timing_total_row(Table*       table,
     Array(TableCell) cells = NULL;
     array_requires_capacity(cells, 3);
     array_push(cells,
-               table_cell_text(s(stage)),
-               table_cell_text(phase),
+               table_cell_string(s(stage)),
+               table_cell_string(phase),
                table_cell_time(duration));
 
     cstr colours[] = {stage_colour, phase_colour, time_colour};

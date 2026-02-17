@@ -100,7 +100,7 @@ TableCell table_cell_empty(void)
     };
 }
 
-TableCell table_cell_text(string text)
+TableCell table_cell_string(string text)
 {
     return (TableCell){
         .kind = TABLE_CELL_TEXT,

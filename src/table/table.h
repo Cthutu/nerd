@@ -56,7 +56,7 @@ usize digits_u64(u64 n);
 usize digits_i32(i32 n);
 
 TableCell table_cell_empty(void);
-TableCell table_cell_text(string text);
+TableCell table_cell_string(string text);
 TableCell table_cell_u32(u32 value);
 TableCell table_cell_u64(u64 value);
 TableCell table_cell_i32(i32 value);

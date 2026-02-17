@@ -29,8 +29,8 @@ int run(int argc, char** argv)
 
     {
         TableCell row[] = {
-            table_cell_text(s("Lex")),
-            table_cell_text(s("Ident@0")),
+            table_cell_string(s("Lex")),
+            table_cell_string(s("Ident@0")),
             table_cell_u32(42),
             table_cell_u64(1536),
             table_cell_i32(+3),
@@ -40,8 +40,8 @@ int run(int argc, char** argv)
 
     {
         TableCell row[] = {
-            table_cell_text(s("Lex")),
-            table_cell_text(s("Number@126")),
+            table_cell_string(s("Lex")),
+            table_cell_string(s("Number@126")),
             table_cell_u32(17),
             table_cell_u64(768),
             table_cell_i32(-2),
@@ -51,8 +51,8 @@ int run(int argc, char** argv)
 
     {
         TableCell row[] = {
-            table_cell_text(s("Parse")),
-            table_cell_text(s("FnDecl@204")),
+            table_cell_string(s("Parse")),
+            table_cell_string(s("FnDecl@204")),
             table_cell_u32(9),
             table_cell_u64(4096),
             table_cell_i32(+1),
@@ -67,7 +67,7 @@ int run(int argc, char** argv)
 
     {
         TableCell row[] = {
-            table_cell_text(s("Typecheck")),
+            table_cell_string(s("Typecheck")),
             table_cell_empty(),
             table_cell_u32(9),
             table_cell_u64(5120),
@@ -78,8 +78,8 @@ int run(int argc, char** argv)
 
     {
         TableCell row[] = {
-            table_cell_text(s("Codegen")),
-            table_cell_text(s("Mov@812")),
+            table_cell_string(s("Codegen")),
+            table_cell_string(s("Mov@812")),
             table_cell_u32(128),
             table_cell_u64(12288),
             table_cell_i32(+6),

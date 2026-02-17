@@ -37,18 +37,18 @@ void lex_dump(const Lexer* lexer)
 
     for (usize i = 0; i < array_count(lexer->tokens); i++) {
         Token token = lexer->tokens[i];
-        cells[0]    = table_cell_text(token_kind_to_string(token.kind));
+        cells[0]    = table_cell_string(token_kind_to_string(token.kind));
         cells[1]    = table_cell_u32(token.offset);
 
         switch (token.kind) {
-        case TK_Number:
+        case TK_Integer:
             {
                 u64 value = lexer->integers[integer_index++];
                 cells[2]  = table_cell_u64(value);
                 break;
             }
         default:
-            cells[2] = table_cell_text(s("-"));
+            cells[2] = table_cell_string(s("-"));
             break;
         }
         table_add_row(&table, cells);
