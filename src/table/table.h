@@ -78,4 +78,6 @@ void table_print(const Table* table,
                  cstr         header_colour,
                  cstr         reset);
 
+void dump_info(void);
+
 //------------------------------------------------------------------------------
