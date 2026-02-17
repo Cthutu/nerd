@@ -31,8 +31,13 @@ Lexer lex(string source_code)
     // array_requires_capacity(lexer.tokens, LEXER_ARRAY_INIT_CAPACITY);
     // array_requires_capacity(lexer.integers, LEXER_ARRAY_INIT_CAPACITY);
 
-    for (usize i = 0; i < source_code.count; i++) {
+    for (usize i = 0; i < source_code.count;) {
         u8 c = source_code.data[i];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            i++;
+            continue;
+        }
+
         if (c >= '0' && c <= '9') {
             usize start = i;
             u64   total = 0;

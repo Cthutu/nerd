@@ -31,7 +31,7 @@ void lex_dump(Lexer* lexer)
     array_free(columns);
 
     Array(TableCell) cells = 0;
-    array_requires_size(cells, array_count(columns));
+    array_requires_size(cells, 3);
 
     usize integer_index = 0;
 
