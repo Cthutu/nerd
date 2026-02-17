@@ -48,14 +48,14 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
     for (usize i = 0; i < array_count(ast->nodes); i++) {
         TableCell row[5];
-        row[0] = table_cell_u32(i);
+        row[0] = table_cell_u32((u32)i);
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
         row[2] = table_cell_u32(ast->nodes[i].ref);
 
         sb_init(&sb, &string_arena);
         sb_format(&sb,
-                  "%s@%zu",
-                  token_kind_to_string(ast->nodes[i].token.kind),
+                  "%.*s@%u",
+                  STRINGV(token_kind_to_string(ast->nodes[i].token.kind)),
                   ast->nodes[i].token.offset);
         row[3] = table_cell_string(sb_to_string(&sb));
 

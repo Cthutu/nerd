@@ -19,6 +19,34 @@ typedef struct {
 
 internal NerdConfig parse_config(int argc, char** argv)
 {
+    //
+    // SHow a table of all the arguments
+    //
+
+    Table args_table           = {0};
+    Array(TableColumn) columns = 0;
+    array_push(columns,
+               (TableColumn){.title = "Index", .colour = ANSI_CYAN},
+               (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
+    table_init(&args_table, columns);
+    table_set_title(&args_table, "Arguments");
+    array_free(columns);
+
+    for (int i = 1; i < argc; i++) {
+        TableCell row[2] = {
+            table_cell_i32(i),
+            table_cell_string(s(argv[i])),
+        };
+        table_add_row(&args_table, row);
+    }
+
+    table_print(&args_table);
+    table_done(&args_table);
+
+    //
+    // Process command line arguments
+    //
+
     NerdConfig config = {0};
     CliParser  parser = {0};
     cli_init(&parser, "nerd", "Nerd compiler playground");
@@ -47,6 +75,10 @@ internal NerdConfig parse_config(int argc, char** argv)
         kill("Missing command. Use --help to list commands.");
     }
 
+    //
+    // Handle the commands
+    //
+
     usize command_index = (usize)parse_result.command_index;
     if (command_index == build_command) {
         config.command = NERD_COMMAND_BUILD;
@@ -68,9 +100,9 @@ internal NerdConfig parse_config(int argc, char** argv)
 
 int run(int argc, char** argv)
 {
-    NerdConfig config = parse_config(argc, argv);
-
     dump_info();
+
+    NerdConfig config = parse_config(argc, argv);
 
     switch (config.command) {
     case NERD_COMMAND_BUILD:
