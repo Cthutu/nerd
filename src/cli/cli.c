@@ -46,7 +46,8 @@ void cli_add_flag(CliParser* parser,
                   cstr       description,
                   bool*      out_value)
 {
-    ASSERT(long_name != NULL && long_name[0] != '\0', "Flag must have long name");
+    ASSERT(long_name != NULL && long_name[0] != '\0',
+           "Flag must have long name");
     ASSERT(out_value != NULL, "Flag output pointer cannot be NULL");
 
     if (short_name != '\0') {
@@ -78,7 +79,7 @@ CliParseResult cli_parse(CliParser* parser, int argc, char** argv)
         }
 
         if (arg[0] == '-' && arg[1] == '-') {
-            cstr name = arg + 2;
+            cstr     name = arg + 2;
             CliFlag* flag = cli_find_long_flag(parser, name);
             if (!flag) {
                 kill("Unknown flag '%s'. Use --help to list options.", arg);
@@ -122,9 +123,10 @@ void cli_print_help(const CliParser* parser)
     prn("%sOptions%s", ANSI_BOLD_YELLOW, ANSI_RESET);
 
     Array(TableColumn) columns = NULL;
-    array_push(columns,
-               (TableColumn){.title = "Option", .colour = ANSI_BOLD_CYAN},
-               (TableColumn){.title = "Description", .colour = ANSI_BOLD_GREEN});
+    array_push(
+        columns,
+        (TableColumn){.title = "Option", .colour = ANSI_BOLD_CYAN},
+        (TableColumn){.title = "Description", .colour = ANSI_BOLD_GREEN});
 
     Table table = {0};
     table_init(&table, columns);

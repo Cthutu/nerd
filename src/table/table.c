@@ -57,8 +57,8 @@ usize digits_i32(i32 n)
     return sign ? d + 1 : d;
 }
 
-internal usize format_time_duration(char* buffer,
-                                    usize buffer_size,
+internal usize format_time_duration(char*        buffer,
+                                    usize        buffer_size,
                                     TimeDuration value)
 {
     f64  amount = 0.0;
@@ -303,10 +303,8 @@ print_i32_cell(i32 value, usize width, usize digits, cstr colour, cstr reset)
     pr(" ");
 }
 
-internal void print_time_cell(TimeDuration value,
-                              usize        width,
-                              cstr         colour,
-                              cstr         reset)
+internal void
+print_time_cell(TimeDuration value, usize width, cstr colour, cstr reset)
 {
     char  buf[64];
     usize len = format_time_duration(buf, sizeof(buf), value);

@@ -48,7 +48,7 @@ internal void timing_accumulate(Timing* dst, const Timing* src)
         cstr         phase = src->timings[i].phase;
         TimeDuration time  = src->timings[i].time;
 
-        bool found_phase = false;
+        bool found_phase   = false;
         for (usize j = 0; j < array_count(dst->timings); j++) {
             if (strcmp(dst->timings[j].stage, stage) == 0 &&
                 strcmp(dst->timings[j].phase, phase) == 0) {
@@ -59,7 +59,8 @@ internal void timing_accumulate(Timing* dst, const Timing* src)
         }
         if (!found_phase) {
             array_push(
-                dst->timings, (TimingEntry){.stage = stage, .phase = phase, .time = time});
+                dst->timings,
+                (TimingEntry){.stage = stage, .phase = phase, .time = time});
         }
 
         bool found_stage = false;
@@ -71,8 +72,8 @@ internal void timing_accumulate(Timing* dst, const Timing* src)
             }
         }
         if (!found_stage) {
-            array_push(
-                dst->totals, (TimingTotal){.stage = stage, .total_time = time});
+            array_push(dst->totals,
+                       (TimingTotal){.stage = stage, .total_time = time});
         }
     }
 }
@@ -95,7 +96,7 @@ void timing_accumulate_session_add(TimingAccumulateSession* session,
 }
 
 void timing_accumulate_session_build_report(TimingAccumulateSession* session,
-                                            Timing*                   out_report)
+                                            Timing*                  out_report)
 {
     timing_init(out_report);
 
