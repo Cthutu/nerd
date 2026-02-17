@@ -158,6 +158,16 @@ int run(int argc, char** argv)
                        (TimeDuration)run_count);
         timing_accumulate_session_add(&session, &timing);
         timing_done(&timing);
+
+        //
+        // One extra untimed run to inspect compiler state while benchmarking.
+        //
+
+        FrontEndResults dump_front = front_end(source, NULL);
+        BackEndResults  dump_back  = back_end(&dump_front, NULL);
+        compiler_dump(!config.million, &dump_front, &dump_back);
+        back_end_results_done(&dump_back);
+        front_end_results_done(&dump_front);
     } else {
 
         //
