@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/_bin/nerd",
             "args": [
-                "--benchmark",
+                // "--benchmark",
                 // "--million",
             ],
             "cwd": "${workspaceFolder}",
