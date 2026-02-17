@@ -7,6 +7,8 @@
 #include <table/table.h>
 #include <unicode/unicode.h>
 
+#include <stdio.h>
+
 //------------------------------------------------------------------------------
 
 usize digits_u32(u32 n)
@@ -55,6 +57,42 @@ usize digits_i32(i32 n)
     return sign ? d + 1 : d;
 }
 
+internal usize format_time_duration(char* buffer,
+                                    usize buffer_size,
+                                    TimeDuration value)
+{
+    f64  amount = 0.0;
+    cstr unit   = "ns";
+
+    if (value >= time_from_secs(1)) {
+        amount = time_secs(value);
+        unit   = "s";
+    } else if (value >= time_from_ms(1)) {
+        amount = time_msecs(value);
+        unit   = "ms";
+    } else if (value >= time_from_us(1)) {
+        amount = time_usecs(value);
+        unit   = "us";
+    } else {
+        amount = time_nsecs(value);
+        unit   = "ns";
+    }
+
+    int written = snprintf(buffer, buffer_size, "%.3f %s", amount, unit);
+    if (written < 0) {
+        return 0;
+    }
+    usize max_len = buffer_size > 0 ? buffer_size - 1 : 0;
+    usize len     = (usize)written;
+    return len <= max_len ? len : max_len;
+}
+
+internal usize time_duration_text_width(TimeDuration value)
+{
+    char buf[64];
+    return format_time_duration(buf, sizeof(buf), value);
+}
+
 TableCell table_cell_empty(void)
 {
     return (TableCell){
@@ -97,6 +135,15 @@ TableCell table_cell_i32(i32 value)
     };
 }
 
+TableCell table_cell_time(TimeDuration value)
+{
+    return (TableCell){
+        .kind       = TABLE_CELL_TIME,
+        .time_value = value,
+        .digits     = time_duration_text_width(value),
+    };
+}
+
 void table_init(Table* table, Array(TableColumn) columns)
 {
     *table             = (Table){0};
@@ -112,8 +159,8 @@ void table_init(Table* table, Array(TableColumn) columns)
     for (usize i = 0; i < column_count; i++) {
         cstr title = columns[i].title ? columns[i].title : "";
         array_push(table->columns, columns[i]);
-        array_push(
-            table->widths, unicode_utf8_string_cell_width(string_from_cstr(title)));
+        array_push(table->widths,
+                   unicode_utf8_string_cell_width(string_from_cstr(title)));
     }
 }
 
@@ -166,6 +213,7 @@ void _table_add_row(Table*            table,
         case TABLE_CELL_U32:
         case TABLE_CELL_U64:
         case TABLE_CELL_I32:
+        case TABLE_CELL_TIME:
             width = cell->digits;
             break;
         default:
@@ -255,6 +303,16 @@ print_i32_cell(i32 value, usize width, usize digits, cstr colour, cstr reset)
     pr(" ");
 }
 
+internal void print_time_cell(TimeDuration value,
+                              usize        width,
+                              cstr         colour,
+                              cstr         reset)
+{
+    char  buf[64];
+    usize len = format_time_duration(buf, sizeof(buf), value);
+    print_text_cell(string_from((u8*)buf, len), width, colour, reset);
+}
+
 void table_print(const Table* table,
                  cstr         border_colour,
                  cstr         header_colour,
@@ -321,6 +379,9 @@ void table_print(const Table* table,
             case TABLE_CELL_I32:
                 print_i32_cell(
                     cell->i32_value, width, cell->digits, colour, reset);
+                break;
+            case TABLE_CELL_TIME:
+                print_time_cell(cell->time_value, width, colour, reset);
                 break;
             default:
                 print_text_cell(string_from_cstr("?"), width, "", reset);

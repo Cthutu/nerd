@@ -4,6 +4,8 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 //> use: core unicode
+//> def: _POSIX_C_SOURCE=200809L
+//> def: _GNU_SOURCE
 
 #pragma once
 
@@ -17,6 +19,7 @@ typedef enum {
     TABLE_CELL_U32,
     TABLE_CELL_U64,
     TABLE_CELL_I32,
+    TABLE_CELL_TIME,
 } TableCellKind;
 
 typedef struct {
@@ -25,21 +28,22 @@ typedef struct {
     u32           u32_value;
     u64           u64_value;
     i32           i32_value;
+    TimeDuration  time_value;
     usize         digits;
 } TableCell;
 
 typedef struct {
-    cstr   title;
-    cstr   colour;
+    cstr title;
+    cstr colour;
 } TableColumn;
 
 typedef struct {
     Array(TableColumn) columns;
-    Array(usize)       widths;
-    Array(TableCell)   rows;
-    Array(cstr)        row_colours;
-    Array(bool)        row_divider_before;
-    usize              row_count;
+    Array(usize) widths;
+    Array(TableCell) rows;
+    Array(cstr) row_colours;
+    Array(bool) row_divider_before;
+    usize row_count;
 } Table;
 
 typedef struct {
@@ -56,12 +60,15 @@ TableCell table_cell_text(string text);
 TableCell table_cell_u32(u32 value);
 TableCell table_cell_u64(u64 value);
 TableCell table_cell_i32(i32 value);
+TableCell table_cell_time(TimeDuration value);
 
 void table_init(Table* table, Array(TableColumn) columns);
 void table_done(Table* table);
 
 void table_reserve_rows(Table* table, usize row_count);
-void _table_add_row(Table* table, const TableCell* cells, TableAddRowParams params);
+void _table_add_row(Table*            table,
+                    const TableCell*  cells,
+                    TableAddRowParams params);
 
 #define table_add_row(table, cells, ...)                                       \
     _table_add_row((table), (cells), (TableAddRowParams){__VA_ARGS__})
