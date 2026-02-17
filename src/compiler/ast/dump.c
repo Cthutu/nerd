@@ -37,7 +37,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
     Table table = {0};
     table_init(&table, columns);
-    table_set_title(&table, "AST Nodes");
+    table_set_title(&table, "AST Nodes (16 bytes each)");
     table_reserve_rows(&table, array_count(ast->nodes));
     array_free(columns);
 
@@ -52,16 +52,19 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
         row[2] = table_cell_u32(ast->nodes[i].ref);
 
+        AstNode* node  = &ast->nodes[i];
+        Token*   token = &lexer->tokens[node->token_index];
         sb_init(&sb, &string_arena);
         sb_format(&sb,
-                  "%.*s@%u",
-                  STRINGV(token_kind_to_string(ast->nodes[i].token.kind)),
-                  ast->nodes[i].token.offset);
+                  "%u: " STRINGP "@%u",
+                  node->token_index,
+                  STRINGV(token_kind_to_string(token->kind)),
+                  token->offset);
         row[3] = table_cell_string(sb_to_string(&sb));
 
-        switch (ast->nodes[i].kind) {
+        switch (node->kind) {
         case AK_IntegerLiteral:
-            row[4] = table_cell_u64(lexer->integers[ast->nodes[i].a]);
+            row[4] = table_cell_u64(lexer->integers[node->a]);
             break;
         default:
             row[4] = table_cell_string(s("Unknown"));

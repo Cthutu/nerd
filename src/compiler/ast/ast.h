@@ -18,7 +18,7 @@ typedef struct {
     AstKind kind : 8;
     u8      _pad;
     i16     ref;
-    Token   token;
+    u32     token_index;
     u32     a, b;
 } AstNode;
 

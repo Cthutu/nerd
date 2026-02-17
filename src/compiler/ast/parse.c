@@ -19,9 +19,9 @@ Ast ast_parse(Lexer* lexer)
         case TK_Integer:
             {
                 AstNode node = {
-                    .kind  = AK_IntegerLiteral,
-                    .token = token,
-                    .a     = integer_index++,
+                    .kind        = AK_IntegerLiteral,
+                    .token_index = i,
+                    .a           = integer_index++,
                 };
                 array_push(nodes, node);
             }
