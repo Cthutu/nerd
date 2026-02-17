@@ -13,10 +13,7 @@
 
 //------------------------------------------------------------------------------
 
-void timing_init(Timing* timing)
-{
-    *timing = (Timing){0};
-}
+void timing_init(Timing* timing) { *timing = (Timing){0}; }
 
 void timing_done(Timing* timing)
 {
@@ -39,20 +36,91 @@ void timing_add(Timing* timing, cstr stage, cstr phase, TimeDuration time)
         }
     }
     if (!found) {
-        array_push(
-            timing->totals, (TimingTotal){.stage = stage, .total_time = time});
+        array_push(timing->totals,
+                   (TimingTotal){.stage = stage, .total_time = time});
     }
+}
+
+internal void timing_accumulate(Timing* dst, const Timing* src)
+{
+    for (usize i = 0; i < array_count(src->timings); i++) {
+        cstr         stage = src->timings[i].stage;
+        cstr         phase = src->timings[i].phase;
+        TimeDuration time  = src->timings[i].time;
+
+        bool found_phase = false;
+        for (usize j = 0; j < array_count(dst->timings); j++) {
+            if (strcmp(dst->timings[j].stage, stage) == 0 &&
+                strcmp(dst->timings[j].phase, phase) == 0) {
+                dst->timings[j].time += time;
+                found_phase = true;
+                break;
+            }
+        }
+        if (!found_phase) {
+            array_push(
+                dst->timings, (TimingEntry){.stage = stage, .phase = phase, .time = time});
+        }
+
+        bool found_stage = false;
+        for (usize j = 0; j < array_count(dst->totals); j++) {
+            if (strcmp(dst->totals[j].stage, stage) == 0) {
+                dst->totals[j].total_time += time;
+                found_stage = true;
+                break;
+            }
+        }
+        if (!found_stage) {
+            array_push(
+                dst->totals, (TimingTotal){.stage = stage, .total_time = time});
+        }
+    }
+}
+
+void timing_accumulate_session_init(TimingAccumulateSession* session)
+{
+    session->count = 0;
+    timing_init(&session->aggregate);
+}
+
+void timing_accumulate_session_add(TimingAccumulateSession* session,
+                                   const Timing*            timing)
+{
+    if (array_count(timing->timings) == 0 && array_count(timing->totals) == 0) {
+        return;
+    }
+
+    timing_accumulate(&session->aggregate, timing);
+    session->count++;
+}
+
+void timing_accumulate_session_build_report(TimingAccumulateSession* session,
+                                            Timing*                   out_report)
+{
+    timing_init(out_report);
+
+    if (session->count == 0) {
+        return;
+    }
+
+    for (usize i = 0; i < array_count(session->aggregate.timings); i++) {
+        cstr         stage = session->aggregate.timings[i].stage;
+        cstr         phase = session->aggregate.timings[i].phase;
+        TimeDuration total = session->aggregate.timings[i].time;
+        TimeDuration avg   = total / (TimeDuration)session->count;
+        timing_add(out_report, stage, phase, avg);
+    }
+}
+
+void timing_accumulate_session_done(TimingAccumulateSession* session)
+{
+    timing_done(&session->aggregate);
+    *session = (TimingAccumulateSession){0};
 }
 
 //------------------------------------------------------------------------------
 
-internal void duration_text(StringBuilder* sb, TimeDuration duration)
-{
-    sb_format(sb, "%.03f μs", time_usecs(duration));
-}
-
 internal void table_add_timing_row(Table*       table,
-                                   Arena*       arena,
                                    cstr         stage,
                                    cstr         phase,
                                    TimeDuration duration,
@@ -60,19 +128,16 @@ internal void table_add_timing_row(Table*       table,
 {
     Array(TableCell) cells = NULL;
     array_requires_capacity(cells, 3);
-    array_push(cells, table_cell_text(s(stage)), table_cell_text(s(phase)));
-
-    StringBuilder sb = {0};
-    sb_init(&sb, arena);
-    duration_text(&sb, duration);
-    array_push(cells, table_cell_text(sb_to_string(&sb)));
+    array_push(cells,
+               table_cell_text(s(stage)),
+               table_cell_text(s(phase)),
+               table_cell_time(duration));
 
     table_add_row(table, cells, .divider_before = divider_before);
     array_free(cells);
 }
 
 internal void table_add_timing_total_row(Table*       table,
-                                         Arena*       arena,
                                          cstr         stage,
                                          string       phase,
                                          TimeDuration duration,
@@ -83,12 +148,10 @@ internal void table_add_timing_total_row(Table*       table,
 {
     Array(TableCell) cells = NULL;
     array_requires_capacity(cells, 3);
-    array_push(cells, table_cell_text(s(stage)), table_cell_text(phase));
-
-    StringBuilder sb = {0};
-    sb_init(&sb, arena);
-    duration_text(&sb, duration);
-    array_push(cells, table_cell_text(sb_to_string(&sb)));
+    array_push(cells,
+               table_cell_text(s(stage)),
+               table_cell_text(phase),
+               table_cell_time(duration));
 
     cstr colours[] = {stage_colour, phase_colour, time_colour};
     table_add_row(
@@ -137,7 +200,6 @@ void timing_dump(const Timing* timing)
                 continue;
             }
             table_add_timing_row(&table,
-                                 &arena,
                                  timing->timings[j].stage,
                                  timing->timings[j].phase,
                                  timing->timings[j].time,
@@ -149,7 +211,6 @@ void timing_dump(const Timing* timing)
         sb_init(&total_phase_sb, &arena);
         sb_format(&total_phase_sb, "%s total", stage);
         table_add_timing_total_row(&table,
-                                   &arena,
                                    stage,
                                    sb_to_string(&total_phase_sb),
                                    timing->totals[i].total_time,
@@ -160,7 +221,6 @@ void timing_dump(const Timing* timing)
     }
 
     table_add_timing_total_row(&table,
-                               &arena,
                                "compiler",
                                s("compiler total"),
                                compiler_total,

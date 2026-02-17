@@ -27,9 +27,20 @@ typedef struct {
     Array(TimingTotal) totals;
 } Timing;
 
+typedef struct {
+    Timing aggregate;
+    u32    count;
+} TimingAccumulateSession;
+
 void timing_init(Timing* timing);
 void timing_done(Timing* timing);
 void timing_add(Timing* timing, cstr stage, cstr phase, TimeDuration time);
+void timing_accumulate_session_init(TimingAccumulateSession* session);
+void timing_accumulate_session_add(TimingAccumulateSession* session,
+                                   const Timing*            timing);
+void timing_accumulate_session_build_report(TimingAccumulateSession* session,
+                                            Timing*                   out_report);
+void timing_accumulate_session_done(TimingAccumulateSession* session);
 void timing_dump(const Timing* timing);
 
 //------------------------------------------------------------------------------
