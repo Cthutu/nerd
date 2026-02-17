@@ -11,25 +11,31 @@
 //------------------------------------------------------------------------------
 
 #define COMPILER_STAGE_FRONT_END "front-end"
-#define COMPILER_PHASE_LEX "tokenise source text"
 
-#define PHASE_DO(timing, stage_name, phase_name, stmt)                         \
-    do {                                                                       \
-        if ((timing) != NULL) {                                                \
-            ThreadTimePoint _start = thread_time_now();                        \
-            do {                                                               \
-                stmt;                                                          \
-            } while (0);                                                       \
-            ThreadTimePoint _end = thread_time_now();                          \
-            timing_add((timing),                                               \
-                       (stage_name),                                           \
-                       (phase_name),                                           \
-                       thread_time_elapsed(_start, _end));                     \
-        } else {                                                               \
-            do {                                                               \
-                stmt;                                                          \
-            } while (0);                                                       \
-        }                                                                      \
-    } while (0)
+#define COMPILER_PHASE_LEX "tokenise source text"
+#define COMPILER_PHASE_PARSE "parse tokens into AST"
+
+typedef void (*PhaseFn)(void* context);
+
+typedef struct {
+    cstr    stage;
+    cstr    phase;
+    PhaseFn run;
+    PhaseFn reset;
+} PhaseSpec;
+
+void compiler_phase_run(const PhaseSpec* phases,
+                        usize            phase_count,
+                        void*            context,
+                        Timing*          timing);
+void compiler_phase_reset_reverse(const PhaseSpec* phases,
+                                  usize            phase_count,
+                                  void*            context);
+TimeDuration compiler_phase_benchmark_single(const PhaseSpec* phases,
+                                             usize            phase_count,
+                                             usize            phase_index,
+                                             void*            context,
+                                             u32              warmup_iterations,
+                                             u32              timed_iterations);
 
 //------------------------------------------------------------------------------
