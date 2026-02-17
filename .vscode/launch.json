@@ -5,12 +5,12 @@
             "name": "Launch Executable (Linux)",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/_bin/nerd-debug",
+            "program": "${workspaceFolder}/_bin/nerd",
             "args": [
                 "build"
             ],
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Compile"
+            "preLaunchTask": "Compile-Release"
         }
     ]
 }

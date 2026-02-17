@@ -6,6 +6,8 @@
 
 #include <compiler/lexer/lexer.h>
 
+#define LEXER_ARRAY_INIT_CAPACITY 256
+
 //------------------------------------------------------------------------------
 
 internal void lex_error(const char* format, ...)
@@ -25,6 +27,9 @@ Lexer lex(string source_code)
 {
     Lexer lexer       = {0};
     lexer.source_code = source_code;
+
+    // array_requires_capacity(lexer.tokens, LEXER_ARRAY_INIT_CAPACITY);
+    // array_requires_capacity(lexer.integers, LEXER_ARRAY_INIT_CAPACITY);
 
     for (usize i = 0; i < source_code.count; i++) {
         u8 c = source_code.data[i];
