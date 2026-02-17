@@ -59,13 +59,4 @@ void lex_done(Lexer* lexer)
 }
 
 //------------------------------------------------------------------------------
-
-void lex_dump(Lexer* lexer)
-{
-    prn("Source code: " STRINGP, STRINGV(lexer->source_code));
-    prn("Tokens:");
-    for (usize i = 0; i < array_count(lexer->tokens); i++) {
-        Token token = lexer->tokens[i];
-        prn("  Token %zu: kind=%d, offset=%u", i, token.kind, token.offset);
-    }
-}
+//------------------------------------------------------------------------------

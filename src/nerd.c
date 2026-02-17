@@ -1,7 +1,7 @@
 //
 // Hello test
 //
-//> use: core intern compiler
+//> use: core intern compiler table
 
 #include <compiler/lexer/lexer.h>
 
