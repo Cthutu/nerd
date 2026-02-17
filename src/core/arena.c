@@ -99,7 +99,7 @@ void _arena_init(Arena* arena, ArenaDefaultParams params)
 void arena_done(Arena* arena)
 {
 #if OS_WINDOWS
-    VirtualFree(arena->memory, 0, MEM_RELEASE);
+    VirtualFree(arena->data, 0, MEM_RELEASE);
 #elif OS_POSIX
     munmap(arena->data, arena->reserved_size);
 #else
@@ -127,7 +127,7 @@ internal void _arena_ensure_room(Arena* arena, usize size)
                      arena->alloc_granularity * arena->grow_rate);
 
 #if OS_WINDOWS
-        mem_check(VirtualAlloc(arena->memory + arena->committed_size,
+        mem_check(VirtualAlloc(arena->data + arena->committed_size,
                                commit_size,
                                MEM_COMMIT,
                                PAGE_READWRITE));
