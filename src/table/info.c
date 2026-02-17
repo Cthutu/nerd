@@ -9,9 +9,6 @@
 
 //------------------------------------------------------------------------------
 
-#define STR_(x) #x
-#define STR(x) STR_(x)
-
 internal cstr info_os_string(void)
 {
 #if OS_WINDOWS
@@ -45,7 +42,8 @@ internal cstr info_arch_string(void)
 internal cstr info_compiler_string(void)
 {
 #if COMPILER_CLANG
-    return "Clang " __clang_version__;
+    return "Clang " STR(__clang_major__) "." STR(__clang_minor__) "." STR(
+        __clang_patchlevel__);
 #elif COMPILER_GCC
     return "GCC " __VERSION__;
 #elif COMPILER_MSVC
@@ -129,8 +127,9 @@ void dump_info(void)
         table_add_row(&table, row);
     }
     {
-        TableCell row[] = {table_cell_text(s("Per-thread timing")),
-                           table_cell_text(s(info_thread_time_support_string()))};
+        TableCell row[] = {
+            table_cell_text(s("Per-thread timing")),
+            table_cell_text(s(info_thread_time_support_string()))};
         table_add_row(&table, row);
     }
 
