@@ -88,7 +88,7 @@ void _arena_init(Arena* arena, ArenaDefaultParams params)
 #    error "Arena creation not implemented for this OS."
 #endif // OS_WINDOWS
 
-    arena->memory            = memory;
+    arena->data              = memory;
     arena->cursor            = 0;
     arena->committed_size    = initial_alloc_size;
     arena->reserved_size     = params.reserved_size;
@@ -101,7 +101,7 @@ void arena_done(Arena* arena)
 #if OS_WINDOWS
     VirtualFree(arena->memory, 0, MEM_RELEASE);
 #elif OS_POSIX
-    munmap(arena->memory, arena->reserved_size);
+    munmap(arena->data, arena->reserved_size);
 #else
 #    error "Arena destruction not implemented for this OS."
 #endif // OS_WINDOWS
@@ -132,7 +132,7 @@ internal void _arena_ensure_room(Arena* arena, usize size)
                                MEM_COMMIT,
                                PAGE_READWRITE));
 #elif OS_POSIX
-        if (mprotect(arena->memory + arena->committed_size,
+        if (mprotect(arena->data + arena->committed_size,
                      commit_size,
                      PROT_READ | PROT_WRITE) != 0) {
             perror("mprotect");
@@ -150,7 +150,7 @@ void* arena_alloc(Arena* arena, usize size)
 {
     _arena_ensure_room(arena, size);
 
-    void* ptr = arena->memory + arena->cursor;
+    void* ptr = arena->data + arena->cursor;
     arena->cursor += size;
     return ptr;
 }
@@ -201,11 +201,11 @@ void arena_null_terminate(Arena* arena)
     *ptr    = '\0';
 }
 
-void* arena_store(Arena* arena) { return arena->memory + arena->cursor; }
+void* arena_store(Arena* arena) { return arena->data + arena->cursor; }
 
 void arena_restore(Arena* arena, void* mark)
 {
-    usize offset = (usize)((u8*)mark - arena->memory);
+    usize offset = (usize)((u8*)mark - arena->data);
     ASSERT(offset <= arena->cursor, "Invalid arena restore point.");
     arena->cursor = offset;
 }
@@ -214,7 +214,7 @@ void arena_reset(Arena* arena) { arena->cursor = 0; }
 
 u32 arena_offset(Arena* arena, void* p)
 {
-    return (u32)((u8*)p - arena->memory);
+    return (u32)((u8*)p - arena->data);
 }
 
 //------------------------------------------------------------------------------

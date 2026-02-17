@@ -377,7 +377,7 @@ void* array_maybe_grow(void* array,
 
 // OS-based arena with reserved memory pages
 typedef struct {
-    u8*   memory;         // Base pointer to arena - never changes
+    u8*   data;         // Base pointer to arena - never changes
     usize cursor;         // Current allocation cursor
     usize committed_size; // Number of bytes currently committed
     usize reserved_size;  // Total number of bytes reserved (maximum capacity)
