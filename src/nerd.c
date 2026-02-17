@@ -7,16 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-typedef enum {
-    NERD_COMMAND_BUILD,
-    NERD_COMMAND_BENCHMARK,
-    NERD_COMMAND_MILLION,
-} NerdCommand;
-
-typedef struct {
-    NerdCommand command;
-} NerdConfig;
-
 internal NerdConfig parse_config(int argc, char** argv)
 {
     //
@@ -102,17 +92,18 @@ int run(int argc, char** argv)
     dump_info();
 
     NerdConfig config = parse_config(argc, argv);
+    config.source     = s("42 123 999");
 
     switch (config.command) {
     case NERD_COMMAND_BUILD:
         prn("Command: build");
-        return compiler_cmd_build();
+        return compiler_cmd_build(&config);
     case NERD_COMMAND_BENCHMARK:
         prn("Command: benchmark");
-        return compiler_cmd_benchmark();
+        return compiler_cmd_benchmark(&config);
     case NERD_COMMAND_MILLION:
         prn("Command: million");
-        return compiler_cmd_million();
+        return compiler_cmd_million(&config);
     default:
         kill("Unhandled command");
     }

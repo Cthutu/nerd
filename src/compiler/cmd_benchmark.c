@@ -8,13 +8,12 @@
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_benchmark(void)
+int compiler_cmd_benchmark(const NerdConfig* config)
 {
-    string source = string_from_cstr("42");
-    compiler_cmd_print_source_overview(source);
+    compiler_cmd_print_source_overview(config->source);
 
     Timing benchmark_timing = {0};
-    front_end_benchmark(source,
+    front_end_benchmark(config->source,
                         NERD_BENCHMARK_WARMUP_ITERATIONS,
                         NERD_BENCHMARK_TIMED_ITERATIONS,
                         &benchmark_timing);
@@ -22,7 +21,7 @@ int compiler_cmd_benchmark(void)
     timing_done(&benchmark_timing);
 
     // Run one regular build for state inspection after benchmark timings.
-    compiler_cmd_run_pipeline_once(source, true, NULL);
+    compiler_cmd_run_pipeline_once(config->source, true, NULL);
 
     return 0;
 }

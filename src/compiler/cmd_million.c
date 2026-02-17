@@ -23,11 +23,13 @@ internal string compiler_cmd_make_million_lines_source(Arena* arena)
     return string_from(data, total_bytes);
 }
 
-int compiler_cmd_million(void)
+int compiler_cmd_million(const NerdConfig* config)
 {
+    UNUSED(config);
+
     TimePoint total_start = time_now();
 
-    Arena source_arena = {0};
+    Arena source_arena    = {0};
     arena_init(&source_arena);
 
     string source = compiler_cmd_make_million_lines_source(&source_arena);

@@ -8,14 +8,13 @@
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_build(void)
+int compiler_cmd_build(const NerdConfig* config)
 {
-    string source = string_from_cstr("42");
-    compiler_cmd_print_source_overview(source);
+    compiler_cmd_print_source_overview(config->source);
 
     Timing timing = {0};
     timing_init(&timing);
-    compiler_cmd_run_pipeline_once(source, true, &timing);
+    compiler_cmd_run_pipeline_once(config->source, true, &timing);
     timing_dump(&timing);
     timing_done(&timing);
 

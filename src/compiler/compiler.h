@@ -12,6 +12,19 @@
 
 //------------------------------------------------------------------------------
 
+typedef enum {
+    NERD_COMMAND_BUILD,
+    NERD_COMMAND_BENCHMARK,
+    NERD_COMMAND_MILLION,
+} NerdCommand;
+
+typedef struct {
+    NerdCommand command;
+    string      source;
+} NerdConfig;
+
+//------------------------------------------------------------------------------
+
 typedef struct {
     Lexer lexer;
     Ast   ast;
@@ -21,9 +34,9 @@ typedef struct {
 } BackEndResults;
 
 FrontEndResults front_end(string source_code, Timing* timing);
-void            front_end_benchmark(string source_code,
-                                    u32    warmup_iterations,
-                                    u32    timed_iterations,
+void            front_end_benchmark(string  source_code,
+                                    u32     warmup_iterations,
+                                    u32     timed_iterations,
                                     Timing* out_timing);
 void            front_end_results_done(FrontEndResults* results);
 
@@ -34,8 +47,8 @@ void           back_end_results_done(BackEndResults* results);
 void compiler_dump(const FrontEndResults* front_end_results,
                    const BackEndResults*  back_end_results);
 
-int    compiler_cmd_build(void);
-int    compiler_cmd_benchmark(void);
-int    compiler_cmd_million(void);
+int compiler_cmd_build(const NerdConfig* config);
+int compiler_cmd_benchmark(const NerdConfig* config);
+int compiler_cmd_million(const NerdConfig* config);
 
 //------------------------------------------------------------------------------
