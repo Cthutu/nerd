@@ -18,60 +18,64 @@ u8* g_empty_file = (u8*)"";
 
 #if OS_POSIX
 
-string filemap_load(FileMap* map, cstr path)
+string filemap_load(cstr path, FileMap* map)
 {
-    *map    = (FileMap){0};
+    *map = (FileMap){0};
 
-    // Map the file to memory
-    map->fd = open(path, O_RDONLY);
-    if (map->fd < 0) {
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
         eprn("Failed to open file: %s\n", path);
-        goto failure;
+        return (string){0};
     }
 
-    // Get the file size
     struct stat st;
-    if (fstat(map->fd, &st) < 0) {
+    if (fstat(fd, &st) < 0) {
         eprn("Failed to get file size: %s\n", path);
-        goto failure;
-    }
-    map->data.count = st.st_size;
-
-    if (map->data.count == 0) {
-        // Empty file handling as we cannot map an empty file to memory.
-        map->data.data = g_empty_file;
-        return map->data;
+        close(fd);
+        return (string){0};
     }
 
-    map->data.data =
-        mmap(NULL, map->data.count, PROT_READ, MAP_PRIVATE, map->fd, 0);
-    if (map->data.data == MAP_FAILED) {
+    if (st.st_size < 0 || (u64)st.st_size > (u64)SIZE_MAX) {
+        eprn("File size is invalid or too large: %s\n", path);
+        close(fd);
+        return (string){0};
+    }
+
+    map->size = (usize)st.st_size;
+    if (map->size == 0) {
+        map->data = g_empty_file;
+        close(fd);
+        return (string){
+            .data  = map->data,
+            .count = map->size,
+        };
+    }
+
+    void* view = mmap(NULL, map->size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    if (view == MAP_FAILED) {
         eprn("Failed to map file to memory: %s\n", path);
-        goto failure;
+        map->size = 0;
+        return (string){0};
     }
 
-    return map->data;
-
-failure:
-    file_unload(map);
-    return (string){0};
+    map->data = (u8*)view;
+    return (string){
+        .data  = map->data,
+        .count = map->size,
+    };
 }
 
 //------------------------------------------------------------------------------
 
-void filmap_unload(FileMap* map)
+void filemap_unload(FileMap* map)
 {
-    if (map && map->data.data) {
-        munmap(map->data.data, map->data.count);
-
-        // Free the mapped data here
-        if (map->fd >= 0) {
-            close(map->fd);
-            map->fd = -1;
+    if (map && map->data) {
+        if (map->data != g_empty_file && map->size != 0) {
+            munmap(map->data, map->size);
         }
-
-        map->data = (string){0};
-        map->fd   = -1;
+        map->data = NULL;
+        map->size = 0;
     }
 }
 
