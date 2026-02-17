@@ -19,25 +19,42 @@ typedef struct {
 } CliFlag;
 
 typedef struct {
-    cstr           program_name;
+    cstr           name;
     cstr           summary;
     Array(CliFlag) flags;
+} CliCommand;
+
+typedef struct {
+    cstr              program_name;
+    cstr              summary;
+    Array(CliFlag)    root_flags;
+    Array(CliCommand) commands;
 } CliParser;
 
 typedef struct {
-    bool help_requested;
+    bool  help_requested;
+    isize command_index;
 } CliParseResult;
 
 void cli_init(CliParser* parser, cstr program_name, cstr summary);
 void cli_done(CliParser* parser);
 
-void cli_add_flag(CliParser* parser,
-                  char       short_name,
-                  cstr       long_name,
-                  cstr       description,
-                  bool*      out_value);
+void  cli_add_root_flag(CliParser* parser,
+                        char       short_name,
+                        cstr       long_name,
+                        cstr       description,
+                        bool*      out_value);
+usize cli_add_command(CliParser* parser, cstr name, cstr summary);
+void  cli_add_command_flag(CliParser* parser,
+                           usize      command_index,
+                           char       short_name,
+                           cstr       long_name,
+                           cstr       description,
+                           bool*      out_value);
 
 CliParseResult cli_parse(CliParser* parser, int argc, char** argv);
 void           cli_print_help(const CliParser* parser);
+void           cli_print_command_help(const CliParser* parser,
+                                      usize            command_index);
 
 //------------------------------------------------------------------------------
