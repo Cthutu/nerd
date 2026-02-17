@@ -25,4 +25,6 @@ typedef struct {
 
 Lexer lex(string source_code);
 void  lex_done(Lexer* lexer);
-void  lex_dump(Lexer* lexer);
+void  lex_dump(const Lexer* lexer);
+
+string token_kind_to_string(TokenKind token);
