@@ -92,13 +92,25 @@ int run(int argc, char** argv)
 {
     NerdConfig config = parse_config(argc, argv);
 
+    //
+    // Dump system information and run mode.
+    //
+
     dump_info();
     prn("Run mode: %s", run_mode_name(config));
+
+    //
+    // Set up build parameters, including source code
+    //
 
     cstr source_code = "42";
     SLICE_SET(libs, cstr, "kernel32.lib");
     cstr output_base       = "test";
     u32  run_count         = config.benchmark ? LEX_TIMED_ITERATIONS : (u32)1;
+
+    //
+    // Generate a million lines of source if we're in this mode
+    //
 
     Arena  benchmark_arena = {0};
     string source          = string_from_cstr(source_code);
@@ -112,10 +124,13 @@ int run(int argc, char** argv)
 
     print_source_overview(source);
 
+    //
+    // Benchmark mode warm-up
+    //
+
     if (config.benchmark) {
-        TimingRecorder warmup_recorder = timing_recorder_disabled();
         for (u32 i = 0; i < LEX_WARMUP_ITERATIONS; i++) {
-            FrontEndResults warmup = front_end(source, &warmup_recorder);
+            FrontEndResults warmup = front_end(source, NULL);
             front_end_results_done(&warmup);
         }
     }
@@ -123,10 +138,14 @@ int run(int argc, char** argv)
     TimingAccumulateSession session = {0};
     timing_accumulate_session_init(&session);
     if (config.benchmark) {
-        TimingRecorder  benchmark_recorder = timing_recorder_disabled();
-        ThreadTimePoint benchmark_start    = thread_time_now();
+
+        //
+        // Benchmarked run
+        //
+
+        ThreadTimePoint benchmark_start = thread_time_now();
         for (u32 i = 0; i < run_count; i++) {
-            FrontEndResults results = front_end(source, &benchmark_recorder);
+            FrontEndResults results = front_end(source, NULL);
             front_end_results_done(&results);
         }
         ThreadTimePoint benchmark_end = thread_time_now();
@@ -140,23 +159,36 @@ int run(int argc, char** argv)
         timing_accumulate_session_add(&session, &timing);
         timing_done(&timing);
     } else {
+
+        //
+        // Single run
+        //
+
         Timing iteration_timing = {0};
         timing_init(&iteration_timing);
-        TimingRecorder recorder = timing_recorder_enabled(&iteration_timing);
-
-        FrontEndResults results = front_end(source, &recorder);
-        compiler_dump(&config, &results);
+        FrontEndResults results = front_end(source, &iteration_timing);
+        BackEndResults  back    = back_end(&results, &iteration_timing);
+        compiler_dump(!config.million, &results, &back);
+        back_end_results_done(&back);
         front_end_results_done(&results);
 
         timing_accumulate_session_add(&session, &iteration_timing);
         timing_done(&iteration_timing);
     }
 
+    //
+    // Timings processing and output
+    //
+
     Timing report = {0};
     timing_accumulate_session_build_report(&session, &report);
     timing_dump(&report);
     timing_done(&report);
     timing_accumulate_session_done(&session);
+
+    //
+    // Clean up
+    //
 
     UNUSED(libs);
     UNUSED(output_base);
