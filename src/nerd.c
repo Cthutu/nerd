@@ -28,8 +28,7 @@ internal NerdConfig parse_config(int argc, char** argv)
     array_push(columns,
                (TableColumn){.title = "Index", .colour = ANSI_CYAN},
                (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
-    table_init(&args_table, columns);
-    table_set_title(&args_table, "Arguments");
+    table_init(&args_table, columns, .title = "Arguments");
     array_free(columns);
 
     for (int i = 1; i < argc; i++) {

@@ -28,8 +28,7 @@ void lex_dump(const Lexer* lexer)
                (TableColumn){.title = "Token", .colour = ANSI_YELLOW},
                (TableColumn){.title = "Offset", .colour = ANSI_CYAN},
                (TableColumn){.title = "Value", .colour = ANSI_GREEN});
-    table_init(&table, columns);
-    table_set_title(&table, "Lexer Tokens (4 bytes each)");
+    table_init(&table, columns, .title = "Lexer Tokens (4 bytes each)");
     array_free(columns);
     table_reserve_rows(&table, array_count(lexer->tokens));
 

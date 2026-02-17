@@ -73,8 +73,7 @@ internal void cli_print_flags_table(Array(CliFlag) flags, cstr title)
         (TableColumn){.title = "Description", .colour = ANSI_BOLD_GREEN});
 
     Table table = {0};
-    table_init(&table, columns);
-    table_set_title(&table, title);
+    table_init(&table, columns, .title = title);
     array_free(columns);
     table_reserve_rows(&table, array_count(flags) + 1);
 
@@ -253,8 +252,7 @@ void cli_print_help(const CliParser* parser)
         (TableColumn){.title = "Description", .colour = ANSI_BOLD_GREEN});
 
     Table commands_table = {0};
-    table_init(&commands_table, command_columns);
-    table_set_title(&commands_table, "Commands");
+    table_init(&commands_table, command_columns, .title = "Commands");
     array_free(command_columns);
     table_reserve_rows(&commands_table, array_count(parser->commands));
 

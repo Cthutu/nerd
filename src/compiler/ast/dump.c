@@ -36,8 +36,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                (TableColumn){.title = "Value", .colour = value_colour});
 
     Table table = {0};
-    table_init(&table, columns);
-    table_set_title(&table, "AST Nodes (16 bytes each)");
+    table_init(&table, columns, .title = "AST Nodes (16 bytes each)");
     table_reserve_rows(&table, array_count(ast->nodes));
     array_free(columns);
 

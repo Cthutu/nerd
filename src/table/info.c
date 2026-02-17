@@ -98,8 +98,7 @@ void dump_info(void)
                (TableColumn){.title = "Value", .colour = ANSI_GREEN});
 
     Table table;
-    table_init(&table, columns);
-    table_set_title(&table, "System Information");
+    table_init(&table, columns, .title = "System Information");
     table_reserve_rows(&table, 6);
 
     {

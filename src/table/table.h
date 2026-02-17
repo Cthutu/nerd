@@ -55,9 +55,10 @@ typedef struct {
 } TableAddRowParams;
 
 typedef struct {
-    cstr foreground_colour;
-    cstr background_colour;
-} TableTitleParams;
+    cstr title;
+    cstr title_foreground_colour;
+    cstr title_background_colour;
+} TableInitParams;
 
 typedef struct {
     cstr border_colour;
@@ -75,10 +76,9 @@ TableCell table_cell_u64(u64 value);
 TableCell table_cell_i32(i32 value);
 TableCell table_cell_time(TimeDuration value);
 
-void table_init(Table* table, Array(TableColumn) columns);
-void _table_set_title(Table* table, cstr title, TableTitleParams params);
-#define table_set_title(table, title, ...)                                     \
-    _table_set_title((table), (title), (TableTitleParams){__VA_ARGS__})
+void _table_init(Table* table, Array(TableColumn) columns, TableInitParams params);
+#define table_init(table, columns, ...)                                         \
+    _table_init((table), (columns), (TableInitParams){__VA_ARGS__})
 void table_done(Table* table);
 
 void table_reserve_rows(Table* table, usize row_count);

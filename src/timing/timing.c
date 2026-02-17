@@ -183,8 +183,7 @@ void timing_dump(const Timing* timing)
                (TableColumn){.title = "phase", .colour = phase_colour},
                (TableColumn){.title = "duration", .colour = time_colour});
     Table table;
-    table_init(&table, columns);
-    table_set_title(&table, "Timing Report");
+    table_init(&table, columns, .title = "Timing Report");
     array_free(columns);
     table_reserve_rows(&table, timings_count + totals_count + 1);
 

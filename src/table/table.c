@@ -144,9 +144,17 @@ TableCell table_cell_time(TimeDuration value)
     };
 }
 
-void table_init(Table* table, Array(TableColumn) columns)
+void _table_init(Table* table, Array(TableColumn) columns, TableInitParams params)
 {
-    *table             = (Table){0};
+    *table = (Table){0};
+
+    table->title = params.title ? params.title : "";
+    table->title_fg_colour = params.title_foreground_colour
+                                 ? params.title_foreground_colour
+                                 : ANSI_BOLD_WHITE;
+    table->title_bg_colour = params.title_background_colour
+                                 ? params.title_background_colour
+                                 : ANSI_BG_BLUE;
 
     usize column_count = array_count(columns);
     if (column_count == 0) {
@@ -162,20 +170,6 @@ void table_init(Table* table, Array(TableColumn) columns)
         array_push(table->widths,
                    unicode_utf8_string_cell_width(string_from_cstr(title)));
     }
-}
-
-void _table_set_title(Table* table, cstr title, TableTitleParams params)
-{
-    if (!table) {
-        return;
-    }
-
-    table->title           = title ? title : "";
-    table->title_fg_colour = params.foreground_colour
-                                 ? params.foreground_colour
-                                 : ANSI_BOLD_WHITE;
-    table->title_bg_colour =
-        params.background_colour ? params.background_colour : ANSI_BG_BLUE;
 }
 
 void table_done(Table* table)

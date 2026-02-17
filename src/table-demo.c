@@ -23,8 +23,7 @@ int run(int argc, char** argv)
                ((TableColumn){.title = "Bytes", .colour = ANSI_BLUE}),
                ((TableColumn){.title = "Delta", .colour = ANSI_MAGENTA}));
 
-    table_init(&table, columns);
-    table_set_title(&table, "Compiler Pipeline Summary");
+    table_init(&table, columns, .title = "Compiler Pipeline Summary");
     array_free(columns);
     table_reserve_rows(&table, 8);
 
@@ -91,6 +90,29 @@ int run(int argc, char** argv)
 
     table_print(&table);
     table_done(&table);
+
+    Table untitled = {0};
+    columns        = NULL;
+    array_push(columns,
+               ((TableColumn){.title = "Metric", .colour = ANSI_CYAN}),
+               ((TableColumn){.title = "Value", .colour = ANSI_GREEN}));
+    table_init(&untitled, columns);
+    array_free(columns);
+    table_reserve_rows(&untitled, 2);
+
+    {
+        TableCell row[] = {table_cell_string(s("rows")),
+                           table_cell_u32(5)};
+        table_add_row(&untitled, row);
+    }
+    {
+        TableCell row[] = {table_cell_string(s("title")),
+                           table_cell_string(s("none"))};
+        table_add_row(&untitled, row);
+    }
+
+    table_print(&untitled);
+    table_done(&untitled);
 
     return 0;
 }
