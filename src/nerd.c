@@ -124,40 +124,19 @@ int run(int argc, char** argv)
 
     print_source_overview(source);
 
-    //
-    // Benchmark mode warm-up
-    //
-
-    if (config.benchmark) {
-        for (u32 i = 0; i < LEX_WARMUP_ITERATIONS; i++) {
-            FrontEndResults warmup = front_end(source, NULL);
-            front_end_results_done(&warmup);
-        }
-    }
-
     TimingAccumulateSession session = {0};
     timing_accumulate_session_init(&session);
     if (config.benchmark) {
 
         //
-        // Benchmarked run
+        // Benchmarked run (accurate per-phase averages)
         //
 
-        ThreadTimePoint benchmark_start = thread_time_now();
-        for (u32 i = 0; i < run_count; i++) {
-            FrontEndResults results = front_end(source, NULL);
-            front_end_results_done(&results);
-        }
-        ThreadTimePoint benchmark_end = thread_time_now();
-        Timing          timing        = {0};
-        timing_init(&timing);
-        timing_add(&timing,
-                   "front-end",
-                   "tokenise source text",
-                   thread_time_elapsed(benchmark_start, benchmark_end) /
-                       (TimeDuration)run_count);
-        timing_accumulate_session_add(&session, &timing);
-        timing_done(&timing);
+        Timing benchmark_timing = {0};
+        front_end_benchmark(
+            source, LEX_WARMUP_ITERATIONS, run_count, &benchmark_timing);
+        timing_accumulate_session_add(&session, &benchmark_timing);
+        timing_done(&benchmark_timing);
 
         //
         // One extra untimed run to inspect compiler state while benchmarking.
@@ -165,7 +144,9 @@ int run(int argc, char** argv)
 
         FrontEndResults dump_front = front_end(source, NULL);
         BackEndResults  dump_back  = back_end(&dump_front, NULL);
-        compiler_dump(!config.million, &dump_front, &dump_back);
+        if (!config.million) {
+            compiler_dump(&dump_front, &dump_back);
+        }
         back_end_results_done(&dump_back);
         front_end_results_done(&dump_front);
     } else {
@@ -178,7 +159,9 @@ int run(int argc, char** argv)
         timing_init(&iteration_timing);
         FrontEndResults results = front_end(source, &iteration_timing);
         BackEndResults  back    = back_end(&results, &iteration_timing);
-        compiler_dump(!config.million, &results, &back);
+        if (!config.million) {
+            compiler_dump(&results, &back);
+        }
         back_end_results_done(&back);
         front_end_results_done(&results);
 

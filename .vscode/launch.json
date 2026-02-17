@@ -5,6 +5,18 @@
             "name": "Launch Executable (Linux)",
             "type": "lldb",
             "request": "launch",
+            "program": "${workspaceFolder}/_bin/nerd-debug",
+            "args": [
+                "--benchmark",
+                // "--million",
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Compile"
+        },
+        {
+            "name": "Launch Executable (Linux Release)",
+            "type": "lldb",
+            "request": "launch",
             "program": "${workspaceFolder}/_bin/nerd",
             "args": [
                 "--benchmark",
