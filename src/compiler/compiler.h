@@ -34,4 +34,8 @@ void           back_end_results_done(BackEndResults* results);
 void compiler_dump(const FrontEndResults* front_end_results,
                    const BackEndResults*  back_end_results);
 
+int    compiler_cmd_build(void);
+int    compiler_cmd_benchmark(void);
+int    compiler_cmd_million(void);
+
 //------------------------------------------------------------------------------
