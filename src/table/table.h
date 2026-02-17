@@ -17,7 +17,6 @@ typedef enum {
     TABLE_CELL_U32,
     TABLE_CELL_U64,
     TABLE_CELL_I32,
-    TABLE_CELL_TOKEN,
 } TableCellKind;
 
 typedef struct {
@@ -30,7 +29,7 @@ typedef struct {
 } TableCell;
 
 typedef struct {
-    string title;
+    cstr   title;
     cstr   colour;
 } TableColumn;
 
@@ -57,9 +56,8 @@ TableCell table_cell_text(string text);
 TableCell table_cell_u32(u32 value);
 TableCell table_cell_u64(u64 value);
 TableCell table_cell_i32(i32 value);
-TableCell table_cell_token(string kind_name, u32 offset);
 
-void table_init(Table* table, const TableColumn* columns, usize column_count);
+void table_init(Table* table, Array(TableColumn) columns);
 void table_done(Table* table);
 
 void table_reserve_rows(Table* table, usize row_count);

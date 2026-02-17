@@ -42,9 +42,9 @@ usize digits_i32(i32 n)
         return 1;
     }
 
-    bool sign = n < 0;
-    u32  mag  = sign ? (u32)(-(i64)n) : (u32)n;
-    usize d   = 0;
+    bool  sign = n < 0;
+    u32   mag  = sign ? (u32)(-(i64)n) : (u32)n;
+    usize d    = 0;
 
     while (mag > 0) {
         mag /= 10;
@@ -96,30 +96,22 @@ TableCell table_cell_i32(i32 value)
     };
 }
 
-TableCell table_cell_token(string kind_name, u32 offset)
+void table_init(Table* table, Array(TableColumn) columns)
 {
-    return (TableCell){
-        .kind      = TABLE_CELL_TOKEN,
-        .text      = kind_name,
-        .u32_value = offset,
-        .digits    = digits_u32(offset),
-    };
-}
+    *table             = (Table){0};
 
-void table_init(Table* table, const TableColumn* columns, usize column_count)
-{
-    *table = (Table){0};
-
+    usize column_count = array_count(columns);
     if (column_count == 0) {
         return;
     }
 
-    array_requires(table->columns, column_count);
-    array_requires(table->widths, column_count);
+    array_requires_capacity(table->columns, column_count);
+    array_requires_capacity(table->widths, column_count);
 
     for (usize i = 0; i < column_count; i++) {
+        cstr title = columns[i].title ? columns[i].title : "";
         array_push(table->columns, columns[i]);
-        array_push(table->widths, columns[i].title.count);
+        array_push(table->widths, string_from_cstr(title).count);
     }
 }
 
@@ -144,12 +136,14 @@ void table_reserve_rows(Table* table, usize row_count)
         return;
     }
 
-    array_requires(table->rows, row_count * col_count);
-    array_requires(table->row_colours, row_count * col_count);
-    array_requires(table->row_divider_before, row_count);
+    array_requires_capacity(table->rows, row_count * col_count);
+    array_requires_capacity(table->row_colours, row_count * col_count);
+    array_requires_capacity(table->row_divider_before, row_count);
 }
 
-void _table_add_row(Table* table, const TableCell* cells, TableAddRowParams params)
+void _table_add_row(Table*            table,
+                    const TableCell*  cells,
+                    TableAddRowParams params)
 {
     usize col_count = array_count(table->columns);
     if (col_count == 0 || !cells) {
@@ -161,13 +155,20 @@ void _table_add_row(Table* table, const TableCell* cells, TableAddRowParams para
         usize            width = 1;
 
         switch (cell->kind) {
-        case TABLE_CELL_EMPTY: width = 1; break;
-        case TABLE_CELL_TEXT: width = cell->text.count; break;
+        case TABLE_CELL_EMPTY:
+            width = 1;
+            break;
+        case TABLE_CELL_TEXT:
+            width = cell->text.count;
+            break;
         case TABLE_CELL_U32:
         case TABLE_CELL_U64:
-        case TABLE_CELL_I32: width = cell->digits; break;
-        case TABLE_CELL_TOKEN: width = cell->text.count + 1 + cell->digits; break;
-        default: width = 1; break;
+        case TABLE_CELL_I32:
+            width = cell->digits;
+            break;
+        default:
+            width = 1;
+            break;
         }
 
         if (width > table->widths[i]) {
@@ -225,40 +226,34 @@ internal void print_text_cell(string text, usize width, cstr colour, cstr reset)
     pr(" ");
 }
 
-internal void print_u32_cell(u32 value, usize width, usize digits, cstr colour, cstr reset)
+internal void
+print_u32_cell(u32 value, usize width, usize digits, cstr colour, cstr reset)
 {
     pr(" %s%u%s", colour, value, reset);
     print_repeat(" ", width - digits);
     pr(" ");
 }
 
-internal void print_u64_cell(u64 value, usize width, usize digits, cstr colour, cstr reset)
+internal void
+print_u64_cell(u64 value, usize width, usize digits, cstr colour, cstr reset)
 {
     pr(" %s%llu%s", colour, (unsigned long long)value, reset);
     print_repeat(" ", width - digits);
     pr(" ");
 }
 
-internal void print_i32_cell(i32 value, usize width, usize digits, cstr colour, cstr reset)
+internal void
+print_i32_cell(i32 value, usize width, usize digits, cstr colour, cstr reset)
 {
     pr(" %s%d%s", colour, value, reset);
     print_repeat(" ", width - digits);
     pr(" ");
 }
 
-internal void print_token_cell(string kind_name,
-                               u32    offset,
-                               usize  width,
-                               usize  offset_digits,
-                               cstr   colour,
-                               cstr   reset)
-{
-    pr(" %s%.*s@%u%s", colour, STRINGV(kind_name), offset, reset);
-    print_repeat(" ", width - (kind_name.count + 1 + offset_digits));
-    pr(" ");
-}
-
-void table_print(const Table* table, cstr border_colour, cstr header_colour, cstr reset)
+void table_print(const Table* table,
+                 cstr         border_colour,
+                 cstr         header_colour,
+                 cstr         reset)
 {
     usize col_count = array_count(table->columns);
     if (col_count == 0) {
@@ -269,11 +264,10 @@ void table_print(const Table* table, cstr border_colour, cstr header_colour, cst
 
     pr("%s", border_colour);
     for (usize i = 0; i < col_count; i++) {
+        cstr title = table->columns[i].title ? table->columns[i].title : "";
         pr("│%s", reset);
-        print_text_cell(table->columns[i].title,
-                        table->widths[i],
-                        header_colour,
-                        reset);
+        print_text_cell(
+            string_from_cstr(title), table->widths[i], header_colour, reset);
         pr("%s", border_colour);
     }
     pr("│\n");
@@ -291,8 +285,8 @@ void table_print(const Table* table, cstr border_colour, cstr header_colour, cst
 
         pr("%s", border_colour);
         for (usize c = 0; c < col_count; c++) {
-            const TableCell* cell = &table->rows[row_offset + c];
-            usize            width = table->widths[c];
+            const TableCell* cell   = &table->rows[row_offset + c];
+            usize            width  = table->widths[c];
             cstr             colour = table->columns[c].colour;
 
             if (array_count(table->row_colours) == array_count(table->rows)) {
@@ -312,23 +306,20 @@ void table_print(const Table* table, cstr border_colour, cstr header_colour, cst
                 print_text_cell(cell->text, width, colour, reset);
                 break;
             case TABLE_CELL_U32:
-                print_u32_cell(cell->u32_value, width, cell->digits, colour, reset);
+                print_u32_cell(
+                    cell->u32_value, width, cell->digits, colour, reset);
                 break;
             case TABLE_CELL_U64:
-                print_u64_cell(cell->u64_value, width, cell->digits, colour, reset);
+                print_u64_cell(
+                    cell->u64_value, width, cell->digits, colour, reset);
                 break;
             case TABLE_CELL_I32:
-                print_i32_cell(cell->i32_value, width, cell->digits, colour, reset);
+                print_i32_cell(
+                    cell->i32_value, width, cell->digits, colour, reset);
                 break;
-            case TABLE_CELL_TOKEN:
-                print_token_cell(cell->text,
-                                 cell->u32_value,
-                                 width,
-                                 cell->digits,
-                                 colour,
-                                 reset);
+            default:
+                print_text_cell(string_from_cstr("?"), width, "", reset);
                 break;
-            default: print_text_cell(string_from_cstr("?"), width, "", reset); break;
             }
 
             pr("%s", border_colour);

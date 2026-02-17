@@ -584,6 +584,7 @@ i64  random_range_i64(i64 min, i64 max);
 //------------------------------------------------------------------------------[String]
 
 DEF_SLICE(u8) string;
+#define s(cstr) string_from_cstr(cstr)
 
 // Macro to create pr string parameters from a string.
 #define STRINGV(s) (int)((s).count), (s).data

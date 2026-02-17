@@ -9,29 +9,28 @@
 
 //------------------------------------------------------------------------------
 
-internal string s(cstr c) { return string_from_cstr(c); }
-
 int run(int argc, char** argv)
 {
     UNUSED(argc);
     UNUSED(argv);
 
     Table table;
-    TableColumn columns[] = {
-        {.title = s("Stage"), .colour = ANSI_CYAN},
-        {.title = s("Token"), .colour = ANSI_YELLOW},
-        {.title = s("Count"), .colour = ANSI_GREEN},
-        {.title = s("Bytes"), .colour = ANSI_BLUE},
-        {.title = s("Delta"), .colour = ANSI_MAGENTA},
-    };
+    Array(TableColumn) columns = NULL;
+    array_push(columns,
+               ((TableColumn){.title = "Stage", .colour = ANSI_CYAN}),
+               ((TableColumn){.title = "Token", .colour = ANSI_YELLOW}),
+               ((TableColumn){.title = "Count", .colour = ANSI_GREEN}),
+               ((TableColumn){.title = "Bytes", .colour = ANSI_BLUE}),
+               ((TableColumn){.title = "Delta", .colour = ANSI_MAGENTA}));
 
-    table_init(&table, columns, sizeof(columns) / sizeof(columns[0]));
+    table_init(&table, columns);
+    array_free(columns);
     table_reserve_rows(&table, 8);
 
     {
         TableCell row[] = {
             table_cell_text(s("Lex")),
-            table_cell_token(s("Ident"), 0),
+            table_cell_text(s("Ident@0")),
             table_cell_u32(42),
             table_cell_u64(1536),
             table_cell_i32(+3),
@@ -42,7 +41,7 @@ int run(int argc, char** argv)
     {
         TableCell row[] = {
             table_cell_text(s("Lex")),
-            table_cell_token(s("Number"), 126),
+            table_cell_text(s("Number@126")),
             table_cell_u32(17),
             table_cell_u64(768),
             table_cell_i32(-2),
@@ -53,7 +52,7 @@ int run(int argc, char** argv)
     {
         TableCell row[] = {
             table_cell_text(s("Parse")),
-            table_cell_token(s("FnDecl"), 204),
+            table_cell_text(s("FnDecl@204")),
             table_cell_u32(9),
             table_cell_u64(4096),
             table_cell_i32(+1),
@@ -80,7 +79,7 @@ int run(int argc, char** argv)
     {
         TableCell row[] = {
             table_cell_text(s("Codegen")),
-            table_cell_token(s("Mov"), 812),
+            table_cell_text(s("Mov@812")),
             table_cell_u32(128),
             table_cell_u64(12288),
             table_cell_i32(+6),
