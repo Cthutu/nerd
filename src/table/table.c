@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <table/table.h>
+#include <unicode/unicode.h>
 
 //------------------------------------------------------------------------------
 
@@ -111,7 +112,8 @@ void table_init(Table* table, Array(TableColumn) columns)
     for (usize i = 0; i < column_count; i++) {
         cstr title = columns[i].title ? columns[i].title : "";
         array_push(table->columns, columns[i]);
-        array_push(table->widths, string_from_cstr(title).count);
+        array_push(
+            table->widths, unicode_utf8_string_cell_width(string_from_cstr(title)));
     }
 }
 
@@ -159,7 +161,7 @@ void _table_add_row(Table*            table,
             width = 1;
             break;
         case TABLE_CELL_TEXT:
-            width = cell->text.count;
+            width = unicode_utf8_string_cell_width(cell->text);
             break;
         case TABLE_CELL_U32:
         case TABLE_CELL_U64:
@@ -222,7 +224,10 @@ internal void print_line(cstr         left,
 internal void print_text_cell(string text, usize width, cstr colour, cstr reset)
 {
     pr(" %s%.*s%s", colour, STRINGV(text), reset);
-    print_repeat(" ", width - text.count);
+    usize text_width = unicode_utf8_string_cell_width(text);
+    if (width > text_width) {
+        print_repeat(" ", width - text_width);
+    }
     pr(" ");
 }
 
