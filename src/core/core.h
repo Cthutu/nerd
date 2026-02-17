@@ -377,7 +377,7 @@ void* array_maybe_grow(void* array,
 
 // OS-based arena with reserved memory pages
 typedef struct {
-    u8*   data;         // Base pointer to arena - never changes
+    u8*   data;           // Base pointer to arena - never changes
     usize cursor;         // Current allocation cursor
     usize committed_size; // Number of bytes currently committed
     usize reserved_size;  // Total number of bytes reserved (maximum capacity)
@@ -555,10 +555,13 @@ void eprn(const char* format, ...);
 
 typedef u64 TimePoint;
 typedef u64 TimeDuration;
+typedef u64 ThreadTimePoint;
 
-TimePoint    time_now(void);
-TimeDuration time_elapsed(TimePoint start, TimePoint end);
-TimePoint    time_add_duration(TimePoint time, TimeDuration duration);
+TimePoint       time_now(void);
+TimeDuration    time_elapsed(TimePoint start, TimePoint end);
+TimePoint       time_add_duration(TimePoint time, TimeDuration duration);
+ThreadTimePoint thread_time_now(void);
+TimeDuration    thread_time_elapsed(ThreadTimePoint start, ThreadTimePoint end);
 
 void time_sleep_ms(u32 milliseconds);
 

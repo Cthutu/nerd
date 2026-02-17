@@ -21,6 +21,23 @@ static u64 time_frequency(void)
     return frequency;
 }
 
+static u64 filetime_to_u64(FILETIME value)
+{
+    ULARGE_INTEGER v;
+    v.LowPart  = value.dwLowDateTime;
+    v.HighPart = value.dwHighDateTime;
+    return v.QuadPart;
+}
+
+static TimeDuration thread_time_100ns_to_duration(u64 thread_time_100ns)
+{
+    u64 frequency = time_frequency();
+    u64 seconds   = thread_time_100ns / 10000000ull;
+    u64 rem_100ns = thread_time_100ns % 10000000ull;
+    return (TimeDuration)(seconds * frequency +
+                          (rem_100ns * frequency) / 10000000ull);
+}
+
 TimePoint time_now(void)
 {
     LARGE_INTEGER counter;
@@ -36,6 +53,24 @@ TimeDuration time_elapsed(TimePoint start, TimePoint end)
 TimePoint time_add_duration(TimePoint time, TimeDuration duration)
 {
     return time + duration;
+}
+
+ThreadTimePoint thread_time_now(void)
+{
+    FILETIME create_time;
+    FILETIME exit_time;
+    FILETIME kernel_time;
+    FILETIME user_time;
+    BOOL     ok = GetThreadTimes(
+        GetCurrentThread(), &create_time, &exit_time, &kernel_time, &user_time);
+    ASSERT(ok, "GetThreadTimes failed");
+    u64 total_100ns = filetime_to_u64(kernel_time) + filetime_to_u64(user_time);
+    return (ThreadTimePoint)thread_time_100ns_to_duration(total_100ns);
+}
+
+TimeDuration thread_time_elapsed(ThreadTimePoint start, ThreadTimePoint end)
+{
+    return (TimeDuration)(end - start);
 }
 
 void time_sleep_ms(u32 milliseconds) { Sleep(milliseconds); }
@@ -123,6 +158,23 @@ TimeDuration time_elapsed(TimePoint start, TimePoint end)
 TimePoint time_add_duration(TimePoint time, TimeDuration duration)
 {
     return time + duration;
+}
+
+ThreadTimePoint thread_time_now(void)
+{
+    struct timespec ts;
+#    if defined(CLOCK_THREAD_CPUTIME_ID)
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+#    else
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+#    endif
+    return (ThreadTimePoint)ts.tv_sec * 1000000000ull +
+           (ThreadTimePoint)ts.tv_nsec;
+}
+
+TimeDuration thread_time_elapsed(ThreadTimePoint start, ThreadTimePoint end)
+{
+    return (TimeDuration)(end - start);
 }
 
 void time_sleep_ms(u32 milliseconds)
