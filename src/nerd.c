@@ -4,56 +4,22 @@
 //> use: core intern compiler timing table cli
 
 #include <cli/cli.h>
-#include <compiler/lexer/lexer.h>
+#include <compiler/compiler.h>
 #include <table/table.h>
 #include <timing/timing.h>
 
-DEF_SLICE(cstr) strings;
-
 //------------------------------------------------------------------------------
-// Front End
-
-typedef struct {
-    Lexer lexer;
-} FrontEndResults;
-
-typedef struct {
-} BackEndResults;
 
 typedef struct {
     bool benchmark;
     bool million;
 } NerdConfig;
 
-typedef struct {
-    bool    enabled;
-    Timing* timing;
-} TimingRecorder;
-
 enum {
     LEX_WARMUP_ITERATIONS = 1000,
     LEX_TIMED_ITERATIONS  = 10000,
     MILLION_LINES_COUNT   = 1000000,
 };
-
-#define PHASE_DO(recorder, stage_name, phase_name, stmt)                       \
-    do {                                                                       \
-        if ((recorder)->enabled) {                                             \
-            ThreadTimePoint _start = thread_time_now();                        \
-            do {                                                               \
-                stmt;                                                          \
-            } while (0);                                                       \
-            ThreadTimePoint _end = thread_time_now();                          \
-            timing_add((recorder)->timing,                                     \
-                       (stage_name),                                           \
-                       (phase_name),                                           \
-                       thread_time_elapsed(_start, _end));                     \
-        } else {                                                               \
-            do {                                                               \
-                stmt;                                                          \
-            } while (0);                                                       \
-        }                                                                      \
-    } while (0)
 
 internal string make_million_lines_source(Arena* arena)
 {
@@ -118,46 +84,6 @@ internal NerdConfig parse_config(int argc, char** argv)
     cli_done(&parser);
     return config;
 }
-
-internal TimingRecorder timing_recorder_enabled(Timing* timing)
-{
-    TimingRecorder recorder = {.enabled = true, .timing = timing};
-    return recorder;
-}
-
-internal TimingRecorder timing_recorder_disabled(void)
-{
-    TimingRecorder recorder = {.enabled = false, .timing = NULL};
-    return recorder;
-}
-
-FrontEndResults front_end(string source_code, TimingRecorder* recorder)
-{
-    FrontEndResults results = {0};
-    PHASE_DO(recorder,
-             "front-end",
-             "tokenise source text",
-             results.lexer = lex(source_code));
-
-    return results;
-}
-
-internal void front_end_results_done(FrontEndResults* results)
-{
-    lex_done(&results->lexer);
-    *results = (FrontEndResults){0};
-}
-
-internal void compiler_dump(const NerdConfig* config,
-                            FrontEndResults*  front_end)
-{
-    if (!config->million) {
-        lex_dump(&front_end->lexer);
-    }
-}
-
-//------------------------------------------------------------------------------
-// Back End
 
 //------------------------------------------------------------------------------
 // Entry point for the test.
