@@ -337,12 +337,12 @@ void* array_maybe_grow(void* array,
     } while (0)
 
 // Array ensure capacity macro
-#define array_requires(a, required_capacity)                                   \
+#define array_requires_capacity(a, required_capacity)                          \
     (a) = (typeof(*(a))*)array_maybe_grow(                                     \
         (a), sizeof(*(a)), (required_capacity), __FILE__, __LINE__)
 
 // Ensure capacity incrementally
-#define array_needs(a, additional_capacity)                                    \
+#define array_more_capacity(a, additional_capacity)                            \
     (a) = (typeof(*(a))*)array_maybe_grow((a),                                 \
                                           sizeof(*(a)),                        \
                                           array_count(a) +                     \
@@ -351,11 +351,22 @@ void* array_maybe_grow(void* array,
                                           __LINE__)
 
 // Array ensure size and capacity macro
-#define array_reserve(a, required_size)                                        \
+#define array_requires_size(a, required_size)                                  \
     do {                                                                       \
         (a) = (typeof(*(a))*)array_maybe_grow(                                 \
             (a), sizeof(*(a)), (required_size), __FILE__, __LINE__);           \
         __array_count(a) = (required_size);                                    \
+    } while (0)
+
+#define array_more_size(a, additional_size)                                    \
+    do {                                                                       \
+        (a) = (typeof(*(a))*)array_maybe_grow((a),                             \
+                                              sizeof(*(a)),                    \
+                                              array_count(a) +                 \
+                                                  (additional_size),           \
+                                              __FILE__,                        \
+                                              __LINE__);                       \
+        __array_count(a) += (additional_size);                                 \
     } while (0)
 
 #define array_leak(a) mem_leak(__array_info(a))

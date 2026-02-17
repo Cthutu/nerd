@@ -208,7 +208,7 @@ bool elf_load(string elf_data, ElfHeader* out_header)
     // Process the program headers
     //
 
-    array_reserve(out_header->program_headers, num_program_headers);
+    array_requires_size(out_header->program_headers, num_program_headers);
     ASSERT(array_count(out_header->program_headers) == num_program_headers,
            "Program headers reservation failed");
     for (u16 i = 0; i < num_program_headers; i++) {
@@ -249,7 +249,7 @@ bool elf_load(string elf_data, ElfHeader* out_header)
     // Process the section headers
     //
 
-    array_reserve(out_header->section_headers, num_section_headers);
+    array_requires_size(out_header->section_headers, num_section_headers);
     for (u16 i = 0; i < num_section_headers; i++) {
         if (out_header->bit_size == ELF_CLASS_32) {
             Elf32SectionHeader* sh =

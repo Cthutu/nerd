@@ -105,7 +105,7 @@ void _intern_init(Interner* interner, InternInitParams params)
     interner->capacity_mask = interner->capacity - 1;
     interner->count         = 0;
 
-    array_reserve(interner->slots, interner->capacity);
+    array_requires_size(interner->slots, interner->capacity);
     memset(interner->slots, 0, sizeof(InternSlot) * interner->capacity);
 }
 
@@ -164,7 +164,7 @@ internal void intern_maybe_grow(Interner* interner)
     u64 new_mask                = new_cap - 1;
 
     Array(InternSlot) new_slots = NULL;
-    array_reserve(new_slots, new_cap);
+    array_requires_size(new_slots, new_cap);
     memset(new_slots, 0, sizeof(InternSlot) * new_cap);
 
     // Reinsert existing entries using Robin Hood hashing

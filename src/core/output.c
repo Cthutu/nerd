@@ -23,7 +23,7 @@ internal cstr _format_output(cstr format, va_list args, usize* out_size)
     va_end(args_copy);
 
     // Allocate or reallocate the print buffer if necessary.
-    array_requires(print_buffer, *out_size + 1);
+    array_requires_capacity(print_buffer, *out_size + 1);
     array_leak(print_buffer); // Prevent detection in leaks
 
     // Format the string into the buffer.
