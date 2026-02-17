@@ -10,7 +10,7 @@
 
 //------------------------------------------------------------------------------
 
-typedef enum { TK_Number } TokenKind;
+typedef enum { TK_Integer } TokenKind;
 
 typedef struct {
     TokenKind kind : 8;

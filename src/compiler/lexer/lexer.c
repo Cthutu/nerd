@@ -49,7 +49,7 @@ Lexer lex(string source_code)
             }
 
             array_push(lexer.tokens,
-                       (Token){.kind = TK_Number, .offset = (u32)start});
+                       (Token){.kind = TK_Integer, .offset = (u32)start});
             array_push(lexer.integers, total);
         } else {
             lex_error("Unexpected character '%c' at offset %zu", c, i);

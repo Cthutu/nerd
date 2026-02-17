@@ -9,17 +9,17 @@
 
 //------------------------------------------------------------------------------
 
-internal string token_kind_to_string(TokenKind kind)
+string token_kind_to_string(TokenKind kind)
 {
     switch (kind) {
-    case TK_Number:
-        return string_from_cstr("Number");
+    case TK_Integer:
+        return string_from_cstr("Integer");
     default:
         return string_from_cstr("Unknown");
     }
 }
 
-void lex_dump(Lexer* lexer)
+void lex_dump(const Lexer* lexer)
 {
     Table table;
     Array(TableColumn) columns = NULL;
