@@ -8,14 +8,11 @@
 
 //------------------------------------------------------------------------------
 
-void compiler_dump(bool                   dump_lexer,
-                   const FrontEndResults* front_end_results,
+void compiler_dump(const FrontEndResults* front_end_results,
                    const BackEndResults*  back_end_results)
 {
-    if (dump_lexer) {
-        Lexer lexer = front_end_results->lexer;
-        lex_dump(&lexer);
-    }
+    lex_dump(&front_end_results->lexer);
+    ast_dump(&front_end_results->ast, &front_end_results->lexer);
 
     UNUSED(back_end_results);
 }
