@@ -49,7 +49,7 @@
 #define COMPILER_CLANG NO
 #define COMPILER_MSVC NO
 
-#if defined(__CLANG__)
+#if defined(__clang__)
 #    undef COMPILER_CLANG
 #    define COMPILER_CLANG YES
 #elif defined(__GNUC__)
@@ -210,6 +210,9 @@
 #define END_PACKED_STRUCT(name)                                                \
     }                                                                          \
     name;
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
 
 //------------------------------------------------------------------------------[Types]
 
