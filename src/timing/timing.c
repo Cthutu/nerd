@@ -162,15 +162,12 @@ internal void table_add_timing_total_row(Table*       table,
 
 void timing_dump(const Timing* timing)
 {
-    cstr border_colour          = "\x1b[38;5;245m";
-    cstr header_colour          = "\x1b[1;38;5;45m";
     cstr stage_colour           = "\x1b[38;5;214m";
     cstr phase_colour           = "\x1b[38;5;111m";
     cstr time_colour            = "\x1b[38;5;82m";
     cstr total_stage_colour     = "\x1b[1;38;5;220m";
     cstr total_phase_colour     = "\x1b[1;38;5;222m";
     cstr total_time_colour      = "\x1b[1;38;5;229m";
-    cstr reset                  = ANSI_RESET;
 
     usize totals_count          = array_count(timing->totals);
     usize timings_count         = array_count(timing->timings);
@@ -187,6 +184,7 @@ void timing_dump(const Timing* timing)
                (TableColumn){.title = "duration", .colour = time_colour});
     Table table;
     table_init(&table, columns);
+    table_set_title(&table, "Timing Report");
     array_free(columns);
     table_reserve_rows(&table, timings_count + totals_count + 1);
 
@@ -230,8 +228,7 @@ void timing_dump(const Timing* timing)
                                total_time_colour,
                                true);
 
-    prn("\n--- Timings ---");
-    table_print(&table, border_colour, header_colour, reset);
+    table_print(&table);
 
     table_done(&table);
     arena_done(&arena);

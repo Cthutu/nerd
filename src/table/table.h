@@ -39,6 +39,9 @@ typedef struct {
 
 typedef struct {
     Array(TableColumn) columns;
+    cstr title;
+    cstr title_fg_colour;
+    cstr title_bg_colour;
     Array(usize) widths;
     Array(TableCell) rows;
     Array(cstr) row_colours;
@@ -50,6 +53,16 @@ typedef struct {
     const cstr* colours;
     bool        divider_before;
 } TableAddRowParams;
+
+typedef struct {
+    cstr foreground_colour;
+    cstr background_colour;
+} TableTitleParams;
+
+typedef struct {
+    cstr border_colour;
+    cstr header_colour;
+} TablePrintParams;
 
 usize digits_u32(u32 n);
 usize digits_u64(u64 n);
@@ -63,6 +76,9 @@ TableCell table_cell_i32(i32 value);
 TableCell table_cell_time(TimeDuration value);
 
 void table_init(Table* table, Array(TableColumn) columns);
+void _table_set_title(Table* table, cstr title, TableTitleParams params);
+#define table_set_title(table, title, ...)                                     \
+    _table_set_title((table), (title), (TableTitleParams){__VA_ARGS__})
 void table_done(Table* table);
 
 void table_reserve_rows(Table* table, usize row_count);
@@ -73,10 +89,9 @@ void _table_add_row(Table*            table,
 #define table_add_row(table, cells, ...)                                       \
     _table_add_row((table), (cells), (TableAddRowParams){__VA_ARGS__})
 
-void table_print(const Table* table,
-                 cstr         border_colour,
-                 cstr         header_colour,
-                 cstr         reset);
+void _table_print(const Table* table, TablePrintParams params);
+#define table_print(table, ...)                                                 \
+    _table_print((table), (TablePrintParams){__VA_ARGS__})
 
 void dump_info(void);
 

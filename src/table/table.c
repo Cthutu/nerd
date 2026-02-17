@@ -164,6 +164,20 @@ void table_init(Table* table, Array(TableColumn) columns)
     }
 }
 
+void _table_set_title(Table* table, cstr title, TableTitleParams params)
+{
+    if (!table) {
+        return;
+    }
+
+    table->title           = title ? title : "";
+    table->title_fg_colour = params.foreground_colour
+                                 ? params.foreground_colour
+                                 : ANSI_BOLD_WHITE;
+    table->title_bg_colour =
+        params.background_colour ? params.background_colour : ANSI_BG_BLUE;
+}
+
 void table_done(Table* table)
 {
     if (!table) {
@@ -269,6 +283,51 @@ internal void print_line(cstr         left,
     pr("%s%s\n", right, reset);
 }
 
+internal usize table_content_width(const usize* widths, usize width_count)
+{
+    if (width_count == 0) {
+        return 0;
+    }
+
+    usize total = 0;
+    for (usize i = 0; i < width_count; i++) {
+        total += widths[i] + 2;
+    }
+    total += width_count - 1;
+    return total;
+}
+
+internal void print_span_line(cstr left,
+                              cstr right,
+                              usize width,
+                              cstr  border_colour,
+                              cstr  reset)
+{
+    pr("%s%s", border_colour, left);
+    print_repeat("─", width);
+    pr("%s%s\n", right, reset);
+}
+
+internal void print_title_row(cstr  title,
+                              usize width,
+                              cstr  fg_colour,
+                              cstr  bg_colour,
+                              cstr  border_colour,
+                              cstr  reset)
+{
+    string title_text  = string_from_cstr(title ? title : "");
+    usize  title_width = unicode_utf8_string_cell_width(title_text);
+
+    pr("%s│%s", border_colour, reset);
+    pr("%s%s ", bg_colour ? bg_colour : "", fg_colour ? fg_colour : "");
+    pr("%.*s", STRINGV(title_text));
+    if (width > (title_width + 1)) {
+        print_repeat(" ", width - title_width - 1);
+    }
+    pr("%s", reset);
+    pr("%s│%s\n", border_colour, reset);
+}
+
 internal void print_text_cell(string text, usize width, cstr colour, cstr reset)
 {
     pr(" %s%.*s%s", colour, STRINGV(text), reset);
@@ -311,35 +370,63 @@ print_time_cell(TimeDuration value, usize width, cstr colour, cstr reset)
     print_text_cell(string_from((u8*)buf, len), width, colour, reset);
 }
 
-void table_print(const Table* table,
-                 cstr         border_colour,
-                 cstr         header_colour,
-                 cstr         reset)
+void _table_print(const Table* table, TablePrintParams params)
 {
+    cstr border_colour =
+        params.border_colour ? params.border_colour : ANSI_FAINT_WHITE;
+    cstr header_colour =
+        params.header_colour ? params.header_colour : ANSI_BOLD_WHITE;
+    cstr reset = ANSI_RESET;
+
     usize col_count = array_count(table->columns);
     if (col_count == 0) {
         return;
     }
 
-    print_line("┌", "┬", "┐", table->widths, col_count, border_colour, reset);
+    Array(usize) widths = NULL;
+    array_requires_capacity(widths, col_count);
+    for (usize i = 0; i < col_count; i++) {
+        array_push(widths, table->widths[i]);
+    }
+
+    usize content_width = table_content_width(widths, col_count);
+    bool  has_title     = table->title && table->title[0] != '\0';
+    if (has_title) {
+        usize title_width = unicode_utf8_string_cell_width(
+            string_from_cstr(table->title));
+        usize min_width = title_width + 2;
+        if (content_width < min_width) {
+            widths[col_count - 1] += (min_width - content_width);
+            content_width = min_width;
+        }
+
+        print_span_line("┌", "┐", content_width, border_colour, reset);
+        print_title_row(table->title,
+                        content_width,
+                        table->title_fg_colour,
+                        table->title_bg_colour,
+                        border_colour,
+                        reset);
+        print_line("├", "┬", "┤", widths, col_count, border_colour, reset);
+    } else {
+        print_line("┌", "┬", "┐", widths, col_count, border_colour, reset);
+    }
 
     pr("%s", border_colour);
     for (usize i = 0; i < col_count; i++) {
         cstr title = table->columns[i].title ? table->columns[i].title : "";
         pr("│%s", reset);
-        print_text_cell(
-            string_from_cstr(title), table->widths[i], header_colour, reset);
+        print_text_cell(string_from_cstr(title), widths[i], header_colour, reset);
         pr("%s", border_colour);
     }
     pr("│\n");
 
-    print_line("├", "┼", "┤", table->widths, col_count, border_colour, reset);
+    print_line("├", "┼", "┤", widths, col_count, border_colour, reset);
 
     for (usize r = 0; r < table->row_count; r++) {
         if (array_count(table->row_divider_before) == table->row_count &&
             table->row_divider_before[r]) {
-            print_line(
-                "├", "┼", "┤", table->widths, col_count, border_colour, reset);
+            print_line("├", "┼", "┤", widths, col_count, border_colour, reset);
         }
 
         usize row_offset = r * col_count;
@@ -347,7 +434,7 @@ void table_print(const Table* table,
         pr("%s", border_colour);
         for (usize c = 0; c < col_count; c++) {
             const TableCell* cell   = &table->rows[row_offset + c];
-            usize            width  = table->widths[c];
+            usize            width  = widths[c];
             cstr             colour = table->columns[c].colour;
 
             if (array_count(table->row_colours) == array_count(table->rows)) {
@@ -391,7 +478,8 @@ void table_print(const Table* table,
         pr("│\n");
     }
 
-    print_line("└", "┴", "┘", table->widths, col_count, border_colour, reset);
+    print_line("└", "┴", "┘", widths, col_count, border_colour, reset);
+    array_free(widths);
 }
 
 //------------------------------------------------------------------------------

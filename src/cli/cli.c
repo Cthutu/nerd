@@ -64,7 +64,7 @@ internal void cli_add_flag(Array(CliFlag)* flags,
                          .out_value   = out_value});
 }
 
-internal void cli_print_flags_table(Array(CliFlag) flags)
+internal void cli_print_flags_table(Array(CliFlag) flags, cstr title)
 {
     Array(TableColumn) columns = NULL;
     array_push(
@@ -74,6 +74,7 @@ internal void cli_print_flags_table(Array(CliFlag) flags)
 
     Table table = {0};
     table_init(&table, columns);
+    table_set_title(&table, title);
     array_free(columns);
     table_reserve_rows(&table, array_count(flags) + 1);
 
@@ -101,7 +102,7 @@ internal void cli_print_flags_table(Array(CliFlag) flags)
         table_add_row(&table, row);
     }
 
-    table_print(&table, ANSI_FAINT_WHITE, ANSI_BOLD_WHITE, ANSI_RESET);
+    table_print(&table);
     table_done(&table);
     arena_done(&arena);
 }
@@ -253,6 +254,7 @@ void cli_print_help(const CliParser* parser)
 
     Table commands_table = {0};
     table_init(&commands_table, command_columns);
+    table_set_title(&commands_table, "Commands");
     array_free(command_columns);
     table_reserve_rows(&commands_table, array_count(parser->commands));
 
@@ -263,12 +265,12 @@ void cli_print_help(const CliParser* parser)
         table_add_row(&commands_table, row);
     }
 
-    table_print(&commands_table, ANSI_FAINT_WHITE, ANSI_BOLD_WHITE, ANSI_RESET);
+    table_print(&commands_table);
     table_done(&commands_table);
 
     prn("");
     prn("%sGlobal Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    cli_print_flags_table(parser->root_flags);
+    cli_print_flags_table(parser->root_flags, "Global Options");
 }
 
 void cli_print_command_help(const CliParser* parser, usize command_index)
@@ -292,12 +294,12 @@ void cli_print_command_help(const CliParser* parser, usize command_index)
 
     prn("");
     prn("%sCommand Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    cli_print_flags_table(command->flags);
+    cli_print_flags_table(command->flags, "Command Options");
 
     if (array_count(parser->root_flags) > 0) {
         prn("");
         prn("%sGlobal Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-        cli_print_flags_table(parser->root_flags);
+        cli_print_flags_table(parser->root_flags, "Global Options");
     }
 }
 

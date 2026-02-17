@@ -21,8 +21,6 @@ string ast_kind_to_string(AstKind kind)
 
 void ast_dump(const Ast* ast, const Lexer* lexer)
 {
-    cstr border_colour         = "\x1b[38;5;245m";
-    cstr header_colour         = "\x1b[1;38;5;45m";
     cstr index_colour          = "\x1b[38;5;214m";
     cstr kind_colour           = "\x1b[38;5;111m";
     cstr ref_colour            = "\x1b[38;5;178m";
@@ -39,17 +37,17 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
     Table table = {0};
     table_init(&table, columns);
+    table_set_title(&table, "AST Nodes");
     table_reserve_rows(&table, array_count(ast->nodes));
     array_free(columns);
 
-    Array(TableCell) row       = NULL;
     Arena         string_arena = {0};
     StringBuilder sb           = {0};
 
-    array_requires_size(row, 5);
     arena_init(&string_arena);
 
     for (usize i = 0; i < array_count(ast->nodes); i++) {
+        TableCell row[5];
         row[0] = table_cell_u32(i);
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
         row[2] = table_cell_u32(ast->nodes[i].ref);
@@ -72,9 +70,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         table_add_row(&table, row);
     }
 
-    table_print(&table, border_colour, header_colour, ANSI_RESET);
+    table_print(&table);
 
-    array_free(row);
     arena_done(&string_arena);
     table_done(&table);
 }

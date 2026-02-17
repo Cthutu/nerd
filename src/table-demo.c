@@ -24,6 +24,7 @@ int run(int argc, char** argv)
                ((TableColumn){.title = "Delta", .colour = ANSI_MAGENTA}));
 
     table_init(&table, columns);
+    table_set_title(&table, "Compiler Pipeline Summary");
     array_free(columns);
     table_reserve_rows(&table, 8);
 
@@ -88,8 +89,7 @@ int run(int argc, char** argv)
         table_add_row(&table, row, .colours = colours);
     }
 
-    prn("%sCompiler Pipeline Summary%s", ANSI_BOLD_WHITE, ANSI_RESET);
-    table_print(&table, ANSI_FAINT_WHITE, ANSI_BOLD_WHITE, ANSI_RESET);
+    table_print(&table);
     table_done(&table);
 
     return 0;

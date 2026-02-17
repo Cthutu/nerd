@@ -99,6 +99,7 @@ void dump_info(void)
 
     Table table;
     table_init(&table, columns);
+    table_set_title(&table, "System Information");
     table_reserve_rows(&table, 6);
 
     {
@@ -133,7 +134,7 @@ void dump_info(void)
         table_add_row(&table, row);
     }
 
-    table_print(&table, ANSI_FAINT_WHITE, ANSI_BOLD_WHITE, ANSI_RESET);
+    table_print(&table);
     table_done(&table);
     array_free(columns);
 }

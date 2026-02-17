@@ -28,36 +28,34 @@ void lex_dump(const Lexer* lexer)
                (TableColumn){.title = "Offset", .colour = ANSI_CYAN},
                (TableColumn){.title = "Value", .colour = ANSI_GREEN});
     table_init(&table, columns);
+    table_set_title(&table, "Lexer Tokens");
     array_free(columns);
-
-    Array(TableCell) cells = 0;
-    array_requires_size(cells, 3);
+    table_reserve_rows(&table, array_count(lexer->tokens));
 
     usize integer_index = 0;
 
     for (usize i = 0; i < array_count(lexer->tokens); i++) {
         Token token = lexer->tokens[i];
-        cells[0]    = table_cell_string(token_kind_to_string(token.kind));
-        cells[1]    = table_cell_u32(token.offset);
+        TableCell row[3];
+        row[0] = table_cell_string(token_kind_to_string(token.kind));
+        row[1] = table_cell_u32(token.offset);
 
         switch (token.kind) {
         case TK_Integer:
             {
                 u64 value = lexer->integers[integer_index++];
-                cells[2]  = table_cell_u64(value);
+                row[2]    = table_cell_u64(value);
                 break;
             }
         default:
-            cells[2] = table_cell_string(s("-"));
+            row[2] = table_cell_string(s("-"));
             break;
         }
-        table_add_row(&table, cells);
+        table_add_row(&table, row);
     }
 
-    table_print(&table, ANSI_FAINT_WHITE, ANSI_BOLD_WHITE, ANSI_RESET);
+    table_print(&table);
     table_done(&table);
-
-    array_free(cells);
 }
 
 //------------------------------------------------------------------------------
