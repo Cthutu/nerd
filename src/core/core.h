@@ -568,6 +568,9 @@ u64 time_duration_to_us(TimeDuration duration);
 u64 time_duration_to_ns(TimeDuration duration);
 
 f64 time_secs(TimeDuration duration);
+f64 time_msecs(TimeDuration duration);
+f64 time_usecs(TimeDuration duration);
+f64 time_nsecs(TimeDuration duration);
 
 TimeDuration time_from_secs(u64 seconds);
 TimeDuration time_from_ms(u64 milliseconds);

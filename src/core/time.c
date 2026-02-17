@@ -69,6 +69,21 @@ f64 time_secs(TimeDuration duration)
     return (f64)duration / (f64)time_frequency();
 }
 
+f64 time_msecs(TimeDuration duration)
+{
+    return ((f64)duration * 1000.0) / (f64)time_frequency();
+}
+
+f64 time_usecs(TimeDuration duration)
+{
+    return ((f64)duration * 1000000.0) / (f64)time_frequency();
+}
+
+f64 time_nsecs(TimeDuration duration)
+{
+    return ((f64)duration * 1000000000.0) / (f64)time_frequency();
+}
+
 TimeDuration time_from_secs(u64 seconds)
 {
     return (TimeDuration)(seconds * time_frequency());
@@ -130,6 +145,12 @@ u64 time_duration_to_us(TimeDuration duration) { return duration / 1000ull; }
 u64 time_duration_to_ns(TimeDuration duration) { return duration; }
 
 f64 time_secs(TimeDuration duration) { return (f64)duration / 1000000000.0; }
+
+f64 time_msecs(TimeDuration duration) { return (f64)duration / 1000000.0; }
+
+f64 time_usecs(TimeDuration duration) { return (f64)duration / 1000.0; }
+
+f64 time_nsecs(TimeDuration duration) { return (f64)duration; }
 
 TimeDuration time_from_secs(u64 seconds) { return seconds * 1000000000ull; }
 
