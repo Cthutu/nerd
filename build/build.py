@@ -435,7 +435,8 @@ def banner(profile: str, projects: list[str]) -> None:
 
 def executable_path(project: str, profile: str) -> Path:
     suffix = "-debug" if profile == "debug" else ""
-    return BIN_DIR / f"{project}{suffix}"
+    extension = ".exe" if os.name == "nt" else ""
+    return BIN_DIR / f"{project}{suffix}{extension}"
 
 
 def main(argv: list[str] | None = None) -> None:
