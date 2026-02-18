@@ -72,7 +72,7 @@ internal usize format_time_duration(char*        buffer,
         unit   = "ms";
     } else if (value >= time_from_us(1)) {
         amount = time_usecs(value);
-        unit   = "us";
+        unit   = "μs";
     } else {
         amount = time_nsecs(value);
         unit   = "ns";

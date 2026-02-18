@@ -80,7 +80,7 @@ internal cstr info_time_source_string(void)
 internal cstr info_thread_time_support_string(void)
 {
 #if OS_WINDOWS
-    return "Yes (GetThreadTimes)";
+    return "QPC fallback (high-res wall-clock)";
 #elif OS_POSIX && defined(CLOCK_THREAD_CPUTIME_ID)
     return "Yes (CLOCK_THREAD_CPUTIME_ID)";
 #elif OS_POSIX
