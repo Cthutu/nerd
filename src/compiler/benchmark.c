@@ -70,7 +70,14 @@ TimeDuration compiler_phase_benchmark_single(const PhaseSpec* phases,
         phases[i - 1].reset(context);
     }
 
-    return thread_time_elapsed(start, end) / (TimeDuration)timed_iterations;
+    TimeDuration total = thread_time_elapsed(start, end);
+    TimeDuration avg = (total + (TimeDuration)(timed_iterations / 2)) /
+                       (TimeDuration)timed_iterations;
+    if (avg == 0 && total > 0) {
+        // Preserve sub-tick non-zero work instead of truncating to zero.
+        avg = 1;
+    }
+    return avg;
 }
 
 //------------------------------------------------------------------------------
