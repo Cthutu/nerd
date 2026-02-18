@@ -453,6 +453,14 @@ void* arena_session_alloc(ArenaSession* session, usize count);
 usize arena_session_count(ArenaSession* session);
 void* arena_session_address(ArenaSession* session);
 
+// Global arena for use any where
+extern Arena temp_arena;
+
+// Resets the global temp arena, undoing all allocations. Use with care - this
+// will invalidate any pointers allocated from the temp arena.  Usually used
+// within a main loop.
+void temp_arena_reset(void);
+
 //------------------------------------------------------------------------------[Mutex]
 
 #if OS_WINDOWS

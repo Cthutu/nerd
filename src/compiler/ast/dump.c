@@ -40,10 +40,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
     table_reserve_rows(&table, array_count(ast->nodes));
     array_free(columns);
 
-    Arena         string_arena = {0};
     StringBuilder sb           = {0};
-
-    arena_init(&string_arena);
 
     for (usize i = 0; i < array_count(ast->nodes); i++) {
         TableCell row[5];
@@ -53,7 +50,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
         AstNode* node  = &ast->nodes[i];
         Token*   token = &lexer->tokens[node->token_index];
-        sb_init(&sb, &string_arena);
+        sb_init(&sb, &temp_arena);
         sb_format(&sb,
                   "%u: " STRINGP "@%u",
                   node->token_index,
@@ -74,6 +71,5 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
     table_print(&table);
 
-    arena_done(&string_arena);
     table_done(&table);
 }

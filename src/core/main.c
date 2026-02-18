@@ -7,6 +7,7 @@
 #include <core/core.h>
 
 extern Mutex g_kore_output_mutex;
+Arena        temp_arena;
 
 //------------------------------------------------------------------------------
 
@@ -23,7 +24,12 @@ int main(int argc, char** argv)
     SetConsoleOutputCP(CP_UTF8);
 #endif // OS_WINDOWS
 
+    // Initialise the global temporary arena
+    arena_init(&temp_arena);
+
     int result = run(argc, argv);
+
+    arena_done(&temp_arena);
 
 #if OS_WINDOWS
     SetConsoleCP(old_cp);
