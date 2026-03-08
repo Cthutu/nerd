@@ -29,3 +29,11 @@ typedef struct {
 Ast  ast_parse(Lexer* lexer);
 void ast_done(Ast* ast);
 void ast_dump(const Ast* ast, const Lexer* lexer);
+
+//------------------------------------------------------------------------------
+// Extraction API
+
+u64 ast_get_integer(const Lexer* lexer, const AstNode* node);
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
