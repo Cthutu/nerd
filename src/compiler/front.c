@@ -16,7 +16,7 @@ typedef struct {
 internal void phase_lex_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
-    ctx->results.lexer = lex(ctx->source_code);
+    ctx->results.lexer   = lex(ctx->source_code);
 }
 
 internal void phase_lex_reset(void* raw_ctx)
@@ -29,7 +29,7 @@ internal void phase_lex_reset(void* raw_ctx)
 internal void phase_parse_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
-    ctx->results.ast = ast_parse(&ctx->results.lexer);
+    ctx->results.ast     = ast_parse(&ctx->results.lexer);
 }
 
 internal void phase_parse_reset(void* raw_ctx)
@@ -37,6 +37,19 @@ internal void phase_parse_reset(void* raw_ctx)
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ast_done(&ctx->results.ast);
     ctx->results.ast = (Ast){0};
+}
+
+internal void phase_ir_gen_run(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    ctx->results.ir      = ir_generate(&ctx->results.lexer, &ctx->results.ast);
+}
+
+internal void phase_ir_gen_reset(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    ir_done(&ctx->results.ir);
+    ctx->results.ir = (Ir){0};
 }
 
 internal const PhaseSpec g_front_end_phases[] = {
@@ -48,22 +61,25 @@ internal const PhaseSpec g_front_end_phases[] = {
      .phase = COMPILER_PHASE_PARSE,
      .run   = phase_parse_run,
      .reset = phase_parse_reset},
+    {.stage = COMPILER_STAGE_FRONT_END,
+     .phase = COMPILER_PHASE_IR_GEN,
+     .run   = phase_ir_gen_run,
+     .reset = phase_ir_gen_reset},
 };
 
-#define FRONT_END_PHASE_COUNT                                                    \
+#define FRONT_END_PHASE_COUNT                                                  \
     (sizeof(g_front_end_phases) / sizeof(g_front_end_phases[0]))
 
 FrontEndResults front_end(string source_code, Timing* timing)
 {
     FrontEndContext ctx = {.source_code = source_code, .results = {0}};
-    compiler_phase_run(
-        g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
+    compiler_phase_run(g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
     return ctx.results;
 }
 
-void front_end_benchmark(string source_code,
-                         u32    warmup_iterations,
-                         u32    timed_iterations,
+void front_end_benchmark(string  source_code,
+                         u32     warmup_iterations,
+                         u32     timed_iterations,
                          Timing* out_timing)
 {
     timing_init(out_timing);
@@ -72,18 +88,16 @@ void front_end_benchmark(string source_code,
     }
 
     for (usize i = 0; i < FRONT_END_PHASE_COUNT; i++) {
-        FrontEndContext ctx = {.source_code = source_code, .results = {0}};
+        FrontEndContext  ctx   = {.source_code = source_code, .results = {0}};
         const PhaseSpec* phase = &g_front_end_phases[i];
-        TimeDuration avg = compiler_phase_benchmark_single(g_front_end_phases,
-                                                           FRONT_END_PHASE_COUNT,
-                                                           i,
-                                                           &ctx,
-                                                           warmup_iterations,
-                                                           timed_iterations);
-        timing_add(out_timing,
-                   phase->stage,
-                   phase->phase,
-                   avg);
+        TimeDuration     avg =
+            compiler_phase_benchmark_single(g_front_end_phases,
+                                            FRONT_END_PHASE_COUNT,
+                                            i,
+                                            &ctx,
+                                            warmup_iterations,
+                                            timed_iterations);
+        timing_add(out_timing, phase->stage, phase->phase, avg);
     }
 }
 

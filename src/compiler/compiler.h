@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <compiler/ast/ast.h>
+#include <compiler/ir/ir.h>
 #include <timing/timing.h>
 
 //------------------------------------------------------------------------------
@@ -28,6 +28,7 @@ typedef struct {
 typedef struct {
     Lexer lexer;
     Ast   ast;
+    Ir    ir;
 } FrontEndResults;
 
 typedef struct {

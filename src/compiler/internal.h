@@ -14,6 +14,7 @@
 
 #define COMPILER_PHASE_LEX "tokenise source text"
 #define COMPILER_PHASE_PARSE "parse tokens into AST"
+#define COMPILER_PHASE_IR_GEN "generate IR from AST"
 
 typedef void (*PhaseFn)(void* context);
 
@@ -24,13 +25,13 @@ typedef struct {
     PhaseFn reset;
 } PhaseSpec;
 
-void compiler_phase_run(const PhaseSpec* phases,
-                        usize            phase_count,
-                        void*            context,
-                        Timing*          timing);
-void compiler_phase_reset_reverse(const PhaseSpec* phases,
-                                  usize            phase_count,
-                                  void*            context);
+void         compiler_phase_run(const PhaseSpec* phases,
+                                usize            phase_count,
+                                void*            context,
+                                Timing*          timing);
+void         compiler_phase_reset_reverse(const PhaseSpec* phases,
+                                          usize            phase_count,
+                                          void*            context);
 TimeDuration compiler_phase_benchmark_single(const PhaseSpec* phases,
                                              usize            phase_count,
                                              usize            phase_index,
