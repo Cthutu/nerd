@@ -10,12 +10,12 @@
 
 //------------------------------------------------------------------------------
 
-typedef enum {
+typedef enum : u8 {
     IR_OP_ASSIGN,
     IR_OP_RETURN,
 } IrOperation;
 
-typedef enum {
+typedef enum : u8 {
     IR_VALUE_NONE,
     IR_VALUE_VARIABLE,
     IR_VALUE_INTEGER,

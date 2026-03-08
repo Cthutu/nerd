@@ -38,7 +38,7 @@ void ir_dump(const Ir* ir)
                (TableColumn){.title = "RValue[1]", .colour = ANSI_BLUE});
 
     Table table = {0};
-    table_init(&table, columns, .title = "IR Instructions");
+    table_init(&table, columns, .title = "IR Instructions (56 bytes each)");
     table_reserve_rows(&table, array_count(ir->instructions));
     array_free(columns);
 
