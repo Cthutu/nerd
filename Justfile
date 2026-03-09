@@ -16,8 +16,13 @@ run-release proj *args: (build-release proj)
 clean:
     rm -rf _bin _obj
 
+test: 
+    just run-release nerd benchmark
+
 alias b := build
 alias br := build-release
 alias r := run
 alias rr := run-release
 alias c := clean
+alias t := test
+
