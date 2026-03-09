@@ -52,6 +52,19 @@ internal void phase_ir_gen_reset(void* raw_ctx)
     ctx->results.ir = (Ir){0};
 }
 
+internal void phase_cgen_run(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    ctx->results.cgen    = cgen_init(&ctx->results.ir);
+}
+
+internal void phase_cgen_reset(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    cgen_done(&ctx->results.cgen);
+    ctx->results.cgen = (CGen){0};
+}
+
 internal const PhaseSpec g_front_end_phases[] = {
     {.stage = COMPILER_STAGE_FRONT_END,
      .phase = COMPILER_PHASE_LEX,
@@ -65,6 +78,10 @@ internal const PhaseSpec g_front_end_phases[] = {
      .phase = COMPILER_PHASE_IR_GEN,
      .run   = phase_ir_gen_run,
      .reset = phase_ir_gen_reset},
+    {.stage = COMPILER_STAGE_FRONT_END,
+     .phase = COMPILER_PHASE_C_GEN,
+     .run   = phase_cgen_run,
+     .reset = phase_cgen_reset},
 };
 
 #define FRONT_END_PHASE_COUNT                                                  \

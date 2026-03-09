@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <compiler/ir/ir.h>
+#include <compiler/cgen/cgen.h>
 #include <timing/timing.h>
 
 //------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ typedef struct {
     Lexer lexer;
     Ast   ast;
     Ir    ir;
+    CGen  cgen;
 } FrontEndResults;
 
 typedef struct {
