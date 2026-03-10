@@ -29,10 +29,10 @@ typedef struct {
     Lexer lexer;
     Ast   ast;
     Ir    ir;
-    CGen  cgen;
 } FrontEndState;
 
 typedef struct {
+    CGen cgen;
 } BackEndState;
 
 FrontEndState front_end(string source_code, Timing* timing);
