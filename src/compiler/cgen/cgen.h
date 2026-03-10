@@ -3,6 +3,7 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
+//> def: _CRT_SECURE_NO_WARNINGS
 
 #pragma once
 

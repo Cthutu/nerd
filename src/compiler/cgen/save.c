@@ -20,7 +20,7 @@ void cgen_save(const CGen* cgen, const char* path)
         p++;
     }
 
-    usize stem_len = last_dot ? (usize)(last_dot - path) : (usize)(p - path);
+    usize stem_len   = last_dot ? (usize)(last_dot - path) : (usize)(p - path);
 
     StringBuilder sb = {0};
     sb_init(&sb, &temp_arena);
@@ -28,8 +28,8 @@ void cgen_save(const CGen* cgen, const char* path)
     sb_append_cstr(&sb, ".c");
     sb_append_null(&sb);
 
-    cstr output_path = (cstr)sb_to_string(&sb).data;
-    FILE* file = fopen(output_path, "wb");
+    cstr  output_path = (cstr)sb_to_string(&sb).data;
+    FILE* file        = fopen(output_path, "wb");
     if (!file) {
         eprn("Failed to open file for writing: %s", output_path);
         return;
