@@ -16,6 +16,7 @@ typedef enum {
     NERD_COMMAND_BUILD,
     NERD_COMMAND_BENCHMARK,
     NERD_COMMAND_MILLION,
+    NERD_COMMAND_LSP,
 } NerdCommand;
 
 typedef struct {

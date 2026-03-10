@@ -46,6 +46,7 @@ internal NerdConfig parse_config(int argc, char** argv)
         cli_add_command(&parser, "benchmark", "Run 10000 benchmark iterations");
     usize million_command = cli_add_command(
         &parser, "million", "Generate 1,000,000 lines and build once");
+    usize lsp_command = cli_add_command(&parser, "lsp", "Run the LSP server");
 
     CliParseResult parse_result = cli_parse(&parser, argc, argv);
     if (parse_result.help_requested) {
@@ -75,6 +76,8 @@ internal NerdConfig parse_config(int argc, char** argv)
         config.command = NERD_COMMAND_BENCHMARK;
     } else if (command_index == million_command) {
         config.command = NERD_COMMAND_MILLION;
+    } else if (command_index == lsp_command) {
+        config.command = NERD_COMMAND_LSP;
     } else {
         cli_done(&parser);
         kill("Invalid command index: %zd", parse_result.command_index);
@@ -96,14 +99,13 @@ int run(int argc, char** argv)
 
     switch (config.command) {
     case NERD_COMMAND_BUILD:
-        prn("Command: build");
         return compiler_cmd_build(&config);
     case NERD_COMMAND_BENCHMARK:
-        prn("Command: benchmark");
         return compiler_cmd_benchmark(&config);
     case NERD_COMMAND_MILLION:
-        prn("Command: million");
         return compiler_cmd_million(&config);
+    case NERD_COMMAND_LSP:
+        kill("LSP command not implemented yet");
     default:
         kill("Unhandled command");
     }
