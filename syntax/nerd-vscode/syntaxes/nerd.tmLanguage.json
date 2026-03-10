@@ -1,0 +1,30 @@
+{
+    "scopeName": "source.nerd",
+    "name": "Nerd",
+    "patterns": [
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#numbers"
+        }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.nerd",
+                    "match": "--.*$"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.integer.decimal.nerd",
+                    "match": "\\b\\d+\\b"
+                }
+            ]
+        }
+    }
+}

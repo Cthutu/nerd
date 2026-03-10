@@ -1,0 +1,39 @@
+{
+    "name": "nerd-language",
+    "displayName": "Nerd Language",
+    "description": "Syntax highlighting for the Nerd language",
+    "version": "0.0.1",
+    "publisher": "matt-davies",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "nerd",
+                "aliases": [
+                    "Nerd",
+                    "nerd"
+                ],
+                "extensions": [
+                    ".n"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "nerd",
+                "scopeName": "source.nerd",
+                "path": "./syntaxes/nerd.tmLanguage.json"
+            }
+        ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cthutu/nerd"
+    }
+}

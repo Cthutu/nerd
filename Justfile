@@ -29,3 +29,22 @@ alias rr := run-release
 alias c := clean
 alias t := test
 
+#
+# Recipes for VS Code syntax installation
+#
+
+version := "0.0.1"
+ext_name := "nerd-language-" + version
+src_dir  := "syntax/nerd-vscode"
+vsix := "nerd-language-" + version + ".vsix"
+ext_id := "matt-davies.nerd-language"
+
+package:
+    cd {{src_dir}} && vsce package
+
+uninstall:
+    -code --uninstall-extension {{ext_id}}
+
+install: uninstall package
+    code --install-extension {{src_dir}}/{{vsix}}
+
