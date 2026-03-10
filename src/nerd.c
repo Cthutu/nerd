@@ -92,7 +92,7 @@ int run(int argc, char** argv)
     dump_info();
 
     NerdConfig config = parse_config(argc, argv);
-    config.source     = s("42 123 999");
+    config.source     = s("42");
 
     switch (config.command) {
     case NERD_COMMAND_BUILD:

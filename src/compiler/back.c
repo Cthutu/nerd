@@ -8,16 +8,23 @@
 
 //------------------------------------------------------------------------------
 
-BackEndResults back_end(const FrontEndResults* front_end_results,
-                        Timing*                timing)
+BackEndState back_end(const FrontEndState* front_end_results, Timing* timing)
 {
-    BackEndResults results;
+    BackEndState results;
 
     UNUSED(front_end_results);
     UNUSED(timing);
+
+    cgen_save(&front_end_results->cgen, "_output.c");
+#if OS_POSIX
+    shell("clang -o _output _output.c");
+#elif OS_WINDOWS
+    shell("clang -o _output.exe _output.c");
+#endif
+
     return results;
 }
 
-void back_end_results_done(BackEndResults* results) { UNUSED(results); }
+void back_end_results_done(BackEndState* results) { UNUSED(results); }
 
 //------------------------------------------------------------------------------

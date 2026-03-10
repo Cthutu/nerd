@@ -10,7 +10,7 @@
 
 typedef struct {
     string          source_code;
-    FrontEndResults results;
+    FrontEndState results;
 } FrontEndContext;
 
 internal void phase_lex_run(void* raw_ctx)
@@ -87,7 +87,7 @@ internal const PhaseSpec g_front_end_phases[] = {
 #define FRONT_END_PHASE_COUNT                                                  \
     (sizeof(g_front_end_phases) / sizeof(g_front_end_phases[0]))
 
-FrontEndResults front_end(string source_code, Timing* timing)
+FrontEndState front_end(string source_code, Timing* timing)
 {
     FrontEndContext ctx = {.source_code = source_code, .results = {0}};
     compiler_phase_run(g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
@@ -118,12 +118,12 @@ void front_end_benchmark(string  source_code,
     }
 }
 
-void front_end_results_done(FrontEndResults* results)
+void front_end_results_done(FrontEndState* results)
 {
     FrontEndContext ctx = {.source_code = s(""), .results = *results};
     compiler_phase_reset_reverse(
         g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx);
-    *results = (FrontEndResults){0};
+    *results = (FrontEndState){0};
 }
 
 //------------------------------------------------------------------------------

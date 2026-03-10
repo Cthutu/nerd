@@ -30,24 +30,23 @@ typedef struct {
     Ast   ast;
     Ir    ir;
     CGen  cgen;
-} FrontEndResults;
+} FrontEndState;
 
 typedef struct {
-} BackEndResults;
+} BackEndState;
 
-FrontEndResults front_end(string source_code, Timing* timing);
-void            front_end_benchmark(string  source_code,
-                                    u32     warmup_iterations,
-                                    u32     timed_iterations,
-                                    Timing* out_timing);
-void            front_end_results_done(FrontEndResults* results);
+FrontEndState front_end(string source_code, Timing* timing);
+void          front_end_benchmark(string  source_code,
+                                  u32     warmup_iterations,
+                                  u32     timed_iterations,
+                                  Timing* out_timing);
+void          front_end_results_done(FrontEndState* results);
 
-BackEndResults back_end(const FrontEndResults* front_end_results,
-                        Timing*                timing);
-void           back_end_results_done(BackEndResults* results);
+BackEndState back_end(const FrontEndState* front_end_results, Timing* timing);
+void         back_end_results_done(BackEndState* results);
 
-void compiler_dump(const FrontEndResults* front_end_results,
-                   const BackEndResults*  back_end_results);
+void compiler_dump(const FrontEndState* front_end_results,
+                   const BackEndState*  back_end_results);
 
 int compiler_cmd_build(const NerdConfig* config);
 int compiler_cmd_benchmark(const NerdConfig* config);

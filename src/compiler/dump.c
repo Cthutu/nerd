@@ -8,8 +8,8 @@
 
 //------------------------------------------------------------------------------
 
-void compiler_dump(const FrontEndResults* front_end_results,
-                   const BackEndResults*  back_end_results)
+void compiler_dump(const FrontEndState* front_end_results,
+                   const BackEndState*  back_end_results)
 {
     lex_dump(&front_end_results->lexer);
     ast_dump(&front_end_results->ast, &front_end_results->lexer);

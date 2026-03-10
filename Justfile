@@ -14,10 +14,13 @@ run-release proj *args: (build-release proj)
     _bin/{{proj}} {{args}}
 
 clean:
-    rm -rf _bin _obj
+    rm -rf _*
 
 test: 
+    #!/bin/bash
     just run-release nerd benchmark
+    ./_output
+    printf "\nReturn code: %d\n" $?
 
 alias b := build
 alias br := build-release

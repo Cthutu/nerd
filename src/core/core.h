@@ -33,6 +33,7 @@
 // [Random]             Some simple routines for random number generation
 // [String]             String views and builder
 // [FileMap]            Simple file-mapped routines
+// [Shell]              Run external commands
 //
 //------------------------------------------------------------------------------
 
@@ -616,22 +617,6 @@ DEF_SLICE(u8) string;
                                  sizeof(slice_name##_data) /                   \
                                      sizeof(slice_name##_data[0])}
 
-//------------------------------------------------------------------------------[FileMap]
-
-typedef struct {
-    u8*   data;
-    usize size;
-
-#if OS_WINDOWS
-// Windows-specific file-mapping state
-#elif OS_POSIX
-// POSIX-specific file-mapping state
-#endif
-} FileMap;
-
-string filemap_load(cstr path, FileMap* filemap);
-void   filemap_unload(FileMap* filemap);
-
 //------------------------------------------------------------------------------
 // String construction
 
@@ -659,6 +644,26 @@ void sb_formatv(StringBuilder* sb, cstr fmt, va_list args);
 void sb_format(StringBuilder* sb, cstr fmt, ...);
 
 string sb_to_string(StringBuilder* sb);
+
+//------------------------------------------------------------------------------[FileMap]
+
+typedef struct {
+    u8*   data;
+    usize size;
+
+#if OS_WINDOWS
+// Windows-specific file-mapping state
+#elif OS_POSIX
+// POSIX-specific file-mapping state
+#endif
+} FileMap;
+
+string filemap_load(cstr path, FileMap* filemap);
+void   filemap_unload(FileMap* filemap);
+
+//------------------------------------------------------------------------------[Shell]
+
+int shell(cstr command);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
