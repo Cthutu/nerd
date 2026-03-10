@@ -59,12 +59,22 @@ int run(int argc, char** argv)
     json_object_set_cstr(root, "score", json_new_number(&arena, 99.5));
     json_object_set_cstr(root, "notes", json_new_null(&arena));
 
+    JsonValue* meta = json_new_object(&arena);
+    json_object_set_cstr(meta, "author", json_new_string(&arena, s("matt")));
+    json_object_set_cstr(meta, "tool", json_new_string(&arena, s("codex")));
+    json_object_set_cstr(root, "meta", meta);
+
     JsonValue* list = json_new_array(&arena);
     json_array_push(list, json_new_string(&arena, s("parse")));
     json_array_push(list, json_new_string(&arena, s("build")));
     json_array_push(list, json_new_string(&arena, s("stringify")));
     json_object_set_cstr(root, "steps", list);
     json_object_set_cstr(root, "source", parsed);
+
+    JsonValue* author = json_get_cstr(root, "meta.author");
+    ASSERT(author && author->kind == JSON_STRING, "Expected string at path 'meta.author'");
+    prn("meta.author: " STRINGP, STRINGV(author->string));
+    prn("");
 
     dump_json("Compact JSON", json_stringify(&arena, root));
     dump_json("Pretty JSON", json_stringify(&arena, root, .pretty = true, .indent = 2));

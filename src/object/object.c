@@ -566,6 +566,46 @@ JsonValue* json_object_get_cstr(const JsonValue* object_value, cstr key)
     return json_object_get(object_value, s(key));
 }
 
+JsonValue* json_get(const JsonValue* value, string path)
+{
+    if (!value) {
+        return NULL;
+    }
+
+    JsonValue* current = (JsonValue*)value;
+    usize      start   = 0;
+
+    while (start < path.count) {
+        usize end = start;
+        while (end < path.count && path.data[end] != '.') {
+            end++;
+        }
+
+        if (end == start) {
+            return NULL;
+        }
+
+        if (!current || current->kind != JSON_OBJECT) {
+            return NULL;
+        }
+
+        current = json_object_get(
+            current, (string){.data = path.data + start, .count = end - start});
+        if (!current) {
+            return NULL;
+        }
+
+        start = end + 1;
+    }
+
+    return current;
+}
+
+JsonValue* json_get_cstr(const JsonValue* value, cstr path)
+{
+    return json_get(value, s(path));
+}
+
 JsonValue* json_parse(Arena* arena, string json, JsonParseResult* out_result)
 {
     JsonParseResult local_result = {

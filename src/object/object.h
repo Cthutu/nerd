@@ -78,6 +78,8 @@ void json_object_set_cstr(JsonValue* object_value, cstr key, JsonValue* value);
 JsonValue* json_array_get(const JsonValue* array_value, usize index);
 JsonValue* json_object_get(const JsonValue* object_value, string key);
 JsonValue* json_object_get_cstr(const JsonValue* object_value, cstr key);
+JsonValue* json_get(const JsonValue* value, string path);
+JsonValue* json_get_cstr(const JsonValue* value, cstr path);
 
 //------------------------------------------------------------------------------
 // JSON serialisation/deserialisation API
