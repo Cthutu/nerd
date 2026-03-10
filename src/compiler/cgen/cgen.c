@@ -71,8 +71,7 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         arena_format(&cgen->arena, "%u", (u32)value->value.integer);
         break;
     default:
-        eprn("Unknown IR value kind: %u", value->kind);
-        abort();
+        kill("Unknown IR value kind: %u", value->kind);
         break;
     }
 }
