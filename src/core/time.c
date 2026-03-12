@@ -193,3 +193,9 @@ TimeDuration time_from_us(u64 microseconds) { return microseconds * 1000ull; }
 TimeDuration time_from_ns(u64 nanoseconds) { return nanoseconds; }
 
 #endif // OS_WINDOWS
+
+void time_sleep(TimeDuration duration)
+{
+    u64 ms = time_duration_to_ms(duration);
+    time_sleep_ms((u32)ms);
+}

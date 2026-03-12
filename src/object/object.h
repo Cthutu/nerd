@@ -72,8 +72,7 @@ void       json_done(JsonValue* value);
 
 void json_array_push(JsonValue* array_value, JsonValue* value);
 
-void json_object_set(JsonValue* object_value, string key, JsonValue* value);
-void json_object_set_cstr(JsonValue* object_value, cstr key, JsonValue* value);
+void json_object_set(JsonValue* object_value, cstr key, JsonValue* value);
 
 JsonValue* json_array_get(const JsonValue* array_value, usize index);
 JsonValue* json_object_get(const JsonValue* object_value, string key);
@@ -81,11 +80,34 @@ JsonValue* json_object_get_cstr(const JsonValue* object_value, cstr key);
 JsonValue* json_get(const JsonValue* value, string path);
 JsonValue* json_get_cstr(const JsonValue* value, cstr path);
 
+void json_object_set_null(JsonValue* object_value, Arena* arena, cstr key);
+void json_object_set_bool(JsonValue* object_value,
+                          Arena*     arena,
+                          cstr       key,
+                          bool       value);
+void json_object_set_number(JsonValue* object_value,
+                            Arena*     arena,
+                            cstr       key,
+                            f64        value);
+void json_object_set_string(JsonValue* object_value,
+                            Arena*     arena,
+                            cstr       key,
+                            string     value);
+void json_object_set_cstr(JsonValue* object_value,
+                          Arena*     arena,
+                          cstr       key,
+                          cstr       value);
+void json_object_set_array(JsonValue* object_value, cstr key, JsonValue* value);
+void json_object_set_object(JsonValue* object_value,
+                            cstr       key,
+                            JsonValue* value);
+
 //------------------------------------------------------------------------------
 // JSON serialisation/deserialisation API
 
 JsonValue* json_parse(Arena* arena, string json, JsonParseResult* out_result);
-JsonValue* json_parse_cstr(Arena* arena, cstr json, JsonParseResult* out_result);
+JsonValue*
+json_parse_cstr(Arena* arena, cstr json, JsonParseResult* out_result);
 
 string _json_stringify(Arena*              arena,
                        const JsonValue*    value,
@@ -93,6 +115,17 @@ string _json_stringify(Arena*              arena,
 
 #define json_stringify(arena, value, ...)                                      \
     _json_stringify((arena), (value), (JsonStringifyParams){__VA_ARGS__})
+
+//------------------------------------------------------------------------------
+// JSON value conversions
+
+bool       json_is_null(const JsonValue* value);
+bool       json_bool(const JsonValue* value);
+string     json_string(const JsonValue* value);
+f64        json_float(const JsonValue* value);
+i64        json_integer(const JsonValue* value);
+JsonArray  json_array(const JsonValue* value);
+JsonObject json_object(const JsonValue* value);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

@@ -7,8 +7,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/_bin/nerd-debug",
             "args": [
-                "benchmark",
+                // "benchmark",
                 // "million",
+                "lsp",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Compile"
@@ -19,8 +20,9 @@
             "request": "launch",
             "program": "${workspaceFolder}/_bin/nerd",
             "args": [
-                "benchmark",
+                // "benchmark",
                 // "million",
+                "lsp",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Compile-Release"

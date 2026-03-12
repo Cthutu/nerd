@@ -1,39 +1,78 @@
 {
-    "name": "nerd-language",
-    "displayName": "Nerd Language",
-    "description": "Syntax highlighting for the Nerd language",
-    "version": "0.0.1",
-    "publisher": "matt-davies",
-    "engines": {
-        "vscode": "^1.90.0"
-    },
-    "categories": [
-        "Programming Languages"
-    ],
-    "contributes": {
-        "languages": [
-            {
-                "id": "nerd",
-                "aliases": [
-                    "Nerd",
-                    "nerd"
-                ],
-                "extensions": [
-                    ".n"
-                ],
-                "configuration": "./language-configuration.json"
-            }
+  "name": "nerd-language",
+  "displayName": "Nerd Language",
+  "description": "Syntax highlighting and language server integration for the Nerd language",
+  "version": "0.0.1",
+  "publisher": "matt-davies",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:nerd"
+  ],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "nerd",
+        "aliases": [
+          "Nerd",
+          "nerd"
         ],
-        "grammars": [
-            {
-                "language": "nerd",
-                "scopeName": "source.nerd",
-                "path": "./syntaxes/nerd.tmLanguage.json"
-            }
-        ]
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/cthutu/nerd"
+        "extensions": [
+          ".n"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nerd",
+        "scopeName": "source.nerd",
+        "path": "./syntaxes/nerd.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Nerd",
+      "properties": {
+        "nerd.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Nerd language server executable. Leave empty to auto-detect _bin/nerd-debug or _bin/nerd in the workspace, then ~/.local/bin/nerd, then PATH."
+        },
+        "nerd.languageServer.args": {
+          "type": "array",
+          "default": [
+            "lsp"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments passed to the Nerd language server executable."
+        }
+      }
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cthutu/nerd"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.8.2"
+  }
 }

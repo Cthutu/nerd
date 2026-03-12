@@ -1,1 +1,6 @@
 _*
+
+*.vsix
+node_modules/
+syntax/nerd-vscode/out
+package-lock.json

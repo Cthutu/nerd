@@ -1,36 +1,41 @@
 //------------------------------------------------------------------------------
-//> use: core intern compiler timing table cli
+//> use: core intern compiler timing table cli lsp
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
+#include <lsp/lsp.h>
 #include <table/table.h>
 
 //------------------------------------------------------------------------------
 
 internal NerdConfig parse_config(int argc, char** argv)
 {
+    bool is_lsp_mode = argc > 1 && strcmp(argv[1], "lsp") == 0;
+
     //
-    // SHow a table of all the arguments
+    // Show a table of all the arguments
     //
 
-    Table args_table           = {0};
-    Array(TableColumn) columns = 0;
-    array_push(columns,
-               (TableColumn){.title = "Index", .colour = ANSI_CYAN},
-               (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
-    table_init(&args_table, columns, .title = "Arguments");
-    array_free(columns);
+    if (!is_lsp_mode) {
+        Table args_table           = {0};
+        Array(TableColumn) columns = 0;
+        array_push(columns,
+                   (TableColumn){.title = "Index", .colour = ANSI_CYAN},
+                   (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
+        table_init(&args_table, columns, .title = "Arguments");
+        array_free(columns);
 
-    for (int i = 1; i < argc; i++) {
-        TableCell row[2] = {
-            table_cell_i32(i),
-            table_cell_string(s(argv[i])),
-        };
-        table_add_row(&args_table, row);
+        for (int i = 1; i < argc; i++) {
+            TableCell row[2] = {
+                table_cell_i32(i),
+                table_cell_string(s(argv[i])),
+            };
+            table_add_row(&args_table, row);
+        }
+
+        table_print(&args_table);
+        table_done(&args_table);
     }
-
-    table_print(&args_table);
-    table_done(&args_table);
 
     //
     // Process command line arguments
@@ -92,23 +97,30 @@ internal NerdConfig parse_config(int argc, char** argv)
 
 int run(int argc, char** argv)
 {
-    dump_info();
-
     NerdConfig config = parse_config(argc, argv);
-    config.source     = s("42");
+    if (config.command != NERD_COMMAND_LSP) {
+        dump_info();
+    }
+    config.source = s("42");
 
+    int result    = 1;
     switch (config.command) {
     case NERD_COMMAND_BUILD:
-        return compiler_cmd_build(&config);
+        result = compiler_cmd_build(&config);
+        break;
     case NERD_COMMAND_BENCHMARK:
-        return compiler_cmd_benchmark(&config);
+        result = compiler_cmd_benchmark(&config);
+        break;
     case NERD_COMMAND_MILLION:
-        return compiler_cmd_million(&config);
+        result = compiler_cmd_million(&config);
+        break;
     case NERD_COMMAND_LSP:
-        kill("LSP command not implemented yet");
+        lsp_log("Launching nerd lsp");
+        result = lsp_run();
+        break;
     default:
         kill("Unhandled command");
     }
 
-    return 1;
+    return result;
 }

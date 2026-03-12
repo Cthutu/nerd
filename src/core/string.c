@@ -58,6 +58,32 @@ string string_from(u8* data, usize size)
     return (string){.data = data, .count = size};
 }
 
+bool string_eq(string a, string b)
+{
+    if (a.count != b.count) {
+        return false;
+    }
+    return memcmp(a.data, b.data, a.count) == 0;
+}
+
+bool string_eq_cstr(string a, cstr b)
+{
+    if (b == NULL) {
+        return a.count == 0;
+    }
+
+    usize b_len = 0;
+    while (b[b_len] != '\0') {
+        b_len++;
+    }
+
+    if (a.count != b_len) {
+        return false;
+    }
+
+    return memcmp(a.data, b, a.count) == 0;
+}
+
 //------------------------------------------------------------------------------
 // StringBuilder implementation
 

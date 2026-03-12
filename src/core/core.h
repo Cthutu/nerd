@@ -302,10 +302,10 @@ void* array_maybe_grow(void* array,
         typeof(*(a)) __array_tmp[] = {__VA_ARGS__};                            \
         usize        __array_n = sizeof(__array_tmp) / sizeof(__array_tmp[0]); \
         (a)                    = array_maybe_grow((a),                         \
-                               sizeof(*(a)),                \
-                               array_count(a) + __array_n,  \
-                               __FILE__,                    \
-                               __LINE__);                   \
+                                                  sizeof(*(a)),                \
+                                                  array_count(a) + __array_n,  \
+                                                  __FILE__,                    \
+                                                  __LINE__);                   \
         memcpy((a) + __array_count(a), __array_tmp, __array_n * sizeof(*(a))); \
         __array_count(a) += __array_n;                                         \
     } while (0)
@@ -592,6 +592,8 @@ TimeDuration time_from_ms(u64 milliseconds);
 TimeDuration time_from_us(u64 microseconds);
 TimeDuration time_from_ns(u64 nanoseconds);
 
+void time_sleep(TimeDuration duration);
+
 //------------------------------------------------------------------------------[Random]
 
 void random_seed(u64 seed);
@@ -624,6 +626,9 @@ string string_from_cstr(const char* cstr);
 string string_formatv(Arena* arena, cstr fmt, va_list args);
 string string_format(Arena* arena, cstr fmt, ...);
 string string_from(u8* data, usize size);
+
+bool string_eq(string a, string b);
+bool string_eq_cstr(string a, cstr b);
 
 //------------------------------------------------------------------------------
 // StringBuilder API

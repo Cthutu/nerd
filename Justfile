@@ -15,7 +15,12 @@ run-release proj *args: (build-release proj)
 
 clean:
     rm -rf _*
+    rm -rf syntax/nerd-vscode/node_modules
+    rm -rf syntax/nerd-vscode/out
+    rm -f syntax/nerd-vscode/package-lock.json
+    rm -f syntax/nerd-vscode/*.vsix
 
+[linux]
 test: 
     #!/bin/bash
     just run-release nerd benchmark
@@ -27,10 +32,13 @@ alias br := build-release
 alias r := run
 alias rr := run-release
 alias c := clean
-alias t := test
+
+[linux]
+t:
+    just test
 
 #
-# Recipes for VS Code syntax installation
+# Recipes for VS Code extension packaging / installation
 #
 
 version := "0.0.1"
@@ -38,13 +46,22 @@ ext_name := "nerd-language-" + version
 src_dir  := "syntax/nerd-vscode"
 vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
+user_bin_dir := "~/.local/bin"
+user_bin_nerd := user_bin_dir + "/nerd"
 
-package:
-    cd {{src_dir}} && vsce package
+npm-install:
+    cd {{src_dir}} && npm install
+
+package: npm-install
+    cd {{src_dir}} && npm run package
 
 uninstall:
     -code --uninstall-extension {{ext_id}}
 
-install: uninstall package
+install:
+    just build-release nerd
+    mkdir -p {{user_bin_dir}}
+    cp _bin/nerd {{user_bin_nerd}}
+    just uninstall
+    just package
     code --install-extension {{src_dir}}/{{vsix}}
-

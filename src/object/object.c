@@ -17,7 +17,8 @@ typedef struct {
     const u8* start;
 } JsonParser;
 
-internal JsonValue* json_parser_value(JsonParser* parser, JsonParseResult* result);
+internal JsonValue* json_parser_value(JsonParser*      parser,
+                                      JsonParseResult* result);
 
 internal u64 json_hash_string(string value)
 {
@@ -31,18 +32,18 @@ internal u64 json_hash_string(string value)
 
 internal bool json_string_eq(string a, string b)
 {
-    return a.count == b.count && (a.count == 0 || memcmp(a.data, b.data, a.count) == 0);
+    return a.count == b.count &&
+           (a.count == 0 || memcmp(a.data, b.data, a.count) == 0);
 }
 
-internal void json_set_error(JsonParseResult* result,
-                             const JsonParser* parser,
-                             cstr              message)
+internal void
+json_set_error(JsonParseResult* result, const JsonParser* parser, cstr message)
 {
     if (!result || !result->ok) {
         return;
     }
-    result->ok           = false;
-    result->error_offset = (usize)(parser->cur - parser->start);
+    result->ok            = false;
+    result->error_offset  = (usize)(parser->cur - parser->start);
     result->error_message = message;
 }
 
@@ -73,7 +74,8 @@ internal bool json_match_literal(JsonParser* parser, cstr literal)
 
 internal JsonValue* json_alloc_value(Arena* arena, JsonKind kind)
 {
-    JsonValue* value = (JsonValue*)arena_alloc_align(arena, sizeof(JsonValue), alignof(JsonValue));
+    JsonValue* value = (JsonValue*)arena_alloc_align(
+        arena, sizeof(JsonValue), alignof(JsonValue));
     memset(value, 0, sizeof(*value));
     value->kind = kind;
     return value;
@@ -118,9 +120,9 @@ internal void json_append_utf8(ArenaSession* session, u32 cp)
     }
 }
 
-internal bool json_parser_string_raw(JsonParser*       parser,
-                                     JsonParseResult*  result,
-                                     string*           out_string)
+internal bool json_parser_string_raw(JsonParser*      parser,
+                                     JsonParseResult* result,
+                                     string*          out_string)
 {
     if (parser->cur >= parser->end || *parser->cur != '"') {
         json_set_error(result, parser, "Expected string");
@@ -159,45 +161,59 @@ internal bool json_parser_string_raw(JsonParser*       parser,
         switch (esc) {
         case '"':
         case '\\':
-        case '/': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = esc;
-        } break;
-        case 'b': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = '\b';
-        } break;
-        case 'f': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = '\f';
-        } break;
-        case 'n': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = '\n';
-        } break;
-        case 'r': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = '\r';
-        } break;
-        case 't': {
-            u8* out = (u8*)arena_session_alloc(&session, 1);
-            out[0]  = '\t';
-        } break;
-        case 'u': {
-            if ((usize)(parser->end - parser->cur) < 4) {
-                json_set_error(result, parser, "Invalid unicode escape");
-                return false;
+        case '/':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = esc;
             }
+            break;
+        case 'b':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = '\b';
+            }
+            break;
+        case 'f':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = '\f';
+            }
+            break;
+        case 'n':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = '\n';
+            }
+            break;
+        case 'r':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = '\r';
+            }
+            break;
+        case 't':
+            {
+                u8* out = (u8*)arena_session_alloc(&session, 1);
+                out[0]  = '\t';
+            }
+            break;
+        case 'u':
+            {
+                if ((usize)(parser->end - parser->cur) < 4) {
+                    json_set_error(result, parser, "Invalid unicode escape");
+                    return false;
+                }
 
-            bool ok = false;
-            u32  cp = json_hex4_to_u32(parser->cur, &ok);
-            if (!ok) {
-                json_set_error(result, parser, "Invalid unicode escape");
-                return false;
+                bool ok = false;
+                u32  cp = json_hex4_to_u32(parser->cur, &ok);
+                if (!ok) {
+                    json_set_error(result, parser, "Invalid unicode escape");
+                    return false;
+                }
+                parser->cur += 4;
+                json_append_utf8(&session, cp);
             }
-            parser->cur += 4;
-            json_append_utf8(&session, cp);
-        } break;
+            break;
         default:
             json_set_error(result, parser, "Invalid string escape");
             return false;
@@ -208,7 +224,8 @@ internal bool json_parser_string_raw(JsonParser*       parser,
     return false;
 }
 
-internal JsonValue* json_parser_number(JsonParser* parser, JsonParseResult* result)
+internal JsonValue* json_parser_number(JsonParser*      parser,
+                                       JsonParseResult* result)
 {
     const u8* start = parser->cur;
 
@@ -244,9 +261,11 @@ internal JsonValue* json_parser_number(JsonParser* parser, JsonParseResult* resu
         }
     }
 
-    if (parser->cur < parser->end && (*parser->cur == 'e' || *parser->cur == 'E')) {
+    if (parser->cur < parser->end &&
+        (*parser->cur == 'e' || *parser->cur == 'E')) {
         parser->cur++;
-        if (parser->cur < parser->end && (*parser->cur == '+' || *parser->cur == '-')) {
+        if (parser->cur < parser->end &&
+            (*parser->cur == '+' || *parser->cur == '-')) {
             parser->cur++;
         }
         if (parser->cur >= parser->end || !isdigit(*parser->cur)) {
@@ -261,16 +280,18 @@ internal JsonValue* json_parser_number(JsonParser* parser, JsonParseResult* resu
     usize len = (usize)(parser->cur - start);
     char* tmp = (char*)arena_alloc(parser->arena, len + 1);
     memcpy(tmp, start, len);
-    tmp[len] = '\0';
+    tmp[len]         = '\0';
 
     JsonValue* value = json_alloc_value(parser->arena, JSON_NUMBER);
     value->number    = strtod(tmp, NULL);
     return value;
 }
 
-internal JsonValue* json_parser_array(JsonParser* parser, JsonParseResult* result)
+internal JsonValue* json_parser_array(JsonParser*      parser,
+                                      JsonParseResult* result)
 {
-    ASSERT(parser->cur < parser->end && *parser->cur == '[', "Expected array start");
+    ASSERT(parser->cur < parser->end && *parser->cur == '[',
+           "Expected array start");
     parser->cur++;
 
     JsonValue* value = json_new_array(parser->arena);
@@ -309,9 +330,11 @@ internal JsonValue* json_parser_array(JsonParser* parser, JsonParseResult* resul
     return value;
 }
 
-internal JsonValue* json_parser_object(JsonParser* parser, JsonParseResult* result)
+internal JsonValue* json_parser_object(JsonParser*      parser,
+                                       JsonParseResult* result)
 {
-    ASSERT(parser->cur < parser->end && *parser->cur == '{', "Expected object start");
+    ASSERT(parser->cur < parser->end && *parser->cur == '{',
+           "Expected object start");
     parser->cur++;
 
     JsonValue* value = json_new_object(parser->arena);
@@ -345,9 +368,9 @@ internal JsonValue* json_parser_object(JsonParser* parser, JsonParseResult* resu
 
         array_push(value->object.entries,
                    (JsonObjectEntry){
-                       .key = key,
+                       .key      = key,
                        .key_hash = json_hash_string(key),
-                       .value = item,
+                       .value    = item,
                    });
 
         json_skip_ws(parser);
@@ -370,7 +393,8 @@ internal JsonValue* json_parser_object(JsonParser* parser, JsonParseResult* resu
     return value;
 }
 
-internal JsonValue* json_parser_value(JsonParser* parser, JsonParseResult* result)
+internal JsonValue* json_parser_value(JsonParser*      parser,
+                                      JsonParseResult* result)
 {
     json_skip_ws(parser);
     if (parser->cur >= parser->end) {
@@ -384,15 +408,16 @@ internal JsonValue* json_parser_value(JsonParser* parser, JsonParseResult* resul
         return json_parser_object(parser, result);
     case '[':
         return json_parser_array(parser, result);
-    case '"': {
-        string str = {0};
-        if (!json_parser_string_raw(parser, result, &str)) {
-            return NULL;
+    case '"':
+        {
+            string str = {0};
+            if (!json_parser_string_raw(parser, result, &str)) {
+                return NULL;
+            }
+            JsonValue* value = json_alloc_value(parser->arena, JSON_STRING);
+            value->string    = str;
+            return value;
         }
-        JsonValue* value = json_alloc_value(parser->arena, JSON_STRING);
-        value->string    = str;
-        return value;
-    }
     case 't':
         if (json_match_literal(parser, "true")) {
             return json_new_bool(parser->arena, true);
@@ -428,7 +453,7 @@ internal string json_copy_string(Arena* arena, string value)
     u8* copy = (u8*)arena_alloc(arena, value.count);
     memcpy(copy, value.data, value.count);
     return (string){
-        .data = copy,
+        .data  = copy,
         .count = value.count,
     };
 }
@@ -507,15 +532,17 @@ void json_array_push(JsonValue* array_value, JsonValue* value)
     array_push(array_value->array.values, value);
 }
 
-void json_object_set(JsonValue* object_value, string key, JsonValue* value)
+void json_object_set(JsonValue* object_value, cstr key, JsonValue* value)
 {
     ASSERT(object_value && object_value->kind == JSON_OBJECT,
            "json_object_set expects JSON_OBJECT");
 
-    u64 hash = json_hash_string(key);
+    string key_str = s(key);
+
+    u64 hash       = json_hash_string(key_str);
     for (usize i = 0; i < array_count(object_value->object.entries); i++) {
         JsonObjectEntry* entry = &object_value->object.entries[i];
-        if (entry->key_hash == hash && json_string_eq(entry->key, key)) {
+        if (entry->key_hash == hash && json_string_eq(entry->key, key_str)) {
             entry->value = value;
             return;
         }
@@ -523,15 +550,57 @@ void json_object_set(JsonValue* object_value, string key, JsonValue* value)
 
     array_push(object_value->object.entries,
                (JsonObjectEntry){
-                   .key = key,
+                   .key      = key_str,
                    .key_hash = hash,
-                   .value = value,
+                   .value    = value,
                });
 }
 
-void json_object_set_cstr(JsonValue* object_value, cstr key, JsonValue* value)
+void json_object_set_null(JsonValue* object_value, Arena* arena, cstr key)
 {
-    json_object_set(object_value, s(key), value);
+    json_object_set(object_value, key, json_new_null(arena));
+}
+
+void json_object_set_bool(JsonValue* object_value,
+                          Arena*     arena,
+                          cstr       key,
+                          bool       value)
+{
+    json_object_set(object_value, key, json_new_bool(arena, value));
+}
+
+void json_object_set_number(JsonValue* object_value,
+                            Arena*     arena,
+                            cstr       key,
+                            f64        value)
+{
+    json_object_set(object_value, key, json_new_number(arena, value));
+}
+
+void json_object_set_string(JsonValue* object_value,
+                            Arena*     arena,
+                            cstr       key,
+                            string     value)
+{
+    json_object_set(object_value, key, json_new_string(arena, value));
+}
+
+void json_object_set_cstr(JsonValue* object_value,
+                          Arena*     arena,
+                          cstr       key,
+                          cstr       value)
+{
+    json_object_set_string(object_value, arena, key, s(value));
+}
+
+void json_object_set_array(JsonValue* object_value, cstr key, JsonValue* value)
+{
+    json_object_set(object_value, key, value);
+}
+
+void json_object_set_object(JsonValue* object_value, cstr key, JsonValue* value)
+{
+    json_object_set(object_value, key, value);
 }
 
 JsonValue* json_array_get(const JsonValue* array_value, usize index)
@@ -609,17 +678,17 @@ JsonValue* json_get_cstr(const JsonValue* value, cstr path)
 JsonValue* json_parse(Arena* arena, string json, JsonParseResult* out_result)
 {
     JsonParseResult local_result = {
-        .ok = true,
-        .error_offset = 0,
+        .ok            = true,
+        .error_offset  = 0,
         .error_message = NULL,
     };
     JsonParseResult* result = out_result ? out_result : &local_result;
     *result                 = local_result;
 
-    JsonParser parser = {
+    JsonParser parser       = {
         .arena = arena,
-        .cur = json.data,
-        .end = json.data + json.count,
+        .cur   = json.data,
+        .end   = json.data + json.count,
         .start = json.data,
     };
 
@@ -689,7 +758,8 @@ internal void json_sb_append_escaped_string(StringBuilder* sb, string value)
                     HEX[(c >> 4) & 0x0F],
                     HEX[c & 0x0F],
                 };
-                sb_append_string(sb, string_from((u8*)escaped, sizeof(escaped)));
+                sb_append_string(sb,
+                                 string_from((u8*)escaped, sizeof(escaped)));
             } else {
                 sb_append_char(sb, (char)c);
             }
@@ -699,7 +769,7 @@ internal void json_sb_append_escaped_string(StringBuilder* sb, string value)
     sb_append_char(sb, '"');
 }
 
-internal void json_stringify_value(StringBuilder* sb,
+internal void json_stringify_value(StringBuilder*   sb,
                                    const JsonValue* value,
                                    bool             pretty,
                                    u32              indent,
@@ -718,74 +788,82 @@ internal void json_stringify_value(StringBuilder* sb,
     case JSON_STRING:
         json_sb_append_escaped_string(sb, value->string);
         break;
-    case JSON_ARRAY: {
-        usize count = array_count(value->array.values);
-        if (count == 0) {
-            sb_append_cstr(sb, "[]");
-            break;
-        }
+    case JSON_ARRAY:
+        {
+            usize count = array_count(value->array.values);
+            if (count == 0) {
+                sb_append_cstr(sb, "[]");
+                break;
+            }
 
-        sb_append_char(sb, '[');
-        if (pretty) {
-            sb_append_char(sb, '\n');
-        }
-        for (usize i = 0; i < count; i++) {
-            if (pretty) {
-                json_sb_append_indent(sb, level + 1, indent);
-            }
-            json_stringify_value(sb, value->array.values[i], pretty, indent, level + 1);
-            if (i + 1 < count) {
-                sb_append_char(sb, ',');
-            }
+            sb_append_char(sb, '[');
             if (pretty) {
                 sb_append_char(sb, '\n');
             }
+            for (usize i = 0; i < count; i++) {
+                if (pretty) {
+                    json_sb_append_indent(sb, level + 1, indent);
+                }
+                json_stringify_value(
+                    sb, value->array.values[i], pretty, indent, level + 1);
+                if (i + 1 < count) {
+                    sb_append_char(sb, ',');
+                }
+                if (pretty) {
+                    sb_append_char(sb, '\n');
+                }
+            }
+            if (pretty) {
+                json_sb_append_indent(sb, level, indent);
+            }
+            sb_append_char(sb, ']');
         }
-        if (pretty) {
-            json_sb_append_indent(sb, level, indent);
-        }
-        sb_append_char(sb, ']');
-    } break;
-    case JSON_OBJECT: {
-        usize count = array_count(value->object.entries);
-        if (count == 0) {
-            sb_append_cstr(sb, "{}");
-            break;
-        }
+        break;
+    case JSON_OBJECT:
+        {
+            usize count = array_count(value->object.entries);
+            if (count == 0) {
+                sb_append_cstr(sb, "{}");
+                break;
+            }
 
-        sb_append_char(sb, '{');
-        if (pretty) {
-            sb_append_char(sb, '\n');
-        }
-        for (usize i = 0; i < count; i++) {
-            JsonObjectEntry* entry = &value->object.entries[i];
-            if (pretty) {
-                json_sb_append_indent(sb, level + 1, indent);
-            }
-            json_sb_append_escaped_string(sb, entry->key);
-            sb_append_char(sb, ':');
-            if (pretty) {
-                sb_append_char(sb, ' ');
-            }
-            json_stringify_value(sb, entry->value, pretty, indent, level + 1);
-            if (i + 1 < count) {
-                sb_append_char(sb, ',');
-            }
+            sb_append_char(sb, '{');
             if (pretty) {
                 sb_append_char(sb, '\n');
             }
+            for (usize i = 0; i < count; i++) {
+                JsonObjectEntry* entry = &value->object.entries[i];
+                if (pretty) {
+                    json_sb_append_indent(sb, level + 1, indent);
+                }
+                json_sb_append_escaped_string(sb, entry->key);
+                sb_append_char(sb, ':');
+                if (pretty) {
+                    sb_append_char(sb, ' ');
+                }
+                json_stringify_value(
+                    sb, entry->value, pretty, indent, level + 1);
+                if (i + 1 < count) {
+                    sb_append_char(sb, ',');
+                }
+                if (pretty) {
+                    sb_append_char(sb, '\n');
+                }
+            }
+            if (pretty) {
+                json_sb_append_indent(sb, level, indent);
+            }
+            sb_append_char(sb, '}');
         }
-        if (pretty) {
-            json_sb_append_indent(sb, level, indent);
-        }
-        sb_append_char(sb, '}');
-    } break;
+        break;
     default:
         ASSERT(false, "Invalid JsonKind");
     }
 }
 
-string _json_stringify(Arena* arena, const JsonValue* value, JsonStringifyParams params)
+string _json_stringify(Arena*              arena,
+                       const JsonValue*    value,
+                       JsonStringifyParams params)
 {
     ASSERT(value != NULL, "json_stringify expects a non-NULL value");
 
@@ -799,6 +877,49 @@ string _json_stringify(Arena* arena, const JsonValue* value, JsonStringifyParams
 
     json_stringify_value(&sb, value, params.pretty, indent, 0);
     return sb_to_string(&sb);
+}
+
+//------------------------------------------------------------------------------
+
+bool json_is_null(const JsonValue* value)
+{
+    return value && value->kind == JSON_NULL;
+}
+
+bool json_bool(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_BOOL, "Expected JSON_BOOL");
+    return value->boolean;
+}
+
+string json_string(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_STRING, "Expected JSON_STRING");
+    return value->string;
+}
+
+f64 json_float(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_NUMBER, "Expected JSON_NUMBER");
+    return value->number;
+}
+
+i64 json_integer(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_NUMBER, "Expected JSON_NUMBER");
+    return (i64)value->number;
+}
+
+JsonArray json_array(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_ARRAY, "Expected JSON_ARRAY");
+    return value->array;
+}
+
+JsonObject json_object(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_OBJECT, "Expected JSON_OBJECT");
+    return value->object;
 }
 
 //------------------------------------------------------------------------------
