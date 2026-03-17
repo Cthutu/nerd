@@ -32,6 +32,7 @@
 // [Time]               Various cross-platform functions for handling time
 // [Random]             Some simple routines for random number generation
 // [String]             String views and builder
+// [Map]                Dynamic hashmap implementation
 // [Hash]               Hashing
 // [FileMap]            Simple file-mapped routines
 // [Shell]              Run external commands
@@ -650,6 +651,17 @@ void sb_formatv(StringBuilder* sb, cstr fmt, va_list args);
 void sb_format(StringBuilder* sb, cstr fmt, ...);
 
 string sb_to_string(StringBuilder* sb);
+
+//------------------------------------------------------------------------------[Map]
+
+// TODO: Create a hashmap API focused on reducing cache-misses as much as
+// possible, utilisiing the FNV-1a API found here.  The implementation should be
+// in `core/map.c`. The key should be a string (which should be expected to have
+// a stable address) and the value type should be defined via macros.  I expect
+// to use verbs as `init` and `done` for lifetime, `insert`, `delete`, `find`
+// for utilisation.
+//
+// Additionally, use and rewrite map-demo.c to create a demo that tests the API.
 
 //------------------------------------------------------------------------------[Hash]
 
