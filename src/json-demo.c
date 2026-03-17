@@ -47,33 +47,33 @@ int run(int argc, char** argv)
     ASSERT(fast && fast->kind == JSON_BOOL, "Expected bool field 'fast'");
 
     prn("%sParsed values%s", ANSI_BOLD_GREEN, ANSI_RESET);
-    prn("name     : " STRINGP, STRINGV(name->string));
-    prn("version  : %.0f", version->number);
-    prn("features : %zu", array_count(features->array.values));
-    prn("fast     : %s", fast->boolean ? "true" : "false");
+    prn("name     : " STRINGP, STRINGV(json_string(name)));
+    prn("version  : %.0f", json_float(version));
+    prn("features : %zu", array_count(json_array(features).values));
+    prn("fast     : %s", json_bool(fast) ? "true" : "false");
     prn("");
 
     JsonValue* root = json_new_object(&arena);
-    json_object_set_cstr(root, "project", json_new_string(&arena, s("json-demo")));
-    json_object_set_cstr(root, "passes", json_new_bool(&arena, true));
-    json_object_set_cstr(root, "score", json_new_number(&arena, 99.5));
-    json_object_set_cstr(root, "notes", json_new_null(&arena));
+    json_object_set_cstr(root, &arena, "project", "json-demo");
+    json_object_set_bool(root, &arena, "passes", true);
+    json_object_set_number(root, &arena, "score", 99.5);
+    json_object_set_null(root, &arena, "notes");
 
     JsonValue* meta = json_new_object(&arena);
-    json_object_set_cstr(meta, "author", json_new_string(&arena, s("matt")));
-    json_object_set_cstr(meta, "tool", json_new_string(&arena, s("codex")));
-    json_object_set_cstr(root, "meta", meta);
+    json_object_set_cstr(meta, &arena, "author", "matt");
+    json_object_set_cstr(meta, &arena, "tool", "codex");
+    json_object_set_object(root, "meta", meta);
 
     JsonValue* list = json_new_array(&arena);
     json_array_push(list, json_new_string(&arena, s("parse")));
     json_array_push(list, json_new_string(&arena, s("build")));
     json_array_push(list, json_new_string(&arena, s("stringify")));
-    json_object_set_cstr(root, "steps", list);
-    json_object_set_cstr(root, "source", parsed);
+    json_object_set_array(root, "steps", list);
+    json_object_set(root, "source", parsed);
 
     JsonValue* author = json_get_cstr(root, "meta.author");
     ASSERT(author && author->kind == JSON_STRING, "Expected string at path 'meta.author'");
-    prn("meta.author: " STRINGP, STRINGV(author->string));
+    prn("meta.author: " STRINGP, STRINGV(json_string(author)));
     prn("");
 
     dump_json("Compact JSON", json_stringify(&arena, root));
