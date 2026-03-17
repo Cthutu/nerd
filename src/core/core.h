@@ -32,6 +32,7 @@
 // [Time]               Various cross-platform functions for handling time
 // [Random]             Some simple routines for random number generation
 // [String]             String views and builder
+// [Hash]               Hashing
 // [FileMap]            Simple file-mapped routines
 // [Shell]              Run external commands
 //
@@ -649,6 +650,11 @@ void sb_formatv(StringBuilder* sb, cstr fmt, va_list args);
 void sb_format(StringBuilder* sb, cstr fmt, ...);
 
 string sb_to_string(StringBuilder* sb);
+
+//------------------------------------------------------------------------------[Hash]
+
+u64 hash_fnv1a(const void* data, usize size);
+u64 hash_fnv1a_string(string str);
 
 //------------------------------------------------------------------------------[FileMap]
 
