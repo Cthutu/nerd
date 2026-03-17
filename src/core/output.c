@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-Mutex g_kore_output_mutex;
+Mutex g_output_mutex;
 
 //------------------------------------------------------------------------------
 
@@ -37,10 +37,10 @@ internal cstr _format_output(cstr format, va_list args, usize* out_size)
 internal void fprv(int fd, cstr format, va_list args)
 {
     usize size;
-    mutex_lock(&g_kore_output_mutex);
+    mutex_lock(&g_output_mutex);
     cstr output = _format_output(format, args, &size);
     write(fd, output, size);
-    mutex_unlock(&g_kore_output_mutex);
+    mutex_unlock(&g_output_mutex);
 }
 
 void prv(cstr format, va_list args) { fprv(STDOUT_FILENO, format, args); }
@@ -51,7 +51,7 @@ void eprv(cstr format, va_list args) { fprv(STDERR_FILENO, format, args); }
 internal void fprv(HANDLE handle, cstr format, va_list args)
 {
     usize size;
-    mutex_lock(&g_kore_output_mutex);
+    mutex_lock(&g_output_mutex);
     cstr output = _format_output(format, args, &size);
 
     // Write to the file handle.
@@ -64,7 +64,7 @@ internal void fprv(HANDLE handle, cstr format, va_list args)
     } else {
         WriteFile(handle, output, size, &bytes_written, NULL);
     }
-    mutex_unlock(&g_kore_output_mutex);
+    mutex_unlock(&g_output_mutex);
 }
 
 void prv(cstr format, va_list args)

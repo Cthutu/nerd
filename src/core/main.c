@@ -6,7 +6,7 @@
 
 #include <core/core.h>
 
-extern Mutex g_kore_output_mutex;
+extern Mutex g_output_mutex;
 Arena        temp_arena;
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ int run(int argc, char** argv);
 
 int main(int argc, char** argv)
 {
-    mutex_init(&g_kore_output_mutex);
+    mutex_init(&g_output_mutex);
 
 #if OS_WINDOWS
     UINT old_cp = GetConsoleCP();
@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 #if CONFIG_DEBUG
     mem_print_leaks();
 #endif // CONFIG_DEBUG
-    mutex_done(&g_kore_output_mutex);
+    mutex_done(&g_output_mutex);
     return result;
 }
 

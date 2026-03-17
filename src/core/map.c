@@ -1,0 +1,290 @@
+//------------------------------------------------------------------------------
+// Hash map implementation
+//
+// Copyright (C)2026 Matt Davies, all rights reserved
+//------------------------------------------------------------------------------
+
+#include <core/core.h>
+
+//------------------------------------------------------------------------------
+
+internal const u64   MAP_HASH_PRESENT_MASK = 0x8000000000000000ull;
+internal const usize MAP_MIN_CAPACITY      = 8;
+
+internal usize map_next_pow2(usize value)
+{
+    usize result = MAP_MIN_CAPACITY;
+    while (result < value) {
+        result <<= 1;
+    }
+    return result;
+}
+
+internal u64 map_store_hash(string key)
+{
+    return hash_fnv1a_string(key) | MAP_HASH_PRESENT_MASK;
+}
+
+internal usize map_probe_distance(usize slot, u64 hash, usize mask)
+{
+    return (slot + (mask + 1) - (hash & mask)) & mask;
+}
+
+internal bool map_key_eq(string a, string b)
+{
+    if (a.count != b.count) {
+        return false;
+    }
+
+    if (a.data == b.data) {
+        return true;
+    }
+
+    return memcmp(a.data, b.data, a.count) == 0;
+}
+
+internal u8* map_value_at(Map* map, usize index)
+{
+    return map->values + index * map->value_size;
+}
+
+internal usize map_capacity(const Map* map)
+{
+    if (map->hashes == NULL) {
+        return 0;
+    }
+
+    return mem_size(map->hashes) / sizeof(map->hashes[0]);
+}
+
+internal void map_reserve(Map* map, usize capacity)
+{
+    capacity    = map_next_pow2(MAX(capacity, MAP_MIN_CAPACITY));
+
+    map->hashes = ARRAY_ALLOC(u64, capacity);
+    map->keys   = ARRAY_ALLOC(string, capacity);
+    map->values = ARRAY_ALLOC(u8, capacity * map->value_size);
+
+    memset(map->hashes, 0, capacity * sizeof(u64));
+    memset(map->keys, 0, capacity * sizeof(string));
+}
+
+internal bool
+map_insert_hashed(Map* map, u64 hash, string key, const void* value)
+{
+    usize mask = map_capacity(map) - 1;
+    usize idx  = hash & mask;
+    usize dist = 0;
+
+    u8  stack_value[256];
+    u8* carry_value = stack_value;
+    if (map->value_size > sizeof(stack_value)) {
+        carry_value = ARRAY_ALLOC(u8, map->value_size);
+    }
+    memcpy(carry_value, value, map->value_size);
+
+    for (;;) {
+        u64 slot_hash = map->hashes[idx];
+        if (slot_hash == 0) {
+            map->hashes[idx] = hash;
+            map->keys[idx]   = key;
+            memcpy(map_value_at(map, idx), carry_value, map->value_size);
+            map->count++;
+
+            if (carry_value != stack_value) {
+                ARRAY_FREE(carry_value);
+            }
+            return true;
+        }
+
+        if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
+            memcpy(map_value_at(map, idx), carry_value, map->value_size);
+
+            if (carry_value != stack_value) {
+                ARRAY_FREE(carry_value);
+            }
+            return false;
+        }
+
+        usize slot_dist = map_probe_distance(idx, slot_hash, mask);
+        if (slot_dist < dist) {
+            u8  stack_swap[256];
+            u8* swap_value = stack_swap;
+            if (map->value_size > sizeof(stack_swap)) {
+                swap_value = ARRAY_ALLOC(u8, map->value_size);
+            }
+
+            memcpy(swap_value, map_value_at(map, idx), map->value_size);
+            memcpy(map_value_at(map, idx), carry_value, map->value_size);
+            memcpy(carry_value, swap_value, map->value_size);
+
+            if (swap_value != stack_swap) {
+                ARRAY_FREE(swap_value);
+            }
+
+            u64    old_hash  = map->hashes[idx];
+            string old_key   = map->keys[idx];
+            map->hashes[idx] = hash;
+            map->keys[idx]   = key;
+            hash             = old_hash;
+            key              = old_key;
+            dist             = slot_dist;
+        }
+
+        idx  = (idx + 1) & mask;
+        dist = dist + 1;
+    }
+}
+
+internal void map_rehash(Map* map, usize new_capacity)
+{
+    Map fresh        = {0};
+    fresh.value_size = map->value_size;
+    map_reserve(&fresh, new_capacity);
+
+    usize capacity = map_capacity(map);
+    for (usize i = 0; i < capacity; i++) {
+        if (map->hashes[i] != 0) {
+            map_insert_hashed(
+                &fresh, map->hashes[i], map->keys[i], map_value_at(map, i));
+        }
+    }
+
+    ARRAY_FREE(map->hashes);
+    ARRAY_FREE(map->keys);
+    ARRAY_FREE(map->values);
+
+    *map = fresh;
+}
+
+internal void map_maybe_grow(Map* map)
+{
+    usize capacity = map_capacity(map);
+    if (capacity == 0) {
+        map_reserve(map, MAP_MIN_CAPACITY);
+        return;
+    }
+
+    if ((map->count + 1) * 4 >= capacity * 3) {
+        map_rehash(map, capacity << 1);
+    }
+}
+
+void _map_init(Map* map, usize value_size, usize initial_capacity)
+{
+    memset(map, 0, sizeof(*map));
+    map->value_size = value_size;
+    map_reserve(map, initial_capacity);
+}
+
+void map_done(Map* map)
+{
+    ARRAY_FREE(map->hashes);
+    ARRAY_FREE(map->keys);
+    ARRAY_FREE(map->values);
+    memset(map, 0, sizeof(*map));
+}
+
+void map_clear(Map* map)
+{
+    usize capacity = map_capacity(map);
+    if (capacity == 0) {
+        return;
+    }
+
+    memset(map->hashes, 0, capacity * sizeof(u64));
+    memset(map->keys, 0, capacity * sizeof(string));
+    map->count = 0;
+}
+
+bool map_insert(Map* map, string key, const void* value)
+{
+    ASSERT(value != NULL, "map_insert requires a non-null value pointer");
+
+    map_maybe_grow(map);
+    return map_insert_hashed(map, map_store_hash(key), key, value);
+}
+
+void* map_find(Map* map, string key)
+{
+    usize capacity = map_capacity(map);
+    if (map->count == 0 || capacity == 0) {
+        return NULL;
+    }
+
+    u64   hash = map_store_hash(key);
+    usize mask = capacity - 1;
+    usize idx  = hash & mask;
+    usize dist = 0;
+
+    for (;;) {
+        u64 slot_hash = map->hashes[idx];
+        if (slot_hash == 0) {
+            return NULL;
+        }
+
+        usize slot_dist = map_probe_distance(idx, slot_hash, mask);
+        if (slot_dist < dist) {
+            return NULL;
+        }
+
+        if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
+            return map_value_at(map, idx);
+        }
+
+        idx  = (idx + 1) & mask;
+        dist = dist + 1;
+    }
+}
+
+bool map_delete(Map* map, string key)
+{
+    usize capacity = map_capacity(map);
+    if (map->count == 0 || capacity == 0) {
+        return false;
+    }
+
+    u64   hash = map_store_hash(key);
+    usize mask = capacity - 1;
+    usize idx  = hash & mask;
+    usize dist = 0;
+
+    for (;;) {
+        u64 slot_hash = map->hashes[idx];
+        if (slot_hash == 0) {
+            return false;
+        }
+
+        usize slot_dist = map_probe_distance(idx, slot_hash, mask);
+        if (slot_dist < dist) {
+            return false;
+        }
+
+        if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
+            usize hole = idx;
+            usize next = (idx + 1) & mask;
+
+            while (map->hashes[next] != 0 &&
+                   map_probe_distance(next, map->hashes[next], mask) > 0) {
+                map->hashes[hole] = map->hashes[next];
+                map->keys[hole]   = map->keys[next];
+                memcpy(map_value_at(map, hole),
+                       map_value_at(map, next),
+                       map->value_size);
+                hole = next;
+                next = (next + 1) & mask;
+            }
+
+            map->hashes[hole] = 0;
+            map->keys[hole]   = (string){0};
+            memset(map_value_at(map, hole), 0, map->value_size);
+            map->count--;
+            return true;
+        }
+
+        idx  = (idx + 1) & mask;
+        dist = dist + 1;
+    }
+}
+
+//------------------------------------------------------------------------------

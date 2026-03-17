@@ -259,15 +259,15 @@ usize mem_get_allocation_count(void);
 usize mem_get_total_allocated(void);
 #endif // CONFIG_DEBUG
 
-#define KORE_ALLOC(size) mem_alloc((size), __FILE__, __LINE__)
-#define KORE_REALLOC(ptr, size) mem_realloc((ptr), (size), __FILE__, __LINE__)
-#define KORE_FREE(ptr) ptr = mem_free((ptr), __FILE__, __LINE__), (ptr) = NULL
+#define ALLOC(size) mem_alloc((size), __FILE__, __LINE__)
+#define REALLOC(ptr, size) mem_realloc((ptr), (size), __FILE__, __LINE__)
+#define FREE(ptr) ptr = mem_free((ptr), __FILE__, __LINE__), (ptr) = NULL
 
-#define KORE_ARRAY_ALLOC(type, count)                                          \
+#define ARRAY_ALLOC(type, count)                                               \
     (type*)mem_alloc(sizeof(type) * (count), __FILE__, __LINE__)
-#define KORE_ARRAY_REALLOC(ptr, type, count)                                   \
+#define ARRAY_REALLOC(ptr, type, count)                                        \
     (type*)mem_realloc((ptr), sizeof(type) * (count), __FILE__, __LINE__)
-#define KORE_ARRAY_FREE(ptr) KORE_FREE(ptr)
+#define ARRAY_FREE(ptr) FREE(ptr)
 
 void mem_break_on_alloc(u64 index);
 
@@ -319,7 +319,7 @@ void* array_maybe_grow(void* array,
     do {                                                                       \
         if ((a)) {                                                             \
             ArrayHeader* __header = __array_info(a);                           \
-            KORE_FREE(__header);                                               \
+            FREE(__header);                                                    \
             (a) = NULL;                                                        \
         }                                                                      \
     } while (0)
@@ -654,14 +654,47 @@ string sb_to_string(StringBuilder* sb);
 
 //------------------------------------------------------------------------------[Map]
 
-// TODO: Create a hashmap API focused on reducing cache-misses as much as
-// possible, utilisiing the FNV-1a API found here.  The implementation should be
-// in `core/map.c`. The key should be a string (which should be expected to have
-// a stable address) and the value type should be defined via macros.  I expect
-// to use verbs as `init` and `done` for lifetime, `insert`, `delete`, `find`
-// for utilisation.
-//
-// Additionally, use and rewrite map-demo.c to create a demo that tests the API.
+typedef struct {
+    u64*    hashes;
+    string* keys;
+    u8*     values;
+    usize   count;
+    usize   value_size;
+} Map;
+
+void  _map_init(Map* map, usize value_size, usize initial_capacity);
+void  map_done(Map* map);
+void  map_clear(Map* map);
+bool  map_insert(Map* map, string key, const void* value);
+bool  map_delete(Map* map, string key);
+void* map_find(Map* map, string key);
+
+#define DEF_MAP(name, value_type)                                              \
+    typedef struct {                                                           \
+        Map map;                                                               \
+    } name;                                                                    \
+    static inline void name##_init(name* self, usize initial_capacity)         \
+    {                                                                          \
+        _map_init(&self->map, sizeof(value_type), initial_capacity);           \
+    }                                                                          \
+    static inline void name##_done(name* self) { map_done(&self->map); }       \
+    static inline void name##_clear(name* self) { map_clear(&self->map); }     \
+    static inline bool name##_insert(name* self, string key, value_type value) \
+    {                                                                          \
+        return map_insert(&self->map, key, &value);                            \
+    }                                                                          \
+    static inline bool name##_delete(name* self, string key)                   \
+    {                                                                          \
+        return map_delete(&self->map, key);                                    \
+    }                                                                          \
+    static inline value_type* name##_find(name* self, string key)              \
+    {                                                                          \
+        return (value_type*)map_find(&self->map, key);                         \
+    }                                                                          \
+    static inline usize name##_count(const name* self)                         \
+    {                                                                          \
+        return self->map.count;                                                \
+    }
 
 //------------------------------------------------------------------------------[Hash]
 

@@ -27,16 +27,10 @@ typedef struct MemoryHeader_t {
 
 // Global pointer to the head of the linked list of allocated memory blocks
 #if CONFIG_DEBUG
-#    if defined(KORE_TEST)
-KMemoryHeader* g_memory_head        = NULL;
-u64            g_memory_index       = 0; // Global index for allocations
-u64            g_memory_break_index = 0; // Index to break on allocation
-#    else
 static MemoryHeader* g_memory_head        = NULL;
 static u64           g_memory_index       = 0; // Global index for allocations
 static u64           g_memory_break_index = 0; // Index to break on allocation
-#    endif // KORE_TEST
-#endif                // CONFIG_DEBUG
+#endif                                         // CONFIG_DEBUG
 
 void* mem_alloc(usize size, const char* file, int line)
 {
