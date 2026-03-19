@@ -662,12 +662,19 @@ typedef struct {
     usize   value_size;
 } Map;
 
+typedef struct {
+    usize index;
+} MapIter;
+
+void  map_iter_init(MapIter* iter);
+bool  map_next(Map* map, MapIter* iter, string* out_key, void** out_value);
 void  _map_init(Map* map, usize value_size, usize initial_capacity);
 void  map_done(Map* map);
 void  map_clear(Map* map);
 bool  map_insert(Map* map, string key, const void* value);
 bool  map_delete(Map* map, string key);
 void* map_find(Map* map, string key);
+void* map_entry(Map* map, string key, bool* out_created);
 
 #define DEF_MAP(name, value_type)                                              \
     typedef struct {                                                           \
@@ -694,6 +701,27 @@ void* map_find(Map* map, string key);
     static inline usize name##_count(const name* self)                         \
     {                                                                          \
         return self->map.count;                                                \
+    }                                                                          \
+    static inline value_type* name##_entry(                                    \
+        name* self, string key, bool* out_created)                             \
+    {                                                                          \
+        return (value_type*)map_entry(&self->map, key, out_created);           \
+    }                                                                          \
+    static inline void name##_iter_init(MapIter* iter)                         \
+    {                                                                          \
+        map_iter_init(iter);                                                   \
+    }                                                                          \
+    static inline bool                                                         \
+    name##_next(name* self, MapIter* iter, string* out_key, value_type** out_value) \
+    {                                                                          \
+        void* value = NULL;                                                    \
+        if (!map_next(&self->map, iter, out_key, &value)) {                    \
+            return false;                                                      \
+        }                                                                      \
+        if (out_value != NULL) {                                               \
+            *out_value = (value_type*)value;                                   \
+        }                                                                      \
+        return true;                                                           \
     }
 
 //------------------------------------------------------------------------------[Hash]

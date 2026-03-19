@@ -170,6 +170,30 @@ internal void map_maybe_grow(Map* map)
     }
 }
 
+void map_iter_init(MapIter* iter)
+{
+    iter->index = 0;
+}
+
+bool map_next(Map* map, MapIter* iter, string* out_key, void** out_value)
+{
+    usize capacity = map_capacity(map);
+    while (iter->index < capacity) {
+        usize index = iter->index++;
+        if (map->hashes[index] != 0) {
+            if (out_key != NULL) {
+                *out_key = map->keys[index];
+            }
+            if (out_value != NULL) {
+                *out_value = map_value_at(map, index);
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void _map_init(Map* map, usize value_size, usize initial_capacity)
 {
     memset(map, 0, sizeof(*map));
@@ -201,8 +225,9 @@ bool map_insert(Map* map, string key, const void* value)
 {
     ASSERT(value != NULL, "map_insert requires a non-null value pointer");
 
-    map_maybe_grow(map);
-    return map_insert_hashed(map, map_store_hash(key), key, value);
+    bool out_created = false;
+    memcpy(map_entry(map, key, &out_created), value, map->value_size);
+    return out_created;
 }
 
 void* map_find(Map* map, string key)
@@ -280,6 +305,115 @@ bool map_delete(Map* map, string key)
             memset(map_value_at(map, hole), 0, map->value_size);
             map->count--;
             return true;
+        }
+
+        idx  = (idx + 1) & mask;
+        dist = dist + 1;
+    }
+}
+
+void* map_entry(Map* map, string key, bool* out_created)
+{
+    if (out_created != NULL) {
+        *out_created = false;
+    }
+
+    map_maybe_grow(map);
+
+    u64   hash = map_store_hash(key);
+    usize mask = map_capacity(map) - 1;
+    usize idx  = hash & mask;
+    usize dist = 0;
+
+    for (;;) {
+        u64 slot_hash = map->hashes[idx];
+        if (slot_hash == 0) {
+            map->hashes[idx] = hash;
+            map->keys[idx]   = key;
+            memset(map_value_at(map, idx), 0, map->value_size);
+            map->count++;
+            if (out_created != NULL) {
+                *out_created = true;
+            }
+            return map_value_at(map, idx);
+        }
+
+        if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
+            return map_value_at(map, idx);
+        }
+
+        usize slot_dist = map_probe_distance(idx, slot_hash, mask);
+        if (slot_dist < dist) {
+            u8  stack_zero[256] = {0};
+            u8* carry_value     = stack_zero;
+            void* entry_value   = map_value_at(map, idx);
+            if (map->value_size > sizeof(stack_zero)) {
+                carry_value = ARRAY_ALLOC(u8, map->value_size);
+                memset(carry_value, 0, map->value_size);
+            }
+
+            for (;;) {
+                memcpy(carry_value, map_value_at(map, idx), map->value_size);
+                memset(map_value_at(map, idx), 0, map->value_size);
+
+                u64    old_hash  = map->hashes[idx];
+                string old_key   = map->keys[idx];
+                map->hashes[idx] = hash;
+                map->keys[idx]   = key;
+
+                hash = old_hash;
+                key  = old_key;
+
+                idx  = (idx + 1) & mask;
+                dist = slot_dist + 1;
+
+                for (;;) {
+                    slot_hash = map->hashes[idx];
+                    if (slot_hash == 0) {
+                        map->hashes[idx] = hash;
+                        map->keys[idx]   = key;
+                        memcpy(map_value_at(map, idx), carry_value, map->value_size);
+                        map->count++;
+                        if (out_created != NULL) {
+                            *out_created = true;
+                        }
+
+                        if (carry_value != stack_zero) {
+                            ARRAY_FREE(carry_value);
+                        }
+
+                        return entry_value;
+                    }
+
+                    slot_dist = map_probe_distance(idx, slot_hash, mask);
+                    if (slot_dist < dist) {
+                        u8  stack_swap[256];
+                        u8* swap_value = stack_swap;
+                        if (map->value_size > sizeof(stack_swap)) {
+                            swap_value = ARRAY_ALLOC(u8, map->value_size);
+                        }
+
+                        memcpy(swap_value, map_value_at(map, idx), map->value_size);
+                        memcpy(map_value_at(map, idx), carry_value, map->value_size);
+                        memcpy(carry_value, swap_value, map->value_size);
+
+                        if (swap_value != stack_swap) {
+                            ARRAY_FREE(swap_value);
+                        }
+
+                        old_hash        = map->hashes[idx];
+                        old_key         = map->keys[idx];
+                        map->hashes[idx] = hash;
+                        map->keys[idx]   = key;
+                        hash             = old_hash;
+                        key              = old_key;
+                        dist             = slot_dist;
+                    }
+
+                    idx  = (idx + 1) & mask;
+                    dist = dist + 1;
+                }
+            }
         }
 
         idx  = (idx + 1) & mask;
