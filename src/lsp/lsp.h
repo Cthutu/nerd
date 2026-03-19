@@ -31,15 +31,20 @@ int  lsp_run(void);
 
 //------------------------------------------------------------------------------
 
+void lsp_init(LspState* state);
+void lsp_done(LspState* state);
+
+//------------------------------------------------------------------------------
+
 JsonValue* lsp_prepare_response(const LspMessage* message);
 void       lsp_send_response(Arena* arena, const JsonValue* response);
 
 //------------------------------------------------------------------------------
 
-void lsp_handle_initialise(const LspMessage* message);
-void lsp_handle_shutdown(const LspMessage* message);
-void lsp_handle_initialised(const LspMessage* message);
-void lsp_handle_did_open(const LspMessage* message);
-void lsp_handle_did_close(const LspMessage* message);
+void lsp_handle_initialise(LspState* state, const LspMessage* message);
+void lsp_handle_shutdown(LspState* state, const LspMessage* message);
+void lsp_handle_initialised(LspState* state, const LspMessage* message);
+void lsp_handle_did_open(LspState* state, const LspMessage* message);
+void lsp_handle_did_close(LspState* state, const LspMessage* message);
 
 //------------------------------------------------------------------------------

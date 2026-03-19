@@ -107,9 +107,26 @@ void lsp_send_response(Arena* arena, const JsonValue* response)
 
 //------------------------------------------------------------------------------
 
+void lsp_init(LspState* state) { LspDocumentMap_init(&state->documents, 16); }
+
+void lsp_done(LspState* state)
+{
+    MapIter iter = LspDocumentMap_iter();
+
+    string key;
+    Arena* value;
+    while (LspDocumentMap_next(&state->documents, &iter, &key, &value)) {
+        arena_done(value);
+    }
+
+    LspDocumentMap_done(&state->documents);
+}
+
+//------------------------------------------------------------------------------
+
 struct {
     cstr method;
-    void (*handler)(const LspMessage*);
+    void (*handler)(LspState* state, const LspMessage*);
 } lsp_handlers[] = {
     {"initialize", lsp_handle_initialise},
     {"initialized", lsp_handle_initialised},
@@ -142,6 +159,9 @@ int lsp_run(void)
         .should_exit        = false,
         .exit_code          = 1,
     };
+
+    LspState lsp_state = {0};
+    lsp_init(&lsp_state);
 
     while (!state.should_exit) {
         JsonValue* message = lsp_read_message(&message_arena);
@@ -190,7 +210,7 @@ int lsp_run(void)
             lsp_log("Shutdown requested");
             state.shutdown_requested = true;
             state.exit_code          = 0;
-            lsp_handle_shutdown(&msg);
+            lsp_handle_shutdown(&lsp_state, &msg);
         } else if (method && string_eq_cstr(method_str, "exit")) {
             lsp_log("Exit requested");
             state.exit_code   = state.shutdown_requested ? 0 : 1;
@@ -202,7 +222,7 @@ int lsp_run(void)
                  i < sizeof(lsp_handlers) / sizeof(lsp_handlers[0]);
                  i++) {
                 if (string_eq_cstr(method_str, lsp_handlers[i].method)) {
-                    lsp_handlers[i].handler(&msg);
+                    lsp_handlers[i].handler(&lsp_state, &msg);
                     handled = true;
                     break;
                 }
@@ -215,6 +235,7 @@ int lsp_run(void)
         arena_reset(&message_arena);
     }
 
+    lsp_done(&lsp_state);
     arena_done(&message_arena);
     lsp_log("LSP server exiting with code %d", state.exit_code);
     return state.exit_code;
@@ -222,8 +243,10 @@ int lsp_run(void)
 
 //------------------------------------------------------------------------------
 
-void lsp_handle_initialise(const LspMessage* message)
+void lsp_handle_initialise(LspState* state, const LspMessage* message)
 {
+    UNUSED(state);
+
     JsonValue* response = lsp_prepare_response(message);
     JsonValue* result   = json_new_object(message->arena);
 
