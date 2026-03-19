@@ -11,11 +11,18 @@
 #include <object/object.h>
 
 typedef struct LspMessage {
-    string     method;
-    JsonValue* id;
-    JsonValue* message;
-    Arena*     arena;
+    string     method;  // The method name extracted from the message
+    JsonValue* id;      // The ID extracted from the message
+    JsonValue* message; // The full incoming message
+    Arena*     arena;   // Use this to do create responses
 } LspMessage;
+
+DEF_MAP(LspDocumentMap,
+        Arena); // Map of document URI to internal document representation
+
+typedef struct {
+    LspDocumentMap documents;
+} LspState;
 
 //------------------------------------------------------------------------------
 
