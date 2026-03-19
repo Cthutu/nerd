@@ -111,8 +111,8 @@ struct {
     cstr method;
     void (*handler)(const LspMessage*);
 } lsp_handlers[] = {
-    {"initialize", lsp_handle_initialize},
-    {"initialized", lsp_handle_initialized},
+    {"initialize", lsp_handle_initialise},
+    {"initialized", lsp_handle_initialised},
     {"textDocument/didOpen", lsp_handle_did_open},
     {"textDocument/didClose", lsp_handle_did_close},
 };
@@ -222,7 +222,7 @@ int lsp_run(void)
 
 //------------------------------------------------------------------------------
 
-void lsp_handle_initialize(const LspMessage* message)
+void lsp_handle_initialise(const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
     JsonValue* result   = json_new_object(message->arena);
@@ -263,7 +263,7 @@ void lsp_handle_shutdown(const LspMessage* message)
     lsp_send_response(message->arena, response);
 }
 
-void lsp_handle_initialized(const LspMessage* message)
+void lsp_handle_initialised(const LspMessage* message)
 {
     UNUSED(message);
     lsp_log("Client initialised");

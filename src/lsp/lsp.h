@@ -29,9 +29,9 @@ void       lsp_send_response(Arena* arena, const JsonValue* response);
 
 //------------------------------------------------------------------------------
 
-void lsp_handle_initialize(const LspMessage* message);
+void lsp_handle_initialise(const LspMessage* message);
 void lsp_handle_shutdown(const LspMessage* message);
-void lsp_handle_initialized(const LspMessage* message);
+void lsp_handle_initialised(const LspMessage* message);
 void lsp_handle_did_open(const LspMessage* message);
 void lsp_handle_did_close(const LspMessage* message);
 
