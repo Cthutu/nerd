@@ -43,10 +43,9 @@ int run(int argc, char** argv)
     prn("Eve: %d", eve ? *eve : -1);
 
     prn("entries:");
-    MapIter iter;
-    AgesMap_iter_init(&iter);
-    string key;
-    i32*   value;
+    MapIter iter = AgesMap_iter();
+    string  key;
+    i32*    value;
     while (AgesMap_next(&ages, &iter, &key, &value)) {
         prn("  %.*s => %d", (int)key.count, key.data, *value);
     }

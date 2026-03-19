@@ -666,7 +666,8 @@ typedef struct {
     usize index;
 } MapIter;
 
-void  map_iter_init(MapIter* iter);
+static inline MapIter map_iter(void) { return (MapIter){0}; }
+void                  map_iter_init(MapIter* iter);
 bool  map_next(Map* map, MapIter* iter, string* out_key, void** out_value);
 void  _map_init(Map* map, usize value_size, usize initial_capacity);
 void  map_done(Map* map);
@@ -707,12 +708,9 @@ void* map_entry(Map* map, string key, bool* out_created);
     {                                                                          \
         return (value_type*)map_entry(&self->map, key, out_created);           \
     }                                                                          \
-    static inline void name##_iter_init(MapIter* iter)                         \
-    {                                                                          \
-        map_iter_init(iter);                                                   \
-    }                                                                          \
-    static inline bool                                                         \
-    name##_next(name* self, MapIter* iter, string* out_key, value_type** out_value) \
+    static inline MapIter name##_iter(void) { return map_iter(); }             \
+    static inline bool    name##_next(                                         \
+        name* self, MapIter* iter, string* out_key, value_type** out_value)    \
     {                                                                          \
         void* value = NULL;                                                    \
         if (!map_next(&self->map, iter, out_key, &value)) {                    \
