@@ -3,7 +3,7 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
-//> use: object
+//> use: core object
 
 #pragma once
 
