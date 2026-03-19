@@ -8,6 +8,8 @@
             "args": [
                 "build"
                 // "test"
+                // "run",
+                // "map-demo",
             ],
             "group": {
                 "kind": "build",
