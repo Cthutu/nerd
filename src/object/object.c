@@ -642,29 +642,75 @@ JsonValue* json_get(const JsonValue* value, string path)
     }
 
     JsonValue* current = (JsonValue*)value;
-    usize      start   = 0;
+    usize      cursor  = 0;
 
-    while (start < path.count) {
-        usize end = start;
-        while (end < path.count && path.data[end] != '.') {
-            end++;
-        }
-
-        if (end == start) {
+    while (cursor < path.count) {
+        if (path.data[cursor] == '.') {
             return NULL;
         }
 
-        if (!current || current->kind != JSON_OBJECT) {
-            return NULL;
+        if (path.data[cursor] != '[') {
+            usize start = cursor;
+            while (cursor < path.count && path.data[cursor] != '.' &&
+                   path.data[cursor] != '[') {
+                cursor++;
+            }
+
+            if (cursor == start) {
+                return NULL;
+            }
+
+            if (!current || current->kind != JSON_OBJECT) {
+                return NULL;
+            }
+
+            current = json_object_get(
+                current,
+                (string){.data = path.data + start, .count = cursor - start});
+            if (!current) {
+                return NULL;
+            }
         }
 
-        current = json_object_get(
-            current, (string){.data = path.data + start, .count = end - start});
-        if (!current) {
-            return NULL;
+        while (cursor < path.count && path.data[cursor] == '[') {
+            usize index = 0;
+            usize start = ++cursor;
+
+            if (start >= path.count) {
+                return NULL;
+            }
+
+            while (cursor < path.count && path.data[cursor] != ']') {
+                u8 c = path.data[cursor];
+                if (c < '0' || c > '9') {
+                    return NULL;
+                }
+                index = (index * 10) + (usize)(c - '0');
+                cursor++;
+            }
+
+            if (cursor == start || cursor >= path.count ||
+                path.data[cursor] != ']') {
+                return NULL;
+            }
+
+            current = json_array_get(current, index);
+            if (!current) {
+                return NULL;
+            }
+
+            cursor++;
         }
 
-        start = end + 1;
+        if (cursor < path.count) {
+            if (path.data[cursor] != '.') {
+                return NULL;
+            }
+            cursor++;
+            if (cursor >= path.count) {
+                return NULL;
+            }
+        }
     }
 
     return current;

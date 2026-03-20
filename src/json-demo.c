@@ -71,9 +71,17 @@ int run(int argc, char** argv)
     json_object_set_array(root, "steps", list);
     json_object_set(root, "source", parsed);
 
-    JsonValue* author = json_get_cstr(root, "meta.author");
+    JsonValue* author      = json_get_cstr(root, "meta.author");
+    JsonValue* second_step = json_get_cstr(root, "steps[1]");
+    JsonValue* first_feature = json_get_cstr(root, "source.features[0]");
     ASSERT(author && author->kind == JSON_STRING, "Expected string at path 'meta.author'");
+    ASSERT(second_step && second_step->kind == JSON_STRING,
+           "Expected string at path 'steps[1]'");
+    ASSERT(first_feature && first_feature->kind == JSON_STRING,
+           "Expected string at path 'source.features[0]'");
     prn("meta.author: " STRINGP, STRINGV(json_string(author)));
+    prn("steps[1]: " STRINGP, STRINGV(json_string(second_step)));
+    prn("source.features[0]: " STRINGP, STRINGV(json_string(first_feature)));
     prn("");
 
     dump_json("Compact JSON", json_stringify(&arena, root));
