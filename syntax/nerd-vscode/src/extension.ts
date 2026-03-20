@@ -10,6 +10,24 @@ import {
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
+let clientContext: vscode.ExtensionContext | undefined;
+let launchedServerPath: string | undefined;
+let restartTimer: NodeJS.Timeout | undefined;
+let serverWatcher: fs.FSWatcher | undefined;
+
+function cleanupLaunchedServer() {
+    if (!launchedServerPath) {
+        return;
+    }
+
+    try {
+        fs.rmSync(launchedServerPath, { force: true });
+    } catch {
+        // Ignore locked or already-removed files.
+    }
+
+    launchedServerPath = undefined;
+}
 
 function newestExistingPath(paths: string[]): string | undefined {
     let newestPath: string | undefined;
@@ -60,24 +78,122 @@ function findUserServer(): string | undefined {
     return fs.existsSync(candidate) ? candidate : undefined;
 }
 
-function getServerExecutable(): Executable {
+function serverCopyDir(context: vscode.ExtensionContext): string {
+    return path.join(context.globalStorageUri.fsPath, "server");
+}
+
+function stageServerExecutable(
+    sourcePath: string,
+    context: vscode.ExtensionContext
+): string {
+    const ext = path.extname(sourcePath);
+    const baseName = path.basename(sourcePath, ext);
+    const uniqueName =
+        `${baseName}-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+    const targetDir = serverCopyDir(context);
+    const targetPath = path.join(targetDir, uniqueName);
+
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.copyFileSync(sourcePath, targetPath);
+
+    if (process.platform !== "win32") {
+        const stat = fs.statSync(sourcePath);
+        fs.chmodSync(targetPath, stat.mode);
+    }
+
+    return targetPath;
+}
+
+function getServerExecutable(
+    context: vscode.ExtensionContext
+): { executable: Executable; sourcePath?: string } {
     const config = vscode.workspace.getConfiguration("nerd");
     const configuredPath = config.get<string>("languageServer.path", "").trim();
     const args = config.get<string[]>("languageServer.args", ["lsp"]);
-    const command =
-        configuredPath || findWorkspaceServer() || findUserServer() || "nerd";
+    const sourcePath =
+        configuredPath || findWorkspaceServer() || findUserServer();
+    const command = sourcePath
+        ? stageServerExecutable(sourcePath, context)
+        : "nerd";
 
-    return { command, args };
+    return {
+        executable: { command, args },
+        sourcePath,
+    };
 }
 
-export function activate(
-    context: vscode.ExtensionContext
-): Thenable<void> | undefined {
-    outputChannel = vscode.window.createOutputChannel("Nerd Language Server");
-    context.subscriptions.push(outputChannel);
+function disposeServerWatcher() {
+    serverWatcher?.close();
+    serverWatcher = undefined;
+}
 
-    const serverExecutable = getServerExecutable();
-    outputChannel.appendLine(
+function scheduleRestart(reason: string) {
+    if (!clientContext) {
+        return;
+    }
+
+    outputChannel?.appendLine(`Scheduling server restart: ${reason}`);
+
+    if (restartTimer) {
+        clearTimeout(restartTimer);
+    }
+
+    restartTimer = setTimeout(() => {
+        restartTimer = undefined;
+        void restartLanguageServer(reason);
+    }, 250);
+}
+
+function watchServerSource(sourcePath: string | undefined) {
+    disposeServerWatcher();
+
+    if (!sourcePath) {
+        return;
+    }
+
+    try {
+        const watchDir = path.dirname(sourcePath);
+        const watchName = path.basename(sourcePath);
+        serverWatcher = fs.watch(watchDir, (_eventType, filename) => {
+            if (!filename || filename.toString() === watchName) {
+                scheduleRestart(`detected change in ${sourcePath}`);
+            }
+        });
+    } catch (error) {
+        outputChannel?.appendLine(
+            `Failed to watch server executable ${sourcePath}: ${String(error)}`
+        );
+    }
+}
+
+async function stopLanguageServer() {
+    disposeServerWatcher();
+
+    if (restartTimer) {
+        clearTimeout(restartTimer);
+        restartTimer = undefined;
+    }
+
+    if (client) {
+        const currentClient = client;
+        client = undefined;
+        await currentClient.stop();
+    }
+
+    cleanupLaunchedServer();
+}
+
+async function startLanguageServer(context: vscode.ExtensionContext) {
+    const { executable: serverExecutable, sourcePath } = getServerExecutable(
+        context
+    );
+
+    launchedServerPath =
+        sourcePath && serverExecutable.command !== "nerd"
+            ? serverExecutable.command
+            : undefined;
+
+    outputChannel?.appendLine(
         `Starting server: ${serverExecutable.command} ${serverExecutable.args?.join(" ") ?? ""}`.trim()
     );
 
@@ -91,18 +207,52 @@ export function activate(
         outputChannel,
     };
 
-    client = new LanguageClient(
+    const nextClient = new LanguageClient(
         "nerdLanguageServer",
         "Nerd Language Server",
         serverOptions,
         clientOptions
     );
 
-    context.subscriptions.push(client);
-    return client.start();
+    client = nextClient;
+    watchServerSource(sourcePath);
+    await nextClient.start();
+}
+
+async function restartLanguageServer(reason: string) {
+    if (!clientContext) {
+        return;
+    }
+
+    outputChannel?.appendLine(`Restarting server: ${reason}`);
+    await stopLanguageServer();
+    await startLanguageServer(clientContext);
+}
+
+export function activate(
+    context: vscode.ExtensionContext
+): Thenable<void> | undefined {
+    clientContext = context;
+    outputChannel = vscode.window.createOutputChannel("Nerd Language Server");
+    context.subscriptions.push(outputChannel);
+    context.subscriptions.push({
+        dispose: () => {
+            disposeServerWatcher();
+            cleanupLaunchedServer();
+        },
+    });
+
+    fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
+    try {
+        fs.rmSync(serverCopyDir(context), { recursive: true, force: true });
+    } catch {
+        // Ignore stale or locked files from previous sessions.
+    }
+
+    return startLanguageServer(context);
 }
 
 export function deactivate(): Thenable<void> | undefined {
     outputChannel?.appendLine("Stopping server");
-    return client?.stop();
+    return stopLanguageServer();
 }
