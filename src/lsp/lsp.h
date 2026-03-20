@@ -32,7 +32,9 @@ typedef struct {
 
 //------------------------------------------------------------------------------
 
+void lsp_logv(cstr format, va_list args);
 void lsp_log(cstr format, ...);
+void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...);
 int  lsp_run(void);
 
 //------------------------------------------------------------------------------

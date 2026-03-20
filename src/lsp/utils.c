@@ -10,6 +10,13 @@
 
 //------------------------------------------------------------------------------
 
+void lsp_logv(cstr format, va_list args)
+{
+    epr("[lsp] ");
+    eprv(format, args);
+    epr("\n");
+}
+
 void lsp_log(cstr format, ...)
 {
     va_list args;
@@ -49,4 +56,15 @@ void lsp_send_response(Arena* arena, const JsonValue* response)
     fprintf(stdout, "Content-Length: %zu\r\n\r\n", output.count);
     fwrite(output.data, 1, output.count, stdout);
     fflush(stdout);
+}
+
+void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    lsp_logv(format, args);
+    va_end(args);
+
+    json_object_set_null(response, arena, "result");
+    lsp_send_response(arena, response);
 }
