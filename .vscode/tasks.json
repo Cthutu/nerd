@@ -6,10 +6,11 @@
             "type": "process",
             "command": "just",
             "args": [
-                "build"
+                // "build"
                 // "test"
                 // "run",
                 // "map-demo",
+                "install"
             ],
             "group": {
                 "kind": "build",
