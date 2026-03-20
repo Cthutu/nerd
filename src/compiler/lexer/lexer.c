@@ -79,4 +79,52 @@ void lex_done(Lexer* lexer)
 }
 
 //------------------------------------------------------------------------------
+
+internal usize token_end_offset(const Lexer* lexer, Token* token)
+{
+    switch (token->kind) {
+    case TK_Integer:
+        {
+            usize index = token->offset;
+            while (index < lexer->source_code.count &&
+                   lexer->source_code.data[index] >= '0' &&
+                   lexer->source_code.data[index] <= '9') {
+                index++;
+            }
+            return index;
+        }
+    default:
+        ASSERT(false, "Unknown token kind: %d", token->kind);
+        return token->offset + 1; // Fallback to prevent infinite loops
+    }
+}
+
+//------------------------------------------------------------------------------
+
+Token* lex_find(const Lexer* lexer, usize offset, u32* token_end)
+{
+    // Binary search for the token that spans the offset
+    isize left  = 0;
+    isize right = (isize)array_count(lexer->tokens) - 1;
+
+    while (left <= right) {
+        isize  mid   = left + (right - left) / 2;
+        Token* token = &lexer->tokens[mid];
+        usize  start = token->offset;
+        usize  end   = token_end_offset(lexer, token);
+
+        if (offset < start) {
+            right = mid - 1;
+        } else if (offset >= end) {
+            left = mid + 1;
+        } else {
+            *token_end = (u32)end;
+            return token; // Found the token that spans the offset
+        }
+    }
+
+    return NULL; // No token found at the given offset
+}
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
