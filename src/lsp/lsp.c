@@ -90,6 +90,7 @@ struct {
     {"initialize", lsp_handle_initialise},
     {"initialized", lsp_handle_initialised},
     {"textDocument/didOpen", lsp_handle_did_open},
+    {"textDocument/didChange", lsp_handle_did_change},
     {"textDocument/didClose", lsp_handle_did_close},
     {"textDocument/hover", lsp_handle_hover},
 };
@@ -160,10 +161,10 @@ int lsp_run(void)
 
         string     method_str = json_string(method);
         LspMessage msg        = {
-                   .id      = id,
-                   .method  = method_str,
-                   .message = message,
-                   .arena   = &message_arena,
+            .id      = id,
+            .method  = method_str,
+            .message = message,
+            .arena   = &message_arena,
         };
 
         if (method && string_eq_cstr(method_str, "shutdown")) {

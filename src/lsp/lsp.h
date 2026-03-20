@@ -65,6 +65,7 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message);
 void lsp_handle_shutdown(LspState* state, const LspMessage* message);
 void lsp_handle_initialised(LspState* state, const LspMessage* message);
 void lsp_handle_did_open(LspState* state, const LspMessage* message);
+void lsp_handle_did_change(LspState* state, const LspMessage* message);
 void lsp_handle_did_close(LspState* state, const LspMessage* message);
 void lsp_handle_hover(LspState* state, const LspMessage* message);
 
