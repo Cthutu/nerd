@@ -48,6 +48,24 @@ internal u8* map_value_at(Map* map, usize index)
     return map->values + index * map->value_size;
 }
 
+internal string map_key_dup(string key)
+{
+    if (key.count == 0) {
+        return (string){0};
+    }
+
+    u8* copy = ARRAY_ALLOC(u8, key.count);
+    memcpy(copy, key.data, key.count);
+    return string_from(copy, key.count);
+}
+
+internal void map_key_free(string key)
+{
+    if (key.data != NULL) {
+        ARRAY_FREE(key.data);
+    }
+}
+
 internal usize map_capacity(const Map* map)
 {
     if (map->hashes == NULL) {
@@ -203,6 +221,13 @@ void _map_init(Map* map, usize value_size, usize initial_capacity)
 
 void map_done(Map* map)
 {
+    usize capacity = map_capacity(map);
+    for (usize i = 0; i < capacity; i++) {
+        if (map->hashes[i] != 0) {
+            map_key_free(map->keys[i]);
+        }
+    }
+
     ARRAY_FREE(map->hashes);
     ARRAY_FREE(map->keys);
     ARRAY_FREE(map->values);
@@ -214,6 +239,12 @@ void map_clear(Map* map)
     usize capacity = map_capacity(map);
     if (capacity == 0) {
         return;
+    }
+
+    for (usize i = 0; i < capacity; i++) {
+        if (map->hashes[i] != 0) {
+            map_key_free(map->keys[i]);
+        }
     }
 
     memset(map->hashes, 0, capacity * sizeof(u64));
@@ -286,6 +317,8 @@ bool map_delete(Map* map, string key)
         }
 
         if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
+            map_key_free(map->keys[idx]);
+
             usize hole = idx;
             usize next = (idx + 1) & mask;
 
@@ -329,7 +362,7 @@ void* map_entry(Map* map, string key, bool* out_created)
         u64 slot_hash = map->hashes[idx];
         if (slot_hash == 0) {
             map->hashes[idx] = hash;
-            map->keys[idx]   = key;
+            map->keys[idx]   = map_key_dup(key);
             memset(map_value_at(map, idx), 0, map->value_size);
             map->count++;
             if (out_created != NULL) {
