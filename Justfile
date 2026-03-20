@@ -59,9 +59,9 @@ uninstall:
     -code --uninstall-extension {{ext_id}}
 
 install:
-    just build-release nerd
+    just build nerd
     mkdir -p {{user_bin_dir}}
-    cp _bin/nerd {{user_bin_nerd}}
+    cp _bin/nerd-debug {{user_bin_nerd}}
     just uninstall
     just package
-    code --install-extension {{src_dir}}/{{vsix}}
+    code --install-extension {{src_dir}}/{{vsix}} --force

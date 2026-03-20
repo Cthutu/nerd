@@ -72,10 +72,10 @@ void lsp_done(LspState* state)
 {
     MapIter iter = LspDocumentMap_iter();
 
-    string key;
-    Arena* value;
+    string       key;
+    LspDocument* value;
     while (LspDocumentMap_next(&state->documents, &iter, &key, &value)) {
-        arena_done(value);
+        lsp_document_done(value);
     }
 
     LspDocumentMap_done(&state->documents);
@@ -91,6 +91,7 @@ struct {
     {"initialized", lsp_handle_initialised},
     {"textDocument/didOpen", lsp_handle_did_open},
     {"textDocument/didClose", lsp_handle_did_close},
+    {"textDocument/hover", lsp_handle_hover},
 };
 
 //------------------------------------------------------------------------------
@@ -159,10 +160,10 @@ int lsp_run(void)
 
         string     method_str = json_string(method);
         LspMessage msg        = {
-            .id      = id,
-            .method  = method_str,
-            .message = message,
-            .arena   = &message_arena,
+                   .id      = id,
+                   .method  = method_str,
+                   .message = message,
+                   .arena   = &message_arena,
         };
 
         if (method && string_eq_cstr(method_str, "shutdown")) {
@@ -230,6 +231,7 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     JsonValue* capabilities = json_new_object(arena);
     json_object_set_number(
         capabilities, arena, "textDocumentSync", 1); // Full sync
+    json_object_set_bool(capabilities, arena, "hoverProvider", true);
 
     json_object_set_object(result, "serverInfo", server_info);
     json_object_set(result, "capabilities", capabilities);

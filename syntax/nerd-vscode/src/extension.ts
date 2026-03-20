@@ -11,6 +11,25 @@ import {
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 
+function newestExistingPath(paths: string[]): string | undefined {
+    let newestPath: string | undefined;
+    let newestMtime = -Infinity;
+
+    for (const candidate of paths) {
+        try {
+            const stat = fs.statSync(candidate);
+            if (stat.mtimeMs > newestMtime) {
+                newestMtime = stat.mtimeMs;
+                newestPath = candidate;
+            }
+        } catch {
+            // Ignore missing or inaccessible candidates.
+        }
+    }
+
+    return newestPath;
+}
+
 function findWorkspaceServer(): string | undefined {
     const exeNames =
         process.platform === "win32"
@@ -18,11 +37,12 @@ function findWorkspaceServer(): string | undefined {
             : ["nerd-debug", "nerd"];
 
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
-        for (const exeName of exeNames) {
-            const candidate = path.join(folder.uri.fsPath, "_bin", exeName);
-            if (fs.existsSync(candidate)) {
-                return candidate;
-            }
+        const candidates = exeNames.map((exeName) =>
+            path.join(folder.uri.fsPath, "_bin", exeName)
+        );
+        const newestCandidate = newestExistingPath(candidates);
+        if (newestCandidate) {
+            return newestCandidate;
         }
     }
 

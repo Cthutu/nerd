@@ -38,6 +38,16 @@ Lexer lex(string source_code)
             continue;
         }
 
+        if (c == '-' && i + 1 < source_code.count &&
+            source_code.data[i + 1] == '-') {
+            // Skip comment until end of line
+            i += 2;
+            while (i < source_code.count && source_code.data[i] != '\n') {
+                i++;
+            }
+            continue;
+        }
+
         if (c >= '0' && c <= '9') {
             usize start = i;
             u64   total = 0;
