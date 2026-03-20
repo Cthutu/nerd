@@ -23,7 +23,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     }
 
     if (text && text->kind == JSON_STRING) {
-        string text_str = json_string(text);
+        string text_str      = json_string(text);
 
         bool         new_doc = false;
         LspDocument* doc =
@@ -45,6 +45,14 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
         doc->lexer = lex(document_copy_str);
         lsp_log("Lexed %zu tokens", array_count(doc->lexer.tokens));
 
+        for (usize i = 0; i < array_count(doc->lexer.tokens); i++) {
+            Token* token = &doc->lexer.tokens[i];
+            lsp_log("Token %zu: kind=\"" STRINGP "\", offset=%u",
+                    i,
+                    STRINGV(token_kind_to_string(token->kind)),
+                    token->offset);
+        }
+
         lsp_log("Document content:\n" STRINGP, STRINGV(document_copy_str));
     }
 }
@@ -58,7 +66,7 @@ void lsp_document_done(LspDocument* doc)
 void lsp_handle_did_close(LspState* state, const LspMessage* message)
 {
     JsonValue* uri = json_get_cstr(message->message, "params.textDocument.uri");
-    string uri_str;
+    string     uri_str;
 
     if (uri && uri->kind == JSON_STRING) {
         uri_str = json_string(uri);
