@@ -30,11 +30,6 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
         return;
     }
 
-    lsp_log("Hover requested for document: " STRINGP " at line %zu, column %zu",
-            STRINGV(json_string(document_name)),
-            (usize)line->number,
-            (usize)column->number);
-
     // Obtain the source code for the file
     LspDocument* doc =
         LspDocumentMap_find(&state->documents, json_string(document_name));
@@ -69,11 +64,7 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
     u32    token_end;
     Token* token = lex_find(&doc->lexer, offset, &token_end);
     if (!token) {
-        lsp_fail(response,
-                 message->arena,
-                 "No token found at offset %zu in document " STRINGP,
-                 offset,
-                 STRINGV(json_string(document_name)));
+        lsp_cancel(response, message->arena);
         return;
     }
 

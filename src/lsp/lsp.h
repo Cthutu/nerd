@@ -34,8 +34,15 @@ typedef struct {
 
 void lsp_logv(cstr format, va_list args);
 void lsp_log(cstr format, ...);
+
+// Sends a null response and logs a message.
 void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...);
-int  lsp_run(void);
+
+// Sends a null reponse, but not message is logged.
+void lsp_cancel(JsonValue* response, Arena* arena);
+
+// The main loop for the LSP server
+int lsp_run(void);
 
 //------------------------------------------------------------------------------
 // LSP lifecycle

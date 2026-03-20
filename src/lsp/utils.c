@@ -58,13 +58,17 @@ void lsp_send_response(Arena* arena, const JsonValue* response)
     fflush(stdout);
 }
 
+void lsp_cancel(JsonValue* response, Arena* arena)
+{
+    json_object_set_null(response, arena, "result");
+    lsp_send_response(arena, response);
+}
+
 void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...)
 {
     va_list args;
     va_start(args, format);
     lsp_logv(format, args);
     va_end(args);
-
-    json_object_set_null(response, arena, "result");
-    lsp_send_response(arena, response);
+    lsp_cancel(response, arena);
 }
