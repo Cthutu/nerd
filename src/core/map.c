@@ -48,22 +48,21 @@ internal u8* map_value_at(Map* map, usize index)
     return map->values + index * map->value_size;
 }
 
-internal string map_key_dup(string key)
+internal string map_key_dup(Map* map, string key)
 {
     if (key.count == 0) {
         return (string){0};
     }
 
-    u8* copy = ARRAY_ALLOC(u8, key.count);
+    u8* copy = (u8*)arena_alloc(&map->key_arena, key.count);
     memcpy(copy, key.data, key.count);
     return string_from(copy, key.count);
 }
 
-internal void map_key_free(string key)
+internal bool map_should_compact(const Map* map)
 {
-    if (key.data != NULL) {
-        ARRAY_FREE(key.data);
-    }
+    return map->key_bytes_dead >= KB(4) &&
+           map->key_bytes_dead > map->key_bytes_live;
 }
 
 internal usize map_capacity(const Map* map)
@@ -154,23 +153,27 @@ map_insert_hashed(Map* map, u64 hash, string key, const void* value)
     }
 }
 
-internal void map_rehash(Map* map, usize new_capacity)
+internal void map_rebuild(Map* map, usize new_capacity)
 {
     Map fresh        = {0};
     fresh.value_size = map->value_size;
+    arena_init(&fresh.key_arena);
     map_reserve(&fresh, new_capacity);
 
     usize capacity = map_capacity(map);
     for (usize i = 0; i < capacity; i++) {
         if (map->hashes[i] != 0) {
+            string key = map_key_dup(&fresh, map->keys[i]);
             map_insert_hashed(
-                &fresh, map->hashes[i], map->keys[i], map_value_at(map, i));
+                &fresh, map->hashes[i], key, map_value_at(map, i));
+            fresh.key_bytes_live += key.count;
         }
     }
 
     ARRAY_FREE(map->hashes);
     ARRAY_FREE(map->keys);
     ARRAY_FREE(map->values);
+    arena_done(&map->key_arena);
 
     *map = fresh;
 }
@@ -184,7 +187,14 @@ internal void map_maybe_grow(Map* map)
     }
 
     if ((map->count + 1) * 4 >= capacity * 3) {
-        map_rehash(map, capacity << 1);
+        map_rebuild(map, capacity << 1);
+    }
+}
+
+internal void map_maybe_compact(Map* map)
+{
+    if (map_should_compact(map)) {
+        map_rebuild(map, map_capacity(map));
     }
 }
 
@@ -216,21 +226,16 @@ void _map_init(Map* map, usize value_size, usize initial_capacity)
 {
     memset(map, 0, sizeof(*map));
     map->value_size = value_size;
+    arena_init(&map->key_arena);
     map_reserve(map, initial_capacity);
 }
 
 void map_done(Map* map)
 {
-    usize capacity = map_capacity(map);
-    for (usize i = 0; i < capacity; i++) {
-        if (map->hashes[i] != 0) {
-            map_key_free(map->keys[i]);
-        }
-    }
-
     ARRAY_FREE(map->hashes);
     ARRAY_FREE(map->keys);
     ARRAY_FREE(map->values);
+    arena_done(&map->key_arena);
     memset(map, 0, sizeof(*map));
 }
 
@@ -241,15 +246,12 @@ void map_clear(Map* map)
         return;
     }
 
-    for (usize i = 0; i < capacity; i++) {
-        if (map->hashes[i] != 0) {
-            map_key_free(map->keys[i]);
-        }
-    }
-
     memset(map->hashes, 0, capacity * sizeof(u64));
     memset(map->keys, 0, capacity * sizeof(string));
     map->count = 0;
+    map->key_bytes_live = 0;
+    map->key_bytes_dead = 0;
+    arena_reset(&map->key_arena);
 }
 
 bool map_insert(Map* map, string key, const void* value)
@@ -317,7 +319,8 @@ bool map_delete(Map* map, string key)
         }
 
         if (slot_hash == hash && map_key_eq(map->keys[idx], key)) {
-            map_key_free(map->keys[idx]);
+            map->key_bytes_live -= map->keys[idx].count;
+            map->key_bytes_dead += map->keys[idx].count;
 
             usize hole = idx;
             usize next = (idx + 1) & mask;
@@ -337,6 +340,7 @@ bool map_delete(Map* map, string key)
             map->keys[hole]   = (string){0};
             memset(map_value_at(map, hole), 0, map->value_size);
             map->count--;
+            map_maybe_compact(map);
             return true;
         }
 
@@ -351,7 +355,15 @@ void* map_entry(Map* map, string key, bool* out_created)
         *out_created = false;
     }
 
+    void* existing = map_find(map, key);
+    if (existing != NULL) {
+        return existing;
+    }
+
     map_maybe_grow(map);
+
+    string owned_key = map_key_dup(map, key);
+    map->key_bytes_live += owned_key.count;
 
     u64   hash = map_store_hash(key);
     usize mask = map_capacity(map) - 1;
@@ -362,7 +374,7 @@ void* map_entry(Map* map, string key, bool* out_created)
         u64 slot_hash = map->hashes[idx];
         if (slot_hash == 0) {
             map->hashes[idx] = hash;
-            map->keys[idx]   = map_key_dup(key);
+            map->keys[idx]   = owned_key;
             memset(map_value_at(map, idx), 0, map->value_size);
             map->count++;
             if (out_created != NULL) {
@@ -392,10 +404,11 @@ void* map_entry(Map* map, string key, bool* out_created)
                 u64    old_hash  = map->hashes[idx];
                 string old_key   = map->keys[idx];
                 map->hashes[idx] = hash;
-                map->keys[idx]   = key;
+                map->keys[idx]   = owned_key;
 
                 hash = old_hash;
                 key  = old_key;
+                owned_key = old_key;
 
                 idx  = (idx + 1) & mask;
                 dist = slot_dist + 1;
@@ -404,7 +417,7 @@ void* map_entry(Map* map, string key, bool* out_created)
                     slot_hash = map->hashes[idx];
                     if (slot_hash == 0) {
                         map->hashes[idx] = hash;
-                        map->keys[idx]   = key;
+                        map->keys[idx]   = owned_key;
                         memcpy(map_value_at(map, idx), carry_value, map->value_size);
                         map->count++;
                         if (out_created != NULL) {
@@ -437,9 +450,10 @@ void* map_entry(Map* map, string key, bool* out_created)
                         old_hash        = map->hashes[idx];
                         old_key         = map->keys[idx];
                         map->hashes[idx] = hash;
-                        map->keys[idx]   = key;
+                        map->keys[idx]   = owned_key;
                         hash             = old_hash;
                         key              = old_key;
+                        owned_key        = old_key;
                         dist             = slot_dist;
                     }
 

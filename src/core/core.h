@@ -660,6 +660,9 @@ typedef struct {
     u8*     values;
     usize   count;
     usize   value_size;
+    Arena   key_arena;
+    usize   key_bytes_live;
+    usize   key_bytes_dead;
 } Map;
 
 typedef struct {
