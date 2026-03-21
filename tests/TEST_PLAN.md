@@ -1,6 +1,6 @@
 # Test Plan
 
-This document records the intended design for the `nerd test` command so the
+This document records the intended design for the `nerd test` command, so the
 implementation can proceed in staged changes without losing context.
 
 ## Goals
@@ -58,8 +58,8 @@ output names.
 
 ### 1. Backend output configuration
 
-The current backend is hard-coded to write `_output.c` and compile `_output`.
-This should be refactored so callers can provide output settings.
+The backend should be configuration-driven, so callers can provide explicit
+artifact/output paths instead of relying on fixed names.
 
 Planned direction:
 
@@ -77,7 +77,7 @@ Planned direction:
 The `build` command should later support:
 
 - `--ir`
-  Write an `.ir` file next to the source stem.
+  Write a `.ir` file next to the source stem.
 - `--cgen`
   Write a `.c` file next to the source stem.
 
@@ -104,7 +104,7 @@ The existing dump functions can remain for interactive debugging.
 
 ### 4. Shell process capture
 
-The shell API should be extended so tests can execute generated programs and
+The shell API should be extended, so tests can execute generated programs and
 capture:
 
 - exit code
@@ -148,7 +148,7 @@ Important comparison rules:
 
 - Stdout comparison should be exact, including trailing newline handling.
 - Empty expected IR or C sections should not be treated as a normal pass. The
-  generated output should be shown so the test can be completed.
+  generated output should be shown, so the test can be completed.
 
 ## Data Structures
 
@@ -184,7 +184,7 @@ For test files, artifacts should use the `.t` file stem:
 
 The executable should use the same stem without an extension where practical.
 
-## Cleanup Policy
+## Clean-up Policy
 
 Before running the test suite:
 
@@ -199,7 +199,7 @@ After each test:
   - generated `.c`
   - executable
   - any intermediate artifacts
-- If the test fails, keep those files so the failure can be inspected locally
+- If the test fails, keep those files, so the failure can be inspected locally
 
 This gives the following workflow:
 
@@ -220,11 +220,11 @@ Planned repo hygiene changes:
 
 ### Phase 1
 
-- Refactor backend output handling so file names are configuration-driven
+- Refactor backend output handling, so file names are configuration-driven
 - Add stable IR and C render helpers
 - Extend shell API to capture stdout/stderr/exit code
 - Add a diff module for readable text mismatches
-- Implement language test discovery, parsing, execution, comparison, and cleanup
+- Implement language test discovery, parsing, execution, comparison, and clean-up
 
 ### Phase 2
 
