@@ -410,125 +410,391 @@ internal void cli_print_named_options(Array(CliFlag) flags,
     arena_done(&arena);
 }
 
-void cli_init(CliParser* parser, cstr program_name, cstr summary)
+internal void cli_print_positionals(Array(CliParam) params, cstr title)
 {
-    *parser              = (CliParser){0};
-    parser->program_name = program_name;
-    parser->summary      = summary;
+    Array(TableColumn) columns = NULL;
+    array_push(
+        columns,
+        (TableColumn){.title = "Parameter", .colour = ANSI_BOLD_CYAN},
+        (TableColumn){.title = "Kind", .colour = ANSI_BOLD_YELLOW},
+        (TableColumn){.title = "Description", .colour = ANSI_BOLD_GREEN});
+
+    Table table = {0};
+    table_init(&table, columns, .title = title);
+    array_free(columns);
+
+    bool has_rows = false;
+    for (usize i = 0; i < array_count(params); i++) {
+        CliParam* param = &params[i];
+        if (param->kind != CLI_PARAM_POSITIONAL) {
+            continue;
+        }
+
+        string kind = param->required ? s("required") : s("optional");
+        TableCell row[] = {table_cell_string(param->name),
+                           table_cell_string(kind),
+                           table_cell_string(param->description)};
+        table_add_row(&table, row);
+        has_rows = true;
+    }
+
+    if (has_rows) {
+        table_print(&table);
+    }
+    table_done(&table);
+}
+
+internal string cli_command_usage(const CliParser* parser,
+                                  Arena*           arena,
+                                  const CliCommand* command)
+{
+    string usage = string_format(
+        arena, STRINGP, STRINGV(parser->program_name));
+
+    if (array_count(parser->root_flags) > 0 || array_count(parser->root_params) > 0) {
+        usage = string_format(arena, STRINGP " [global options]", STRINGV(usage));
+    }
+
+    usage = string_format(
+        arena, STRINGP " " STRINGP, STRINGV(usage), STRINGV(command->name));
+
+    if (array_count(command->flags) > 0 || array_count(command->params) > 0) {
+        usage = string_format(arena, STRINGP " [options]", STRINGV(usage));
+    }
+
+    for (usize i = 0; i < array_count(command->params); i++) {
+        CliParam* param = &command->params[i];
+        if (param->kind != CLI_PARAM_POSITIONAL) {
+            continue;
+        }
+
+        if (param->required) {
+            usage = string_format(
+                arena, STRINGP " <" STRINGP ">", STRINGV(usage), STRINGV(param->name));
+        } else {
+            usage = string_format(
+                arena, STRINGP " [" STRINGP "]", STRINGV(usage), STRINGV(param->name));
+        }
+    }
+
+    return usage;
+}
+
+internal JsonValue* cli_parse_error(const CliParser* parser,
+                                    Arena*           arena,
+                                    cstr             format,
+                                    ...)
+{
+    UNUSED(parser);
+
+    va_list args;
+    va_start(args, format);
+    string message = string_formatv(arena, format, args);
+    va_end(args);
+
+    JsonValue* result = json_new_object(arena);
+    json_object_set_bool(result, arena, "ok", false);
+    json_object_set_bool(result, arena, "help_requested", false);
+    json_object_set_string(result, arena, "error", message);
+    return result;
+}
+
+internal void cli_require_no_extra_positionals(const CliCommand* command,
+                                               usize             positional_index)
+{
+    usize positional_count = cli_count_positionals(command);
+    if (positional_index > positional_count) {
+        kill("Too many positional arguments for command " STRINGP ".",
+             STRINGV(command->name));
+    }
+}
+
+void cli_init(CliParser* parser, const JsonValue* schema)
+{
+    ASSERT(parser != NULL, "CliParser cannot be NULL");
+    ASSERT(schema && schema->kind == JSON_OBJECT,
+           "CLI schema must be a JSON object");
+
+    *parser = (CliParser){0};
+
+    parser->program_name = cli_json_required_string(schema, "program");
+    parser->summary      = cli_json_optional_string(schema, "summary", s(""));
+
+    cli_schema_load_flags(&parser->root_flags, json_object_get_cstr(schema, "flags"));
+    cli_schema_load_params(&parser->root_params, json_object_get_cstr(schema, "params"));
+
+    JsonValue* commands = json_object_get_cstr(schema, "commands");
+    ASSERT(commands && commands->kind == JSON_ARRAY,
+           "CLI schema field 'commands' must be an array");
+
+    for (usize i = 0; i < array_count(commands->array.values); i++) {
+        JsonValue* value = commands->array.values[i];
+        ASSERT(value && value->kind == JSON_OBJECT,
+               "CLI schema commands must be objects");
+
+        CliCommand command = {
+            .name    = cli_json_required_string(value, "name"),
+            .summary = cli_json_optional_string(value, "summary", s("")),
+            .flags   = NULL,
+            .params  = NULL,
+        };
+
+        cli_schema_load_flags(&command.flags, json_object_get_cstr(value, "flags"));
+        cli_schema_load_params(&command.params, json_object_get_cstr(value, "params"));
+        array_push(parser->commands, command);
+    }
+
+    cli_validate_parser(parser);
 }
 
 void cli_done(CliParser* parser)
 {
     array_free(parser->root_flags);
+    array_free(parser->root_params);
 
     for (usize i = 0; i < array_count(parser->commands); i++) {
         array_free(parser->commands[i].flags);
+        array_free(parser->commands[i].params);
     }
+
     array_free(parser->commands);
     *parser = (CliParser){0};
 }
 
-void cli_add_root_flag(CliParser* parser,
-                       char       short_name,
-                       cstr       long_name,
-                       cstr       description,
-                       bool*      out_value)
+JsonValue* cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
 {
-    cli_add_flag(
-        &parser->root_flags, short_name, long_name, description, out_value);
-}
+    JsonValue* result       = json_new_object(arena);
+    JsonValue* global_flags = json_new_object(arena);
+    JsonValue* global_params = json_new_object(arena);
+    JsonValue* positionals  = json_new_array(arena);
 
-usize cli_add_command(CliParser* parser, cstr name, cstr summary)
-{
-    ASSERT(name != NULL && name[0] != '\0', "Command must have a name");
-    ASSERT(cli_find_command_index(parser, name) == -1,
-           "Duplicate command '%s'",
-           name);
+    json_object_set_bool(result, arena, "ok", true);
+    json_object_set_bool(result, arena, "help_requested", false);
+    json_object_set_object(result, "global_flags", global_flags);
+    json_object_set_object(result, "global_params", global_params);
+    json_object_set_array(result, "positionals", positionals);
 
-    usize index = array_count(parser->commands);
-    array_push(parser->commands,
-               (CliCommand){.name    = name,
-                            .summary = summary ? summary : "",
-                            .flags   = NULL});
-    return index;
-}
-
-void cli_add_command_flag(CliParser* parser,
-                          usize      command_index,
-                          char       short_name,
-                          cstr       long_name,
-                          cstr       description,
-                          bool*      out_value)
-{
-    ASSERT(command_index < array_count(parser->commands),
-           "Invalid command index: %zu",
-           command_index);
-
-    CliCommand* command = &parser->commands[command_index];
-    cli_add_flag(
-        &command->flags, short_name, long_name, description, out_value);
-}
-
-CliParseResult cli_parse(CliParser* parser, int argc, char** argv)
-{
-    CliParseResult result = {.help_requested = false, .command_index = -1};
+    JsonValue* command_result = NULL;
+    const CliCommand* current_command = NULL;
+    usize positional_index = 0;
 
     for (int i = 1; i < argc; i++) {
         cstr arg = argv[i];
 
         if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
-            result.help_requested = true;
+            json_object_set_bool(result, arena, "help_requested", true);
             continue;
         }
 
         if (arg[0] == '-' && arg[1] == '-') {
-            cstr name = arg + 2;
+    cstr option       = arg + 2;
+    cstr option_value = NULL;
+    string option_name = s(option);
+    char*  equals      = strchr(option, '=');
+    if (equals) {
+        option_name = string_from((u8*)option, (usize)(equals - option));
+        option_value = equals + 1;
+    }
 
-            CliFlag* flag = NULL;
-            if (result.command_index >= 0) {
-                CliCommand* command = &parser->commands[result.command_index];
-                flag                = cli_find_long_flag(command->flags, name);
-            }
-            if (!flag) {
-                flag = cli_find_long_flag(parser->root_flags, name);
-            }
-            if (!flag) {
-                kill("Unknown flag '%s'. Use --help to list options.", arg);
+    CliFlag* root_flag = NULL;
+    for (usize flag_index = 0; flag_index < array_count(parser->root_flags);
+         flag_index++) {
+        if (string_eq(parser->root_flags[flag_index].long_name, option_name)) {
+            root_flag = &parser->root_flags[flag_index];
+            break;
+        }
+    }
+    if (root_flag) {
+        cli_set_json_bool(global_flags, arena, root_flag->long_name, true);
+        continue;
+    }
+
+    CliParam* root_param = NULL;
+    for (usize param_index = 0; param_index < array_count(parser->root_params);
+         param_index++) {
+        if (parser->root_params[param_index].kind == CLI_PARAM_NAMED &&
+            string_eq(parser->root_params[param_index].long_name, option_name)) {
+            root_param = &parser->root_params[param_index];
+            break;
+        }
+    }
+    if (root_param) {
+        if (!option_value) {
+            ASSERT(i + 1 < argc,
+                           "Missing value for option '--%s'",
+                           option);
+                    option_value = argv[++i];
+                }
+                cli_set_json_string(
+                    global_params, arena, root_param->name, s(option_value));
+                continue;
             }
 
-            *flag->out_value = true;
-            continue;
+            ASSERT(current_command != NULL,
+                   "Unknown option '--%s'. Use --help to list options.",
+                   option);
+
+    CliFlag* command_flag = NULL;
+    for (usize flag_index = 0; flag_index < array_count(current_command->flags);
+         flag_index++) {
+        if (string_eq(current_command->flags[flag_index].long_name, option_name)) {
+            command_flag = &current_command->flags[flag_index];
+            break;
+        }
+    }
+    if (command_flag) {
+        cli_set_json_bool(
+            json_object_get_cstr(command_result, "flags"),
+                    arena,
+                    command_flag->long_name,
+                    true);
+                continue;
+            }
+
+    CliParam* command_param = NULL;
+    for (usize param_index = 0;
+         param_index < array_count(current_command->params);
+         param_index++) {
+        if (current_command->params[param_index].kind == CLI_PARAM_NAMED &&
+            string_eq(current_command->params[param_index].long_name, option_name)) {
+            command_param = &current_command->params[param_index];
+            break;
+        }
+    }
+    if (command_param) {
+        if (!option_value) {
+            ASSERT(i + 1 < argc,
+                           "Missing value for option '--%s'",
+                           option);
+                    option_value = argv[++i];
+                }
+                cli_set_json_string(
+                    json_object_get_cstr(command_result, "params"),
+                    arena,
+                    command_param->name,
+                    s(option_value));
+                continue;
+            }
+
+            kill("Unknown option '--" STRINGP "'. Use --help to list options.",
+                 STRINGV(option_name));
         }
 
         if (arg[0] == '-' && arg[1] != '\0' && arg[2] == '\0') {
-            char name = arg[1];
+            char option = arg[1];
 
-            CliFlag* flag = NULL;
-            if (result.command_index >= 0) {
-                CliCommand* command = &parser->commands[result.command_index];
-                flag                = cli_find_short_flag(command->flags, name);
-            }
-            if (!flag) {
-                flag = cli_find_short_flag(parser->root_flags, name);
-            }
-            if (!flag) {
-                kill("Unknown flag '%s'. Use --help to list options.", arg);
+            CliFlag* root_flag = cli_find_short_flag(parser->root_flags, option);
+            if (root_flag) {
+                cli_set_json_bool(global_flags, arena, root_flag->long_name, true);
+                continue;
             }
 
-            *flag->out_value = true;
-            continue;
+            CliParam* root_param = cli_find_short_param(parser->root_params, option);
+            if (root_param) {
+                ASSERT(i + 1 < argc, "Missing value for option '-%c'", option);
+                cli_set_json_string(
+                    global_params, arena, root_param->name, s(argv[++i]));
+                continue;
+            }
+
+            ASSERT(current_command != NULL,
+                   "Unknown option '-%c'. Use --help to list options.",
+                   option);
+
+            CliFlag* command_flag =
+                cli_find_short_flag(current_command->flags, option);
+            if (command_flag) {
+                cli_set_json_bool(
+                    json_object_get_cstr(command_result, "flags"),
+                    arena,
+                    command_flag->long_name,
+                    true);
+                continue;
+            }
+
+            CliParam* command_param =
+                cli_find_short_param(current_command->params, option);
+            if (command_param) {
+                ASSERT(i + 1 < argc, "Missing value for option '-%c'", option);
+                cli_set_json_string(
+                    json_object_get_cstr(command_result, "params"),
+                    arena,
+                    command_param->name,
+                    s(argv[++i]));
+                continue;
+            }
+
+            kill("Unknown option '-%c'. Use --help to list options.", option);
         }
 
         isize command_index = cli_find_command_index(parser, arg);
         if (command_index >= 0) {
-            if (result.command_index >= 0) {
+            if (current_command) {
                 kill("Only one command can be used at a time. Got '%s'.", arg);
             }
-            result.command_index = command_index;
+
+            current_command = &parser->commands[command_index];
+            positional_index = 0;
+
+            command_result = json_new_object(arena);
+            json_object_set_string(command_result, arena, "name", current_command->name);
+            json_object_set_object(command_result, "flags", json_new_object(arena));
+            json_object_set_object(command_result, "params", json_new_object(arena));
+            json_object_set_array(command_result, "positionals", json_new_array(arena));
+            json_object_set_object(result, "command", command_result);
             continue;
         }
 
-        kill("Unknown argument '%s'. Use --help to list options.", arg);
+        if (!current_command) {
+            kill("Unknown argument '%s'. Use --help to list options.", arg);
+        }
+
+        CliParam* positional = cli_next_positional_param(current_command, &positional_index);
+        if (!positional) {
+            kill("Too many positional arguments for command " STRINGP ".",
+                 STRINGV(current_command->name));
+        }
+
+        JsonValue* command_params = json_object_get_cstr(command_result, "params");
+        JsonValue* command_positionals =
+            json_object_get_cstr(command_result, "positionals");
+        cli_set_json_string(command_params, arena, positional->name, s(arg));
+        json_array_push(command_positionals, json_new_string(arena, s(arg)));
+        json_array_push(positionals, json_new_string(arena, s(arg)));
+    }
+
+    if (!current_command) {
+        JsonValue* help_requested = json_object_get_cstr(result, "help_requested");
+        if (help_requested && help_requested->kind == JSON_BOOL &&
+            json_bool(help_requested)) {
+            return result;
+        }
+
+        return cli_parse_error(
+            parser, arena, "Missing command. Use --help to list commands.");
+    }
+
+    cli_require_no_extra_positionals(current_command, positional_index);
+
+    for (usize i = 0; i < array_count(current_command->params); i++) {
+        CliParam* param = &current_command->params[i];
+        JsonValue* value =
+            json_object_get(json_object_get_cstr(command_result, "params"), param->name);
+        if (param->required && !value) {
+            kill("Missing required %s parameter " STRINGP " for command " STRINGP ".",
+                 cli_param_kind_label(param->kind),
+                 STRINGV(param->name),
+                 STRINGV(current_command->name));
+        }
+    }
+
+    for (usize i = 0; i < array_count(parser->root_params); i++) {
+        CliParam* param = &parser->root_params[i];
+        JsonValue* value = json_object_get(global_params, param->name);
+        if (param->required && !value) {
+            kill("Missing required global parameter " STRINGP ".",
+                 STRINGV(param->name));
+        }
     }
 
     return result;
