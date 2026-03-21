@@ -8,7 +8,7 @@
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_build(const NerdConfig* config)
+int compiler_cmd_build(const NerdBuildConfig* config)
 {
     compiler_cmd_print_source_overview(config->source);
 

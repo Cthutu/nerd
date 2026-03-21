@@ -12,17 +12,17 @@
 
 //------------------------------------------------------------------------------
 
-typedef enum {
-    NERD_COMMAND_BUILD,
-    NERD_COMMAND_BENCHMARK,
-    NERD_COMMAND_MILLION,
-    NERD_COMMAND_LSP,
-} NerdCommand;
+typedef struct {
+    string source;
+} NerdBuildConfig;
 
 typedef struct {
-    NerdCommand command;
-    string      source;
-} NerdConfig;
+    string source;
+} NerdBenchmarkConfig;
+
+typedef struct {
+    bool reserved;
+} NerdMillionConfig;
 
 //------------------------------------------------------------------------------
 
@@ -53,8 +53,8 @@ void         back_end_benchmark(const FrontEndState* front_end_results,
 void compiler_dump(const FrontEndState* front_end_results,
                    const BackEndState*  back_end_results);
 
-int compiler_cmd_build(const NerdConfig* config);
-int compiler_cmd_benchmark(const NerdConfig* config);
-int compiler_cmd_million(const NerdConfig* config);
+int compiler_cmd_build(const NerdBuildConfig* config);
+int compiler_cmd_benchmark(const NerdBenchmarkConfig* config);
+int compiler_cmd_million(const NerdMillionConfig* config);
 
 //------------------------------------------------------------------------------

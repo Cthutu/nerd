@@ -8,7 +8,7 @@
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_benchmark(const NerdConfig* config)
+int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
 {
     compiler_cmd_print_source_overview(config->source);
 

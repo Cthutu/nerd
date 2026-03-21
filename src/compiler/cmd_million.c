@@ -23,7 +23,7 @@ internal string compiler_cmd_make_million_lines_source(Arena* arena)
     return string_from(data, total_bytes);
 }
 
-int compiler_cmd_million(const NerdConfig* config)
+int compiler_cmd_million(const NerdMillionConfig* config)
 {
     UNUSED(config);
 
