@@ -130,6 +130,14 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "output",
+                                            "named",
+                                            "output",
+                                            "o",
+                                            "Output binary path",
+                                            false));
         json_array_push(
             commands,
             nerd_cli_make_command(
@@ -237,9 +245,37 @@ nerd_cli_flag_bool(const JsonValue* cli_result, cstr path, bool fallback)
 internal NerdBuildConfig
 nerd_build_config_from_json(const JsonValue* cli_result)
 {
+    Arena* source_arena = &temp_arena;
+    string source_arg =
+        nerd_cli_param_string(cli_result, "command.params.source", s("42"));
+    string source_path     = {0};
+    string source_text     = source_arg;
+
+    char source_cstr[4096] = {0};
+    ASSERT(source_arg.count < sizeof(source_cstr),
+           "Source path too long for CLI handling");
+    memcpy(source_cstr, source_arg.data, source_arg.count);
+    source_cstr[source_arg.count] = '\0';
+
+    if (path_exists(source_cstr) && !path_is_directory(source_cstr)) {
+        FileMap map       = {0};
+        string  file_text = filemap_load(source_cstr, &map);
+        ASSERT(file_text.data != NULL,
+               "Failed to load source file: %s",
+               source_cstr);
+
+        u8* copy = (u8*)arena_alloc(source_arena, file_text.count);
+        memcpy(copy, file_text.data, file_text.count);
+        source_text = string_from(copy, file_text.count);
+        source_path = string_format(source_arena, "%s", source_cstr);
+        filemap_unload(&map);
+    }
+
     return (NerdBuildConfig){
-        .source =
-            nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+        .source      = source_text,
+        .source_path = source_path,
+        .output_path = nerd_cli_param_string(
+            cli_result, "command.params.output", (string){0}),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
     };

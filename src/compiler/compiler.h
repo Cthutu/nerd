@@ -14,6 +14,8 @@
 
 typedef struct {
     string source;
+    string source_path;
+    string output_path;
     bool   emit_ir;
     bool   emit_c;
 } NerdBuildConfig;
