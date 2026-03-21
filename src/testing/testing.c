@@ -192,20 +192,20 @@ internal void testing_collect_language_tests(Arena* arena,
     dir_iter_done(&iter);
 }
 
-internal void testing_cleanup_generated_files(cstr artifact_stem)
+internal void testing_cleanup_generated_files(cstr artifact_root)
 {
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr ir_path  = path_replace_extension(&arena, artifact_stem, ".ir");
-    cstr c_path   = path_replace_extension(&arena, artifact_stem, ".c");
-    cstr exe_path = artifact_stem;
+    cstr ir_path  = path_replace_extension(&arena, artifact_root, ".ir");
+    cstr c_path   = path_replace_extension(&arena, artifact_root, ".c");
+    cstr exe_path = path_replace_extension(&arena, artifact_root, ".out");
 
     path_remove(ir_path);
     path_remove(c_path);
     path_remove(exe_path);
 #if OS_WINDOWS
-    path_remove(path_replace_extension(&arena, artifact_stem, ".exe"));
+    path_remove(path_replace_extension(&arena, artifact_root, ".exe"));
 #endif
 
     arena_done(&arena);
@@ -227,7 +227,8 @@ internal void testing_cleanup_generated_tree(cstr directory)
         if (is_directory) {
             testing_cleanup_generated_tree(child_path);
         } else if (path_has_extension(s(child_path), ".ir") ||
-                   path_has_extension(s(child_path), ".c")) {
+                   path_has_extension(s(child_path), ".c") ||
+                   path_has_extension(s(child_path), ".out")) {
             path_remove(child_path);
         }
 
@@ -282,12 +283,16 @@ internal bool testing_run_language_test(const LanguageTest* test)
     Arena artifact_arena = {0};
     arena_init(&artifact_arena);
 
-    cstr artifact_stem =
+    cstr artifact_root =
         path_replace_extension(&artifact_arena, test->path, "");
-    testing_cleanup_generated_files(artifact_stem);
+    testing_cleanup_generated_files(artifact_root);
 
     NerdArtifactConfig artifacts = {
-        .output_stem    = artifact_stem,
+        .binary_path =
+            path_replace_extension(&artifact_arena, artifact_root, ".out"),
+        .ir_path =
+            path_replace_extension(&artifact_arena, artifact_root, ".ir"),
+        .c_path = path_replace_extension(&artifact_arena, artifact_root, ".c"),
         .emit_ir_file   = true,
         .emit_c_file    = true,
         .compile_binary = true,
@@ -304,10 +309,9 @@ internal bool testing_run_language_test(const LanguageTest* test)
         cgen_render(&back_results.cgen, &output_arena));
 
 #if OS_WINDOWS
-    cstr exe_path =
-        path_replace_extension(&output_arena, artifact_stem, ".exe");
+    cstr exe_path = artifacts.binary_path;
 #else
-    cstr exe_path = artifact_stem;
+    cstr exe_path = artifacts.binary_path;
 #endif
     string      run_command = string_format(&output_arena, "\"%s\"", exe_path);
     ShellResult run_result =
@@ -346,7 +350,7 @@ internal bool testing_run_language_test(const LanguageTest* test)
     front_end_results_done(&front_results);
 
     if (passed) {
-        testing_cleanup_generated_files(artifact_stem);
+        testing_cleanup_generated_files(artifact_root);
     }
 
     arena_done(&output_arena);
