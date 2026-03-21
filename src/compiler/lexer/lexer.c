@@ -52,7 +52,8 @@ bool lex(NerdSource source, Lexer* lexer)
                 last_total = total;
                 total      = total * 10 + (source_code.data[i] - '0');
                 if (total < last_total) {
-                    return error_0101_integer_literal_too_large(source, start);
+                    ErrorSpan span = {.start = start, .end = i + 1};
+                    return error_0101_integer_literal_too_large(source, span);
                 }
 
                 i++;
@@ -61,6 +62,20 @@ bool lex(NerdSource source, Lexer* lexer)
             array_push(lexer->tokens,
                        (Token){.kind = TK_Integer, .offset = (u32)start});
             array_push(lexer->integers, total);
+
+            //
+            // Check to make sure we don't have an alpha character following
+            //
+
+            if (i < source_code.count &&
+                ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
+                 (source_code.data[i] >= 'A' && source_code.data[i] <= 'Z'))) {
+                return error_0103_invalid_number_literal(
+                    source,
+                    (ErrorSpan){.start = start, .end = i + 1},
+                    source_code.data[i]);
+            }
+
         } else {
             return error_0100_unexpected_character(source, i, (char)c);
         }

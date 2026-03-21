@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <compiler/source.h>
+#include <compiler/compiler.h>
 #include <core/core.h>
 
 //------------------------------------------------------------------------------
@@ -57,9 +57,17 @@ bool error_ice(const char* format, ...);
 //------------------------------------------------------------------------------
 // Lexer errors
 
+typedef struct {
+    usize start;
+    usize end;
+} ErrorSpan;
+
 bool error_0100_unexpected_character(NerdSource source, usize offset, char c);
-bool error_0101_integer_literal_too_large(NerdSource source, usize offset);
+bool error_0101_integer_literal_too_large(NerdSource source, ErrorSpan span);
 bool error_0102_file_too_large(NerdSource source);
+bool error_0103_invalid_number_literal(NerdSource source,
+                                       ErrorSpan  span,
+                                       char       invalid_char);
 
 //------------------------------------------------------------------------------
 // Low-level error system
@@ -76,11 +84,6 @@ typedef enum {
 } ErrorKind;
 
 typedef struct {
-    usize start;
-    usize end;
-} ErrorSpan;
-
-typedef struct {
     ErrorRefKind ref_kind;
     ErrorSpan    span; // Byte span in the source code
     string       message;
@@ -91,22 +94,18 @@ typedef struct {
     u16        code; // 4-digit error code
     string     error_message;
     NerdSource source;
-    usize      primary_offset;
+    ErrorSpan  span;
     Array(ErrorRef) references;
     Array(string) notes;
     Array(string) help_messages;
 } ErrorInfo;
 
-ErrorInfo error_init(
-    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...);
+ErrorInfo
+error_init(u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...);
 ErrorInfo warning_init(
-    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...);
-void error_add_reference(ErrorInfo*   error_info,
-                         ErrorRefKind kind,
-                         usize        offset,
-                         usize        length,
-                         cstr         format,
-                         ...);
+    u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...);
+void error_add_reference(
+    ErrorInfo* error_info, ErrorRefKind kind, ErrorSpan span, cstr format, ...);
 void error_add_note(ErrorInfo* error_info, cstr format, ...);
 void error_add_help(ErrorInfo* error_info, cstr format, ...);
 

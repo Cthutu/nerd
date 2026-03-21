@@ -83,49 +83,45 @@ void error_system_reset(void) { arena_reset(&g_error_arena); }
 internal ErrorInfo error_info_init(ErrorKind  kind,
                                    u16        code,
                                    NerdSource source,
-                                   usize      primary_offset,
+                                   ErrorSpan  span,
                                    cstr       error_format,
                                    va_list    args)
 {
     string error_message = string_formatv(&g_error_arena, error_format, args);
 
     return (ErrorInfo){
-        .kind           = kind,
-        .code           = code,
-        .error_message  = error_message,
-        .source         = source,
-        .primary_offset = primary_offset,
+        .kind          = kind,
+        .code          = code,
+        .error_message = error_message,
+        .source        = source,
+        .span          = span,
     };
 }
 
-ErrorInfo error_init(
-    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...)
+ErrorInfo
+error_init(u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...)
 {
     va_list args;
     va_start(args, error_format);
     ErrorInfo error_info = error_info_init(
-        ERROR_KIND_ERROR, code, source, primary_offset, error_format, args);
+        ERROR_KIND_ERROR, code, source, span, error_format, args);
     va_end(args);
     return error_info;
 }
 
 ErrorInfo warning_init(
-    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...)
+    u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...)
 {
     va_list args;
     va_start(args, error_format);
     ErrorInfo error_info = error_info_init(
-        ERROR_KIND_WARNING, code, source, primary_offset, error_format, args);
+        ERROR_KIND_WARNING, code, source, span, error_format, args);
     va_end(args);
     return error_info;
 }
 
-void error_add_reference(ErrorInfo*   error_info,
-                         ErrorRefKind kind,
-                         usize        offset,
-                         usize        length,
-                         cstr         format,
-                         ...)
+void error_add_reference(
+    ErrorInfo* error_info, ErrorRefKind kind, ErrorSpan span, cstr format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -135,12 +131,8 @@ void error_add_reference(ErrorInfo*   error_info,
     array_push(error_info->references,
                (ErrorRef){
                    .ref_kind = kind,
-                   .span =
-                       (ErrorSpan){
-                           .start = offset,
-                           .end   = offset + MAX(length, 1),
-                       },
-                   .message = message,
+                   .span     = span,
+                   .message  = message,
                });
 }
 

@@ -190,7 +190,7 @@ internal void error_print_snippet(const ErrorInfo* error_info)
     u32 primary_line = 0;
     u32 primary_col  = 0;
     if (!lex_offset_to_line_col(error_info->source,
-                                error_info->primary_offset,
+                                error_info->span.start,
                                 &primary_line,
                                 &primary_col)) {
         return;
@@ -285,7 +285,7 @@ internal void error_normal_render(const ErrorInfo* error_info)
     u32  line;
     u32  column;
     bool got_line_and_column = lex_offset_to_line_col(
-        error_info->source, error_info->primary_offset, &line, &column);
+        error_info->source, error_info->span.start, &line, &column);
 
     if (got_line_and_column) {
         eprn(" --> " STRINGP ":%u:%u",
@@ -353,7 +353,7 @@ internal void error_test_render(const ErrorInfo* error_info)
     u32 primary_line = 0;
     u32 primary_col  = 0;
     if (lex_offset_to_line_col(error_info->source,
-                               error_info->primary_offset,
+                               error_info->span.start,
                                &primary_line,
                                &primary_col)) {
         JsonValue* location = json_new_object(&temp_arena);

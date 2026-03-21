@@ -7,10 +7,14 @@
 
 #pragma once
 
-#include <compiler/source.h>
 #include <timing/timing.h>
 
 //------------------------------------------------------------------------------
+
+typedef struct {
+    string source;
+    string source_path;
+} NerdSource;
 
 typedef struct {
     NerdSource source;
