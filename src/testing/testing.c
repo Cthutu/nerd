@@ -619,7 +619,7 @@ internal bool testing_run_error_test(const ErrorTest* test)
     bool          passed        = true;
 
     error_system_clear_last_rendered();
-    error_system_set_test_mode(true);
+    error_system_set_mode(ERROR_RENDER_TEST);
     error_system_set_emit_output(false);
 
     bool front_ok = front_end(
@@ -657,7 +657,7 @@ internal bool testing_run_error_test(const ErrorTest* test)
         passed = false;
     }
 
-    error_system_set_test_mode(false);
+    error_system_set_mode(ERROR_RENDER_NORMAL);
     error_system_set_emit_output(true);
     error_system_clear_last_rendered();
     back_end_results_done(&back_results);

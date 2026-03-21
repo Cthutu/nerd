@@ -8,17 +8,17 @@
 
 //------------------------------------------------------------------------------
 
-global_variable bool   g_error_test_mode      = false;
+global_variable ErrorRenderMode g_error_mode  = ERROR_RENDER_NORMAL;
 global_variable bool   g_error_emit_output    = true;
 global_variable Arena  g_error_arena          = {0};
 global_variable Arena  g_error_rendered_arena = {0};
 global_variable string g_error_last_rendered  = {0};
 
-void error_system_init(bool test_mode)
+void error_system_init(ErrorRenderMode mode)
 {
     arena_init(&g_error_arena);
     arena_init(&g_error_rendered_arena);
-    g_error_test_mode     = test_mode;
+    g_error_mode          = mode;
     g_error_emit_output   = true;
     g_error_last_rendered = (string){0};
 }
@@ -29,14 +29,14 @@ void error_system_done(void)
     arena_done(&g_error_rendered_arena);
     g_error_arena          = (Arena){0};
     g_error_rendered_arena = (Arena){0};
-    g_error_test_mode      = false;
+    g_error_mode           = ERROR_RENDER_NORMAL;
     g_error_emit_output    = true;
     g_error_last_rendered  = (string){0};
 }
 
-void error_system_set_test_mode(bool test_mode)
+void error_system_set_mode(ErrorRenderMode mode)
 {
-    g_error_test_mode = test_mode;
+    g_error_mode = mode;
 }
 
 void error_system_set_emit_output(bool emit_output)
@@ -64,7 +64,7 @@ void error_system_store_last_rendered(string rendered)
     g_error_last_rendered = string_from(copy, rendered.count);
 }
 
-bool error_system_is_test_mode(void) { return g_error_test_mode; }
+ErrorRenderMode error_system_mode(void) { return g_error_mode; }
 bool error_system_should_emit_output(void) { return g_error_emit_output; }
 
 bool error_ice(const char* format, ...)

@@ -340,7 +340,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
     arena_init(&arena);
-    error_system_init(false);
+    error_system_init(ERROR_RENDER_NORMAL);
 
     JsonValue* schema = nerd_cli_schema(&arena);
     CliParser  parser = {0};

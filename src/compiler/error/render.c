@@ -18,6 +18,20 @@ internal void error_info_done(ErrorInfo* error_info)
     *error_info = (ErrorInfo){0};
 }
 
+internal u32 error_lsp_severity(ErrorKind kind)
+{
+    switch (kind) {
+    case ERROR_KIND_ERROR:
+        return 1;
+    case ERROR_KIND_WARNING:
+        return 2;
+    case ERROR_KIND_INTERNAL:
+        return 1;
+    default:
+        return 1;
+    }
+}
+
 internal cstr error_kind_label(ErrorKind kind)
 {
     switch (kind) {
@@ -412,15 +426,114 @@ internal void error_test_render(const ErrorInfo* error_info)
     json_done(root);
 }
 
+internal JsonValue* error_make_lsp_range(Arena* arena,
+                                         NerdSource source,
+                                         ErrorSpan  span)
+{
+    JsonValue* range = json_new_object(arena);
+    JsonValue* start = json_new_object(arena);
+    JsonValue* end   = json_new_object(arena);
+
+    u32 start_line = 0;
+    u32 start_col  = 0;
+    u32 end_line   = 0;
+    u32 end_col    = 0;
+
+    lex_offset_to_line_col(source, span.start, &start_line, &start_col);
+
+    usize end_offset = span.end;
+    if (end_offset <= span.start) {
+        end_offset = MIN(span.start + 1, source.source.count);
+    }
+    lex_offset_to_line_col(source, end_offset, &end_line, &end_col);
+
+    json_object_set_number(start, arena, "line", (f64)start_line);
+    json_object_set_number(start, arena, "character", (f64)start_col);
+    json_object_set_number(end, arena, "line", (f64)end_line);
+    json_object_set_number(end, arena, "character", (f64)end_col);
+
+    json_object_set_object(range, "start", start);
+    json_object_set_object(range, "end", end);
+    return range;
+}
+
+internal void error_diagnostics_render(const ErrorInfo* error_info)
+{
+    JsonValue* diagnostics = json_new_array(&temp_arena);
+    JsonValue* diagnostic  = json_new_object(&temp_arena);
+
+    json_object_set_object(diagnostic,
+                           "range",
+                           error_make_lsp_range(
+                               &temp_arena, error_info->source, error_info->span));
+    json_object_set_number(diagnostic,
+                           &temp_arena,
+                           "severity",
+                           (f64)error_lsp_severity(error_info->kind));
+    json_object_set_string(diagnostic,
+                           &temp_arena,
+                           "code",
+                           string_format(&temp_arena, "%04u", error_info->code));
+    json_object_set_cstr(diagnostic, &temp_arena, "source", "nerd");
+    json_object_set_string(
+        diagnostic, &temp_arena, "message", error_info->error_message);
+
+    JsonValue* related = json_new_array(&temp_arena);
+    for (usize i = 0; i < array_count(error_info->references); i++) {
+        const ErrorRef* ref = &error_info->references[i];
+        if (ref->ref_kind == ERROR_REF_PRIMARY) {
+            continue;
+        }
+
+        JsonValue* info     = json_new_object(&temp_arena);
+        JsonValue* location = json_new_object(&temp_arena);
+        json_object_set_string(location,
+                               &temp_arena,
+                               "uri",
+                               error_info->source.source_path.count > 0
+                                   ? error_info->source.source_path
+                                   : s("<input>"));
+        json_object_set_object(location,
+                               "range",
+                               error_make_lsp_range(
+                                   &temp_arena, error_info->source, ref->span));
+        json_object_set_object(info, "location", location);
+        json_object_set_string(info, &temp_arena, "message", ref->message);
+        json_array_push(related, info);
+    }
+    if (array_count(json_array(related).values) > 0) {
+        json_object_set_array(diagnostic, "relatedInformation", related);
+    } else {
+        json_done(related);
+    }
+
+    json_array_push(diagnostics, diagnostic);
+
+    string rendered = json_stringify(
+        &temp_arena, diagnostics, .pretty = false, .indent = 2);
+    error_system_store_last_rendered(rendered);
+    if (error_system_should_emit_output()) {
+        eprn(STRINGP, STRINGV(rendered));
+    }
+    json_done(diagnostics);
+}
+
 //------------------------------------------------------------------------------
 // Error rendering
 
 void error_render(ErrorInfo* error_info)
 {
-    if (error_system_is_test_mode()) {
+    switch (error_system_mode()) {
+    case ERROR_RENDER_TEST:
         error_test_render(error_info);
-    } else {
+        break;
+    case ERROR_RENDER_DIAGNOSTICS:
+        error_diagnostics_render(error_info);
+        break;
+    case ERROR_RENDER_NORMAL:
+    default:
         error_normal_render(error_info);
+        break;
     }
 
     error_info_done(error_info);

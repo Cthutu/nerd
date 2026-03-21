@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <lsp/lsp.h>
+#include <compiler/error/error.h>
 
 //------------------------------------------------------------------------------
 
@@ -36,7 +37,27 @@ bool lsp_get_u64_param(const LspMessage* message,
 
 //------------------------------------------------------------------------------
 
-internal void lsp_lex_document(LspDocument* doc, string content)
+internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
+{
+    string diagnostics_json = error_system_last_rendered();
+    error_system_clear_last_rendered();
+
+    if (diagnostics_json.count == 0) {
+        return json_new_array(arena);
+    }
+
+    JsonParseResult parse_result = {0};
+    JsonValue*      diagnostics =
+        json_parse(arena, diagnostics_json, &parse_result);
+    if (!parse_result.ok || !diagnostics || diagnostics->kind != JSON_ARRAY) {
+        lsp_log("Failed to parse rendered diagnostics JSON");
+        return json_new_array(arena);
+    }
+
+    return diagnostics;
+}
+
+internal bool lsp_lex_document(LspDocument* doc, string uri, string content)
 {
     u8* document_copy = (u8*)arena_alloc(&doc->arena, content.count);
     memcpy(document_copy, content.data, content.count);
@@ -44,14 +65,22 @@ internal void lsp_lex_document(LspDocument* doc, string content)
     string document_copy_str = {.data = document_copy, .count = content.count};
 
     lsp_log("Lexing document...");
-    if (!lex(
-            (NerdSource){
-                .source      = document_copy_str,
-                .source_path = s(""),
-            },
-            &doc->lexer)) {
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_clear_last_rendered();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+    bool ok = lex((NerdSource){
+                      .source      = document_copy_str,
+                      .source_path = uri,
+                  },
+                  &doc->lexer);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    if (!ok) {
         lsp_log("Lexing failed for current document contents");
-        return;
+        return false;
     }
     lsp_log("Lexed %zu tokens", array_count(doc->lexer.tokens));
 
@@ -64,6 +93,7 @@ internal void lsp_lex_document(LspDocument* doc, string content)
     }
 
     lsp_log("Document content:\n" STRINGP, STRINGV(document_copy_str));
+    return true;
 }
 
 void lsp_handle_did_open(LspState* state, const LspMessage* message)
@@ -87,7 +117,10 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
         arena_reset(&doc->arena);
     }
 
-    lsp_lex_document(doc, text);
+    bool       ok          = lsp_lex_document(doc, uri, text);
+    JsonValue* diagnostics = ok ? json_new_array(message->arena)
+                                : lsp_parse_last_diagnostics(message->arena);
+    lsp_publish_diagnostics(message->arena, uri, diagnostics);
 }
 
 void lsp_handle_did_change(LspState* state, const LspMessage* message)
@@ -111,7 +144,10 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
         return;
     }
 
-    lsp_lex_document(doc, text);
+    bool       ok          = lsp_lex_document(doc, uri, text);
+    JsonValue* diagnostics = ok ? json_new_array(message->arena)
+                                : lsp_parse_last_diagnostics(message->arena);
+    lsp_publish_diagnostics(message->arena, uri, diagnostics);
 }
 
 void lsp_document_done(LspDocument* doc)
@@ -139,6 +175,7 @@ void lsp_handle_did_close(LspState* state, const LspMessage* message)
         return;
     }
 
+    lsp_publish_diagnostics(message->arena, uri_str, json_new_array(message->arena));
     lsp_document_done(doc);
     LspDocumentMap_delete(&state->documents, uri_str);
 }

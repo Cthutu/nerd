@@ -50,12 +50,32 @@ JsonValue* lsp_prepare_response(const LspMessage* message)
     return response;
 }
 
+JsonValue* lsp_prepare_notification(Arena* arena, string method)
+{
+    JsonValue* notification = json_new_object(arena);
+    json_object_set_string(notification, arena, "jsonrpc", s("2.0"));
+    json_object_set_string(notification, arena, "method", method);
+    return notification;
+}
+
 void lsp_send_response(Arena* arena, const JsonValue* response)
 {
     string output = json_stringify(arena, response, .pretty = false);
+    lsp_log("Sending message:\n" STRINGP, STRINGV(output));
     fprintf(stdout, "Content-Length: %zu\r\n\r\n", output.count);
     fwrite(output.data, 1, output.count, stdout);
     fflush(stdout);
+}
+
+void lsp_publish_diagnostics(Arena* arena, string uri, JsonValue* diagnostics)
+{
+    JsonValue* notification =
+        lsp_prepare_notification(arena, s("textDocument/publishDiagnostics"));
+    JsonValue* params        = json_new_object(arena);
+    json_object_set_string(params, arena, "uri", uri);
+    json_object_set_array(params, "diagnostics", diagnostics);
+    json_object_set_object(notification, "params", params);
+    lsp_send_response(arena, notification);
 }
 
 void lsp_cancel(JsonValue* response, Arena* arena)

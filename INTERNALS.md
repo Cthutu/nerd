@@ -201,6 +201,24 @@ Examples:
 This separation matters because tests need stable textual output, while command
 handlers often want richer terminal diagnostics.
 
+### Error system
+
+The compiler error system lives under `src/compiler/error`.
+
+Its central design is that compiler errors are assembled as structured
+`ErrorInfo` values and then projected into one of several render modes:
+
+- normal
+  Human-readable terminal diagnostics with code snippets and markers.
+- test
+  Pretty JSON used by compiler error tests.
+- diagnostics
+  LSP-oriented JSON diagnostics payloads.
+
+This means the compiler does not treat terminal output as the source of truth.
+The structured error data is the source of truth, and the CLI, test runner, and
+LSP each consume different renderings of the same underlying error.
+
 ### Command handlers
 
 Compiler CLI command handlers live in files such as:
@@ -239,7 +257,10 @@ stages do not depend on command-layer declarations.
 
 The test runner lives in `src/testing`.
 
-It currently focuses on language tests from `tests/language/*.t`.
+It currently covers:
+
+- language tests from `tests/language/*.t`
+- error tests from `tests/errors/*.e`
 
 Responsibilities:
 
@@ -248,6 +269,7 @@ Responsibilities:
 - run the compiler pipeline directly through `front_end()` and `back_end()`
 - execute compiled output
 - compare exit code, stdout, IR, and generated C
+- compare structured error JSON for failing compiler cases
 - print readable diffs for failures
 
 The test runner is intentionally built on the same compiler pipeline used by the
@@ -273,8 +295,20 @@ for inspection. `just clean` also removes them.
 The language server lives in `src/lsp`.
 
 This subsystem is separate from the CLI test/build path, but shares the same
-core support code and object/JSON utilities. If working on editor integration,
-this is the area to read after `src/nerd.c`.
+core support code, compiler lexer, and object/JSON utilities.
+
+At the moment, the LSP server keeps an in-memory document table and performs
+lexing on `didOpen` and `didChange`. Diagnostics are published immediately after
+each re-lex:
+
+- successful lexing publishes an empty diagnostics array to clear prior errors
+- failed lexing publishes diagnostics derived from the compiler error system's
+  diagnostics render mode
+- `didClose` clears diagnostics for that URI
+
+The LSP diagnostics path therefore reuses compiler error construction rather
+than duplicating diagnostic assembly inside the LSP layer. If working on editor
+integration, this is the area to read after `src/nerd.c`.
 
 ## Object and Table Utilities
 
@@ -337,7 +371,7 @@ The `tests` directory currently contains:
 - `tests/language`
   successful compile-and-run tests
 - `tests/errors`
-  planned error-focused tests
+  compiler error tests using expected JSON diagnostics
 
 The language test format is documented in
 [`tests/README.md`](/home/matt/nerd/tests/README.md).

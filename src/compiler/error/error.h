@@ -33,17 +33,23 @@
 //        error information as JSON.  This is used in the error tests.
 //------------------------------------------------------------------------------
 
-void   error_system_init(bool test_mode);
+typedef enum {
+    ERROR_RENDER_NORMAL,
+    ERROR_RENDER_TEST,
+    ERROR_RENDER_DIAGNOSTICS,
+} ErrorRenderMode;
+
+void   error_system_init(ErrorRenderMode mode);
 void   error_system_done(void);
-void   error_system_set_test_mode(bool test_mode);
+void   error_system_set_mode(ErrorRenderMode mode);
 void   error_system_set_emit_output(bool emit_output);
 void   error_system_clear_last_rendered(void);
 string error_system_last_rendered(void);
 void   error_system_store_last_rendered(string rendered);
 
 // These functions are used during rendering
-bool error_system_is_test_mode(void);
-bool error_system_should_emit_output(void);
+ErrorRenderMode error_system_mode(void);
+bool            error_system_should_emit_output(void);
 void error_system_reset(void);
 
 //------------------------------------------------------------------------------
