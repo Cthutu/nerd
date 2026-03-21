@@ -20,22 +20,15 @@ clean:
     rm -f syntax/nerd-vscode/package-lock.json
     rm -f syntax/nerd-vscode/*.vsix
 
-[linux]
 test: 
-    #!/bin/bash
-    just run-release nerd benchmark
-    ./_output
-    printf "\nReturn code: %d\n" $?
+    just run nerd test
 
 alias b := build
 alias br := build-release
 alias r := run
 alias rr := run-release
 alias c := clean
-
-[linux]
-t:
-    just test
+alias t := test
 
 #
 # Recipes for VS Code extension packaging / installation

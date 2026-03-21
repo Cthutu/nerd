@@ -7,10 +7,10 @@
             "command": "just",
             "args": [
                 // "build"
-                // "test"
+                "test"
                 // "run",
                 // "map-demo",
-                "install"
+                // "install"
             ],
             "group": {
                 "kind": "build",

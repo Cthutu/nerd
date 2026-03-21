@@ -24,6 +24,10 @@ typedef struct {
     bool reserved;
 } NerdMillionConfig;
 
+typedef struct {
+    bool reserved;
+} NerdTestConfig;
+
 //------------------------------------------------------------------------------
 
 typedef struct {
@@ -56,5 +60,6 @@ void compiler_dump(const FrontEndState* front_end_results,
 int compiler_cmd_build(const NerdBuildConfig* config);
 int compiler_cmd_benchmark(const NerdBenchmarkConfig* config);
 int compiler_cmd_million(const NerdMillionConfig* config);
+int compiler_cmd_test(const NerdTestConfig* config);
 
 //------------------------------------------------------------------------------

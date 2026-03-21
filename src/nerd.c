@@ -73,6 +73,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     //       "summary": "Generate 1,000,000 lines and build once"
     //     },
     //     {
+    //       "name": "test",
+    //       "summary": "Run the compiler test command"
+    //     },
+    //     {
     //       "name": "lsp",
     //       "summary": "Run the LSP server"
     //     }
@@ -115,6 +119,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                           "million",
                                           "Generate 1,000,000 lines and build once",
                                           NULL));
+    json_array_push(commands,
+                    nerd_cli_make_command(
+                        arena, "test", "Run the compiler test command", NULL));
     json_array_push(commands,
                     nerd_cli_make_command(
                         arena, "lsp", "Run the LSP server", NULL));
@@ -189,6 +196,12 @@ nerd_million_config_from_json(const JsonValue* cli_result)
 {
     UNUSED(cli_result);
     return (NerdMillionConfig){0};
+}
+
+internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result)
+{
+    UNUSED(cli_result);
+    return (NerdTestConfig){0};
 }
 
 internal int nerd_run_with_cli(int argc, char** argv)
@@ -273,6 +286,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
     } else if (string_eq_cstr(name, "million")) {
         NerdMillionConfig config = nerd_million_config_from_json(cli_result);
         result                   = compiler_cmd_million(&config);
+    } else if (string_eq_cstr(name, "test")) {
+        NerdTestConfig config = nerd_test_config_from_json(cli_result);
+        result                = compiler_cmd_test(&config);
     } else if (string_eq_cstr(name, "lsp")) {
         lsp_log("Launching nerd lsp");
         result = lsp_run();
