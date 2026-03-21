@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//> use: core intern compiler timing table cli lsp
+//> use: core intern compiler timing table cli lsp object
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
@@ -8,119 +8,290 @@
 
 //------------------------------------------------------------------------------
 
-internal NerdConfig parse_config(int argc, char** argv)
+internal JsonValue* nerd_cli_make_param(Arena* arena,
+                                        cstr   name,
+                                        cstr   kind,
+                                        cstr   description,
+                                        bool   required)
 {
-    bool is_lsp_mode = argc > 1 && strcmp(argv[1], "lsp") == 0;
+    JsonValue* param = json_new_object(arena);
+    json_object_set_cstr(param, arena, "name", name);
+    json_object_set_cstr(param, arena, "kind", kind);
+    json_object_set_cstr(param, arena, "description", description);
+    json_object_set_bool(param, arena, "required", required);
+    return param;
+}
 
-    //
-    // Show a table of all the arguments
-    //
+internal JsonValue*
+nerd_cli_make_command(Arena* arena, cstr name, cstr summary, JsonValue* params)
+{
+    JsonValue* command = json_new_object(arena);
+    json_object_set_cstr(command, arena, "name", name);
+    json_object_set_cstr(command, arena, "summary", summary);
+    if (params) {
+        json_object_set_array(command, "params", params);
+    }
+    return command;
+}
 
-    if (!is_lsp_mode) {
-        Table args_table           = {0};
-        Array(TableColumn) columns = 0;
-        array_push(columns,
-                   (TableColumn){.title = "Index", .colour = ANSI_CYAN},
-                   (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
-        table_init(&args_table, columns, .title = "Arguments");
-        array_free(columns);
+internal JsonValue* nerd_cli_schema(Arena* arena)
+{
+    JsonValue* schema   = json_new_object(arena);
+    JsonValue* commands = json_new_array(arena);
 
-        for (int i = 1; i < argc; i++) {
-            TableCell row[2] = {
-                table_cell_i32(i),
-                table_cell_string(s(argv[i])),
-            };
-            table_add_row(&args_table, row);
-        }
+    // Schema used by the `nerd` executable:
+    // {
+    //   "program": "nerd",
+    //   "summary": "Nerd compiler playground",
+    //   "commands": [
+    //     {
+    //       "name": "build",
+    //       "summary": "Run one normal build",
+    //       "params": [
+    //         {
+    //           "name": "source",
+    //           "kind": "positional",
+    //           "description": "Source snippet to compile",
+    //           "required": false
+    //         }
+    //       ]
+    //     },
+    //     {
+    //       "name": "benchmark",
+    //       "summary": "Run 10000 benchmark iterations",
+    //       "params": [
+    //         {
+    //           "name": "source",
+    //           "kind": "positional",
+    //           "description": "Source snippet to benchmark",
+    //           "required": false
+    //         }
+    //       ]
+    //     },
+    //     {
+    //       "name": "million",
+    //       "summary": "Generate 1,000,000 lines and build once"
+    //     },
+    //     {
+    //       "name": "lsp",
+    //       "summary": "Run the LSP server"
+    //     }
+    //   ]
+    // }
 
-        table_print(&args_table);
-        table_done(&args_table);
+    json_object_set_cstr(schema, arena, "program", "nerd");
+    json_object_set_cstr(schema, arena, "summary", "Nerd compiler playground");
+    json_object_set_array(schema, "commands", commands);
+
+    {
+        JsonValue* params = json_new_array(arena);
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "source",
+                                            "positional",
+                                            "Source snippet to compile",
+                                            false));
+        json_array_push(commands,
+                        nerd_cli_make_command(
+                            arena, "build", "Run one normal build", params));
     }
 
-    //
-    // Process command line arguments
-    //
+    {
+        JsonValue* params = json_new_array(arena);
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "source",
+                                            "positional",
+                                            "Source snippet to benchmark",
+                                            false));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "benchmark", "Run 10000 benchmark iterations", params));
+    }
 
-    NerdConfig config = {0};
+    json_array_push(commands,
+                    nerd_cli_make_command(arena,
+                                          "million",
+                                          "Generate 1,000,000 lines and build once",
+                                          NULL));
+    json_array_push(commands,
+                    nerd_cli_make_command(
+                        arena, "lsp", "Run the LSP server", NULL));
+
+    return schema;
+}
+
+internal void nerd_print_args_table(int argc, char** argv)
+{
+    Table args_table           = {0};
+    Array(TableColumn) columns = 0;
+    array_push(columns,
+               (TableColumn){.title = "Index", .colour = ANSI_CYAN},
+               (TableColumn){.title = "Argument", .colour = ANSI_GREEN});
+    table_init(&args_table, columns, .title = "Arguments");
+    array_free(columns);
+
+    for (int i = 1; i < argc; i++) {
+        TableCell row[2] = {
+            table_cell_i32(i),
+            table_cell_string(s(argv[i])),
+        };
+        table_add_row(&args_table, row);
+    }
+
+    table_print(&args_table);
+    table_done(&args_table);
+}
+
+internal isize nerd_find_command_index(const CliParser* parser, string command_name)
+{
+    for (usize i = 0; i < array_count(parser->commands); i++) {
+        if (string_eq(parser->commands[i].name, command_name)) {
+            return (isize)i;
+        }
+    }
+    return -1;
+}
+
+internal string nerd_cli_param_string(const JsonValue* cli_result,
+                                      cstr             path,
+                                      string           fallback)
+{
+    JsonValue* value = json_get_cstr(cli_result, path);
+    if (!value) {
+        return fallback;
+    }
+
+    ASSERT(value->kind == JSON_STRING,
+           "Expected CLI parse result field '%s' to be a string",
+           path);
+    return json_string(value);
+}
+
+internal NerdBuildConfig nerd_build_config_from_json(const JsonValue* cli_result)
+{
+    return (NerdBuildConfig){
+        .source = nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+    };
+}
+
+internal NerdBenchmarkConfig
+nerd_benchmark_config_from_json(const JsonValue* cli_result)
+{
+    return (NerdBenchmarkConfig){
+        .source = nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+    };
+}
+
+internal NerdMillionConfig
+nerd_million_config_from_json(const JsonValue* cli_result)
+{
+    UNUSED(cli_result);
+    return (NerdMillionConfig){0};
+}
+
+internal int nerd_run_with_cli(int argc, char** argv)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    JsonValue* schema = nerd_cli_schema(&arena);
     CliParser  parser = {0};
-    cli_init(&parser, "nerd", "Nerd compiler playground");
+    cli_init(&parser, schema);
 
-    usize build_command =
-        cli_add_command(&parser, "build", "Run one normal build");
-    usize benchmark_command =
-        cli_add_command(&parser, "benchmark", "Run 10000 benchmark iterations");
-    usize million_command = cli_add_command(
-        &parser, "million", "Generate 1,000,000 lines and build once");
-    usize lsp_command = cli_add_command(&parser, "lsp", "Run the LSP server");
+    JsonValue* cli_result = cli_parse(&parser, &arena, argc, argv);
+    JsonValue* command    = json_object_get_cstr(cli_result, "command");
+    JsonValue* help       = json_object_get_cstr(cli_result, "help_requested");
+    JsonValue* ok         = json_object_get_cstr(cli_result, "ok");
 
-    CliParseResult parse_result = cli_parse(&parser, argc, argv);
-    if (parse_result.help_requested) {
-        if (parse_result.command_index >= 0) {
-            cli_print_command_help(&parser, (usize)parse_result.command_index);
+    if (help && help->kind == JSON_BOOL && json_bool(help)) {
+        if (command && command->kind == JSON_OBJECT) {
+            JsonValue* command_name = json_object_get_cstr(command, "name");
+            if (command_name && command_name->kind == JSON_STRING) {
+                isize command_index =
+                    nerd_find_command_index(&parser, json_string(command_name));
+                if (command_index >= 0) {
+                    cli_print_command_help(&parser, (usize)command_index);
+                } else {
+                    cli_print_help(&parser);
+                }
+            } else {
+                cli_print_help(&parser);
+            }
         } else {
             cli_print_help(&parser);
         }
+
+        json_done(cli_result);
         cli_done(&parser);
-        exit(0);
+        json_done(schema);
+        arena_done(&arena);
+        return 0;
     }
 
-    if (parse_result.command_index < 0) {
+    if (!ok || ok->kind != JSON_BOOL || !json_bool(ok)) {
+        JsonValue* error = json_object_get_cstr(cli_result, "error");
         cli_print_help(&parser);
+        if (error && error->kind == JSON_STRING) {
+            string error_message = json_string(error);
+            json_done(cli_result);
+            cli_done(&parser);
+            json_done(schema);
+            arena_done(&arena);
+            kill("%.*s", STRINGV(error_message));
+        }
+
+        json_done(cli_result);
         cli_done(&parser);
-        kill("Missing command. Use --help to list commands.");
+        json_done(schema);
+        arena_done(&arena);
+        kill("CLI parse failed.");
     }
 
-    //
-    // Handle the commands
-    //
+    ASSERT(command && command->kind == JSON_OBJECT,
+           "CLI parse result must contain a command object");
 
-    usize command_index = (usize)parse_result.command_index;
-    if (command_index == build_command) {
-        config.command = NERD_COMMAND_BUILD;
-    } else if (command_index == benchmark_command) {
-        config.command = NERD_COMMAND_BENCHMARK;
-    } else if (command_index == million_command) {
-        config.command = NERD_COMMAND_MILLION;
-    } else if (command_index == lsp_command) {
-        config.command = NERD_COMMAND_LSP;
+    JsonValue* command_name = json_object_get_cstr(command, "name");
+    ASSERT(command_name && command_name->kind == JSON_STRING,
+           "CLI parse result command must contain a string name");
+
+    string name = json_string(command_name);
+    int    result = 1;
+
+    if (!string_eq_cstr(name, "lsp")) {
+        nerd_print_args_table(argc, argv);
+        dump_info();
+    }
+
+    if (string_eq_cstr(name, "build")) {
+        NerdBuildConfig config = nerd_build_config_from_json(cli_result);
+        result                 = compiler_cmd_build(&config);
+    } else if (string_eq_cstr(name, "benchmark")) {
+        NerdBenchmarkConfig config = nerd_benchmark_config_from_json(cli_result);
+        result                     = compiler_cmd_benchmark(&config);
+    } else if (string_eq_cstr(name, "million")) {
+        NerdMillionConfig config = nerd_million_config_from_json(cli_result);
+        result                   = compiler_cmd_million(&config);
+    } else if (string_eq_cstr(name, "lsp")) {
+        lsp_log("Launching nerd lsp");
+        result = lsp_run();
     } else {
+        json_done(cli_result);
         cli_done(&parser);
-        kill("Invalid command index: %zd", parse_result.command_index);
+        json_done(schema);
+        arena_done(&arena);
+        kill("Unhandled command " STRINGP, STRINGV(name));
     }
 
+    json_done(cli_result);
     cli_done(&parser);
-    return config;
+    json_done(schema);
+    arena_done(&arena);
+    return result;
 }
 
 //------------------------------------------------------------------------------
 // Entry point for the test.
 
-int run(int argc, char** argv)
-{
-    NerdConfig config = parse_config(argc, argv);
-    if (config.command != NERD_COMMAND_LSP) {
-        dump_info();
-    }
-    config.source = s("42");
-
-    int result    = 1;
-    switch (config.command) {
-    case NERD_COMMAND_BUILD:
-        result = compiler_cmd_build(&config);
-        break;
-    case NERD_COMMAND_BENCHMARK:
-        result = compiler_cmd_benchmark(&config);
-        break;
-    case NERD_COMMAND_MILLION:
-        result = compiler_cmd_million(&config);
-        break;
-    case NERD_COMMAND_LSP:
-        lsp_log("Launching nerd lsp");
-        result = lsp_run();
-        break;
-    default:
-        kill("Unhandled command");
-    }
-
-    return result;
-}
+int run(int argc, char** argv) { return nerd_run_with_cli(argc, argv); }
