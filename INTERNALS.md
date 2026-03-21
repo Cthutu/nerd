@@ -1,118 +1,146 @@
 # Internals
 
-This document is a living set of notes about the internal structure of the
-codebase. It is intended to preserve implementation context as the project
-evolves.
+## Purpose
 
-## Project Shape
+This document is a high-level guide to the current architecture of the codebase.
+It is intended to help a new reader understand how the project is organized,
+which subsystems exist, how they relate to one another, and where to start
+reading depending on the task.
 
-The repo is centered around a small compiler toolchain implemented in C under
-`src/`, with tests under `tests/` and a custom Python build script under
-`build/build.py`.
+It is not meant to duplicate source code or record small historical changes. If
+something is obvious from a local implementation, the source should remain the
+authoritative detail.
 
-Key top-level areas:
+## Overall Shape
 
-- `src/`
-  Main codebase.
-- `tests/`
-  Language and error test fixtures plus planning/docs.
-- `build/build.py`
-  Custom build orchestration. It discovers sources from `src/` and understands
-  module dependencies via `//> use:` and `//> def:` directives.
-- `nerd-src/`
-  Sample/source material for the Nerd language.
+The project is a small compiler toolchain implemented in C, with:
 
-## Entry Points
+- a command-line executable in `src/nerd.c`
+- shared infrastructure in `src/core`
+- compiler stages in `src/compiler`
+- a schema-driven CLI layer in `src/cli`
+- terminal presentation helpers in `src/table`
+- JSON/object support in `src/object`
+- a test runner in `src/testing`
+- an LSP server in `src/lsp`
+- tests and planning documents in `tests`
 
-- [`src/core/main.c`](/home/matt/nerd/src/core/main.c)
-  Generic process entry point calling `run(argc, argv)`.
-- [`src/nerd.c`](/home/matt/nerd/src/nerd.c)
-  CLI schema, CLI parsing, config extraction, and top-level dispatch for the
-  `nerd` executable.
+The build is driven by [`build/build.py`](/home/matt/nerd/build/build.py),
+which discovers source files automatically and resolves module dependencies from
+`//> use:` directives.
 
-The CLI layer is data-driven through the JSON-based parser in
-[`src/cli/cli.c`](/home/matt/nerd/src/cli/cli.c).
+## Reading Order
 
-## Module Layout
+For most tasks, the most useful reading order is:
 
-`src/` is organized by subsystem rather than by strict library/application
-split.
+1. [`src/nerd.c`](/home/matt/nerd/src/nerd.c)
+2. [`src/compiler/compiler.h`](/home/matt/nerd/src/compiler/compiler.h)
+3. [`src/compiler/front.c`](/home/matt/nerd/src/compiler/front.c)
+4. [`src/compiler/back.c`](/home/matt/nerd/src/compiler/back.c)
+5. the specific subsystem you are changing
 
-Important modules:
+If the task is about tests, read:
+
+1. [`tests/README.md`](/home/matt/nerd/tests/README.md)
+2. [`src/testing/testing.c`](/home/matt/nerd/src/testing/testing.c)
+3. [`src/testing/diff.c`](/home/matt/nerd/src/testing/diff.c)
+
+## Top-Level Execution Flow
+
+The process entry point is [`src/core/main.c`](/home/matt/nerd/src/core/main.c),
+which calls `run(argc, argv)`.
+
+For the main compiler executable:
+
+- [`src/nerd.c`](/home/matt/nerd/src/nerd.c) builds the CLI schema
+- the generic CLI parser parses `argc/argv` into JSON-like command data
+- `src/nerd.c` converts parsed values into command-specific config structs
+- dispatch then calls one of the command handlers from the compiler or LSP layer
+
+The `nerd` executable is therefore a thin orchestration layer. Most real work is
+done by subsystems beneath it.
+
+## Dependency Shape
+
+At a high level, the dependencies look like this:
 
 - `core`
-  Shared cross-platform utilities: memory, arrays, strings, output, time,
-  shell, file mapping, path handling, and directory iteration.
+  Foundation layer. Intended to be broadly reusable.
+- `object`, `table`
+  Built on `core`.
 - `cli`
-  Schema-driven command-line parser.
+  Built on `core`, `table`, and `object`.
 - `compiler`
-  Front-end, IR, back-end, benchmarks, command helpers, and code generation.
-- `table`
-  Terminal table rendering used for dumps and reporting.
-- `object`
-  JSON/object helpers used heavily by the CLI parser.
+  Built on `core` and compiler-specific submodules.
 - `testing`
-  Test discovery, parsing, execution, and diff reporting.
+  Built on `core` and `compiler`.
 - `lsp`
-  Language server support.
+  Built on `core` and `object`.
+- `nerd.c`
+  Top-level composition layer depending on `cli`, `compiler`, `lsp`, `table`,
+  `object`, and `testing`.
 
-## Build System Notes
+In practice, `core` is the bottom of the project and `src/nerd.c` is the top.
 
-The build is driven by [`build/build.py`](/home/matt/nerd/build/build.py).
+## Core Layer
 
-Important properties:
+`src/core` is the utility layer the rest of the project depends on.
 
-- Top-level executables are inferred from `src/*.c`.
-- Module dependencies are declared with `//> use: ...`.
-- Preprocessor definitions are declared with `//> def: ...`.
-- The build script expands those dependencies and compiles the required source
-  set automatically.
+It contains:
 
-This means new modules usually only need correct `//> use:` wiring; no manual
-project file needs updating.
+- memory and dynamic array support
+- strings and string builders
+- output and terminal printing
+- time and timing helpers
+- random numbers
+- hash/map utilities
+- file mapping
+- shell/process helpers
+- path manipulation
+- directory iteration
 
-## CLI Architecture
+When adding reusable low-level functionality, `core` is usually the right home.
+Compiler-specific logic should stay out of this layer.
 
-The CLI schema for `nerd` is built in
-[`src/nerd.c`](/home/matt/nerd/src/nerd.c).
+## CLI Layer
 
-Current commands:
+The CLI system lives in `src/cli` and is intentionally schema-driven.
 
-- `build`
-- `benchmark`
-- `million`
-- `test`
-- `lsp`
+The important design idea is:
 
-The parser returns a JSON result with:
+- the CLI parser understands syntax and structure
+- command code understands semantics
 
-- `command.name`
-- `command.flags`
-- `command.params`
-- `global_flags`
-- `global_params`
+The CLI layer parses a JSON schema describing commands, flags, and parameters,
+then returns a parsed result object. `src/nerd.c` uses that parsed structure to
+build typed config structs for each command.
 
-`src/nerd.c` then converts that JSON into command-specific config structs.
+This keeps command parsing centralized and makes it easier to evolve the CLI
+without scattering option handling across the codebase.
 
-## Compiler Pipeline
+## Compiler Layer
 
-The compiler is split into explicit front-end and back-end stages.
+The compiler is split into clear stages and command handlers.
+
+### Public compiler surface
+
+[`src/compiler/compiler.h`](/home/matt/nerd/src/compiler/compiler.h) is the
+main public interface for compiler orchestration. It defines:
+
+- command config structs
+- front-end and back-end entry points
+- artifact configuration
 
 ### Front-end
 
-Implemented in [`src/compiler/front.c`](/home/matt/nerd/src/compiler/front.c).
+The front-end lives primarily in
+[`src/compiler/front.c`](/home/matt/nerd/src/compiler/front.c).
 
-Pipeline:
+Its stages are:
 
-1. lex
-2. parse
+1. lexing
+2. parsing
 3. IR generation
-
-Public surface:
-
-- `front_end(...)`
-- `front_end_benchmark(...)`
-- `front_end_results_done(...)`
 
 The front-end returns a `FrontEndState` containing:
 
@@ -120,146 +148,184 @@ The front-end returns a `FrontEndState` containing:
 - `Ast`
 - `Ir`
 
+Related subdirectories:
+
+- `src/compiler/lexer`
+- `src/compiler/ast`
+- `src/compiler/ir`
+
 ### Back-end
 
-Implemented in [`src/compiler/back.c`](/home/matt/nerd/src/compiler/back.c).
+The back-end lives primarily in
+[`src/compiler/back.c`](/home/matt/nerd/src/compiler/back.c).
 
-Pipeline:
+Its stages are:
 
 1. C generation
-2. save generated C
-3. compile generated C
+2. optional save of generated C
+3. optional native compilation of generated C
 
-The back-end is now configuration-driven through `NerdArtifactConfig` in
-[`src/compiler/compiler.h`](/home/matt/nerd/src/compiler/compiler.h).
+The back-end consumes `FrontEndState` and produces `BackEndState`, which
+currently contains generated C state.
 
-Current artifact controls:
+The back-end is driven by explicit artifact paths:
 
-- `output_stem`
-- `emit_ir_file`
-- `emit_c_file`
-- `compile_binary`
+- binary output path
+- IR output path
+- C output path
 
-This is used by both `build` and `test`.
+This lets the same backend machinery support both normal builds and test runs.
 
-## Rendering vs Dumping
+### Rendering and dumping
 
-IR and generated C now have two different roles:
+The compiler has two kinds of output helpers:
 
-- stable rendered text for tests and file emission
-- terminal dump output for interactive inspection
-
-Current rendering helpers:
-
-- `ir_render(...)`
-- `cgen_render(...)`
-
-Related save/dump functions:
-
-- `ir_save(...)`
-- `ir_dump(...)`
-- `cgen_save(...)`
-- `cgen_dump(...)`
-
-This distinction matters because tests compare stable strings, while human
-inspection can remain formatted for terminal output.
-
-## Command Helpers
-
-Shared command helpers live in
-[`src/compiler/cmd_common.c`](/home/matt/nerd/src/compiler/cmd_common.c) and
-[`src/compiler/cmd_internal.h`](/home/matt/nerd/src/compiler/cmd_internal.h).
-
-Important helper:
-
-- `compiler_cmd_run_pipeline_once(...)`
-
-This is the common path used by command implementations. The goal is to keep
-command handlers thin and push shared pipeline behavior into this layer.
-
-## Test Runner
-
-The first language-test pass is implemented under `src/testing/`.
-
-Important files:
-
-- [`src/testing/testing.c`](/home/matt/nerd/src/testing/testing.c)
-- [`src/testing/testing.h`](/home/matt/nerd/src/testing/testing.h)
-- [`src/testing/diff.c`](/home/matt/nerd/src/testing/diff.c)
-- [`src/testing/diff.h`](/home/matt/nerd/src/testing/diff.h)
-
-Current behavior:
-
-- scans `tests/language` recursively for `.t` files
-- parses each `.t` file into one `LanguageTest`
-- runs the compiler via `front_end()` and `back_end()`
-- runs the generated executable and captures stdout/stderr/exit code
-- compares:
-  - return code
-  - stdout
-  - rendered IR
-  - rendered C
-- prints a colored line-based diff on mismatch
-- removes generated artifacts on pass
-- keeps generated artifacts on failure
-
-The `test` command currently implements language tests only. Error tests are
-planned but not wired yet.
-
-## Test Fixture Format
-
-Language tests in `tests/language/*.t` are split by the `¬` character into five
-sections:
-
-1. source
-2. expected return value
-3. expected stdout
-4. expected IR
-5. expected C
-
-The compiler naturally stops at `¬`, so the first section can be lexed directly.
-
-Empty expected IR/C sections are treated as incomplete fixtures: the runner
-prints generated output so the fixture can be filled in later.
-
-## Artifact Policy
-
-Generated artifacts use a shared stem.
+- Renderers
+  Stable string output intended for comparison or file emission.
+- Dumpers
+  Terminal-oriented diagnostic output intended for human inspection.
 
 Examples:
 
-- normal build default stem: `_output`
-- test fixture stem: the `.t` file path without extension
+- `ir_render(...)` vs `ir_dump(...)`
+- `cgen_render(...)` vs `cgen_dump(...)`
 
-For tests:
+This separation matters because tests need stable textual output, while command
+handlers often want richer terminal diagnostics.
 
-- `.ir`, `.c`, and executable artifacts are cleaned before a run
-- passing tests remove their artifacts afterwards
-- failing tests keep their artifacts for inspection
+### Command handlers
 
-Generated test `.ir` and `.c` files are ignored in
-[`.gitignore`](/home/matt/nerd/.gitignore).
+Compiler CLI command handlers live in files such as:
 
-## Core Utilities Added Recently
+- [`cmd_build.c`](/home/matt/nerd/src/compiler/cmd_build.c)
+- [`cmd_benchmark.c`](/home/matt/nerd/src/compiler/cmd_benchmark.c)
+- [`cmd_million.c`](/home/matt/nerd/src/compiler/cmd_million.c)
+- [`cmd_test.c`](/home/matt/nerd/src/compiler/cmd_test.c)
 
-The `core` module now includes:
+Shared orchestration helpers live in:
 
-- path helpers in [`src/core/path.c`](/home/matt/nerd/src/core/path.c)
-- directory iteration in [`src/core/dir.c`](/home/matt/nerd/src/core/dir.c)
-- shell capture in [`src/core/shell.c`](/home/matt/nerd/src/core/shell.c)
+- [`cmd_common.c`](/home/matt/nerd/src/compiler/cmd_common.c)
+- [`cmd_internal.h`](/home/matt/nerd/src/compiler/cmd_internal.h)
 
-These were added primarily to support the test framework and to avoid scattering
-filesystem/process handling details across compiler code.
+The command handlers should stay thin and delegate to shared compiler pipeline
+helpers where possible.
 
-## Current Known Mismatch
+## Testing Layer
 
-[`tests/README.md`](/home/matt/nerd/tests/README.md) refers to `tests/error`,
-but the actual directory is `tests/errors`.
+The test runner lives in `src/testing`.
 
-This should be normalized when error tests are implemented.
+It currently focuses on language tests from `tests/language/*.t`.
 
-## Maintenance Rule
+Responsibilities:
 
-When major internal structure changes, this file should be updated alongside the
-code so architectural context remains local to the repository rather than living
-only in chat history.
+- discover test files
+- parse test fixture sections
+- run the compiler pipeline directly through `front_end()` and `back_end()`
+- execute compiled output
+- compare exit code, stdout, IR, and generated C
+- print readable diffs for failures
+
+The test runner is intentionally built on the same compiler pipeline used by the
+normal commands, rather than shelling out to `nerd build`.
+
+### Test artifacts
+
+Tests generate artifacts beside the test file when needed:
+
+- `.ir`
+  Human-readable intermediate representation generated after parsing and IR
+  construction.
+- `.c`
+  Generated C source emitted by the back-end and used as the input to `clang`.
+- `.out`
+  Compiled executable produced by test runs.
+
+Passing tests clean those artifacts up automatically. Failing tests keep them
+for inspection. `just clean` also removes them.
+
+## LSP Layer
+
+The language server lives in `src/lsp`.
+
+This subsystem is separate from the CLI test/build path, but shares the same
+core support code and object/JSON utilities. If working on editor integration,
+this is the area to read after `src/nerd.c`.
+
+## Object and Table Utilities
+
+Two support modules appear frequently across the codebase:
+
+- `src/object`
+  JSON-like values and query helpers used heavily by the CLI and LSP layers.
+- `src/table`
+  Terminal table rendering used for argument dumps, help output, and diagnostic
+  presentation.
+
+These are infrastructure modules, not compiler stages, but they are important
+because much of the user-facing console output is built on them.
+
+## Build and Formatting Tooling
+
+The main developer scripts live under `build/`.
+
+Current notable scripts:
+
+- [`build/build.py`](/home/matt/nerd/build/build.py)
+  Compiles the project.
+- [`build/format.py`](/home/matt/nerd/build/format.py)
+  Runs `clang-format` across the source tree.
+
+The main developer entry points are exposed through [`Justfile`](/home/matt/nerd/Justfile).
+
+Important recipes:
+
+- `just build`
+- `just build-release`
+- `just run nerd ...`
+- `just test`
+- `just format`
+- `just clean`
+- `just install`
+
+`just clean` is intended to be the broad reset command for generated artifacts.
+
+### Common local workflows
+
+For normal command-line development:
+
+- `just run nerd ...`
+  Build the debug executable and run `nerd` with the provided arguments.
+- `just run-release nerd ...`
+  Build the release executable and run `nerd` with the provided arguments.
+
+For editor integration:
+
+- `just install`
+  Builds the compiler, packages the VS Code extension, installs the `nerd`
+  binary to the local user bin location, uninstalls any previous extension
+  version, and installs the newly packaged VS Code extension.
+
+## Current Testing Layout
+
+The `tests` directory currently contains:
+
+- `tests/language`
+  successful compile-and-run tests
+- `tests/errors`
+  planned error-focused tests
+
+The language test format is documented in
+[`tests/README.md`](/home/matt/nerd/tests/README.md).
+
+## Practical Guidance
+
+When making changes:
+
+- start from `src/nerd.c` if the change is user-facing
+- start from `src/compiler/compiler.h` if the change touches compiler flow
+- start from `src/core` if the functionality is reusable infrastructure
+- start from `src/testing` if the change affects test discovery, comparison, or
+  artifact handling
+
+If a change begins to mix responsibilities, it is usually a sign that logic
+should be pushed down into a lower layer rather than kept in `src/nerd.c`.
