@@ -19,8 +19,10 @@ void compiler_phase_run(const PhaseSpec* phases,
             ThreadTimePoint start = thread_time_now();
             phase->run(context);
             ThreadTimePoint end = thread_time_now();
-            timing_add(
-                timing, phase->stage, phase->phase, thread_time_elapsed(start, end));
+            timing_add(timing,
+                       phase->stage,
+                       phase->phase,
+                       thread_time_elapsed(start, end));
         } else {
             phase->run(context);
         }
@@ -71,7 +73,7 @@ TimeDuration compiler_phase_benchmark_single(const PhaseSpec* phases,
     }
 
     TimeDuration total = thread_time_elapsed(start, end);
-    TimeDuration avg = (total + (TimeDuration)(timed_iterations / 2)) /
+    TimeDuration avg   = (total + (TimeDuration)(timed_iterations / 2)) /
                        (TimeDuration)timed_iterations;
     if (avg == 0 && total > 0) {
         // Preserve sub-tick non-zero work instead of truncating to zero.

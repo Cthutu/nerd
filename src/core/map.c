@@ -198,10 +198,7 @@ internal void map_maybe_compact(Map* map)
     }
 }
 
-void map_iter_init(MapIter* iter)
-{
-    iter->index = 0;
-}
+void map_iter_init(MapIter* iter) { iter->index = 0; }
 
 bool map_next(Map* map, MapIter* iter, string* out_key, void** out_value)
 {
@@ -248,7 +245,7 @@ void map_clear(Map* map)
 
     memset(map->hashes, 0, capacity * sizeof(u64));
     memset(map->keys, 0, capacity * sizeof(string));
-    map->count = 0;
+    map->count          = 0;
     map->key_bytes_live = 0;
     map->key_bytes_dead = 0;
     arena_reset(&map->key_arena);
@@ -389,9 +386,9 @@ void* map_entry(Map* map, string key, bool* out_created)
 
         usize slot_dist = map_probe_distance(idx, slot_hash, mask);
         if (slot_dist < dist) {
-            u8  stack_zero[256] = {0};
-            u8* carry_value     = stack_zero;
-            void* entry_value   = map_value_at(map, idx);
+            u8    stack_zero[256] = {0};
+            u8*   carry_value     = stack_zero;
+            void* entry_value     = map_value_at(map, idx);
             if (map->value_size > sizeof(stack_zero)) {
                 carry_value = ARRAY_ALLOC(u8, map->value_size);
                 memset(carry_value, 0, map->value_size);
@@ -406,19 +403,21 @@ void* map_entry(Map* map, string key, bool* out_created)
                 map->hashes[idx] = hash;
                 map->keys[idx]   = owned_key;
 
-                hash = old_hash;
-                key  = old_key;
-                owned_key = old_key;
+                hash             = old_hash;
+                key              = old_key;
+                owned_key        = old_key;
 
-                idx  = (idx + 1) & mask;
-                dist = slot_dist + 1;
+                idx              = (idx + 1) & mask;
+                dist             = slot_dist + 1;
 
                 for (;;) {
                     slot_hash = map->hashes[idx];
                     if (slot_hash == 0) {
                         map->hashes[idx] = hash;
                         map->keys[idx]   = owned_key;
-                        memcpy(map_value_at(map, idx), carry_value, map->value_size);
+                        memcpy(map_value_at(map, idx),
+                               carry_value,
+                               map->value_size);
                         map->count++;
                         if (out_created != NULL) {
                             *out_created = true;
@@ -439,16 +438,20 @@ void* map_entry(Map* map, string key, bool* out_created)
                             swap_value = ARRAY_ALLOC(u8, map->value_size);
                         }
 
-                        memcpy(swap_value, map_value_at(map, idx), map->value_size);
-                        memcpy(map_value_at(map, idx), carry_value, map->value_size);
+                        memcpy(swap_value,
+                               map_value_at(map, idx),
+                               map->value_size);
+                        memcpy(map_value_at(map, idx),
+                               carry_value,
+                               map->value_size);
                         memcpy(carry_value, swap_value, map->value_size);
 
                         if (swap_value != stack_swap) {
                             ARRAY_FREE(swap_value);
                         }
 
-                        old_hash        = map->hashes[idx];
-                        old_key         = map->keys[idx];
+                        old_hash         = map->hashes[idx];
+                        old_key          = map->keys[idx];
                         map->hashes[idx] = hash;
                         map->keys[idx]   = owned_key;
                         hash             = old_hash;

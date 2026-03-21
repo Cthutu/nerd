@@ -12,7 +12,7 @@
 //------------------------------------------------------------------------------
 
 typedef struct {
-    const FrontEndState* front_end_results;
+    const FrontEndState*      front_end_results;
     const NerdArtifactConfig* artifacts;
     BackEndState              results;
 } BackEndContext;
@@ -47,8 +47,8 @@ internal void phase_save_run(void* raw_ctx)
         return;
     }
 
-    cstr output_path = path_replace_extension(
-        &temp_arena, ctx->artifacts->output_stem, ".c");
+    cstr output_path =
+        path_replace_extension(&temp_arena, ctx->artifacts->output_stem, ".c");
     cgen_save(&ctx->results.cgen, output_path);
 }
 
@@ -68,12 +68,12 @@ internal void phase_compile_run(void* raw_ctx)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr c_path = path_replace_extension(
-        &arena, ctx->artifacts->output_stem, ".c");
+    cstr c_path =
+        path_replace_extension(&arena, ctx->artifacts->output_stem, ".c");
     cstr exe_path = ctx->artifacts->output_stem;
 #if OS_POSIX
-    string command = string_format(
-        &arena, "clang -o \"%s\" \"%s\"", exe_path, c_path);
+    string command =
+        string_format(&arena, "clang -o \"%s\" \"%s\"", exe_path, c_path);
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
@@ -85,7 +85,7 @@ internal void phase_compile_run(void* raw_ctx)
         kill("Failed to make %s executable", exe_path);
     }
 #elif OS_WINDOWS
-    cstr output_path = path_replace_extension(&arena, exe_path, ".exe");
+    cstr   output_path = path_replace_extension(&arena, exe_path, ".exe");
     string command =
         string_format(&arena, "clang -o \"%s\" \"%s\"", output_path, c_path);
     int compile_result = shell((cstr)command.data);
@@ -121,9 +121,9 @@ internal const PhaseSpec g_back_end_phases[] = {
 #define BACK_END_PHASE_COUNT                                                   \
     (sizeof(g_back_end_phases) / sizeof(g_back_end_phases[0]))
 
-BackEndState back_end(const FrontEndState*     front_end_results,
+BackEndState back_end(const FrontEndState*      front_end_results,
                       const NerdArtifactConfig* artifacts,
-                      Timing*                  timing)
+                      Timing*                   timing)
 {
     NerdArtifactConfig default_artifacts = compiler_default_artifacts();
     if (!artifacts) {
@@ -144,11 +144,11 @@ BackEndState back_end(const FrontEndState*     front_end_results,
     return ctx.results;
 }
 
-void back_end_benchmark(const FrontEndState*     front_end_results,
+void back_end_benchmark(const FrontEndState*      front_end_results,
                         const NerdArtifactConfig* artifacts,
-                        u32                     warmup_iterations,
-                        u32                     timed_iterations,
-                        Timing*                 out_timing)
+                        u32                       warmup_iterations,
+                        u32                       timed_iterations,
+                        Timing*                   out_timing)
 {
     NerdArtifactConfig default_artifacts = compiler_default_artifacts();
     if (!artifacts) {
@@ -174,22 +174,21 @@ void back_end_benchmark(const FrontEndState*     front_end_results,
             phase_warmup_iterations = 0;
             phase_timed_iterations  = 1;
         }
-        TimeDuration     avg   = compiler_phase_benchmark_single(
-            g_back_end_phases,
-            BACK_END_PHASE_COUNT,
-            i,
-            &ctx,
-            phase_warmup_iterations,
-            phase_timed_iterations);
+        TimeDuration avg =
+            compiler_phase_benchmark_single(g_back_end_phases,
+                                            BACK_END_PHASE_COUNT,
+                                            i,
+                                            &ctx,
+                                            phase_warmup_iterations,
+                                            phase_timed_iterations);
         timing_add(out_timing, phase->stage, phase->phase, avg);
     }
 }
 
 void back_end_results_done(BackEndState* results)
 {
-    BackEndContext ctx = {.front_end_results = NULL,
-                          .artifacts         = NULL,
-                          .results           = *results};
+    BackEndContext ctx = {
+        .front_end_results = NULL, .artifacts = NULL, .results = *results};
     compiler_phase_reset_reverse(g_back_end_phases, BACK_END_PHASE_COUNT, &ctx);
     *results = (BackEndState){0};
 }

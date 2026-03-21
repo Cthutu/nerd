@@ -16,7 +16,7 @@ int compiler_cmd_build(const NerdBuildConfig* config)
     artifacts.emit_ir_file       = config->emit_ir;
     artifacts.emit_c_file        = config->emit_c;
 
-    Timing timing = {0};
+    Timing timing                = {0};
     timing_init(&timing);
     compiler_cmd_run_pipeline_once(config->source, &artifacts, true, &timing);
     timing_dump(&timing);

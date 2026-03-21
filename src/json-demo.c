@@ -25,15 +25,17 @@ int run(int argc, char** argv)
     arena_init(&arena);
 
     JsonParseResult parse_result = {0};
-    JsonValue* parsed = json_parse_cstr(
-        &arena,
-        "{\"name\":\"nerd\",\"version\":1,\"features\":[\"json\",\"arena\"],\"fast\":true}",
-        &parse_result);
+    JsonValue*      parsed =
+        json_parse_cstr(&arena,
+                        "{\"name\":\"nerd\",\"version\":1,\"features\":["
+                        "\"json\",\"arena\"],\"fast\":true}",
+                        &parse_result);
 
     if (!parsed || !parse_result.ok) {
         kill("JSON parse failed at byte %zu: %s",
              parse_result.error_offset,
-             parse_result.error_message ? parse_result.error_message : "unknown error");
+             parse_result.error_message ? parse_result.error_message
+                                        : "unknown error");
     }
 
     JsonValue* name     = json_object_get_cstr(parsed, "name");
@@ -42,8 +44,10 @@ int run(int argc, char** argv)
     JsonValue* fast     = json_object_get_cstr(parsed, "fast");
 
     ASSERT(name && name->kind == JSON_STRING, "Expected string field 'name'");
-    ASSERT(version && version->kind == JSON_NUMBER, "Expected number field 'version'");
-    ASSERT(features && features->kind == JSON_ARRAY, "Expected array field 'features'");
+    ASSERT(version && version->kind == JSON_NUMBER,
+           "Expected number field 'version'");
+    ASSERT(features && features->kind == JSON_ARRAY,
+           "Expected array field 'features'");
     ASSERT(fast && fast->kind == JSON_BOOL, "Expected bool field 'fast'");
 
     prn("%sParsed values%s", ANSI_BOLD_GREEN, ANSI_RESET);
@@ -71,10 +75,11 @@ int run(int argc, char** argv)
     json_object_set_array(root, "steps", list);
     json_object_set(root, "source", parsed);
 
-    JsonValue* author      = json_get_cstr(root, "meta.author");
-    JsonValue* second_step = json_get_cstr(root, "steps[1]");
+    JsonValue* author        = json_get_cstr(root, "meta.author");
+    JsonValue* second_step   = json_get_cstr(root, "steps[1]");
     JsonValue* first_feature = json_get_cstr(root, "source.features[0]");
-    ASSERT(author && author->kind == JSON_STRING, "Expected string at path 'meta.author'");
+    ASSERT(author && author->kind == JSON_STRING,
+           "Expected string at path 'meta.author'");
     ASSERT(second_step && second_step->kind == JSON_STRING,
            "Expected string at path 'steps[1]'");
     ASSERT(first_feature && first_feature->kind == JSON_STRING,
@@ -85,7 +90,8 @@ int run(int argc, char** argv)
     prn("");
 
     dump_json("Compact JSON", json_stringify(&arena, root));
-    dump_json("Pretty JSON", json_stringify(&arena, root, .pretty = true, .indent = 2));
+    dump_json("Pretty JSON",
+              json_stringify(&arena, root, .pretty = true, .indent = 2));
 
     json_done(root);
     arena_done(&arena);

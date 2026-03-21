@@ -39,7 +39,7 @@ void timing_accumulate_session_init(TimingAccumulateSession* session);
 void timing_accumulate_session_add(TimingAccumulateSession* session,
                                    const Timing*            timing);
 void timing_accumulate_session_build_report(TimingAccumulateSession* session,
-                                            Timing*                   out_report);
+                                            Timing* out_report);
 void timing_accumulate_session_done(TimingAccumulateSession* session);
 void timing_dump(const Timing* timing);
 

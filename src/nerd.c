@@ -44,11 +44,8 @@ internal JsonValue* nerd_cli_make_flag(Arena* arena,
     return flag;
 }
 
-internal JsonValue* nerd_cli_make_command(Arena*    arena,
-                                          cstr      name,
-                                          cstr      summary,
-                                          JsonValue* flags,
-                                          JsonValue* params)
+internal JsonValue* nerd_cli_make_command(
+    Arena* arena, cstr name, cstr summary, JsonValue* flags, JsonValue* params)
 {
     JsonValue* command = json_new_object(arena);
     json_object_set_cstr(command, arena, "name", name);
@@ -129,17 +126,14 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(flags,
                         nerd_cli_make_flag(
                             arena, "ir", NULL, "Write generated IR to a file"));
-        json_array_push(flags,
-                        nerd_cli_make_flag(arena,
-                                           "cgen",
-                                           NULL,
-                                           "Write generated C to a file"));
-        json_array_push(commands,
-                        nerd_cli_make_command(arena,
-                                              "build",
-                                              "Run one normal build",
-                                              flags,
-                                              params));
+        json_array_push(
+            flags,
+            nerd_cli_make_flag(
+                arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "build", "Run one normal build", flags, params));
     }
 
     {
@@ -152,27 +146,28 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             NULL,
                                             "Source snippet to benchmark",
                                             false));
-        json_array_push(
-            commands,
-            nerd_cli_make_command(arena,
-                                  "benchmark",
-                                  "Run 10000 benchmark iterations",
-                                  NULL,
-                                  params));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "benchmark",
+                                              "Run 10000 benchmark iterations",
+                                              NULL,
+                                              params));
     }
 
-    json_array_push(commands,
-                    nerd_cli_make_command(arena,
-                                          "million",
-                                          "Generate 1,000,000 lines and build once",
-                                          NULL,
-                                          NULL));
-    json_array_push(commands,
-                    nerd_cli_make_command(
-                        arena, "test", "Run the compiler test command", NULL, NULL));
-    json_array_push(commands,
-                    nerd_cli_make_command(
-                        arena, "lsp", "Run the LSP server", NULL, NULL));
+    json_array_push(
+        commands,
+        nerd_cli_make_command(arena,
+                              "million",
+                              "Generate 1,000,000 lines and build once",
+                              NULL,
+                              NULL));
+    json_array_push(
+        commands,
+        nerd_cli_make_command(
+            arena, "test", "Run the compiler test command", NULL, NULL));
+    json_array_push(
+        commands,
+        nerd_cli_make_command(arena, "lsp", "Run the LSP server", NULL, NULL));
 
     return schema;
 }
@@ -199,7 +194,8 @@ internal void nerd_print_args_table(int argc, char** argv)
     table_done(&args_table);
 }
 
-internal isize nerd_find_command_index(const CliParser* parser, string command_name)
+internal isize nerd_find_command_index(const CliParser* parser,
+                                       string           command_name)
 {
     for (usize i = 0; i < array_count(parser->commands); i++) {
         if (string_eq(parser->commands[i].name, command_name)) {
@@ -224,9 +220,8 @@ internal string nerd_cli_param_string(const JsonValue* cli_result,
     return json_string(value);
 }
 
-internal bool nerd_cli_flag_bool(const JsonValue* cli_result,
-                                 cstr             path,
-                                 bool             fallback)
+internal bool
+nerd_cli_flag_bool(const JsonValue* cli_result, cstr path, bool fallback)
 {
     JsonValue* value = json_get_cstr(cli_result, path);
     if (!value) {
@@ -239,10 +234,12 @@ internal bool nerd_cli_flag_bool(const JsonValue* cli_result,
     return json_bool(value);
 }
 
-internal NerdBuildConfig nerd_build_config_from_json(const JsonValue* cli_result)
+internal NerdBuildConfig
+nerd_build_config_from_json(const JsonValue* cli_result)
 {
     return (NerdBuildConfig){
-        .source = nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+        .source =
+            nerd_cli_param_string(cli_result, "command.params.source", s("42")),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
     };
@@ -252,7 +249,8 @@ internal NerdBenchmarkConfig
 nerd_benchmark_config_from_json(const JsonValue* cli_result)
 {
     return (NerdBenchmarkConfig){
-        .source = nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+        .source =
+            nerd_cli_param_string(cli_result, "command.params.source", s("42")),
     };
 }
 
@@ -334,7 +332,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
     ASSERT(command_name && command_name->kind == JSON_STRING,
            "CLI parse result command must contain a string name");
 
-    string name = json_string(command_name);
+    string name   = json_string(command_name);
     int    result = 1;
 
     if (!string_eq_cstr(name, "lsp")) {
@@ -346,8 +344,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
         NerdBuildConfig config = nerd_build_config_from_json(cli_result);
         result                 = compiler_cmd_build(&config);
     } else if (string_eq_cstr(name, "benchmark")) {
-        NerdBenchmarkConfig config = nerd_benchmark_config_from_json(cli_result);
-        result                     = compiler_cmd_benchmark(&config);
+        NerdBenchmarkConfig config =
+            nerd_benchmark_config_from_json(cli_result);
+        result = compiler_cmd_benchmark(&config);
     } else if (string_eq_cstr(name, "million")) {
         NerdMillionConfig config = nerd_million_config_from_json(cli_result);
         result                   = compiler_cmd_million(&config);

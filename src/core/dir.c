@@ -12,8 +12,8 @@
 
 bool dir_iter_init(DirIter* iter, cstr path)
 {
-    *iter = (DirIter){0};
-    iter->path = path;
+    *iter       = (DirIter){0};
+    iter->path  = path;
 
     Arena arena = {0};
     arena_init(&arena);
@@ -49,13 +49,15 @@ bool dir_iter_next(DirIter* iter,
             return false;
         }
 
-        if (strcmp(data->cFileName, ".") == 0 || strcmp(data->cFileName, "..") == 0) {
+        if (strcmp(data->cFileName, ".") == 0 ||
+            strcmp(data->cFileName, "..") == 0) {
             continue;
         }
 
         *out_path = path_join(arena, iter->path, data->cFileName);
         if (out_is_directory) {
-            *out_is_directory = (data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+            *out_is_directory =
+                (data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         }
         return true;
     }
@@ -67,7 +69,7 @@ void dir_iter_done(DirIter* iter)
         FindClose(iter->handle);
     }
     if (iter->pattern) {
-        mem_free(iter->pattern, __FILE__, __LINE__);
+        FREE(iter->pattern);
     }
     *iter = (DirIter){0};
 }
@@ -76,7 +78,7 @@ void dir_iter_done(DirIter* iter)
 
 bool dir_iter_init(DirIter* iter, cstr path)
 {
-    *iter = (DirIter){0};
+    *iter     = (DirIter){0};
     iter->dir = opendir(path);
     if (!iter->dir) {
         return false;
@@ -97,7 +99,8 @@ bool dir_iter_next(DirIter* iter,
             return false;
         }
 
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 

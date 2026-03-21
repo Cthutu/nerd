@@ -40,7 +40,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
     table_reserve_rows(&table, array_count(ast->nodes));
     array_free(columns);
 
-    StringBuilder sb           = {0};
+    StringBuilder sb = {0};
 
     for (usize i = 0; i < array_count(ast->nodes); i++) {
         TableCell row[5];

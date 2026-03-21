@@ -87,9 +87,8 @@ internal string testing_strip_section_edges(string text)
     return string_from(text.data + start, end - start);
 }
 
-internal bool testing_split_next_section(string text,
-                                         usize* cursor,
-                                         string* out_section)
+internal bool
+testing_split_next_section(string text, usize* cursor, string* out_section)
 {
     static const u8 delimiter[] = {0xC2, 0xAC};
 
@@ -113,17 +112,18 @@ internal bool testing_split_next_section(string text,
     return true;
 }
 
-internal bool testing_parse_language_test(Arena* arena,
-                                          cstr   path,
-                                          string file_text,
+internal bool testing_parse_language_test(Arena*        arena,
+                                          cstr          path,
+                                          string        file_text,
                                           LanguageTest* out_test)
 {
-    string sections[5] = {0};
-    usize  cursor      = 0;
+    string sections[5]   = {0};
+    usize  cursor        = 0;
     usize  section_count = 0;
 
     while (section_count < 5 &&
-           testing_split_next_section(file_text, &cursor, &sections[section_count])) {
+           testing_split_next_section(
+               file_text, &cursor, &sections[section_count])) {
         section_count++;
         if (cursor > file_text.count) {
             break;
@@ -131,10 +131,8 @@ internal bool testing_parse_language_test(Arena* arena,
     }
 
     if (section_count != 5 || cursor <= file_text.count) {
-        eprn("%sInvalid language test format:%s %s",
-             ANSI_RED,
-             ANSI_RESET,
-             path);
+        eprn(
+            "%sInvalid language test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
 
@@ -162,7 +160,7 @@ internal int testing_compare_cstrs(const void* left, const void* right)
 
 internal void testing_collect_language_tests(Arena* arena,
                                              cstr   directory,
-                                             Array(cstr)* out_paths)
+                                             Array(cstr) * out_paths)
 {
     DirIter iter = {0};
     if (!dir_iter_init(&iter, directory)) {
@@ -172,7 +170,7 @@ internal void testing_collect_language_tests(Arena* arena,
     Arena child_arena = {0};
     arena_init(&child_arena);
 
-    cstr child_path = NULL;
+    cstr child_path   = NULL;
     bool is_directory = false;
     while (dir_iter_next(&iter, &child_arena, &child_path, &is_directory)) {
         if (is_directory) {
@@ -223,7 +221,7 @@ internal void testing_cleanup_generated_tree(cstr directory)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr child_path = NULL;
+    cstr child_path   = NULL;
     bool is_directory = false;
     while (dir_iter_next(&iter, &arena, &child_path, &is_directory)) {
         if (is_directory) {
@@ -241,9 +239,7 @@ internal void testing_cleanup_generated_tree(cstr directory)
     dir_iter_done(&iter);
 }
 
-internal bool testing_compare_text(cstr   label,
-                                   string expected,
-                                   string actual)
+internal bool testing_compare_text(cstr label, string expected, string actual)
 {
     if (string_eq(expected, actual)) {
         return true;
@@ -254,12 +250,14 @@ internal bool testing_compare_text(cstr   label,
     return false;
 }
 
-internal bool testing_compare_exit_code(string expected_text, int actual_exit_code)
+internal bool testing_compare_exit_code(string expected_text,
+                                        int    actual_exit_code)
 {
     Arena arena = {0};
     arena_init(&arena);
     string actual_text = string_format(&arena, "%d", actual_exit_code);
-    bool   matches     = testing_compare_text("return value", expected_text, actual_text);
+    bool   matches =
+        testing_compare_text("return value", expected_text, actual_text);
     arena_done(&arena);
     return matches;
 }
@@ -279,12 +277,13 @@ internal void testing_print_missing_section(cstr label, string actual)
 
 internal bool testing_run_language_test(const LanguageTest* test)
 {
-    bool passed = true;
+    bool passed          = true;
 
     Arena artifact_arena = {0};
     arena_init(&artifact_arena);
 
-    cstr artifact_stem = path_replace_extension(&artifact_arena, test->path, "");
+    cstr artifact_stem =
+        path_replace_extension(&artifact_arena, test->path, "");
     testing_cleanup_generated_files(artifact_stem);
 
     NerdArtifactConfig artifacts = {
@@ -297,19 +296,20 @@ internal bool testing_run_language_test(const LanguageTest* test)
     FrontEndState front_results = front_end(test->source, NULL);
     BackEndState  back_results  = back_end(&front_results, &artifacts, NULL);
 
-    Arena output_arena = {0};
+    Arena output_arena          = {0};
     arena_init(&output_arena);
 
     string actual_ir = ir_render(&front_results.ir, &output_arena);
-    string actual_c =
-        testing_strip_section_edges(cgen_render(&back_results.cgen, &output_arena));
+    string actual_c  = testing_strip_section_edges(
+        cgen_render(&back_results.cgen, &output_arena));
 
 #if OS_WINDOWS
-    cstr exe_path = path_replace_extension(&output_arena, artifact_stem, ".exe");
+    cstr exe_path =
+        path_replace_extension(&output_arena, artifact_stem, ".exe");
 #else
     cstr exe_path = artifact_stem;
 #endif
-    string run_command = string_format(&output_arena, "\"%s\"", exe_path);
+    string      run_command = string_format(&output_arena, "\"%s\"", exe_path);
     ShellResult run_result =
         shell_capture((cstr)run_command.data, &output_arena);
 
@@ -318,9 +318,8 @@ internal bool testing_run_language_test(const LanguageTest* test)
         passed = false;
     }
 
-    if (!testing_compare_text("stdout",
-                              test->expected_stdout,
-                              run_result.stdout_text)) {
+    if (!testing_compare_text(
+            "stdout", test->expected_stdout, run_result.stdout_text)) {
         passed = false;
     }
 
@@ -360,10 +359,13 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
     Arena test_arena = {0};
     arena_init(&test_arena);
 
-    cstr language_dir = path_join(&test_arena, tests_root, "language");
+    cstr language_dir      = path_join(&test_arena, tests_root, "language");
     Array(cstr) test_paths = NULL;
     testing_collect_language_tests(&test_arena, language_dir, &test_paths);
-    qsort(test_paths, array_count(test_paths), sizeof(test_paths[0]), testing_compare_cstrs);
+    qsort(test_paths,
+          array_count(test_paths),
+          sizeof(test_paths[0]),
+          testing_compare_cstrs);
 
     if (array_count(test_paths) == 0) {
         prn("No language tests found in %s", language_dir);
@@ -376,18 +378,18 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
         cstr path = test_paths[i];
         prn("%s[language]%s %s", ANSI_CYAN, ANSI_RESET, path);
 
-        FileMap map      = {0};
+        FileMap map       = {0};
         string  file_text = filemap_load(path, &map);
         if (file_text.data == NULL) {
             counts->failed++;
             continue;
         }
 
-        Arena        case_arena = {0};
+        Arena case_arena = {0};
         arena_init(&case_arena);
         LanguageTest test = {0};
-        bool         ok   = testing_parse_language_test(
-            &case_arena, path, file_text, &test);
+        bool         ok =
+            testing_parse_language_test(&case_arena, path, file_text, &test);
         if (!ok) {
             counts->failed++;
             arena_done(&case_arena);

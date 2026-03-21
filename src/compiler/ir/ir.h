@@ -41,11 +41,11 @@ typedef struct {
 //------------------------------------------------------------------------------
 // IR generation API
 
-Ir   ir_generate(const Lexer* lex, const Ast* ast);
-void ir_done(Ir* ir);
+Ir     ir_generate(const Lexer* lex, const Ast* ast);
+void   ir_done(Ir* ir);
 string ir_render(const Ir* ir, Arena* arena);
 void   ir_save(const Ir* ir, cstr path);
-void ir_dump(const Ir* ir);
+void   ir_dump(const Ir* ir);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

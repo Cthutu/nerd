@@ -144,11 +144,13 @@ TableCell table_cell_time(TimeDuration value)
     };
 }
 
-void _table_init(Table* table, Array(TableColumn) columns, TableInitParams params)
+void _table_init(Table* table,
+                 Array(TableColumn) columns,
+                 TableInitParams params)
 {
-    *table = (Table){0};
+    *table                 = (Table){0};
 
-    table->title = params.title ? params.title : "";
+    table->title           = params.title ? params.title : "";
     table->title_fg_colour = params.title_foreground_colour
                                  ? params.title_foreground_colour
                                  : ANSI_BOLD_WHITE;
@@ -156,7 +158,7 @@ void _table_init(Table* table, Array(TableColumn) columns, TableInitParams param
                                  ? params.title_background_colour
                                  : ANSI_BG_BLUE;
 
-    usize column_count = array_count(columns);
+    usize column_count     = array_count(columns);
     if (column_count == 0) {
         return;
     }
@@ -291,11 +293,8 @@ internal usize table_content_width(const usize* widths, usize width_count)
     return total;
 }
 
-internal void print_span_line(cstr left,
-                              cstr right,
-                              usize width,
-                              cstr  border_colour,
-                              cstr  reset)
+internal void print_span_line(
+    cstr left, cstr right, usize width, cstr border_colour, cstr reset)
 {
     pr("%s%s", border_colour, left);
     print_repeat("─", width);
@@ -370,7 +369,7 @@ void _table_print(const Table* table, TablePrintParams params)
         params.border_colour ? params.border_colour : ANSI_FAINT_WHITE;
     cstr header_colour =
         params.header_colour ? params.header_colour : ANSI_BOLD_WHITE;
-    cstr reset = ANSI_RESET;
+    cstr reset      = ANSI_RESET;
 
     usize col_count = array_count(table->columns);
     if (col_count == 0) {
@@ -386,8 +385,8 @@ void _table_print(const Table* table, TablePrintParams params)
     usize content_width = table_content_width(widths, col_count);
     bool  has_title     = table->title && table->title[0] != '\0';
     if (has_title) {
-        usize title_width = unicode_utf8_string_cell_width(
-            string_from_cstr(table->title));
+        usize title_width =
+            unicode_utf8_string_cell_width(string_from_cstr(table->title));
         usize min_width = title_width + 2;
         if (content_width < min_width) {
             widths[col_count - 1] += (min_width - content_width);
@@ -410,7 +409,8 @@ void _table_print(const Table* table, TablePrintParams params)
     for (usize i = 0; i < col_count; i++) {
         cstr title = table->columns[i].title ? table->columns[i].title : "";
         pr("│%s", reset);
-        print_text_cell(string_from_cstr(title), widths[i], header_colour, reset);
+        print_text_cell(
+            string_from_cstr(title), widths[i], header_colour, reset);
         pr("%s", border_colour);
     }
     pr("│\n");

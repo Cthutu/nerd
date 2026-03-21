@@ -212,10 +212,7 @@ void arena_restore(Arena* arena, void* mark)
 
 void arena_reset(Arena* arena) { arena->cursor = 0; }
 
-u32 arena_offset(Arena* arena, void* p)
-{
-    return (u32)((u8*)p - arena->data);
-}
+u32 arena_offset(Arena* arena, void* p) { return (u32)((u8*)p - arena->data); }
 
 //------------------------------------------------------------------------------
 

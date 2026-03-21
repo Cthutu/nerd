@@ -76,8 +76,10 @@ TableCell table_cell_u64(u64 value);
 TableCell table_cell_i32(i32 value);
 TableCell table_cell_time(TimeDuration value);
 
-void _table_init(Table* table, Array(TableColumn) columns, TableInitParams params);
-#define table_init(table, columns, ...)                                         \
+void _table_init(Table* table,
+                 Array(TableColumn) columns,
+                 TableInitParams params);
+#define table_init(table, columns, ...)                                        \
     _table_init((table), (columns), (TableInitParams){__VA_ARGS__})
 void table_done(Table* table);
 
@@ -90,7 +92,7 @@ void _table_add_row(Table*            table,
     _table_add_row((table), (cells), (TableAddRowParams){__VA_ARGS__})
 
 void _table_print(const Table* table, TablePrintParams params);
-#define table_print(table, ...)                                                 \
+#define table_print(table, ...)                                                \
     _table_print((table), (TablePrintParams){__VA_ARGS__})
 
 void dump_info(void);

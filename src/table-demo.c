@@ -101,8 +101,7 @@ int run(int argc, char** argv)
     table_reserve_rows(&untitled, 2);
 
     {
-        TableCell row[] = {table_cell_string(s("rows")),
-                           table_cell_u32(5)};
+        TableCell row[] = {table_cell_string(s("rows")), table_cell_u32(5)};
         table_add_row(&untitled, row);
     }
     {

@@ -59,11 +59,11 @@ string ir_render(const Ir* ir, Arena* arena)
 
 void ir_save(const Ir* ir, cstr path)
 {
-    Arena  arena    = {0};
+    Arena arena = {0};
     arena_init(&arena);
     string rendered = ir_render(ir, &arena);
 
-    FILE* file = fopen(path, "wb");
+    FILE* file      = fopen(path, "wb");
     if (!file) {
         arena_done(&arena);
         kill("Failed to open file for writing: %s", path);
@@ -80,7 +80,7 @@ void ir_save(const Ir* ir, cstr path)
 
 void ir_dump(const Ir* ir)
 {
-    Arena  arena    = {0};
+    Arena arena = {0};
     arena_init(&arena);
     string rendered = ir_render(ir, &arena);
     prn("\nIR:\n");

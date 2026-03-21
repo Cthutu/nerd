@@ -77,28 +77,26 @@ typedef struct {
 } CliParam;
 
 typedef struct {
-    string         name;
-    string         summary;
+    string name;
+    string summary;
     Array(CliFlag) flags;
     Array(CliParam) params;
 } CliCommand;
 
 typedef struct {
-    string             program_name;
-    string             summary;
-    Array(CliFlag)     root_flags;
-    Array(CliParam)    root_params;
-    Array(CliCommand)  commands;
+    string program_name;
+    string summary;
+    Array(CliFlag) root_flags;
+    Array(CliParam) root_params;
+    Array(CliCommand) commands;
 } CliParser;
 
 void cli_init(CliParser* parser, const JsonValue* schema);
 void cli_done(CliParser* parser);
 
-JsonValue* cli_parse(const CliParser* parser,
-                     Arena*           arena,
-                     int              argc,
-                     char**           argv);
-void       cli_print_help(const CliParser* parser);
-void       cli_print_command_help(const CliParser* parser, usize command_index);
+JsonValue*
+     cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv);
+void cli_print_help(const CliParser* parser);
+void cli_print_command_help(const CliParser* parser, usize command_index);
 
 //------------------------------------------------------------------------------

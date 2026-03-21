@@ -12,11 +12,11 @@ int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
 {
     compiler_cmd_print_source_overview(config->source);
 
-    NerdArtifactConfig artifacts = compiler_cmd_default_artifacts();
+    NerdArtifactConfig artifacts     = compiler_cmd_default_artifacts();
     FrontEndState      front_results = front_end(config->source, NULL);
 
-    Timing benchmark_timing = {0};
-    Timing back_end_timing  = {0};
+    Timing benchmark_timing          = {0};
+    Timing back_end_timing           = {0};
     front_end_benchmark(config->source,
                         NERD_BENCHMARK_WARMUP_ITERATIONS,
                         NERD_BENCHMARK_TIMED_ITERATIONS,

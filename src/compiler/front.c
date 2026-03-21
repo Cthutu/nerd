@@ -9,7 +9,7 @@
 //------------------------------------------------------------------------------
 
 typedef struct {
-    string          source_code;
+    string        source_code;
     FrontEndState results;
 } FrontEndContext;
 

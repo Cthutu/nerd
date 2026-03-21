@@ -20,7 +20,7 @@ u8* g_empty_file = (u8*)"";
 
 string filemap_load(cstr path, FileMap* map)
 {
-    *map = (FileMap){0};
+    *map   = (FileMap){0};
 
     int fd = open(path, O_RDONLY);
     if (fd < 0) {

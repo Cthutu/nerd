@@ -22,11 +22,11 @@ void cgen_dump(const CGen* cgen)
 {
     prn("\nC Code:\n");
 
-    Arena  arena    = {0};
+    Arena arena = {0};
     arena_init(&arena);
-    string rendered = cgen_render(cgen, &arena);
-    const u8* data  = rendered.data;
-    usize     len   = rendered.count;
+    string    rendered = cgen_render(cgen, &arena);
+    const u8* data     = rendered.data;
+    usize     len      = rendered.count;
 
     if (len == 0) {
         arena_done(&arena);

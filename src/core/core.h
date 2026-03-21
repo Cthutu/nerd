@@ -307,10 +307,10 @@ void* array_maybe_grow(void* array,
         typeof(*(a)) __array_tmp[] = {__VA_ARGS__};                            \
         usize        __array_n = sizeof(__array_tmp) / sizeof(__array_tmp[0]); \
         (a)                    = array_maybe_grow((a),                         \
-                                                  sizeof(*(a)),                \
-                                                  array_count(a) + __array_n,  \
-                                                  __FILE__,                    \
-                                                  __LINE__);                   \
+                               sizeof(*(a)),                \
+                               array_count(a) + __array_n,  \
+                               __FILE__,                    \
+                               __LINE__);                   \
         memcpy((a) + __array_count(a), __array_tmp, __array_n * sizeof(*(a))); \
         __array_count(a) += __array_n;                                         \
     } while (0)
@@ -716,7 +716,7 @@ void* map_entry(Map* map, string key, bool* out_created);
     }                                                                          \
     static inline MapIter name##_iter(void) { return map_iter(); }             \
     static inline bool    name##_next(                                         \
-        name* self, MapIter* iter, string* out_key, value_type** out_value)    \
+        name* self, MapIter* iter, string* out_key, value_type** out_value) \
     {                                                                          \
         void* value = NULL;                                                    \
         if (!map_next(&self->map, iter, out_key, &value)) {                    \
