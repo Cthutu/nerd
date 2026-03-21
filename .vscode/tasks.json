@@ -7,12 +7,12 @@
             "command": "just",
             "args": [
                 // "build"
-                // "test"
-                "run",
+                "test"
                 // "install"
-                "nerd",
-                "build",
-                "nerd-src/main.n"
+                // "run",
+                // "nerd",
+                // "build",
+                // "nerd-src/main.n"
             ],
             "group": {
                 "kind": "build",

@@ -8,6 +8,9 @@
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
+#include <compiler/error/error.h>
+#include <object/object.h>
+#include <table/table.h>
 #include <testing/diff.h>
 
 //------------------------------------------------------------------------------
@@ -22,8 +25,18 @@ typedef struct {
 } LanguageTest;
 
 typedef struct {
+    cstr   path;
+    string source;
+    string expected_json;
+} ErrorTest;
+
+typedef struct {
     usize passed;
     usize failed;
+    usize language_passed;
+    usize language_failed;
+    usize error_passed;
+    usize error_failed;
 } TestCounts;
 
 //------------------------------------------------------------------------------
@@ -153,11 +166,107 @@ internal bool testing_parse_language_test(Arena*        arena,
     return true;
 }
 
+internal bool testing_parse_error_tests(Arena* arena,
+                                        cstr   path,
+                                        string file_text,
+                                        Array(ErrorTest) * out_tests)
+{
+    usize cursor        = 0;
+    usize section_count = 0;
+
+    while (true) {
+        string source_section   = {0};
+        string expected_section = {0};
+
+        if (!testing_split_next_section(file_text, &cursor, &source_section)) {
+            break;
+        }
+        section_count++;
+
+        if (!testing_split_next_section(
+                file_text, &cursor, &expected_section)) {
+            eprn("%sInvalid error test format:%s %s",
+                 ANSI_RED,
+                 ANSI_RESET,
+                 path);
+            return false;
+        }
+        section_count++;
+
+        array_push(
+            *out_tests,
+            (ErrorTest){
+                .path   = testing_copy_cstr(arena, path),
+                .source = testing_copy_string(
+                    arena, testing_strip_section_edges(source_section)),
+                .expected_json = testing_copy_string(
+                    arena, testing_strip_section_edges(expected_section)),
+            });
+
+        if (cursor > file_text.count) {
+            break;
+        }
+    }
+
+    if (section_count == 0) {
+        eprn("%sInvalid error test format:%s %s", ANSI_RED, ANSI_RESET, path);
+        return false;
+    }
+
+    return true;
+}
+
 internal int testing_compare_cstrs(const void* left, const void* right)
 {
     cstr a = *(const cstr*)left;
     cstr b = *(const cstr*)right;
     return strcmp(a, b);
+}
+
+internal void testing_print_result_line(bool passed, cstr kind, cstr label)
+{
+    prn("%s[%s]%s %s: %s",
+        passed ? ANSI_GREEN : ANSI_RED,
+        passed ? "PASS" : "FAIL",
+        ANSI_RESET,
+        kind,
+        label);
+}
+
+internal void testing_print_summary_table(const TestCounts* counts)
+{
+    Table table                = {0};
+    Array(TableColumn) columns = NULL;
+    array_push(columns,
+               (TableColumn){.title = "Type", .colour = ANSI_CYAN},
+               (TableColumn){.title = "Passed", .colour = ANSI_GREEN},
+               (TableColumn){.title = "Failed", .colour = ANSI_RED});
+    table_init(&table, columns, .title = "Test Summary");
+    array_free(columns);
+
+    TableCell language_row[3] = {
+        table_cell_string(s("language")),
+        table_cell_u64(counts->language_passed),
+        table_cell_u64(counts->language_failed),
+    };
+    table_add_row(&table, language_row);
+
+    TableCell error_row[3] = {
+        table_cell_string(s("error")),
+        table_cell_u64(counts->error_passed),
+        table_cell_u64(counts->error_failed),
+    };
+    table_add_row(&table, error_row);
+
+    TableCell total_row[3] = {
+        table_cell_string(s("total")),
+        table_cell_u64(counts->passed),
+        table_cell_u64(counts->failed),
+    };
+    table_add_row(&table, total_row, .divider_before = true);
+
+    table_print(&table);
+    table_done(&table);
 }
 
 internal void testing_collect_language_tests(Arena* arena,
@@ -183,6 +292,40 @@ internal void testing_collect_language_tests(Arena* arena,
         }
 
         if (path_has_extension(s(child_path), ".t")) {
+            array_push(*out_paths, testing_copy_cstr(arena, child_path));
+        }
+
+        arena_done(&child_arena);
+        arena_init(&child_arena);
+    }
+
+    arena_done(&child_arena);
+    dir_iter_done(&iter);
+}
+
+internal void testing_collect_error_tests(Arena* arena,
+                                          cstr   directory,
+                                          Array(cstr) * out_paths)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, directory)) {
+        return;
+    }
+
+    Arena child_arena = {0};
+    arena_init(&child_arena);
+
+    cstr child_path   = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, &child_arena, &child_path, &is_directory)) {
+        if (is_directory) {
+            testing_collect_error_tests(arena, child_path, out_paths);
+            arena_done(&child_arena);
+            arena_init(&child_arena);
+            continue;
+        }
+
+        if (path_has_extension(s(child_path), ".e")) {
             array_push(*out_paths, testing_copy_cstr(arena, child_path));
         }
 
@@ -261,6 +404,32 @@ internal bool testing_compare_exit_code(string expected_text,
     string actual_text = string_format(&arena, "%d", actual_exit_code);
     bool   matches =
         testing_compare_text("return value", expected_text, actual_text);
+    arena_done(&arena);
+    return matches;
+}
+
+internal string testing_normalise_json(Arena* arena, string text)
+{
+    JsonParseResult result = {0};
+    JsonValue*      value  = json_parse(arena, text, &result);
+    if (!value || !result.ok) {
+        return text;
+    }
+
+    string rendered = json_stringify(arena, value, .pretty = true, .indent = 4);
+    json_done(value);
+    return rendered;
+}
+
+internal bool testing_compare_json(cstr label, string expected, string actual)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    string normal_expected = testing_normalise_json(&arena, expected);
+    string normal_actual   = testing_normalise_json(&arena, actual);
+    bool matches = testing_compare_text(label, normal_expected, normal_actual);
+
     arena_done(&arena);
     return matches;
 }
@@ -399,13 +568,14 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
     }
 
     for (usize i = 0; i < array_count(test_paths); i++) {
-        cstr path = test_paths[i];
-        prn("%s[language]%s %s", ANSI_CYAN, ANSI_RESET, path);
+        cstr path         = test_paths[i];
 
         FileMap map       = {0};
         string  file_text = filemap_load(path, &map);
         if (file_text.data == NULL) {
             counts->failed++;
+            counts->language_failed++;
+            testing_print_result_line(false, "language", path);
             continue;
         }
 
@@ -416,6 +586,8 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
             testing_parse_language_test(&case_arena, path, file_text, &test);
         if (!ok) {
             counts->failed++;
+            counts->language_failed++;
+            testing_print_result_line(false, "language", path);
             arena_done(&case_arena);
             filemap_unload(&map);
             continue;
@@ -423,10 +595,12 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
 
         if (testing_run_language_test(&test)) {
             counts->passed++;
-            prn("%sPASS%s %s", ANSI_GREEN, ANSI_RESET, path);
+            counts->language_passed++;
+            testing_print_result_line(true, "language", path);
         } else {
             counts->failed++;
-            eprn("%sFAIL%s %s", ANSI_RED, ANSI_RESET, path);
+            counts->language_failed++;
+            testing_print_result_line(false, "language", path);
         }
 
         arena_done(&case_arena);
@@ -438,21 +612,137 @@ internal int testing_run_language_suite(cstr tests_root, TestCounts* counts)
     return counts->failed == 0 ? 0 : 1;
 }
 
+internal bool testing_run_error_test(const ErrorTest* test)
+{
+    FrontEndState front_results = {0};
+    BackEndState  back_results  = {0};
+    bool          passed        = true;
+
+    error_system_clear_last_rendered();
+    error_system_set_test_mode(true);
+    error_system_set_emit_output(false);
+
+    bool front_ok = front_end(
+        (NerdSource){
+            .source      = test->source,
+            .source_path = s(test->path),
+        },
+        NULL,
+        &front_results);
+    if (front_ok) {
+        NerdArtifactConfig artifacts = {
+            .binary_path    = "a.out",
+            .ir_path        = "a.ir",
+            .c_path         = "a.c",
+            .emit_ir_file   = false,
+            .emit_c_file    = false,
+            .compile_binary = false,
+        };
+        bool back_ok =
+            back_end(&front_results, &artifacts, NULL, &back_results);
+        if (back_ok) {
+            eprn("%sExpected compiler error but compilation succeeded%s",
+                 ANSI_RED,
+                 ANSI_RESET);
+            passed = false;
+        }
+    }
+
+    string actual_json = error_system_last_rendered();
+    if (test->expected_json.count == 0) {
+        testing_print_missing_section("error JSON", actual_json);
+        passed = false;
+    } else if (!testing_compare_json(
+                   "error JSON", test->expected_json, actual_json)) {
+        passed = false;
+    }
+
+    error_system_set_test_mode(false);
+    error_system_set_emit_output(true);
+    error_system_clear_last_rendered();
+    back_end_results_done(&back_results);
+    front_end_results_done(&front_results);
+    return passed;
+}
+
+internal int testing_run_error_suite(cstr tests_root, TestCounts* counts)
+{
+    Arena test_arena = {0};
+    arena_init(&test_arena);
+
+    cstr error_dir    = path_join(&test_arena, tests_root, "errors");
+    Array(cstr) paths = NULL;
+    testing_collect_error_tests(&test_arena, error_dir, &paths);
+    qsort(paths, array_count(paths), sizeof(paths[0]), testing_compare_cstrs);
+
+    for (usize i = 0; i < array_count(paths); i++) {
+        cstr path         = paths[i];
+
+        FileMap map       = {0};
+        string  file_text = filemap_load(path, &map);
+        if (file_text.data == NULL) {
+            counts->failed++;
+            counts->error_failed++;
+            testing_print_result_line(false, "error", path);
+            continue;
+        }
+
+        Arena case_arena = {0};
+        arena_init(&case_arena);
+        Array(ErrorTest) tests = NULL;
+        bool ok =
+            testing_parse_error_tests(&case_arena, path, file_text, &tests);
+        if (!ok) {
+            counts->failed++;
+            counts->error_failed++;
+            testing_print_result_line(false, "error", path);
+            arena_done(&case_arena);
+            filemap_unload(&map);
+            continue;
+        }
+
+        for (usize test_index = 0; test_index < array_count(tests);
+             test_index++) {
+            Arena label_arena = {0};
+            arena_init(&label_arena);
+            string label =
+                string_format(&label_arena, "%s:%zu", path, test_index + 1);
+
+            if (testing_run_error_test(&tests[test_index])) {
+                counts->passed++;
+                counts->error_passed++;
+                testing_print_result_line(true, "error", (cstr)label.data);
+            } else {
+                counts->failed++;
+                counts->error_failed++;
+                testing_print_result_line(false, "error", (cstr)label.data);
+            }
+
+            arena_done(&label_arena);
+        }
+
+        array_free(tests);
+        arena_done(&case_arena);
+        filemap_unload(&map);
+    }
+
+    array_free(paths);
+    arena_done(&test_arena);
+    return counts->failed == 0 ? 0 : 1;
+}
+
 int testing_run_suite(cstr tests_root)
 {
     testing_cleanup_generated_tree(tests_root);
 
     TestCounts counts = {0};
     int        result = testing_run_language_suite(tests_root, &counts);
+    if (testing_run_error_suite(tests_root, &counts) != 0) {
+        result = 1;
+    }
 
     prn("");
-    prn("Test summary: %s%zu passed%s, %s%zu failed%s",
-        ANSI_GREEN,
-        counts.passed,
-        ANSI_RESET,
-        counts.failed == 0 ? ANSI_GREEN : ANSI_RED,
-        counts.failed,
-        ANSI_RESET);
+    testing_print_summary_table(&counts);
 
     return result;
 }

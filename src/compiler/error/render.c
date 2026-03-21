@@ -6,6 +6,7 @@
 
 #include <compiler/error/error.h>
 #include <compiler/lexer/lexer.h>
+#include <object/object.h>
 
 //------------------------------------------------------------------------------
 
@@ -334,11 +335,81 @@ internal void error_normal_render(const ErrorInfo* error_info)
 
 internal void error_test_render(const ErrorInfo* error_info)
 {
-    eprn("{");
-    eprn("  \"code\": \"%04u\",", error_info->code);
-    eprn("  \"message\": \"" STRINGP "\",", STRINGV(error_info->error_message));
-    eprn("  \"offset\": %zu", error_info->primary_offset);
-    eprn("}");
+    JsonValue* root = json_new_object(&temp_arena);
+    json_object_set_string(
+        root,
+        &temp_arena,
+        "code",
+        string_format(&temp_arena, "%04u", error_info->code));
+    json_object_set_string(
+        root, &temp_arena, "message", error_info->error_message);
+    json_object_set_string(root,
+                           &temp_arena,
+                           "source_file",
+                           error_info->source.source_path.count > 0
+                               ? error_info->source.source_path
+                               : s("<input>"));
+
+    u32 primary_line = 0;
+    u32 primary_col  = 0;
+    if (lex_offset_to_line_col(error_info->source,
+                               error_info->primary_offset,
+                               &primary_line,
+                               &primary_col)) {
+        JsonValue* location = json_new_object(&temp_arena);
+        json_object_set_number(
+            location, &temp_arena, "line", (f64)primary_line + 1);
+        json_object_set_number(
+            location, &temp_arena, "column", (f64)primary_col + 1);
+        json_object_set_object(root, "primary_location", location);
+    } else {
+        json_object_set_null(root, &temp_arena, "primary_location");
+    }
+
+    JsonValue* refs = json_new_array(&temp_arena);
+    for (usize i = 0; i < array_count(error_info->references); i++) {
+        const ErrorRef* ref  = &error_info->references[i];
+        JsonValue*      obj  = json_new_object(&temp_arena);
+        u32             line = 0;
+        u32             col  = 0;
+        lex_offset_to_line_col(
+            error_info->source, ref->span.start, &line, &col);
+
+        json_object_set_cstr(obj,
+                             &temp_arena,
+                             "kind",
+                             ref->ref_kind == ERROR_REF_PRIMARY ? "primary"
+                                                                : "secondary");
+        json_object_set_number(obj, &temp_arena, "line", (f64)line + 1);
+        json_object_set_number(obj, &temp_arena, "column", (f64)col + 1);
+        json_object_set_number(
+            obj, &temp_arena, "length", (f64)(ref->span.end - ref->span.start));
+        json_object_set_string(obj, &temp_arena, "message", ref->message);
+        json_array_push(refs, obj);
+    }
+    json_object_set_array(root, "references", refs);
+
+    JsonValue* notes = json_new_array(&temp_arena);
+    for (usize i = 0; i < array_count(error_info->notes); i++) {
+        json_array_push(notes,
+                        json_new_string(&temp_arena, error_info->notes[i]));
+    }
+    json_object_set_array(root, "notes", notes);
+
+    JsonValue* help = json_new_array(&temp_arena);
+    for (usize i = 0; i < array_count(error_info->help_messages); i++) {
+        json_array_push(
+            help, json_new_string(&temp_arena, error_info->help_messages[i]));
+    }
+    json_object_set_array(root, "help", help);
+
+    string rendered =
+        json_stringify(&temp_arena, root, .pretty = true, .indent = 4);
+    error_system_store_last_rendered(rendered);
+    if (error_system_should_emit_output()) {
+        eprn(STRINGP, STRINGV(rendered));
+    }
+    json_done(root);
 }
 
 //------------------------------------------------------------------------------
