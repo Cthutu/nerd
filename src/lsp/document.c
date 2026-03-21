@@ -44,7 +44,10 @@ internal void lsp_lex_document(LspDocument* doc, string content)
     string document_copy_str = {.data = document_copy, .count = content.count};
 
     lsp_log("Lexing document...");
-    doc->lexer = lex(document_copy_str);
+    if (!lex(document_copy_str, &doc->lexer)) {
+        lsp_log("Lexing failed for current document contents");
+        return;
+    }
     lsp_log("Lexed %zu tokens", array_count(doc->lexer.tokens));
 
     for (usize i = 0; i < array_count(doc->lexer.tokens); i++) {

@@ -23,7 +23,7 @@ typedef struct {
     Array(u64) integers;
 } Lexer;
 
-Lexer  lex(string source_code);
+bool   lex(string source_code, Lexer* lexer);
 void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
