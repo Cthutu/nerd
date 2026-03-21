@@ -7,14 +7,174 @@
 #include <cli/cli.h>
 #include <table/table.h>
 
-internal CliFlag* cli_find_long_flag(Array(CliFlag) flags, cstr long_name)
+//------------------------------------------------------------------------------
+
+internal bool cli_string_is_char(string value)
 {
-    for (usize i = 0; i < array_count(flags); i++) {
-        if (strcmp(flags[i].long_name, long_name) == 0) {
-            return &flags[i];
-        }
+    return value.count == 1;
+}
+
+internal cstr cli_param_kind_label(CliParamKind kind)
+{
+    switch (kind) {
+    case CLI_PARAM_NAMED:
+        return "named";
+    case CLI_PARAM_POSITIONAL:
+        return "positional";
+    default:
+        ASSERT(false, "Invalid CliParamKind");
+        return "";
     }
-    return NULL;
+}
+
+internal bool cli_string_is_empty(string value)
+{
+    return value.count == 0;
+}
+
+internal string cli_json_required_string(const JsonValue* object, cstr key)
+{
+    JsonValue* value = json_object_get_cstr(object, key);
+    ASSERT(value && value->kind == JSON_STRING,
+           "CLI schema field '%s' must be a string",
+           key);
+    return json_string(value);
+}
+
+internal string
+cli_json_optional_string(const JsonValue* object, cstr key, string fallback)
+{
+    JsonValue* value = json_object_get_cstr(object, key);
+    if (!value) {
+        return fallback;
+    }
+    ASSERT(value->kind == JSON_STRING,
+           "CLI schema field '%s' must be a string",
+           key);
+    return json_string(value);
+}
+
+internal bool cli_json_optional_bool(const JsonValue* object,
+                                     cstr             key,
+                                     bool             fallback)
+{
+    JsonValue* value = json_object_get_cstr(object, key);
+    if (!value) {
+        return fallback;
+    }
+    ASSERT(value->kind == JSON_BOOL,
+           "CLI schema field '%s' must be a bool",
+           key);
+    return json_bool(value);
+}
+
+internal CliParamKind cli_json_param_kind(const JsonValue* object)
+{
+    JsonValue* kind = json_object_get_cstr(object, "kind");
+    if (!kind) {
+        return CLI_PARAM_NAMED;
+    }
+
+    ASSERT(kind->kind == JSON_STRING,
+           "CLI schema field 'kind' must be a string");
+    string kind_string = json_string(kind);
+    if (string_eq_cstr(kind_string, "named")) {
+        return CLI_PARAM_NAMED;
+    }
+    if (string_eq_cstr(kind_string, "positional")) {
+        return CLI_PARAM_POSITIONAL;
+    }
+
+    ASSERT(false,
+           "CLI schema param kind must be 'named' or 'positional', got " STRINGP,
+           STRINGV(kind_string));
+    return CLI_PARAM_NAMED;
+}
+
+internal CliFlag cli_schema_make_flag(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_OBJECT,
+           "CLI schema flags must be objects");
+
+    CliFlag flag = {
+        .short_name  = '\0',
+        .long_name   = cli_json_required_string(value, "long"),
+        .description = cli_json_optional_string(value, "description", s("")),
+    };
+
+    JsonValue* short_name = json_object_get_cstr(value, "short");
+    if (short_name) {
+        ASSERT(short_name->kind == JSON_STRING,
+               "CLI schema field 'short' must be a string");
+        string short_string = json_string(short_name);
+        ASSERT(cli_string_is_char(short_string),
+               "CLI schema short option must be a single character");
+        flag.short_name = (char)short_string.data[0];
+    }
+
+    return flag;
+}
+
+internal CliParam cli_schema_make_param(const JsonValue* value)
+{
+    ASSERT(value && value->kind == JSON_OBJECT,
+           "CLI schema params must be objects");
+
+    CliParam param = {
+        .name        = cli_json_required_string(value, "name"),
+        .short_name  = '\0',
+        .long_name   = cli_json_optional_string(value, "long", s("")),
+        .description = cli_json_optional_string(value, "description", s("")),
+        .required    = cli_json_optional_bool(value, "required", false),
+        .kind        = cli_json_param_kind(value),
+    };
+
+    JsonValue* short_name = json_object_get_cstr(value, "short");
+    if (short_name) {
+        ASSERT(short_name->kind == JSON_STRING,
+               "CLI schema field 'short' must be a string");
+        string short_string = json_string(short_name);
+        ASSERT(cli_string_is_char(short_string),
+               "CLI schema short option must be a single character");
+        param.short_name = (char)short_string.data[0];
+    }
+
+    if (param.kind == CLI_PARAM_NAMED) {
+        ASSERT(!cli_string_is_empty(param.long_name),
+               "Named CLI params must define a long option");
+    } else {
+        ASSERT(cli_string_is_empty(param.long_name) && param.short_name == '\0',
+               "Positional CLI params cannot define short/long option names");
+    }
+
+    return param;
+}
+
+internal void cli_schema_load_flags(Array(CliFlag)* out_flags,
+                                    const JsonValue* flags_value)
+{
+    if (!flags_value) {
+        return;
+    }
+
+    ASSERT(flags_value->kind == JSON_ARRAY, "CLI schema 'flags' must be an array");
+    for (usize i = 0; i < array_count(flags_value->array.values); i++) {
+        array_push(*out_flags, cli_schema_make_flag(flags_value->array.values[i]));
+    }
+}
+
+internal void cli_schema_load_params(Array(CliParam)* out_params,
+                                     const JsonValue* params_value)
+{
+    if (!params_value) {
+        return;
+    }
+
+    ASSERT(params_value->kind == JSON_ARRAY, "CLI schema 'params' must be an array");
+    for (usize i = 0; i < array_count(params_value->array.values); i++) {
+        array_push(*out_params,
+                   cli_schema_make_param(params_value->array.values[i]));
+    }
 }
 
 internal CliFlag* cli_find_short_flag(Array(CliFlag) flags, char short_name)
