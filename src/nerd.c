@@ -273,8 +273,11 @@ nerd_build_config_from_json(const JsonValue* cli_result)
     }
 
     return (NerdBuildConfig){
-        .source      = source_text,
-        .source_path = source_path,
+        .source =
+            (NerdSource){
+                .source      = source_text,
+                .source_path = source_path,
+            },
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
@@ -285,9 +288,38 @@ nerd_build_config_from_json(const JsonValue* cli_result)
 internal NerdBenchmarkConfig
 nerd_benchmark_config_from_json(const JsonValue* cli_result)
 {
+    Arena* source_arena = &temp_arena;
+    string source_arg =
+        nerd_cli_param_string(cli_result, "command.params.source", s("42"));
+    string source_path     = {0};
+    string source_text     = source_arg;
+
+    char source_cstr[4096] = {0};
+    ASSERT(source_arg.count < sizeof(source_cstr),
+           "Source path too long for CLI handling");
+    memcpy(source_cstr, source_arg.data, source_arg.count);
+    source_cstr[source_arg.count] = '\0';
+
+    if (path_exists(source_cstr) && !path_is_directory(source_cstr)) {
+        FileMap map       = {0};
+        string  file_text = filemap_load(source_cstr, &map);
+        ASSERT(file_text.data != NULL,
+               "Failed to load source file: %s",
+               source_cstr);
+
+        u8* copy = (u8*)arena_alloc(source_arena, file_text.count);
+        memcpy(copy, file_text.data, file_text.count);
+        source_text = string_from(copy, file_text.count);
+        source_path = string_format(source_arena, "%s", source_cstr);
+        filemap_unload(&map);
+    }
+
     return (NerdBenchmarkConfig){
         .source =
-            nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+            (NerdSource){
+                .source      = source_text,
+                .source_path = source_path,
+            },
     };
 }
 
@@ -320,6 +352,10 @@ internal int nerd_run_with_cli(int argc, char** argv)
     JsonValue* ok         = json_object_get_cstr(cli_result, "ok");
 
     if (help && help->kind == JSON_BOOL && json_bool(help)) {
+        if (argc <= 1) {
+            dump_info();
+        }
+
         if (command && command->kind == JSON_OBJECT) {
             JsonValue* command_name = json_object_get_cstr(command, "name");
             if (command_name && command_name->kind == JSON_STRING) {
@@ -347,6 +383,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
 
     if (!ok || ok->kind != JSON_BOOL || !json_bool(ok)) {
         JsonValue* error = json_object_get_cstr(cli_result, "error");
+        if (argc <= 1) {
+            dump_info();
+        }
         cli_print_help(&parser);
         if (error && error->kind == JSON_STRING) {
             string error_message = json_string(error);
@@ -378,7 +417,6 @@ internal int nerd_run_with_cli(int argc, char** argv)
 
     if (!string_eq_cstr(name, "lsp")) {
         nerd_print_args_table(argc, argv);
-        dump_info();
     }
 
     if (string_eq_cstr(name, "build")) {

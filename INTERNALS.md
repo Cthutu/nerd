@@ -35,9 +35,10 @@ For most tasks, the most useful reading order is:
 
 1. [`src/nerd.c`](/home/matt/nerd/src/nerd.c)
 2. [`src/compiler/compiler.h`](/home/matt/nerd/src/compiler/compiler.h)
-3. [`src/compiler/front.c`](/home/matt/nerd/src/compiler/front.c)
-4. [`src/compiler/back.c`](/home/matt/nerd/src/compiler/back.c)
-5. the specific subsystem you are changing
+3. [`src/compiler/build/build.h`](/home/matt/nerd/src/compiler/build/build.h)
+4. [`src/compiler/build/front/front.c`](/home/matt/nerd/src/compiler/build/front/front.c)
+5. [`src/compiler/build/back/back.c`](/home/matt/nerd/src/compiler/build/back/back.c)
+6. the specific subsystem you are changing
 
 If the task is about tests, read:
 
@@ -125,16 +126,23 @@ The compiler is split into clear stages and command handlers.
 ### Public compiler surface
 
 [`src/compiler/compiler.h`](/home/matt/nerd/src/compiler/compiler.h) is the
-main public interface for compiler orchestration. It defines:
+main public interface for compiler command/config types. It defines:
 
 - command config structs
-- front-end and back-end entry points
 - artifact configuration
+- `NerdSource`, which carries both source text and its path when available
+
+[`src/compiler/build/build.h`](/home/matt/nerd/src/compiler/build/build.h) is
+the shared pipeline header. It defines:
+
+- `FrontEndState`
+- `BackEndState`
+- compiler dump helpers
 
 ### Front-end
 
 The front-end lives primarily in
-[`src/compiler/front.c`](/home/matt/nerd/src/compiler/front.c).
+[`src/compiler/build/front/front.c`](/home/matt/nerd/src/compiler/build/front/front.c).
 
 Its stages are:
 
@@ -157,7 +165,7 @@ Related subdirectories:
 ### Back-end
 
 The back-end lives primarily in
-[`src/compiler/back.c`](/home/matt/nerd/src/compiler/back.c).
+[`src/compiler/build/back/back.c`](/home/matt/nerd/src/compiler/build/back/back.c).
 
 Its stages are:
 
@@ -209,6 +217,23 @@ Shared orchestration helpers live in:
 
 The command handlers should stay thin and delegate to shared compiler pipeline
 helpers where possible.
+
+### Internal dependency direction
+
+Within the compiler, the intended dependency direction is:
+
+- `source.h`
+  Lowest-level source container shared across compiler subsystems.
+- `lexer`
+- `ast`
+- `ir`
+- `cgen`
+- `build/front` and `build/back`
+- command handlers
+
+This matters because `NerdSource` is intentionally defined below the lexer,
+rather than in the higher-level compiler command header, so the core compiler
+stages do not depend on command-layer declarations.
 
 ## Testing Layer
 
@@ -322,7 +347,7 @@ The language test format is documented in
 When making changes:
 
 - start from `src/nerd.c` if the change is user-facing
-- start from `src/compiler/compiler.h` if the change touches compiler flow
+- start from `src/compiler/build` if the change touches compiler flow
 - start from `src/core` if the functionality is reusable infrastructure
 - start from `src/testing` if the change affects test discovery, comparison, or
   artifact handling

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <compiler/source.h>
 #include <core/core.h>
 
 //------------------------------------------------------------------------------
@@ -35,6 +36,10 @@
 void error_system_init(bool test_mode);
 void error_system_done(void);
 
+// These functions are used during rendering
+bool error_system_is_test_mode(void);
+void error_system_reset(void);
+
 //------------------------------------------------------------------------------
 // General internal compiler error.
 //
@@ -46,9 +51,9 @@ bool error_ice(const char* format, ...);
 //------------------------------------------------------------------------------
 // Lexer errors
 
-bool error_0100_unexpected_character(string source_file, usize offset, char c);
-bool error_0101_integer_literal_too_large(string source_file, usize offset);
-bool error_0102_file_too_many_tokens(string source_file);
+bool error_0100_unexpected_character(NerdSource source, usize offset, char c);
+bool error_0101_integer_literal_too_large(NerdSource source, usize offset);
+bool error_0102_file_too_large(NerdSource source);
 
 //------------------------------------------------------------------------------
 // Low-level error system
@@ -65,7 +70,6 @@ typedef enum {
 } ErrorKind;
 
 typedef struct {
-    ErrorKind    kind;
     ErrorRefKind ref_kind;
     usize        offset; // Offset in the source code
     usize        length; // Length of the source code span
@@ -73,17 +77,20 @@ typedef struct {
 } ErrorRef;
 
 typedef struct {
-    u16    code; // 4-digit error code
-    string error_message;
-    string source_file;
-    usize  primary_offset;
+    ErrorKind  kind;
+    u16        code; // 4-digit error code
+    string     error_message;
+    NerdSource source;
+    usize      primary_offset;
     Array(ErrorRef) references;
     Array(string) notes;
     Array(string) help_messages;
 } ErrorInfo;
 
 ErrorInfo error_init(
-    u16 code, string source_file, usize primary_offset, cstr error_format, ...);
+    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...);
+ErrorInfo warning_init(
+    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...);
 void error_add_reference(ErrorInfo*   error_info,
                          ErrorRefKind kind,
                          usize        offset,
@@ -159,9 +166,11 @@ void error_add_help(ErrorInfo* error_info, cstr format, ...);
 //
 // The JSON output is used in the error tests to verify that the correct error
 // information is produced for various error cases.
+//
+// The `error_info` is freed after rendering
 //------------------------------------------------------------------------------
 
-void error_render(const ErrorInfo* error_info);
+void error_render(ErrorInfo* error_info);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

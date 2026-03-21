@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <compiler/build/build.h>
 #include <compiler/compiler.h>
 
 //------------------------------------------------------------------------------

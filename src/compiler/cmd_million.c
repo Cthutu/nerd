@@ -36,13 +36,18 @@ int compiler_cmd_million(const NerdMillionConfig* config)
     prn("Generated benchmark input: %u lines (%zu bytes)",
         NERD_MILLION_LINES_COUNT,
         source.count);
-    compiler_cmd_print_source_overview(source);
 
     Timing timing = {0};
     timing_init(&timing);
     NerdArtifactConfig artifacts = compiler_cmd_default_artifacts();
-    bool               ok =
-        compiler_cmd_run_pipeline_once(source, &artifacts, false, &timing);
+    bool               ok        = compiler_cmd_run_pipeline_once(
+        (NerdSource){
+                                 .source      = source,
+                                 .source_path = s(""),
+        },
+        &artifacts,
+        false,
+        &timing);
     timing_dump(&timing);
     timing_done(&timing);
 

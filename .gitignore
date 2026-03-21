@@ -7,3 +7,5 @@ package-lock.json
 tests/**/*.ir
 tests/**/*.c
 tests/**/*.out
+
+nerd-src/main

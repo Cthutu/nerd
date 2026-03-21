@@ -16,9 +16,8 @@ enum {
     NERD_MILLION_LINES_COUNT         = 1000000,
 };
 
-void               compiler_cmd_print_source_overview(string source_code);
 NerdArtifactConfig compiler_cmd_default_artifacts(void);
-bool               compiler_cmd_run_pipeline_once(string                    source_code,
+bool               compiler_cmd_run_pipeline_once(NerdSource                source,
                                                   const NerdArtifactConfig* artifacts,
                                                   bool    dump_compiler_state,
                                                   Timing* timing);

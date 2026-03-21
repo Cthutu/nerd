@@ -4,14 +4,14 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/back/back.h>
+#include <compiler/build/front/front.h>
 #include <compiler/cmd_internal.h>
 
 //------------------------------------------------------------------------------
 
 int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
 {
-    compiler_cmd_print_source_overview(config->source);
-
     NerdArtifactConfig artifacts     = compiler_cmd_default_artifacts();
     FrontEndState      front_results = {0};
     if (!front_end(config->source, NULL, &front_results)) {

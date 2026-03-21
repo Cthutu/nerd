@@ -45,19 +45,15 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
     usize offset      = 0;
     u64   target_line = json_integer(line);
     u64   target_col  = json_integer(column);
-    for (usize i = 0; i < doc->arena.cursor; i++) {
-        if (doc->arena.data[i] == '\n') {
-            if (target_line == 0) {
-                break;
-            }
-            target_line--;
-        } else if (target_line == 0) {
-            if (target_col == 0) {
-                break;
-            }
-            target_col--;
-        }
-        offset++;
+
+    if (!lex_line_col_to_offset(
+            doc->lexer.source, target_line, target_col, &offset)) {
+        lsp_fail(response,
+                 message->arena,
+                 "Invalid hover position: line " STRINGP ", column " STRINGP,
+                 STRINGV(json_string(line)),
+                 STRINGV(json_string(column)));
+        return;
     }
 
     // Given the offset, find the token that spans the offset.
@@ -78,7 +74,7 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                 string_format(message->arena,
                               "%.*s (u64)",
                               token_end - token->offset,
-                              doc->lexer.source_code.data + token->offset);
+                              doc->lexer.source.source.data + token->offset);
         }
         break;
     default:

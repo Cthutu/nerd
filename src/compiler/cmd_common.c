@@ -4,6 +4,8 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/back/back.h>
+#include <compiler/build/front/front.h>
 #include <compiler/cmd_internal.h>
 
 //------------------------------------------------------------------------------
@@ -20,16 +22,7 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
     };
 }
 
-void compiler_cmd_print_source_overview(string source_code)
-{
-    if (source_code.count <= 128) {
-        prn("Source code: " STRINGP, STRINGV(source_code));
-    } else {
-        prn("Source code size: %zu bytes", source_code.count);
-    }
-}
-
-bool compiler_cmd_run_pipeline_once(string                    source_code,
+bool compiler_cmd_run_pipeline_once(NerdSource                source,
                                     const NerdArtifactConfig* artifacts,
                                     bool    dump_compiler_state,
                                     Timing* timing)
@@ -40,7 +33,7 @@ bool compiler_cmd_run_pipeline_once(string                    source_code,
     }
 
     FrontEndState front_results = {0};
-    if (!front_end(source_code, timing, &front_results)) {
+    if (!front_end(source, timing, &front_results)) {
         front_end_results_done(&front_results);
         return false;
     }

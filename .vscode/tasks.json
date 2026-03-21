@@ -7,10 +7,12 @@
             "command": "just",
             "args": [
                 // "build"
-                "test"
-                // "run",
-                // "map-demo",
+                // "test"
+                "run",
                 // "install"
+                "nerd",
+                "build",
+                "nerd-src/main.n"
             ],
             "group": {
                 "kind": "build",

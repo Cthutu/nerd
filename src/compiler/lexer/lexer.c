@@ -11,13 +11,15 @@
 
 //------------------------------------------------------------------------------
 
-bool lex(string source_code, Lexer* lexer)
+bool lex(NerdSource source, Lexer* lexer)
 {
+    string source_code = source.source;
+
     *lexer             = (Lexer){0};
-    lexer->source_code = source_code;
+    lexer->source      = source;
 
     if (source_code.count >= (1u << 24)) {
-        return error_0102_file_too_many_tokens(source_code);
+        return error_0102_file_too_large(source);
     }
 
     // array_requires_capacity(lexer.tokens, LEXER_ARRAY_INIT_CAPACITY);
@@ -50,8 +52,7 @@ bool lex(string source_code, Lexer* lexer)
                 last_total = total;
                 total      = total * 10 + (source_code.data[i] - '0');
                 if (total < last_total) {
-                    return error_0101_integer_literal_too_large(source_code,
-                                                                start);
+                    return error_0101_integer_literal_too_large(source, start);
                 }
 
                 i++;
@@ -61,7 +62,7 @@ bool lex(string source_code, Lexer* lexer)
                        (Token){.kind = TK_Integer, .offset = (u32)start});
             array_push(lexer->integers, total);
         } else {
-            return error_0100_unexpected_character(source_code, i, (char)c);
+            return error_0100_unexpected_character(source, i, (char)c);
         }
     }
 
@@ -84,9 +85,9 @@ internal usize token_end_offset(const Lexer* lexer, Token* token)
     case TK_Integer:
         {
             usize index = token->offset;
-            while (index < lexer->source_code.count &&
-                   lexer->source_code.data[index] >= '0' &&
-                   lexer->source_code.data[index] <= '9') {
+            while (index < lexer->source.source.count &&
+                   lexer->source.source.data[index] >= '0' &&
+                   lexer->source.source.data[index] <= '9') {
                 index++;
             }
             return index;
@@ -122,6 +123,66 @@ Token* lex_find(const Lexer* lexer, usize offset, u32* token_end)
     }
 
     return NULL; // No token found at the given offset
+}
+
+//------------------------------------------------------------------------------
+// Line and column to/from offset conversions
+
+bool lex_offset_to_line_col(NerdSource source,
+                            usize      offset,
+                            u32*       out_line,
+                            u32*       out_col)
+{
+    if (offset > source.source.count) {
+        return false;
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    for (usize i = 0; i < offset; i++) {
+        if (source.source.data[i] == '\n') {
+            line++;
+            col = 0;
+        } else {
+            col++;
+        }
+    }
+
+    *out_line = line;
+    *out_col  = col;
+    return true;
+}
+
+bool lex_line_col_to_offset(NerdSource source,
+                            u32        line,
+                            u32        col,
+                            usize*     out_offset)
+{
+    usize offset     = 0;
+    bool  found_line = false;
+
+    for (usize i = 0; i < source.source.count; i++) {
+        if (source.source.data[i] == '\n') {
+            if (line == 0) {
+                // We found the end of the correct line, so the line/col pair is
+                // invalid.
+                break;
+            }
+            line--;
+        } else if (line == 0) {
+            if (col == 0) {
+                found_line = true;
+                break;
+            }
+            col--;
+        }
+        offset++;
+    }
+
+    if (found_line) {
+        *out_offset = offset;
+    }
+    return found_line;
 }
 
 //------------------------------------------------------------------------------

@@ -9,6 +9,9 @@
 #    include <sys/stat.h>
 #endif
 
+#include <compiler/build/back/back.h>
+#include <compiler/build/front/front.h>
+
 //------------------------------------------------------------------------------
 
 typedef struct {

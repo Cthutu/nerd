@@ -6,6 +6,8 @@
 
 #include <testing/testing.h>
 
+#include <compiler/build/back/back.h>
+#include <compiler/build/front/front.h>
 #include <testing/diff.h>
 
 //------------------------------------------------------------------------------
@@ -299,7 +301,13 @@ internal bool testing_run_language_test(const LanguageTest* test)
     };
 
     FrontEndState front_results = {0};
-    if (!front_end(test->source, NULL, &front_results)) {
+    if (!front_end(
+            (NerdSource){
+                .source      = test->source,
+                .source_path = s(test->path),
+            },
+            NULL,
+            &front_results)) {
         front_end_results_done(&front_results);
         arena_done(&artifact_arena);
         return false;

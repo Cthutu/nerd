@@ -8,40 +8,23 @@
 
 //------------------------------------------------------------------------------
 
-global_variable bool  g_error_test_mode   = false;
-global_variable bool  g_error_system_live = false;
-global_variable Arena g_error_arena       = {0};
-
-internal void error_info_done(ErrorInfo* error_info)
-{
-    array_free(error_info->references);
-    array_free(error_info->notes);
-    array_free(error_info->help_messages);
-    *error_info = (ErrorInfo){0};
-}
+global_variable bool  g_error_test_mode = false;
+global_variable Arena g_error_arena     = {0};
 
 void error_system_init(bool test_mode)
 {
-    if (g_error_system_live) {
-        arena_done(&g_error_arena);
-    }
-
     arena_init(&g_error_arena);
-    g_error_system_live = true;
-    g_error_test_mode   = test_mode;
+    g_error_test_mode = test_mode;
 }
 
 void error_system_done(void)
 {
-    if (!g_error_system_live) {
-        return;
-    }
-
     arena_done(&g_error_arena);
-    g_error_arena       = (Arena){0};
-    g_error_system_live = false;
-    g_error_test_mode   = false;
+    g_error_arena     = (Arena){0};
+    g_error_test_mode = false;
 }
+
+bool error_system_is_test_mode(void) { return g_error_test_mode; }
 
 bool error_ice(const char* format, ...)
 {
@@ -54,20 +37,46 @@ bool error_ice(const char* format, ...)
     exit(1);
 }
 
+void error_system_reset(void) { arena_reset(&g_error_arena); }
+
+internal ErrorInfo error_info_init(ErrorKind  kind,
+                                   u16        code,
+                                   NerdSource source,
+                                   usize      primary_offset,
+                                   cstr       error_format,
+                                   va_list    args)
+{
+    string error_message = string_formatv(&g_error_arena, error_format, args);
+
+    return (ErrorInfo){
+        .kind           = kind,
+        .code           = code,
+        .error_message  = error_message,
+        .source         = source,
+        .primary_offset = primary_offset,
+    };
+}
+
 ErrorInfo error_init(
-    u16 code, string source_file, usize primary_offset, cstr error_format, ...)
+    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...)
 {
     va_list args;
     va_start(args, error_format);
-    string error_message = string_formatv(&g_error_arena, error_format, args);
+    ErrorInfo error_info = error_info_init(
+        ERROR_KIND_ERROR, code, source, primary_offset, error_format, args);
     va_end(args);
+    return error_info;
+}
 
-    return (ErrorInfo){
-        .code           = code,
-        .error_message  = error_message,
-        .source_file    = source_file,
-        .primary_offset = primary_offset,
-    };
+ErrorInfo warning_init(
+    u16 code, NerdSource source, usize primary_offset, cstr error_format, ...)
+{
+    va_list args;
+    va_start(args, error_format);
+    ErrorInfo error_info = error_info_init(
+        ERROR_KIND_WARNING, code, source, primary_offset, error_format, args);
+    va_end(args);
+    return error_info;
 }
 
 void error_add_reference(ErrorInfo*   error_info,
@@ -84,7 +93,6 @@ void error_add_reference(ErrorInfo*   error_info,
 
     array_push(error_info->references,
                (ErrorRef){
-                   .kind     = ERROR_KIND_ERROR,
                    .ref_kind = kind,
                    .offset   = offset,
                    .length   = length,
@@ -111,80 +119,3 @@ void error_add_help(ErrorInfo* error_info, cstr format, ...)
 
     array_push(error_info->help_messages, help);
 }
-
-void error_render(const ErrorInfo* error_info)
-{
-    if (g_error_test_mode) {
-        eprn("{");
-        eprn("  \"code\": \"%04u\",", error_info->code);
-        eprn("  \"message\": \"" STRINGP "\",",
-             STRINGV(error_info->error_message));
-        eprn("  \"offset\": %zu", error_info->primary_offset);
-        eprn("}");
-        return;
-    }
-
-    eprn("%serror[%04u]:%s " STRINGP,
-         ANSI_BOLD_RED,
-         error_info->code,
-         ANSI_RESET,
-         STRINGV(error_info->error_message));
-    eprn("  at offset %zu", error_info->primary_offset);
-
-    for (usize i = 0; i < array_count(error_info->notes); i++) {
-        eprn("%snote:%s " STRINGP,
-             ANSI_CYAN,
-             ANSI_RESET,
-             STRINGV(error_info->notes[i]));
-    }
-
-    for (usize i = 0; i < array_count(error_info->help_messages); i++) {
-        eprn("%shelp:%s " STRINGP,
-             ANSI_CYAN,
-             ANSI_RESET,
-             STRINGV(error_info->help_messages[i]));
-    }
-}
-
-bool error_0100_unexpected_character(string source_file, usize offset, char c)
-{
-    ErrorInfo error_info =
-        error_init(100, source_file, offset, "Unexpected character '%c'", c);
-    error_add_reference(&error_info,
-                        ERROR_REF_PRIMARY,
-                        offset,
-                        1,
-                        "Unexpected character '%c'",
-                        c);
-    error_add_help(&error_info, "Review the input near the failing character.");
-    error_render(&error_info);
-    error_info_done(&error_info);
-    return false;
-}
-
-bool error_0101_integer_literal_too_large(string source_file, usize offset)
-{
-    ErrorInfo error_info =
-        error_init(101, source_file, offset, "Integer literal is too large");
-    error_add_reference(&error_info,
-                        ERROR_REF_PRIMARY,
-                        offset,
-                        1,
-                        "Literal overflow starts here");
-    error_add_help(&error_info, "Use a smaller integer literal.");
-    error_render(&error_info);
-    error_info_done(&error_info);
-    return false;
-}
-
-bool error_0102_file_too_many_tokens(string source_file)
-{
-    ErrorInfo error_info =
-        error_init(102, source_file, 0, "Source file is too large");
-    error_add_help(&error_info, "Split the input into a smaller source file.");
-    error_render(&error_info);
-    error_info_done(&error_info);
-    return false;
-}
-
-//------------------------------------------------------------------------------
