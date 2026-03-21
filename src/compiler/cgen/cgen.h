@@ -19,6 +19,7 @@ typedef struct {
 
 CGen cgen_init(const Ir* ir);
 void cgen_done(CGen* cgen);
-void cgen_save(const CGen* cgen, const char* path);
+string cgen_render(const CGen* cgen, Arena* arena);
+void   cgen_save(const CGen* cgen, const char* path);
 
 void cgen_dump(const CGen* cgen);

@@ -22,10 +22,14 @@ void cgen_dump(const CGen* cgen)
 {
     prn("\nC Code:\n");
 
-    const u8* data = cgen->arena.data;
-    usize     len  = cgen->arena.cursor;
+    Arena  arena    = {0};
+    arena_init(&arena);
+    string rendered = cgen_render(cgen, &arena);
+    const u8* data  = rendered.data;
+    usize     len   = rendered.count;
 
     if (len == 0) {
+        arena_done(&arena);
         return;
     }
 
@@ -90,4 +94,6 @@ void cgen_dump(const CGen* cgen)
         line_start = i + 1;
         ++line_number;
     }
+
+    arena_done(&arena);
 }

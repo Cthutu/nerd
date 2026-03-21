@@ -1,19 +1,16 @@
 //------------------------------------------------------------------------------
-// Test command
+// Test diff helpers
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
+//> use: core
 
-#include <compiler/cmd_internal.h>
-#include <testing/testing.h>
+#pragma once
+
+#include <core/core.h>
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_test(const NerdTestConfig* config)
-{
-    UNUSED(config);
-
-    return testing_run_suite("tests");
-}
+void testing_diff_print(string expected, string actual);
 
 //------------------------------------------------------------------------------

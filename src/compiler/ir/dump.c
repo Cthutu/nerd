@@ -5,75 +5,87 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/ir/ir.h>
-#include <table/table.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
-internal string ir_value_text(const IrValue* value)
+internal void ir_render_value(StringBuilder* sb, const IrValue* value)
 {
-    StringBuilder sb = {0};
-    sb_init(&sb, &temp_arena);
     switch (value->kind) {
     case IR_VALUE_VARIABLE:
-        sb_format(&sb, "$%u", (u32)value->value.integer);
+        sb_format(sb, "$%u", (u32)value->value.integer);
         break;
     case IR_VALUE_INTEGER:
-        sb_format(&sb, "%u", (u32)value->value.integer);
+        sb_format(sb, "%u", (u32)value->value.integer);
+        break;
+    case IR_VALUE_NONE:
         break;
     default:
-        sb_format(&sb, "");
+        sb_append_cstr(sb, "<unknown>");
         break;
     }
+}
+
+string ir_render(const Ir* ir, Arena* arena)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    for (usize i = 0; i < array_count(ir->instructions); i++) {
+        const IrInstruction* instr = &ir->instructions[i];
+
+        switch (instr->op) {
+        case IR_OP_ASSIGN:
+            ir_render_value(&sb, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_value(&sb, &instr->rvalue[0]);
+            break;
+        case IR_OP_RETURN:
+            sb_append_cstr(&sb, "return ");
+            ir_render_value(&sb, &instr->rvalue[0]);
+            break;
+        default:
+            sb_append_cstr(&sb, "<unknown>");
+            break;
+        }
+
+        if (i + 1 < array_count(ir->instructions)) {
+            sb_append_char(&sb, '\n');
+        }
+    }
+
     return sb_to_string(&sb);
+}
+
+void ir_save(const Ir* ir, cstr path)
+{
+    Arena  arena    = {0};
+    arena_init(&arena);
+    string rendered = ir_render(ir, &arena);
+
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        arena_done(&arena);
+        kill("Failed to open file for writing: %s", path);
+    }
+
+    usize written = fwrite(rendered.data, 1, rendered.count, file);
+    fclose(file);
+    arena_done(&arena);
+
+    if (written != rendered.count) {
+        kill("Failed to write IR file: %s", path);
+    }
 }
 
 void ir_dump(const Ir* ir)
 {
-    Array(TableColumn) columns = NULL;
-    array_push(columns,
-               (TableColumn){.title = "Index", .colour = ANSI_CYAN},
-               (TableColumn){.title = "Op", .colour = ANSI_GREEN},
-               (TableColumn){.title = "LValue", .colour = ANSI_YELLOW},
-               (TableColumn){.title = "RValue[0]", .colour = ANSI_MAGENTA},
-               (TableColumn){.title = "RValue[1]", .colour = ANSI_BLUE});
-
-    Table table = {0};
-    table_init(&table, columns, .title = "IR Instructions (56 bytes each)");
-    table_reserve_rows(&table, array_count(ir->instructions));
-    array_free(columns);
-
-    for (usize i = 0; i < array_count(ir->instructions); ++i) {
-        TableCell      row[5];
-        IrInstruction* instr = &ir->instructions[i];
-
-        // Index
-        row[0]               = table_cell_u32((u32)i);
-
-        // Operation
-        switch (instr->op) {
-        case IR_OP_ASSIGN:
-            row[1] = table_cell_string(s("ASSIGN"));
-            break;
-        case IR_OP_RETURN:
-            row[1] = table_cell_string(s("RETURN"));
-            break;
-        default:
-            row[1] = table_cell_string(s("UNKNOWN"));
-            break;
-        }
-
-        // LValue
-        row[2] = table_cell_string(ir_value_text(&instr->lvalue));
-
-        // RValue[0]
-        row[3] = table_cell_string(ir_value_text(&instr->rvalue[0]));
-
-        // RValue[1]
-        row[4] = table_cell_string(ir_value_text(&instr->rvalue[1]));
-
-        table_add_row(&table, row);
+    Arena  arena    = {0};
+    arena_init(&arena);
+    string rendered = ir_render(ir, &arena);
+    prn("\nIR:\n");
+    if (rendered.count > 0) {
+        prn(STRINGP, STRINGV(rendered));
     }
-
-    table_print(&table);
-    table_done(&table);
+    arena_done(&arena);
 }

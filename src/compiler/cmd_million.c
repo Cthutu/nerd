@@ -40,7 +40,8 @@ int compiler_cmd_million(const NerdMillionConfig* config)
 
     Timing timing = {0};
     timing_init(&timing);
-    compiler_cmd_run_pipeline_once(source, false, &timing);
+    NerdArtifactConfig artifacts = compiler_cmd_default_artifacts();
+    compiler_cmd_run_pipeline_once(source, &artifacts, false, &timing);
     timing_dump(&timing);
     timing_done(&timing);
 

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//> use: core intern compiler timing table cli lsp object
+//> use: core intern compiler timing table cli lsp object testing
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
@@ -11,23 +11,51 @@
 internal JsonValue* nerd_cli_make_param(Arena* arena,
                                         cstr   name,
                                         cstr   kind,
+                                        cstr   long_name,
+                                        cstr   short_name,
                                         cstr   description,
                                         bool   required)
 {
     JsonValue* param = json_new_object(arena);
     json_object_set_cstr(param, arena, "name", name);
     json_object_set_cstr(param, arena, "kind", kind);
+    if (long_name) {
+        json_object_set_cstr(param, arena, "long", long_name);
+    }
+    if (short_name) {
+        json_object_set_cstr(param, arena, "short", short_name);
+    }
     json_object_set_cstr(param, arena, "description", description);
     json_object_set_bool(param, arena, "required", required);
     return param;
 }
 
-internal JsonValue*
-nerd_cli_make_command(Arena* arena, cstr name, cstr summary, JsonValue* params)
+internal JsonValue* nerd_cli_make_flag(Arena* arena,
+                                       cstr   long_name,
+                                       cstr   short_name,
+                                       cstr   description)
+{
+    JsonValue* flag = json_new_object(arena);
+    json_object_set_cstr(flag, arena, "long", long_name);
+    if (short_name) {
+        json_object_set_cstr(flag, arena, "short", short_name);
+    }
+    json_object_set_cstr(flag, arena, "description", description);
+    return flag;
+}
+
+internal JsonValue* nerd_cli_make_command(Arena*    arena,
+                                          cstr      name,
+                                          cstr      summary,
+                                          JsonValue* flags,
+                                          JsonValue* params)
 {
     JsonValue* command = json_new_object(arena);
     json_object_set_cstr(command, arena, "name", name);
     json_object_set_cstr(command, arena, "summary", summary);
+    if (flags) {
+        json_object_set_array(command, "flags", flags);
+    }
     if (params) {
         json_object_set_array(command, "params", params);
     }
@@ -89,15 +117,29 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
 
     {
         JsonValue* params = json_new_array(arena);
+        JsonValue* flags  = json_new_array(arena);
         json_array_push(params,
                         nerd_cli_make_param(arena,
                                             "source",
                                             "positional",
+                                            NULL,
+                                            NULL,
                                             "Source snippet to compile",
                                             false));
+        json_array_push(flags,
+                        nerd_cli_make_flag(
+                            arena, "ir", NULL, "Write generated IR to a file"));
+        json_array_push(flags,
+                        nerd_cli_make_flag(arena,
+                                           "cgen",
+                                           NULL,
+                                           "Write generated C to a file"));
         json_array_push(commands,
-                        nerd_cli_make_command(
-                            arena, "build", "Run one normal build", params));
+                        nerd_cli_make_command(arena,
+                                              "build",
+                                              "Run one normal build",
+                                              flags,
+                                              params));
     }
 
     {
@@ -106,25 +148,31 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                         nerd_cli_make_param(arena,
                                             "source",
                                             "positional",
+                                            NULL,
+                                            NULL,
                                             "Source snippet to benchmark",
                                             false));
         json_array_push(
             commands,
-            nerd_cli_make_command(
-                arena, "benchmark", "Run 10000 benchmark iterations", params));
+            nerd_cli_make_command(arena,
+                                  "benchmark",
+                                  "Run 10000 benchmark iterations",
+                                  NULL,
+                                  params));
     }
 
     json_array_push(commands,
                     nerd_cli_make_command(arena,
                                           "million",
                                           "Generate 1,000,000 lines and build once",
+                                          NULL,
                                           NULL));
     json_array_push(commands,
                     nerd_cli_make_command(
-                        arena, "test", "Run the compiler test command", NULL));
+                        arena, "test", "Run the compiler test command", NULL, NULL));
     json_array_push(commands,
                     nerd_cli_make_command(
-                        arena, "lsp", "Run the LSP server", NULL));
+                        arena, "lsp", "Run the LSP server", NULL, NULL));
 
     return schema;
 }
@@ -176,10 +224,27 @@ internal string nerd_cli_param_string(const JsonValue* cli_result,
     return json_string(value);
 }
 
+internal bool nerd_cli_flag_bool(const JsonValue* cli_result,
+                                 cstr             path,
+                                 bool             fallback)
+{
+    JsonValue* value = json_get_cstr(cli_result, path);
+    if (!value) {
+        return fallback;
+    }
+
+    ASSERT(value->kind == JSON_BOOL,
+           "Expected CLI parse result field '%s' to be a bool",
+           path);
+    return json_bool(value);
+}
+
 internal NerdBuildConfig nerd_build_config_from_json(const JsonValue* cli_result)
 {
     return (NerdBuildConfig){
         .source = nerd_cli_param_string(cli_result, "command.params.source", s("42")),
+        .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
+        .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
     };
 }
 

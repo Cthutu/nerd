@@ -9,36 +9,32 @@
 
 //------------------------------------------------------------------------------
 
-void cgen_save(const CGen* cgen, const char* path)
+string cgen_render(const CGen* cgen, Arena* arena)
 {
-    const char* last_dot = NULL;
-    const char* p        = path;
-    while (*p != '\0') {
-        if (*p == '.') {
-            last_dot = p;
-        }
-        p++;
+    string result = {0};
+    if (cgen->arena.cursor == 0) {
+        return result;
     }
 
-    usize stem_len   = last_dot ? (usize)(last_dot - path) : (usize)(p - path);
+    u8* copy = (u8*)arena_alloc(arena, cgen->arena.cursor);
+    memcpy(copy, cgen->arena.data, cgen->arena.cursor);
+    result.data  = copy;
+    result.count = cgen->arena.cursor;
+    return result;
+}
 
-    StringBuilder sb = {0};
-    sb_init(&sb, &temp_arena);
-    sb_append_string(&sb, string_from((u8*)path, stem_len));
-    sb_append_cstr(&sb, ".c");
-    sb_append_null(&sb);
-
-    cstr  output_path = (cstr)sb_to_string(&sb).data;
-    FILE* file        = fopen(output_path, "wb");
+void cgen_save(const CGen* cgen, const char* path)
+{
+    FILE* file = fopen(path, "wb");
     if (!file) {
-        eprn("Failed to open file for writing: %s", output_path);
-        return;
+        kill("Failed to open file for writing: %s", path);
     }
 
     usize len     = cgen->arena.cursor;
     usize written = fwrite(cgen->arena.data, 1, len, file);
     if (written != len) {
-        eprn("Failed to write generated C file: %s", output_path);
+        fclose(file);
+        kill("Failed to write generated C file: %s", path);
     }
 
     fclose(file);

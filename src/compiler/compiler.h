@@ -14,6 +14,8 @@
 
 typedef struct {
     string source;
+    bool   emit_ir;
+    bool   emit_c;
 } NerdBuildConfig;
 
 typedef struct {
@@ -27,6 +29,13 @@ typedef struct {
 typedef struct {
     bool reserved;
 } NerdTestConfig;
+
+typedef struct {
+    cstr output_stem;
+    bool emit_ir_file;
+    bool emit_c_file;
+    bool compile_binary;
+} NerdArtifactConfig;
 
 //------------------------------------------------------------------------------
 
@@ -47,9 +56,12 @@ void          front_end_benchmark(string  source_code,
                                   Timing* out_timing);
 void          front_end_results_done(FrontEndState* results);
 
-BackEndState back_end(const FrontEndState* front_end_results, Timing* timing);
+BackEndState back_end(const FrontEndState*   front_end_results,
+                      const NerdArtifactConfig* artifacts,
+                      Timing*                timing);
 void         back_end_results_done(BackEndState* results);
-void         back_end_benchmark(const FrontEndState* front_end_results,
+void         back_end_benchmark(const FrontEndState*   front_end_results,
+                                const NerdArtifactConfig* artifacts,
                                 u32                  warmup_iterations,
                                 u32                  timed_iterations,
                                 Timing*              out_timing);

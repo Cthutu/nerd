@@ -35,6 +35,8 @@
 // [Map]                Dynamic hashmap implementation
 // [Hash]               Hashing
 // [FileMap]            Simple file-mapped routines
+// [Path]               Path manipulation helpers
+// [Directory]          Directory scanning helpers
 // [Shell]              Run external commands
 //
 //------------------------------------------------------------------------------
@@ -164,6 +166,7 @@
 #endif // OS_WINDOWS
 
 #if OS_POSIX
+#    include <dirent.h>
 #    include <unistd.h>
 #endif // OS_POSIX
 
@@ -746,9 +749,48 @@ typedef struct {
 string filemap_load(cstr path, FileMap* filemap);
 void   filemap_unload(FileMap* filemap);
 
+//------------------------------------------------------------------------------[Path]
+
+bool   path_exists(cstr path);
+bool   path_is_directory(cstr path);
+bool   path_has_extension(string path, cstr extension);
+string path_filename(string path);
+string path_stem(string path);
+cstr   path_join(Arena* arena, cstr left, cstr right);
+cstr   path_replace_extension(Arena* arena, cstr path, cstr extension);
+bool   path_remove(cstr path);
+
+//------------------------------------------------------------------------------[Directory]
+
+typedef struct {
+#if OS_WINDOWS
+    HANDLE           handle;
+    WIN32_FIND_DATAA find_data;
+    bool             first_ready;
+    char*            pattern;
+#elif OS_POSIX
+    DIR* dir;
+#endif
+    cstr path;
+} DirIter;
+
+bool dir_iter_init(DirIter* iter, cstr path);
+bool dir_iter_next(DirIter* iter,
+                   Arena*   arena,
+                   cstr*    out_path,
+                   bool*    out_is_directory);
+void dir_iter_done(DirIter* iter);
+
 //------------------------------------------------------------------------------[Shell]
 
-int shell(cstr command);
+typedef struct {
+    int    exit_code;
+    string stdout_text;
+    string stderr_text;
+} ShellResult;
+
+int         shell(cstr command);
+ShellResult shell_capture(cstr command, Arena* arena);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

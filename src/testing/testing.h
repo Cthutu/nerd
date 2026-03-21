@@ -1,19 +1,16 @@
 //------------------------------------------------------------------------------
-// Test command
+// Test runner
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
+//> use: core compiler testing
 
-#include <compiler/cmd_internal.h>
-#include <testing/testing.h>
+#pragma once
+
+#include <compiler/compiler.h>
 
 //------------------------------------------------------------------------------
 
-int compiler_cmd_test(const NerdTestConfig* config)
-{
-    UNUSED(config);
-
-    return testing_run_suite("tests");
-}
+int testing_run_suite(cstr tests_root);
 
 //------------------------------------------------------------------------------

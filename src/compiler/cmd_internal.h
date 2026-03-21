@@ -17,8 +17,10 @@ enum {
 };
 
 void compiler_cmd_print_source_overview(string source_code);
-void compiler_cmd_run_pipeline_once(string source_code,
-                                    bool   dump_compiler_state,
-                                    Timing* timing);
+NerdArtifactConfig compiler_cmd_default_artifacts(void);
+void compiler_cmd_run_pipeline_once(string                 source_code,
+                                    const NerdArtifactConfig* artifacts,
+                                    bool                   dump_compiler_state,
+                                    Timing*                timing);
 
 //------------------------------------------------------------------------------
