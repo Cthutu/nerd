@@ -29,40 +29,46 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
     };
 }
 
-internal void phase_cgen_run(void* raw_ctx)
+internal bool phase_cgen_run(void* raw_ctx)
 {
     BackEndContext* ctx = (BackEndContext*)raw_ctx;
     ctx->results.cgen   = cgen_init(&ctx->front_end_results->ir);
+    return true;
 }
 
-internal void phase_cgen_reset(void* raw_ctx)
+internal bool phase_cgen_reset(void* raw_ctx)
 {
     BackEndContext* ctx = (BackEndContext*)raw_ctx;
     cgen_done(&ctx->results.cgen);
     ctx->results.cgen = (CGen){0};
+    return true;
 }
 
-internal void phase_save_run(void* raw_ctx)
+internal bool phase_save_run(void* raw_ctx)
 {
     BackEndContext* ctx = (BackEndContext*)raw_ctx;
     if (!ctx->artifacts->emit_c_file && !ctx->artifacts->compile_binary) {
-        return;
+        return true;
     }
 
+    // TODO: cgen_save should return true/false if it was successful writing a
+    // file
     cgen_save(&ctx->results.cgen, ctx->artifacts->c_path);
+    return true;
 }
 
-internal void phase_noop_reset(void* raw_ctx)
+internal bool phase_noop_reset(void* raw_ctx)
 {
     BackEndContext* ctx = (BackEndContext*)raw_ctx;
     UNUSED(ctx);
+    return true;
 }
 
-internal void phase_compile_run(void* raw_ctx)
+internal bool phase_compile_run(void* raw_ctx)
 {
     BackEndContext* ctx = (BackEndContext*)raw_ctx;
     if (!ctx->artifacts->compile_binary) {
-        return;
+        return true;
     }
 
     Arena arena = {0};
@@ -99,6 +105,7 @@ internal void phase_compile_run(void* raw_ctx)
     }
 
     arena_done(&arena);
+    return true;
 }
 
 internal const PhaseSpec g_back_end_phases[] = {
@@ -119,9 +126,10 @@ internal const PhaseSpec g_back_end_phases[] = {
 #define BACK_END_PHASE_COUNT                                                   \
     (sizeof(g_back_end_phases) / sizeof(g_back_end_phases[0]))
 
-BackEndState back_end(const FrontEndState*      front_end_results,
-                      const NerdArtifactConfig* artifacts,
-                      Timing*                   timing)
+bool back_end(const FrontEndState*      front_end_results,
+              const NerdArtifactConfig* artifacts,
+              Timing*                   timing,
+              BackEndState*             out_results)
 {
     NerdArtifactConfig default_artifacts = compiler_default_artifacts();
     if (!artifacts) {
@@ -132,12 +140,16 @@ BackEndState back_end(const FrontEndState*      front_end_results,
         ir_save(&front_end_results->ir, artifacts->ir_path);
     }
 
-    BackEndContext ctx = {.front_end_results = front_end_results,
-                          .artifacts         = artifacts,
-                          .results           = {0}};
-    compiler_phase_run(g_back_end_phases, BACK_END_PHASE_COUNT, &ctx, timing);
+    BackEndContext ctx    = {.front_end_results = front_end_results,
+                             .artifacts         = artifacts,
+                             .results           = {0}};
+    bool           result = compiler_phase_run(
+        g_back_end_phases, BACK_END_PHASE_COUNT, &ctx, timing);
+    if (out_results != NULL) {
+        *out_results = ctx.results;
+    }
 
-    return ctx.results;
+    return result;
 }
 
 void back_end_benchmark(const FrontEndState*      front_end_results,

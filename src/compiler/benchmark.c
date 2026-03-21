@@ -8,25 +8,31 @@
 
 //------------------------------------------------------------------------------
 
-void compiler_phase_run(const PhaseSpec* phases,
+bool compiler_phase_run(const PhaseSpec* phases,
                         usize            phase_count,
                         void*            context,
                         Timing*          timing)
 {
     for (usize i = 0; i < phase_count; i++) {
-        const PhaseSpec* phase = &phases[i];
+        const PhaseSpec* phase  = &phases[i];
+        bool             result = true;
         if (timing != NULL) {
             ThreadTimePoint start = thread_time_now();
-            phase->run(context);
-            ThreadTimePoint end = thread_time_now();
+            result                = phase->run(context);
+            ThreadTimePoint end   = thread_time_now();
             timing_add(timing,
                        phase->stage,
                        phase->phase,
                        thread_time_elapsed(start, end));
         } else {
-            phase->run(context);
+            result = phase->run(context);
+        }
+
+        if (!result) {
+            return false;
         }
     }
+    return true;
 }
 
 void compiler_phase_reset_reverse(const PhaseSpec* phases,
@@ -53,17 +59,23 @@ TimeDuration compiler_phase_benchmark_single(const PhaseSpec* phases,
     const PhaseSpec* phase = &phases[phase_index];
 
     for (usize i = 0; i < phase_index; i++) {
-        phases[i].run(context);
+        if (!phases[i].run(context)) {
+            return 0;
+        }
     }
 
     for (u32 i = 0; i < warmup_iterations; i++) {
-        phase->run(context);
+        if (!phase->run(context)) {
+            return 0;
+        }
         phase->reset(context);
     }
 
     ThreadTimePoint start = thread_time_now();
     for (u32 i = 0; i < timed_iterations; i++) {
-        phase->run(context);
+        if (!phase->run(context)) {
+            return 0;
+        }
         phase->reset(context);
     }
     ThreadTimePoint end = thread_time_now();

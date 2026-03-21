@@ -13,43 +13,48 @@ typedef struct {
     FrontEndState results;
 } FrontEndContext;
 
-internal void phase_lex_run(void* raw_ctx)
+internal bool phase_lex_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
-    ctx->results.lexer   = lex(ctx->source_code);
+    return lex(ctx->source_code, &ctx->results.lexer);
 }
 
-internal void phase_lex_reset(void* raw_ctx)
+internal bool phase_lex_reset(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     lex_done(&ctx->results.lexer);
     ctx->results.lexer = (Lexer){0};
+    return true;
 }
 
-internal void phase_parse_run(void* raw_ctx)
+internal bool phase_parse_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ctx->results.ast     = ast_parse(&ctx->results.lexer);
+    return true;
 }
 
-internal void phase_parse_reset(void* raw_ctx)
+internal bool phase_parse_reset(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ast_done(&ctx->results.ast);
     ctx->results.ast = (Ast){0};
+    return true;
 }
 
-internal void phase_ir_gen_run(void* raw_ctx)
+internal bool phase_ir_gen_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ctx->results.ir      = ir_generate(&ctx->results.lexer, &ctx->results.ast);
+    return true;
 }
 
-internal void phase_ir_gen_reset(void* raw_ctx)
+internal bool phase_ir_gen_reset(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ir_done(&ctx->results.ir);
     ctx->results.ir = (Ir){0};
+    return true;
 }
 
 internal const PhaseSpec g_front_end_phases[] = {
@@ -70,11 +75,15 @@ internal const PhaseSpec g_front_end_phases[] = {
 #define FRONT_END_PHASE_COUNT                                                  \
     (sizeof(g_front_end_phases) / sizeof(g_front_end_phases[0]))
 
-FrontEndState front_end(string source_code, Timing* timing)
+bool front_end(string source_code, Timing* timing, FrontEndState* out_results)
 {
-    FrontEndContext ctx = {.source_code = source_code, .results = {0}};
-    compiler_phase_run(g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
-    return ctx.results;
+    FrontEndContext ctx    = {.source_code = source_code, .results = {0}};
+    bool            result = compiler_phase_run(
+        g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
+    if (out_results != NULL) {
+        *out_results = ctx.results;
+    }
+    return result;
 }
 
 void front_end_benchmark(string  source_code,

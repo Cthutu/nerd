@@ -20,7 +20,7 @@
 #define COMPILER_PHASE_C_SAVE "save generated C file"
 #define COMPILER_PHASE_C_COMPILE "compile generated C file"
 
-typedef void (*PhaseFn)(void* context);
+typedef bool (*PhaseFn)(void* context);
 
 typedef struct {
     cstr    stage;
@@ -29,7 +29,7 @@ typedef struct {
     PhaseFn reset;
 } PhaseSpec;
 
-void         compiler_phase_run(const PhaseSpec* phases,
+bool         compiler_phase_run(const PhaseSpec* phases,
                                 usize            phase_count,
                                 void*            context,
                                 Timing*          timing);
