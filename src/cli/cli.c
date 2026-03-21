@@ -379,7 +379,7 @@ internal void cli_print_named_options(Array(CliFlag) flags,
     Table table = {0};
     table_init(&table, columns, .title = title);
     array_free(columns);
-    table_reserve_rows(&table, array_count(flags) + 1);
+    table_reserve_rows(&table, array_count(flags) + array_count(params) + 1);
 
     Arena arena = {0};
     arena_init(&arena);
@@ -391,18 +391,20 @@ internal void cli_print_named_options(Array(CliFlag) flags,
     }
 
     for (usize i = 0; i < array_count(flags); i++) {
-        const CliFlag* flag       = &flags[i];
-        string         option_str = {0};
-        if (flag->short_name != '\0') {
-            option_str = string_format(
-                &arena, "-%c, --%s", flag->short_name, flag->long_name);
-        } else {
-            option_str = string_format(&arena, "--%s", flag->long_name);
+        CliFlag* flag = &flags[i];
+        cli_add_named_option_row(
+            &table, &arena, flag->short_name, flag->long_name, s(""), flag->description);
+    }
+
+    for (usize i = 0; i < array_count(params); i++) {
+        CliParam* param = &params[i];
+        if (param->kind != CLI_PARAM_NAMED) {
+            continue;
         }
 
-        TableCell row[] = {table_cell_string(option_str),
-                           table_cell_string(s(flag->description))};
-        table_add_row(&table, row);
+        string suffix = string_format(&arena, "<" STRINGP ">", STRINGV(param->name));
+        cli_add_named_option_row(
+            &table, &arena, param->short_name, param->long_name, suffix, param->description);
     }
 
     table_print(&table);
@@ -802,15 +804,21 @@ JsonValue* cli_parse(const CliParser* parser, Arena* arena, int argc, char** arg
 
 void cli_print_help(const CliParser* parser)
 {
-    cstr program_name = parser->program_name ? parser->program_name : "program";
-    prn("%s%s%s", ANSI_BOLD_CYAN, program_name, ANSI_RESET);
-    if (parser->summary && parser->summary[0] != '\0') {
-        prn("%s%s%s", ANSI_FAINT_WHITE, parser->summary, ANSI_RESET);
+    prn("%s" STRINGP "%s",
+        ANSI_BOLD_CYAN,
+        STRINGV(parser->program_name),
+        ANSI_RESET);
+    if (parser->summary.count > 0) {
+        prn("%s" STRINGP "%s",
+            ANSI_FAINT_WHITE,
+            STRINGV(parser->summary),
+            ANSI_RESET);
     }
 
     prn("");
     prn("%sUsage%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    prn("  %s [global options] <command> [command options]", program_name);
+    prn("  " STRINGP " [global options] <command> [command options]",
+        STRINGV(parser->program_name));
 
     prn("");
     prn("%sCommands%s", ANSI_BOLD_YELLOW, ANSI_RESET);
@@ -828,8 +836,8 @@ void cli_print_help(const CliParser* parser)
 
     for (usize i = 0; i < array_count(parser->commands); i++) {
         const CliCommand* command = &parser->commands[i];
-        TableCell         row[]   = {table_cell_string(s(command->name)),
-                                     table_cell_string(s(command->summary))};
+        TableCell row[] = {table_cell_string(command->name),
+                           table_cell_string(command->summary)};
         table_add_row(&commands_table, row);
     }
 
@@ -838,7 +846,7 @@ void cli_print_help(const CliParser* parser)
 
     prn("");
     prn("%sGlobal Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    cli_print_flags_table(parser->root_flags, "Global Options");
+    cli_print_named_options(parser->root_flags, parser->root_params, "Global Options");
 }
 
 void cli_print_command_help(const CliParser* parser, usize command_index)
@@ -848,27 +856,45 @@ void cli_print_command_help(const CliParser* parser, usize command_index)
            command_index);
 
     const CliCommand* command = &parser->commands[command_index];
-    cstr              program_name = parser->program_name ? parser->program_name
-                                                           : "program";
 
-    prn("%s%s %s%s", ANSI_BOLD_CYAN, program_name, command->name, ANSI_RESET);
-    if (command->summary && command->summary[0] != '\0') {
-        prn("%s%s%s", ANSI_FAINT_WHITE, command->summary, ANSI_RESET);
+    prn("%s" STRINGP " " STRINGP "%s",
+        ANSI_BOLD_CYAN,
+        STRINGV(parser->program_name),
+        STRINGV(command->name),
+        ANSI_RESET);
+    if (command->summary.count > 0) {
+        prn("%s" STRINGP "%s",
+            ANSI_FAINT_WHITE,
+            STRINGV(command->summary),
+            ANSI_RESET);
     }
+
+    Arena arena = {0};
+    arena_init(&arena);
 
     prn("");
     prn("%sUsage%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    prn("  %s %s [options]", program_name, command->name);
+    string usage = cli_command_usage(parser, &arena, command);
+    prn("  " STRINGP, STRINGV(usage));
 
     prn("");
     prn("%sCommand Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-    cli_print_flags_table(command->flags, "Command Options");
+    cli_print_named_options(command->flags, command->params, "Command Options");
 
-    if (array_count(parser->root_flags) > 0) {
+    if (cli_count_positionals(command) > 0) {
+        prn("");
+        prn("%sPositional Parameters%s", ANSI_BOLD_YELLOW, ANSI_RESET);
+        cli_print_positionals(command->params, "Positional Parameters");
+    }
+
+    if (array_count(parser->root_flags) > 0 || array_count(parser->root_params) > 0) {
         prn("");
         prn("%sGlobal Options%s", ANSI_BOLD_YELLOW, ANSI_RESET);
-        cli_print_flags_table(parser->root_flags, "Global Options");
+        cli_print_named_options(
+            parser->root_flags, parser->root_params, "Global Options");
     }
+
+    arena_done(&arena);
 }
 
 //------------------------------------------------------------------------------
