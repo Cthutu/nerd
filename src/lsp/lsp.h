@@ -61,9 +61,7 @@ void lsp_document_done(LspDocument* doc);
 JsonValue* lsp_prepare_response(const LspMessage* message);
 void       lsp_send_response(Arena* arena, const JsonValue* response);
 JsonValue* lsp_prepare_notification(Arena* arena, string method);
-void       lsp_publish_diagnostics(Arena* arena,
-                                   string uri,
-                                   JsonValue* diagnostics);
+void lsp_publish_diagnostics(Arena* arena, string uri, JsonValue* diagnostics);
 
 void lsp_handle_initialise(LspState* state, const LspMessage* message);
 void lsp_handle_shutdown(LspState* state, const LspMessage* message);

@@ -426,18 +426,17 @@ internal void error_test_render(const ErrorInfo* error_info)
     json_done(root);
 }
 
-internal JsonValue* error_make_lsp_range(Arena* arena,
-                                         NerdSource source,
-                                         ErrorSpan  span)
+internal JsonValue*
+error_make_lsp_range(Arena* arena, NerdSource source, ErrorSpan span)
 {
     JsonValue* range = json_new_object(arena);
     JsonValue* start = json_new_object(arena);
     JsonValue* end   = json_new_object(arena);
 
-    u32 start_line = 0;
-    u32 start_col  = 0;
-    u32 end_line   = 0;
-    u32 end_col    = 0;
+    u32 start_line   = 0;
+    u32 start_col    = 0;
+    u32 end_line     = 0;
+    u32 end_col      = 0;
 
     lex_offset_to_line_col(source, span.start, &start_line, &start_col);
 
@@ -464,16 +463,18 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 
     json_object_set_object(diagnostic,
                            "range",
-                           error_make_lsp_range(
-                               &temp_arena, error_info->source, error_info->span));
+                           error_make_lsp_range(&temp_arena,
+                                                error_info->source,
+                                                error_info->span));
     json_object_set_number(diagnostic,
                            &temp_arena,
                            "severity",
                            (f64)error_lsp_severity(error_info->kind));
-    json_object_set_string(diagnostic,
-                           &temp_arena,
-                           "code",
-                           string_format(&temp_arena, "%04u", error_info->code));
+    json_object_set_string(
+        diagnostic,
+        &temp_arena,
+        "code",
+        string_format(&temp_arena, "%04u", error_info->code));
     json_object_set_cstr(diagnostic, &temp_arena, "source", "nerd");
     json_object_set_string(
         diagnostic, &temp_arena, "message", error_info->error_message);
@@ -493,10 +494,10 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
                                error_info->source.source_path.count > 0
                                    ? error_info->source.source_path
                                    : s("<input>"));
-        json_object_set_object(location,
-                               "range",
-                               error_make_lsp_range(
-                                   &temp_arena, error_info->source, ref->span));
+        json_object_set_object(
+            location,
+            "range",
+            error_make_lsp_range(&temp_arena, error_info->source, ref->span));
         json_object_set_object(info, "location", location);
         json_object_set_string(info, &temp_arena, "message", ref->message);
         json_array_push(related, info);
@@ -509,8 +510,8 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 
     json_array_push(diagnostics, diagnostic);
 
-    string rendered = json_stringify(
-        &temp_arena, diagnostics, .pretty = false, .indent = 2);
+    string rendered =
+        json_stringify(&temp_arena, diagnostics, .pretty = false, .indent = 2);
     error_system_store_last_rendered(rendered);
     if (error_system_should_emit_output()) {
         eprn(STRINGP, STRINGV(rendered));

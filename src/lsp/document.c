@@ -4,8 +4,8 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
-#include <lsp/lsp.h>
 #include <compiler/error/error.h>
+#include <lsp/lsp.h>
 
 //------------------------------------------------------------------------------
 
@@ -47,8 +47,7 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
     }
 
     JsonParseResult parse_result = {0};
-    JsonValue*      diagnostics =
-        json_parse(arena, diagnostics_json, &parse_result);
+    JsonValue* diagnostics = json_parse(arena, diagnostics_json, &parse_result);
     if (!parse_result.ok || !diagnostics || diagnostics->kind != JSON_ARRAY) {
         lsp_log("Failed to parse rendered diagnostics JSON");
         return json_new_array(arena);
@@ -70,11 +69,12 @@ internal bool lsp_lex_document(LspDocument* doc, string uri, string content)
     error_system_clear_last_rendered();
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
-    bool ok = lex((NerdSource){
-                      .source      = document_copy_str,
-                      .source_path = uri,
-                  },
-                  &doc->lexer);
+    bool ok = lex(
+        (NerdSource){
+            .source      = document_copy_str,
+            .source_path = uri,
+        },
+        &doc->lexer);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
@@ -175,7 +175,8 @@ void lsp_handle_did_close(LspState* state, const LspMessage* message)
         return;
     }
 
-    lsp_publish_diagnostics(message->arena, uri_str, json_new_array(message->arena));
+    lsp_publish_diagnostics(
+        message->arena, uri_str, json_new_array(message->arena));
     lsp_document_done(doc);
     LspDocumentMap_delete(&state->documents, uri_str);
 }

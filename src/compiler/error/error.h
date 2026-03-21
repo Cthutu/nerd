@@ -50,7 +50,7 @@ void   error_system_store_last_rendered(string rendered);
 // These functions are used during rendering
 ErrorRenderMode error_system_mode(void);
 bool            error_system_should_emit_output(void);
-void error_system_reset(void);
+void            error_system_reset(void);
 
 //------------------------------------------------------------------------------
 // General internal compiler error.

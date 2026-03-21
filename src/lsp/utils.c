@@ -71,7 +71,7 @@ void lsp_publish_diagnostics(Arena* arena, string uri, JsonValue* diagnostics)
 {
     JsonValue* notification =
         lsp_prepare_notification(arena, s("textDocument/publishDiagnostics"));
-    JsonValue* params        = json_new_object(arena);
+    JsonValue* params = json_new_object(arena);
     json_object_set_string(params, arena, "uri", uri);
     json_object_set_array(params, "diagnostics", diagnostics);
     json_object_set_object(notification, "params", params);

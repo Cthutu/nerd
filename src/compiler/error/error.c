@@ -8,11 +8,11 @@
 
 //------------------------------------------------------------------------------
 
-global_variable ErrorRenderMode g_error_mode  = ERROR_RENDER_NORMAL;
-global_variable bool   g_error_emit_output    = true;
-global_variable Arena  g_error_arena          = {0};
-global_variable Arena  g_error_rendered_arena = {0};
-global_variable string g_error_last_rendered  = {0};
+global_variable ErrorRenderMode g_error_mode           = ERROR_RENDER_NORMAL;
+global_variable bool            g_error_emit_output    = true;
+global_variable Arena           g_error_arena          = {0};
+global_variable Arena           g_error_rendered_arena = {0};
+global_variable string          g_error_last_rendered  = {0};
 
 void error_system_init(ErrorRenderMode mode)
 {
@@ -34,10 +34,7 @@ void error_system_done(void)
     g_error_last_rendered  = (string){0};
 }
 
-void error_system_set_mode(ErrorRenderMode mode)
-{
-    g_error_mode = mode;
-}
+void error_system_set_mode(ErrorRenderMode mode) { g_error_mode = mode; }
 
 void error_system_set_emit_output(bool emit_output)
 {
