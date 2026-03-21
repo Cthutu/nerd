@@ -94,9 +94,12 @@ void error_add_reference(ErrorInfo*   error_info,
     array_push(error_info->references,
                (ErrorRef){
                    .ref_kind = kind,
-                   .offset   = offset,
-                   .length   = length,
-                   .message  = message,
+                   .span =
+                       (ErrorSpan){
+                           .start = offset,
+                           .end   = offset + MAX(length, 1),
+                       },
+                   .message = message,
                });
 }
 

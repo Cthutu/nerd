@@ -70,9 +70,13 @@ typedef enum {
 } ErrorKind;
 
 typedef struct {
+    usize start;
+    usize end;
+} ErrorSpan;
+
+typedef struct {
     ErrorRefKind ref_kind;
-    usize        offset; // Offset in the source code
-    usize        length; // Length of the source code span
+    ErrorSpan    span; // Byte span in the source code
     string       message;
 } ErrorRef;
 
