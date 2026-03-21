@@ -20,6 +20,9 @@ clean:
     rm -f syntax/nerd-vscode/package-lock.json
     rm -f syntax/nerd-vscode/*.vsix
 
+format:
+    python3 build/format.py
+
 test: 
     just run nerd test
 
@@ -28,6 +31,7 @@ alias br := build-release
 alias r := run
 alias rr := run-release
 alias c := clean
+alias f := format
 alias t := test
 
 #
