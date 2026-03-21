@@ -20,7 +20,9 @@ typedef struct {
 internal NerdArtifactConfig compiler_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .output_stem    = "_output",
+        .binary_path    = "a.out",
+        .ir_path        = "a.ir",
+        .c_path         = "a.c",
         .emit_ir_file   = false,
         .emit_c_file    = false,
         .compile_binary = true,

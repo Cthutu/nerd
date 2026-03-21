@@ -31,7 +31,9 @@ typedef struct {
 } NerdTestConfig;
 
 typedef struct {
-    cstr output_stem;
+    cstr binary_path;
+    cstr ir_path;
+    cstr c_path;
     bool emit_ir_file;
     bool emit_c_file;
     bool compile_binary;
