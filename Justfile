@@ -15,6 +15,7 @@ run-release proj *args: (build-release proj)
 
 clean:
     rm -rf _*
+    find tests -type f \( -name '*.ir' -o -name '*.c' -o -name '*.out' \) -delete
     rm -rf syntax/nerd-vscode/node_modules
     rm -rf syntax/nerd-vscode/out
     rm -f syntax/nerd-vscode/package-lock.json
