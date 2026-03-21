@@ -1,0 +1,6 @@
+{"rule":"ENGLISH_WORD_REPEAT_BEGINNING_RULE","sentence":"^\\QExpected IR output in human-readable form.\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_BEGINNING_RULE","sentence":"^\\QExpected generated C code.\\E$"}
+{"rule":"HELL","sentence":"^\\QShell process capture\\E$"}
+{"rule":"ARROWS","sentence":"^\\Q\\E(?:Dummy|Ina|Jimmy-|Dummy-|Maniquí-|Maniquíes-|Dummy\\+|Dummy's\\+)[0-9]+\\Q -> \\E(?:Dummy|Ina|Jimmy-|Dummy-|Maniquí-|Maniquíes-|Dummy\\+|Dummy's\\+)[0-9]+\\Q\n\\E(?:Dummy|Ina|Jimmy-|Dummy-|Maniquí-|Maniquíes-|Dummy\\+|Dummy's\\+)[0-9]+\\Q -> \\E(?:Dummy|Ina|Jimmy-|Dummy-|Maniquí-|Maniquíes-|Dummy\\+|Dummy's\\+)[0-9]+$"}
+{"rule":"MISSING_TO_BETWEEN_BE_AND_VB","sentence":"^\\QRefactor backend output handling, so file names are configuration-driven\nAdd stable IR and C render helpers\nExtend shell API to capture stdout/stderr/exit code\nAdd a diff module for readable text mismatches\nImplement language test discovery, parsing, execution, comparison, and cleanup\\E$"}
+{"rule":"MISSING_TO_BETWEEN_BE_AND_VB","sentence":"^\\QRefactor backend output handling, so file names are configuration-driven\nAdd stable IR and C render helpers\nExtend shell API to capture stdout/stderr/exit code\nAdd a diff module for readable text mismatches\nImplement language test discovery, parsing, execution, comparison, and clean-up\\E$"}
