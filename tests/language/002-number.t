@@ -5,7 +5,7 @@
 ¬
 $0 = 123
 $1 = 44
-return $1
+return $0
 ¬
 //
 // Generated C code
