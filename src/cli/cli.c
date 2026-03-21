@@ -187,44 +187,188 @@ internal CliFlag* cli_find_short_flag(Array(CliFlag) flags, char short_name)
     return NULL;
 }
 
+internal CliParam* cli_find_short_param(Array(CliParam) params, char short_name)
+{
+    for (usize i = 0; i < array_count(params); i++) {
+        if (params[i].kind == CLI_PARAM_NAMED && params[i].short_name == short_name) {
+            return &params[i];
+        }
+    }
+    return NULL;
+}
+
+internal CliParam* cli_next_positional_param(const CliCommand* command,
+                                             usize*            io_position)
+{
+    usize positional_index = *io_position;
+    for (usize i = 0; i < array_count(command->params); i++) {
+        CliParam* param = &command->params[i];
+        if (param->kind != CLI_PARAM_POSITIONAL) {
+            continue;
+        }
+
+        if (positional_index == 0) {
+            *io_position += 1;
+            return param;
+        }
+
+        positional_index--;
+    }
+
+    return NULL;
+}
+
+internal usize cli_count_positionals(const CliCommand* command)
+{
+    usize count = 0;
+    for (usize i = 0; i < array_count(command->params); i++) {
+        if (command->params[i].kind == CLI_PARAM_POSITIONAL) {
+            count++;
+        }
+    }
+    return count;
+}
+
 internal isize cli_find_command_index(const CliParser* parser, cstr name)
 {
     for (usize i = 0; i < array_count(parser->commands); i++) {
-        if (strcmp(parser->commands[i].name, name) == 0) {
+        if (string_eq_cstr(parser->commands[i].name, name)) {
             return (isize)i;
         }
     }
     return -1;
 }
 
-internal void cli_add_flag(Array(CliFlag)* flags,
-                           char            short_name,
-                           cstr            long_name,
-                           cstr            description,
-                           bool*           out_value)
+internal void cli_validate_unique_flags(Array(CliFlag) flags)
 {
-    ASSERT(long_name != NULL && long_name[0] != '\0',
-           "Flag must have long name");
-    ASSERT(out_value != NULL, "Flag output pointer cannot be NULL");
+    for (usize i = 0; i < array_count(flags); i++) {
+        CliFlag* flag = &flags[i];
+        ASSERT(!cli_string_is_empty(flag->long_name),
+               "CLI flags must define a long option name");
 
-    if (short_name != '\0') {
-        ASSERT(cli_find_short_flag(*flags, short_name) == NULL,
-               "Duplicate short flag -%c",
-               short_name);
+        for (usize j = i + 1; j < array_count(flags); j++) {
+            CliFlag* other = &flags[j];
+            ASSERT(!string_eq(flag->long_name, other->long_name),
+                   "Duplicate long flag --" STRINGP,
+                   STRINGV(flag->long_name));
+
+            ASSERT(flag->short_name == '\0' || other->short_name == '\0' ||
+                       flag->short_name != other->short_name,
+                   "Duplicate short flag -%c",
+                   flag->short_name);
+        }
     }
-    ASSERT(cli_find_long_flag(*flags, long_name) == NULL,
-           "Duplicate long flag --%s",
-           long_name);
-
-    *out_value = false;
-    array_push(*flags,
-               (CliFlag){.short_name  = short_name,
-                         .long_name   = long_name,
-                         .description = description ? description : "",
-                         .out_value   = out_value});
 }
 
-internal void cli_print_flags_table(Array(CliFlag) flags, cstr title)
+internal void cli_validate_unique_params(Array(CliParam) params)
+{
+    usize positional_count = 0;
+
+    for (usize i = 0; i < array_count(params); i++) {
+        CliParam* param = &params[i];
+        ASSERT(!cli_string_is_empty(param->name),
+               "CLI params must define a name");
+
+        if (param->kind == CLI_PARAM_POSITIONAL) {
+            positional_count++;
+        }
+
+        for (usize j = i + 1; j < array_count(params); j++) {
+            CliParam* other = &params[j];
+            ASSERT(!string_eq(param->name, other->name),
+                   "Duplicate CLI param name " STRINGP,
+                   STRINGV(param->name));
+
+            if (param->kind == CLI_PARAM_NAMED && other->kind == CLI_PARAM_NAMED) {
+                ASSERT(!string_eq(param->long_name, other->long_name),
+                       "Duplicate long option --" STRINGP,
+                       STRINGV(param->long_name));
+                ASSERT(param->short_name == '\0' || other->short_name == '\0' ||
+                           param->short_name != other->short_name,
+                       "Duplicate short option -%c",
+                       param->short_name);
+            }
+        }
+    }
+
+    ASSERT(positional_count <= array_count(params),
+           "Invalid positional param count");
+}
+
+internal void cli_validate_command(const CliCommand* command)
+{
+    cli_validate_unique_flags(command->flags);
+    cli_validate_unique_params(command->params);
+}
+
+internal void cli_validate_parser(const CliParser* parser)
+{
+    cli_validate_unique_flags(parser->root_flags);
+    cli_validate_unique_params(parser->root_params);
+
+    for (usize i = 0; i < array_count(parser->commands); i++) {
+        CliCommand* command = &parser->commands[i];
+        ASSERT(!cli_string_is_empty(command->name),
+               "CLI commands must define a name");
+
+        for (usize j = i + 1; j < array_count(parser->commands); j++) {
+            ASSERT(!string_eq(command->name, parser->commands[j].name),
+                   "Duplicate command " STRINGP,
+                   STRINGV(command->name));
+        }
+
+        cli_validate_command(command);
+    }
+}
+
+internal void cli_set_json_bool(JsonValue* object,
+                                Arena*     arena,
+                                string     key,
+                                bool       value)
+{
+    string key_copy = string_format(arena, STRINGP, STRINGV(key));
+    json_object_set_bool(object, arena, (cstr)key_copy.data, value);
+}
+
+internal void cli_set_json_string(JsonValue* object,
+                                  Arena*     arena,
+                                  string     key,
+                                  string     value)
+{
+    string key_copy = string_format(arena, STRINGP, STRINGV(key));
+    json_object_set_string(object, arena, (cstr)key_copy.data, value);
+}
+
+internal void cli_add_named_option_row(Table* table,
+                                       Arena* arena,
+                                       char   short_name,
+                                       string long_name,
+                                       string suffix,
+                                       string description)
+{
+    string option_str = {0};
+    if (short_name != '\0') {
+        if (suffix.count > 0) {
+            option_str = string_format(
+                arena, "-%c, --" STRINGP " " STRINGP, short_name, STRINGV(long_name), STRINGV(suffix));
+        } else {
+            option_str = string_format(
+                arena, "-%c, --" STRINGP, short_name, STRINGV(long_name));
+        }
+    } else if (suffix.count > 0) {
+        option_str = string_format(
+            arena, "--" STRINGP " " STRINGP, STRINGV(long_name), STRINGV(suffix));
+    } else {
+        option_str = string_format(arena, "--" STRINGP, STRINGV(long_name));
+    }
+
+    TableCell row[] = {table_cell_string(option_str), table_cell_string(description)};
+    table_add_row(table, row);
+}
+
+internal void cli_print_named_options(Array(CliFlag) flags,
+                                      Array(CliParam) params,
+                                      cstr            title)
 {
     Array(TableColumn) columns = NULL;
     array_push(
