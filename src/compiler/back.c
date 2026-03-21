@@ -49,9 +49,7 @@ internal void phase_save_run(void* raw_ctx)
         return;
     }
 
-    cstr output_path =
-        path_replace_extension(&temp_arena, ctx->artifacts->output_stem, ".c");
-    cgen_save(&ctx->results.cgen, output_path);
+    cgen_save(&ctx->results.cgen, ctx->artifacts->c_path);
 }
 
 internal void phase_noop_reset(void* raw_ctx)
@@ -70,9 +68,8 @@ internal void phase_compile_run(void* raw_ctx)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr c_path =
-        path_replace_extension(&arena, ctx->artifacts->output_stem, ".c");
-    cstr exe_path = ctx->artifacts->output_stem;
+    cstr c_path   = ctx->artifacts->c_path;
+    cstr exe_path = ctx->artifacts->binary_path;
 #if OS_POSIX
     string command =
         string_format(&arena, "clang -o \"%s\" \"%s\"", exe_path, c_path);
@@ -87,9 +84,8 @@ internal void phase_compile_run(void* raw_ctx)
         kill("Failed to make %s executable", exe_path);
     }
 #elif OS_WINDOWS
-    cstr   output_path = path_replace_extension(&arena, exe_path, ".exe");
     string command =
-        string_format(&arena, "clang -o \"%s\" \"%s\"", output_path, c_path);
+        string_format(&arena, "clang -o \"%s\" \"%s\"", exe_path, c_path);
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
@@ -133,9 +129,7 @@ BackEndState back_end(const FrontEndState*      front_end_results,
     }
 
     if (artifacts->emit_ir_file) {
-        cstr ir_path =
-            path_replace_extension(&temp_arena, artifacts->output_stem, ".ir");
-        ir_save(&front_end_results->ir, ir_path);
+        ir_save(&front_end_results->ir, artifacts->ir_path);
     }
 
     BackEndContext ctx = {.front_end_results = front_end_results,
