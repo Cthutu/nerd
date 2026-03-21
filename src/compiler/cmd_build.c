@@ -44,12 +44,13 @@ int compiler_cmd_build(const NerdBuildConfig* config)
 
     Timing timing                = {0};
     timing_init(&timing);
-    compiler_cmd_run_pipeline_once(config->source, &artifacts, true, &timing);
+    bool ok = compiler_cmd_run_pipeline_once(
+        config->source, &artifacts, true, &timing);
     timing_dump(&timing);
     timing_done(&timing);
     arena_done(&arena);
 
-    return 0;
+    return ok ? 0 : 1;
 }
 
 //------------------------------------------------------------------------------

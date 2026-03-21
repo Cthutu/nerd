@@ -41,7 +41,8 @@ int compiler_cmd_million(const NerdMillionConfig* config)
     Timing timing = {0};
     timing_init(&timing);
     NerdArtifactConfig artifacts = compiler_cmd_default_artifacts();
-    compiler_cmd_run_pipeline_once(source, &artifacts, false, &timing);
+    bool               ok =
+        compiler_cmd_run_pipeline_once(source, &artifacts, false, &timing);
     timing_dump(&timing);
     timing_done(&timing);
 
@@ -49,7 +50,7 @@ int compiler_cmd_million(const NerdMillionConfig* config)
     prn("million total (generate + build): %.3f ms", time_msecs(total_elapsed));
 
     arena_done(&source_arena);
-    return 0;
+    return ok ? 0 : 1;
 }
 
 //------------------------------------------------------------------------------

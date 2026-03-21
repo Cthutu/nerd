@@ -13,10 +13,14 @@ int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
     compiler_cmd_print_source_overview(config->source);
 
     NerdArtifactConfig artifacts     = compiler_cmd_default_artifacts();
-    FrontEndState      front_results = front_end(config->source, NULL);
+    FrontEndState      front_results = {0};
+    if (!front_end(config->source, NULL, &front_results)) {
+        front_end_results_done(&front_results);
+        return 1;
+    }
 
-    Timing benchmark_timing          = {0};
-    Timing back_end_timing           = {0};
+    Timing benchmark_timing = {0};
+    Timing back_end_timing  = {0};
     front_end_benchmark(config->source,
                         NERD_BENCHMARK_WARMUP_ITERATIONS,
                         NERD_BENCHMARK_TIMED_ITERATIONS,
@@ -40,9 +44,10 @@ int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
     front_end_results_done(&front_results);
 
     // Run one regular build for state inspection after benchmark timings.
-    compiler_cmd_run_pipeline_once(config->source, &artifacts, true, NULL);
+    bool ok =
+        compiler_cmd_run_pipeline_once(config->source, &artifacts, true, NULL);
 
-    return 0;
+    return ok ? 0 : 1;
 }
 
 //------------------------------------------------------------------------------

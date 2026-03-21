@@ -298,10 +298,22 @@ internal bool testing_run_language_test(const LanguageTest* test)
         .compile_binary = true,
     };
 
-    FrontEndState front_results = front_end(test->source, NULL);
-    BackEndState  back_results  = back_end(&front_results, &artifacts, NULL);
+    FrontEndState front_results = {0};
+    if (!front_end(test->source, NULL, &front_results)) {
+        front_end_results_done(&front_results);
+        arena_done(&artifact_arena);
+        return false;
+    }
 
-    Arena output_arena          = {0};
+    BackEndState back_results = {0};
+    if (!back_end(&front_results, &artifacts, NULL, &back_results)) {
+        back_end_results_done(&back_results);
+        front_end_results_done(&front_results);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    Arena output_arena = {0};
     arena_init(&output_arena);
 
     string actual_ir = ir_render(&front_results.ir, &output_arena);

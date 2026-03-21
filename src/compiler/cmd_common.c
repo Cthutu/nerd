@@ -29,7 +29,7 @@ void compiler_cmd_print_source_overview(string source_code)
     }
 }
 
-void compiler_cmd_run_pipeline_once(string                    source_code,
+bool compiler_cmd_run_pipeline_once(string                    source_code,
                                     const NerdArtifactConfig* artifacts,
                                     bool    dump_compiler_state,
                                     Timing* timing)
@@ -39,8 +39,18 @@ void compiler_cmd_run_pipeline_once(string                    source_code,
         artifacts = &default_artifacts;
     }
 
-    FrontEndState front_results = front_end(source_code, timing);
-    BackEndState  back_results  = back_end(&front_results, artifacts, timing);
+    FrontEndState front_results = {0};
+    if (!front_end(source_code, timing, &front_results)) {
+        front_end_results_done(&front_results);
+        return false;
+    }
+
+    BackEndState back_results = {0};
+    if (!back_end(&front_results, artifacts, timing, &back_results)) {
+        back_end_results_done(&back_results);
+        front_end_results_done(&front_results);
+        return false;
+    }
 
     if (dump_compiler_state) {
         compiler_dump(&front_results, &back_results);
@@ -48,6 +58,7 @@ void compiler_cmd_run_pipeline_once(string                    source_code,
 
     back_end_results_done(&back_results);
     front_end_results_done(&front_results);
+    return true;
 }
 
 //------------------------------------------------------------------------------
