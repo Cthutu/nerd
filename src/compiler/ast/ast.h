@@ -3,6 +3,7 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
+//> use: compiler/error
 
 #pragma once
 

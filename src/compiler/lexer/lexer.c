@@ -94,7 +94,7 @@ internal usize token_end_offset(const Lexer* lexer, Token* token)
             return index;
         }
     default:
-        ASSERT(false, "Unknown token kind: %d", token->kind);
+        error_ice("Unknown token kind: %d", token->kind);
         return token->offset + 1; // Fallback to prevent infinite loops
     }
 }

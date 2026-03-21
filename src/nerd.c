@@ -3,6 +3,7 @@
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
+#include <compiler/error/error.h>
 #include <lsp/lsp.h>
 #include <table/table.h>
 
@@ -307,6 +308,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
     arena_init(&arena);
+    error_system_init(false);
 
     JsonValue* schema = nerd_cli_schema(&arena);
     CliParser  parser = {0};
@@ -339,6 +341,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
         cli_done(&parser);
         json_done(schema);
         arena_done(&arena);
+        error_system_done();
         return 0;
     }
 
@@ -351,6 +354,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
             cli_done(&parser);
             json_done(schema);
             arena_done(&arena);
+            error_system_done();
             kill("%.*s", STRINGV(error_message));
         }
 
@@ -358,6 +362,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
         cli_done(&parser);
         json_done(schema);
         arena_done(&arena);
+        error_system_done();
         kill("CLI parse failed.");
     }
 
@@ -397,6 +402,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
         cli_done(&parser);
         json_done(schema);
         arena_done(&arena);
+        error_system_done();
         kill("Unhandled command " STRINGP, STRINGV(name));
     }
 
@@ -404,6 +410,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
     cli_done(&parser);
     json_done(schema);
     arena_done(&arena);
+    error_system_done();
     return result;
 }
 
