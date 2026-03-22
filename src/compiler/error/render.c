@@ -460,6 +460,9 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 {
     JsonValue* diagnostics = json_new_array(&temp_arena);
     JsonValue* diagnostic  = json_new_object(&temp_arena);
+    string source_uri = error_info->source.source_path.count > 0
+                            ? error_info->source.source_path
+                            : s("<input>");
 
     json_object_set_object(diagnostic,
                            "range",
@@ -488,12 +491,7 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 
         JsonValue* info     = json_new_object(&temp_arena);
         JsonValue* location = json_new_object(&temp_arena);
-        json_object_set_string(location,
-                               &temp_arena,
-                               "uri",
-                               error_info->source.source_path.count > 0
-                                   ? error_info->source.source_path
-                                   : s("<input>"));
+        json_object_set_string(location, &temp_arena, "uri", source_uri);
         json_object_set_object(
             location,
             "range",
@@ -502,6 +500,44 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
         json_object_set_string(info, &temp_arena, "message", ref->message);
         json_array_push(related, info);
     }
+
+    for (usize i = 0; i < array_count(error_info->notes); i++) {
+        JsonValue* info     = json_new_object(&temp_arena);
+        JsonValue* location = json_new_object(&temp_arena);
+        json_object_set_string(location, &temp_arena, "uri", source_uri);
+        json_object_set_object(location,
+                               "range",
+                               error_make_lsp_range(&temp_arena,
+                                                    error_info->source,
+                                                    error_info->span));
+        json_object_set_object(info, "location", location);
+        json_object_set_string(info,
+                               &temp_arena,
+                               "message",
+                               string_format(
+                                   &temp_arena, "note: " STRINGP, STRINGV(error_info->notes[i])));
+        json_array_push(related, info);
+    }
+
+    for (usize i = 0; i < array_count(error_info->help_messages); i++) {
+        JsonValue* info     = json_new_object(&temp_arena);
+        JsonValue* location = json_new_object(&temp_arena);
+        json_object_set_string(location, &temp_arena, "uri", source_uri);
+        json_object_set_object(location,
+                               "range",
+                               error_make_lsp_range(&temp_arena,
+                                                    error_info->source,
+                                                    error_info->span));
+        json_object_set_object(info, "location", location);
+        json_object_set_string(info,
+                               &temp_arena,
+                               "message",
+                               string_format(&temp_arena,
+                                             "help: " STRINGP,
+                                             STRINGV(error_info->help_messages[i])));
+        json_array_push(related, info);
+    }
+
     if (array_count(json_array(related).values) > 0) {
         json_object_set_array(diagnostic, "relatedInformation", related);
     } else {
