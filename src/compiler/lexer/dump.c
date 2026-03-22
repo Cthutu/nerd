@@ -12,8 +12,24 @@
 string token_kind_to_string(TokenKind kind)
 {
     switch (kind) {
+    case TK_EOF:
+        return string_from_cstr("EOF");
     case TK_Integer:
         return string_from_cstr("Integer");
+    case TK_Plus:
+        return string_from_cstr("Plus `+`");
+    case TK_Minus:
+        return string_from_cstr("Minus `-`");
+    case TK_Star:
+        return string_from_cstr("Star `*`");
+    case TK_Slash:
+        return string_from_cstr("Slash `/`");
+    case TK_Percent:
+        return string_from_cstr("Percent `%`");
+    case TK_LParen:
+        return string_from_cstr("LeftParen `(`");
+    case TK_RParen:
+        return string_from_cstr("RightParen `)`");
     default:
         return string_from_cstr("Unknown");
     }

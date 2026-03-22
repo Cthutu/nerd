@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/front/front.h>
+#include <compiler/error/error.h>
 #include <compiler/internal.h>
 
 //------------------------------------------------------------------------------
@@ -32,6 +33,9 @@ internal bool phase_parse_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ctx->results.ast     = ast_parse(&ctx->results.lexer);
+    if (error_system_last_rendered().count > 0) {
+        return false;
+    }
     return true;
 }
 

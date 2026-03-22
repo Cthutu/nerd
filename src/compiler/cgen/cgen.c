@@ -95,6 +95,31 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
+{
+    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "int ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add(cgen, op);
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_addn(cgen, ";");
+}
+
+void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
+{
+    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "int ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, op);
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_addn(cgen, ";");
+}
+
 //------------------------------------------------------------------------------
 // C generation
 
@@ -108,6 +133,24 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         switch (instr->op) {
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);
+            break;
+        case IR_OP_NEGATE:
+            cgen_add_unary(cgen, instr, "-");
+            break;
+        case IR_OP_ADD:
+            cgen_add_binary(cgen, instr, " + ");
+            break;
+        case IR_OP_SUBTRACT:
+            cgen_add_binary(cgen, instr, " - ");
+            break;
+        case IR_OP_MULTIPLY:
+            cgen_add_binary(cgen, instr, " * ");
+            break;
+        case IR_OP_DIVIDE:
+            cgen_add_binary(cgen, instr, " / ");
+            break;
+        case IR_OP_MODULO:
+            cgen_add_binary(cgen, instr, " % ");
             break;
         case IR_OP_RETURN:
             cgen_add_return(cgen, instr);

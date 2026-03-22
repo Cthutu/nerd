@@ -7,6 +7,7 @@
 #pragma once
 
 #include <compiler/compiler.h>
+#include <compiler/lexer/lexer.h>
 #include <core/core.h>
 
 //------------------------------------------------------------------------------
@@ -74,6 +75,32 @@ bool error_0102_file_too_large(NerdSource source);
 bool error_0103_invalid_number_literal(NerdSource source,
                                        ErrorSpan  span,
                                        char       invalid_char);
+
+// Used when the AST node array can't be formed because AstNode.ref is out of
+// bounds
+bool error_0200_code_too_complex(NerdSource source, ErrorSpan span);
+
+// Used when an operator is found without a previous value.
+bool error_0201_missing_value(NerdSource source,
+                              ErrorSpan  span,
+                              TokenKind  expected_kind);
+
+// Used when two values are found that are not separated with an operator.
+bool error_0202_missing_operator(NerdSource source,
+                                 ErrorSpan  span,
+                                 TokenKind  expected_kind);
+
+// Used when a specific token is required to continue parsing.
+bool error_0203_expected_token(NerdSource source,
+                               ErrorSpan  span,
+                               TokenKind  expected_kind,
+                               TokenKind  actual_kind);
+
+// Used when parsing succeeds for a complete expression but trailing tokens
+// remain.
+bool error_0204_unexpected_token(NerdSource source,
+                                 ErrorSpan  span,
+                                 TokenKind  actual_kind);
 
 //------------------------------------------------------------------------------
 // Low-level error system

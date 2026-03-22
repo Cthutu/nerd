@@ -12,6 +12,12 @@
 
 typedef enum : u8 {
     IR_OP_ASSIGN,
+    IR_OP_NEGATE,
+    IR_OP_ADD,
+    IR_OP_SUBTRACT,
+    IR_OP_MULTIPLY,
+    IR_OP_DIVIDE,
+    IR_OP_MODULO,
     IR_OP_RETURN,
 } IrOperation;
 

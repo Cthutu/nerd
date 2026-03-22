@@ -1,11 +1,12 @@
-123 44
+123+44
 ¬
-44
+167
 ¬
 ¬
 $0 = 123
 $1 = 44
-return $1
+$2 = $0 + $1
+return $2
 ¬
 //
 // Generated C code
@@ -14,5 +15,6 @@ return $1
 int main() {
     int $0 = 123;
     int $1 = 44;
-    return $1;
+    int $2 = $0 + $1;
+    return $2;
 }

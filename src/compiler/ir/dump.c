@@ -40,6 +40,40 @@ string ir_render(const Ir* ir, Arena* arena)
             sb_append_cstr(&sb, " = ");
             ir_render_value(&sb, &instr->rvalue[0]);
             break;
+        case IR_OP_NEGATE:
+            ir_render_value(&sb, &instr->lvalue);
+            sb_append_cstr(&sb, " = -");
+            ir_render_value(&sb, &instr->rvalue[0]);
+            break;
+        case IR_OP_ADD:
+        case IR_OP_SUBTRACT:
+        case IR_OP_MULTIPLY:
+        case IR_OP_DIVIDE:
+        case IR_OP_MODULO:
+            ir_render_value(&sb, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_value(&sb, &instr->rvalue[0]);
+            switch (instr->op) {
+            case IR_OP_ADD:
+                sb_append_cstr(&sb, " + ");
+                break;
+            case IR_OP_SUBTRACT:
+                sb_append_cstr(&sb, " - ");
+                break;
+            case IR_OP_MULTIPLY:
+                sb_append_cstr(&sb, " * ");
+                break;
+            case IR_OP_DIVIDE:
+                sb_append_cstr(&sb, " / ");
+                break;
+            case IR_OP_MODULO:
+                sb_append_cstr(&sb, " % ");
+                break;
+            default:
+                break;
+            }
+            ir_render_value(&sb, &instr->rvalue[1]);
+            break;
         case IR_OP_RETURN:
             sb_append_cstr(&sb, "return ");
             ir_render_value(&sb, &instr->rvalue[0]);

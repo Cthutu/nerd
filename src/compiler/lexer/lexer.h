@@ -10,7 +10,17 @@
 
 //------------------------------------------------------------------------------
 
-typedef enum { TK_Integer } TokenKind;
+typedef enum {
+    TK_EOF, // Not used in lexer, but used in AST
+    TK_Integer,
+    TK_Plus,
+    TK_Minus,
+    TK_Star,
+    TK_Slash,
+    TK_Percent,
+    TK_LParen,
+    TK_RParen,
+} TokenKind;
 
 typedef struct {
     TokenKind kind : 8;
@@ -26,6 +36,7 @@ typedef struct {
 bool   lex(NerdSource source, Lexer* lexer);
 void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
+usize  lex_token_end_offset(const Lexer* lexer, const Token* token);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
 bool   lex_offset_to_line_col(NerdSource source,
                               usize      offset,

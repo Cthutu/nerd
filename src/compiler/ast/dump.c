@@ -14,6 +14,20 @@ string ast_kind_to_string(AstKind kind)
     switch (kind) {
     case AK_IntegerLiteral:
         return s("IntegerLiteral");
+    case AK_IntegerNegate:
+        return s("IntegerNegate");
+    case AK_IntegerPlus:
+        return s("IntegerPlus");
+    case AK_IntegerMinus:
+        return s("IntegerMinus");
+    case AK_IntegerMultiply:
+        return s("IntegerMultiply");
+    case AK_IntegerDivide:
+        return s("IntegerDivide");
+    case AK_IntegerModulo:
+        return s("IntegerModulo");
+    case AK_Expression:
+        return s("Expression");
     default:
         return s("Unknown");
     }
@@ -46,7 +60,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         TableCell row[5];
         row[0] = table_cell_u32((u32)i);
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
-        row[2] = table_cell_u32(ast->nodes[i].ref);
+        row[2] = table_cell_i32(ast->nodes[i].ref);
 
         AstNode* node  = &ast->nodes[i];
         Token*   token = &lexer->tokens[node->token_index];
@@ -61,6 +75,22 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         switch (node->kind) {
         case AK_IntegerLiteral:
             row[4] = table_cell_u64(lexer->integers[node->a]);
+            break;
+        case AK_IntegerNegate:
+            row[4] = table_cell_string(
+                string_format(&temp_arena, "rhs=%u", node->a));
+            break;
+        case AK_IntegerPlus:
+        case AK_IntegerMinus:
+        case AK_IntegerMultiply:
+        case AK_IntegerDivide:
+        case AK_IntegerModulo:
+            row[4] = table_cell_string(
+                string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
+            break;
+        case AK_Expression:
+            row[4] = table_cell_string(
+                string_format(&temp_arena, "root=%u", node->a));
             break;
         default:
             row[4] = table_cell_string(s("Unknown"));

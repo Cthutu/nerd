@@ -42,6 +42,14 @@ bool lex(NerdSource source, Lexer* lexer)
             continue;
         }
 
+        // Check for `¬` and signify end of compilation.  In unicode, the
+        // character is 0x00ac, but in UTF-8 it is the byte sequence:
+        // 0xc2, 0xac.
+        if (c == 0xc2 && i + 1 < source_code.count &&
+            source_code.data[i + 1] == 0xac) {
+            break;
+        }
+
         if (c >= '0' && c <= '9') {
             usize start      = i;
             u64   total      = 0;
@@ -77,7 +85,39 @@ bool lex(NerdSource source, Lexer* lexer)
             }
 
         } else {
-            return error_0100_unexpected_character(source, i, (char)c);
+            switch (c) {
+            case '+':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Plus, .offset = (u32)i});
+                break;
+            case '-':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Minus, .offset = (u32)i});
+                break;
+            case '*':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Star, .offset = (u32)i});
+                break;
+            case '/':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Slash, .offset = (u32)i});
+                break;
+            case '%':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Percent, .offset = (u32)i});
+                break;
+            case '(':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_LParen, .offset = (u32)i});
+                break;
+            case ')':
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_RParen, .offset = (u32)i});
+                break;
+            default:
+                return error_0100_unexpected_character(source, i, (char)c);
+            }
+            i++;
         }
     }
 
@@ -94,7 +134,7 @@ void lex_done(Lexer* lexer)
 
 //------------------------------------------------------------------------------
 
-internal usize token_end_offset(const Lexer* lexer, Token* token)
+usize lex_token_end_offset(const Lexer* lexer, const Token* token)
 {
     switch (token->kind) {
     case TK_Integer:
@@ -107,6 +147,14 @@ internal usize token_end_offset(const Lexer* lexer, Token* token)
             }
             return index;
         }
+    case TK_Plus:
+    case TK_Minus:
+    case TK_Star:
+    case TK_Slash:
+    case TK_Percent:
+    case TK_LParen:
+    case TK_RParen:
+        return token->offset + 1;
     default:
         error_ice("Unknown token kind: %d", token->kind);
         return token->offset + 1; // Fallback to prevent infinite loops
@@ -125,7 +173,7 @@ Token* lex_find(const Lexer* lexer, usize offset, u32* token_end)
         isize  mid   = left + (right - left) / 2;
         Token* token = &lexer->tokens[mid];
         usize  start = token->offset;
-        usize  end   = token_end_offset(lexer, token);
+        usize  end   = lex_token_end_offset(lexer, token);
 
         if (offset < start) {
             right = mid - 1;
