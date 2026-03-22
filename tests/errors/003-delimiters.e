@@ -2,7 +2,7 @@
 ¬
 {
     "code": "0203",
-    "message": "Expected RightParen ())",
+    "message": "Expected RightParen `)`",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
         "line": 1,
@@ -39,7 +39,7 @@
             "line": 1,
             "column": 2,
             "length": 1,
-            "message": "Found RightParen ()) here"
+            "message": "Found RightParen `)` here"
         }
     ],
     "notes": [],

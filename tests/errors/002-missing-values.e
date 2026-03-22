@@ -2,7 +2,7 @@
 ¬
 {
     "code": "0201",
-    "message": "Missing value before Plus (+)",
+    "message": "Missing value before Plus `+`",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {
         "line": 1,
@@ -14,7 +14,7 @@
             "line": 1,
             "column": 1,
             "length": 1,
-            "message": "Plus (+) cannot appear here"
+            "message": "Plus `+` cannot appear here"
         }
     ],
     "notes": [],
