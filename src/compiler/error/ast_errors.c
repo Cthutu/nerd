@@ -24,12 +24,16 @@ bool error_0201_missing_value(NerdSource source,
                               TokenKind  expected_kind)
 {
     string    token = token_kind_to_string(expected_kind);
-    ErrorInfo error =
-        error_init(201, source, span, "Missing value before %.*s", STRINGV(token));
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "%.*s cannot appear here", STRINGV(token));
+    ErrorInfo error = error_init(
+        201, source, span, "Missing value before %.*s", STRINGV(token));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "%.*s cannot appear here",
+                        STRINGV(token));
     error_add_help(
-        &error, "Insert a literal, parenthesized expression, or unary operator");
+        &error,
+        "Insert a literal, parenthesized expression, or unary operator");
     error_render(&error);
     return false;
 }
@@ -79,7 +83,8 @@ bool error_0204_unexpected_token(NerdSource source,
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
     error_add_help(
-        &error, "Remove the extra token or add an operator to continue the expression");
+        &error,
+        "Remove the extra token or add an operator to continue the expression");
     error_render(&error);
     return false;
 }

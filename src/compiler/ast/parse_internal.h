@@ -44,8 +44,8 @@ typedef struct {
 } AstParseState;
 
 // Token stream access over the sequential lexer arrays.
-bool      ast_peek_token(AstParseState* state, AstToken* out_token);
-bool      ast_next_token(AstParseState* state, AstToken* out_token);
+bool ast_peek_token(AstParseState* state, AstToken* out_token);
+bool ast_next_token(AstParseState* state, AstToken* out_token);
 
 // Shared parsing utilities for spans, node emission, and operator metadata.
 ErrorSpan ast_token_span(const AstParseState* state, const AstToken* token);
@@ -54,8 +54,7 @@ bool      ast_emit_node(AstParseState* state,
                         AstToken       token,
                         u32*           out_index);
 bool      ast_token_starts_expression(TokenKind kind);
-bool ast_infix_binding_power(
-    TokenKind kind, u8* out_left_bp, u8* out_right_bp);
+bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp);
 bool ast_expect_token(AstParseState* state, TokenKind expected_kind);
 
 // Expression parsing entry points.

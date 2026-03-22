@@ -9,18 +9,18 @@
 Ast ast_parse(Lexer* lexer)
 {
     AstParseState state = {
-         .lexer         = lexer,
-         .token_index   = 0,
-         .integer_index = 0,
-         .token =
+        .lexer         = lexer,
+        .token_index   = 0,
+        .integer_index = 0,
+        .token =
             (AstToken){
-                 .kind   = TK_EOF,
-                 .source = lexer->source,
-                 .offset = 0,
+                .kind   = TK_EOF,
+                .source = lexer->source,
+                .offset = 0,
             },
-         .nodes                 = 0,
-         .expr_start_node_index = 0,
-         .expr_start_token_index = 0,
+        .nodes                  = 0,
+        .expr_start_node_index  = 0,
+        .expr_start_token_index = 0,
     };
 
     if (array_count(lexer->tokens) == 0) {

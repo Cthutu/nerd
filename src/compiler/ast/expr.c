@@ -102,19 +102,16 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         }
         return ast_expect_token(state, TK_RParen);
     default:
-        return error_0201_missing_value(token.source,
-                                        ast_token_span(state, &token),
-                                        token.kind);
+        return error_0201_missing_value(
+            token.source, ast_token_span(state, &token), token.kind);
     }
 }
 
-internal bool ast_parse_led(AstParseState* state,
-                            AstToken       op,
-                            u32            left_node,
-                            u32*           out_node)
+internal bool
+ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 {
-    u8 left_bp  = 0;
-    u8 right_bp = 0;
+    u8  left_bp  = 0;
+    u8  right_bp = 0;
     u32 right_node;
 
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {
@@ -142,9 +139,9 @@ bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
     }
 
     AstToken expr_token = {
-        .kind        = state->lexer->tokens[state->expr_start_token_index].kind,
-        .source      = state->lexer->source,
-        .offset      = state->lexer->tokens[state->expr_start_token_index].offset,
+        .kind   = state->lexer->tokens[state->expr_start_token_index].kind,
+        .source = state->lexer->source,
+        .offset = state->lexer->tokens[state->expr_start_token_index].offset,
         .token_index = state->expr_start_token_index,
     };
 

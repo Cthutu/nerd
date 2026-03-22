@@ -51,7 +51,7 @@ void ir_add_binary(
 
 Ir ir_generate(const Lexer* lex, const Ast* ast)
 {
-    Ir         ir          = {0};
+    Ir ir                  = {0};
     Array(u64) node_values = NULL;
     for (usize i = 0; i < array_count(ast->nodes); ++i) {
         array_push(node_values, 0);
@@ -110,14 +110,13 @@ Ir ir_generate(const Lexer* lex, const Ast* ast)
                 }
 
                 u64 value_index = array_count(ir.instructions);
-                ir_add_binary(
-                    &ir,
-                    op,
-                    value_index,
-                    (IrValue){.kind          = IR_VALUE_VARIABLE,
-                              .value.integer = node_values[node->a]},
-                    (IrValue){.kind          = IR_VALUE_VARIABLE,
-                              .value.integer = node_values[node->b]});
+                ir_add_binary(&ir,
+                              op,
+                              value_index,
+                              (IrValue){.kind          = IR_VALUE_VARIABLE,
+                                        .value.integer = node_values[node->a]},
+                              (IrValue){.kind          = IR_VALUE_VARIABLE,
+                                        .value.integer = node_values[node->b]});
                 node_values[i] = value_index;
                 break;
             }
@@ -132,10 +131,11 @@ Ir ir_generate(const Lexer* lex, const Ast* ast)
     if (array_count(ast->nodes) != 0) {
         const AstNode* root = &ast->nodes[array_count(ast->nodes) - 1];
         if (root->kind == AK_Expression) {
-            ir_add_return(&ir,
-                          (IrValue){.kind          = IR_VALUE_VARIABLE,
-                                    .value.integer =
-                                        node_values[array_count(ast->nodes) - 1]});
+            ir_add_return(
+                &ir,
+                (IrValue){.kind = IR_VALUE_VARIABLE,
+                          .value.integer =
+                              node_values[array_count(ast->nodes) - 1]});
         }
     }
 

@@ -28,18 +28,20 @@ internal bool ast_expression_ref(AstParseState* state,
                                  AstToken       token,
                                  i16*           out_ref)
 {
-    isize delta =
-        (isize)state->expr_start_node_index - (isize)node_index;
+    isize delta = (isize)state->expr_start_node_index - (isize)node_index;
     if (delta < INT16_MIN || delta > INT16_MAX) {
-        return error_0200_code_too_complex(
-            token.source, ast_token_span(state, &token));
+        return error_0200_code_too_complex(token.source,
+                                           ast_token_span(state, &token));
     }
 
     *out_ref = (i16)delta;
     return true;
 }
 
-bool ast_emit_node(AstParseState* state, AstNode node, AstToken token, u32* out_index)
+bool ast_emit_node(AstParseState* state,
+                   AstNode        node,
+                   AstToken       token,
+                   u32*           out_index)
 {
     u32 node_index = (u32)array_count(state->nodes);
     if (!ast_expression_ref(state, node_index, token, &node.ref)) {
@@ -66,8 +68,10 @@ bool ast_expect_token(AstParseState* state, TokenKind expected_kind)
     }
 
     if (token.kind != expected_kind) {
-        return error_0203_expected_token(
-            token.source, ast_token_span(state, &token), expected_kind, token.kind);
+        return error_0203_expected_token(token.source,
+                                         ast_token_span(state, &token),
+                                         expected_kind,
+                                         token.kind);
     }
 
     return true;
