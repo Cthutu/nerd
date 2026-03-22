@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
 #include <lsp/lsp.h>
 
@@ -56,36 +57,37 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
     return diagnostics;
 }
 
-internal bool lsp_lex_document(LspDocument* doc, string uri, string content)
+internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
 {
     u8* document_copy = (u8*)arena_alloc(&doc->arena, content.count);
     memcpy(document_copy, content.data, content.count);
 
     string document_copy_str = {.data = document_copy, .count = content.count};
 
-    lsp_log("Lexing document...");
+    lsp_log("Analysing document...");
     ErrorRenderMode previous_mode = error_system_mode();
     bool            previous_emit = error_system_should_emit_output();
     error_system_clear_last_rendered();
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
-    bool ok = lex(
+    bool ok = front_end(
         (NerdSource){
             .source      = document_copy_str,
             .source_path = uri,
         },
-        &doc->lexer);
+        NULL,
+        &doc->front_end);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
     if (!ok) {
-        lsp_log("Lexing failed for current document contents");
+        lsp_log("Front-end analysis failed for current document contents");
         return false;
     }
-    lsp_log("Lexed %zu tokens", array_count(doc->lexer.tokens));
+    lsp_log("Lexed %zu tokens", array_count(doc->front_end.lexer.tokens));
 
-    for (usize i = 0; i < array_count(doc->lexer.tokens); i++) {
-        Token* token = &doc->lexer.tokens[i];
+    for (usize i = 0; i < array_count(doc->front_end.lexer.tokens); i++) {
+        Token* token = &doc->front_end.lexer.tokens[i];
         lsp_log("Token %zu: kind=\"" STRINGP "\", offset=%u",
                 i,
                 STRINGV(token_kind_to_string(token->kind)),
@@ -114,10 +116,11 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     if (new_doc) {
         arena_init(&doc->arena);
     } else {
+        front_end_results_done(&doc->front_end);
         arena_reset(&doc->arena);
     }
 
-    bool       ok          = lsp_lex_document(doc, uri, text);
+    bool       ok          = lsp_analyse_document(doc, uri, text);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
     lsp_publish_diagnostics(message->arena, uri, diagnostics);
@@ -144,7 +147,10 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
         return;
     }
 
-    bool       ok          = lsp_lex_document(doc, uri, text);
+    front_end_results_done(&doc->front_end);
+    arena_reset(&doc->arena);
+
+    bool       ok          = lsp_analyse_document(doc, uri, text);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
     lsp_publish_diagnostics(message->arena, uri, diagnostics);
@@ -152,8 +158,8 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
 
 void lsp_document_done(LspDocument* doc)
 {
+    front_end_results_done(&doc->front_end);
     arena_done(&doc->arena);
-    lex_done(&doc->lexer);
 }
 
 void lsp_handle_did_close(LspState* state, const LspMessage* message)

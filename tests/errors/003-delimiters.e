@@ -42,8 +42,10 @@
             "message": "Found RightParen `)` here"
         }
     ],
-    "notes": [],
+    "notes": [
+        "This right parenthesis does not match an opening parenthesis"
+    ],
     "help": [
-        "Remove the extra token or add an operator to continue the expression"
+        "Add the missing opening parenthesis or remove the extra right parenthesis"
     ]
 }

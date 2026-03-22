@@ -3,11 +3,11 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
-//> use: core object compiler/lexer
+//> use: core object compiler/build
 
 #pragma once
 
-#include <compiler/lexer/lexer.h>
+#include <compiler/build/build.h>
 #include <core/core.h>
 #include <object/object.h>
 
@@ -19,8 +19,8 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena arena; // Arena for storing document content
-    Lexer lexer; // Lexer for tokenizing the document
+    Arena         arena;     // Arena for storing document content
+    FrontEndState front_end; // Front-end results for the current document
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,

@@ -82,9 +82,18 @@ bool error_0204_unexpected_token(NerdSource source,
         error_init(204, source, span, "Unexpected token after expression");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
-    error_add_help(
-        &error,
-        "Remove the extra token or add an operator to continue the expression");
+
+    if (actual_kind == TK_RParen) {
+        error_add_note(
+            &error, "This right parenthesis does not match an opening parenthesis");
+        error_add_help(
+            &error,
+            "Add the missing opening parenthesis or remove the extra right parenthesis");
+    } else {
+        error_add_help(&error,
+                       "Remove the extra token or add an operator to continue the expression");
+    }
+
     error_render(&error);
     return false;
 }
