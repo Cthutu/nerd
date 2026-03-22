@@ -57,6 +57,7 @@ uninstall:
     -code --uninstall-extension {{ext_id}}
 
 install:
+    just format
     just build-release nerd
     mkdir -p {{user_bin_dir}}
     cp _bin/nerd-debug {{user_bin_nerd}}

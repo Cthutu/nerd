@@ -64,6 +64,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
 {
     JsonValue* schema   = json_new_object(arena);
     JsonValue* commands = json_new_array(arena);
+    JsonValue* flags    = json_new_array(arena);
 
     // Schema used by the `nerd` executable:
     // {
@@ -111,7 +112,13 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
 
     json_object_set_cstr(schema, arena, "program", "nerd");
     json_object_set_cstr(schema, arena, "summary", "Nerd compiler playground");
+    json_object_set_array(schema, "flags", flags);
     json_object_set_array(schema, "commands", commands);
+
+    json_array_push(
+        flags,
+        nerd_cli_make_flag(
+            arena, "verbose", "v", "Enable verbose debug dump output"));
 
     {
         JsonValue* params = json_new_array(arena);
@@ -282,6 +289,8 @@ nerd_build_config_from_json(const JsonValue* cli_result)
             cli_result, "command.params.output", (string){0}),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .verbose =
+            nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };
 }
 
@@ -414,8 +423,10 @@ internal int nerd_run_with_cli(int argc, char** argv)
 
     string name   = json_string(command_name);
     int    result = 1;
+    bool   verbose =
+        nerd_cli_flag_bool(cli_result, "global_flags.verbose", false);
 
-    if (!string_eq_cstr(name, "lsp")) {
+    if (verbose && !string_eq_cstr(name, "lsp")) {
         nerd_print_args_table(argc, argv);
     }
 
