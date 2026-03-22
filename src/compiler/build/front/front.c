@@ -33,7 +33,9 @@ internal bool phase_parse_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
     ctx->results.ast     = ast_parse(&ctx->results.lexer);
-    if (error_system_last_rendered().count > 0) {
+
+    if (array_count(ctx->results.lexer.tokens) > 0 &&
+        array_count(ctx->results.ast.nodes) == 0) {
         return false;
     }
     return true;

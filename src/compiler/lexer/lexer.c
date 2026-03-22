@@ -47,6 +47,7 @@ bool lex(NerdSource source, Lexer* lexer)
         // 0xc2, 0xac.
         if (c == 0xc2 && i + 1 < source_code.count &&
             source_code.data[i + 1] == 0xac) {
+            lexer->source.source = string_from(source_code.data, i);
             break;
         }
 
@@ -120,7 +121,6 @@ bool lex(NerdSource source, Lexer* lexer)
             i++;
         }
     }
-
     return true;
 }
 
