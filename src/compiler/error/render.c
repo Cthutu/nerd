@@ -460,9 +460,9 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 {
     JsonValue* diagnostics = json_new_array(&temp_arena);
     JsonValue* diagnostic  = json_new_object(&temp_arena);
-    string source_uri = error_info->source.source_path.count > 0
-                            ? error_info->source.source_path
-                            : s("<input>");
+    string     source_uri  = error_info->source.source_path.count > 0
+                                 ? error_info->source.source_path
+                                 : s("<input>");
 
     json_object_set_object(diagnostic,
                            "range",
@@ -514,8 +514,9 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
         json_object_set_string(info,
                                &temp_arena,
                                "message",
-                               string_format(
-                                   &temp_arena, "note: " STRINGP, STRINGV(error_info->notes[i])));
+                               string_format(&temp_arena,
+                                             "note: " STRINGP,
+                                             STRINGV(error_info->notes[i])));
         json_array_push(related, info);
     }
 
@@ -529,12 +530,13 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
                                                     error_info->source,
                                                     error_info->span));
         json_object_set_object(info, "location", location);
-        json_object_set_string(info,
-                               &temp_arena,
-                               "message",
-                               string_format(&temp_arena,
-                                             "help: " STRINGP,
-                                             STRINGV(error_info->help_messages[i])));
+        json_object_set_string(
+            info,
+            &temp_arena,
+            "message",
+            string_format(&temp_arena,
+                          "help: " STRINGP,
+                          STRINGV(error_info->help_messages[i])));
         json_array_push(related, info);
     }
 
