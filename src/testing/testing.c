@@ -102,6 +102,34 @@ internal string testing_strip_section_edges(string text)
     return string_from(text.data + start, end - start);
 }
 
+internal string testing_extract_generated_c_body(string text)
+{
+    static const char marker[] = "int $main() {";
+
+    for (usize i = 0; i + sizeof(marker) - 1 <= text.count; ++i) {
+        if (memcmp(text.data + i, marker, sizeof(marker) - 1) != 0) {
+            continue;
+        }
+
+        usize depth = 0;
+        for (usize j = i; j < text.count; ++j) {
+            if (text.data[j] == '{') {
+                depth++;
+            } else if (text.data[j] == '}') {
+                ASSERT(depth > 0, "Unbalanced braces in generated C.");
+                depth--;
+                if (depth == 0) {
+                    return string_from(text.data + i, j - i + 1);
+                }
+            }
+        }
+
+        break;
+    }
+
+    return testing_strip_section_edges(text);
+}
+
 internal bool
 testing_split_next_section(string text, usize* cursor, string* out_section)
 {
@@ -494,8 +522,9 @@ internal bool testing_run_language_test(const LanguageTest* test)
     arena_init(&output_arena);
 
     string actual_ir = ir_render(&front_results.ir, &output_arena);
-    string actual_c  = testing_strip_section_edges(
-        cgen_render(&back_results.cgen, &output_arena));
+    string actual_c  = testing_extract_generated_c_body(
+        testing_strip_section_edges(cgen_render(&back_results.cgen,
+                                                &output_arena)));
 
 #if OS_WINDOWS
     cstr exe_path = artifacts.binary_path;
