@@ -10,11 +10,13 @@ $3 = 4
 $4 = $2 % $3
 return $4
 ¬
-//
-// Generated C code
-//
+#include <stdio.h>
 
-int main() {
+void pr(const char* str) { printf("%s", str); }
+
+void prn(const char* str) { printf("%s\n", str); }
+
+int $main() {
     int $0 = 20;
     int $1 = 3;
     int $2 = $0 / $1;
@@ -22,3 +24,5 @@ int main() {
     int $4 = $2 % $3;
     return $4;
 }
+
+int main() { return $main(); }

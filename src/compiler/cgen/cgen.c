@@ -6,6 +6,16 @@
 
 #include <compiler/cgen/cgen.h>
 
+static const char g_cgen_prelude[] = {
+#embed "../../../data/prelude.c"
+    ,
+    0};
+
+static const char g_cgen_epilogue[] = {
+#embed "../../../data/epilogue.c"
+    ,
+    0};
+
 //------------------------------------------------------------------------------
 // C generation helpers
 
@@ -17,6 +27,16 @@ void cgen_start_line(CGen* cgen)
 }
 
 void cgen_add(CGen* cgen, cstr line) { arena_format(&cgen->arena, "%s", line); }
+
+void cgen_add_bytes(CGen* cgen, const char* text, usize count)
+{
+    if (count == 0) {
+        return;
+    }
+
+    char* dst = (char*)arena_alloc(&cgen->arena, count);
+    memcpy(dst, text, count);
+}
 
 void cgen_addn(CGen* cgen, cstr line)
 {
@@ -43,9 +63,8 @@ void cgen_dedent(CGen* cgen)
 
 void cgen_add_prologue(CGen* cgen)
 {
-    cgen_add_line(cgen, "//");
-    cgen_add_line(cgen, "// Generated C code");
-    cgen_add_line(cgen, "//\n");
+    cgen_add_bytes(cgen, g_cgen_prelude, sizeof(g_cgen_prelude) - 1);
+    cgen_addn(cgen, "");
 }
 
 //------------------------------------------------------------------------------
@@ -53,9 +72,8 @@ void cgen_add_prologue(CGen* cgen)
 
 void cgen_add_epilogue(CGen* cgen)
 {
-    // No epilogue for now, but this is where we would add any necessary
-    // closing braces or cleanup code if needed in the future.
-    UNUSED(cgen);
+    cgen_addn(cgen, "");
+    cgen_add_bytes(cgen, g_cgen_epilogue, sizeof(g_cgen_epilogue) - 1);
 }
 
 //------------------------------------------------------------------------------
@@ -125,7 +143,7 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 
 void cgen_generate(CGen* cgen, const Ir* ir)
 {
-    cgen_add_line(cgen, "int main() {");
+    cgen_add_line(cgen, "int $main() {");
     cgen_indent(cgen);
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
