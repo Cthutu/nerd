@@ -75,6 +75,8 @@ bool error_0102_file_too_large(NerdSource source);
 bool error_0103_invalid_number_literal(NerdSource source,
                                        ErrorSpan  span,
                                        char       invalid_char);
+bool error_0104_symbol_too_long(NerdSource source, ErrorSpan span);
+bool error_0105_too_many_symbols(NerdSource source);
 
 // Used when the AST node array can't be formed because AstNode.ref is out of
 // bounds

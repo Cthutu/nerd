@@ -46,9 +46,16 @@ void intern_leak(Interner* interner);
 #define intern_init(interner, ...)                                             \
     _intern_init((interner), (InternInitParams){__VA_ARGS__})
 
+typedef enum {
+    INTERN_ADD_IS_NEW,
+    INTERN_ADD_ALREADY_EXISTS,
+    INTERN_ADD_TOO_MANY_STRINGS,
+    INTERN_ADD_STRING_TOO_LONG,
+} InternAddResult;
+
 string intern_cstr(Interner* interner, cstr str);
 string intern_find(Interner* interner, string str);
-string intern_add(Interner* interner, string str);
+string intern_add(Interner* interner, string str, InternAddResult* out_result);
 
 InternedString* intern_get_info(string str);
 

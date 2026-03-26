@@ -125,7 +125,8 @@ internal inline bool intern_load_exceeded(Interner* interner)
 
 string intern_find(Interner* interner, string str)
 {
-    ASSERT(str.count <= 255, "Interned strings longer than 255 bytes are unsupported");
+    ASSERT(str.count <= 255,
+           "Interned strings longer than 255 bytes are unsupported");
 
     if (interner->capacity == 0) {
         return (string){0};
@@ -208,9 +209,21 @@ internal void intern_maybe_grow(Interner* interner)
     interner->capacity_mask = new_mask;
 }
 
-string intern_add(Interner* interner, string str)
+internal inline string intern_set_add_result(InternAddResult* out_result,
+                                             InternAddResult  result)
 {
-    ASSERT(str.count <= 255, "Interned strings longer than 255 bytes are unsupported");
+    if (out_result) {
+        *out_result = result;
+    }
+
+    return (string){0};
+}
+
+string intern_add(Interner* interner, string str, InternAddResult* out_result)
+{
+    if (str.count > 255) {
+        return intern_set_add_result(out_result, INTERN_ADD_STRING_TOO_LONG);
+    }
 
     // Check if we need to grow the table
     intern_maybe_grow(interner);
@@ -234,6 +247,13 @@ string intern_add(Interner* interner, string str)
             // Allocate InternedString for what we're inserting if not done yet
             if (!insert_str) {
                 usize num_bytes_to_alloc = sizeof(InternedString) + insert_len;
+                usize alloc_start =
+                    ALIGN_UP(interner->intern_arena.cursor, INTERN_ALIGNMENT);
+                if (alloc_start > U32_MAX ||
+                    num_bytes_to_alloc > (usize)U32_MAX - alloc_start) {
+                    return intern_set_add_result(out_result,
+                                                 INTERN_ADD_TOO_MANY_STRINGS);
+                }
                 insert_str =
                     (InternedString*)arena_alloc_align(&interner->intern_arena,
                                                        num_bytes_to_alloc,
@@ -248,6 +268,7 @@ string intern_add(Interner* interner, string str)
             slot->str  = insert_str;
 
             interner->count++;
+            intern_set_add_result(out_result, INTERN_ADD_IS_NEW);
             InternedString* result =
                 original_inserted ? original_str : insert_str;
             return (string){.data = result->str, .count = result->len};
@@ -256,6 +277,7 @@ string intern_add(Interner* interner, string str)
         if (slot->hash == insert_hash && slot->str->len == insert_len &&
             memcmp(slot->str->str, insert_data, insert_len) == 0) {
             // Found matching string - return it
+            intern_set_add_result(out_result, INTERN_ADD_ALREADY_EXISTS);
             if (!original_inserted) {
                 return (string){.data  = slot->str->str,
                                 .count = slot->str->len};
@@ -270,6 +292,14 @@ string intern_add(Interner* interner, string str)
             // Allocate InternedString for what we're inserting if not done yet
             if (!insert_str) {
                 usize num_bytes_to_alloc = sizeof(InternedString) + insert_len;
+                usize alloc_start =
+                    ALIGN_UP(interner->intern_arena.cursor, INTERN_ALIGNMENT);
+                if (alloc_start > U32_MAX ||
+                    num_bytes_to_alloc > (usize)U32_MAX - alloc_start) {
+                    intern_set_add_result(out_result,
+                                          INTERN_ADD_TOO_MANY_STRINGS);
+                    return (string){0};
+                }
                 insert_str =
                     (InternedString*)arena_alloc_align(&interner->intern_arena,
                                                        num_bytes_to_alloc,
@@ -308,7 +338,7 @@ string intern_add(Interner* interner, string str)
 
 string intern_cstr(Interner* interner, cstr str)
 {
-    return intern_add(interner, string_from_cstr(str));
+    return intern_add(interner, string_from_cstr(str), NULL);
 }
 
 InternedString* intern_get_info(string str)

@@ -62,4 +62,35 @@ bool error_0103_invalid_number_literal(NerdSource source,
     return false;
 }
 
+bool error_0104_symbol_too_long(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error_info = error_init(104, source, span, "Symbol is too long");
+    error_add_reference(
+        &error_info, ERROR_REF_PRIMARY, span, "This symbol is too long");
+    error_add_note(&error_info, "Symbols must be 255 characters or fewer.");
+    error_add_help(&error_info, "Use a shorter symbol name.");
+    error_render(&error_info);
+    return false;
+}
+
+bool error_0105_too_many_symbols(NerdSource source)
+{
+    ErrorSpan span = {.start = 0, .end = 0};
+    ErrorInfo error_info =
+        error_init(105, source, span, "Too many symbols in the source file");
+    error_add_reference(&error_info,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This new symbol was one too many");
+    error_add_note(
+        &error_info,
+        "The maximum size of all symbols combined is 4 GiB.  This is a hard "
+        "limit because symbol data is stored in a single contiguous block of "
+        "memory.  The maximum number of unique symbols is 16,777,216.");
+    error_add_help(&error_info,
+                   "Reduce the number of unique symbols in your program.");
+    error_render(&error_info);
+    return false;
+}
+
 //------------------------------------------------------------------------------

@@ -15,23 +15,15 @@ internal inline u32 lexer_symbol_handle(Lexer* lexer, string str)
     return arena_offset(&lexer->symbols.intern_arena, info);
 }
 
-u32 lex_add_symbol(Lexer* lexer, string str, bool* was_added)
+u32 lex_add_symbol(Lexer* lexer, string str, InternAddResult* out_result)
 {
     if (lexer->symbols.intern_arena.data == NULL) {
         intern_init(&lexer->symbols);
     }
 
-    string found = intern_find(&lexer->symbols, str);
-    if (found.data != NULL) {
-        if (was_added) {
-            *was_added = false;
-        }
-        return lexer_symbol_handle(lexer, found);
-    }
-
-    string added = intern_add(&lexer->symbols, str);
-    if (was_added) {
-        *was_added = true;
+    string added = intern_add(&lexer->symbols, str, out_result);
+    if (added.data == NULL) {
+        return 0;
     }
     return lexer_symbol_handle(lexer, added);
 }
