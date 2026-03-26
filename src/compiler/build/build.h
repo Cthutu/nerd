@@ -23,6 +23,3 @@ typedef struct {
 typedef struct {
     CGen cgen;
 } BackEndState;
-
-void compiler_dump(const FrontEndState* front_end_results,
-                   const BackEndState*  back_end_results);

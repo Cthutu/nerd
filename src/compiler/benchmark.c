@@ -11,6 +11,7 @@
 bool compiler_phase_run(const PhaseSpec* phases,
                         usize            phase_count,
                         void*            context,
+                        bool             verbose,
                         Timing*          timing)
 {
     for (usize i = 0; i < phase_count; i++) {
@@ -30,6 +31,10 @@ bool compiler_phase_run(const PhaseSpec* phases,
 
         if (!result) {
             return false;
+        }
+
+        if (verbose && phase->dump != NULL) {
+            phase->dump(context);
         }
     }
     return true;
