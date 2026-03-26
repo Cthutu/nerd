@@ -3,12 +3,12 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
+//> use: intern
 
 #pragma once
 
 #include <compiler/compiler.h>
-
-//------------------------------------------------------------------------------
+#include <intern/intern.h>
 
 typedef enum {
     TK_EOF, // Not used in lexer, but used in AST
@@ -20,6 +20,8 @@ typedef enum {
     TK_Percent,
     TK_LParen,
     TK_RParen,
+
+    TK_Symbol,
 } TokenKind;
 
 typedef struct {
@@ -31,11 +33,14 @@ typedef struct {
     NerdSource source;
     Array(Token) tokens;
     Array(u64) integers;
+    Interner symbols;
 } Lexer;
 
 bool   lex(NerdSource source, Lexer* lexer);
 void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
+u32    lex_add_symbol(Lexer* lexer, string str, bool* was_added);
+string lex_symbol(const Lexer* lexer, u32 handle);
 usize  lex_token_end_offset(const Lexer* lexer, const Token* token);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
 bool   lex_offset_to_line_col(NerdSource source,

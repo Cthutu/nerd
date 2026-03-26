@@ -130,6 +130,9 @@ void lex_done(Lexer* lexer)
 {
     array_free(lexer->tokens);
     array_free(lexer->integers);
+    if (lexer->symbols.intern_arena.data != NULL) {
+        intern_done(&lexer->symbols);
+    }
 }
 
 //------------------------------------------------------------------------------

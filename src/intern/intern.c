@@ -125,6 +125,8 @@ internal inline bool intern_load_exceeded(Interner* interner)
 
 string intern_find(Interner* interner, string str)
 {
+    ASSERT(str.count <= 255, "Interned strings longer than 255 bytes are unsupported");
+
     if (interner->capacity == 0) {
         return (string){0};
     }
@@ -208,6 +210,8 @@ internal void intern_maybe_grow(Interner* interner)
 
 string intern_add(Interner* interner, string str)
 {
+    ASSERT(str.count <= 255, "Interned strings longer than 255 bytes are unsupported");
+
     // Check if we need to grow the table
     intern_maybe_grow(interner);
 
