@@ -68,6 +68,13 @@ void lex_dump(const Lexer* lexer)
                 row[3]    = table_cell_u64(value);
                 break;
             }
+        case TK_Symbol:
+            {
+                string symbol =
+                    lex_symbol(lexer, lexer->symbol_handles[token.offset]);
+                row[3] = table_cell_string(symbol);
+                break;
+            }
         default:
             row[3] = table_cell_string(s("-"));
             break;

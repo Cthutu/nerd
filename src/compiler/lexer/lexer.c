@@ -85,38 +85,62 @@ bool lex(NerdSource source, Lexer* lexer)
                     source_code.data[i]);
             }
 
+        } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                   c == '_') {
+            usize start = i;
+            while (
+                i < source_code.count &&
+                ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
+                 (source_code.data[i] >= 'A' && source_code.data[i] <= 'Z') ||
+                 (source_code.data[i] >= '0' && source_code.data[i] <= '9') ||
+                 source_code.data[i] == '_')) {
+                i++;
+            }
+            string str = string_from(source_code.data + start, i - start);
+            InternAddResult added_result;
+            u32             handle = lex_add_symbol(lexer, str, &added_result);
+            switch (added_result) {
+            case INTERN_ADD_IS_NEW:
+            case INTERN_ADD_ALREADY_EXISTS:
+                break;
+            case INTERN_ADD_TOO_MANY_STRINGS:
+                return error_0105_too_many_symbols(source);
+            case INTERN_ADD_STRING_TOO_LONG:
+                return error_0104_symbol_too_long(
+                    source, (ErrorSpan){.start = start, .end = i});
+            }
+
+            array_push(lexer->symbol_handles, handle);
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Symbol, .offset = (u32)start});
+
         } else {
-            switch (c) {
-            case '+':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_Plus, .offset = (u32)i});
-                break;
-            case '-':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_Minus, .offset = (u32)i});
-                break;
-            case '*':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_Star, .offset = (u32)i});
-                break;
-            case '/':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_Slash, .offset = (u32)i});
-                break;
-            case '%':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_Percent, .offset = (u32)i});
-                break;
-            case '(':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_LParen, .offset = (u32)i});
-                break;
-            case ')':
-                array_push(lexer->tokens,
-                           (Token){.kind = TK_RParen, .offset = (u32)i});
-                break;
-            default:
+#if COMPILER_CLANG || COMPILER_GCC
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Winitializer-overrides"
+#endif
+            static TokenKind token_lookup[128] = {
+                // we'll override the ones we care about
+                [0 ... 127] = TK_EOF, // Default to TK_EOF for all characters,
+
+                ['+']       = TK_Plus,
+                ['-']       = TK_Minus,
+                ['*']       = TK_Star,
+                ['/']       = TK_Slash,
+                ['%']       = TK_Percent,
+                ['(']       = TK_LParen,
+                [')']       = TK_RParen,
+                [':']       = TK_Colon,
+            };
+#if COMPILER_CLANG || COMPILER_GCC
+#    pragma GCC diagnostic pop
+#endif
+
+            if (c >= 128 || token_lookup[c] == TK_EOF) {
                 return error_0100_unexpected_character(source, i, (char)c);
+            } else {
+                array_push(lexer->tokens,
+                           (Token){.kind = token_lookup[c], .offset = (u32)i});
             }
             i++;
         }
@@ -130,6 +154,7 @@ void lex_done(Lexer* lexer)
 {
     array_free(lexer->tokens);
     array_free(lexer->integers);
+    array_free(lexer->symbol_handles);
     if (lexer->symbols.intern_arena.data != NULL) {
         intern_done(&lexer->symbols);
     }

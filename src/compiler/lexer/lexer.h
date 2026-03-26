@@ -34,13 +34,14 @@ typedef struct {
     NerdSource source;
     Array(Token) tokens;
     Array(u64) integers;
+    Array(u32) symbol_handles;
     Interner symbols;
 } Lexer;
 
 bool   lex(NerdSource source, Lexer* lexer);
 void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
-u32    lex_add_symbol(Lexer* lexer, string str, bool* was_added);
+u32    lex_add_symbol(Lexer* lexer, string str, InternAddResult* out_result);
 string lex_symbol(const Lexer* lexer, u32 handle);
 usize  lex_token_end_offset(const Lexer* lexer, const Token* token);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
