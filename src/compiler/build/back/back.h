@@ -12,6 +12,7 @@
 
 bool back_end(const FrontEndState*      front_end_results,
               const NerdArtifactConfig* artifacts,
+              bool                      verbose,
               Timing*                   timing,
               BackEndState*             out_results);
 void back_end_results_done(BackEndState* results);

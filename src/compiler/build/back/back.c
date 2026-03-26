@@ -17,6 +17,7 @@
 typedef struct {
     const FrontEndState*      front_end_results;
     const NerdArtifactConfig* artifacts;
+    bool                      verbose;
     BackEndState              results;
 } BackEndContext;
 
@@ -45,6 +46,12 @@ internal bool phase_cgen_reset(void* raw_ctx)
     cgen_done(&ctx->results.cgen);
     ctx->results.cgen = (CGen){0};
     return true;
+}
+
+internal void phase_cgen_dump(void* raw_ctx)
+{
+    BackEndContext* ctx = (BackEndContext*)raw_ctx;
+    cgen_dump(&ctx->results.cgen);
 }
 
 internal bool phase_save_run(void* raw_ctx)
@@ -115,15 +122,18 @@ internal const PhaseSpec g_back_end_phases[] = {
     {.stage = COMPILER_STAGE_BACK_END,
      .phase = COMPILER_PHASE_C_GEN,
      .run   = phase_cgen_run,
-     .reset = phase_cgen_reset},
+     .reset = phase_cgen_reset,
+     .dump  = phase_cgen_dump},
     {.stage = COMPILER_STAGE_BACK_END,
      .phase = COMPILER_PHASE_C_SAVE,
      .run   = phase_save_run,
-     .reset = phase_noop_reset},
+     .reset = phase_noop_reset,
+     .dump  = NULL},
     {.stage = COMPILER_STAGE_BACK_END,
      .phase = COMPILER_PHASE_C_COMPILE,
      .run   = phase_compile_run,
-     .reset = phase_noop_reset},
+     .reset = phase_noop_reset,
+     .dump  = NULL},
 };
 
 #define BACK_END_PHASE_COUNT                                                   \
@@ -131,6 +141,7 @@ internal const PhaseSpec g_back_end_phases[] = {
 
 bool back_end(const FrontEndState*      front_end_results,
               const NerdArtifactConfig* artifacts,
+              bool                      verbose,
               Timing*                   timing,
               BackEndState*             out_results)
 {
@@ -145,9 +156,11 @@ bool back_end(const FrontEndState*      front_end_results,
 
     BackEndContext ctx    = {.front_end_results = front_end_results,
                              .artifacts         = artifacts,
+                             .verbose           = verbose,
                              .results           = {0}};
     bool           result = compiler_phase_run(
-        g_back_end_phases, BACK_END_PHASE_COUNT, &ctx, timing);
+        g_back_end_phases, BACK_END_PHASE_COUNT, &ctx, ctx.verbose, timing);
+
     if (out_results != NULL) {
         *out_results = ctx.results;
     }
@@ -174,6 +187,7 @@ void back_end_benchmark(const FrontEndState*      front_end_results,
     for (usize i = 0; i < BACK_END_PHASE_COUNT; i++) {
         BackEndContext   ctx   = {.front_end_results = front_end_results,
                                   .artifacts         = artifacts,
+                                  .verbose           = false,
                                   .results           = {0}};
         const PhaseSpec* phase = &g_back_end_phases[i];
         u32              phase_warmup_iterations = warmup_iterations;
