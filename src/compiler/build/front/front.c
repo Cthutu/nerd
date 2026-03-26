@@ -45,7 +45,7 @@ bool front_end(NerdSource     source,
 {
     FrontEndContext ctx = {
         .source = source, .verbose = verbose, .results = {0}};
-    bool result          = true;
+    bool result = true;
 
     if (timing != NULL) {
         ThreadTimePoint start = thread_time_now();
@@ -110,7 +110,7 @@ void front_end_results_done(FrontEndState* results)
     lex_done(&results->lexer);
     results->lexer = (Lexer){0};
 
-    *results = (FrontEndState){0};
+    *results       = (FrontEndState){0};
 }
 
 //------------------------------------------------------------------------------

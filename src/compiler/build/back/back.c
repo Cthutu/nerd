@@ -45,8 +45,10 @@ internal bool back_end_timing_add(Timing* timing,
     ThreadTimePoint start  = thread_time_now();
     bool            result = run(ctx);
     ThreadTimePoint end    = thread_time_now();
-    timing_add(
-        timing, COMPILER_STAGE_BACK_END, phase, thread_time_elapsed(start, end));
+    timing_add(timing,
+               COMPILER_STAGE_BACK_END,
+               phase,
+               thread_time_elapsed(start, end));
     return result;
 }
 
@@ -126,10 +128,10 @@ bool back_end(const FrontEndState*      front_end_results,
         ir_save(&front_end_results->ir, artifacts->ir_path);
     }
 
-    BackEndContext ctx    = {.front_end_results = front_end_results,
-                             .artifacts         = artifacts,
-                             .verbose           = verbose,
-                             .results           = {0}};
+    BackEndContext ctx = {.front_end_results = front_end_results,
+                          .artifacts         = artifacts,
+                          .verbose           = verbose,
+                          .results           = {0}};
     bool           result =
         back_end_timing_add(timing, COMPILER_PHASE_C_GEN, back_end_cgen, &ctx);
 
@@ -159,7 +161,7 @@ void back_end_results_done(BackEndState* results)
     cgen_done(&results->cgen);
     results->cgen = (CGen){0};
 
-    *results = (BackEndState){0};
+    *results      = (BackEndState){0};
 }
 
 //------------------------------------------------------------------------------
