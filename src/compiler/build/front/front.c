@@ -12,6 +12,7 @@
 
 typedef struct {
     NerdSource    source;
+    bool          verbose;
     FrontEndState results;
 } FrontEndContext;
 
@@ -27,6 +28,12 @@ internal bool phase_lex_reset(void* raw_ctx)
     lex_done(&ctx->results.lexer);
     ctx->results.lexer = (Lexer){0};
     return true;
+}
+
+internal void phase_lex_dump(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    lex_dump(&ctx->results.lexer);
 }
 
 internal bool phase_parse_run(void* raw_ctx)
@@ -49,6 +56,12 @@ internal bool phase_parse_reset(void* raw_ctx)
     return true;
 }
 
+internal void phase_parse_dump(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    ast_dump(&ctx->results.ast, &ctx->results.lexer);
+}
+
 internal bool phase_ir_gen_run(void* raw_ctx)
 {
     FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
@@ -64,29 +77,43 @@ internal bool phase_ir_gen_reset(void* raw_ctx)
     return true;
 }
 
+internal void phase_ir_gen_dump(void* raw_ctx)
+{
+    FrontEndContext* ctx = (FrontEndContext*)raw_ctx;
+    ir_dump(&ctx->results.ir);
+}
+
 internal const PhaseSpec g_front_end_phases[] = {
     {.stage = COMPILER_STAGE_FRONT_END,
      .phase = COMPILER_PHASE_LEX,
      .run   = phase_lex_run,
-     .reset = phase_lex_reset},
+     .reset = phase_lex_reset,
+     .dump  = phase_lex_dump},
     {.stage = COMPILER_STAGE_FRONT_END,
      .phase = COMPILER_PHASE_PARSE,
      .run   = phase_parse_run,
-     .reset = phase_parse_reset},
+     .reset = phase_parse_reset,
+     .dump  = phase_parse_dump},
     {.stage = COMPILER_STAGE_FRONT_END,
      .phase = COMPILER_PHASE_IR_GEN,
      .run   = phase_ir_gen_run,
-     .reset = phase_ir_gen_reset},
+     .reset = phase_ir_gen_reset,
+     .dump  = phase_ir_gen_dump},
 };
 
 #define FRONT_END_PHASE_COUNT                                                  \
     (sizeof(g_front_end_phases) / sizeof(g_front_end_phases[0]))
 
-bool front_end(NerdSource source, Timing* timing, FrontEndState* out_results)
+bool front_end(NerdSource     source,
+               bool           verbose,
+               Timing*        timing,
+               FrontEndState* out_results)
 {
-    FrontEndContext ctx    = {.source = source, .results = {0}};
-    bool            result = compiler_phase_run(
-        g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, timing);
+    FrontEndContext ctx = {
+        .source = source, .verbose = verbose, .results = {0}};
+    bool result = compiler_phase_run(
+        g_front_end_phases, FRONT_END_PHASE_COUNT, &ctx, ctx.verbose, timing);
+
     if (out_results != NULL) {
         *out_results = ctx.results;
     }
@@ -104,7 +131,8 @@ void front_end_benchmark(NerdSource source,
     }
 
     for (usize i = 0; i < FRONT_END_PHASE_COUNT; i++) {
-        FrontEndContext  ctx   = {.source = source, .results = {0}};
+        FrontEndContext ctx = {
+            .source = source, .verbose = false, .results = {0}};
         const PhaseSpec* phase = &g_front_end_phases[i];
         TimeDuration     avg =
             compiler_phase_benchmark_single(g_front_end_phases,

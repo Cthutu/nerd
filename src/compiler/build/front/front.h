@@ -10,7 +10,10 @@
 
 //------------------------------------------------------------------------------
 
-bool front_end(NerdSource source, Timing* timing, FrontEndState* out_results);
+bool front_end(NerdSource     source,
+               bool           verbose,
+               Timing*        timing,
+               FrontEndState* out_results);
 void front_end_benchmark(NerdSource source,
                          u32        warmup_iterations,
                          u32        timed_iterations,
