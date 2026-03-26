@@ -1,4 +1,6 @@
 -- This is a test for real Nerd code.  As I build up the compiler,
 -- I will add to this to reproduce the compiler in itself.
-(42 + 7) * 6
+answer :: 42
+
+answer
 

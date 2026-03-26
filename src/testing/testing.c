@@ -523,9 +523,9 @@ internal bool testing_run_language_test(const LanguageTest* test)
     arena_init(&output_arena);
 
     string actual_ir = ir_render(&front_results.ir, &output_arena);
-    string actual_c  = testing_extract_generated_c_body(
-        testing_strip_section_edges(cgen_render(&back_results.cgen,
-                                                &output_arena)));
+    string actual_c =
+        testing_extract_generated_c_body(testing_strip_section_edges(
+            cgen_render(&back_results.cgen, &output_arena)));
 
 #if OS_WINDOWS
     cstr exe_path = artifacts.binary_path;
