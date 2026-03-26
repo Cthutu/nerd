@@ -503,6 +503,7 @@ internal bool testing_run_language_test(const LanguageTest* test)
                 .source      = test->source,
                 .source_path = s(test->path),
             },
+            false,
             NULL,
             &front_results)) {
         front_end_results_done(&front_results);
@@ -511,7 +512,7 @@ internal bool testing_run_language_test(const LanguageTest* test)
     }
 
     BackEndState back_results = {0};
-    if (!back_end(&front_results, &artifacts, NULL, &back_results)) {
+    if (!back_end(&front_results, &artifacts, false, NULL, &back_results)) {
         back_end_results_done(&back_results);
         front_end_results_done(&front_results);
         arena_done(&artifact_arena);
@@ -656,6 +657,7 @@ internal bool testing_run_error_test(const ErrorTest* test)
             .source      = test->source,
             .source_path = s(test->path),
         },
+        false,
         NULL,
         &front_results);
     if (front_ok) {
@@ -668,7 +670,7 @@ internal bool testing_run_error_test(const ErrorTest* test)
             .compile_binary = false,
         };
         bool back_ok =
-            back_end(&front_results, &artifacts, NULL, &back_results);
+            back_end(&front_results, &artifacts, false, NULL, &back_results);
         if (back_ok) {
             eprn("%sExpected compiler error but compilation succeeded%s",
                  ANSI_RED,

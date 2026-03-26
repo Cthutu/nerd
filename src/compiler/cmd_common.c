@@ -33,20 +33,20 @@ bool compiler_cmd_run_pipeline_once(NerdSource                source,
     }
 
     FrontEndState front_results = {0};
-    if (!front_end(source, timing, &front_results)) {
+    if (!front_end(source, dump_compiler_state, timing, &front_results)) {
         front_end_results_done(&front_results);
         return false;
     }
 
     BackEndState back_results = {0};
-    if (!back_end(&front_results, artifacts, timing, &back_results)) {
+    if (!back_end(&front_results,
+                  artifacts,
+                  dump_compiler_state,
+                  timing,
+                  &back_results)) {
         back_end_results_done(&back_results);
         front_end_results_done(&front_results);
         return false;
-    }
-
-    if (dump_compiler_state) {
-        compiler_dump(&front_results, &back_results);
     }
 
     back_end_results_done(&back_results);

@@ -75,6 +75,7 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
             .source      = document_copy_str,
             .source_path = uri,
         },
+        false,
         NULL,
         &doc->front_end);
     error_system_set_mode(previous_mode);

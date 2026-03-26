@@ -14,7 +14,7 @@ int compiler_cmd_benchmark(const NerdBenchmarkConfig* config)
 {
     NerdArtifactConfig artifacts     = compiler_cmd_default_artifacts();
     FrontEndState      front_results = {0};
-    if (!front_end(config->source, NULL, &front_results)) {
+    if (!front_end(config->source, false, NULL, &front_results)) {
         front_end_results_done(&front_results);
         return 1;
     }
