@@ -224,8 +224,6 @@ LSP each consume different renderings of the same underlying error.
 Compiler CLI command handlers live in files such as:
 
 - [`cmd_build.c`](/home/matt/nerd/src/compiler/cmd_build.c)
-- [`cmd_benchmark.c`](/home/matt/nerd/src/compiler/cmd_benchmark.c)
-- [`cmd_million.c`](/home/matt/nerd/src/compiler/cmd_million.c)
 - [`cmd_test.c`](/home/matt/nerd/src/compiler/cmd_test.c)
 
 Shared orchestration helpers live in:

@@ -42,8 +42,7 @@ int compiler_cmd_build(const NerdBuildConfig* config)
 
     Timing timing                = {0};
     timing_init(&timing);
-    bool ok = compiler_cmd_run_pipeline_once(
-        config->source, &artifacts, config->verbose, &timing);
+    bool ok = compile(config->source, &artifacts, config->verbose, &timing);
     timing_done(&timing);
     arena_done(&arena);
 

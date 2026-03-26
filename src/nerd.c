@@ -84,22 +84,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     //       ]
     //     },
     //     {
-    //       "name": "benchmark",
-    //       "summary": "Run 10000 benchmark iterations",
-    //       "params": [
-    //         {
-    //           "name": "source",
-    //           "kind": "positional",
-    //           "description": "Source snippet to benchmark",
-    //           "required": false
-    //         }
-    //       ]
-    //     },
-    //     {
-    //       "name": "million",
-    //       "summary": "Generate 1,000,000 lines and build once"
-    //     },
-    //     {
     //       "name": "test",
     //       "summary": "Run the compiler test command"
     //     },
@@ -151,32 +135,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             nerd_cli_make_command(
                 arena, "build", "Run one normal build", flags, params));
     }
-
-    {
-        JsonValue* params = json_new_array(arena);
-        json_array_push(params,
-                        nerd_cli_make_param(arena,
-                                            "source",
-                                            "positional",
-                                            NULL,
-                                            NULL,
-                                            "Source snippet to benchmark",
-                                            false));
-        json_array_push(commands,
-                        nerd_cli_make_command(arena,
-                                              "benchmark",
-                                              "Run 10000 benchmark iterations",
-                                              NULL,
-                                              params));
-    }
-
-    json_array_push(
-        commands,
-        nerd_cli_make_command(arena,
-                              "million",
-                              "Generate 1,000,000 lines and build once",
-                              NULL,
-                              NULL));
     json_array_push(
         commands,
         nerd_cli_make_command(
@@ -294,51 +252,6 @@ nerd_build_config_from_json(const JsonValue* cli_result)
     };
 }
 
-internal NerdBenchmarkConfig
-nerd_benchmark_config_from_json(const JsonValue* cli_result)
-{
-    Arena* source_arena = &temp_arena;
-    string source_arg =
-        nerd_cli_param_string(cli_result, "command.params.source", s("42"));
-    string source_path     = {0};
-    string source_text     = source_arg;
-
-    char source_cstr[4096] = {0};
-    ASSERT(source_arg.count < sizeof(source_cstr),
-           "Source path too long for CLI handling");
-    memcpy(source_cstr, source_arg.data, source_arg.count);
-    source_cstr[source_arg.count] = '\0';
-
-    if (path_exists(source_cstr) && !path_is_directory(source_cstr)) {
-        FileMap map       = {0};
-        string  file_text = filemap_load(source_cstr, &map);
-        ASSERT(file_text.data != NULL,
-               "Failed to load source file: %s",
-               source_cstr);
-
-        u8* copy = (u8*)arena_alloc(source_arena, file_text.count);
-        memcpy(copy, file_text.data, file_text.count);
-        source_text = string_from(copy, file_text.count);
-        source_path = string_format(source_arena, "%s", source_cstr);
-        filemap_unload(&map);
-    }
-
-    return (NerdBenchmarkConfig){
-        .source =
-            (NerdSource){
-                .source      = source_text,
-                .source_path = source_path,
-            },
-    };
-}
-
-internal NerdMillionConfig
-nerd_million_config_from_json(const JsonValue* cli_result)
-{
-    UNUSED(cli_result);
-    return (NerdMillionConfig){0};
-}
-
 internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result)
 {
     UNUSED(cli_result);
@@ -433,13 +346,6 @@ internal int nerd_run_with_cli(int argc, char** argv)
     if (string_eq_cstr(name, "build")) {
         NerdBuildConfig config = nerd_build_config_from_json(cli_result);
         result                 = compiler_cmd_build(&config);
-    } else if (string_eq_cstr(name, "benchmark")) {
-        NerdBenchmarkConfig config =
-            nerd_benchmark_config_from_json(cli_result);
-        result = compiler_cmd_benchmark(&config);
-    } else if (string_eq_cstr(name, "million")) {
-        NerdMillionConfig config = nerd_million_config_from_json(cli_result);
-        result                   = compiler_cmd_million(&config);
     } else if (string_eq_cstr(name, "test")) {
         NerdTestConfig config = nerd_test_config_from_json(cli_result);
         result                = compiler_cmd_test(&config);

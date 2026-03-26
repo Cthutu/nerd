@@ -33,30 +33,31 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
     };
 }
 
-internal bool phase_cgen_run(void* raw_ctx)
+internal bool back_end_timing_add(Timing* timing,
+                                  cstr    phase,
+                                  bool (*run)(BackEndContext*),
+                                  BackEndContext* ctx)
 {
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
-    ctx->results.cgen   = cgen_init(&ctx->front_end_results->ir);
+    if (timing == NULL) {
+        return run(ctx);
+    }
+
+    ThreadTimePoint start  = thread_time_now();
+    bool            result = run(ctx);
+    ThreadTimePoint end    = thread_time_now();
+    timing_add(
+        timing, COMPILER_STAGE_BACK_END, phase, thread_time_elapsed(start, end));
+    return result;
+}
+
+internal bool back_end_cgen(BackEndContext* ctx)
+{
+    ctx->results.cgen = cgen_init(&ctx->front_end_results->ir);
     return true;
 }
 
-internal bool phase_cgen_reset(void* raw_ctx)
+internal bool back_end_save_c(BackEndContext* ctx)
 {
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
-    cgen_done(&ctx->results.cgen);
-    ctx->results.cgen = (CGen){0};
-    return true;
-}
-
-internal void phase_cgen_dump(void* raw_ctx)
-{
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
-    cgen_dump(&ctx->results.cgen);
-}
-
-internal bool phase_save_run(void* raw_ctx)
-{
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
     if (!ctx->artifacts->emit_c_file && !ctx->artifacts->compile_binary) {
         return true;
     }
@@ -67,16 +68,8 @@ internal bool phase_save_run(void* raw_ctx)
     return true;
 }
 
-internal bool phase_noop_reset(void* raw_ctx)
+internal bool back_end_compile_c(BackEndContext* ctx)
 {
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
-    UNUSED(ctx);
-    return true;
-}
-
-internal bool phase_compile_run(void* raw_ctx)
-{
-    BackEndContext* ctx = (BackEndContext*)raw_ctx;
     if (!ctx->artifacts->compile_binary) {
         return true;
     }
@@ -118,27 +111,6 @@ internal bool phase_compile_run(void* raw_ctx)
     return true;
 }
 
-internal const PhaseSpec g_back_end_phases[] = {
-    {.stage = COMPILER_STAGE_BACK_END,
-     .phase = COMPILER_PHASE_C_GEN,
-     .run   = phase_cgen_run,
-     .reset = phase_cgen_reset,
-     .dump  = phase_cgen_dump},
-    {.stage = COMPILER_STAGE_BACK_END,
-     .phase = COMPILER_PHASE_C_SAVE,
-     .run   = phase_save_run,
-     .reset = phase_noop_reset,
-     .dump  = NULL},
-    {.stage = COMPILER_STAGE_BACK_END,
-     .phase = COMPILER_PHASE_C_COMPILE,
-     .run   = phase_compile_run,
-     .reset = phase_noop_reset,
-     .dump  = NULL},
-};
-
-#define BACK_END_PHASE_COUNT                                                   \
-    (sizeof(g_back_end_phases) / sizeof(g_back_end_phases[0]))
-
 bool back_end(const FrontEndState*      front_end_results,
               const NerdArtifactConfig* artifacts,
               bool                      verbose,
@@ -158,8 +130,22 @@ bool back_end(const FrontEndState*      front_end_results,
                              .artifacts         = artifacts,
                              .verbose           = verbose,
                              .results           = {0}};
-    bool           result = compiler_phase_run(
-        g_back_end_phases, BACK_END_PHASE_COUNT, &ctx, ctx.verbose, timing);
+    bool           result =
+        back_end_timing_add(timing, COMPILER_PHASE_C_GEN, back_end_cgen, &ctx);
+
+    if (result && verbose) {
+        cgen_dump(&ctx.results.cgen);
+    }
+
+    if (result) {
+        result = back_end_timing_add(
+            timing, COMPILER_PHASE_C_SAVE, back_end_save_c, &ctx);
+    }
+
+    if (result) {
+        result = back_end_timing_add(
+            timing, COMPILER_PHASE_C_COMPILE, back_end_compile_c, &ctx);
+    }
 
     if (out_results != NULL) {
         *out_results = ctx.results;
@@ -168,53 +154,11 @@ bool back_end(const FrontEndState*      front_end_results,
     return result;
 }
 
-void back_end_benchmark(const FrontEndState*      front_end_results,
-                        const NerdArtifactConfig* artifacts,
-                        u32                       warmup_iterations,
-                        u32                       timed_iterations,
-                        Timing*                   out_timing)
-{
-    NerdArtifactConfig default_artifacts = compiler_default_artifacts();
-    if (!artifacts) {
-        artifacts = &default_artifacts;
-    }
-
-    timing_init(out_timing);
-    if (timed_iterations == 0) {
-        return;
-    }
-
-    for (usize i = 0; i < BACK_END_PHASE_COUNT; i++) {
-        BackEndContext   ctx   = {.front_end_results = front_end_results,
-                                  .artifacts         = artifacts,
-                                  .verbose           = false,
-                                  .results           = {0}};
-        const PhaseSpec* phase = &g_back_end_phases[i];
-        u32              phase_warmup_iterations = warmup_iterations;
-        u32              phase_timed_iterations  = timed_iterations;
-        if (strcmp(phase->phase, COMPILER_PHASE_C_SAVE) == 0 ||
-            strcmp(phase->phase, COMPILER_PHASE_C_COMPILE) == 0) {
-            // Avoid running filesystem/compiler work thousands of times in
-            // benchmark mode.
-            phase_warmup_iterations = 0;
-            phase_timed_iterations  = 1;
-        }
-        TimeDuration avg =
-            compiler_phase_benchmark_single(g_back_end_phases,
-                                            BACK_END_PHASE_COUNT,
-                                            i,
-                                            &ctx,
-                                            phase_warmup_iterations,
-                                            phase_timed_iterations);
-        timing_add(out_timing, phase->stage, phase->phase, avg);
-    }
-}
-
 void back_end_results_done(BackEndState* results)
 {
-    BackEndContext ctx = {
-        .front_end_results = NULL, .artifacts = NULL, .results = *results};
-    compiler_phase_reset_reverse(g_back_end_phases, BACK_END_PHASE_COUNT, &ctx);
+    cgen_done(&results->cgen);
+    results->cgen = (CGen){0};
+
     *results = (BackEndState){0};
 }
 

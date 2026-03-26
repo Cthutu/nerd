@@ -25,14 +25,6 @@ typedef struct {
 } NerdBuildConfig;
 
 typedef struct {
-    NerdSource source;
-} NerdBenchmarkConfig;
-
-typedef struct {
-    bool reserved;
-} NerdMillionConfig;
-
-typedef struct {
     bool reserved;
 } NerdTestConfig;
 
@@ -48,8 +40,6 @@ typedef struct {
 //------------------------------------------------------------------------------
 
 int compiler_cmd_build(const NerdBuildConfig* config);
-int compiler_cmd_benchmark(const NerdBenchmarkConfig* config);
-int compiler_cmd_million(const NerdMillionConfig* config);
 int compiler_cmd_test(const NerdTestConfig* config);
 
 //------------------------------------------------------------------------------
