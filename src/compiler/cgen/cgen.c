@@ -8,13 +8,11 @@
 
 static const char g_cgen_prelude[] = {
 #embed "../../../data/prelude.c"
-    ,
-    0};
+    , 0};
 
 static const char g_cgen_epilogue[] = {
 #embed "../../../data/epilogue.c"
-    ,
-    0};
+    , 0};
 
 //------------------------------------------------------------------------------
 // C generation helpers

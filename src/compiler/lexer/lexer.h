@@ -20,6 +20,7 @@ typedef enum {
     TK_Percent,
     TK_LParen,
     TK_RParen,
+    TK_Colon,
 
     TK_Symbol,
 } TokenKind;

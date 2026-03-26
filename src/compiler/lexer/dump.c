@@ -30,6 +30,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("LeftParen `(`");
     case TK_RParen:
         return string_from_cstr("RightParen `)`");
+    case TK_Colon:
+        return string_from_cstr("Colon `:`");
+    case TK_Symbol:
+        return string_from_cstr("Symbol");
     default:
         return string_from_cstr("Unknown");
     }

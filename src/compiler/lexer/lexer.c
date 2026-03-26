@@ -157,7 +157,24 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_Percent:
     case TK_LParen:
     case TK_RParen:
+    case TK_Colon:
         return token->offset + 1;
+
+    case TK_Symbol:
+        {
+            usize index = token->offset;
+            while (index < lexer->source.source.count &&
+                   ((lexer->source.source.data[index] >= 'a' &&
+                     lexer->source.source.data[index] <= 'z') ||
+                    (lexer->source.source.data[index] >= 'A' &&
+                     lexer->source.source.data[index] <= 'Z') ||
+                    (lexer->source.source.data[index] >= '0' &&
+                     lexer->source.source.data[index] <= '9') ||
+                    lexer->source.source.data[index] == '_')) {
+                index++;
+            }
+            return index;
+        }
     default:
         error_ice("Unknown token kind: %d", token->kind);
         return token->offset + 1; // Fallback to prevent infinite loops
