@@ -31,6 +31,7 @@ typedef struct {
     Lexer* lexer;
     u32    token_index;
     u32    integer_index;
+    u32    symbol_index;
 
     // Current token (from last peek or next)
     AstToken token;
@@ -39,8 +40,10 @@ typedef struct {
     Array(AstNode) nodes;
 
     // Current top-level expression start
-    u32 expr_start_node_index;
-    u32 expr_start_token_index;
+    // u32 expr_start_node_index;
+    // u32 expr_start_token_index;
+    u32 start_node_index;
+    u32 start_token_index;
 } AstParseState;
 
 // Token stream access over the sequential lexer arrays.

@@ -2,5 +2,5 @@
 -- I will add to this to reproduce the compiler in itself.
 answer :: 42
 
-answer
+main :: fn () => answer
 

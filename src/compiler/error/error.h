@@ -102,7 +102,9 @@ bool error_0203_expected_token(NerdSource source,
 // remain.
 bool error_0204_unexpected_token(NerdSource source,
                                  ErrorSpan  span,
-                                 TokenKind  actual_kind);
+                                 TokenKind  actual_kind,
+                                 cstr       help_format,
+                                 ...);
 
 //------------------------------------------------------------------------------
 // Low-level error system

@@ -10,9 +10,21 @@
 #include <compiler/compiler.h>
 #include <intern/intern.h>
 
+// When adding a new lexer token, make changes to:
+// - The TokenKind enum (compiler/lexer/lexer.h)
+// - The token_lookup table in lex() if single-char punctuation
+//   (compiler/lexer/lexer.c)
+// - The token_kind_to_string() function (compiler/lexer/lexer.c)
+// - The lex_token_end_offset() function (compiler/lexer/dump.c)
+
 typedef enum {
     TK_EOF, // Not used in lexer, but used in AST
+
+    // Values
     TK_Integer,
+    TK_Symbol,
+
+    // Operators & punctuation
     TK_Plus,
     TK_Minus,
     TK_Star,
@@ -21,8 +33,10 @@ typedef enum {
     TK_LParen,
     TK_RParen,
     TK_Colon,
+    TK_FatArrow,
 
-    TK_Symbol,
+    // Keywords
+    TK_fn,
 } TokenKind;
 
 typedef struct {

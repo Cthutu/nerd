@@ -51,6 +51,10 @@ bool lex(NerdSource source, Lexer* lexer)
             break;
         }
 
+        //
+        // Integers
+        //
+
         if (c >= '0' && c <= '9') {
             usize start      = i;
             u64   total      = 0;
@@ -84,9 +88,13 @@ bool lex(NerdSource source, Lexer* lexer)
                     (ErrorSpan){.start = start, .end = i + 1},
                     source_code.data[i]);
             }
+        }
 
-        } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                   c == '_') {
+        //
+        // Symbols and keywords
+        //
+
+        else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
             usize start = i;
             while (
                 i < source_code.count &&
@@ -97,6 +105,36 @@ bool lex(NerdSource source, Lexer* lexer)
                 i++;
             }
             string str = string_from(source_code.data + start, i - start);
+
+            //
+            // Check for keyword
+            //
+
+            struct {
+                cstr      name;
+                u8        length;
+                TokenKind kind;
+            } keywords[]    = {{"fn", 2, TK_fn}, {NULL, 0, 0}};
+
+            bool is_keyword = false;
+            for (usize k = 0; keywords[k].name != NULL; k++) {
+                if (str.count == keywords[k].length &&
+                    memcmp(str.data, keywords[k].name, str.count) == 0) {
+                    array_push(lexer->tokens,
+                               (Token){.kind   = keywords[k].kind,
+                                       .offset = (u32)start});
+                    is_keyword = true;
+                    break;
+                }
+            }
+            if (is_keyword) {
+                continue;
+            }
+
+            //
+            // Handle symbol
+            //
+
             InternAddResult added_result;
             u32             handle = lex_add_symbol(lexer, str, &added_result);
             switch (added_result) {
@@ -114,6 +152,14 @@ bool lex(NerdSource source, Lexer* lexer)
             array_push(lexer->tokens,
                        (Token){.kind = TK_Symbol, .offset = (u32)start});
 
+        } else if (c == '=') {
+            if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_FatArrow, .offset = (u32)i});
+                i += 2;
+            } else {
+                return error_0100_unexpected_character(source, i, (char)c);
+            }
         } else {
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic push
@@ -185,7 +231,11 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_Colon:
         return token->offset + 1;
 
+    case TK_FatArrow:
+        return token->offset + 2;
+
     case TK_Symbol:
+    case TK_fn:
         {
             usize index = token->offset;
             while (index < lexer->source.source.count &&

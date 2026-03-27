@@ -139,15 +139,15 @@ bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
     }
 
     AstToken expr_token = {
-        .kind   = state->lexer->tokens[state->expr_start_token_index].kind,
-        .source = state->lexer->source,
-        .offset = state->lexer->tokens[state->expr_start_token_index].offset,
-        .token_index = state->expr_start_token_index,
+        .kind        = state->lexer->tokens[state->start_token_index].kind,
+        .source      = state->lexer->source,
+        .offset      = state->lexer->tokens[state->start_token_index].offset,
+        .token_index = state->start_token_index,
     };
 
     AstNode expr_node = {
         .kind        = AK_Expression,
-        .token_index = state->expr_start_token_index,
+        .token_index = state->start_token_index,
         .a           = root_node,
     };
     return ast_emit_node(state, expr_node, expr_token, out_expr_node);

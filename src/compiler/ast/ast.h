@@ -13,16 +13,18 @@
 //------------------------------------------------------------------------------
 // Table of AST Nodes:
 //
-// | Name               | ref                   | a                 | b                  |
-// |--------------------|-----------------------|-------------------|--------------------|
-// | AK_IntegerLiteral  | 0                     | Integer index     | 0                  |
-// | AK_IntegerNegate   | Offset to first node  | Ast index of rhs  | 0                  |
-// | AK_IntegerPlus     | Offset to first node  | Ast index of left | Ast index of right |
-// | AK_IntegerMinus    | Offset to first node  | Ast index of left | Ast index of right |
-// | AK_IntegerMultiply | Offset to first node  | Ast index of left | Ast index of right |
-// | AK_IntegerDivide   | Offset to first node  | Ast index of left | Ast index of right |
-// | AK_IntegerModulo   | Offset to first node  | Ast index of left | Ast index of right |
-// | AK_Expression      | Offset to first node  | Ast index of root | 0                  |
+// | Name               | ref                           | a                 | b                  |
+// |--------------------|-------------------------------|-------------------|--------------------|
+// | AK_IntegerLiteral  | 0                             | Integer index     | 0                  |
+// | AK_IntegerNegate   | Offset to first node          | Ast index of rhs  | 0                  |
+// | AK_IntegerPlus     | Offset to first node          | Ast index of left | Ast index of right |
+// | AK_IntegerMinus    | Offset to first node          | Ast index of left | Ast index of right |
+// | AK_IntegerMultiply | Offset to first node          | Ast index of left | Ast index of right |
+// | AK_IntegerDivide   | Offset to first node          | Ast index of left | Ast index of right |
+// | AK_IntegerModulo   | Offset to first node          | Ast index of left | Ast index of right |
+// | AK_Expression      | Offset to first node          | Ast index of root | 0                  |
+// | AK_Bind            | Offset to type or expression  | Symbol            | 0                  |
+// | AK_FnDef           | Offset to expression          | 0                 | 0                  |
 //
 // clang-format on
 
@@ -35,6 +37,8 @@ typedef enum {
     AK_IntegerDivide,
     AK_IntegerModulo,
     AK_Expression,
+    AK_Bind,
+    AK_FnDef,
 } AstKind;
 
 typedef struct {

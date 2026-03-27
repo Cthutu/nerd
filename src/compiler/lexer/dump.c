@@ -15,27 +15,31 @@ string token_kind_to_string(TokenKind kind)
     case TK_EOF:
         return string_from_cstr("EOF");
     case TK_Integer:
-        return string_from_cstr("Integer");
-    case TK_Plus:
-        return string_from_cstr("Plus `+`");
-    case TK_Minus:
-        return string_from_cstr("Minus `-`");
-    case TK_Star:
-        return string_from_cstr("Star `*`");
-    case TK_Slash:
-        return string_from_cstr("Slash `/`");
-    case TK_Percent:
-        return string_from_cstr("Percent `%`");
-    case TK_LParen:
-        return string_from_cstr("LeftParen `(`");
-    case TK_RParen:
-        return string_from_cstr("RightParen `)`");
-    case TK_Colon:
-        return string_from_cstr("Colon `:`");
+        return string_from_cstr("integer");
     case TK_Symbol:
-        return string_from_cstr("Symbol");
+        return string_from_cstr("symbol");
+    case TK_Plus:
+        return string_from_cstr("plus `+`");
+    case TK_Minus:
+        return string_from_cstr("minus `-`");
+    case TK_Star:
+        return string_from_cstr("star `*`");
+    case TK_Slash:
+        return string_from_cstr("slash `/`");
+    case TK_Percent:
+        return string_from_cstr("percent `%`");
+    case TK_LParen:
+        return string_from_cstr("open parenthesis `(`");
+    case TK_RParen:
+        return string_from_cstr("close parenthesis `)`");
+    case TK_Colon:
+        return string_from_cstr("colon `:`");
+    case TK_FatArrow:
+        return string_from_cstr("fat arrow `=>`");
+    case TK_fn:
+        return string_from_cstr("keyword `fn`");
     default:
-        return string_from_cstr("Unknown");
+        return string_from_cstr("unknown");
     }
 }
 
@@ -53,6 +57,7 @@ void lex_dump(const Lexer* lexer)
     table_reserve_rows(&table, array_count(lexer->tokens));
 
     usize integer_index = 0;
+    usize symbol_index  = 0;
 
     for (usize i = 0; i < array_count(lexer->tokens); i++) {
         Token     token = lexer->tokens[i];
@@ -71,10 +76,11 @@ void lex_dump(const Lexer* lexer)
         case TK_Symbol:
             {
                 string symbol =
-                    lex_symbol(lexer, lexer->symbol_handles[token.offset]);
+                    lex_symbol(lexer, lexer->symbol_handles[symbol_index++]);
                 row[3] = table_cell_string(symbol);
                 break;
             }
+
         default:
             row[3] = table_cell_string(s("-"));
             break;
