@@ -10,3 +10,4 @@ tests/**/*.out
 
 nerd-src/main
 .codex
+*.format

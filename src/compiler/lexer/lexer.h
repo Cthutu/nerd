@@ -44,15 +44,36 @@ typedef struct {
     u32       offset : 24;
 } Token;
 
+typedef enum {
+    LEXER_MODE_NORMAL,
+    LEXER_MODE_FORMAT,
+} LexerMode;
+
+typedef struct {
+    LexerMode mode;
+} LexerConfig;
+
+typedef struct {
+    u32    offset;
+    u32    end_offset;
+    u32    token_index;
+    string text;
+} LexerComment;
+
 typedef struct {
     NerdSource source;
+    LexerMode  mode;
     Array(Token) tokens;
     Array(u64) integers;
     Array(u32) symbol_handles;
+    Arena      comment_arena;
+    Array(LexerComment) comments;
+    Array(u32)          comment_indices;
     Interner symbols;
 } Lexer;
 
 bool   lex(NerdSource source, Lexer* lexer);
+bool   lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer);
 void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
 u32    lex_add_symbol(Lexer* lexer, string str, InternAddResult* out_result);

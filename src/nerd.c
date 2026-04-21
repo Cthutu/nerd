@@ -88,6 +88,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     //       "summary": "Run the compiler test command"
     //     },
     //     {
+    //       "name": "format",
+    //       "summary": "Format one source file"
+    //     },
+    //     {
     //       "name": "lsp",
     //       "summary": "Run the LSP server"
     //     }
@@ -139,6 +143,20 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         commands,
         nerd_cli_make_command(
             arena, "test", "Run the compiler test command", NULL, NULL));
+    {
+        JsonValue* params = json_new_array(arena);
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "input",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Source file to format",
+                                            true));
+        json_array_push(commands,
+                        nerd_cli_make_command(
+                            arena, "format", "Format one source file", NULL, params));
+    }
     json_array_push(
         commands,
         nerd_cli_make_command(arena, "lsp", "Run the LSP server", NULL, NULL));
@@ -258,6 +276,15 @@ internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result)
     return (NerdTestConfig){0};
 }
 
+internal NerdFormatConfig
+nerd_format_config_from_json(const JsonValue* cli_result)
+{
+    return (NerdFormatConfig){
+        .input_path =
+            nerd_cli_param_string(cli_result, "command.params.input", (string){0}),
+    };
+}
+
 internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
@@ -349,6 +376,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
     } else if (string_eq_cstr(name, "test")) {
         NerdTestConfig config = nerd_test_config_from_json(cli_result);
         result                = compiler_cmd_test(&config);
+    } else if (string_eq_cstr(name, "format")) {
+        NerdFormatConfig config = nerd_format_config_from_json(cli_result);
+        result                  = compiler_cmd_format(&config);
     } else if (string_eq_cstr(name, "lsp")) {
         lsp_log("Launching nerd lsp");
         result = lsp_run();

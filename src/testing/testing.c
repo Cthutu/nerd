@@ -9,7 +9,9 @@
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
+#include <compiler/format/format.h>
 #include <object/object.h>
+#include <stdio.h>
 #include <table/table.h>
 #include <testing/diff.h>
 
@@ -31,12 +33,20 @@ typedef struct {
 } ErrorTest;
 
 typedef struct {
+    cstr   path;
+    string source;
+    string expected_text;
+} FormatTest;
+
+typedef struct {
     usize passed;
     usize failed;
     usize language_passed;
     usize language_failed;
     usize error_passed;
     usize error_failed;
+    usize format_passed;
+    usize format_failed;
 } TestCounts;
 
 //------------------------------------------------------------------------------
@@ -244,6 +254,42 @@ internal bool testing_parse_error_tests(Arena* arena,
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Parse a formatter test with unformatted and formatted sections.
+
+internal bool testing_parse_format_test(Arena*      arena,
+                                        cstr        path,
+                                        string      file_text,
+                                        FormatTest* out_test)
+{
+    string sections[2]   = {0};
+    usize  cursor        = 0;
+    usize  section_count = 0;
+
+    while (section_count < 2 &&
+           testing_split_next_section(
+               file_text, &cursor, &sections[section_count])) {
+        section_count++;
+        if (cursor > file_text.count) {
+            break;
+        }
+    }
+
+    if (section_count != 2 || cursor <= file_text.count) {
+        eprn("%sInvalid format test format:%s %s", ANSI_RED, ANSI_RESET, path);
+        return false;
+    }
+
+    *out_test = (FormatTest){
+        .path          = testing_copy_cstr(arena, path),
+        .source        = testing_copy_string(
+            arena, testing_strip_section_edges(sections[0])),
+        .expected_text = testing_copy_string(
+            arena, testing_strip_section_edges(sections[1])),
+    };
+    return true;
+}
+
 internal int testing_compare_cstrs(const void* left, const void* right)
 {
     cstr a = *(const cstr*)left;
@@ -285,6 +331,13 @@ internal void testing_print_summary_table(const TestCounts* counts)
         table_cell_u64(counts->error_failed),
     };
     table_add_row(&table, error_row);
+
+    TableCell format_row[3] = {
+        table_cell_string(s("format")),
+        table_cell_u64(counts->format_passed),
+        table_cell_u64(counts->format_failed),
+    };
+    table_add_row(&table, format_row);
 
     TableCell total_row[3] = {
         table_cell_string(s("total")),
@@ -365,6 +418,40 @@ internal void testing_collect_error_tests(Arena* arena,
     dir_iter_done(&iter);
 }
 
+internal void testing_collect_format_tests(Arena* arena,
+                                           cstr   directory,
+                                           Array(cstr) * out_paths)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, directory)) {
+        return;
+    }
+
+    Arena child_arena = {0};
+    arena_init(&child_arena);
+
+    cstr child_path   = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, &child_arena, &child_path, &is_directory)) {
+        if (is_directory) {
+            testing_collect_format_tests(arena, child_path, out_paths);
+            arena_done(&child_arena);
+            arena_init(&child_arena);
+            continue;
+        }
+
+        if (path_has_extension(s(child_path), ".f")) {
+            array_push(*out_paths, testing_copy_cstr(arena, child_path));
+        }
+
+        arena_done(&child_arena);
+        arena_init(&child_arena);
+    }
+
+    arena_done(&child_arena);
+    dir_iter_done(&iter);
+}
+
 internal void testing_cleanup_generated_files(cstr artifact_root)
 {
     Arena arena = {0};
@@ -380,6 +467,20 @@ internal void testing_cleanup_generated_files(cstr artifact_root)
 #if OS_WINDOWS
     path_remove(path_replace_extension(&arena, artifact_root, ".exe"));
 #endif
+
+    arena_done(&arena);
+}
+
+internal void testing_cleanup_generated_format_files(cstr artifact_root)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    cstr input_path  = path_replace_extension(&arena, artifact_root, ".input.n");
+    cstr format_path = path_replace_extension(&arena, input_path, ".format");
+
+    path_remove(input_path);
+    path_remove(format_path);
 
     arena_done(&arena);
 }
@@ -401,7 +502,9 @@ internal void testing_cleanup_generated_tree(cstr directory)
             testing_cleanup_generated_tree(child_path);
         } else if (path_has_extension(s(child_path), ".ir") ||
                    path_has_extension(s(child_path), ".c") ||
-                   path_has_extension(s(child_path), ".out")) {
+                   path_has_extension(s(child_path), ".out") ||
+                   path_has_extension(s(child_path), ".format") ||
+                   path_has_extension(s(child_path), ".input.n")) {
             path_remove(child_path);
         }
 
@@ -763,6 +866,114 @@ internal int testing_run_error_suite(cstr tests_root, TestCounts* counts)
     return counts->failed == 0 ? 0 : 1;
 }
 
+internal bool testing_run_format_test(const FormatTest* test)
+{
+    Arena artifact_arena = {0};
+    arena_init(&artifact_arena);
+
+    cstr artifact_root =
+        path_replace_extension(&artifact_arena, test->path, "");
+    testing_cleanup_generated_format_files(artifact_root);
+
+    cstr input_path  = path_replace_extension(&artifact_arena, artifact_root, ".input.n");
+    cstr output_path = path_replace_extension(&artifact_arena, input_path, ".format");
+
+    FILE* file = fopen(input_path, "wb");
+    if (!file) {
+        arena_done(&artifact_arena);
+        eprn("Failed to open formatter input file: %s", input_path);
+        return false;
+    }
+
+    usize written = fwrite(test->source.data, 1, test->source.count, file);
+    fclose(file);
+    if (written != test->source.count) {
+        arena_done(&artifact_arena);
+        eprn("Failed to write formatter input file: %s", input_path);
+        return false;
+    }
+
+    bool ok = format_file(input_path, output_path);
+    path_remove(input_path);
+    if (!ok) {
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    FileMap map      = {0};
+    string  rendered = filemap_load(output_path, &map);
+    if (rendered.data == NULL) {
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    bool passed =
+        testing_compare_text("formatted output", test->expected_text, rendered);
+    filemap_unload(&map);
+
+    if (passed) {
+        path_remove(output_path);
+    }
+
+    arena_done(&artifact_arena);
+    return passed;
+}
+
+internal int testing_run_format_suite(cstr tests_root, TestCounts* counts)
+{
+    Arena test_arena = {0};
+    arena_init(&test_arena);
+
+    cstr format_dir   = path_join(&test_arena, tests_root, "format");
+    Array(cstr) paths = NULL;
+    testing_collect_format_tests(&test_arena, format_dir, &paths);
+    qsort(paths, array_count(paths), sizeof(paths[0]), testing_compare_cstrs);
+
+    for (usize i = 0; i < array_count(paths); i++) {
+        cstr path         = paths[i];
+
+        FileMap map       = {0};
+        string  file_text = filemap_load(path, &map);
+        if (file_text.data == NULL) {
+            counts->failed++;
+            counts->format_failed++;
+            testing_print_result_line(false, "format", path);
+            continue;
+        }
+
+        Arena case_arena = {0};
+        arena_init(&case_arena);
+        FormatTest test = {0};
+        bool ok =
+            testing_parse_format_test(&case_arena, path, file_text, &test);
+        if (!ok) {
+            counts->failed++;
+            counts->format_failed++;
+            testing_print_result_line(false, "format", path);
+            arena_done(&case_arena);
+            filemap_unload(&map);
+            continue;
+        }
+
+        if (testing_run_format_test(&test)) {
+            counts->passed++;
+            counts->format_passed++;
+            testing_print_result_line(true, "format", path);
+        } else {
+            counts->failed++;
+            counts->format_failed++;
+            testing_print_result_line(false, "format", path);
+        }
+
+        arena_done(&case_arena);
+        filemap_unload(&map);
+    }
+
+    array_free(paths);
+    arena_done(&test_arena);
+    return counts->failed == 0 ? 0 : 1;
+}
+
 int testing_run_suite(cstr tests_root)
 {
     testing_cleanup_generated_tree(tests_root);
@@ -770,6 +981,9 @@ int testing_run_suite(cstr tests_root)
     TestCounts counts = {0};
     int        result = testing_run_language_suite(tests_root, &counts);
     if (testing_run_error_suite(tests_root, &counts) != 0) {
+        result = 1;
+    }
+    if (testing_run_format_suite(tests_root, &counts) != 0) {
         result = 1;
     }
 

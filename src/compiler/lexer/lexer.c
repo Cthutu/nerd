@@ -11,12 +11,13 @@
 
 //------------------------------------------------------------------------------
 
-bool lex(NerdSource source, Lexer* lexer)
+bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 {
     string source_code = source.source;
 
     *lexer             = (Lexer){0};
     lexer->source      = source;
+    lexer->mode        = config ? config->mode : LEXER_MODE_NORMAL;
 
     if (source_code.count >= (1u << 24)) {
         return error_0102_file_too_large(source);
@@ -34,10 +35,31 @@ bool lex(NerdSource source, Lexer* lexer)
 
         if (c == '-' && i + 1 < source_code.count &&
             source_code.data[i + 1] == '-') {
-            // Skip comment until end of line
+            usize start = i;
             i += 2;
             while (i < source_code.count && source_code.data[i] != '\n') {
                 i++;
+            }
+            if (lexer->mode == LEXER_MODE_FORMAT) {
+                if (lexer->comment_arena.data == NULL) {
+                    arena_init(&lexer->comment_arena);
+                }
+
+                string comment_text =
+                    string_from(source_code.data + start + 2, i - start - 2);
+                u8* copied = (u8*)arena_alloc(&lexer->comment_arena, comment_text.count);
+                if (comment_text.count > 0) {
+                    memcpy(copied, comment_text.data, comment_text.count);
+                }
+
+                array_push(lexer->comment_indices, array_count(lexer->comments));
+                array_push(lexer->comments,
+                           (LexerComment){
+                               .offset      = (u32)start,
+                               .end_offset  = (u32)i,
+                               .token_index = (u32)array_count(lexer->tokens),
+                               .text        = string_from(copied, comment_text.count),
+                           });
             }
             continue;
         }
@@ -196,11 +218,23 @@ bool lex(NerdSource source, Lexer* lexer)
 
 //------------------------------------------------------------------------------
 
+bool lex(NerdSource source, Lexer* lexer)
+{
+    return lex_with_config(source, &(LexerConfig){.mode = LEXER_MODE_NORMAL}, lexer);
+}
+
+//------------------------------------------------------------------------------
+
 void lex_done(Lexer* lexer)
 {
     array_free(lexer->tokens);
     array_free(lexer->integers);
     array_free(lexer->symbol_handles);
+    array_free(lexer->comments);
+    array_free(lexer->comment_indices);
+    if (lexer->comment_arena.data != NULL) {
+        arena_done(&lexer->comment_arena);
+    }
     if (lexer->symbols.intern_arena.data != NULL) {
         intern_done(&lexer->symbols);
     }
