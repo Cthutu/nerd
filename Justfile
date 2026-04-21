@@ -27,6 +27,9 @@ format:
 test: 
     just run nerd test
 
+test-release:
+    just run-release nerd test
+
 test-build:
     just run nerd build -v nerd-src/main.n
 
@@ -37,6 +40,8 @@ alias rr := run-release
 alias c := clean
 alias f := format
 alias t := test
+alias tr := test-release
+alias tb := test-build
 
 #
 # Recipes for VS Code extension packaging / installation
