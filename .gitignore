@@ -9,3 +9,4 @@ tests/**/*.c
 tests/**/*.out
 
 nerd-src/main
+.codex
