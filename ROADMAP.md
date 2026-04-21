@@ -4,7 +4,6 @@ This document records the current state of the compiler and the step-by-step
 plan to reach the first milestone:
 
 - pass all current tests
-- compile [`nerd-src/main.n`](/home/matt/nerd/nerd-src/main.n)
 - do the work in small, reviewable increments
 
 ## Current State
@@ -18,16 +17,14 @@ From the current codebase and test suite:
   `AK_Expression`.
 - The C generator emits a single hard-coded `int $main() { ... }` body and does
   not yet model top-level declarations.
-- The test suite currently fails at the language and AST-error layers:
-  - `0/6` language tests passing
-  - `2/7` error tests passing
+- The test suite currently fails at the language and AST-error layers.
 - `tests/language/006-global-vars.t` already expects global binding resolution,
   but there is no symbol table or semantic analysis phase yet.
 
 ## Guiding Rules
 
 - Keep the first milestone narrowly focused on existing tests and
-  `nerd-src/main.n`.
+  `just test`.
 - Add new infrastructure only when it directly simplifies that path.
 - Prefer stable intermediate representations over ad hoc cross-stage logic.
 - Refactor toward explicit front-end phases instead of growing parser-side
@@ -63,6 +60,7 @@ From the current codebase and test suite:
 
 - Introduce a semantic layer between AST and IR generation.
 - Keep parsing responsible for syntax only.
+- Make parser token-consumption rules consistent across all parse helpers.
 - Move name resolution, declaration classification, constant/function binding,
   and “what does this symbol mean?” into semantic analysis.
 - Lower IR from semantic output, not directly from raw AST.
@@ -83,19 +81,32 @@ From the current codebase and test suite:
   - token-to-AST operator mapping
   - token classification (`starts expr`, `starts decl`, infix precedence)
   - semantic node iteration / emit patterns
+- Standardise parser entry/exit contracts.
+  - Each parse helper should clearly either:
+    - require the first token to have already been consumed on entry, or
+    - consume the first token itself on entry
+  - Use one convention consistently across the parser rather than mixing both.
+  - Document the convention in parser helper comments and function naming if
+    needed.
 - Standardise function comments as code is edited:
   - one short purpose comment
   - a surrounding separator comment such as `//------------------------------------------------------------------------------`
     before each function definition
 
-## Milestone 1: Pass Tests And Compile `main.n`
+## Milestone 1: Pass Tests Via `just test`
 
 - [ ] 1. Record and preserve the failing baseline.
   - Keep `just test` as the main regression gate.
-  - Treat `tests/language/*.t`, `tests/errors/*.e`, and `nerd-src/main.n` as the
-    acceptance set for this milestone.
+  - Treat the tests under `tests/` as the acceptance set for this milestone.
 
-- [ ] 2. Restore function-body IR/C generation for the already-parsed `fn`.
+- [ ] 2. Standardise parser token-consumption architecture.
+  - Choose one parser contract and apply it consistently across top-level,
+    declaration, binding, and expression parsing helpers.
+  - Remove mixed assumptions about whether the current token has already been
+    consumed.
+  - Make helper comments explicit about parser state on entry and exit.
+
+- [ ] 3. Restore function-body IR/C generation for the already-parsed `fn`.
   - Make IR generation recognise `AK_FnDef`, `AK_FnStart`, and `AK_FnEnd`.
   - Emit function-scoped IR with explicit `fn ... end` structure so the current
     IR snapshots can pass.
@@ -103,7 +114,7 @@ From the current codebase and test suite:
     from a top-level trailing expression.
   - Goal: pass `tests/language/001` through `005`.
 
-- [ ] 3. Fix AST/expression error behaviour to match the existing error tests.
+- [ ] 4. Fix AST/expression error behaviour to match the existing error tests.
   - Preserve expression-local errors instead of allowing top-level parsing to
     collapse them into `0204 Expected a symbol to start a binding`.
   - Verify missing value, missing operator, and delimiter cases produce the
@@ -111,7 +122,7 @@ From the current codebase and test suite:
   - Goal: pass `tests/errors/002` and `003` without weakening current parser
     structure.
 
-- [ ] 4. Add a semantic analysis phase to the front end.
+- [ ] 5. Add a semantic analysis phase to the front end.
   - Extend the front-end pipeline to `lex -> parse -> sema -> ir`.
   - Define a semantic output structure for:
     - top-level constant bindings
@@ -121,9 +132,9 @@ From the current codebase and test suite:
     nodes.
   - Keep the AST syntax-only; do not encode semantic meaning by expanding AST
     node shape unless there is no cheaper alternative.
-  - Keep this minimal at first: enough for current tests and `main.n`.
+  - Keep this minimal at first: enough for the current tests.
 
-- [ ] 5. Introduce a top-level symbol table.
+- [ ] 6. Introduce a top-level symbol table.
   - Map binding names to semantic declarations.
   - Distinguish at least:
     - constant/value bindings
@@ -131,25 +142,25 @@ From the current codebase and test suite:
   - Reject duplicate bindings and unresolved symbols once semantic diagnostics
     are added.
 
-- [ ] 6. Resolve symbol references in expressions.
+- [ ] 7. Resolve symbol references in expressions.
   - Allow `main :: fn () => answer / magic_number` to resolve both names.
   - Support referencing earlier top-level constant bindings from function bodies.
   - Support forward references between top-level bindings.
 
-- [ ] 7. Lower semantic bindings into IR.
+- [ ] 8. Lower semantic bindings into IR.
   - Emit IR for top-level constants and functions from semantic output.
   - Keep the first implementation simple:
     - constants lower to named/global declarations
     - functions lower to separate IR function bodies
   - Ensure `main` is explicitly recognised as the binary entry point.
 
-- [ ] 8. Build dependency tracking and ordering for top-level bindings.
+- [ ] 9. Build dependency tracking and ordering for top-level bindings.
   - Record top-level binding dependencies during semantic analysis.
   - Derive an ordered declaration/definition sequence from those dependencies.
   - Decide where cycle handling belongs and report useful diagnostics when it is
     not yet supported.
 
-- [ ] 9. Extend C generation to match the new IR model.
+- [ ] 10. Extend C generation to match the new IR model.
   - Generate top-level declarations in dependency-safe order.
   - Generate one C function per Nerd function.
   - Preserve the `$` prefix for every compiler-generated C function name,
@@ -159,7 +170,7 @@ From the current codebase and test suite:
     or fold them in the compiler.
   - Keep generated output stable enough for snapshot-style tests.
 
-- [ ] 10. Add and update tests as each increment lands.
+- [ ] 11. Add and update tests as each increment lands.
   - Add focused language tests for:
     - top-level constant lookup
     - symbol use inside function bodies
@@ -171,9 +182,18 @@ From the current codebase and test suite:
   - Preserve the current artefact rule for language tests: `.ir`, `.c`, and
     `.out` files are removed on success and retained on failure.
 
-- [ ] 11. Compile and run `nerd-src/main.n`.
-  - Treat this as the final integration check for milestone 1.
-  - Confirm it compiles through the normal pipeline, not a test-only path.
+## First Execution Order
+
+This is the intended first coding sequence for milestone 1:
+
+1. Standardise parser token consumption and comments in the parser files.
+2. Restore function-aware IR/C generation so the arithmetic language tests can
+   pass again.
+3. Fix the current parser error behaviour to match the existing error tests.
+4. Add semantic tables, symbol resolution, and dependency tracking for
+   top-level bindings.
+5. Extend IR and C generation for global constants and multiple functions.
+6. Add and refresh tests as each capability lands.
 
 ## Parser And Sema Simplification Track
 
@@ -271,7 +291,6 @@ compatible with later VM-style processing.
 ## Definition Of Done For Milestone 1
 
 - [ ] `just test` passes
-- [ ] `nerd-src/main.n` builds successfully through the normal compiler path
 - [ ] binding resolution exists for current top-level constants/functions
 - [ ] semantic analysis exists as a distinct front-end phase
 - [ ] dependency ordering exists for forward-referenced top-level bindings
