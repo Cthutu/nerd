@@ -7,9 +7,7 @@ fn main
 return 167
 end
 ¬
-int init() {
-    return 0;
-}
+void init() {}
 int $main() {
     return 167;
 }

@@ -310,14 +310,16 @@ needed earlier.
     reduce trivial IR such as `answer = 42` and fully constant returns without
     waiting for a later clean-up pass.
 
-- [ ] 25. Prototype constant folding as an AST-local VM-style pass.
+- [X] 25. Prototype constant folding as an AST-local VM-style pass.
   - Prefer a simple stack-based pass over AST node indices.
+  - Use light-weight AST-local fold flags in node padding while keeping folded
+    values in semantic side tables.
   - Explore in-place AST compaction later if profiling or compile-time
     behaviour shows it is worth the extra index-rewrite complexity.
   - If nodes are compacted or replaced, track index adjustment carefully so
     `a` and `b` links remain valid.
   - Keep actual folded values in semantic side tables first, even if AST
-    padding is later reused for light-weight fold flags.
+    padding is reused for light-weight fold flags.
 
 - [X] 26. Extend tests for folding behaviour.
   - Add language tests showing folded constant expressions still produce the

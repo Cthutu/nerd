@@ -47,9 +47,15 @@ typedef enum {
     AK_FnEnd,
 } AstKind;
 
+typedef enum : u8 {
+    ANF_None       = 0,
+    ANF_ConstKnown = 1 << 0,
+    ANF_ConstBusy  = 1 << 1,
+} AstNodeFlag;
+
 typedef struct {
     AstKind kind : 8;
-    u8      _pad;
+    u8      flags;
     u16     _pad2;
     u32     token_index;
     u32     a, b; // Meaning depends on the AstKind
@@ -68,6 +74,24 @@ void ast_dump(const Ast* ast, const Lexer* lexer);
 
 u64 ast_get_integer(const Lexer* lexer, const AstNode* node);
 u32 ast_get_symbol(const AstNode* node);
+
+//------------------------------------------------------------------------------
+// AST node flag helpers
+
+static inline bool ast_has_flag(const AstNode* node, AstNodeFlag flag)
+{
+    return (node->flags & flag) != 0;
+}
+
+static inline void ast_set_flag(AstNode* node, AstNodeFlag flag)
+{
+    node->flags |= flag;
+}
+
+static inline void ast_clear_flag(AstNode* node, AstNodeFlag flag)
+{
+    node->flags &= (u8)~flag;
+}
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

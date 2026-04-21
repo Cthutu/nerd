@@ -11,9 +11,7 @@ fn main
 return 22
 end
 ¬
-int init() {
-    return 0;
-}
+void init() {}
 int $main() {
     return 22;
 }

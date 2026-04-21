@@ -222,11 +222,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
     }
 
     if (!has_init_section) {
-        cgen_add_line(cgen, "int init() {");
-        cgen_indent(cgen);
-        cgen_add_line(cgen, "return 0;");
-        cgen_dedent(cgen);
-        cgen_add_line(cgen, "}");
+        cgen_add_line(cgen, "void init() {}");
     }
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
@@ -236,11 +232,10 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             cgen_add_global(cgen, instr);
             break;
         case IR_OP_INIT_START:
-            cgen_add_line(cgen, "int init() {");
+            cgen_add_line(cgen, "void init() {");
             cgen_indent(cgen);
             break;
         case IR_OP_INIT_END:
-            cgen_add_line(cgen, "return 0;");
             cgen_dedent(cgen);
             cgen_add_line(cgen, "}");
             break;

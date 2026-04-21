@@ -15,19 +15,28 @@ internal u32 sema_no_decl(void) { return U32_MAX; }
 //------------------------------------------------------------------------------
 // Return whether one node already has a known folded constant result.
 
-internal bool sema_is_known_constant(const Sema* sema, u32 node_index)
+internal bool
+sema_try_get_constant(const Ast* ast, const Sema* sema, u32 node_index, i64* out)
 {
-    return node_index < array_count(sema->node_const_known) &&
-           sema->node_const_known[node_index];
+    if (node_index >= array_count(sema->node_const_known) ||
+        !sema->node_const_known[node_index] ||
+        !ast_has_flag(&ast->nodes[node_index], ANF_ConstKnown)) {
+        return false;
+    }
+
+    *out = sema->node_const_values[node_index];
+    return true;
 }
 
 //------------------------------------------------------------------------------
 // Store one folded constant result for an AST node.
 
-internal void sema_set_constant(Sema* sema, u32 node_index, i64 value)
+internal void
+sema_set_constant(Ast* ast, Sema* sema, u32 node_index, i64 value)
 {
     sema->node_const_known[node_index]  = true;
     sema->node_const_values[node_index] = value;
+    ast_set_flag(&ast->nodes[node_index], ANF_ConstKnown);
 }
 
 //------------------------------------------------------------------------------
@@ -296,42 +305,56 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
 }
 
 //------------------------------------------------------------------------------
-// Visit states used while folding constant expressions.
+// Stack-machine phases used while folding constant expressions.
 
 typedef enum : u8 {
-    SEMA_CONST_UNSEEN,
-    SEMA_CONST_VISITING,
-    SEMA_CONST_DONE,
-} SemaConstState;
+    SEMA_FOLD_ENTER,
+    SEMA_FOLD_REDUCE,
+} SemaFoldPhase;
 
 //------------------------------------------------------------------------------
-// Fold one AST node to a signed integer when possible.
+// One explicit evaluator frame for the constant-folder VM.
 
-internal bool sema_fold_node(const Lexer* lex,
-                             const Ast*   ast,
-                             const Sema*  sema,
-                             u32          node_index,
-                             Array(u8) visit_states,
-                             Sema* out_sema,
-                             i64*  out_value)
+typedef struct {
+    u32           node_index;
+    SemaFoldPhase phase;
+} SemaFoldFrame;
+
+//------------------------------------------------------------------------------
+// Clear AST-local fold flags before a fresh semantic pass.
+
+internal void sema_clear_fold_flags(Ast* ast)
 {
-    if (sema_is_known_constant(out_sema, node_index)) {
-        *out_value = out_sema->node_const_values[node_index];
-        return true;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        ast->nodes[i].flags = ANF_None;
     }
+}
 
-    if (visit_states[node_index] == SEMA_CONST_VISITING) {
-        return false;
-    }
-    if (visit_states[node_index] == SEMA_CONST_DONE) {
-        return sema_is_known_constant(out_sema, node_index);
-    }
+//------------------------------------------------------------------------------
+// Push one AST node onto the folding stack for later evaluation.
 
-    visit_states[node_index] = SEMA_CONST_VISITING;
+internal void sema_push_fold_frame(Array(SemaFoldFrame) * stack, u32 node_index)
+{
+    array_push(*stack,
+               (SemaFoldFrame){
+                   .node_index = node_index,
+                   .phase      = SEMA_FOLD_ENTER,
+               });
+}
 
-    const AstNode* node      = &ast->nodes[node_index];
-    i64            value     = 0;
-    bool           ok        = false;
+//------------------------------------------------------------------------------
+// Reduce one AST node after its children have already been visited.
+
+internal bool sema_reduce_folded_node(const Lexer* lex,
+                                      Ast*         ast,
+                                      const Sema*  sema,
+                                      u32          node_index,
+                                      Sema*        out_sema,
+                                      i64*         out_value)
+{
+    AstNode* node  = &ast->nodes[node_index];
+    i64      value = 0;
+    bool     ok    = false;
 
     switch (node->kind) {
     case AK_IntegerLiteral:
@@ -346,22 +369,19 @@ internal bool sema_fold_node(const Lexer* lex,
                    "Expected resolved symbol reference");
             const SemaDecl* decl = &sema->decls[decl_index];
             if (decl->kind == SK_Constant) {
-                ok = sema_fold_node(lex,
-                                    ast,
-                                    sema,
-                                    decl->value_node_index,
-                                    visit_states,
-                                    out_sema,
-                                    &value);
+                ok = sema_try_get_constant(
+                    ast, out_sema, decl->value_node_index, &value);
             }
         }
         break;
 
-    case AK_IntegerNegate:
     case AK_Expression:
-        ok = sema_fold_node(
-            lex, ast, sema, node->a, visit_states, out_sema, &value);
-        if (ok && node->kind == AK_IntegerNegate) {
+        ok = sema_try_get_constant(ast, out_sema, node->a, &value);
+        break;
+
+    case AK_IntegerNegate:
+        ok = sema_try_get_constant(ast, out_sema, node->a, &value);
+        if (ok) {
             value = -value;
         }
         break;
@@ -374,10 +394,8 @@ internal bool sema_fold_node(const Lexer* lex,
         {
             i64 lhs = 0;
             i64 rhs = 0;
-            ok      = sema_fold_node(
-                     lex, ast, sema, node->a, visit_states, out_sema, &lhs) &&
-                 sema_fold_node(
-                     lex, ast, sema, node->b, visit_states, out_sema, &rhs);
+            ok      = sema_try_get_constant(ast, out_sema, node->a, &lhs) &&
+                 sema_try_get_constant(ast, out_sema, node->b, &rhs);
             if (!ok) {
                 break;
             }
@@ -418,39 +436,109 @@ internal bool sema_fold_node(const Lexer* lex,
         break;
     }
 
-    visit_states[node_index] = SEMA_CONST_DONE;
-
+    ast_clear_flag(node, ANF_ConstBusy);
     if (!ok) {
         return false;
     }
 
-    sema_set_constant(out_sema, node_index, value);
+    sema_set_constant(ast, out_sema, node_index, value);
     *out_value = value;
     return true;
 }
 
 //------------------------------------------------------------------------------
+// Fold one AST node to a signed integer using an explicit VM-style stack.
+
+internal bool sema_fold_node(const Lexer* lex,
+                             Ast*         ast,
+                             const Sema*  sema,
+                             u32          root_node_index,
+                             Sema*        out_sema,
+                             i64*         out_value)
+{
+    Array(SemaFoldFrame) stack = NULL;
+    sema_push_fold_frame(&stack, root_node_index);
+
+    while (array_count(stack) > 0) {
+        SemaFoldFrame* frame = &stack[array_count(stack) - 1];
+        AstNode*       node  = &ast->nodes[frame->node_index];
+        i64            value = 0;
+
+        if (frame->phase == SEMA_FOLD_ENTER) {
+            if (sema_try_get_constant(
+                    ast, out_sema, frame->node_index, &value)) {
+                array_pop(stack);
+                continue;
+            }
+
+            if (ast_has_flag(node, ANF_ConstBusy)) {
+                array_pop(stack);
+                continue;
+            }
+
+            ast_set_flag(node, ANF_ConstBusy);
+            frame->phase = SEMA_FOLD_REDUCE;
+
+            switch (node->kind) {
+            case AK_SymbolRef:
+                {
+                    u32 decl_index = sema->node_decl_indices[frame->node_index];
+                    ASSERT(decl_index != sema_no_decl(),
+                           "Expected resolved symbol reference");
+                    const SemaDecl* decl = &sema->decls[decl_index];
+                    if (decl->kind == SK_Constant) {
+                        sema_push_fold_frame(&stack, decl->value_node_index);
+                    }
+                }
+                break;
+
+            case AK_Expression:
+            case AK_IntegerNegate:
+                sema_push_fold_frame(&stack, node->a);
+                break;
+
+            case AK_IntegerPlus:
+            case AK_IntegerMinus:
+            case AK_IntegerMultiply:
+            case AK_IntegerDivide:
+            case AK_IntegerModulo:
+                sema_push_fold_frame(&stack, node->b);
+                sema_push_fold_frame(&stack, node->a);
+                break;
+
+            default:
+                break;
+            }
+
+            continue;
+        }
+
+        sema_reduce_folded_node(
+            lex, ast, sema, frame->node_index, out_sema, &value);
+        array_pop(stack);
+    }
+
+    array_free(stack);
+    return sema_try_get_constant(ast, out_sema, root_node_index, out_value);
+}
+
+//------------------------------------------------------------------------------
 // Fold all constant-capable AST nodes into semantic side tables.
 
-internal void sema_fold_constants(const Lexer* lex, const Ast* ast, Sema* sema)
+internal void sema_fold_constants(const Lexer* lex, Ast* ast, Sema* sema)
 {
-    Array(u8) visit_states = NULL;
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        array_push(visit_states, SEMA_CONST_UNSEEN);
-    }
+    sema_clear_fold_flags(ast);
 
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         i64 ignored = 0;
-        sema_fold_node(lex, ast, sema, i, visit_states, sema, &ignored);
+        sema_fold_node(lex, ast, sema, i, sema, &ignored);
     }
-
-    array_free(visit_states);
 }
 
 //------------------------------------------------------------------------------
 // Analyse the AST into compact declaration and resolution tables.
 
-bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema)
+bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
 {
     Sema sema = {0};
 

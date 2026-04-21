@@ -10,9 +10,7 @@ fn main
 return 6
 end
 ¬
-int init() {
-    return 0;
-}
+void init() {}
 int $main() {
     return 6;
 }
