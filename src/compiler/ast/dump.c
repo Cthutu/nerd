@@ -30,10 +30,21 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerModulo");
     case AK_Expression:
         return s("Expression");
+    case AK_Bind:
+        return s("Bind");
+    case AK_FnDef:
+        return s("FnDef");
+    case AK_FnStart:
+        return s("FnStart");
+    case AK_FnEnd:
+        return s("FnEnd");
     default:
         return s("Unknown");
     }
 }
+
+//------------------------------------------------------------------------------
+// Render the AST node table for debugging.
 
 void ast_dump(const Ast* ast, const Lexer* lexer)
 {
@@ -57,7 +68,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
     StringBuilder sb = {0};
 
     for (usize i = 0; i < array_count(ast->nodes); i++) {
-        TableCell row[5];
+        TableCell row[4];
         row[0] = table_cell_u32((u32)i);
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
 
@@ -69,7 +80,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                   node->token_index,
                   STRINGV(token_kind_to_string(token->kind)),
                   token->offset);
-        row[3] = table_cell_string(sb_to_string(&sb));
+        row[2] = table_cell_string(sb_to_string(&sb));
 
         switch (node->kind) {
         case AK_IntegerLiteral:
@@ -93,6 +104,23 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Expression:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "root=%u", node->a));
+            break;
+        case AK_Bind:
+            row[3] = table_cell_string(string_format(&temp_arena,
+                                                     "symbol=" STRINGP
+                                                     " value=%u",
+                                                     STRINGV(lex_symbol(
+                                                         lexer, node->a)),
+                                                     node->b));
+            break;
+        case AK_FnDef:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "body=%u", node->a));
+            break;
+        case AK_FnStart:
+        case AK_FnEnd:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "a=%u b=%u", node->a, node->b));
             break;
         default:
             row[3] = table_cell_string(s("Unknown"));
