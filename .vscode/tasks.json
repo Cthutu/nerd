@@ -6,14 +6,14 @@
             "type": "process",
             "command": "just",
             "args": [
-                // "build"
+                "build"
                 // "test"
                 // "install"
-                "run",
-                "nerd",
-                "build",
-                "-v",
-                "nerd-src/main.n"
+                // "run",
+                // "nerd",
+                // "build",
+                // "-v",
+                // "nerd-src/main.n"
             ],
             "group": {
                 "kind": "build",
