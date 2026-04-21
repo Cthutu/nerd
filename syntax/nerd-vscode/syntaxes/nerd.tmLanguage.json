@@ -12,6 +12,9 @@
             "include": "#keywords"
         },
         {
+            "include": "#types"
+        },
+        {
             "include": "#numbers"
         },
         {
@@ -57,6 +60,14 @@
                 }
             ]
         },
+        "types": {
+            "patterns": [
+                {
+                    "name": "storage.type.primitive.nerd",
+                    "match": "\\b(i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|bool|isize|usize|string)\\b"
+                }
+            ]
+        },
         "numbers": {
             "patterns": [
                 {
@@ -69,7 +80,7 @@
             "patterns": [
                 {
                     "name": "keyword.operator.arrow.nerd",
-                    "match": "=>"
+                    "match": "=>|->"
                 },
                 {
                     "name": "keyword.operator.arithmetic.nerd",

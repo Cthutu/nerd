@@ -254,7 +254,7 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
-        return s("i32");
+        return s("untyped integer");
 
     case AK_Expression:
         return lsp_infer_ast_type(doc, arena, node->a);
@@ -285,16 +285,14 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
 
 internal string lsp_markdown_code_block(Arena* arena, string code)
 {
-    return string_format(
-        arena, "```nerd\n" STRINGP "\n```", STRINGV(code));
+    return string_format(arena, "```nerd\n" STRINGP "\n```", STRINGV(code));
 }
 
 //------------------------------------------------------------------------------
 // Attach a markdown hover result to the response.
 
-internal void lsp_set_markdown_hover(JsonValue* response,
-                                     Arena*     arena,
-                                     string     value)
+internal void
+lsp_set_markdown_hover(JsonValue* response, Arena* arena, string value)
 {
     JsonValue* result   = json_new_object(arena);
     JsonValue* contents = json_new_object(arena);
@@ -318,44 +316,40 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         lsp_infer_ast_type(doc, arena, decl->value_node_index);
 
     if (decl->kind == SK_Function) {
-        return string_format(arena,
-                             STRINGP "\n\nkind: " STRINGP
-                                     "\nsignature: " STRINGP,
-                             STRINGV(lsp_markdown_code_block(
-                                 arena,
-                                 string_format(arena,
-                                               STRINGP " :: fn () -> i32",
-                                               STRINGV(name)))),
-                             STRINGV(name),
-                             STRINGV(kind),
-                             STRINGV(inferred_type));
+        return string_format(
+            arena,
+            STRINGP "\n\n- Kind: " STRINGP,
+            STRINGV(lsp_markdown_code_block(
+                arena,
+                string_format(
+                    arena, STRINGP " :: fn () -> i32", STRINGV(name)))),
+            STRINGV(kind),
+            STRINGV(inferred_type));
     }
 
     i64 value = 0;
     if (decl->kind == SK_Constant &&
         lsp_eval_decl_value(doc, decl_index, &value)) {
-        return string_format(arena,
-                             STRINGP "\n\nkind: " STRINGP
-                                     "\ntype: " STRINGP "\nvalue: %lld",
-                             STRINGV(lsp_markdown_code_block(
-                                 arena,
-                                 string_format(arena,
-                                               STRINGP " :: %lld",
-                                               STRINGV(name),
-                                               value))),
-                             STRINGV(kind),
-                             STRINGV(inferred_type),
-                             value);
+        return string_format(
+            arena,
+            STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
+                    "\n- Value: `%lld`",
+            STRINGV(lsp_markdown_code_block(
+                arena,
+                string_format(
+                    arena, STRINGP " :: %lld", STRINGV(name), value))),
+            STRINGV(kind),
+            STRINGV(inferred_type),
+            value);
     }
 
-    return string_format(arena,
-                         STRINGP "\n\nkind: " STRINGP "\ntype: " STRINGP,
-                         STRINGV(lsp_markdown_code_block(
-                             arena,
-                             string_format(
-                                 arena, STRINGP, STRINGV(name)))),
-                         STRINGV(kind),
-                         STRINGV(inferred_type));
+    return string_format(
+        arena,
+        STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`",
+        STRINGV(lsp_markdown_code_block(
+            arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(kind),
+        STRINGV(inferred_type));
 }
 
 //------------------------------------------------------------------------------
@@ -473,9 +467,9 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                 response,
                 message->arena,
                 string_format(message->arena,
-                              STRINGP "\n\ntype: i32",
-                              STRINGV(lsp_markdown_code_block(
-                                  message->arena, raw_text))));
+                              STRINGP "\n\n- Type: `untyped integer`",
+                              STRINGV(lsp_markdown_code_block(message->arena,
+                                                              raw_text))));
         }
         break;
 
@@ -499,9 +493,10 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             response,
             message->arena,
             string_format(message->arena,
-                          STRINGP "\n\nsignature: fn () -> i32",
-                          STRINGV(lsp_markdown_code_block(
-                              message->arena, s("fn () -> i32")))));
+                          STRINGP "\n\n- Kind: function expression"
+                                  "\n- Signature: `fn () -> i32`",
+                          STRINGV(lsp_markdown_code_block(message->arena,
+                                                          s("fn () -> i32")))));
         break;
 
     default:
