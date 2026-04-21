@@ -294,7 +294,7 @@ needed earlier.
 
 ## Milestone 3: Constant Folding
 
-- [ ] 24. Add constant folding for recognised constant expressions.
+- [X] 24. Add constant folding for recognised constant expressions.
   - Fold pure built-in operator expressions on literals.
   - Fold references to any symbol recognised as a constant value, including
     top-level constant bindings.
@@ -319,41 +319,50 @@ needed earlier.
   - Keep actual folded values in semantic side tables first, even if AST
     padding is later reused for light-weight fold flags.
 
-- [ ] 26. Extend tests for folding behaviour.
+- [X] 26. Extend tests for folding behaviour.
   - Add language tests showing folded constant expressions still produce the
     same observable result.
   - Add snapshot expectations where folding should reduce emitted IR or C.
   - Add error coverage if folding introduces new semantic constraints later.
 
+- [X] 27. Eliminate dead top-level constant declarations after folding.
+  - If folding proves that a top-level constant binding is no longer required
+    by any remaining runtime code, do not emit its global declaration or init
+    assignment.
+  - Keep `main` and any declarations still reachable from non-folded runtime
+    code.
+  - Allow fully folded programs to omit unnecessary globals and, when
+    possible, avoid emitting an `init` body that does no useful work.
+
 ## Milestone 4: Strings And Output Built-ins
 
-- [ ] 27. Add UTF-8 string literals as first-class values.
+- [ ] 28. Add UTF-8 string literals as first-class values.
   - Strings are not C strings in the language model.
   - Represent them as fat pointers: address plus byte length.
   - Lower them in generated C via a struct-based representation.
   - Add a helper macro such as `DEF_SLICE` in the C prologue if that keeps the
     representation tidy and reusable.
 
-- [ ] 28. Add built-in output functions `pr` and `prn`.
+- [ ] 29. Add built-in output functions `pr` and `prn`.
   - Treat them as compiler-known built-ins, not user-defined bindings.
   - Rename the prologue implementations to `$pr` and `$prn`.
   - Predefine the corresponding symbols during semantic analysis as external
     functions.
   - Do not allow user shadowing in the initial implementation.
 
-- [ ] 29. Restrict `pr` and `prn` to strings in their first implementation.
+- [ ] 30. Restrict `pr` and `prn` to strings in their first implementation.
   - Do not add scalar printing shortcuts.
   - Leave primitive-to-string conversion to interpolated strings and later
     helper routines.
 
-- [ ] 30. Extend tests, formatter support, and LSP support for strings.
+- [ ] 31. Extend tests, formatter support, and LSP support for strings.
   - Add language tests for string literals and built-in output.
   - Add error tests for invalid built-in usage.
   - Extend the formatter and LSP at the same time the syntax lands.
 
 ## Milestone 5: Primitive Types
 
-- [ ] 31. Introduce primitive built-in types.
+- [ ] 32. Introduce primitive built-in types.
   - Add signed integers such as `i8`, `i16`, `i32`, and `i64`.
   - Add unsigned integers such as `u8`, `u16`, `u32`, and `u64`.
   - Add floating-point types `f32` and `f64`.
@@ -361,7 +370,7 @@ needed earlier.
   - Add compact semantic type tables rather than storing type information ad
     hoc in the AST or IR.
 
-- [ ] 32. Add explicit type annotations while preserving inference.
+- [ ] 33. Add explicit type annotations while preserving inference.
   - Place explicit annotations between the colons in bindings.
   - `hello :: "Hello"` should remain equivalent to `hello: string: "Hello"`.
   - Keep inferred types visible to the LSP so editor tooling can surface them.
@@ -370,7 +379,7 @@ needed earlier.
   - Allow later passes to refine earlier placeholder or unresolved inferred
     types as more declaration and usage information becomes available.
 
-- [ ] 33. Define integer literal typing rules.
+- [ ] 34. Define integer literal typing rules.
   - Top-level numeric bindings are initially untyped integers until use fixes
     their type.
   - Using an untyped integer in a typed context should adopt that target type
@@ -386,12 +395,12 @@ needed earlier.
     - `b :: value`
     - Here `value` starts untyped, `a` becomes `u8`, and `b` becomes `i32`.
 
-- [ ] 34. Require exact type matches for arithmetic.
+- [ ] 35. Require exact type matches for arithmetic.
   - Do not introduce implicit conversions.
   - Add explicit casts later through a `.cast(<type>)` form.
   - Keep this no-implicit-casts rule as a language principle.
 
-- [ ] 35. Extend tests, formatter support, and LSP support for primitive types.
+- [ ] 36. Extend tests, formatter support, and LSP support for primitive types.
   - Add language tests for type annotations, inference, and exact-match
     arithmetic.
   - Add error tests for mismatched primitive operations.
@@ -399,29 +408,29 @@ needed earlier.
 
 ## Milestone 6: Interpolated Strings
 
-- [ ] 36. Add `$"...{expr}..."` interpolated strings.
+- [ ] 37. Add `$"...{expr}..."` interpolated strings.
   - Keep interpolation distinct from normal string literals.
   - Only strings prefixed with `$` may contain interpolation.
   - Support left-to-right evaluation and append behaviour.
 
-- [ ] 37. Keep the first interpolation implementation function-local.
+- [ ] 38. Keep the first interpolation implementation function-local.
   - Initially allow interpolated strings only inside functions.
   - Defer top-level interpolated bindings until a later milestone if they
     require broader init-time support.
 
-- [ ] 38. Lower interpolation through prologue helper routines.
+- [ ] 39. Lower interpolation through prologue helper routines.
   - Add `to_string$<type>` helpers in the prologue for all primitive types.
   - Restrict conversion support to built-in types in the initial design.
   - Leave user-defined conversion mechanisms for a later trait system.
 
-- [ ] 39. Use a simple arena-backed runtime string builder first.
+- [ ] 40. Use a simple arena-backed runtime string builder first.
   - A global arena plus helper functions in the prologue is acceptable for the
     first implementation.
   - Build the string, return a fat pointer to it, and reset the arena as
     appropriate for the chosen runtime model.
   - Leave constant-expression optimisation and smarter storage for later work.
 
-- [ ] 40. Extend tests, formatter support, and LSP support for interpolated strings.
+- [ ] 41. Extend tests, formatter support, and LSP support for interpolated strings.
   - Add language tests for mixed literal and interpolated segments.
   - Add error tests for invalid interpolation forms and unsupported types.
   - Extend tooling surfaces at the same time as the syntax lands.

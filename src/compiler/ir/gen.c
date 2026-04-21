@@ -313,6 +313,18 @@ internal void ir_generate_function(const Lexer*    lex,
 //------------------------------------------------------------------------------
 // Generate IR from ordered semantic declarations.
 
+internal bool ir_decl_requires_runtime(const Sema* sema, const SemaDecl* decl)
+{
+    if (decl->kind != SK_Constant) {
+        return true;
+    }
+
+    return !sema->node_const_known[decl->value_node_index];
+}
+
+//------------------------------------------------------------------------------
+// Generate IR from ordered semantic declarations.
+
 Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 {
     Ir   ir            = {0};
@@ -320,7 +332,7 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
-        if (decl->kind == SK_Constant) {
+        if (decl->kind == SK_Constant && ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;
             ir_add_global(&ir, decl->symbol_handle);
         }
@@ -332,7 +344,8 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         ir_add_init_start(&ir);
         for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
             const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
-            if (decl->kind == SK_Constant) {
+            if (decl->kind == SK_Constant &&
+                ir_decl_requires_runtime(sema, decl)) {
                 ir_generate_global_init(
                     lex, ast, sema, decl, &next_global_value_index, &ir);
             }
