@@ -51,6 +51,10 @@ From the current codebase and test suite:
 - As new language features are added, update all relevant surfaces together:
   language tests, error tests, LSP support, formatter support, and `just test`
   coverage.
+- Keep compiler error-code ranges phase-specific:
+  - `0100`-`0199` lexer
+  - `0200`-`0299` parser / AST construction
+  - `0300`-`0399` semantic analysis
 - Test artefact clean-up must stay developer-friendly:
   - remove generated intermediate files for passing tests
   - keep generated intermediate files for failing tests, so failures can be
@@ -124,6 +128,7 @@ From the current codebase and test suite:
 
 - [ ] 5. Add a semantic analysis phase to the front end.
   - Extend the front-end pipeline to `lex -> parse -> sema -> ir`.
+  - Reserve semantic diagnostics for the `0300`-`0399` error-code range.
   - Define a semantic output structure for:
     - top-level constant bindings
     - top-level function bindings

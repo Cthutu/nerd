@@ -114,6 +114,15 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
                                                    ...);
 
 //------------------------------------------------------------------------------
+// Semantic analysis errors
+
+bool error_0300_unknown_symbol(NerdSource source, ErrorSpan span, string symbol);
+bool error_0301_duplicate_binding(NerdSource source,
+                                  ErrorSpan  span,
+                                  string     symbol,
+                                  ErrorSpan  previous_span);
+
+//------------------------------------------------------------------------------
 // Low-level error system
 
 typedef enum {

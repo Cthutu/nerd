@@ -27,6 +27,9 @@ format:
 test: 
     just run nerd test
 
+test-build:
+    just run nerd build -v nerd-src/main.n
+
 alias b := build
 alias br := build-release
 alias r := run

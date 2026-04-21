@@ -35,7 +35,7 @@ typedef struct {
 
 //------------------------------------------------------------------------------
 
-bool sema_analyse(const Ast* ast, Sema* out_sema);
+bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema);
 void sema_done(Sema* sema);
 
 //------------------------------------------------------------------------------

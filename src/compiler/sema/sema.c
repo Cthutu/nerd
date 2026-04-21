@@ -13,6 +13,16 @@
 internal u32 sema_no_decl(void) { return U32_MAX; }
 
 //------------------------------------------------------------------------------
+// Compute the source span covered by an AST node's main token.
+
+internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node)
+{
+    const Token* token = &lexer->tokens[node->token_index];
+    return (ErrorSpan){.start = token->offset,
+                       .end   = lex_token_end_offset(lexer, token)};
+}
+
+//------------------------------------------------------------------------------
 // Find a top-level declaration by its bound symbol handle.
 
 internal u32 sema_find_decl(const Sema* sema, u32 symbol_handle)
@@ -28,12 +38,22 @@ internal u32 sema_find_decl(const Sema* sema, u32 symbol_handle)
 //------------------------------------------------------------------------------
 // Collect top-level bindings into a compact declaration table.
 
-internal void sema_collect_decls(const Ast* ast, Sema* sema)
+internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind != AK_Bind) {
             continue;
+        }
+
+        u32 existing_decl_index = sema_find_decl(sema, ast_get_symbol(node));
+        if (existing_decl_index != sema_no_decl()) {
+            const SemaDecl* existing_decl = &sema->decls[existing_decl_index];
+            return error_0301_duplicate_binding(
+                lexer->source,
+                sema_node_span(lexer, node),
+                lex_symbol(lexer, ast_get_symbol(node)),
+                sema_node_span(lexer, &ast->nodes[existing_decl->bind_node_index]));
         }
 
         const AstNode* value = &ast->nodes[node->b];
@@ -47,12 +67,16 @@ internal void sema_collect_decls(const Ast* ast, Sema* sema)
                        .value_node_index = node->b,
                    });
     }
+
+    return true;
 }
 
 //------------------------------------------------------------------------------
 // Resolve AST symbol references to top-level declarations.
 
-internal bool sema_resolve_symbol_refs(const Ast* ast, Sema* sema)
+internal bool sema_resolve_symbol_refs(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       Sema*        sema)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
@@ -62,8 +86,8 @@ internal bool sema_resolve_symbol_refs(const Ast* ast, Sema* sema)
 
         u32 decl_index = sema_find_decl(sema, node->a);
         if (decl_index == sema_no_decl()) {
-            error_ice("Unresolved symbol handle %u during semantic analysis",
-                      node->a);
+            return error_0300_unknown_symbol(
+                lexer->source, sema_node_span(lexer, node), lex_symbol(lexer, node->a));
         }
 
         sema->node_decl_indices[i] = decl_index;
@@ -75,7 +99,7 @@ internal bool sema_resolve_symbol_refs(const Ast* ast, Sema* sema)
 //------------------------------------------------------------------------------
 // Analyse the AST into compact declaration and resolution tables.
 
-bool sema_analyse(const Ast* ast, Sema* out_sema)
+bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema)
 {
     Sema sema = {0};
 
@@ -83,8 +107,11 @@ bool sema_analyse(const Ast* ast, Sema* out_sema)
         array_push(sema.node_decl_indices, sema_no_decl());
     }
 
-    sema_collect_decls(ast, &sema);
-    if (!sema_resolve_symbol_refs(ast, &sema)) {
+    if (!sema_collect_decls(lexer, ast, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_resolve_symbol_refs(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

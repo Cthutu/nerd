@@ -37,7 +37,7 @@ internal bool front_end_parse(FrontEndContext* ctx)
 
 internal bool front_end_sema(FrontEndContext* ctx)
 {
-    return sema_analyse(&ctx->results.ast, &ctx->results.sema);
+    return sema_analyse(&ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
 }
 
 //------------------------------------------------------------------------------
