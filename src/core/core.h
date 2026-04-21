@@ -191,15 +191,21 @@
 #define PI 3.14159265358979323846
 #define TAU (PI * 2.0)
 
-#define ASSERT(condition, ...)                                                 \
-    do {                                                                       \
-        if (!(condition)) {                                                    \
-            eprn("ASSERTION FAILED: " #condition);                             \
-            eprn(__VA_ARGS__);                                                 \
-            DEBUG_BREAK();                                                     \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+#if CONFIG_DEBUG
+#    define ASSERT(condition, ...)                                             \
+        do {                                                                   \
+            if (!(condition)) {                                                \
+                eprn("ASSERTION FAILED: " #condition);                         \
+                eprn(__VA_ARGS__);                                             \
+                DEBUG_BREAK();                                                 \
+                exit(1);                                                       \
+            }                                                                  \
+        } while (0)
+#    define VERIFY(condition, ...) ASSERT(condition, __VA_ARGS__)
+#else
+#    define ASSSERT(condition, ...)
+#    define VERIFY(condition, ...) (condition)
+#endif // CONFIG_DEBUG
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
