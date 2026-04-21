@@ -4,18 +4,12 @@ main :: fn () => 123 + 44
 ¬
 ¬
 fn main
-$0 = 123
-$1 = 44
-$2 = $0 + $1
-return $2
+return 167
 end
 ¬
 int init() {
     return 0;
 }
 int $main() {
-    int $0 = 123;
-    int $1 = 44;
-    int $2 = $0 + $1;
-    return $2;
+    return 167;
 }

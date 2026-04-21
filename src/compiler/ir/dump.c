@@ -18,7 +18,7 @@ ir_render_value(StringBuilder* sb, const Lexer* lexer, const IrValue* value)
         sb_format(sb, "$%u", (u32)value->value.integer);
         break;
     case IR_VALUE_INTEGER:
-        sb_format(sb, "%u", (u32)value->value.integer);
+        sb_format(sb, "%lld", value->value.integer);
         break;
     case IR_VALUE_SYMBOL:
         sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));

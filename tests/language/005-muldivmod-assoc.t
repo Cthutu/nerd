@@ -4,22 +4,12 @@ main :: fn () => 20/3%4
 ¬
 ¬
 fn main
-$0 = 20
-$1 = 3
-$2 = $0 / $1
-$3 = 4
-$4 = $2 % $3
-return $4
+return 2
 end
 ¬
 int init() {
     return 0;
 }
 int $main() {
-    int $0 = 20;
-    int $1 = 3;
-    int $2 = $0 / $1;
-    int $3 = 4;
-    int $4 = $2 % $3;
-    return $4;
+    return 2;
 }

@@ -13,6 +13,24 @@
 internal u32 sema_no_decl(void) { return U32_MAX; }
 
 //------------------------------------------------------------------------------
+// Return whether one node already has a known folded constant result.
+
+internal bool sema_is_known_constant(const Sema* sema, u32 node_index)
+{
+    return node_index < array_count(sema->node_const_known) &&
+           sema->node_const_known[node_index];
+}
+
+//------------------------------------------------------------------------------
+// Store one folded constant result for an AST node.
+
+internal void sema_set_constant(Sema* sema, u32 node_index, i64 value)
+{
+    sema->node_const_known[node_index]  = true;
+    sema->node_const_values[node_index] = value;
+}
+
+//------------------------------------------------------------------------------
 // Compute the source span covered by an AST node's main token.
 
 internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node)
@@ -278,6 +296,158 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
 }
 
 //------------------------------------------------------------------------------
+// Visit states used while folding constant expressions.
+
+typedef enum : u8 {
+    SEMA_CONST_UNSEEN,
+    SEMA_CONST_VISITING,
+    SEMA_CONST_DONE,
+} SemaConstState;
+
+//------------------------------------------------------------------------------
+// Fold one AST node to a signed integer when possible.
+
+internal bool sema_fold_node(const Lexer* lex,
+                             const Ast*   ast,
+                             const Sema*  sema,
+                             u32          node_index,
+                             Array(u8) visit_states,
+                             Sema* out_sema,
+                             i64*  out_value)
+{
+    if (sema_is_known_constant(out_sema, node_index)) {
+        *out_value = out_sema->node_const_values[node_index];
+        return true;
+    }
+
+    if (visit_states[node_index] == SEMA_CONST_VISITING) {
+        return false;
+    }
+    if (visit_states[node_index] == SEMA_CONST_DONE) {
+        return sema_is_known_constant(out_sema, node_index);
+    }
+
+    visit_states[node_index] = SEMA_CONST_VISITING;
+
+    const AstNode* node      = &ast->nodes[node_index];
+    i64            value     = 0;
+    bool           ok        = false;
+
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        value = (i64)ast_get_integer(lex, node);
+        ok    = true;
+        break;
+
+    case AK_SymbolRef:
+        {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            ASSERT(decl_index != sema_no_decl(),
+                   "Expected resolved symbol reference");
+            const SemaDecl* decl = &sema->decls[decl_index];
+            if (decl->kind == SK_Constant) {
+                ok = sema_fold_node(lex,
+                                    ast,
+                                    sema,
+                                    decl->value_node_index,
+                                    visit_states,
+                                    out_sema,
+                                    &value);
+            }
+        }
+        break;
+
+    case AK_IntegerNegate:
+    case AK_Expression:
+        ok = sema_fold_node(
+            lex, ast, sema, node->a, visit_states, out_sema, &value);
+        if (ok && node->kind == AK_IntegerNegate) {
+            value = -value;
+        }
+        break;
+
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+        {
+            i64 lhs = 0;
+            i64 rhs = 0;
+            ok      = sema_fold_node(
+                     lex, ast, sema, node->a, visit_states, out_sema, &lhs) &&
+                 sema_fold_node(
+                     lex, ast, sema, node->b, visit_states, out_sema, &rhs);
+            if (!ok) {
+                break;
+            }
+
+            switch (node->kind) {
+            case AK_IntegerPlus:
+                value = lhs + rhs;
+                break;
+            case AK_IntegerMinus:
+                value = lhs - rhs;
+                break;
+            case AK_IntegerMultiply:
+                value = lhs * rhs;
+                break;
+            case AK_IntegerDivide:
+                if (rhs == 0) {
+                    ok = false;
+                    break;
+                }
+                value = lhs / rhs;
+                break;
+            case AK_IntegerModulo:
+                if (rhs == 0) {
+                    ok = false;
+                    break;
+                }
+                value = lhs % rhs;
+                break;
+            default:
+                ok = false;
+                break;
+            }
+        }
+        break;
+
+    default:
+        ok = false;
+        break;
+    }
+
+    visit_states[node_index] = SEMA_CONST_DONE;
+
+    if (!ok) {
+        return false;
+    }
+
+    sema_set_constant(out_sema, node_index, value);
+    *out_value = value;
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Fold all constant-capable AST nodes into semantic side tables.
+
+internal void sema_fold_constants(const Lexer* lex, const Ast* ast, Sema* sema)
+{
+    Array(u8) visit_states = NULL;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        array_push(visit_states, SEMA_CONST_UNSEEN);
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        i64 ignored = 0;
+        sema_fold_node(lex, ast, sema, i, visit_states, sema, &ignored);
+    }
+
+    array_free(visit_states);
+}
+
+//------------------------------------------------------------------------------
 // Analyse the AST into compact declaration and resolution tables.
 
 bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema)
@@ -286,6 +456,8 @@ bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema)
 
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         array_push(sema.node_decl_indices, sema_no_decl());
+        array_push(sema.node_const_known, false);
+        array_push(sema.node_const_values, 0);
     }
 
     if (!sema_collect_decls(lexer, ast, &sema)) {
@@ -302,6 +474,8 @@ bool sema_analyse(const Lexer* lexer, const Ast* ast, Sema* out_sema)
         return false;
     }
 
+    sema_fold_constants(lexer, ast, &sema);
+
     *out_sema = sema;
     return true;
 }
@@ -315,6 +489,8 @@ void sema_done(Sema* sema)
     array_free(sema->deps);
     array_free(sema->ordered_decl_indices);
     array_free(sema->node_decl_indices);
+    array_free(sema->node_const_known);
+    array_free(sema->node_const_values);
     *sema = (Sema){0};
 }
 

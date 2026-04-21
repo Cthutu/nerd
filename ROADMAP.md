@@ -299,14 +299,20 @@ needed earlier.
   - Fold references to any symbol recognised as a constant value, including
     top-level constant bindings.
   - Keep this table-driven and compatible with the AST's RPN layout.
+  - Keep the first implementation in semantic side tables keyed by AST node
+    index rather than introducing a second AST representation.
+  - Let IR lowering consume folded immediates directly so the compiler can
+    reduce trivial IR such as `answer = 42` and fully constant returns without
+    waiting for a later clean-up pass.
 
 - [ ] 25. Prototype constant folding as an AST-local VM-style pass.
   - Prefer a simple stack-based pass over AST node indices.
-  - Explore in-place AST compaction where it simplifies later lowering.
+  - Explore in-place AST compaction later if profiling or compile-time
+    behaviour shows it is worth the extra index-rewrite complexity.
   - If nodes are compacted or replaced, track index adjustment carefully so
     `a` and `b` links remain valid.
-  - Only keep this approach if it remains simpler than using semantic side
-    tables for folded results.
+  - Keep actual folded values in semantic side tables first, even if AST
+    padding is later reused for light-weight fold flags.
 
 - [ ] 26. Extend tests for folding behaviour.
   - Add language tests showing folded constant expressions still produce the

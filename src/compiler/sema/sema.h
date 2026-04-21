@@ -41,6 +41,8 @@ typedef struct {
     Array(SemaDeclDep) deps;
     Array(u32) ordered_decl_indices;
     Array(u32) node_decl_indices;
+    Array(bool) node_const_known;
+    Array(i64) node_const_values;
 } Sema;
 
 //------------------------------------------------------------------------------

@@ -37,7 +37,7 @@ typedef enum : u8 {
 typedef struct {
     IrValueKind kind;
     union {
-        u64 integer;
+        i64 integer;
     } value;
 } IrValue;
 

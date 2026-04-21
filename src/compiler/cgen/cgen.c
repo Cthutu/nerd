@@ -117,7 +117,7 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         arena_format(&cgen->arena, "$%u", (u32)value->value.integer);
         break;
     case IR_VALUE_INTEGER:
-        arena_format(&cgen->arena, "%u", (u32)value->value.integer);
+        arena_format(&cgen->arena, "%lld", value->value.integer);
         break;
     case IR_VALUE_SYMBOL:
         cgen_add_symbol_name(cgen, (u32)value->value.integer);

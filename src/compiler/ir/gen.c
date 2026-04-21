@@ -126,16 +126,19 @@ void ir_add_binary(
 }
 
 //------------------------------------------------------------------------------
-// Return the sentinel value index used for nodes not yet lowered.
+// Return the sentinel IR value used for nodes not yet lowered.
 
-internal u64 ir_unset_value(void) { return U64_MAX; }
+internal IrValue ir_unset_value(void)
+{
+    return (IrValue){.kind = IR_VALUE_NONE};
+}
 
 //------------------------------------------------------------------------------
 // Allocate a fresh node-value table for one lowered body.
 
-internal Array(u64) ir_make_node_values(const Ast* ast)
+internal Array(IrValue) ir_make_node_values(const Ast* ast)
 {
-    Array(u64) node_values = NULL;
+    Array(IrValue) node_values = NULL;
     for (usize i = 0; i < array_count(ast->nodes); ++i) {
         array_push(node_values, ir_unset_value());
     }
@@ -143,34 +146,31 @@ internal Array(u64) ir_make_node_values(const Ast* ast)
 }
 
 //------------------------------------------------------------------------------
-// Lower a single AST expression node recursively into IR.
+// Lower a single AST expression node recursively into IR values.
 
-internal u64 ir_lower_node(const Lexer* lex,
-                           const Ast*   ast,
-                           const Sema*  sema,
-                           u32          node_index,
-                           Array(u64) node_values,
-                           u64* next_value_index,
-                           Ir*  ir)
+internal IrValue ir_lower_node(const Lexer* lex,
+                               const Ast*   ast,
+                               const Sema*  sema,
+                               u32          node_index,
+                               Array(IrValue) node_values,
+                               u64* next_value_index,
+                               Ir*  ir)
 {
-    if (node_values[node_index] != ir_unset_value()) {
+    if (node_values[node_index].kind != IR_VALUE_NONE) {
         return node_values[node_index];
+    }
+
+    if (sema->node_const_known[node_index]) {
+        IrValue value = {
+            .kind          = IR_VALUE_INTEGER,
+            .value.integer = sema->node_const_values[node_index],
+        };
+        node_values[node_index] = value;
+        return value;
     }
 
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
-    case AK_IntegerLiteral:
-        {
-            u64 value_index = (*next_value_index)++;
-            ir_add_assign(
-                ir,
-                (IrValue){.kind          = IR_VALUE_VARIABLE,
-                          .value.integer = value_index},
-                (IrValue){.kind          = IR_VALUE_INTEGER,
-                          .value.integer = ast_get_integer(lex, node)});
-            node_values[node_index] = value_index;
-            return value_index;
-        }
     case AK_SymbolRef:
         {
             u32 decl_index = sema->node_decl_indices[node_index];
@@ -180,28 +180,24 @@ internal u64 ir_lower_node(const Lexer* lex,
                    "Only constant bindings can be referenced as expression "
                    "values");
 
-            u64 value_index = (*next_value_index)++;
-            ir_add_assign(ir,
-                          (IrValue){.kind          = IR_VALUE_VARIABLE,
-                                    .value.integer = value_index},
-                          (IrValue){.kind          = IR_VALUE_SYMBOL,
-                                    .value.integer = decl->symbol_handle});
-            node_values[node_index] = value_index;
-            return value_index;
+            IrValue value = {
+                .kind          = IR_VALUE_SYMBOL,
+                .value.integer = decl->symbol_handle,
+            };
+            node_values[node_index] = value;
+            return value;
         }
     case AK_IntegerNegate:
         {
-            u64 rhs = ir_lower_node(
+            IrValue rhs = ir_lower_node(
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
-            u64 value_index = (*next_value_index)++;
-            ir_add_unary(
-                ir,
-                IR_OP_NEGATE,
-                (IrValue){.kind          = IR_VALUE_VARIABLE,
-                          .value.integer = value_index},
-                (IrValue){.kind = IR_VALUE_VARIABLE, .value.integer = rhs});
-            node_values[node_index] = value_index;
-            return value_index;
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_unary(ir, IR_OP_NEGATE, value, rhs);
+            node_values[node_index] = value;
+            return value;
         }
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -230,31 +226,28 @@ internal u64 ir_lower_node(const Lexer* lex,
                 break;
             }
 
-            u64 lhs = ir_lower_node(
+            IrValue lhs = ir_lower_node(
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
-            u64 rhs = ir_lower_node(
+            IrValue rhs = ir_lower_node(
                 lex, ast, sema, node->b, node_values, next_value_index, ir);
-            u64 value_index = (*next_value_index)++;
-            ir_add_binary(
-                ir,
-                op,
-                (IrValue){.kind          = IR_VALUE_VARIABLE,
-                          .value.integer = value_index},
-                (IrValue){.kind = IR_VALUE_VARIABLE, .value.integer = lhs},
-                (IrValue){.kind = IR_VALUE_VARIABLE, .value.integer = rhs});
-            node_values[node_index] = value_index;
-            return value_index;
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_binary(ir, op, value, lhs, rhs);
+            node_values[node_index] = value;
+            return value;
         }
     case AK_Expression:
         {
-            u64 value_index = ir_lower_node(
+            IrValue value = ir_lower_node(
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
-            node_values[node_index] = value_index;
-            return value_index;
+            node_values[node_index] = value;
+            return value;
         }
     default:
         error_ice("Unhandled AST node kind during IR lowering: %u", node->kind);
-        return 0;
+        return (IrValue){0};
     }
 }
 
@@ -268,19 +261,18 @@ internal void ir_generate_global_init(const Lexer*    lex,
                                       u64*            next_value_index,
                                       Ir*             ir)
 {
-    Array(u64) node_values = ir_make_node_values(ast);
-    u64 result_index       = ir_lower_node(lex,
-                                     ast,
-                                     sema,
-                                     decl->value_node_index,
-                                     node_values,
-                                     next_value_index,
-                                     ir);
-    ir_add_assign(
-        ir,
-        (IrValue){.kind          = IR_VALUE_SYMBOL,
-                  .value.integer = decl->symbol_handle},
-        (IrValue){.kind = IR_VALUE_VARIABLE, .value.integer = result_index});
+    Array(IrValue) node_values = ir_make_node_values(ast);
+    IrValue result             = ir_lower_node(lex,
+                                   ast,
+                                   sema,
+                                   decl->value_node_index,
+                                   node_values,
+                                   next_value_index,
+                                   ir);
+    ir_add_assign(ir,
+                  (IrValue){.kind          = IR_VALUE_SYMBOL,
+                            .value.integer = decl->symbol_handle},
+                  result);
     array_free(node_values);
 }
 
@@ -304,17 +296,15 @@ internal void ir_generate_function(const Lexer*    lex,
 
     ir_add_fn_start(ir, ast_get_symbol(bind_node));
 
-    Array(u64) node_values = ir_make_node_values(ast);
-    u64 next_value_index   = 0;
+    Array(IrValue) node_values = ir_make_node_values(ast);
+    u64 next_value_index       = 0;
     ASSERT(fn_end > 0, "Expected function body expression");
     ASSERT(ast->nodes[fn_end - 1].kind == AK_Expression,
            "Expected expression node before function end");
 
-    u64 result_index = ir_lower_node(
+    IrValue result = ir_lower_node(
         lex, ast, sema, fn_end - 1, node_values, &next_value_index, ir);
-    ir_add_return(
-        ir,
-        (IrValue){.kind = IR_VALUE_VARIABLE, .value.integer = result_index});
+    ir_add_return(ir, result);
     ir_add_fn_end(ir);
 
     array_free(node_values);
