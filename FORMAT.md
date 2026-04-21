@@ -29,6 +29,7 @@ formatter should be deterministic and idempotent.
   `::` and `=>`.
 - Binary operators should have surrounding spaces.
 - Keyword-adjacent spacing should be normalised consistently.
+- Explicit grouping parentheses should be preserved.
 - Vertical spacing should be conservative for now apart from collapsing runs of
   blank lines to one empty line.
 

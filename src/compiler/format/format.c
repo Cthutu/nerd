@@ -4,7 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
-#include <compiler/ast/ast.h>
+#include <compiler/cst/cst.h>
 #include <compiler/format/format.h>
 #include <compiler/lexer/lexer.h>
 
@@ -137,17 +137,17 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
 
 // Return the precedence of an expression node for parenthesised formatting.
 
-internal int format_expr_precedence(const AstNode* node)
+internal int format_expr_precedence(const CstNode* node)
 {
     switch (node->kind) {
-    case AK_IntegerPlus:
-    case AK_IntegerMinus:
+    case CK_IntegerPlus:
+    case CK_IntegerMinus:
         return 10;
-    case AK_IntegerMultiply:
-    case AK_IntegerDivide:
-    case AK_IntegerModulo:
+    case CK_IntegerMultiply:
+    case CK_IntegerDivide:
+    case CK_IntegerModulo:
         return 20;
-    case AK_IntegerNegate:
+    case CK_IntegerNegate:
         return 30;
     default:
         return 40;
@@ -158,60 +158,63 @@ internal int format_expr_precedence(const AstNode* node)
 // Format one expression node with the minimal required parentheses.
 
 internal void format_emit_expr(StringBuilder* sb,
-                               const Ast*     ast,
+                               const Cst*     cst,
                                const Lexer*   lexer,
                                u32            node_index,
                                int            parent_precedence)
 {
-    const AstNode* node            = &ast->nodes[node_index];
+    const CstNode* node            = &cst->nodes[node_index];
     int            node_precedence = format_expr_precedence(node);
-    bool           wrap            = node_precedence < parent_precedence;
+    bool           wrap            = node->kind != CK_Group &&
+                           node_precedence < parent_precedence;
 
     if (wrap) {
         sb_append_char(sb, '(');
     }
 
     switch (node->kind) {
-    case AK_IntegerLiteral:
-        sb_format(sb, "%u", (u32)ast_get_integer(lexer, node));
+    case CK_IntegerLiteral:
+        sb_format(sb, "%u", (u32)cst_get_integer(cst, node));
         break;
-    case AK_SymbolRef:
-        sb_append_string(sb, lex_symbol(lexer, node->a));
+    case CK_SymbolRef:
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(node)));
         break;
-    case AK_IntegerNegate:
+    case CK_Group:
+        sb_append_char(sb, '(');
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_char(sb, ')');
+        break;
+    case CK_IntegerNegate:
         sb_append_char(sb, '-');
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
-    case AK_IntegerPlus:
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+    case CK_IntegerPlus:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " + ");
-        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
-    case AK_IntegerMinus:
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+    case CK_IntegerMinus:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " - ");
-        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
-    case AK_IntegerMultiply:
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+    case CK_IntegerMultiply:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " * ");
-        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
-    case AK_IntegerDivide:
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+    case CK_IntegerDivide:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " / ");
-        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
-    case AK_IntegerModulo:
-        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+    case CK_IntegerModulo:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " % ");
-        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
-        break;
-    case AK_Expression:
-        format_emit_expr(sb, ast, lexer, node->a, parent_precedence);
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
     default:
-        kill("Unhandled AST node kind in formatter expression rendering: %u",
+        kill("Unhandled CST node kind in formatter expression rendering: %u",
              node->kind);
         break;
     }
@@ -225,24 +228,19 @@ internal void format_emit_expr(StringBuilder* sb,
 // Format one top-level value node.
 
 internal void format_emit_value(StringBuilder* sb,
-                                const Ast*     ast,
+                                const Cst*     cst,
                                 const Lexer*   lexer,
                                 u32            node_index)
 {
-    const AstNode* node = &ast->nodes[node_index];
+    const CstNode* node = &cst->nodes[node_index];
 
     switch (node->kind) {
-    case AK_FnDef:
-        {
-            const AstNode* fn_start = &ast->nodes[node->a];
-            ASSERT(fn_start->kind == AK_FnStart, "Expected function start");
-            ASSERT(fn_start->b > node->a, "Expected function body");
-            sb_append_cstr(sb, "fn () => ");
-            format_emit_expr(sb, ast, lexer, fn_start->b - 1, 0);
-            break;
-        }
+    case CK_FnExpr:
+        sb_append_cstr(sb, "fn () => ");
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        break;
     default:
-        format_emit_expr(sb, ast, lexer, node_index, 0);
+        format_emit_expr(sb, cst, lexer, node_index, 0);
         break;
     }
 }
@@ -257,31 +255,29 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         return false;
     }
 
-    Ast ast = ast_parse(&lexer);
-    if (array_count(ast.nodes) == 0) {
+    Cst cst = {0};
+    if (!cst_parse(&lexer, &cst) || array_count(cst.bindings) == 0) {
+        cst_done(&cst);
         lex_done(&lexer);
         return false;
     }
 
     bool first_binding = true;
-    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
-        const AstNode* node = &ast.nodes[i];
-        if (node->kind != AK_Bind) {
-            continue;
-        }
+    for (u32 i = 0; i < array_count(cst.bindings); ++i) {
+        const CstNode* node = &cst.nodes[cst.bindings[i]];
 
         if (!first_binding) {
             sb_append_char(sb, '\n');
         }
 
-        sb_append_string(sb, lex_symbol(&lexer, ast_get_symbol(node)));
+        sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
         sb_append_cstr(sb, " :: ");
-        format_emit_value(sb, &ast, &lexer, node->b);
+        format_emit_value(sb, &cst, &lexer, node->b);
         sb_append_char(sb, '\n');
         first_binding = false;
     }
 
-    ast_done(&ast);
+    cst_done(&cst);
     lex_done(&lexer);
     return true;
 }
