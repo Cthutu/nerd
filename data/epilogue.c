@@ -1,4 +1,4 @@
 int main() {
-    $init();
+    init();
     return $main();
 }

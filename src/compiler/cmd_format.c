@@ -16,9 +16,10 @@ int compiler_cmd_format(const NerdFormatConfig* config)
 
     ASSERT(config->input_path.count > 0, "Expected format input path");
 
-    cstr input_path = (cstr)string_format(&arena, STRINGP, STRINGV(config->input_path)).data;
+    cstr input_path =
+        (cstr)string_format(&arena, STRINGP, STRINGV(config->input_path)).data;
     cstr output_path = path_replace_extension(&arena, input_path, ".format");
-    bool ok = format_file(input_path, output_path);
+    bool ok          = format_file(input_path, output_path);
 
     arena_done(&arena);
     return ok ? 0 : 1;

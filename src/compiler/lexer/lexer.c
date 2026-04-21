@@ -47,18 +47,20 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 
                 string comment_text =
                     string_from(source_code.data + start + 2, i - start - 2);
-                u8* copied = (u8*)arena_alloc(&lexer->comment_arena, comment_text.count);
+                u8* copied =
+                    (u8*)arena_alloc(&lexer->comment_arena, comment_text.count);
                 if (comment_text.count > 0) {
                     memcpy(copied, comment_text.data, comment_text.count);
                 }
 
-                array_push(lexer->comment_indices, array_count(lexer->comments));
+                array_push(lexer->comment_indices,
+                           array_count(lexer->comments));
                 array_push(lexer->comments,
                            (LexerComment){
                                .offset      = (u32)start,
                                .end_offset  = (u32)i,
                                .token_index = (u32)array_count(lexer->tokens),
-                               .text        = string_from(copied, comment_text.count),
+                               .text = string_from(copied, comment_text.count),
                            });
             }
             continue;
@@ -220,7 +222,8 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 
 bool lex(NerdSource source, Lexer* lexer)
 {
-    return lex_with_config(source, &(LexerConfig){.mode = LEXER_MODE_NORMAL}, lexer);
+    return lex_with_config(
+        source, &(LexerConfig){.mode = LEXER_MODE_NORMAL}, lexer);
 }
 
 //------------------------------------------------------------------------------

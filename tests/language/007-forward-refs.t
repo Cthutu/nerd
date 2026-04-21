@@ -21,6 +21,17 @@ $0 = magic_number
 return $0
 end
 ¬
+int $answer;
+int $magic_number;
+int init() {
+    int $0 = 42;
+    $answer = $0;
+    int $1 = $answer;
+    int $2 = 6;
+    int $3 = $1 / $2;
+    $magic_number = $3;
+    return 0;
+}
 int $main() {
     int $0 = $magic_number;
     return $0;

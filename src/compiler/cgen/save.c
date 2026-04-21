@@ -23,6 +23,21 @@ string cgen_render(const CGen* cgen, Arena* arena)
     return result;
 }
 
+string cgen_render_generated(const CGen* cgen, Arena* arena)
+{
+    string result = {0};
+    if (cgen->generated_end <= cgen->generated_start) {
+        return result;
+    }
+
+    usize count = cgen->generated_end - cgen->generated_start;
+    u8*   copy  = (u8*)arena_alloc(arena, count);
+    memcpy(copy, cgen->arena.data + cgen->generated_start, count);
+    result.data  = copy;
+    result.count = count;
+    return result;
+}
+
 void cgen_save(const CGen* cgen, const char* path)
 {
     FILE* file = fopen(path, "wb");

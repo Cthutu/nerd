@@ -9,7 +9,9 @@
 
 //------------------------------------------------------------------------------
 
+#if CONFIG_DEBUG
 internal bool cli_string_is_char(string value) { return value.count == 1; }
+#endif
 
 internal cstr cli_param_kind_label(CliParamKind kind)
 {
@@ -24,7 +26,9 @@ internal cstr cli_param_kind_label(CliParamKind kind)
     }
 }
 
+#if CONFIG_DEBUG
 internal bool cli_string_is_empty(string value) { return value.count == 0; }
+#endif
 
 internal string cli_json_required_string(const JsonValue* object, cstr key)
 {
@@ -101,8 +105,10 @@ internal CliFlag cli_schema_make_flag(const JsonValue* value)
         ASSERT(short_name->kind == JSON_STRING,
                "CLI schema field 'short' must be a string");
         string short_string = json_string(short_name);
+#if CONFIG_DEBUG
         ASSERT(cli_string_is_char(short_string),
                "CLI schema short option must be a single character");
+#endif
         flag.short_name = (char)short_string.data[0];
     }
 
@@ -128,11 +134,14 @@ internal CliParam cli_schema_make_param(const JsonValue* value)
         ASSERT(short_name->kind == JSON_STRING,
                "CLI schema field 'short' must be a string");
         string short_string = json_string(short_name);
+#if CONFIG_DEBUG
         ASSERT(cli_string_is_char(short_string),
                "CLI schema short option must be a single character");
+#endif
         param.short_name = (char)short_string.data[0];
     }
 
+#if CONFIG_DEBUG
     if (param.kind == CLI_PARAM_NAMED) {
         ASSERT(!cli_string_is_empty(param.long_name),
                "Named CLI params must define a long option");
@@ -140,6 +149,7 @@ internal CliParam cli_schema_make_param(const JsonValue* value)
         ASSERT(cli_string_is_empty(param.long_name) && param.short_name == '\0',
                "Positional CLI params cannot define short/long option names");
     }
+#endif
 
     return param;
 }
@@ -240,36 +250,37 @@ internal isize cli_find_command_index(const CliParser* parser, cstr name)
 internal void cli_validate_unique_flags(Array(CliFlag) flags)
 {
     for (usize i = 0; i < array_count(flags); i++) {
-        CliFlag* flag = &flags[i];
-        ASSERT(!cli_string_is_empty(flag->long_name),
+        ASSERT(flags[i].long_name.count != 0,
                "CLI flags must define a long option name");
 
         for (usize j = i + 1; j < array_count(flags); j++) {
-            CliFlag* other = &flags[j];
-            ASSERT(!string_eq(flag->long_name, other->long_name),
+            ASSERT(!string_eq(flags[i].long_name, flags[j].long_name),
                    "Duplicate long flag --" STRINGP,
-                   STRINGV(flag->long_name));
+                   STRINGV(flags[i].long_name));
 
-            ASSERT(flag->short_name == '\0' || other->short_name == '\0' ||
-                       flag->short_name != other->short_name,
+            ASSERT(flags[i].short_name == '\0' || flags[j].short_name == '\0' ||
+                       flags[i].short_name != flags[j].short_name,
                    "Duplicate short flag -%c",
-                   flag->short_name);
+                   flags[i].short_name);
         }
     }
 }
 
 internal void cli_validate_unique_params(Array(CliParam) params)
 {
+#if CONFIG_DEBUG
     usize positional_count = 0;
+#endif
 
     for (usize i = 0; i < array_count(params); i++) {
         CliParam* param = &params[i];
-        ASSERT(!cli_string_is_empty(param->name),
-               "CLI params must define a name");
+        ASSERT(param->name.count != 0, "CLI params must define a name");
 
+#if CONFIG_DEBUG
         if (param->kind == CLI_PARAM_POSITIONAL) {
             positional_count++;
         }
+#endif
 
         for (usize j = i + 1; j < array_count(params); j++) {
             CliParam* other = &params[j];
@@ -290,8 +301,10 @@ internal void cli_validate_unique_params(Array(CliParam) params)
         }
     }
 
+#if CONFIG_DEBUG
     ASSERT(positional_count <= array_count(params),
            "Invalid positional param count");
+#endif
 }
 
 internal void cli_validate_command(const CliCommand* command)
@@ -307,8 +320,10 @@ internal void cli_validate_parser(const CliParser* parser)
 
     for (usize i = 0; i < array_count(parser->commands); i++) {
         CliCommand* command = &parser->commands[i];
+#if CONFIG_DEBUG
         ASSERT(!cli_string_is_empty(command->name),
                "CLI commands must define a name");
+#endif
 
         for (usize j = i + 1; j < array_count(parser->commands); j++) {
             ASSERT(!string_eq(command->name, parser->commands[j].name),

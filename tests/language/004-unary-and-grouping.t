@@ -11,6 +11,9 @@ $3 = -$2
 return $3
 end
 ¬
+int init() {
+    return 0;
+}
 int $main() {
     int $0 = 2;
     int $1 = 5;

@@ -112,34 +112,6 @@ internal string testing_strip_section_edges(string text)
     return string_from(text.data + start, end - start);
 }
 
-internal string testing_extract_generated_c_body(string text)
-{
-    static const char marker[] = "int $main() {";
-
-    for (usize i = 0; i + sizeof(marker) - 1 <= text.count; ++i) {
-        if (memcmp(text.data + i, marker, sizeof(marker) - 1) != 0) {
-            continue;
-        }
-
-        usize depth = 0;
-        for (usize j = i; j < text.count; ++j) {
-            if (text.data[j] == '{') {
-                depth++;
-            } else if (text.data[j] == '}') {
-                ASSERT(depth > 0, "Unbalanced braces in generated C.");
-                depth--;
-                if (depth == 0) {
-                    return string_from(text.data + i, j - i + 1);
-                }
-            }
-        }
-
-        break;
-    }
-
-    return testing_strip_section_edges(text);
-}
-
 internal bool
 testing_split_next_section(string text, usize* cursor, string* out_section)
 {
@@ -282,8 +254,8 @@ internal bool testing_parse_format_test(Arena*      arena,
 
     *out_test = (FormatTest){
         .path          = testing_copy_cstr(arena, path),
-        .source        = testing_copy_string(
-            arena, testing_strip_section_edges(sections[0])),
+        .source        = testing_copy_string(arena,
+                                      testing_strip_section_edges(sections[0])),
         .expected_text = testing_copy_string(
             arena, testing_strip_section_edges(sections[1])),
     };
@@ -476,7 +448,7 @@ internal void testing_cleanup_generated_format_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr input_path  = path_replace_extension(&arena, artifact_root, ".input.n");
+    cstr input_path = path_replace_extension(&arena, artifact_root, ".input.n");
     cstr format_path = path_replace_extension(&arena, input_path, ".format");
 
     path_remove(input_path);
@@ -627,9 +599,8 @@ internal bool testing_run_language_test(const LanguageTest* test)
 
     string actual_ir =
         ir_render(&front_results.ir, &front_results.lexer, &output_arena);
-    string actual_c =
-        testing_extract_generated_c_body(testing_strip_section_edges(
-            cgen_render(&back_results.cgen, &output_arena)));
+    string actual_c = testing_strip_section_edges(
+        cgen_render_generated(&back_results.cgen, &output_arena));
 
 #if OS_WINDOWS
     cstr exe_path = artifacts.binary_path;
@@ -875,8 +846,10 @@ internal bool testing_run_format_test(const FormatTest* test)
         path_replace_extension(&artifact_arena, test->path, "");
     testing_cleanup_generated_format_files(artifact_root);
 
-    cstr input_path  = path_replace_extension(&artifact_arena, artifact_root, ".input.n");
-    cstr output_path = path_replace_extension(&artifact_arena, input_path, ".format");
+    cstr input_path =
+        path_replace_extension(&artifact_arena, artifact_root, ".input.n");
+    cstr output_path =
+        path_replace_extension(&artifact_arena, input_path, ".format");
 
     FILE* file = fopen(input_path, "wb");
     if (!file) {
@@ -907,8 +880,19 @@ internal bool testing_run_format_test(const FormatTest* test)
         return false;
     }
 
-    bool passed =
-        testing_compare_text("formatted output", test->expected_text, rendered);
+    bool passed = true;
+    if (rendered.count == 0 || rendered.data[rendered.count - 1] != '\n') {
+        eprn("%sFormatted output must end with a trailing newline%s",
+             ANSI_RED,
+             ANSI_RESET);
+        passed = false;
+    }
+
+    string comparable_rendered = testing_strip_section_edges(rendered);
+    if (!testing_compare_text(
+            "formatted output", test->expected_text, comparable_rendered)) {
+        passed = false;
+    }
     filemap_unload(&map);
 
     if (passed) {
@@ -944,7 +928,7 @@ internal int testing_run_format_suite(cstr tests_root, TestCounts* counts)
         Arena case_arena = {0};
         arena_init(&case_arena);
         FormatTest test = {0};
-        bool ok =
+        bool       ok =
             testing_parse_format_test(&case_arena, path, file_text, &test);
         if (!ok) {
             counts->failed++;

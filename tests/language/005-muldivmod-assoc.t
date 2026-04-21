@@ -12,6 +12,9 @@ $4 = $2 % $3
 return $4
 end
 ¬
+int init() {
+    return 0;
+}
 int $main() {
     int $0 = 20;
     int $1 = 3;

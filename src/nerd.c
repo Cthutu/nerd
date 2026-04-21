@@ -153,9 +153,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             NULL,
                                             "Source file to format",
                                             true));
-        json_array_push(commands,
-                        nerd_cli_make_command(
-                            arena, "format", "Format one source file", NULL, params));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "format", "Format one source file", NULL, params));
     }
     json_array_push(
         commands,
@@ -280,8 +281,8 @@ internal NerdFormatConfig
 nerd_format_config_from_json(const JsonValue* cli_result)
 {
     return (NerdFormatConfig){
-        .input_path =
-            nerd_cli_param_string(cli_result, "command.params.input", (string){0}),
+        .input_path = nerd_cli_param_string(
+            cli_result, "command.params.input", (string){0}),
     };
 }
 

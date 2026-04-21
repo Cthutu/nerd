@@ -213,7 +213,21 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 
 void cgen_generate(CGen* cgen, const Ir* ir)
 {
-    bool saw_init = false;
+    bool has_init_section = false;
+    for (usize i = 0; i < array_count(ir->instructions); ++i) {
+        if (ir->instructions[i].op == IR_OP_INIT_START) {
+            has_init_section = true;
+            break;
+        }
+    }
+
+    if (!has_init_section) {
+        cgen_add_line(cgen, "int init() {");
+        cgen_indent(cgen);
+        cgen_add_line(cgen, "return 0;");
+        cgen_dedent(cgen);
+        cgen_add_line(cgen, "}");
+    }
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];
@@ -222,8 +236,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             cgen_add_global(cgen, instr);
             break;
         case IR_OP_INIT_START:
-            saw_init = true;
-            cgen_add_line(cgen, "int $init() {");
+            cgen_add_line(cgen, "int init() {");
             cgen_indent(cgen);
             break;
         case IR_OP_INIT_END:
@@ -272,14 +285,6 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         }
     }
-
-    if (!saw_init) {
-        cgen_add_line(cgen, "int $init() {");
-        cgen_indent(cgen);
-        cgen_add_line(cgen, "return 0;");
-        cgen_dedent(cgen);
-        cgen_add_line(cgen, "}");
-    }
 }
 
 //------------------------------------------------------------------------------
@@ -292,7 +297,9 @@ CGen cgen_init(const Ir* ir, const Lexer* lexer)
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);
+    cgen.generated_start = cgen.arena.cursor;
     cgen_generate(&cgen, ir);
+    cgen.generated_end = cgen.arena.cursor;
     cgen_add_epilogue(&cgen);
 
     return cgen;

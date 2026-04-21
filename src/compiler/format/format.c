@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/ast/ast.h>
 #include <compiler/format/format.h>
 #include <compiler/lexer/lexer.h>
 
@@ -35,7 +36,7 @@ internal string format_trim_ascii(string text)
 //------------------------------------------------------------------------------
 // Return whether a line is comment-only and expose its indent and body.
 
-internal bool format_parse_comment_line(string line,
+internal bool format_parse_comment_line(string  line,
                                         string* out_indent,
                                         string* out_comment_body)
 {
@@ -50,7 +51,7 @@ internal bool format_parse_comment_line(string line,
         return false;
     }
 
-    *out_indent = string_from(line.data, indent_end);
+    *out_indent      = string_from(line.data, indent_end);
 
     usize body_start = indent_end + 2;
     if (body_start < line.count && line.data[body_start] == ' ') {
@@ -78,8 +79,9 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
     }
 
     usize prefix_width = indent.count + 3;
-    usize line_width   = wrap_width > prefix_width ? wrap_width - prefix_width : 1;
-    usize cursor       = 0;
+    usize line_width =
+        wrap_width > prefix_width ? wrap_width - prefix_width : 1;
+    usize cursor = 0;
 
     while (cursor < trimmed.count) {
         while (cursor < trimmed.count && trimmed.data[cursor] == ' ') {
@@ -89,8 +91,8 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
             break;
         }
 
-        usize probe        = cursor;
-        usize line_len     = 0;
+        usize probe         = cursor;
+        usize line_len      = 0;
         usize last_word_end = cursor;
 
         while (probe < trimmed.count) {
@@ -107,14 +109,14 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
             }
 
             usize word_len = word_end - probe;
-            usize needed = line_len == 0 ? word_len : line_len + 1 + word_len;
+            usize needed   = line_len == 0 ? word_len : line_len + 1 + word_len;
             if (line_len != 0 && needed > line_width) {
                 break;
             }
 
-            line_len = needed;
+            line_len      = needed;
             last_word_end = word_end;
-            probe = word_end;
+            probe         = word_end;
         }
 
         if (last_word_end == cursor) {
@@ -133,19 +135,173 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
     }
 }
 
-//------------------------------------------------------------------------------
-// Append an unchanged source line.
+// Return the precedence of an expression node for parenthesised formatting.
 
-internal void format_emit_raw_line(StringBuilder* sb, string line, bool has_newline)
+internal int format_expr_precedence(const AstNode* node)
 {
-    sb_append_string(sb, line);
-    if (has_newline) {
-        sb_append_char(sb, '\n');
+    switch (node->kind) {
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+        return 10;
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+        return 20;
+    case AK_IntegerNegate:
+        return 30;
+    default:
+        return 40;
     }
 }
 
 //------------------------------------------------------------------------------
-// Format source text, currently preserving source and reflowing comment blocks.
+// Format one expression node with the minimal required parentheses.
+
+internal void format_emit_expr(StringBuilder* sb,
+                               const Ast*     ast,
+                               const Lexer*   lexer,
+                               u32            node_index,
+                               int            parent_precedence)
+{
+    const AstNode* node            = &ast->nodes[node_index];
+    int            node_precedence = format_expr_precedence(node);
+    bool           wrap            = node_precedence < parent_precedence;
+
+    if (wrap) {
+        sb_append_char(sb, '(');
+    }
+
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        sb_format(sb, "%u", (u32)ast_get_integer(lexer, node));
+        break;
+    case AK_SymbolRef:
+        sb_append_string(sb, lex_symbol(lexer, node->a));
+        break;
+    case AK_IntegerNegate:
+        sb_append_char(sb, '-');
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        break;
+    case AK_IntegerPlus:
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " + ");
+        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        break;
+    case AK_IntegerMinus:
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " - ");
+        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        break;
+    case AK_IntegerMultiply:
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " * ");
+        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        break;
+    case AK_IntegerDivide:
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " / ");
+        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        break;
+    case AK_IntegerModulo:
+        format_emit_expr(sb, ast, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " % ");
+        format_emit_expr(sb, ast, lexer, node->b, node_precedence + 1);
+        break;
+    case AK_Expression:
+        format_emit_expr(sb, ast, lexer, node->a, parent_precedence);
+        break;
+    default:
+        kill("Unhandled AST node kind in formatter expression rendering: %u",
+             node->kind);
+        break;
+    }
+
+    if (wrap) {
+        sb_append_char(sb, ')');
+    }
+}
+
+//------------------------------------------------------------------------------
+// Format one top-level value node.
+
+internal void format_emit_value(StringBuilder* sb,
+                                const Ast*     ast,
+                                const Lexer*   lexer,
+                                u32            node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_FnDef:
+        {
+            const AstNode* fn_start = &ast->nodes[node->a];
+            ASSERT(fn_start->kind == AK_FnStart, "Expected function start");
+            ASSERT(fn_start->b > node->a, "Expected function body");
+            sb_append_cstr(sb, "fn () => ");
+            format_emit_expr(sb, ast, lexer, fn_start->b - 1, 0);
+            break;
+        }
+    default:
+        format_emit_expr(sb, ast, lexer, node_index, 0);
+        break;
+    }
+}
+
+//------------------------------------------------------------------------------
+// Format a parsed code block with one binding per line.
+
+internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
+{
+    Lexer lexer = {0};
+    if (!lex(source, &lexer)) {
+        return false;
+    }
+
+    Ast ast = ast_parse(&lexer);
+    if (array_count(ast.nodes) == 0) {
+        lex_done(&lexer);
+        return false;
+    }
+
+    bool first_binding = true;
+    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
+        const AstNode* node = &ast.nodes[i];
+        if (node->kind != AK_Bind) {
+            continue;
+        }
+
+        if (!first_binding) {
+            sb_append_char(sb, '\n');
+        }
+
+        sb_append_string(sb, lex_symbol(&lexer, ast_get_symbol(node)));
+        sb_append_cstr(sb, " :: ");
+        format_emit_value(sb, &ast, &lexer, node->b);
+        sb_append_char(sb, '\n');
+        first_binding = false;
+    }
+
+    ast_done(&ast);
+    lex_done(&lexer);
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Return whether a line is entirely blank.
+
+internal bool format_is_blank_line(string line)
+{
+    for (usize i = 0; i < line.count; ++i) {
+        if (line.data[i] != ' ' && line.data[i] != '\t' &&
+            line.data[i] != '\r') {
+            return false;
+        }
+    }
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Format source text, reflowing comments and normalising code blocks.
 
 bool format_source(NerdSource source, Arena* arena, string* out_text)
 {
@@ -158,9 +314,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
     StringBuilder sb = {0};
     sb_init(&sb, arena);
 
-    const string text       = source.source;
-    const usize wrap_width  = 80;
-    usize       offset      = 0;
+    const string text                    = source.source;
+    const usize  wrap_width              = 80;
+    usize        offset                  = 0;
+    bool         just_emitted_blank_line = false;
 
     while (offset < text.count) {
         usize line_end = offset;
@@ -168,18 +325,69 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
             line_end++;
         }
 
-        bool   has_newline = line_end < text.count && text.data[line_end] == '\n';
-        string line = string_from(text.data + offset, line_end - offset);
-
-        string indent       = {0};
-        string comment_body = {0};
-        if (!format_parse_comment_line(line, &indent, &comment_body)) {
-            format_emit_raw_line(&sb, line, has_newline);
+        bool has_newline = line_end < text.count && text.data[line_end] == '\n';
+        string line      = string_from(text.data + offset, line_end - offset);
+        if (format_is_blank_line(line)) {
+            if (sb.size > 0 && !just_emitted_blank_line) {
+                sb_append_char(&sb, '\n');
+                just_emitted_blank_line = true;
+            }
             offset = has_newline ? line_end + 1 : line_end;
             continue;
         }
 
-        Arena  paragraph_arena = {0};
+        string indent       = {0};
+        string comment_body = {0};
+        if (!format_parse_comment_line(line, &indent, &comment_body)) {
+            usize block_start = offset;
+            usize block_end   = has_newline ? line_end + 1 : line_end;
+
+            while (block_end < text.count) {
+                usize next_line_end = block_end;
+                while (next_line_end < text.count &&
+                       text.data[next_line_end] != '\n') {
+                    next_line_end++;
+                }
+
+                bool next_has_newline = next_line_end < text.count &&
+                                        text.data[next_line_end] == '\n';
+                string next_line   = string_from(text.data + block_end,
+                                               next_line_end - block_end);
+                string next_indent = {0};
+                string next_body   = {0};
+
+                if (format_parse_comment_line(
+                        next_line, &next_indent, &next_body)) {
+                    break;
+                }
+
+                block_end =
+                    next_has_newline ? next_line_end + 1 : next_line_end;
+            }
+
+            Arena block_arena = {0};
+            arena_init(&block_arena);
+            u8* block_copy =
+                (u8*)arena_alloc(&block_arena, block_end - block_start);
+            memcpy(
+                block_copy, text.data + block_start, block_end - block_start);
+            bool ok = format_emit_code_block(
+                &sb,
+                (NerdSource){
+                    .source = string_from(block_copy, block_end - block_start),
+                    .source_path = source.source_path,
+                });
+            arena_done(&block_arena);
+            if (!ok) {
+                lex_done(&lexer);
+                return false;
+            }
+            offset                  = block_end;
+            just_emitted_blank_line = false;
+            continue;
+        }
+
+        Arena paragraph_arena = {0};
         arena_init(&paragraph_arena);
         string paragraph = {0};
 
@@ -194,8 +402,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                 sb_append_string(&sb, indent);
                 sb_append_cstr(&sb, "--");
                 sb_append_char(&sb, '\n');
+                just_emitted_blank_line = false;
             } else if (paragraph.count == 0) {
-                paragraph = string_format(&paragraph_arena, STRINGP, STRINGV(body));
+                paragraph =
+                    string_format(&paragraph_arena, STRINGP, STRINGV(body));
             } else {
                 paragraph = string_format(&paragraph_arena,
                                           STRINGP " " STRINGP,
@@ -213,7 +423,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                 line_end++;
             }
             has_newline = line_end < text.count && text.data[line_end] == '\n';
-            line = string_from(text.data + offset, line_end - offset);
+            line        = string_from(text.data + offset, line_end - offset);
 
             string next_indent = {0};
             string next_body   = {0};
@@ -230,6 +440,11 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
         }
 
         arena_done(&paragraph_arena);
+        just_emitted_blank_line = false;
+    }
+
+    if (sb.size > 0 && sb.data[sb.size - 1] != '\n') {
+        sb_append_char(&sb, '\n');
     }
 
     *out_text = sb_to_string(&sb);
@@ -252,12 +467,13 @@ bool format_file(cstr input_path, cstr output_path)
     arena_init(&arena);
 
     string rendered = {0};
-    bool ok = format_source((NerdSource){
-                                .source      = text,
-                                .source_path = s(input_path),
-                            },
-                            &arena,
-                            &rendered);
+    bool   ok       = format_source(
+        (NerdSource){
+                    .source      = text,
+                    .source_path = s(input_path),
+        },
+        &arena,
+        &rendered);
     if (!ok) {
         arena_done(&arena);
         filemap_unload(&map);

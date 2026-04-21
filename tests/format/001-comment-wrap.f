@@ -3,6 +3,8 @@
 -- is deliberately much longer than the fixed formatting width and should be reflowed into stable output lines.
 --
 -- Second paragraph stays separate.
+
+
 main
  :
  : 
@@ -16,4 +18,5 @@ fn (
 -- reflowed into stable output lines.
 --
 -- Second paragraph stays separate.
+
 main :: fn () => 42

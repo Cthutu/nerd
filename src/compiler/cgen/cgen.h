@@ -16,11 +16,14 @@ typedef struct {
     Arena        arena;
     int          indent_level;
     const Lexer* lexer;
+    usize        generated_start;
+    usize        generated_end;
 } CGen;
 
 CGen   cgen_init(const Ir* ir, const Lexer* lexer);
 void   cgen_done(CGen* cgen);
 string cgen_render(const CGen* cgen, Arena* arena);
+string cgen_render_generated(const CGen* cgen, Arena* arena);
 void   cgen_save(const CGen* cgen, const char* path);
 
 void cgen_dump(const CGen* cgen);

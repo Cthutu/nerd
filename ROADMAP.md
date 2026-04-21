@@ -16,8 +16,8 @@ From the current codebase and test suite:
 - Top-level bindings are resolved through compact semantic tables.
 - Dependency tracking and ordering exist for forward-referenced top-level
   bindings.
-- IR and C generation model top-level declarations, generated init code, and
-  generated functions such as `$main`.
+- IR and C generation model top-level declarations, hidden runtime init code,
+  and generated functions such as `$main`.
 - The current language and error tests pass via `just test`.
 
 ## Guiding Rules
@@ -34,9 +34,9 @@ From the current codebase and test suite:
 - Use British spelling throughout code, comments, tests, and documentation.
   This applies to identifiers and filenames where practical, so prefer names
   such as `analyse`, `optimise`, `behaviour`, and `initialise`.
-- In generated C, emit all compiler-generated function names with a leading
-  `$` prefix to distinguish them from types and helper functions supplied by the
-  C prologue and epilogue.
+- In generated C, emit a leading `$` prefix only for C symbols that correspond
+  directly to Nerd-language names.
+- Keep hidden runtime/compiler helper names such as `init` unprefixed.
 - Allow forward references between top-level bindings. Track dependencies
   explicitly and order declarations/definitions from that dependency
   information.
@@ -166,9 +166,10 @@ From the current codebase and test suite:
 - [X] 10. Extend C generation to match the new IR model.
   - Generate top-level declarations in dependency-safe order.
   - Generate one C function per Nerd function.
-  - Preserve the `$` prefix for every compiler-generated C function name,
-    including `$main`, so generated symbols cannot collide with prologue or
-    epilogue definitions.
+  - Preserve the `$` prefix for C symbols that correspond to Nerd-visible names,
+    including `$main`.
+  - Keep hidden runtime helpers such as `init` unprefixed because they are not
+    part of the Nerd-language naming surface.
   - Emit top-level constants as globals/constants rather than trying to inline
     or fold them in the compiler.
   - Keep generated output stable enough for snapshot-style tests.

@@ -21,6 +21,15 @@ $2 = $0 / $1
 return $2
 end
 ¬
+int $answer;
+int $magic_number;
+int init() {
+    int $0 = 42;
+    $answer = $0;
+    int $1 = 7;
+    $magic_number = $1;
+    return 0;
+}
 int $main() {
     int $0 = $answer;
     int $1 = $magic_number;

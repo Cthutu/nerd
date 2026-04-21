@@ -10,6 +10,9 @@ $2 = $0 + $1
 return $2
 end
 ¬
+int init() {
+    return 0;
+}
 int $main() {
     int $0 = 123;
     int $1 = 44;
