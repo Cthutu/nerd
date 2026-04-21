@@ -10,8 +10,38 @@
 //------------------------------------------------------------------------------
 // Render a single IR value into a string builder.
 
-internal void
-ir_render_value(StringBuilder* sb, const Lexer* lexer, const IrValue* value)
+internal void ir_render_string(StringBuilder* sb, string text)
+{
+    sb_append_char(sb, '"');
+    for (usize i = 0; i < text.count; ++i) {
+        switch (text.data[i]) {
+        case '\n':
+            sb_append_cstr(sb, "\\n");
+            break;
+        case '\r':
+            sb_append_cstr(sb, "\\r");
+            break;
+        case '\t':
+            sb_append_cstr(sb, "\\t");
+            break;
+        case '\\':
+            sb_append_cstr(sb, "\\\\");
+            break;
+        case '"':
+            sb_append_cstr(sb, "\\\"");
+            break;
+        default:
+            sb_append_char(sb, (char)text.data[i]);
+            break;
+        }
+    }
+    sb_append_char(sb, '"');
+}
+
+internal void ir_render_value(StringBuilder* sb,
+                              const Ir*      ir,
+                              const Lexer*   lexer,
+                              const IrValue* value)
 {
     switch (value->kind) {
     case IR_VALUE_VARIABLE:
@@ -22,6 +52,12 @@ ir_render_value(StringBuilder* sb, const Lexer* lexer, const IrValue* value)
         break;
     case IR_VALUE_SYMBOL:
         sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));
+        break;
+    case IR_VALUE_BUILTIN:
+        sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));
+        break;
+    case IR_VALUE_STRING:
+        ir_render_string(sb, ir->strings[(u32)value->value.integer]);
         break;
     case IR_VALUE_NONE:
         break;
@@ -45,7 +81,7 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         switch (instr->op) {
         case IR_OP_GLOBAL:
             sb_append_cstr(&sb, "global ");
-            ir_render_value(&sb, lexer, &instr->lvalue);
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
             break;
         case IR_OP_INIT_START:
             sb_append_cstr(&sb, "init");
@@ -55,29 +91,35 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_FN_START:
             sb_append_cstr(&sb, "fn ");
-            ir_render_value(&sb, lexer, &instr->lvalue);
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
             break;
         case IR_OP_FN_END:
             sb_append_cstr(&sb, "end");
             break;
         case IR_OP_ASSIGN:
-            ir_render_value(&sb, lexer, &instr->lvalue);
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, lexer, &instr->rvalue[0]);
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            break;
+        case IR_OP_CALL:
+            sb_append_cstr(&sb, "call ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_append_cstr(&sb, ", ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[1]);
             break;
         case IR_OP_NEGATE:
-            ir_render_value(&sb, lexer, &instr->lvalue);
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = -");
-            ir_render_value(&sb, lexer, &instr->rvalue[0]);
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_ADD:
         case IR_OP_SUBTRACT:
         case IR_OP_MULTIPLY:
         case IR_OP_DIVIDE:
         case IR_OP_MODULO:
-            ir_render_value(&sb, lexer, &instr->lvalue);
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, lexer, &instr->rvalue[0]);
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
             switch (instr->op) {
             case IR_OP_ADD:
                 sb_append_cstr(&sb, " + ");
@@ -97,11 +139,11 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             default:
                 break;
             }
-            ir_render_value(&sb, lexer, &instr->rvalue[1]);
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[1]);
             break;
         case IR_OP_RETURN:
             sb_append_cstr(&sb, "return ");
-            ir_render_value(&sb, lexer, &instr->rvalue[0]);
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
         default:
             sb_append_cstr(&sb, "<unknown>");

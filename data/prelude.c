@@ -1,5 +1,20 @@
+#include <stdint.h>
 #include <stdio.h>
 
-void pr(const char* str) { printf("%s", str); }
+typedef uint8_t u8;
 
-void prn(const char* str) { printf("%s\n", str); }
+#define DEF_SLICE(type)                                                        \
+    typedef struct {                                                           \
+        type*  data;                                                           \
+        size_t count;                                                          \
+    }
+
+DEF_SLICE(u8) string;
+
+void pr(string str) { fwrite(str.data, 1, str.count, stdout); }
+
+void prn(string str)
+{
+    fwrite(str.data, 1, str.count, stdout);
+    fputc('\n', stdout);
+}

@@ -15,6 +15,7 @@
 typedef struct {
     Arena        arena;
     int          indent_level;
+    const Ir*    ir;
     const Lexer* lexer;
     usize        generated_start;
     usize        generated_end;

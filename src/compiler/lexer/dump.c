@@ -16,6 +16,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("EOF");
     case TK_Integer:
         return string_from_cstr("Integer");
+    case TK_String:
+        return string_from_cstr("String");
     case TK_Symbol:
         return string_from_cstr("Symbol");
     case TK_Plus:
@@ -32,10 +34,16 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("LeftParen `(`");
     case TK_RParen:
         return string_from_cstr("RightParen `)`");
+    case TK_LBrace:
+        return string_from_cstr("LeftBrace `{`");
+    case TK_RBrace:
+        return string_from_cstr("RightBrace `}`");
     case TK_Colon:
         return string_from_cstr("Colon `:`");
     case TK_FatArrow:
         return string_from_cstr("FatArrow `=>`");
+    case TK_ThinArrow:
+        return string_from_cstr("ThinArrow `->`");
     case TK_fn:
         return string_from_cstr("Keyword `fn`");
     default:
@@ -57,6 +65,7 @@ void lex_dump(const Lexer* lexer)
     table_reserve_rows(&table, array_count(lexer->tokens));
 
     usize integer_index = 0;
+    usize string_index  = 0;
     usize symbol_index  = 0;
 
     for (usize i = 0; i < array_count(lexer->tokens); i++) {
@@ -73,6 +82,9 @@ void lex_dump(const Lexer* lexer)
                 row[3]    = table_cell_u64(value);
                 break;
             }
+        case TK_String:
+            row[3] = table_cell_string(lexer->strings[string_index++]);
+            break;
         case TK_Symbol:
             {
                 string symbol =

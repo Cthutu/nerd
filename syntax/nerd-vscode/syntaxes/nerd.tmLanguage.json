@@ -18,6 +18,9 @@
             "include": "#numbers"
         },
         {
+            "include": "#strings"
+        },
+        {
             "include": "#operators"
         },
         {
@@ -76,6 +79,14 @@
                 }
             ]
         },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.nerd",
+                    "match": "\"(?:\\\\.|[^\"\\\\])*\""
+                }
+            ]
+        },
         "operators": {
             "patterns": [
                 {
@@ -97,6 +108,14 @@
                 {
                     "name": "punctuation.section.group.end.nerd",
                     "match": "\\)"
+                },
+                {
+                    "name": "punctuation.section.block.begin.nerd",
+                    "match": "\\{"
+                },
+                {
+                    "name": "punctuation.section.block.end.nerd",
+                    "match": "\\}"
                 }
             ]
         },

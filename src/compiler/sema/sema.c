@@ -13,10 +13,55 @@
 internal u32 sema_no_decl(void) { return U32_MAX; }
 
 //------------------------------------------------------------------------------
+// Predeclare the current built-in runtime functions.
+
+internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
+{
+    for (u32 i = 0; i < array_count(lexer->symbol_handles); ++i) {
+        u32 handle = lexer->symbol_handles[i];
+        if (string_eq(lex_symbol(lexer, handle), name)) {
+            return handle;
+        }
+    }
+    return sema_no_decl();
+}
+
+//------------------------------------------------------------------------------
+// Predeclare the current built-in runtime functions.
+
+internal void sema_add_builtin_decls(const Lexer* lexer, Sema* sema)
+{
+    u32 pr_symbol  = sema_find_symbol_handle_by_name(lexer, s("pr"));
+    u32 prn_symbol = sema_find_symbol_handle_by_name(lexer, s("prn"));
+
+    if (pr_symbol != sema_no_decl()) {
+        array_push(sema->decls,
+                   (SemaDecl){
+                       .kind             = SK_BuiltinFunction,
+                       .symbol_handle    = pr_symbol,
+                       .bind_node_index  = sema_no_decl(),
+                       .value_node_index = sema_no_decl(),
+                   });
+    }
+
+    if (prn_symbol != sema_no_decl()) {
+        array_push(sema->decls,
+                   (SemaDecl){
+                       .kind             = SK_BuiltinFunction,
+                       .symbol_handle    = prn_symbol,
+                       .bind_node_index  = sema_no_decl(),
+                       .value_node_index = sema_no_decl(),
+                   });
+    }
+}
+
+//------------------------------------------------------------------------------
 // Return whether one node already has a known folded constant result.
 
-internal bool
-sema_try_get_constant(const Ast* ast, const Sema* sema, u32 node_index, i64* out)
+internal bool sema_try_get_constant(const Ast*  ast,
+                                    const Sema* sema,
+                                    u32         node_index,
+                                    i64*        out)
 {
     if (node_index >= array_count(sema->node_const_known) ||
         !sema->node_const_known[node_index] ||
@@ -31,8 +76,7 @@ sema_try_get_constant(const Ast* ast, const Sema* sema, u32 node_index, i64* out
 //------------------------------------------------------------------------------
 // Store one folded constant result for an AST node.
 
-internal void
-sema_set_constant(Ast* ast, Sema* sema, u32 node_index, i64 value)
+internal void sema_set_constant(Ast* ast, Sema* sema, u32 node_index, i64 value)
 {
     sema->node_const_known[node_index]  = true;
     sema->node_const_values[node_index] = value;
@@ -56,6 +100,9 @@ internal ErrorSpan sema_decl_span(const Lexer*    lexer,
                                   const Ast*      ast,
                                   const SemaDecl* decl)
 {
+    if (decl->bind_node_index == sema_no_decl()) {
+        return (ErrorSpan){0};
+    }
     return sema_node_span(lexer, &ast->nodes[decl->bind_node_index]);
 }
 
@@ -110,8 +157,10 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
                 lexer->source,
                 sema_node_span(lexer, node),
                 lex_symbol(lexer, ast_get_symbol(node)),
-                sema_node_span(lexer,
-                               &ast->nodes[existing_decl->bind_node_index]));
+                existing_decl->bind_node_index == sema_no_decl()
+                    ? sema_node_span(lexer, node)
+                    : sema_node_span(
+                          lexer, &ast->nodes[existing_decl->bind_node_index]));
         }
 
         const AstNode* value = &ast->nodes[node->b];
@@ -142,18 +191,31 @@ internal void sema_collect_node_deps(const Ast*  ast,
 
     switch (node->kind) {
     case AK_IntegerLiteral:
+    case AK_StringLiteral:
+        return;
+    case AK_StringConcat:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         return;
     case AK_SymbolRef:
         {
             u32 decl_index = sema->node_decl_indices[node_index];
             ASSERT(decl_index != sema_no_decl(),
                    "Expected resolved symbol reference");
+            if (sema->decls[decl_index].kind == SK_BuiltinFunction) {
+                return;
+            }
             sema_add_dep(out_sema, owner_decl_index, decl_index);
             return;
         }
     case AK_IntegerNegate:
     case AK_Expression:
+    case AK_Statement:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        return;
+    case AK_Call:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         return;
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -168,9 +230,14 @@ internal void sema_collect_node_deps(const Ast*  ast,
             const AstNode* fn_start = &ast->nodes[node->a];
             ASSERT(fn_start->kind == AK_FnStart,
                    "Expected function start node");
-            ASSERT(fn_start->b > node->a, "Expected function body expression");
-            sema_collect_node_deps(
-                ast, sema, owner_decl_index, fn_start->b - 1, out_sema);
+            for (u32 i = node->a + 1; i < fn_start->b; ++i) {
+                if (ast->nodes[i].kind == AK_Statement ||
+                    (node->b == AFK_Expr &&
+                     ast->nodes[i].kind == AK_Expression)) {
+                    sema_collect_node_deps(
+                        ast, sema, owner_decl_index, i, out_sema);
+                }
+            }
             return;
         }
     default:
@@ -185,6 +252,9 @@ internal void
 sema_collect_deps(const Ast* ast, const Sema* sema, Sema* out_sema)
 {
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        if (sema->decls[i].value_node_index == sema_no_decl()) {
+            continue;
+        }
         sema_collect_node_deps(
             ast, sema, i, sema->decls[i].value_node_index, out_sema);
     }
@@ -362,6 +432,13 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
         ok    = true;
         break;
 
+    case AK_StringLiteral:
+        ok = false;
+        break;
+    case AK_StringConcat:
+        ok = false;
+        break;
+
     case AK_SymbolRef:
         {
             u32 decl_index = sema->node_decl_indices[node_index];
@@ -376,7 +453,13 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
         break;
 
     case AK_Expression:
+    case AK_Statement:
         ok = sema_try_get_constant(ast, out_sema, node->a, &value);
+        break;
+
+    case AK_Call:
+    case AK_FnDef:
+        ok = false;
         break;
 
     case AK_IntegerNegate:
@@ -493,7 +576,13 @@ internal bool sema_fold_node(const Lexer* lex,
                 break;
 
             case AK_Expression:
+            case AK_Statement:
             case AK_IntegerNegate:
+                sema_push_fold_frame(&stack, node->a);
+                break;
+
+            case AK_Call:
+                sema_push_fold_frame(&stack, node->b);
                 sema_push_fold_frame(&stack, node->a);
                 break;
 
@@ -547,6 +636,8 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
         array_push(sema.node_const_known, false);
         array_push(sema.node_const_values, 0);
     }
+
+    sema_add_builtin_decls(lexer, &sema);
 
     if (!sema_collect_decls(lexer, ast, &sema)) {
         sema_done(&sema);

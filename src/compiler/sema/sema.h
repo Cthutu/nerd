@@ -13,6 +13,7 @@
 typedef enum : u8 {
     SK_Constant,
     SK_Function,
+    SK_BuiltinFunction,
 } SemaDeclKind;
 
 //------------------------------------------------------------------------------

@@ -23,7 +23,8 @@ main :: fn () => answer
                             "function",
                             "keyword",
                             "number",
-                            "operator"
+                            "operator",
+                            "string"
                         ],
                         "tokenModifiers": []
                     },

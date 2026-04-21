@@ -17,6 +17,7 @@ typedef struct {
     const Lexer* lexer;
     u32          token_index;
     Array(u32) token_integer_indices;
+    Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
     Cst cst;
 } CstParseState;
@@ -46,6 +47,17 @@ internal u32 cst_current_integer_index(const CstParseState* state)
         return CST_NO_VALUE;
     }
     return state->token_integer_indices[state->token_index];
+}
+
+//------------------------------------------------------------------------------
+// Return the tracked string index for the current token when applicable.
+
+internal u32 cst_current_string_index(const CstParseState* state)
+{
+    if (state->token_index >= array_count(state->token_string_indices)) {
+        return CST_NO_VALUE;
+    }
+    return state->token_string_indices[state->token_index];
 }
 
 //------------------------------------------------------------------------------
@@ -113,6 +125,10 @@ internal bool
 cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
+    case TK_LParen:
+        *out_left_bp  = CST_BP_PREFIX + 10;
+        *out_right_bp = CST_BP_PREFIX + 10;
+        return true;
     case TK_Plus:
     case TK_Minus:
         *out_left_bp  = CST_BP_ADDITIVE;
@@ -137,6 +153,20 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 
 //------------------------------------------------------------------------------
+// Return whether one CST node already represents a string-literal chain.
+
+internal bool cst_node_is_stringish(const Cst* cst, u32 node_index)
+{
+    switch (cst->nodes[node_index].kind) {
+    case CK_StringLiteral:
+    case CK_StringConcat:
+        return true;
+    default:
+        return false;
+    }
+}
+
+//------------------------------------------------------------------------------
 // Parse one prefix expression.
 
 internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
@@ -157,6 +187,23 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                      .kind        = CK_IntegerLiteral,
                                      .token_index = state->token_index - 1,
                                      .a           = integer_index,
+                                 },
+                                 out_node);
+        }
+
+    case TK_String:
+        {
+            u32 string_index = cst_current_string_index(state);
+            if (string_index == CST_NO_VALUE) {
+                return false;
+            }
+
+            cst_advance(state);
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_StringLiteral,
+                                     .token_index = state->token_index - 1,
+                                     .a           = string_index,
                                  },
                                  out_node);
         }
@@ -237,12 +284,49 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 
         if (!cst_infix_binding_power(token.kind, &left_bp, &right_bp) ||
             left_bp < min_bp) {
+            if (token.kind == TK_String &&
+                cst_node_is_stringish(&state->cst, left)) {
+                u32 right = 0;
+                if (!cst_parse_prefix(state, &right)) {
+                    return false;
+                }
+                if (!cst_emit_node(state,
+                                   (CstNode){
+                                       .kind        = CK_StringConcat,
+                                       .token_index = state->cst.nodes[right].token_index,
+                                       .a           = left,
+                                       .b           = right,
+                                   },
+                                   &left)) {
+                    return false;
+                }
+                continue;
+            }
             break;
         }
 
         u32 token_index = state->token_index;
         u32 right       = 0;
         cst_advance(state);
+        if (token.kind == TK_LParen) {
+            if (!cst_parse_expr_bp(state, 0, &right) ||
+                !cst_consume(state, TK_RParen)) {
+                return false;
+            }
+
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Call,
+                                   .token_index = token_index,
+                                   .a           = left,
+                                   .b           = right,
+                               },
+                               &left)) {
+                return false;
+            }
+            continue;
+        }
+
         if (!cst_parse_expr_bp(state, right_bp, &right)) {
             return false;
         }
@@ -285,6 +369,58 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
+// Parse one function block body as a sequence of expression statements.
+
+internal bool
+cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
+{
+    u32 first_statement = (u32)array_count(state->cst.nodes);
+
+    if (!cst_consume(state, TK_LBrace)) {
+        return false;
+    }
+
+    while (cst_current_token(state).kind != TK_RBrace) {
+        u32 expr = 0;
+        if (!cst_parse_expr_bp(state, 0, &expr)) {
+            return false;
+        }
+
+        u32 statement = 0;
+        if (!cst_emit_node(
+                state,
+                (CstNode){
+                    .kind        = CK_Statement,
+                    .token_index = state->cst.nodes[expr].token_index,
+                    .a           = expr,
+                },
+                &statement)) {
+            return false;
+        }
+
+        if (cst_current_token(state).kind == TK_EOF) {
+            return false;
+        }
+        if (cst_current_token(state).kind == TK_RBrace) {
+            break;
+        }
+    }
+
+    if (!cst_consume(state, TK_RBrace)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_FnBlock,
+                             .token_index = fn_token_index,
+                             .a           = first_statement,
+                             .b           = (u32)array_count(state->cst.nodes),
+                         },
+                         out_node);
+}
+
+//------------------------------------------------------------------------------
 // Parse one function expression.
 
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
@@ -293,18 +429,30 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
     u32 body        = 0;
 
     if (!cst_consume(state, TK_fn) || !cst_consume(state, TK_LParen) ||
-        !cst_consume(state, TK_RParen) || !cst_consume(state, TK_FatArrow) ||
-        !cst_parse_expr_bp(state, 0, &body)) {
+        !cst_consume(state, TK_RParen)) {
         return false;
     }
 
-    return cst_emit_node(state,
-                         (CstNode){
-                             .kind        = CK_FnExpr,
-                             .token_index = token_index,
-                             .a           = body,
-                         },
-                         out_node);
+    if (cst_current_token(state).kind == TK_FatArrow) {
+        cst_advance(state);
+        if (!cst_parse_expr_bp(state, 0, &body)) {
+            return false;
+        }
+
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_FnExpr,
+                                 .token_index = token_index,
+                                 .a           = body,
+                             },
+                             out_node);
+    }
+
+    if (cst_current_token(state).kind == TK_LBrace) {
+        return cst_parse_fn_block(state, token_index, out_node);
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------------
@@ -360,6 +508,7 @@ internal bool cst_parse_bind(CstParseState* state, u32* out_node)
 internal void cst_build_token_value_tables(CstParseState* state)
 {
     u32 integer_index = 0;
+    u32 string_index  = 0;
     u32 symbol_index  = 0;
 
     for (u32 i = 0; i < array_count(state->lexer->tokens); ++i) {
@@ -368,17 +517,26 @@ internal void cst_build_token_value_tables(CstParseState* state)
         switch (token.kind) {
         case TK_Integer:
             array_push(state->token_integer_indices, integer_index++);
+            array_push(state->token_string_indices, CST_NO_VALUE);
+            array_push(state->token_symbol_handles, CST_NO_VALUE);
+            break;
+
+        case TK_String:
+            array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_string_indices, string_index++);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
 
         case TK_Symbol:
             array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles,
                        state->lexer->symbol_handles[symbol_index++]);
             break;
 
         default:
             array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
         }
@@ -397,6 +555,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         if (!cst_starts_binding(&state)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
+            array_free(state.token_string_indices);
             array_free(state.token_symbol_handles);
             return false;
         }
@@ -405,6 +564,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         if (!cst_parse_bind(&state, &bind_index)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
+            array_free(state.token_string_indices);
             array_free(state.token_symbol_handles);
             return false;
         }
@@ -417,6 +577,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
     }
 
     array_free(state.token_integer_indices);
+    array_free(state.token_string_indices);
     array_free(state.token_symbol_handles);
     *out_cst = state.cst;
     return true;

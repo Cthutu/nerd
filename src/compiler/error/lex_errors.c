@@ -93,4 +93,19 @@ bool error_0105_too_many_symbols(NerdSource source)
     return false;
 }
 
+bool error_0106_unterminated_string_literal(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error_info =
+        error_init(106, source, span, "Unterminated string literal");
+    error_add_reference(
+        &error_info, ERROR_REF_PRIMARY, span, "String literal starts here");
+    error_add_help(&error_info,
+                   "Add a closing double quote to terminate the string "
+                   "literal.");
+    error_add_help(&error_info,
+                   "Consecutive string literals are concatenated, like in C.");
+    error_render(&error_info);
+    return false;
+}
+
 //------------------------------------------------------------------------------

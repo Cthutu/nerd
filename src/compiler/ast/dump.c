@@ -14,6 +14,10 @@ string ast_kind_to_string(AstKind kind)
     switch (kind) {
     case AK_IntegerLiteral:
         return s("IntegerLiteral");
+    case AK_StringLiteral:
+        return s("StringLiteral");
+    case AK_StringConcat:
+        return s("StringConcat");
     case AK_SymbolRef:
         return s("SymbolRef");
     case AK_IntegerNegate:
@@ -28,8 +32,12 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerDivide");
     case AK_IntegerModulo:
         return s("IntegerModulo");
+    case AK_Call:
+        return s("Call");
     case AK_Expression:
         return s("Expression");
+    case AK_Statement:
+        return s("Statement");
     case AK_Bind:
         return s("Bind");
     case AK_FnDef:
@@ -86,6 +94,13 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_IntegerLiteral:
             row[3] = table_cell_u64(lexer->integers[node->a]);
             break;
+        case AK_StringLiteral:
+            row[3] = table_cell_string(ast_get_string(lexer, node));
+            break;
+        case AK_StringConcat:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
+            break;
         case AK_SymbolRef:
             row[3] = table_cell_string(lex_symbol(lexer, node->a));
             break;
@@ -101,9 +116,17 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             row[3] = table_cell_string(
                 string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
             break;
+        case AK_Call:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "callee=%u arg=%u", node->a, node->b));
+            break;
         case AK_Expression:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "root=%u", node->a));
+            break;
+        case AK_Statement:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "expr=%u", node->a));
             break;
         case AK_Bind:
             row[3] = table_cell_string(
@@ -114,7 +137,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_FnDef:
             row[3] = table_cell_string(
-                string_format(&temp_arena, "body=%u", node->a));
+                string_format(&temp_arena,
+                              "body=%u kind=%s",
+                              node->a,
+                              node->b == AFK_Block ? "block" : "expr"));
             break;
         case AK_FnStart:
         case AK_FnEnd:

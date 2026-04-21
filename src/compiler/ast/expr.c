@@ -35,6 +35,7 @@ bool ast_token_starts_expression(TokenKind kind)
 {
     switch (kind) {
     case TK_Integer:
+    case TK_String:
     case TK_Symbol:
     case TK_Minus:
     case TK_LParen:
@@ -50,6 +51,10 @@ bool ast_token_starts_expression(TokenKind kind)
 bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
+    case TK_LParen:
+        *out_left_bp  = AST_BP_POSTFIX;
+        *out_right_bp = AST_BP_POSTFIX;
+        return true;
     case TK_Plus:
     case TK_Minus:
         *out_left_bp  = AST_BP_ADDITIVE;
@@ -81,6 +86,20 @@ internal bool ast_next_tokens_start_binding(const AstParseState* state)
            tokens[state->token_index + 2].kind == TK_Colon;
 }
 
+//------------------------------------------------------------------------------
+// Return whether one AST node already represents a string-literal chain.
+
+internal bool ast_node_is_stringish(const AstParseState* state, u32 node_index)
+{
+    switch (state->nodes[node_index].kind) {
+    case AK_StringLiteral:
+    case AK_StringConcat:
+        return true;
+    default:
+        return false;
+    }
+}
+
 // Pratt parsing terminology:
 //
 // - `nud` ("null denotation") parses a token that starts an expression, such
@@ -104,6 +123,15 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .kind        = AK_IntegerLiteral,
                 .token_index = token.token_index,
                 .a           = token.value.integer_index,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
+    case TK_String:
+        {
+            AstNode node = {
+                .kind        = AK_StringLiteral,
+                .token_index = token.token_index,
+                .a           = token.value.string_index,
             };
             return ast_emit_node(state, node, out_node);
         }
@@ -159,12 +187,35 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
 internal bool
 ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 {
-    u8  left_bp  = 0;
-    u8  right_bp = 0;
-    u32 right_node;
+    u8  left_bp    = 0;
+    u8  right_bp   = 0;
+    u32 right_node = 0;
 
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {
         error_ice("Unhandled led token kind: %d", op.kind);
+    }
+
+    if (op.kind == TK_LParen) {
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
+        }
+        if (!ast_parse_expr_bp(state, 0, &right_node)) {
+            return false;
+        }
+        if (!ast_expect_token(state, TK_RParen)) {
+            return false;
+        }
+
+        AstNode node = {
+            .kind        = AK_Call,
+            .token_index = op.token_index,
+            .a           = left_node,
+            .b           = right_node,
+        };
+        return ast_emit_node(state, node, out_node);
     }
 
     if (!ast_next_token(state)) {
@@ -227,6 +278,33 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 
         if (!ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
             if (ast_next_tokens_start_binding(state)) {
+                break;
+            }
+            if (next.kind == TK_String &&
+                ast_node_is_stringish(state, left_node)) {
+                u32 right_node = 0;
+                if (!ast_next_token(state)) {
+                    return error_0201_missing_value(next.source,
+                                                    ast_token_span(state, &next),
+                                                    next.kind);
+                }
+                if (!ast_parse_nud(state, state->token, &right_node)) {
+                    return false;
+                }
+
+                AstNode node = {
+                    .kind        = AK_StringConcat,
+                    .token_index = next.token_index,
+                    .a           = left_node,
+                    .b           = right_node,
+                };
+                if (!ast_emit_node(state, node, &left_node)) {
+                    return false;
+                }
+                continue;
+            }
+            if (state->allow_statement_boundary &&
+                ast_token_starts_expression(next.kind)) {
                 break;
             }
             if (ast_token_starts_expression(next.kind)) {

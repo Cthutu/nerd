@@ -1,6 +1,6 @@
-answer :: 42
-
-main :: fn () => answer
+main :: fn () {
+    prn("Hello, world!")
+}
 ¬
 [
     {
@@ -12,7 +12,7 @@ main :: fn () => answer
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 0,
                 "character": 0
             }
         }
@@ -20,14 +20,28 @@ main :: fn () => answer
     {
         "jsonrpc": "2.0",
         "id": 3,
-        "method": "textDocument/definition",
+        "method": "textDocument/hover",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
-                "character": 19
+                "line": 1,
+                "character": 4
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 1,
+                "character": 8
             }
         }
     }
@@ -78,7 +92,7 @@ main :: fn () => answer
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
+                "value": "```nerd\nmain :: fn ()\n```\n\n- Kind: function"
             }
         }
     },
@@ -86,16 +100,19 @@ main :: fn () => answer
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
-                }
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nprn :: fn (string)\n```\n\n- Kind: function"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\n\"Hello, world!\"\n```\n\n- Type: `string`"
             }
         }
     },

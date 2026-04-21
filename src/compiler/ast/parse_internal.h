@@ -15,6 +15,7 @@
 #define AST_BP_ADDITIVE 10
 #define AST_BP_MULTIPLICATIVE 20
 #define AST_BP_PREFIX 30
+#define AST_BP_POSTFIX 40
 
 typedef struct {
     TokenKind  kind;
@@ -24,6 +25,7 @@ typedef struct {
 
     union {
         u32 integer_index;
+        u32 string_index;
         u32 symbol_handle;
     } value;
 } AstToken;
@@ -32,7 +34,9 @@ typedef struct {
     Lexer* lexer;
     u32    token_index;
     u32    integer_index;
+    u32    string_index;
     u32    symbol_index;
+    bool   allow_statement_boundary;
 
     // Current token (from last peek or next)
     AstToken token;

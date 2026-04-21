@@ -22,6 +22,7 @@ typedef enum {
 
     // Values
     TK_Integer,
+    TK_String,
     TK_Symbol,
 
     // Operators & punctuation
@@ -32,8 +33,11 @@ typedef enum {
     TK_Percent,
     TK_LParen,
     TK_RParen,
+    TK_LBrace,
+    TK_RBrace,
     TK_Colon,
     TK_FatArrow,
+    TK_ThinArrow,
 
     // Keywords
     TK_fn,
@@ -65,7 +69,9 @@ typedef struct {
     LexerMode  mode;
     Array(Token) tokens;
     Array(u64) integers;
+    Array(string) strings;
     Array(u32) symbol_handles;
+    Arena string_arena;
     Arena comment_arena;
     Array(LexerComment) comments;
     Array(u32) comment_indices;

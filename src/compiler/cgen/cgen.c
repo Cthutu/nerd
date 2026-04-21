@@ -108,6 +108,46 @@ void cgen_add_symbol_name(CGen* cgen, u32 symbol_handle)
 }
 
 //------------------------------------------------------------------------------
+// Render a C symbol name for a built-in runtime function.
+
+void cgen_add_builtin_name(CGen* cgen, u32 symbol_handle)
+{
+    arena_format(
+        &cgen->arena, STRINGP, STRINGV(lex_symbol(cgen->lexer, symbol_handle)));
+}
+
+//------------------------------------------------------------------------------
+// Render one decoded string literal as a C string expression.
+
+void cgen_add_c_string_literal(CGen* cgen, string text)
+{
+    cgen_add(cgen, "\"");
+    for (usize i = 0; i < text.count; ++i) {
+        switch (text.data[i]) {
+        case '\n':
+            cgen_add(cgen, "\\n");
+            break;
+        case '\r':
+            cgen_add(cgen, "\\r");
+            break;
+        case '\t':
+            cgen_add(cgen, "\\t");
+            break;
+        case '\\':
+            cgen_add(cgen, "\\\\");
+            break;
+        case '"':
+            cgen_add(cgen, "\\\"");
+            break;
+        default:
+            arena_format(&cgen->arena, "%c", text.data[i]);
+            break;
+        }
+    }
+    cgen_add(cgen, "\"");
+}
+
+//------------------------------------------------------------------------------
 // Render an IR value into C syntax.
 
 void cgen_add_value(CGen* cgen, const IrValue* value)
@@ -121,6 +161,17 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         break;
     case IR_VALUE_SYMBOL:
         cgen_add_symbol_name(cgen, (u32)value->value.integer);
+        break;
+    case IR_VALUE_BUILTIN:
+        cgen_add_builtin_name(cgen, (u32)value->value.integer);
+        break;
+    case IR_VALUE_STRING:
+        cgen_add(cgen, "(string){.data = (u8*)");
+        cgen_add_c_string_literal(cgen,
+                                  cgen->ir->strings[(u32)value->value.integer]);
+        arena_format(&cgen->arena,
+                     ", .count = %zu}",
+                     cgen->ir->strings[(u32)value->value.integer].count);
         break;
     default:
         kill("Unknown IR value kind: %u", value->kind);
@@ -155,6 +206,18 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, "return ");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
+}
+
+//------------------------------------------------------------------------------
+// Emit a C call from an IR call instruction.
+
+void cgen_add_call(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, "(");
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_addn(cgen, ");");
 }
 
 //------------------------------------------------------------------------------
@@ -253,6 +316,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);
             break;
+        case IR_OP_CALL:
+            cgen_add_call(cgen, instr);
+            break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");
             break;
@@ -288,7 +354,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
 
 CGen cgen_init(const Ir* ir, const Lexer* lexer)
 {
-    CGen cgen = {.lexer = lexer};
+    CGen cgen = {.ir = ir, .lexer = lexer};
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);

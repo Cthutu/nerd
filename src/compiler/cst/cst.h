@@ -14,6 +14,8 @@
 // | Name               | a                     | b                     |
 // |--------------------|-----------------------|-----------------------|
 // | CK_IntegerLiteral  | Integer index         | 0                     |
+// | CK_StringLiteral   | Lexer string index    | 0                     |
+// | CK_StringConcat    | Left node index       | Right node index      |
 // | CK_SymbolRef       | Symbol handle         | 0                     |
 // | CK_Group           | Inner node index      | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
@@ -22,11 +24,16 @@
 // | CK_IntegerMultiply | Left node index       | Right node index      |
 // | CK_IntegerDivide   | Left node index       | Right node index      |
 // | CK_IntegerModulo   | Left node index       | Right node index      |
+// | CK_Call            | Callee node index     | Arg node index        |
 // | CK_FnExpr          | Body node index       | 0                     |
+// | CK_FnBlock         | First stmt index      | End-exclusive index   |
+// | CK_Statement       | Expr node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
 
 typedef enum {
     CK_IntegerLiteral,
+    CK_StringLiteral,
+    CK_StringConcat,
     CK_SymbolRef,
     CK_Group,
     CK_IntegerNegate,
@@ -35,7 +42,10 @@ typedef enum {
     CK_IntegerMultiply,
     CK_IntegerDivide,
     CK_IntegerModulo,
+    CK_Call,
     CK_FnExpr,
+    CK_FnBlock,
+    CK_Statement,
     CK_Bind,
 } CstKind;
 

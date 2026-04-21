@@ -115,6 +115,65 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
         }
 
         //
+        // Strings
+        //
+
+        else if (c == '"') {
+            usize start = i++;
+            if (lexer->string_arena.data == NULL) {
+                arena_init(&lexer->string_arena);
+            }
+
+            usize capacity = source_code.count - start;
+            u8*   buffer   = (u8*)arena_alloc(&lexer->string_arena, capacity);
+            usize length   = 0;
+            bool  closed   = false;
+
+            while (i < source_code.count) {
+                u8 ch = source_code.data[i++];
+                if (ch == '"') {
+                    closed = true;
+                    break;
+                }
+
+                if (ch == '\\' && i < source_code.count) {
+                    u8 escaped = source_code.data[i++];
+                    switch (escaped) {
+                    case '"':
+                        ch = '"';
+                        break;
+                    case '\\':
+                        ch = '\\';
+                        break;
+                    case 'n':
+                        ch = '\n';
+                        break;
+                    case 'r':
+                        ch = '\r';
+                        break;
+                    case 't':
+                        ch = '\t';
+                        break;
+                    default:
+                        ch = escaped;
+                        break;
+                    }
+                }
+
+                buffer[length++] = ch;
+            }
+
+            if (!closed) {
+                return error_0106_unterminated_string_literal(
+                    source, (ErrorSpan){.start = start, .end = i});
+            }
+
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_String, .offset = (u32)start});
+            array_push(lexer->strings, string_from(buffer, length));
+        }
+
+        //
         // Symbols and keywords
         //
 
@@ -184,6 +243,17 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
             } else {
                 return error_0100_unexpected_character(source, i, (char)c);
             }
+        } else if (c == '-') {
+            if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_ThinArrow, .offset = (u32)i});
+                i += 2;
+            } else {
+                static TokenKind minus_token = TK_Minus;
+                array_push(lexer->tokens,
+                           (Token){.kind = minus_token, .offset = (u32)i});
+                i++;
+            }
         } else {
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic push
@@ -200,6 +270,8 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 ['%']       = TK_Percent,
                 ['(']       = TK_LParen,
                 [')']       = TK_RParen,
+                ['{']       = TK_LBrace,
+                ['}']       = TK_RBrace,
                 [':']       = TK_Colon,
             };
 #if COMPILER_CLANG || COMPILER_GCC
@@ -232,9 +304,13 @@ void lex_done(Lexer* lexer)
 {
     array_free(lexer->tokens);
     array_free(lexer->integers);
+    array_free(lexer->strings);
     array_free(lexer->symbol_handles);
     array_free(lexer->comments);
     array_free(lexer->comment_indices);
+    if (lexer->string_arena.data != NULL) {
+        arena_done(&lexer->string_arena);
+    }
     if (lexer->comment_arena.data != NULL) {
         arena_done(&lexer->comment_arena);
     }
@@ -258,17 +334,35 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
             }
             return index;
         }
+    case TK_String:
+        {
+            usize index = token->offset + 1;
+            while (index < lexer->source.source.count) {
+                if (lexer->source.source.data[index] == '\\') {
+                    index += 2;
+                    continue;
+                }
+                if (lexer->source.source.data[index] == '"') {
+                    return index + 1;
+                }
+                index++;
+            }
+            return lexer->source.source.count;
+        }
     case TK_Plus:
-    case TK_Minus:
     case TK_Star:
     case TK_Slash:
     case TK_Percent:
     case TK_LParen:
     case TK_RParen:
+    case TK_LBrace:
+    case TK_RBrace:
     case TK_Colon:
+    case TK_Minus:
         return token->offset + 1;
 
     case TK_FatArrow:
+    case TK_ThinArrow:
         return token->offset + 2;
 
     case TK_Symbol:

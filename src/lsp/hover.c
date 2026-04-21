@@ -216,6 +216,7 @@ lsp_eval_ast_node(const LspDocument* doc, u32 node_index, i64* out_value)
         }
 
     case AK_Expression:
+    case AK_Statement:
         return lsp_eval_ast_node(doc, node->a, out_value);
 
     default:
@@ -238,6 +239,32 @@ lsp_eval_decl_value(const LspDocument* doc, u32 decl_index, i64* out_value)
 }
 
 //------------------------------------------------------------------------------
+// Return the current signature text for one function declaration.
+
+internal string lsp_decl_signature(const LspDocument* doc,
+                                   Arena*             arena,
+                                   const SemaDecl*    decl)
+{
+    if (decl->kind == SK_BuiltinFunction) {
+        return s("fn (string)");
+    }
+
+    if (decl->kind != SK_Function || decl->value_node_index == LSP_NO_DECL) {
+        return s("<unknown>");
+    }
+
+    const AstNode* fn_def = &doc->front_end.ast.nodes[decl->value_node_index];
+    ASSERT(fn_def->kind == AK_FnDef, "Expected function definition");
+
+    if (fn_def->b == AFK_Block) {
+        return s("fn ()");
+    }
+
+    UNUSED(arena);
+    return s("fn () -> i32");
+}
+
+//------------------------------------------------------------------------------
 // Infer the current hover-facing type for one AST node.
 
 internal string lsp_infer_ast_type(const LspDocument* doc,
@@ -247,6 +274,9 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
     const AstNode* node = &doc->front_end.ast.nodes[node_index];
 
     switch (node->kind) {
+    case AK_StringLiteral:
+    case AK_StringConcat:
+        return s("string");
     case AK_IntegerLiteral:
     case AK_IntegerNegate:
     case AK_IntegerPlus:
@@ -266,14 +296,14 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
                 return s("<unknown>");
             }
             const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
-            if (decl->kind == SK_Function) {
-                return s("fn () -> i32");
+            if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
+                return lsp_decl_signature(doc, arena, decl);
             }
             return lsp_infer_ast_type(doc, arena, decl->value_node_index);
         }
 
     case AK_FnDef:
-        return s("fn () -> i32");
+        return node->b == AFK_Block ? s("fn ()") : s("fn () -> i32");
 
     default:
         return s("<unknown>");
@@ -311,20 +341,23 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
 {
     const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
     string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
-    string kind = decl->kind == SK_Function ? s("function") : s("constant");
+    string kind = decl->kind == SK_Constant ? s("constant") : s("function");
     string inferred_type =
-        lsp_infer_ast_type(doc, arena, decl->value_node_index);
+        decl->kind == SK_Function || decl->kind == SK_BuiltinFunction
+            ? lsp_decl_signature(doc, arena, decl)
+            : lsp_infer_ast_type(doc, arena, decl->value_node_index);
 
-    if (decl->kind == SK_Function) {
-        return string_format(
-            arena,
-            STRINGP "\n\n- Kind: " STRINGP,
-            STRINGV(lsp_markdown_code_block(
-                arena,
-                string_format(
-                    arena, STRINGP " :: fn () -> i32", STRINGV(name)))),
-            STRINGV(kind),
-            STRINGV(inferred_type));
+    if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
+        return string_format(arena,
+                             STRINGP "\n\n- Kind: " STRINGP,
+                             STRINGV(lsp_markdown_code_block(
+                                 arena,
+                                 string_format(arena,
+                                               STRINGP " :: " STRINGP,
+                                               STRINGV(name),
+                                               STRINGV(inferred_type)))),
+                             STRINGV(kind),
+                             STRINGV(inferred_type));
     }
 
     i64 value = 0;
@@ -361,9 +394,12 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
                                       u32                decl_index)
 {
     const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
-    const AstNode*  bind = &doc->front_end.ast.nodes[decl->bind_node_index];
-    usize           start_offset;
-    usize           end_offset;
+    if (decl->bind_node_index == LSP_NO_DECL) {
+        return NULL;
+    }
+    const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
+    usize          start_offset;
+    usize          end_offset;
     lsp_token_offsets(
         &doc->front_end.lexer, bind->token_index, &start_offset, &end_offset);
 
@@ -472,6 +508,22 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                                                               raw_text))));
         }
         break;
+    case TK_String:
+        {
+            usize token_end =
+                lex_token_end_offset(&doc->front_end.lexer, token);
+            string raw_text = string_from(
+                doc->front_end.lexer.source.source.data + token->offset,
+                token_end - token->offset);
+            lsp_set_markdown_hover(
+                response,
+                message->arena,
+                string_format(message->arena,
+                              STRINGP "\n\n- Type: `string`",
+                              STRINGV(lsp_markdown_code_block(message->arena,
+                                                              raw_text))));
+        }
+        break;
 
     case TK_Symbol:
         {
@@ -539,10 +591,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
         return;
     }
 
-    json_object_set_object(
-        response,
-        "result",
-        lsp_decl_location(doc, message->arena, uri, decl_index));
+    JsonValue* location =
+        lsp_decl_location(doc, message->arena, uri, decl_index);
+    if (!location) {
+        lsp_cancel(response, message->arena);
+        return;
+    }
+
+    json_object_set_object(response, "result", location);
     lsp_send_response(message->arena, response);
 }
 

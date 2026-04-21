@@ -1,6 +1,6 @@
-answer :: 42
-
-main :: fn () => answer
+main :: fn () {
+    prn("Hello, World!")
+}
 ¬
 [
     {
@@ -12,22 +12,8 @@ main :: fn () => answer
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 0,
                 "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 2,
-                "character": 19
             }
         }
     }
@@ -78,24 +64,7 @@ main :: fn () => answer
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
-                }
+                "value": "```nerd\nmain :: fn ()\n```\n\n- Kind: function"
             }
         }
     },

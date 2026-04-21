@@ -14,6 +14,7 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
     switch (kind) {
     case TK_Symbol:
     case TK_Integer:
+    case TK_String:
     case TK_LParen:
         return PQ_Expresssion;
 
@@ -39,6 +40,57 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
     } while (0)
 
 //------------------------------------------------------------------------------
+// Parse one function block body as a sequence of expression statements.
+
+internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
+{
+    ASSERT(state->token.kind == TK_LBrace, "Expected '{' token for fn block");
+
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(state->token.source,
+                                        ast_token_span(state, &state->token),
+                                        state->token.kind);
+    }
+
+    while (state->token.kind != TK_RBrace) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+
+        u32 expr_index                  = 0;
+        if (!ast_parse_expr(state, &expr_index)) {
+            state->allow_statement_boundary = previous_boundary;
+            return false;
+        }
+        state->allow_statement_boundary = previous_boundary;
+
+        u32     statement_index         = 0;
+        AstNode statement               = {
+                          .kind        = AK_Statement,
+                          .token_index = state->nodes[expr_index].token_index,
+                          .a           = expr_index,
+        };
+        if (!ast_emit_node(state, statement, &statement_index)) {
+            return false;
+        }
+
+        if (!ast_peek_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                TK_EOF);
+        }
+
+        if (state->token.kind == TK_RBrace) {
+            break;
+        }
+    }
+
+    UNUSED(fn_start_index);
+    return ast_expect_token(state, TK_RBrace);
+}
+
+//------------------------------------------------------------------------------
 // Parses a declaration of the form `fn () => <expression>`
 //
 // Emits the node sequence:
@@ -59,29 +111,46 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
     if (!ast_expect_token(state, TK_RParen)) {
         return false;
     }
-    if (!ast_expect_token(state, TK_FatArrow)) {
-        return false;
-    }
-
     u32 fn_start_index;
     u32 fn_end_index;
     u32 fn_def_index;
 
     EMIT_NODE(AK_FnStart, 0, 0, 0, fn_start_index);
+    u32 fn_kind = AFK_Expr;
 
     if (!ast_next_token(state)) {
         return error_0201_missing_value(state->token.source,
                                         ast_token_span(state, &state->token),
                                         state->token.kind);
     }
-    if (!ast_parse_expr(state, NULL)) {
-        return false;
+
+    if (state->token.kind == TK_FatArrow) {
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
+        }
+        if (!ast_parse_expr(state, NULL)) {
+            return false;
+        }
+    } else if (state->token.kind == TK_LBrace) {
+        fn_kind = AFK_Block;
+        if (!ast_parse_fn_block(state, fn_start_index)) {
+            return false;
+        }
+    } else {
+        return error_0203_expected_token(state->token.source,
+                                         ast_token_span(state, &state->token),
+                                         TK_FatArrow,
+                                         state->token.kind);
     }
 
     EMIT_NODE(AK_FnEnd, 0, 0, fn_start_index, fn_end_index);
     state->nodes[fn_start_index].b = fn_end_index;
 
-    EMIT_NODE(AK_FnDef, fn_token.token_index, fn_start_index, 0, fn_def_index);
+    EMIT_NODE(
+        AK_FnDef, fn_token.token_index, fn_start_index, fn_kind, fn_def_index);
 
     if (out_node) {
         *out_node = fn_def_index;
@@ -159,10 +228,12 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
 Ast ast_parse(Lexer* lexer)
 {
     AstParseState state = {
-        .lexer         = lexer,
-        .token_index   = 0,
-        .integer_index = 0,
-        .symbol_index  = 0,
+        .lexer                    = lexer,
+        .token_index              = 0,
+        .integer_index            = 0,
+        .string_index             = 0,
+        .symbol_index             = 0,
+        .allow_statement_boundary = false,
         .token =
             (AstToken){
                 .kind   = TK_EOF,

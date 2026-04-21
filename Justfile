@@ -72,3 +72,5 @@ install:
     just uninstall
     just package
     code --install-extension {{src_dir}}/{{vsix}} --force
+
+alias i := install

@@ -12,12 +12,12 @@
 
 void ir_add_global(Ir* ir, u32 symbol_handle)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_GLOBAL,
-        .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
-        .rvalue = {{0}, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_GLOBAL,
+            .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+        });
 }
 
 //------------------------------------------------------------------------------
@@ -25,12 +25,7 @@ void ir_add_global(Ir* ir, u32 symbol_handle)
 
 void ir_add_init_start(Ir* ir)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_INIT_START,
-        .lvalue = {0},
-        .rvalue = {{0}, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions, (IrInstruction){.op = IR_OP_INIT_START});
 }
 
 //------------------------------------------------------------------------------
@@ -38,12 +33,7 @@ void ir_add_init_start(Ir* ir)
 
 void ir_add_init_end(Ir* ir)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_INIT_END,
-        .lvalue = {0},
-        .rvalue = {{0}, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions, (IrInstruction){.op = IR_OP_INIT_END});
 }
 
 //------------------------------------------------------------------------------
@@ -51,12 +41,12 @@ void ir_add_init_end(Ir* ir)
 
 void ir_add_fn_start(Ir* ir, u32 symbol_handle)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_FN_START,
-        .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
-        .rvalue = {{0}, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_FN_START,
+            .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+        });
 }
 
 //------------------------------------------------------------------------------
@@ -64,12 +54,7 @@ void ir_add_fn_start(Ir* ir, u32 symbol_handle)
 
 void ir_add_fn_end(Ir* ir)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_FN_END,
-        .lvalue = {0},
-        .rvalue = {{0}, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions, (IrInstruction){.op = IR_OP_FN_END});
 }
 
 //------------------------------------------------------------------------------
@@ -77,12 +62,24 @@ void ir_add_fn_end(Ir* ir)
 
 void ir_add_assign(Ir* ir, IrValue lvalue, IrValue rvalue)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_ASSIGN,
-        .lvalue = lvalue,
-        .rvalue = {rvalue, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ASSIGN,
+                   .lvalue = lvalue,
+                   .rvalue = {rvalue, {0}},
+               });
+}
+
+//------------------------------------------------------------------------------
+// Append a call instruction to the IR stream.
+
+void ir_add_call(Ir* ir, IrValue callee, IrValue arg)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_CALL,
+                   .rvalue = {callee, arg},
+               });
 }
 
 //------------------------------------------------------------------------------
@@ -90,12 +87,11 @@ void ir_add_assign(Ir* ir, IrValue lvalue, IrValue rvalue)
 
 void ir_add_return(Ir* ir, IrValue rvalue)
 {
-    IrInstruction instr = {
-        .op     = IR_OP_RETURN,
-        .lvalue = {0},
-        .rvalue = {rvalue, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_RETURN,
+                   .rvalue = {rvalue, {0}},
+               });
 }
 
 //------------------------------------------------------------------------------
@@ -103,12 +99,12 @@ void ir_add_return(Ir* ir, IrValue rvalue)
 
 void ir_add_unary(Ir* ir, IrOperation op, IrValue lvalue, IrValue rhs)
 {
-    IrInstruction instr = {
-        .op     = op,
-        .lvalue = lvalue,
-        .rvalue = {rhs, {0}},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = op,
+                   .lvalue = lvalue,
+                   .rvalue = {rhs, {0}},
+               });
 }
 
 //------------------------------------------------------------------------------
@@ -117,12 +113,12 @@ void ir_add_unary(Ir* ir, IrOperation op, IrValue lvalue, IrValue rhs)
 void ir_add_binary(
     Ir* ir, IrOperation op, IrValue lvalue, IrValue lhs, IrValue rhs)
 {
-    IrInstruction instr = {
-        .op     = op,
-        .lvalue = lvalue,
-        .rvalue = {lhs, rhs},
-    };
-    array_push(ir->instructions, instr);
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = op,
+                   .lvalue = lvalue,
+                   .rvalue = {lhs, rhs},
+               });
 }
 
 //------------------------------------------------------------------------------
@@ -143,6 +139,50 @@ internal Array(IrValue) ir_make_node_values(const Ast* ast)
         array_push(node_values, ir_unset_value());
     }
     return node_values;
+}
+
+//------------------------------------------------------------------------------
+// Intern one string literal slice into the IR string pool.
+
+internal u32 ir_add_string_literal(Ir* ir, string text)
+{
+    for (u32 i = 0; i < array_count(ir->strings); ++i) {
+        if (string_eq(ir->strings[i], text)) {
+            return i;
+        }
+    }
+
+    u32 index = (u32)array_count(ir->strings);
+    array_push(ir->strings, text);
+    return index;
+}
+
+//------------------------------------------------------------------------------
+// Build and intern one concatenated string literal slice into the IR pool.
+
+internal u32 ir_add_concat_string(Ir* ir, string lhs, string rhs)
+{
+    u8* data = (u8*)arena_alloc(&ir->arena, lhs.count + rhs.count);
+    if (lhs.count > 0) {
+        memcpy(data, lhs.data, lhs.count);
+    }
+    if (rhs.count > 0) {
+        memcpy(data + lhs.count, rhs.data, rhs.count);
+    }
+
+    return ir_add_string_literal(ir, string_from(data, lhs.count + rhs.count));
+}
+
+//------------------------------------------------------------------------------
+// Return whether one declaration still requires emitted runtime state.
+
+internal bool ir_decl_requires_runtime(const Sema* sema, const SemaDecl* decl)
+{
+    if (decl->kind != SK_Constant) {
+        return false;
+    }
+
+    return !sema->node_const_known[decl->value_node_index];
 }
 
 //------------------------------------------------------------------------------
@@ -171,22 +211,59 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
+    case AK_StringLiteral:
+        {
+            IrValue value = {
+                .kind = IR_VALUE_STRING,
+                .value.integer =
+                    ir_add_string_literal(ir, ast_get_string(lex, node)),
+            };
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_StringConcat:
+        {
+            IrValue lhs = ir_lower_node(
+                lex, ast, sema, node->a, node_values, next_value_index, ir);
+            IrValue rhs = ir_lower_node(
+                lex, ast, sema, node->b, node_values, next_value_index, ir);
+            ASSERT(lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING,
+                   "Expected adjacent string literals to lower to string values");
+            IrValue value = {
+                .kind = IR_VALUE_STRING,
+                .value.integer = ir_add_concat_string(
+                    ir,
+                    ir->strings[(u32)lhs.value.integer],
+                    ir->strings[(u32)rhs.value.integer]),
+            };
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Expression:
+        {
+            IrValue value = ir_lower_node(
+                lex, ast, sema, node->a, node_values, next_value_index, ir);
+            node_values[node_index] = value;
+            return value;
+        }
+
     case AK_SymbolRef:
         {
             u32 decl_index = sema->node_decl_indices[node_index];
             ASSERT(decl_index != U32_MAX, "Expected resolved symbol reference");
             const SemaDecl* decl = &sema->decls[decl_index];
-            ASSERT(decl->kind == SK_Constant,
-                   "Only constant bindings can be referenced as expression "
-                   "values");
 
-            IrValue value = {
-                .kind          = IR_VALUE_SYMBOL,
-                .value.integer = decl->symbol_handle,
+            IrValue value        = {
+                       .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
+                                                                : IR_VALUE_SYMBOL,
+                       .value.integer = decl->symbol_handle,
             };
             node_values[node_index] = value;
             return value;
         }
+
     case AK_IntegerNegate:
         {
             IrValue rhs = ir_lower_node(
@@ -199,6 +276,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
             node_values[node_index] = value;
             return value;
         }
+
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -238,17 +316,31 @@ internal IrValue ir_lower_node(const Lexer* lex,
             node_values[node_index] = value;
             return value;
         }
-    case AK_Expression:
-        {
-            IrValue value = ir_lower_node(
-                lex, ast, sema, node->a, node_values, next_value_index, ir);
-            node_values[node_index] = value;
-            return value;
-        }
+
     default:
         error_ice("Unhandled AST node kind during IR lowering: %u", node->kind);
         return (IrValue){0};
     }
+}
+
+//------------------------------------------------------------------------------
+// Lower one call expression as a statement.
+
+internal void ir_generate_call_statement(const Lexer*   lex,
+                                         const Ast*     ast,
+                                         const Sema*    sema,
+                                         const AstNode* call_node,
+                                         Array(IrValue) node_values,
+                                         u64* next_value_index,
+                                         Ir*  ir)
+{
+    ASSERT(call_node->kind == AK_Call, "Expected call node");
+
+    IrValue callee = ir_lower_node(
+        lex, ast, sema, call_node->a, node_values, next_value_index, ir);
+    IrValue arg = ir_lower_node(
+        lex, ast, sema, call_node->b, node_values, next_value_index, ir);
+    ir_add_call(ir, callee, arg);
 }
 
 //------------------------------------------------------------------------------
@@ -288,38 +380,64 @@ internal void ir_generate_function(const Lexer*    lex,
     const AstNode* bind_node     = &ast->nodes[decl->bind_node_index];
     const AstNode* fn_def_node   = &ast->nodes[bind_node->b];
     const AstNode* fn_start_node = &ast->nodes[fn_def_node->a];
-    usize          fn_end        = fn_start_node->b;
 
     ASSERT(fn_def_node->kind == AK_FnDef, "Expected function definition");
     ASSERT(fn_start_node->kind == AK_FnStart, "Expected function start");
-    ASSERT(fn_end > fn_def_node->a, "Expected non-empty function range");
+    ASSERT(fn_start_node->b > fn_def_node->a, "Expected valid function range");
 
     ir_add_fn_start(ir, ast_get_symbol(bind_node));
 
     Array(IrValue) node_values = ir_make_node_values(ast);
     u64 next_value_index       = 0;
-    ASSERT(fn_end > 0, "Expected function body expression");
-    ASSERT(ast->nodes[fn_end - 1].kind == AK_Expression,
-           "Expected expression node before function end");
 
-    IrValue result = ir_lower_node(
-        lex, ast, sema, fn_end - 1, node_values, &next_value_index, ir);
-    ir_add_return(ir, result);
-    ir_add_fn_end(ir);
+    if (fn_def_node->b == AFK_Expr) {
+        ASSERT(ast->nodes[fn_start_node->b - 1].kind == AK_Expression,
+               "Expected expression node before function end");
+        IrValue result = ir_lower_node(lex,
+                                       ast,
+                                       sema,
+                                       fn_start_node->b - 1,
+                                       node_values,
+                                       &next_value_index,
+                                       ir);
+        ir_add_return(ir, result);
+    } else {
+        for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
+            const AstNode* node = &ast->nodes[i];
+            if (node->kind != AK_Statement) {
+                continue;
+            }
 
-    array_free(node_values);
-}
+            const AstNode* expr            = &ast->nodes[node->a];
+            u32            expr_root_index = node->a;
+            if (expr->kind == AK_Expression) {
+                expr_root_index = expr->a;
+                expr            = &ast->nodes[expr_root_index];
+            }
 
-//------------------------------------------------------------------------------
-// Generate IR from ordered semantic declarations.
+            if (expr->kind == AK_Call) {
+                ir_generate_call_statement(
+                    lex, ast, sema, expr, node_values, &next_value_index, ir);
+            } else {
+                (void)ir_lower_node(lex,
+                                    ast,
+                                    sema,
+                                    expr_root_index,
+                                    node_values,
+                                    &next_value_index,
+                                    ir);
+            }
+        }
 
-internal bool ir_decl_requires_runtime(const Sema* sema, const SemaDecl* decl)
-{
-    if (decl->kind != SK_Constant) {
-        return true;
+        // Normal block functions currently omit explicit return types, so the
+        // first implementation lowers them as i32-returning functions with an
+        // implicit zero result.
+        ir_add_return(ir,
+                      (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0});
     }
 
-    return !sema->node_const_known[decl->value_node_index];
+    ir_add_fn_end(ir);
+    array_free(node_values);
 }
 
 //------------------------------------------------------------------------------
@@ -329,10 +447,11 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 {
     Ir   ir            = {0};
     bool has_constants = false;
+    arena_init(&ir.arena);
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
-        if (decl->kind == SK_Constant && ir_decl_requires_runtime(sema, decl)) {
+        if (ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;
             ir_add_global(&ir, decl->symbol_handle);
         }
@@ -344,8 +463,7 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         ir_add_init_start(&ir);
         for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
             const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
-            if (decl->kind == SK_Constant &&
-                ir_decl_requires_runtime(sema, decl)) {
+            if (ir_decl_requires_runtime(sema, decl)) {
                 ir_generate_global_init(
                     lex, ast, sema, decl, &next_global_value_index, &ir);
             }
@@ -365,7 +483,14 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 //------------------------------------------------------------------------------
 // Free the IR instruction table.
 
-void ir_done(Ir* ir) { array_free(ir->instructions); }
+void ir_done(Ir* ir)
+{
+    array_free(ir->instructions);
+    array_free(ir->strings);
+    if (ir->arena.data != NULL) {
+        arena_done(&ir->arena);
+    }
+    *ir = (Ir){0};
+}
 
-//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

@@ -101,6 +101,16 @@ bool ast_peek_token(AstParseState* state)
         };
         return true;
 
+    case TK_String:
+        state->token = (AstToken){
+            .kind               = TK_String,
+            .source             = source,
+            .offset             = token.offset,
+            .token_index        = state->token_index,
+            .value.string_index = state->string_index,
+        };
+        return true;
+
     case TK_Symbol:
         state->token = (AstToken){
             .kind        = TK_Symbol,
@@ -134,6 +144,9 @@ bool ast_next_token(AstParseState* state)
     switch (state->token.kind) {
     case TK_Integer:
         state->integer_index++;
+        break;
+    case TK_String:
+        state->string_index++;
         break;
     case TK_Symbol:
         state->symbol_index++;

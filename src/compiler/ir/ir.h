@@ -18,6 +18,7 @@ typedef enum : u8 {
     IR_OP_FN_START,
     IR_OP_FN_END,
     IR_OP_ASSIGN,
+    IR_OP_CALL,
     IR_OP_NEGATE,
     IR_OP_ADD,
     IR_OP_SUBTRACT,
@@ -32,6 +33,8 @@ typedef enum : u8 {
     IR_VALUE_VARIABLE,
     IR_VALUE_INTEGER,
     IR_VALUE_SYMBOL,
+    IR_VALUE_BUILTIN,
+    IR_VALUE_STRING,
 } IrValueKind;
 
 typedef struct {
@@ -49,6 +52,8 @@ typedef struct {
 
 typedef struct {
     Array(IrInstruction) instructions;
+    Array(string) strings;
+    Arena arena;
 } Ir;
 
 //------------------------------------------------------------------------------

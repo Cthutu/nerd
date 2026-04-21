@@ -12,6 +12,7 @@ typedef enum {
     LSP_SEMANTIC_KEYWORD,
     LSP_SEMANTIC_NUMBER,
     LSP_SEMANTIC_OPERATOR,
+    LSP_SEMANTIC_STRING,
 } LspSemanticTokenType;
 
 typedef struct {
@@ -77,7 +78,9 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
         u32 decl_index = lsp_semantic_find_decl_index_by_symbol_handle(
             &doc->front_end.sema, doc->front_end.ast.nodes[bind_node_index].a);
         if (decl_index != U32_MAX &&
-            doc->front_end.sema.decls[decl_index].kind == SK_Function) {
+            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
+             doc->front_end.sema.decls[decl_index].kind ==
+                 SK_BuiltinFunction)) {
             return LSP_SEMANTIC_FUNCTION;
         }
         return LSP_SEMANTIC_VARIABLE;
@@ -89,7 +92,9 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
         ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
         u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
         if (decl_index != U32_MAX &&
-            doc->front_end.sema.decls[decl_index].kind == SK_Function) {
+            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
+             doc->front_end.sema.decls[decl_index].kind ==
+                 SK_BuiltinFunction)) {
             return LSP_SEMANTIC_FUNCTION;
         }
     }
@@ -117,6 +122,9 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_Integer:
         *out_type = LSP_SEMANTIC_NUMBER;
         return true;
+    case TK_String:
+        *out_type = LSP_SEMANTIC_STRING;
+        return true;
 
     case TK_Plus:
     case TK_Minus:
@@ -125,6 +133,7 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_Percent:
     case TK_Colon:
     case TK_FatArrow:
+    case TK_ThinArrow:
         *out_type = LSP_SEMANTIC_OPERATOR;
         return true;
 
