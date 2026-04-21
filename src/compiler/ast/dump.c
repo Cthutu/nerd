@@ -37,7 +37,6 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 {
     cstr index_colour          = "\x1b[38;5;214m";
     cstr kind_colour           = "\x1b[38;5;111m";
-    cstr ref_colour            = "\x1b[38;5;178m";
     cstr token_colour          = "\x1b[38;5;117m";
     cstr value_colour          = "\x1b[38;5;82m";
 
@@ -45,7 +44,6 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
     array_push(columns,
                (TableColumn){.title = "Index", .colour = index_colour},
                (TableColumn){.title = "Kind", .colour = kind_colour},
-               (TableColumn){.title = "Ref", .colour = ref_colour},
                (TableColumn){.title = "Token", .colour = token_colour},
                (TableColumn){.title = "Value", .colour = value_colour});
 
@@ -60,7 +58,6 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         TableCell row[5];
         row[0] = table_cell_u32((u32)i);
         row[1] = table_cell_string(ast_kind_to_string(ast->nodes[i].kind));
-        row[2] = table_cell_i32(ast->nodes[i].ref);
 
         AstNode* node  = &ast->nodes[i];
         Token*   token = &lexer->tokens[node->token_index];
@@ -74,10 +71,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
 
         switch (node->kind) {
         case AK_IntegerLiteral:
-            row[4] = table_cell_u64(lexer->integers[node->a]);
+            row[3] = table_cell_u64(lexer->integers[node->a]);
             break;
         case AK_IntegerNegate:
-            row[4] = table_cell_string(
+            row[3] = table_cell_string(
                 string_format(&temp_arena, "rhs=%u", node->a));
             break;
         case AK_IntegerPlus:
@@ -85,15 +82,15 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_IntegerMultiply:
         case AK_IntegerDivide:
         case AK_IntegerModulo:
-            row[4] = table_cell_string(
+            row[3] = table_cell_string(
                 string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
             break;
         case AK_Expression:
-            row[4] = table_cell_string(
+            row[3] = table_cell_string(
                 string_format(&temp_arena, "root=%u", node->a));
             break;
         default:
-            row[4] = table_cell_string(s("Unknown"));
+            row[3] = table_cell_string(s("Unknown"));
             break;
         }
         table_add_row(&table, row);
