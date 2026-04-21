@@ -203,7 +203,7 @@
         } while (0)
 #    define VERIFY(condition, ...) ASSERT(condition, __VA_ARGS__)
 #else
-#    define ASSSERT(condition, ...)
+#    define ASSERT(condition, ...)
 #    define VERIFY(condition, ...) (condition)
 #endif // CONFIG_DEBUG
 
