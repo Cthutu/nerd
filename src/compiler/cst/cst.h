@@ -49,8 +49,8 @@ typedef struct {
 
 typedef struct {
     Array(CstNode) nodes;
-    Array(u64)     integers;
-    Array(u32)     bindings;
+    Array(u64) integers;
+    Array(u32) bindings;
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);

@@ -16,9 +16,9 @@
 typedef struct {
     const Lexer* lexer;
     u32          token_index;
-    Array(u32)   token_integer_indices;
-    Array(u32)   token_symbol_handles;
-    Cst          cst;
+    Array(u32) token_integer_indices;
+    Array(u32) token_symbol_handles;
+    Cst cst;
 } CstParseState;
 
 //------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ internal Token cst_current_token(const CstParseState* state)
 {
     if (state->token_index >= array_count(state->lexer->tokens)) {
         return (Token){
-            .kind = TK_EOF,
+            .kind   = TK_EOF,
             .offset = (u32)state->lexer->source.source.count,
         };
     }
@@ -109,9 +109,8 @@ internal bool cst_starts_binding(const CstParseState* state)
 //------------------------------------------------------------------------------
 // Return the infix binding powers for the given token kind.
 
-internal bool cst_infix_binding_power(TokenKind kind,
-                                      u8*       out_left_bp,
-                                      u8*       out_right_bp)
+internal bool
+cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
     case TK_Plus:
@@ -135,9 +134,7 @@ internal bool cst_infix_binding_power(TokenKind kind,
 //------------------------------------------------------------------------------
 // Parse one expression using Pratt binding powers.
 
-internal bool cst_parse_expr_bp(CstParseState* state,
-                                u8             min_bp,
-                                u32*           out_node);
+internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Parse one prefix expression.
@@ -157,9 +154,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
             cst_advance(state);
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind = CK_IntegerLiteral,
+                                     .kind        = CK_IntegerLiteral,
                                      .token_index = state->token_index - 1,
-                                     .a = integer_index,
+                                     .a           = integer_index,
                                  },
                                  out_node);
         }
@@ -174,9 +171,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
             cst_advance(state);
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind = CK_SymbolRef,
+                                     .kind        = CK_SymbolRef,
                                      .token_index = state->token_index - 1,
-                                     .a = symbol_handle,
+                                     .a           = symbol_handle,
                                  },
                                  out_node);
         }
@@ -192,9 +189,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind = CK_IntegerNegate,
+                                     .kind        = CK_IntegerNegate,
                                      .token_index = token_index,
-                                     .a = operand,
+                                     .a           = operand,
                                  },
                                  out_node);
         }
@@ -211,9 +208,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind = CK_Group,
+                                     .kind        = CK_Group,
                                      .token_index = token_index,
-                                     .a = inner,
+                                     .a           = inner,
                                  },
                                  out_node);
         }
@@ -226,9 +223,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 //------------------------------------------------------------------------------
 // Parse one expression using Pratt binding powers.
 
-internal bool cst_parse_expr_bp(CstParseState* state,
-                                u8             min_bp,
-                                u32*           out_node)
+internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 {
     u32 left = 0;
     if (!cst_parse_prefix(state, &left)) {
@@ -275,10 +270,10 @@ internal bool cst_parse_expr_bp(CstParseState* state,
 
         if (!cst_emit_node(state,
                            (CstNode){
-                               .kind = kind,
+                               .kind        = kind,
                                .token_index = token_index,
-                               .a = left,
-                               .b = right,
+                               .a           = left,
+                               .b           = right,
                            },
                            &left)) {
             return false;
@@ -305,9 +300,9 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
 
     return cst_emit_node(state,
                          (CstNode){
-                             .kind = CK_FnExpr,
+                             .kind        = CK_FnExpr,
                              .token_index = token_index,
-                             .a = body,
+                             .a           = body,
                          },
                          out_node);
 }
@@ -350,10 +345,10 @@ internal bool cst_parse_bind(CstParseState* state, u32* out_node)
 
     return cst_emit_node(state,
                          (CstNode){
-                             .kind = CK_Bind,
+                             .kind        = CK_Bind,
                              .token_index = token_index,
-                             .a = symbol_handle,
-                             .b = value,
+                             .a           = symbol_handle,
+                             .b           = value,
                          },
                          out_node);
 }

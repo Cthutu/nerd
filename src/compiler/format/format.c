@@ -165,8 +165,7 @@ internal void format_emit_expr(StringBuilder* sb,
 {
     const CstNode* node            = &cst->nodes[node_index];
     int            node_precedence = format_expr_precedence(node);
-    bool           wrap            = node->kind != CK_Group &&
-                           node_precedence < parent_precedence;
+    bool wrap = node->kind != CK_Group && node_precedence < parent_precedence;
 
     if (wrap) {
         sb_append_char(sb, '(');
