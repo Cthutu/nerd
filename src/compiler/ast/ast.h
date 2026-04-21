@@ -13,18 +13,20 @@
 //------------------------------------------------------------------------------
 // Table of AST Nodes:
 //
-// | Name               | ref                           | a                 | b                  |
-// |--------------------|-------------------------------|-------------------|--------------------|
-// | AK_IntegerLiteral  | 0                             | Integer index     | 0                  |
-// | AK_IntegerNegate   | Offset to first node          | Ast index of rhs  | 0                  |
-// | AK_IntegerPlus     | Offset to first node          | Ast index of left | Ast index of right |
-// | AK_IntegerMinus    | Offset to first node          | Ast index of left | Ast index of right |
-// | AK_IntegerMultiply | Offset to first node          | Ast index of left | Ast index of right |
-// | AK_IntegerDivide   | Offset to first node          | Ast index of left | Ast index of right |
-// | AK_IntegerModulo   | Offset to first node          | Ast index of left | Ast index of right |
-// | AK_Expression      | Offset to first node          | Ast index of root | 0                  |
-// | AK_Bind            | Offset to type or expression  | Symbol            | 0                  |
-// | AK_FnDef           | Offset to expression          | 0                 | 0                  |
+// | Name               | a                 | b                               |
+// |--------------------|-------------------|---------------------------------|
+// | AK_IntegerLiteral  | Integer index     | 0                               |
+// | AK_IntegerNegate   | Ast index of rhs  | 0                               |
+// | AK_IntegerPlus     | Ast index of left | Ast index of right              |
+// | AK_IntegerMinus    | Ast index of left | Ast index of right              |
+// | AK_IntegerMultiply | Ast index of left | Ast index of right              |
+// | AK_IntegerDivide   | Ast index of left | Ast index of right              |
+// | AK_IntegerModulo   | Ast index of left | Ast index of right              |
+// | AK_Expression      | Ast index of root | 0                               |
+// | AK_Bind            | Symbol            | Ast index of type or expression |
+// | AK_FnDef           | Body index        | 0                               |
+// | AK_FnStart         | AK_FnDef index    | AK_FnEnd index                  |
+// | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
 //
 // clang-format on
 
@@ -39,12 +41,14 @@ typedef enum {
     AK_Expression,
     AK_Bind,
     AK_FnDef,
+    AK_FnStart,
+    AK_FnEnd,
 } AstKind;
 
 typedef struct {
     AstKind kind : 8;
     u8      _pad;
-    i16     ref; // Usually igned offset to AstNode index for start
+    u16     _pad2;
     u32     token_index;
     u32     a, b; // Meaning depends on the AstKind
 } AstNode;
