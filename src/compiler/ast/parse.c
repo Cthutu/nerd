@@ -6,6 +6,9 @@
 
 #include <compiler/ast/parse_internal.h>
 
+//------------------------------------------------------------------------------
+// Classify which top-level parser should handle a token.
+
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
     switch (kind) {
@@ -35,6 +38,7 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
         }                                                                      \
     } while (0)
 
+//------------------------------------------------------------------------------
 // Parses a declaration of the form `fn () => <expression>`
 //
 // Emits the node sequence:
@@ -81,6 +85,7 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
     return true;
 }
 
+//------------------------------------------------------------------------------
 // Parses a binding of the form `<symbol> :: <declaration or expression>`
 //
 // Emits the node sequence:
@@ -143,6 +148,9 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     return ast_emit_node(state, node, out_node);
 }
 
+//------------------------------------------------------------------------------
+// Parse the full source file as a sequence of top-level bindings.
+
 Ast ast_parse(Lexer* lexer)
 {
     AstParseState state = {
@@ -193,6 +201,7 @@ error:
 }
 
 //------------------------------------------------------------------------------
+// Free the parser's AST node table.
 
 void ast_done(Ast* ast) { array_free(ast->nodes); }
 

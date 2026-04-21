@@ -7,6 +7,7 @@
 #include <compiler/ast/parse_internal.h>
 
 //------------------------------------------------------------------------------
+// Map a token kind to the corresponding binary AST node kind.
 
 internal AstKind ast_binary_kind_from_token(TokenKind kind)
 {
@@ -27,6 +28,9 @@ internal AstKind ast_binary_kind_from_token(TokenKind kind)
     }
 }
 
+//------------------------------------------------------------------------------
+// Report whether a token can begin an expression.
+
 bool ast_token_starts_expression(TokenKind kind)
 {
     switch (kind) {
@@ -38,6 +42,9 @@ bool ast_token_starts_expression(TokenKind kind)
         return false;
     }
 }
+
+//------------------------------------------------------------------------------
+// Return Pratt binding powers for supported infix operators.
 
 bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
@@ -68,6 +75,9 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 // Example:
 // - In `-2`, `-` is handled by `nud`.
 // - In `1 - 2`, `-` is handled by `led`.
+
+//------------------------------------------------------------------------------
+// Parse the current token as the start of an expression fragment.
 
 internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
 {
@@ -106,6 +116,9 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
     }
 }
 
+//------------------------------------------------------------------------------
+// Parse the current token as an infix operator that extends an existing lhs.
+
 internal bool
 ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 {
@@ -129,6 +142,9 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
     };
     return ast_emit_node(state, node, out_node);
 }
+
+//------------------------------------------------------------------------------
+// Parse an expression starting at the current token and wrap it in AK_Expression.
 
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
 {
