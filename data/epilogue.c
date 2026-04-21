@@ -1,1 +1,4 @@
-int main() { return $main(); }
+int main() {
+    $init();
+    return $main();
+}

@@ -116,11 +116,18 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
 //------------------------------------------------------------------------------
 // Semantic analysis errors
 
-bool error_0300_unknown_symbol(NerdSource source, ErrorSpan span, string symbol);
+bool error_0300_unknown_symbol(NerdSource source,
+                               ErrorSpan  span,
+                               string     symbol);
 bool error_0301_duplicate_binding(NerdSource source,
                                   ErrorSpan  span,
                                   string     symbol,
                                   ErrorSpan  previous_span);
+bool error_0302_dependency_cycle(NerdSource source,
+                                 ErrorSpan  span,
+                                 string     symbol,
+                                 ErrorSpan  dependency_span,
+                                 string     dependency_symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

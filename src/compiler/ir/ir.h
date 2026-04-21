@@ -12,6 +12,9 @@
 //------------------------------------------------------------------------------
 
 typedef enum : u8 {
+    IR_OP_GLOBAL,
+    IR_OP_INIT_START,
+    IR_OP_INIT_END,
     IR_OP_FN_START,
     IR_OP_FN_END,
     IR_OP_ASSIGN,

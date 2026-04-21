@@ -19,7 +19,7 @@ main :: fn () => mystery
     ],
     "notes": [],
     "help": [
-        "Add a binding for `mystery` before it is used or fix the spelling."
+        "Add a binding for `mystery` or fix the spelling."
     ]
 }
 ¬

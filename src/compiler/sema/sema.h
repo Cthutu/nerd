@@ -26,10 +26,20 @@ typedef struct {
 } SemaDecl;
 
 //------------------------------------------------------------------------------
+// A dependency edge between two top-level declarations.
+
+typedef struct {
+    u32 from_decl_index;
+    u32 to_decl_index;
+} SemaDeclDep;
+
+//------------------------------------------------------------------------------
 // Compact semantic side tables keyed by declaration and AST node index.
 
 typedef struct {
     Array(SemaDecl) decls;
+    Array(SemaDeclDep) deps;
+    Array(u32) ordered_decl_indices;
     Array(u32) node_decl_indices;
 } Sema;
 

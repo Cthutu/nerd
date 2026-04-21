@@ -106,12 +106,11 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "root=%u", node->a));
             break;
         case AK_Bind:
-            row[3] = table_cell_string(string_format(&temp_arena,
-                                                     "symbol=" STRINGP
-                                                     " value=%u",
-                                                     STRINGV(lex_symbol(
-                                                         lexer, node->a)),
-                                                     node->b));
+            row[3] = table_cell_string(
+                string_format(&temp_arena,
+                              "symbol=" STRINGP " value=%u",
+                              STRINGV(lex_symbol(lexer, node->a)),
+                              node->b));
             break;
         case AK_FnDef:
             row[3] = table_cell_string(

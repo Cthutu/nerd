@@ -119,6 +119,9 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
     case IR_VALUE_INTEGER:
         arena_format(&cgen->arena, "%u", (u32)value->value.integer);
         break;
+    case IR_VALUE_SYMBOL:
+        cgen_add_symbol_name(cgen, (u32)value->value.integer);
+        break;
     default:
         kill("Unknown IR value kind: %u", value->kind);
         break;
@@ -130,9 +133,13 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
 
 void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
 {
-    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
     cgen_start_line(cgen);
-    cgen_add(cgen, "int ");
+    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
+        cgen_add(cgen, "int ");
+    } else {
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+               "Expected assignable lvalue");
+    }
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
@@ -155,9 +162,13 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
-    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
     cgen_start_line(cgen);
-    cgen_add(cgen, "int ");
+    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
+        cgen_add(cgen, "int ");
+    } else {
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+               "Expected assignable lvalue");
+    }
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add(cgen, op);
@@ -170,9 +181,13 @@ void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
 
 void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
-    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
     cgen_start_line(cgen);
-    cgen_add(cgen, "int ");
+    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
+        cgen_add(cgen, "int ");
+    } else {
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+               "Expected assignable lvalue");
+    }
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
@@ -182,13 +197,40 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 }
 
 //------------------------------------------------------------------------------
+// Emit a C global declaration for a top-level constant binding.
+
+void cgen_add_global(CGen* cgen, const IrInstruction* instr)
+{
+    ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL, "Expected global symbol");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "int ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_addn(cgen, ";");
+}
+
+//------------------------------------------------------------------------------
 // C generation
 
 void cgen_generate(CGen* cgen, const Ir* ir)
 {
+    bool saw_init = false;
+
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];
         switch (instr->op) {
+        case IR_OP_GLOBAL:
+            cgen_add_global(cgen, instr);
+            break;
+        case IR_OP_INIT_START:
+            saw_init = true;
+            cgen_add_line(cgen, "int $init() {");
+            cgen_indent(cgen);
+            break;
+        case IR_OP_INIT_END:
+            cgen_add_line(cgen, "return 0;");
+            cgen_dedent(cgen);
+            cgen_add_line(cgen, "}");
+            break;
         case IR_OP_FN_START:
             cgen_start_line(cgen);
             cgen_add(cgen, "int ");
@@ -229,6 +271,14 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             abort();
             break;
         }
+    }
+
+    if (!saw_init) {
+        cgen_add_line(cgen, "int $init() {");
+        cgen_indent(cgen);
+        cgen_add_line(cgen, "return 0;");
+        cgen_dedent(cgen);
+        cgen_add_line(cgen, "}");
     }
 }
 

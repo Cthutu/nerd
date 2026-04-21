@@ -43,6 +43,16 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         const IrInstruction* instr = &ir->instructions[i];
 
         switch (instr->op) {
+        case IR_OP_GLOBAL:
+            sb_append_cstr(&sb, "global ");
+            ir_render_value(&sb, lexer, &instr->lvalue);
+            break;
+        case IR_OP_INIT_START:
+            sb_append_cstr(&sb, "init");
+            break;
+        case IR_OP_INIT_END:
+            sb_append_cstr(&sb, "end");
+            break;
         case IR_OP_FN_START:
             sb_append_cstr(&sb, "fn ");
             ir_render_value(&sb, lexer, &instr->lvalue);

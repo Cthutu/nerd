@@ -10,16 +10,15 @@ plan to reach the first milestone:
 
 From the current codebase and test suite:
 
-- The pipeline is `lexer -> AST parser -> IR generator -> C generator -> clang`.
-- The parser now recognises top-level bindings and `fn () => <expr>`.
-- The AST contains binding and function nodes, but IR generation still only
-  lowers plain expression trees and only returns when the final AST node is
-  `AK_Expression`.
-- The C generator emits a single hard-coded `int $main() { ... }` body and does
-  not yet model top-level declarations.
-- The test suite currently fails at the language and AST-error layers.
-- `tests/language/006-global-vars.t` already expects global binding resolution,
-  but there is no symbol table or semantic analysis phase yet.
+- The pipeline is `lexer -> AST parser -> sema -> IR generator -> C generator -> clang`.
+- The parser recognises top-level bindings and `fn () => <expr>`.
+- Semantic analysis exists as a separate front-end phase.
+- Top-level bindings are resolved through compact semantic tables.
+- Dependency tracking and ordering exist for forward-referenced top-level
+  bindings.
+- IR and C generation model top-level declarations, generated init code, and
+  generated functions such as `$main`.
+- The current language and error tests pass via `just test`.
 
 ## Guiding Rules
 
@@ -97,20 +96,20 @@ From the current codebase and test suite:
   - a surrounding separator comment such as `//------------------------------------------------------------------------------`
     before each function definition
 
-## Milestone 1: Pass Tests Via `just test`
+## Milestone 1: Pass Tests Via `just test` (Completed)
 
-- [ ] 1. Record and preserve the failing baseline.
+- [X] 1. Record and preserve the failing baseline.
   - Keep `just test` as the main regression gate.
   - Treat the tests under `tests/` as the acceptance set for this milestone.
 
-- [ ] 2. Standardise parser token-consumption architecture.
+- [X] 2. Standardise parser token-consumption architecture.
   - Choose one parser contract and apply it consistently across top-level,
     declaration, binding, and expression parsing helpers.
   - Remove mixed assumptions about whether the current token has already been
     consumed.
   - Make helper comments explicit about parser state on entry and exit.
 
-- [ ] 3. Restore function-body IR/C generation for the already-parsed `fn`.
+- [X] 3. Restore function-body IR/C generation for the already-parsed `fn`.
   - Make IR generation recognise `AK_FnDef`, `AK_FnStart`, and `AK_FnEnd`.
   - Emit function-scoped IR with explicit `fn ... end` structure so the current
     IR snapshots can pass.
@@ -118,7 +117,7 @@ From the current codebase and test suite:
     from a top-level trailing expression.
   - Goal: pass `tests/language/001` through `005`.
 
-- [ ] 4. Fix AST/expression error behaviour to match the existing error tests.
+- [X] 4. Fix AST/expression error behaviour to match the existing error tests.
   - Preserve expression-local errors instead of allowing top-level parsing to
     collapse them into `0204 Expected a symbol to start a binding`.
   - Verify missing value, missing operator, and delimiter cases produce the
@@ -126,7 +125,7 @@ From the current codebase and test suite:
   - Goal: pass `tests/errors/002` and `003` without weakening current parser
     structure.
 
-- [ ] 5. Add a semantic analysis phase to the front end.
+- [X] 5. Add a semantic analysis phase to the front end.
   - Extend the front-end pipeline to `lex -> parse -> sema -> ir`.
   - Reserve semantic diagnostics for the `0300`-`0399` error-code range.
   - Define a semantic output structure for:
@@ -139,7 +138,7 @@ From the current codebase and test suite:
     node shape unless there is no cheaper alternative.
   - Keep this minimal at first: enough for the current tests.
 
-- [ ] 6. Introduce a top-level symbol table.
+- [X] 6. Introduce a top-level symbol table.
   - Map binding names to semantic declarations.
   - Distinguish at least:
     - constant/value bindings
@@ -147,25 +146,24 @@ From the current codebase and test suite:
   - Reject duplicate bindings and unresolved symbols once semantic diagnostics
     are added.
 
-- [ ] 7. Resolve symbol references in expressions.
+- [X] 7. Resolve symbol references in expressions.
   - Allow `main :: fn () => answer / magic_number` to resolve both names.
   - Support referencing earlier top-level constant bindings from function bodies.
   - Support forward references between top-level bindings.
 
-- [ ] 8. Lower semantic bindings into IR.
+- [X] 8. Lower semantic bindings into IR.
   - Emit IR for top-level constants and functions from semantic output.
   - Keep the first implementation simple:
     - constants lower to named/global declarations
     - functions lower to separate IR function bodies
   - Ensure `main` is explicitly recognised as the binary entry point.
 
-- [ ] 9. Build dependency tracking and ordering for top-level bindings.
+- [X] 9. Build dependency tracking and ordering for top-level bindings.
   - Record top-level binding dependencies during semantic analysis.
   - Derive an ordered declaration/definition sequence from those dependencies.
-  - Decide where cycle handling belongs and report useful diagnostics when it is
-    not yet supported.
+  - Report useful cycle diagnostics when a binding dependency loop is found.
 
-- [ ] 10. Extend C generation to match the new IR model.
+- [X] 10. Extend C generation to match the new IR model.
   - Generate top-level declarations in dependency-safe order.
   - Generate one C function per Nerd function.
   - Preserve the `$` prefix for every compiler-generated C function name,
@@ -175,7 +173,7 @@ From the current codebase and test suite:
     or fold them in the compiler.
   - Keep generated output stable enough for snapshot-style tests.
 
-- [ ] 11. Add and update tests as each increment lands.
+- [X] 11. Add and update tests as each increment lands.
   - Add focused language tests for:
     - top-level constant lookup
     - symbol use inside function bodies
@@ -273,6 +271,135 @@ needed earlier.
   - Keep the pass-cleans / fail-keeps artefact behaviour consistent across test
     categories.
 
+## Milestone 3: Constant Folding
+
+- [ ] 24. Add constant folding for recognised constant expressions.
+  - Fold pure built-in operator expressions on literals.
+  - Fold references to any symbol recognised as a constant value, including
+    top-level constant bindings.
+  - Keep this table-driven and compatible with the AST's RPN layout.
+
+- [ ] 25. Prototype constant folding as an AST-local VM-style pass.
+  - Prefer a simple stack-based pass over AST node indices.
+  - Explore in-place AST compaction where it simplifies later lowering.
+  - If nodes are compacted or replaced, track index adjustment carefully so
+    `a` and `b` links remain valid.
+  - Only keep this approach if it remains simpler than using semantic side
+    tables for folded results.
+
+- [ ] 26. Extend tests for folding behaviour.
+  - Add language tests showing folded constant expressions still produce the
+    same observable result.
+  - Add snapshot expectations where folding should reduce emitted IR or C.
+  - Add error coverage if folding introduces new semantic constraints later.
+
+## Milestone 4: Strings And Output Built-ins
+
+- [ ] 27. Add UTF-8 string literals as first-class values.
+  - Strings are not C strings in the language model.
+  - Represent them as fat pointers: address plus byte length.
+  - Lower them in generated C via a struct-based representation.
+  - Add a helper macro such as `DEF_SLICE` in the C prologue if that keeps the
+    representation tidy and reusable.
+
+- [ ] 28. Add built-in output functions `pr` and `prn`.
+  - Treat them as compiler-known built-ins, not user-defined bindings.
+  - Rename the prologue implementations to `$pr` and `$prn`.
+  - Predefine the corresponding symbols during semantic analysis as external
+    functions.
+  - Do not allow user shadowing in the initial implementation.
+
+- [ ] 29. Restrict `pr` and `prn` to strings in their first implementation.
+  - Do not add scalar printing shortcuts.
+  - Leave primitive-to-string conversion to interpolated strings and later
+    helper routines.
+
+- [ ] 30. Extend tests, formatter support, and LSP support for strings.
+  - Add language tests for string literals and built-in output.
+  - Add error tests for invalid built-in usage.
+  - Extend the formatter and LSP at the same time the syntax lands.
+
+## Milestone 5: Primitive Types
+
+- [ ] 31. Introduce primitive built-in types.
+  - Add signed integers such as `i8`, `i16`, `i32`, and `i64`.
+  - Add unsigned integers such as `u8`, `u16`, `u32`, and `u64`.
+  - Add floating-point types `f32` and `f64`.
+  - Add `bool`, `isize`, and `usize`.
+
+- [ ] 32. Add explicit type annotations while preserving inference.
+  - Place explicit annotations between the colons in bindings.
+  - `hello :: "Hello"` should remain equivalent to `hello: string: "Hello"`.
+  - Keep inferred types visible to the LSP so editor tooling can surface them.
+
+- [ ] 33. Define integer literal typing rules.
+  - Top-level numeric bindings are initially untyped integers until use fixes
+    their type.
+  - Using an untyped integer in a typed context should adopt that target type
+    if valid.
+  - If an untyped integer remains unconstrained when materialised as a value,
+    treat it as `i32`.
+  - Example:
+    - `value :: 120`
+    - `a : u8 : value`
+    - `b :: value`
+    - Here `value` starts untyped, `a` becomes `u8`, and `b` becomes `i32`.
+
+- [ ] 34. Require exact type matches for arithmetic.
+  - Do not introduce implicit conversions.
+  - Add explicit casts later through a `.cast(<type>)` form.
+  - Keep this no-implicit-casts rule as a language principle.
+
+- [ ] 35. Extend tests, formatter support, and LSP support for primitive types.
+  - Add language tests for type annotations, inference, and exact-match
+    arithmetic.
+  - Add error tests for mismatched primitive operations.
+  - Extend tooling surfaces at the same time as the compiler support.
+
+## Milestone 6: Interpolated Strings
+
+- [ ] 36. Add `$"...{expr}..."` interpolated strings.
+  - Keep interpolation distinct from normal string literals.
+  - Only strings prefixed with `$` may contain interpolation.
+  - Support left-to-right evaluation and append behaviour.
+
+- [ ] 37. Keep the first interpolation implementation function-local.
+  - Initially allow interpolated strings only inside functions.
+  - Defer top-level interpolated bindings until a later milestone if they
+    require broader init-time support.
+
+- [ ] 38. Lower interpolation through prologue helper routines.
+  - Add `to_string$<type>` helpers in the prologue for all primitive types.
+  - Restrict conversion support to built-in types in the initial design.
+  - Leave user-defined conversion mechanisms for a later trait system.
+
+- [ ] 39. Use a simple arena-backed runtime string builder first.
+  - A global arena plus helper functions in the prologue is acceptable for the
+    first implementation.
+  - Build the string, return a fat pointer to it, and reset the arena as
+    appropriate for the chosen runtime model.
+  - Leave constant-expression optimisation and smarter storage for later work.
+
+- [ ] 40. Extend tests, formatter support, and LSP support for interpolated strings.
+  - Add language tests for mixed literal and interpolated segments.
+  - Add error tests for invalid interpolation forms and unsupported types.
+  - Extend tooling surfaces at the same time as the syntax lands.
+
+## Future Ideas
+
+These items are worth keeping visible, but they are not assigned to a numbered
+milestone yet.
+
+- [ ] Support top-level interpolated string bindings once the runtime init model
+  is robust enough.
+- [ ] Add a generated initialisation path for more than top-level constants when
+  later features require runtime setup before `$main`.
+- [ ] Optimise interpolated strings for constant expressions once the first
+  runtime-based version works.
+- [ ] Add trait-based conversion and formatting support for user-defined types.
+- [ ] Revisit whether in-place AST compaction is the best home for constant
+  folding after a first implementation exists and can be measured.
+
 ## Semantic Layout Sketch
 
 The semantic phase should remain compatible with the performance goals and AST
@@ -295,9 +422,9 @@ compatible with later VM-style processing.
 
 ## Definition Of Done For Milestone 1
 
-- [ ] `just test` passes
-- [ ] binding resolution exists for current top-level constants/functions
-- [ ] semantic analysis exists as a distinct front-end phase
-- [ ] dependency ordering exists for forward-referenced top-level bindings
-- [ ] IR and C generation support functions and top-level declarations
-- [ ] touched compiler files have improved comments and British spelling
+- [x] `just test` passes
+- [x] binding resolution exists for current top-level constants/functions
+- [x] semantic analysis exists as a distinct front-end phase
+- [x] dependency ordering exists for forward-referenced top-level bindings
+- [x] IR and C generation support functions and top-level declarations
+- [x] touched compiler files have improved comments and British spelling
