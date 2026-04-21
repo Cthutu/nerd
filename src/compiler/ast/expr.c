@@ -79,8 +79,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .token_index = token.token_index,
                 .a           = token.value.integer_index,
             };
-            node.ref = 0;
-            return ast_emit_node(state, node, token, out_node);
+            return ast_emit_node(state, node, out_node);
         }
     case TK_Minus:
         {
@@ -94,7 +93,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .token_index = token.token_index,
                 .a           = rhs,
             };
-            return ast_emit_node(state, node, token, out_node);
+            return ast_emit_node(state, node, out_node);
         }
     case TK_LParen:
         if (!ast_parse_expr_bp(state, 0, out_node)) {
@@ -128,7 +127,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         .a           = left_node,
         .b           = right_node,
     };
-    return ast_emit_node(state, node, op, out_node);
+    return ast_emit_node(state, node, out_node);
 }
 
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
@@ -138,38 +137,26 @@ bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
         return false;
     }
 
-    AstToken expr_token = {
-        .kind        = state->lexer->tokens[state->start_token_index].kind,
-        .source      = state->lexer->source,
-        .offset      = state->lexer->tokens[state->start_token_index].offset,
-        .token_index = state->start_token_index,
-    };
-
     AstNode expr_node = {
         .kind        = AK_Expression,
         .token_index = state->start_token_index,
         .a           = root_node,
     };
-    return ast_emit_node(state, expr_node, expr_token, out_expr_node);
+    return ast_emit_node(state, expr_node, out_expr_node);
 }
 
 bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 {
-    AstToken token;
-    u32      left_node;
+    u32 left_node;
 
-    if (!ast_next_token(state, &token)) {
-        AstToken eof = {
-            .kind        = TK_EOF,
-            .source      = state->lexer->source,
-            .offset      = state->lexer->source.source.count,
-            .token_index = (u32)array_count(state->lexer->tokens),
-        };
+    if (!ast_next_token(state)) {
         return error_0201_missing_value(
-            eof.source, ast_token_span(state, &eof), eof.kind);
+            state->token.source,
+            ast_token_span(state, &state->token),
+            state->token.kind);
     }
 
-    if (!ast_parse_nud(state, token, &left_node)) {
+    if (!ast_parse_nud(state, state->token, &left_node)) {
         return false;
     }
 
@@ -178,9 +165,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
         u8       left_bp;
         u8       right_bp;
 
-        if (!ast_peek_token(state, &next)) {
+        if (!ast_peek_token(state)) {
             break;
         }
+        next = state->token;
 
         if (!ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
             if (ast_token_starts_expression(next.kind)) {
@@ -194,9 +182,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
-        if (!ast_next_token(state, &next)) {
+        if (!ast_next_token(state)) {
             break;
         }
+        next = state->token;
 
         if (!ast_parse_led(state, next, left_node, &left_node)) {
             return false;
