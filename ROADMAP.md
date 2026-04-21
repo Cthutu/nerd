@@ -53,7 +53,7 @@ From the current codebase and test suite:
   coverage.
 - Test artefact clean-up must stay developer-friendly:
   - remove generated intermediate files for passing tests
-  - keep generated intermediate files for failing tests so failures can be
+  - keep generated intermediate files for failing tests, so failures can be
     analysed locally
 
 ## Immediate Architectural Direction
@@ -68,7 +68,7 @@ From the current codebase and test suite:
   symbol, and declaration indices rather than pointer-linked trees.
 - Keep the AST compact and fixed-size. Preserve the current `kind`,
   `token_index`, `a`, and `b` shape if at all possible.
-- Do not extend `AstNode` unless there is a strong measured reason.
+- Do not extend `AstNode` unless there is a strong-measured reason.
 - Preserve the AST's RPN-friendly structure so it remains suitable for
   stack/VM-style passes, constant folding, and later compile-time execution.
 - Compute spans from token and node boundaries rather than storing large span
@@ -187,7 +187,7 @@ From the current codebase and test suite:
 This is the intended first coding sequence for milestone 1:
 
 1. Standardise parser token consumption and comments in the parser files.
-2. Restore function-aware IR/C generation so the arithmetic language tests can
+2. Restore function-aware IR/C generation, so the arithmetic language tests can
    pass again.
 3. Fix the current parser error behaviour to match the existing error tests.
 4. Add semantic tables, symbol resolution, and dependency tracking for
