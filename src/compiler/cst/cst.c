@@ -381,7 +381,15 @@ cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
     }
 
     while (cst_current_token(state).kind != TK_RBrace) {
-        u32 expr = 0;
+        u32 expr           = 0;
+        u32 statement_kind = CK_Statement;
+        u32 token_index    = state->token_index;
+
+        if (cst_current_token(state).kind == TK_return) {
+            statement_kind = CK_Return;
+            cst_advance(state);
+        }
+
         if (!cst_parse_expr_bp(state, 0, &expr)) {
             return false;
         }
@@ -390,8 +398,8 @@ cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
         if (!cst_emit_node(
                 state,
                 (CstNode){
-                    .kind        = CK_Statement,
-                    .token_index = state->cst.nodes[expr].token_index,
+                    .kind        = statement_kind,
+                    .token_index = token_index,
                     .a           = expr,
                 },
                 &statement)) {

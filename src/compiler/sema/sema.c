@@ -211,6 +211,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_IntegerNegate:
     case AK_Expression:
     case AK_Statement:
+    case AK_Return:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         return;
     case AK_Call:
@@ -454,6 +455,7 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
 
     case AK_Expression:
     case AK_Statement:
+    case AK_Return:
         ok = sema_try_get_constant(ast, out_sema, node->a, &value);
         break;
 
@@ -577,6 +579,7 @@ internal bool sema_fold_node(const Lexer* lex,
 
             case AK_Expression:
             case AK_Statement:
+            case AK_Return:
             case AK_IntegerNegate:
                 sema_push_fold_frame(&stack, node->a);
                 break;

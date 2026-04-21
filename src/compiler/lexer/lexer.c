@@ -197,7 +197,11 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 cstr      name;
                 u8        length;
                 TokenKind kind;
-            } keywords[]    = {{"fn", 2, TK_fn}, {NULL, 0, 0}};
+            } keywords[]    = {
+                {"fn", 2, TK_fn},
+                {"return", 6, TK_return},
+                {NULL, 0, 0},
+            };
 
             bool is_keyword = false;
             for (usize k = 0; keywords[k].name != NULL; k++) {
@@ -367,6 +371,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
 
     case TK_Symbol:
     case TK_fn:
+    case TK_return:
         {
             usize index = token->offset;
             while (index < lexer->source.source.count &&

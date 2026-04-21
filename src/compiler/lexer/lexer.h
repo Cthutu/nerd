@@ -41,6 +41,7 @@ typedef enum {
 
     // Keywords
     TK_fn,
+    TK_return,
 } TokenKind;
 
 typedef struct {

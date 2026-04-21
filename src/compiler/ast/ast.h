@@ -28,6 +28,7 @@
 // | AK_Call            | Ast index callee  | Ast index of arg                |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
+// | AK_Return          | Ast index of expr | 0                               |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |
 // | AK_FnStart         | AK_FnDef index    | AK_FnEnd index                  |
@@ -49,6 +50,7 @@ typedef enum {
     AK_Call,
     AK_Expression,
     AK_Statement,
+    AK_Return,
     AK_Bind,
     AK_FnDef,
     AK_FnStart,

@@ -53,21 +53,33 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
     }
 
     while (state->token.kind != TK_RBrace) {
-        bool previous_boundary          = state->allow_statement_boundary;
-        state->allow_statement_boundary = true;
+        u32 statement_kind       = AK_Statement;
+        u32 statement_token      = state->token.token_index;
+        u32 statement_expr_index = 0;
 
-        u32 expr_index                  = 0;
-        if (!ast_parse_expr(state, &expr_index)) {
+        if (state->token.kind == TK_return) {
+            statement_kind = AK_Return;
+            if (!ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind);
+            }
+        }
+
+        bool previous_boundary = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        if (!ast_parse_expr(state, &statement_expr_index)) {
             state->allow_statement_boundary = previous_boundary;
             return false;
         }
         state->allow_statement_boundary = previous_boundary;
 
-        u32     statement_index         = 0;
-        AstNode statement               = {
-                          .kind        = AK_Statement,
-                          .token_index = state->nodes[expr_index].token_index,
-                          .a           = expr_index,
+        u32     statement_index = 0;
+        AstNode statement       = {
+                  .kind        = statement_kind,
+                  .token_index = statement_token,
+                  .a           = statement_expr_index,
         };
         if (!ast_emit_node(state, statement, &statement_index)) {
             return false;

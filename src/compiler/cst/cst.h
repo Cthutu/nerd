@@ -28,6 +28,7 @@
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
+// | CK_Return          | Expr node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
 
 typedef enum {
@@ -46,6 +47,7 @@ typedef enum {
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,
+    CK_Return,
     CK_Bind,
 } CstKind;
 

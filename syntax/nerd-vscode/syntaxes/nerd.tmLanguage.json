@@ -59,7 +59,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.function.nerd",
-                    "match": "\\bfn\\b"
+                    "match": "\\b(fn|return)\\b"
                 }
             ]
         },

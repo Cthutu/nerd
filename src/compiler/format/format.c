@@ -262,10 +262,13 @@ internal void format_emit_value(StringBuilder* sb,
         sb_append_cstr(sb, "fn () {\n");
         for (u32 i = node->a; i < node->b; ++i) {
             const CstNode* stmt = &cst->nodes[i];
-            if (stmt->kind != CK_Statement) {
+            if (stmt->kind != CK_Statement && stmt->kind != CK_Return) {
                 continue;
             }
             sb_append_cstr(sb, "    ");
+            if (stmt->kind == CK_Return) {
+                sb_append_cstr(sb, "return ");
+            }
             format_emit_expr(sb, cst, lexer, stmt->a, 0);
             sb_append_char(sb, '\n');
         }

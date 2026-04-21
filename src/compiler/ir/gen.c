@@ -344,6 +344,24 @@ internal void ir_generate_call_statement(const Lexer*   lex,
 }
 
 //------------------------------------------------------------------------------
+// Lower one explicit return statement.
+
+internal void ir_generate_return_statement(const Lexer*   lex,
+                                           const Ast*     ast,
+                                           const Sema*    sema,
+                                           const AstNode* return_node,
+                                           Array(IrValue) node_values,
+                                           u64* next_value_index,
+                                           Ir*  ir)
+{
+    ASSERT(return_node->kind == AK_Return, "Expected return node");
+
+    IrValue value = ir_lower_node(
+        lex, ast, sema, return_node->a, node_values, next_value_index, ir);
+    ir_add_return(ir, value);
+}
+
+//------------------------------------------------------------------------------
 // Lower one top-level constant binding into the generated init function.
 
 internal void ir_generate_global_init(const Lexer*    lex,
@@ -402,10 +420,19 @@ internal void ir_generate_function(const Lexer*    lex,
                                        ir);
         ir_add_return(ir, result);
     } else {
+        bool has_explicit_return = false;
+
         for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
             const AstNode* node = &ast->nodes[i];
-            if (node->kind != AK_Statement) {
+            if (node->kind != AK_Statement && node->kind != AK_Return) {
                 continue;
+            }
+
+            if (node->kind == AK_Return) {
+                has_explicit_return = true;
+                ir_generate_return_statement(
+                    lex, ast, sema, node, node_values, &next_value_index, ir);
+                break;
             }
 
             const AstNode* expr            = &ast->nodes[node->a];
@@ -429,11 +456,13 @@ internal void ir_generate_function(const Lexer*    lex,
             }
         }
 
-        // Normal block functions currently omit explicit return types, so the
-        // first implementation lowers them as i32-returning functions with an
-        // implicit zero result.
-        ir_add_return(ir,
-                      (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0});
+        if (!has_explicit_return) {
+            // Normal block functions currently omit explicit return types, so
+            // the first implementation lowers them as i32-returning functions
+            // with an implicit zero result.
+            ir_add_return(
+                ir, (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0});
+        }
     }
 
     ir_add_fn_end(ir);

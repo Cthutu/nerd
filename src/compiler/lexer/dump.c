@@ -46,6 +46,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("ThinArrow `->`");
     case TK_fn:
         return string_from_cstr("Keyword `fn`");
+    case TK_return:
+        return string_from_cstr("Keyword `return`");
     default:
         return string_from_cstr("Unknown");
     }

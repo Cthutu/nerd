@@ -38,6 +38,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Expression");
     case AK_Statement:
         return s("Statement");
+    case AK_Return:
+        return s("Return");
     case AK_Bind:
         return s("Bind");
     case AK_FnDef:
@@ -125,6 +127,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "root=%u", node->a));
             break;
         case AK_Statement:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "expr=%u", node->a));
+            break;
+        case AK_Return:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "expr=%u", node->a));
             break;
