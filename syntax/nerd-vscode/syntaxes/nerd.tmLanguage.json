@@ -6,15 +6,54 @@
             "include": "#comments"
         },
         {
+            "include": "#bindings"
+        },
+        {
+            "include": "#keywords"
+        },
+        {
             "include": "#numbers"
+        },
+        {
+            "include": "#operators"
+        },
+        {
+            "include": "#symbols"
+        },
+        {
+            "include": "#punctuation"
         }
     ],
     "repository": {
+        "bindings": {
+            "patterns": [
+                {
+                    "name": "meta.binding.nerd",
+                    "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\b(\\s*)(::)",
+                    "captures": {
+                        "1": {
+                            "name": "entity.name.function.nerd"
+                        },
+                        "3": {
+                            "name": "keyword.operator.binding.nerd"
+                        }
+                    }
+                }
+            ]
+        },
         "comments": {
             "patterns": [
                 {
-                    "name": "comment.line.double-slash.nerd",
+                    "name": "comment.line.double-dash.nerd",
                     "match": "--.*$"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.function.nerd",
+                    "match": "\\bfn\\b"
                 }
             ]
         },
@@ -23,6 +62,38 @@
                 {
                     "name": "constant.numeric.integer.decimal.nerd",
                     "match": "\\b\\d+\\b"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.arrow.nerd",
+                    "match": "=>"
+                },
+                {
+                    "name": "keyword.operator.arithmetic.nerd",
+                    "match": "[+\\-*/%]"
+                }
+            ]
+        },
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.section.group.begin.nerd",
+                    "match": "\\("
+                },
+                {
+                    "name": "punctuation.section.group.end.nerd",
+                    "match": "\\)"
+                }
+            ]
+        },
+        "symbols": {
+            "patterns": [
+                {
+                    "name": "variable.other.readwrite.nerd",
+                    "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
                 }
             ]
         }

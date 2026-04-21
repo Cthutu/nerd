@@ -59,6 +59,9 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
 
 internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
 {
+    doc->analysis_ok  = false;
+    doc->has_cst      = false;
+
     u8* document_copy = (u8*)arena_alloc(&doc->arena, content.count);
     memcpy(document_copy, content.data, content.count);
 
@@ -85,17 +88,14 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
         lsp_log("Front-end analysis failed for current document contents");
         return false;
     }
-    lsp_log("Lexed %zu tokens", array_count(doc->front_end.lexer.tokens));
 
-    for (usize i = 0; i < array_count(doc->front_end.lexer.tokens); i++) {
-        Token* token = &doc->front_end.lexer.tokens[i];
-        lsp_log("Token %zu: kind=\"" STRINGP "\", offset=%u",
-                i,
-                STRINGV(token_kind_to_string(token->kind)),
-                token->offset);
+    doc->analysis_ok = true;
+    if (cst_parse(&doc->front_end.lexer, &doc->cst)) {
+        doc->has_cst = true;
+    } else {
+        lsp_log("CST parsing failed for current document contents");
     }
 
-    lsp_log("Document content:\n" STRINGP, STRINGV(document_copy_str));
     return true;
 }
 
@@ -117,8 +117,10 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     if (new_doc) {
         arena_init(&doc->arena);
     } else {
+        cst_done(&doc->cst);
         front_end_results_done(&doc->front_end);
         arena_reset(&doc->arena);
+        doc->cst = (Cst){0};
     }
 
     bool       ok          = lsp_analyse_document(doc, uri, text);
@@ -148,6 +150,9 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
         return;
     }
 
+    cst_done(&doc->cst);
+    doc->cst = (Cst){0};
+
     front_end_results_done(&doc->front_end);
     arena_reset(&doc->arena);
 
@@ -159,8 +164,12 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
 
 void lsp_document_done(LspDocument* doc)
 {
+    cst_done(&doc->cst);
+    doc->cst = (Cst){0};
+
     front_end_results_done(&doc->front_end);
     arena_done(&doc->arena);
+    *doc = (LspDocument){0};
 }
 
 void lsp_handle_did_close(LspState* state, const LspMessage* message)

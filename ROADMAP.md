@@ -50,6 +50,11 @@ From the current codebase and test suite:
 - As new language features are added, update all relevant surfaces together:
   language tests, error tests, LSP support, formatter support, and `just test`
   coverage.
+- Deliver new language features horizontally across the toolchain.
+  - A feature is not complete until the compiler, formatter, LSP, and testing
+    surfaces all support it to the agreed milestone depth.
+  - Do not move on to the next language feature while one of those surfaces is
+    still knowingly behind.
 - Keep compiler error-code ranges phase-specific:
   - `0100`-`0199` lexer
   - `0200`-`0299` parser / AST construction
@@ -244,6 +249,10 @@ needed earlier.
 - [ ] 18. Introduce a CST for formatting and source-preserving tooling.
   - Keep AST focused on semantics-oriented structure.
   - Use CST for formatting, precise token ownership, and future refactors.
+  - Treat CST as the planned formatter architecture rather than relying on a
+    lexer/state-machine formatter as the long-term design.
+  - Introduce it before richer syntax such as strings, primitive types, and
+    interpolated strings make formatter ownership too implicit or brittle.
 
 - [ ] 19. Add a `format` sub-command.
   - Accept an input source file.
@@ -260,11 +269,15 @@ needed earlier.
 - [ ] 21. Extend the formatter as new language features land.
   - Every syntax feature added to the compiler should gain formatter support.
   - Add formatter regression tests at the same time as language/error tests.
+  - Keep formatter work horizontally synchronised with compiler, LSP, and test
+    support for each feature.
 
 - [ ] 22. Extend the LSP as new language features land.
   - Keep editor-facing behaviour aligned with the compiler's supported syntax
     and semantics.
   - Add or extend LSP tests when the server gains enough test surface.
+  - Keep LSP work horizontally synchronised with compiler, formatter, and test
+    support for each feature.
 
 - [ ] 23. Keep `just test` as the single full-project test entry point.
   - Language, error, and formatter tests should all pass through it.
@@ -327,11 +340,17 @@ needed earlier.
   - Add unsigned integers such as `u8`, `u16`, `u32`, and `u64`.
   - Add floating-point types `f32` and `f64`.
   - Add `bool`, `isize`, and `usize`.
+  - Add compact semantic type tables rather than storing type information ad
+    hoc in the AST or IR.
 
 - [ ] 32. Add explicit type annotations while preserving inference.
   - Place explicit annotations between the colons in bindings.
   - `hello :: "Hello"` should remain equivalent to `hello: string: "Hello"`.
   - Keep inferred types visible to the LSP so editor tooling can surface them.
+  - Treat semantic type resolution as a multi-pass analysis problem rather than
+    a single-pass walk.
+  - Allow later passes to refine earlier placeholder or unresolved inferred
+    types as more declaration and usage information becomes available.
 
 - [ ] 33. Define integer literal typing rules.
   - Top-level numeric bindings are initially untyped integers until use fixes
@@ -340,6 +359,9 @@ needed earlier.
     if valid.
   - If an untyped integer remains unconstrained when materialised as a value,
     treat it as `i32`.
+  - Function return positions are also a typing context.
+  - If a function body resolves to an integer expression and no narrower type
+    is forced by context, infer the return type as `i32`.
   - Example:
     - `value :: 120`
     - `a : u8 : value`

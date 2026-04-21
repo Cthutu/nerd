@@ -3,11 +3,12 @@
 //
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
-//> use: core object compiler/build
+//> use: core object compiler/build compiler/cst
 
 #pragma once
 
 #include <compiler/build/build.h>
+#include <compiler/cst/cst.h>
 #include <core/core.h>
 #include <object/object.h>
 
@@ -19,8 +20,11 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena         arena;     // Arena for storing document content
-    FrontEndState front_end; // Front-end results for the current document
+    Arena         arena;       // Arena for storing document content
+    FrontEndState front_end;   // Compiler front-end results for the document
+    Cst           cst;         // Concrete syntax tree for editor tooling
+    bool          analysis_ok; // Whether front-end analysis succeeded
+    bool          has_cst;     // Whether CST parsing succeeded
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,
@@ -70,5 +74,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message);
 void lsp_handle_did_change(LspState* state, const LspMessage* message);
 void lsp_handle_did_close(LspState* state, const LspMessage* message);
 void lsp_handle_hover(LspState* state, const LspMessage* message);
+void lsp_handle_definition(LspState* state, const LspMessage* message);
+void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
 
 //------------------------------------------------------------------------------

@@ -93,6 +93,8 @@ struct {
     {"textDocument/didChange", lsp_handle_did_change},
     {"textDocument/didClose", lsp_handle_did_close},
     {"textDocument/hover", lsp_handle_hover},
+    {"textDocument/definition", lsp_handle_definition},
+    {"textDocument/documentSymbol", lsp_handle_document_symbol},
 };
 
 //------------------------------------------------------------------------------
@@ -233,6 +235,8 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_number(
         capabilities, arena, "textDocumentSync", 1); // Full sync
     json_object_set_bool(capabilities, arena, "hoverProvider", true);
+    json_object_set_bool(capabilities, arena, "definitionProvider", true);
+    json_object_set_bool(capabilities, arena, "documentSymbolProvider", true);
 
     json_object_set_object(result, "serverInfo", server_info);
     json_object_set(result, "capabilities", capabilities);
