@@ -94,6 +94,12 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
     case TK_Minus:
         {
             u32 rhs;
+            if (!ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind);
+            }
             if (!ast_parse_expr_bp(state, AST_BP_PREFIX, &rhs)) {
                 return false;
             }
@@ -106,6 +112,12 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             return ast_emit_node(state, node, out_node);
         }
     case TK_LParen:
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
+        }
         if (!ast_parse_expr_bp(state, 0, out_node)) {
             return false;
         }
@@ -130,6 +142,12 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         error_ice("Unhandled led token kind: %d", op.kind);
     }
 
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source,
+            ast_token_span(state, &state->token),
+            state->token.kind);
+    }
     if (!ast_parse_expr_bp(state, right_bp, &right_node)) {
         return false;
     }
@@ -161,16 +179,12 @@ bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
     return ast_emit_node(state, expr_node, out_expr_node);
 }
 
+//------------------------------------------------------------------------------
+// Parse an expression with the current token as the first token of the lhs.
+
 bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 {
     u32 left_node;
-
-    if (!ast_next_token(state)) {
-        return error_0201_missing_value(
-            state->token.source,
-            ast_token_span(state, &state->token),
-            state->token.kind);
-    }
 
     if (!ast_parse_nud(state, state->token, &left_node)) {
         return false;
@@ -199,11 +213,12 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
         }
 
         if (!ast_next_token(state)) {
-            break;
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
         }
-        next = state->token;
-
-        if (!ast_parse_led(state, next, left_node, &left_node)) {
+        if (!ast_parse_led(state, state->token, left_node, &left_node)) {
             return false;
         }
     }

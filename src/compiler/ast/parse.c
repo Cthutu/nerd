@@ -69,7 +69,13 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
 
     EMIT_NODE(AK_FnStart, 0, 0, 0, fn_start_index);
 
-    if (!ast_parse_expr(state, nullptr)) {
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source,
+            ast_token_span(state, &state->token),
+            state->token.kind);
+    }
+    if (!ast_parse_expr(state, NULL)) {
         return false;
     }
 
