@@ -18,7 +18,11 @@ From the current codebase and test suite:
   bindings.
 - IR and C generation model top-level declarations, hidden runtime init code,
   and generated functions such as `$main`.
-- The current language and error tests pass via `just test`.
+- The formatter has a CST-backed path, a `format` sub-command, and snapshot
+  tests under `tests/format`.
+- The LSP supports hover, definition, document symbols, semantic tokens, and
+  diagnostics, with transcript tests under `tests/lsp`.
+- `just test` runs language, error, formatter, and LSP suites.
 
 ## Guiding Rules
 
@@ -236,17 +240,19 @@ as a separate rewrite.
     narration.
   - Normalise British spelling in touched files as part of the clean-up.
 
-## Milestone 2: Tooling Extensions
+## Milestone 2: Tooling Extensions (Completed)
 
 These are important, but should follow milestone 1 unless a small piece is
 needed earlier.
 
-- [ ] 17. Extend LSP support for bindings, symbols, and semantic diagnostics.
+- [X] 17. Extend LSP support for bindings, symbols, and semantic diagnostics.
   - Hover for bound symbols
   - diagnostics from semantic analysis
   - document updates for the new front-end phases
+  - definition, document symbols, and semantic tokens
+  - LSP transcript regression tests under `tests/lsp`
 
-- [ ] 18. Introduce a CST for formatting and source-preserving tooling.
+- [X] 18. Introduce a CST for formatting and source-preserving tooling.
   - Keep AST focused on semantics-oriented structure.
   - Use CST for formatting, precise token ownership, and future refactors.
   - Treat CST as the planned formatter architecture rather than relying on a
@@ -254,13 +260,13 @@ needed earlier.
   - Introduce it before richer syntax such as strings, primitive types, and
     interpolated strings make formatter ownership too implicit or brittle.
 
-- [ ] 19. Add a `format` sub-command.
+- [X] 19. Add a `format` sub-command.
   - Accept an input source file.
   - Initially write formatted output to `<input filename>.format`.
   - Keep formatting rules fixed and deterministic.
   - Support comment reflow and word-wrapping as part of the formatter design.
 
-- [ ] 20. Add formatter test support under `tests/format`.
+- [X] 20. Add formatter test support under `tests/format`.
   - Define a stable test file format for formatter input/output snapshots.
   - Make `just test` run formatter tests alongside language and error tests.
   - Keep formatter outputs stable enough for snapshot comparison.
@@ -279,8 +285,9 @@ needed earlier.
   - Keep LSP work horizontally synchronised with compiler, formatter, and test
     support for each feature.
 
-- [ ] 23. Keep `just test` as the single full-project test entry point.
+- [X] 23. Keep `just test` as the single full-project test entry point.
   - Language, error, and formatter tests should all pass through it.
+  - LSP transcript tests should also pass through it.
   - Expand the test runner rather than creating disconnected test commands.
   - Keep the pass-cleans / fail-keeps artefact behaviour consistent across test
     categories.

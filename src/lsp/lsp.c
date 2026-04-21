@@ -95,6 +95,7 @@ struct {
     {"textDocument/hover", lsp_handle_hover},
     {"textDocument/definition", lsp_handle_definition},
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
+    {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
 };
 
 //------------------------------------------------------------------------------
@@ -195,6 +196,7 @@ int lsp_run(void)
             }
         }
 
+        json_done(message);
         arena_reset(&message_arena);
     }
 
@@ -237,6 +239,22 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_bool(capabilities, arena, "hoverProvider", true);
     json_object_set_bool(capabilities, arena, "definitionProvider", true);
     json_object_set_bool(capabilities, arena, "documentSymbolProvider", true);
+
+    JsonValue* semantic_tokens = json_new_object(arena);
+    JsonValue* legend          = json_new_object(arena);
+    JsonValue* token_types     = json_new_array(arena);
+    JsonValue* token_modifiers = json_new_array(arena);
+    json_array_push(token_types, json_new_string(arena, s("variable")));
+    json_array_push(token_types, json_new_string(arena, s("function")));
+    json_array_push(token_types, json_new_string(arena, s("keyword")));
+    json_array_push(token_types, json_new_string(arena, s("number")));
+    json_array_push(token_types, json_new_string(arena, s("operator")));
+    json_object_set_array(legend, "tokenTypes", token_types);
+    json_object_set_array(legend, "tokenModifiers", token_modifiers);
+    json_object_set_object(semantic_tokens, "legend", legend);
+    json_object_set_bool(semantic_tokens, arena, "full", true);
+    json_object_set_object(
+        capabilities, "semanticTokensProvider", semantic_tokens);
 
     json_object_set_object(result, "serverInfo", server_info);
     json_object_set(result, "capabilities", capabilities);

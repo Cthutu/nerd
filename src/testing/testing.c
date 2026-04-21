@@ -39,6 +39,13 @@ typedef struct {
 } FormatTest;
 
 typedef struct {
+    cstr   path;
+    string source;
+    string requests_json;
+    string expected_json;
+} LspTest;
+
+typedef struct {
     usize passed;
     usize failed;
     usize language_passed;
@@ -47,6 +54,8 @@ typedef struct {
     usize error_failed;
     usize format_passed;
     usize format_failed;
+    usize lsp_passed;
+    usize lsp_failed;
 } TestCounts;
 
 //------------------------------------------------------------------------------
@@ -262,6 +271,44 @@ internal bool testing_parse_format_test(Arena*      arena,
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Parse one LSP transcript test with source, requests, and expected output.
+
+internal bool testing_parse_lsp_test(Arena*   arena,
+                                     cstr     path,
+                                     string   file_text,
+                                     LspTest* out_test)
+{
+    string sections[3]   = {0};
+    usize  cursor        = 0;
+    usize  section_count = 0;
+
+    while (section_count < 3 &&
+           testing_split_next_section(
+               file_text, &cursor, &sections[section_count])) {
+        section_count++;
+        if (cursor > file_text.count) {
+            break;
+        }
+    }
+
+    if (section_count != 3 || cursor <= file_text.count) {
+        eprn("%sInvalid LSP test format:%s %s", ANSI_RED, ANSI_RESET, path);
+        return false;
+    }
+
+    *out_test = (LspTest){
+        .path          = testing_copy_cstr(arena, path),
+        .source        = testing_copy_string(arena,
+                                      testing_strip_section_edges(sections[0])),
+        .requests_json = testing_copy_string(
+            arena, testing_strip_section_edges(sections[1])),
+        .expected_json = testing_copy_string(
+            arena, testing_strip_section_edges(sections[2])),
+    };
+    return true;
+}
+
 internal int testing_compare_cstrs(const void* left, const void* right)
 {
     cstr a = *(const cstr*)left;
@@ -310,6 +357,13 @@ internal void testing_print_summary_table(const TestCounts* counts)
         table_cell_u64(counts->format_failed),
     };
     table_add_row(&table, format_row);
+
+    TableCell lsp_row[3] = {
+        table_cell_string(s("lsp")),
+        table_cell_u64(counts->lsp_passed),
+        table_cell_u64(counts->lsp_failed),
+    };
+    table_add_row(&table, lsp_row);
 
     TableCell total_row[3] = {
         table_cell_string(s("total")),
@@ -424,6 +478,39 @@ internal void testing_collect_format_tests(Arena* arena,
     dir_iter_done(&iter);
 }
 
+internal void
+testing_collect_lsp_tests(Arena* arena, cstr directory, Array(cstr) * out_paths)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, directory)) {
+        return;
+    }
+
+    Arena child_arena = {0};
+    arena_init(&child_arena);
+
+    cstr child_path   = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, &child_arena, &child_path, &is_directory)) {
+        if (is_directory) {
+            testing_collect_lsp_tests(arena, child_path, out_paths);
+            arena_done(&child_arena);
+            arena_init(&child_arena);
+            continue;
+        }
+
+        if (path_has_extension(s(child_path), ".lsp")) {
+            array_push(*out_paths, testing_copy_cstr(arena, child_path));
+        }
+
+        arena_done(&child_arena);
+        arena_init(&child_arena);
+    }
+
+    arena_done(&child_arena);
+    dir_iter_done(&iter);
+}
+
 internal void testing_cleanup_generated_files(cstr artifact_root)
 {
     Arena arena = {0};
@@ -457,6 +544,21 @@ internal void testing_cleanup_generated_format_files(cstr artifact_root)
     arena_done(&arena);
 }
 
+internal void testing_cleanup_generated_lsp_files(cstr artifact_root)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    cstr input_path = path_replace_extension(&arena, artifact_root, ".lsp.in");
+    cstr output_path =
+        path_replace_extension(&arena, artifact_root, ".lsp.out");
+
+    path_remove(input_path);
+    path_remove(output_path);
+
+    arena_done(&arena);
+}
+
 internal void testing_cleanup_generated_tree(cstr directory)
 {
     DirIter iter = {0};
@@ -476,7 +578,9 @@ internal void testing_cleanup_generated_tree(cstr directory)
                    path_has_extension(s(child_path), ".c") ||
                    path_has_extension(s(child_path), ".out") ||
                    path_has_extension(s(child_path), ".format") ||
-                   path_has_extension(s(child_path), ".input.n")) {
+                   path_has_extension(s(child_path), ".input.n") ||
+                   path_has_extension(s(child_path), ".lsp.in") ||
+                   path_has_extension(s(child_path), ".lsp.out")) {
             path_remove(child_path);
         }
 
@@ -535,6 +639,372 @@ internal bool testing_compare_json(cstr label, string expected, string actual)
 
     arena_done(&arena);
     return matches;
+}
+
+//------------------------------------------------------------------------------
+// Parse one unsigned integer from a non-null-terminated string slice.
+
+internal bool testing_parse_u64_string(string text, u64* out_value)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    char* buffer = (char*)arena_alloc(&arena, text.count + 1);
+    memcpy(buffer, text.data, text.count);
+    buffer[text.count] = '\0';
+
+    char* end          = NULL;
+    u64   value        = strtoull(buffer, &end, 10);
+    bool  ok           = end && *end == '\0';
+    if (ok) {
+        *out_value = value;
+    }
+
+    arena_done(&arena);
+    return ok;
+}
+
+//------------------------------------------------------------------------------
+// Frame one JSON-RPC message with the LSP content-length header.
+
+internal void testing_lsp_append_message(StringBuilder* sb, string json)
+{
+    sb_format(sb, "Content-Length: %zu\r\n\r\n", json.count);
+    sb_append_string(sb, json);
+}
+
+//------------------------------------------------------------------------------
+// Build one small JSON-RPC request or notification object.
+
+internal JsonValue*
+testing_lsp_new_message(Arena* arena, cstr method, bool with_id, i64 id)
+{
+    JsonValue* message = json_new_object(arena);
+    json_object_set_string(message, arena, "jsonrpc", s("2.0"));
+    if (with_id) {
+        json_object_set_number(message, arena, "id", (f64)id);
+    }
+    json_object_set_cstr(message, arena, "method", method);
+    return message;
+}
+
+//------------------------------------------------------------------------------
+// Build the automatic initialise request for one LSP transcript run.
+
+internal JsonValue* testing_lsp_make_initialise(Arena* arena)
+{
+    JsonValue* message = testing_lsp_new_message(arena, "initialize", true, 1);
+    JsonValue* params  = json_new_object(arena);
+    JsonValue* client_info = json_new_object(arena);
+    json_object_set_cstr(client_info, arena, "name", "nerd-test");
+    json_object_set_cstr(client_info, arena, "version", "0");
+    json_object_set_object(params, "clientInfo", client_info);
+    json_object_set_object(message, "params", params);
+    return message;
+}
+
+//------------------------------------------------------------------------------
+// Build the automatic didOpen notification for one source document.
+
+internal JsonValue*
+testing_lsp_make_did_open(Arena* arena, string uri, string source)
+{
+    JsonValue* message =
+        testing_lsp_new_message(arena, "textDocument/didOpen", false, 0);
+    JsonValue* params        = json_new_object(arena);
+    JsonValue* text_document = json_new_object(arena);
+    json_object_set_string(text_document, arena, "uri", uri);
+    json_object_set_cstr(text_document, arena, "languageId", "nerd");
+    json_object_set_number(text_document, arena, "version", 1);
+    json_object_set_string(text_document, arena, "text", source);
+    json_object_set_object(params, "textDocument", text_document);
+    json_object_set_object(message, "params", params);
+    return message;
+}
+
+//------------------------------------------------------------------------------
+// Build the automatic shutdown request and exit notification.
+
+internal JsonValue* testing_lsp_make_shutdown(Arena* arena)
+{
+    return testing_lsp_new_message(arena, "shutdown", true, 999);
+}
+
+internal JsonValue* testing_lsp_make_exit(Arena* arena)
+{
+    return testing_lsp_new_message(arena, "exit", false, 0);
+}
+
+//------------------------------------------------------------------------------
+// Render one JSON array of requests into a framed LSP input transcript.
+
+internal bool testing_lsp_build_input(Arena*  arena,
+                                      string  source,
+                                      string  requests_json,
+                                      string* out_input)
+{
+    Arena message_arena = {0};
+    arena_init(&message_arena);
+
+    JsonParseResult parse_result = {0};
+    JsonValue*      requests =
+        json_parse(&message_arena, requests_json, &parse_result);
+    if (!requests || !parse_result.ok || requests->kind != JSON_ARRAY) {
+        eprn("%sInvalid LSP request JSON%s", ANSI_RED, ANSI_RESET);
+        arena_done(&message_arena);
+        return false;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    string uri         = s("file:///test.n");
+
+    JsonValue* message = testing_lsp_make_initialise(&message_arena);
+    testing_lsp_append_message(
+        &sb, json_stringify(&message_arena, message, .pretty = false));
+    json_done(message);
+
+    JsonValue* open_message =
+        testing_lsp_make_did_open(&message_arena, uri, source);
+    testing_lsp_append_message(
+        &sb, json_stringify(&message_arena, open_message, .pretty = false));
+    json_done(open_message);
+
+    json_done(requests);
+    arena_reset(&message_arena);
+    requests = json_parse(&message_arena, requests_json, &parse_result);
+    if (!requests || !parse_result.ok || requests->kind != JSON_ARRAY) {
+        eprn("%sInvalid LSP request JSON%s", ANSI_RED, ANSI_RESET);
+        arena_done(&message_arena);
+        return false;
+    }
+
+    for (usize i = 0; i < array_count(requests->array.values); ++i) {
+        JsonValue* item = json_array_get(requests, i);
+        if (!item || item->kind != JSON_OBJECT) {
+            eprn("%sInvalid LSP request entry%s", ANSI_RED, ANSI_RESET);
+            json_done(requests);
+            arena_done(&message_arena);
+            return false;
+        }
+        testing_lsp_append_message(
+            &sb, json_stringify(&message_arena, item, .pretty = false));
+    }
+    json_done(requests);
+
+    arena_reset(&message_arena);
+    message = testing_lsp_make_shutdown(&message_arena);
+    testing_lsp_append_message(
+        &sb, json_stringify(&message_arena, message, .pretty = false));
+    json_done(message);
+
+    arena_reset(&message_arena);
+    message = testing_lsp_make_exit(&message_arena);
+    testing_lsp_append_message(
+        &sb, json_stringify(&message_arena, message, .pretty = false));
+    json_done(message);
+
+    *out_input = sb_to_string(&sb);
+    arena_done(&message_arena);
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Parse one raw LSP stdout transcript into a JSON array of message objects.
+
+internal bool
+testing_lsp_output_to_json(Arena* arena, string output, string* out_json)
+{
+    JsonValue* messages = json_new_array(arena);
+    usize      cursor   = 0;
+
+    while (cursor < output.count) {
+        usize header_end  = cursor;
+        usize body_start  = 0;
+        bool  found_break = false;
+
+        while (header_end + 3 < output.count) {
+            if (output.data[header_end] == '\r' &&
+                output.data[header_end + 1] == '\n' &&
+                output.data[header_end + 2] == '\r' &&
+                output.data[header_end + 3] == '\n') {
+                body_start  = header_end + 4;
+                found_break = true;
+                break;
+            }
+            header_end++;
+        }
+
+        if (!found_break) {
+            eprn("%sInvalid LSP output framing%s", ANSI_RED, ANSI_RESET);
+            return false;
+        }
+
+        string header_text =
+            string_from(output.data + cursor, header_end - cursor);
+        usize content_length = 0;
+        bool  found_length   = false;
+        usize line_start     = 0;
+        while (line_start < header_text.count) {
+            usize line_end = line_start;
+            while (line_end < header_text.count &&
+                   !(header_text.data[line_end] == '\r' &&
+                     line_end + 1 < header_text.count &&
+                     header_text.data[line_end + 1] == '\n')) {
+                line_end++;
+            }
+
+            string line = string_from(header_text.data + line_start,
+                                      line_end - line_start);
+            if (line.count >= strlen("Content-Length:") &&
+                memcmp(
+                    line.data, "Content-Length:", strlen("Content-Length:")) ==
+                    0) {
+                string length_text = testing_trim_ascii_whitespace(
+                    string_from(line.data + strlen("Content-Length:"),
+                                line.count - strlen("Content-Length:")));
+                u64 parsed_length = 0;
+                if (!testing_parse_u64_string(length_text, &parsed_length)) {
+                    eprn("%sInvalid Content-Length header%s",
+                         ANSI_RED,
+                         ANSI_RESET);
+                    return false;
+                }
+                content_length = (usize)parsed_length;
+                found_length   = true;
+            }
+
+            if (line_end + 2 > header_text.count) {
+                break;
+            }
+            line_start = line_end + 2;
+        }
+
+        if (!found_length || body_start + content_length > output.count) {
+            eprn("%sInvalid LSP Content-Length%s", ANSI_RED, ANSI_RESET);
+            return false;
+        }
+
+        string json_text =
+            string_from(output.data + body_start, content_length);
+        JsonParseResult parse_result = {0};
+        JsonValue*      value = json_parse(arena, json_text, &parse_result);
+        if (!value || !parse_result.ok) {
+            eprn("%sInvalid LSP JSON output%s", ANSI_RED, ANSI_RESET);
+            return false;
+        }
+
+        json_array_push(messages, value);
+        cursor = body_start + content_length;
+    }
+
+    *out_json = json_stringify(arena, messages, .pretty = true, .indent = 4);
+    json_done(messages);
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Run one LSP transcript test against the real `nerd lsp` server.
+
+internal bool testing_run_lsp_test(const LspTest* test)
+{
+    bool  passed         = true;
+    Arena artifact_arena = {0};
+    arena_init(&artifact_arena);
+
+    cstr artifact_root =
+        path_replace_extension(&artifact_arena, test->path, "");
+    testing_cleanup_generated_lsp_files(artifact_root);
+
+    cstr input_path =
+        path_replace_extension(&artifact_arena, artifact_root, ".lsp.in");
+    cstr output_path =
+        path_replace_extension(&artifact_arena, artifact_root, ".lsp.out");
+
+    string input_text = {0};
+    if (!testing_lsp_build_input(
+            &artifact_arena, test->source, test->requests_json, &input_text)) {
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    FILE* input_file = fopen(input_path, "wb");
+    if (!input_file) {
+        eprn("Failed to open LSP input file: %s", input_path);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    usize written = fwrite(input_text.data, 1, input_text.count, input_file);
+    fclose(input_file);
+    if (written != input_text.count) {
+        eprn("Failed to write LSP input file: %s", input_path);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    Arena output_arena = {0};
+    arena_init(&output_arena);
+#if CONFIG_DEBUG
+    cstr lsp_binary = "_bin/nerd-debug";
+#else
+    cstr lsp_binary = "_bin/nerd";
+#endif
+    string run_command = string_format(
+        &output_arena, "\"%s\" lsp < \"%s\"", lsp_binary, input_path);
+    ShellResult run_result =
+        shell_capture((cstr)run_command.data, &output_arena);
+
+    FILE* output_file = fopen(output_path, "wb");
+    if (!output_file) {
+        eprn("Failed to open LSP output file: %s", output_path);
+        arena_done(&output_arena);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    written = fwrite(run_result.stdout_text.data,
+                     1,
+                     run_result.stdout_text.count,
+                     output_file);
+    fclose(output_file);
+    if (written != run_result.stdout_text.count) {
+        eprn("Failed to write LSP output file: %s", output_path);
+        arena_done(&output_arena);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    if (run_result.exit_code != 0) {
+        eprn("%sLSP process failed with exit code %d%s",
+             ANSI_RED,
+             run_result.exit_code,
+             ANSI_RESET);
+        passed = false;
+    }
+
+    string actual_json = {0};
+    if (!testing_lsp_output_to_json(
+            &output_arena, run_result.stdout_text, &actual_json)) {
+        passed = false;
+    } else if (!testing_compare_json(
+                   "LSP JSON", test->expected_json, actual_json)) {
+        passed = false;
+    }
+
+    if (!passed && run_result.stderr_text.count > 0) {
+        eprn("%sLSP stderr:%s", ANSI_YELLOW, ANSI_RESET);
+        eprn(STRINGP, STRINGV(run_result.stderr_text));
+    }
+
+    if (passed) {
+        testing_cleanup_generated_lsp_files(artifact_root);
+    }
+
+    arena_done(&output_arena);
+    arena_done(&artifact_arena);
+    return passed;
 }
 
 internal void testing_print_missing_section(cstr label, string actual)
@@ -958,6 +1428,63 @@ internal int testing_run_format_suite(cstr tests_root, TestCounts* counts)
     return counts->failed == 0 ? 0 : 1;
 }
 
+//------------------------------------------------------------------------------
+// Run the `tests/lsp` transcript suite.
+
+internal int testing_run_lsp_suite(cstr tests_root, TestCounts* counts)
+{
+    Arena test_arena = {0};
+    arena_init(&test_arena);
+
+    cstr lsp_dir      = path_join(&test_arena, tests_root, "lsp");
+    Array(cstr) paths = NULL;
+    testing_collect_lsp_tests(&test_arena, lsp_dir, &paths);
+    qsort(paths, array_count(paths), sizeof(paths[0]), testing_compare_cstrs);
+
+    for (usize i = 0; i < array_count(paths); i++) {
+        cstr path         = paths[i];
+
+        FileMap map       = {0};
+        string  file_text = filemap_load(path, &map);
+        if (file_text.data == NULL) {
+            counts->failed++;
+            counts->lsp_failed++;
+            testing_print_result_line(false, "lsp", path);
+            continue;
+        }
+
+        Arena case_arena = {0};
+        arena_init(&case_arena);
+        LspTest test = {0};
+        bool ok = testing_parse_lsp_test(&case_arena, path, file_text, &test);
+        if (!ok) {
+            counts->failed++;
+            counts->lsp_failed++;
+            testing_print_result_line(false, "lsp", path);
+            arena_done(&case_arena);
+            filemap_unload(&map);
+            continue;
+        }
+
+        if (testing_run_lsp_test(&test)) {
+            counts->passed++;
+            counts->lsp_passed++;
+            testing_print_result_line(true, "lsp", path);
+        } else {
+            counts->failed++;
+            counts->lsp_failed++;
+            testing_print_result_line(false, "lsp", path);
+        }
+
+        arena_done(&case_arena);
+        filemap_unload(&map);
+    }
+
+    array_free(paths);
+    arena_done(&test_arena);
+    return counts->failed == 0 ? 0 : 1;
+}
+
 int testing_run_suite(cstr tests_root)
 {
     testing_cleanup_generated_tree(tests_root);
@@ -968,6 +1495,9 @@ int testing_run_suite(cstr tests_root)
         result = 1;
     }
     if (testing_run_format_suite(tests_root, &counts) != 0) {
+        result = 1;
+    }
+    if (testing_run_lsp_suite(tests_root, &counts) != 0) {
         result = 1;
     }
 

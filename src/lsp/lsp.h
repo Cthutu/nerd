@@ -63,7 +63,7 @@ void lsp_document_done(LspDocument* doc);
 // LSP message handling
 
 JsonValue* lsp_prepare_response(const LspMessage* message);
-void       lsp_send_response(Arena* arena, const JsonValue* response);
+void       lsp_send_response(Arena* arena, JsonValue* response);
 JsonValue* lsp_prepare_notification(Arena* arena, string method);
 void lsp_publish_diagnostics(Arena* arena, string uri, JsonValue* diagnostics);
 
@@ -76,5 +76,7 @@ void lsp_handle_did_close(LspState* state, const LspMessage* message);
 void lsp_handle_hover(LspState* state, const LspMessage* message);
 void lsp_handle_definition(LspState* state, const LspMessage* message);
 void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
+void lsp_handle_semantic_tokens_full(LspState*         state,
+                                     const LspMessage* message);
 
 //------------------------------------------------------------------------------

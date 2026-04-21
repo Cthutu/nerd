@@ -58,13 +58,14 @@ JsonValue* lsp_prepare_notification(Arena* arena, string method)
     return notification;
 }
 
-void lsp_send_response(Arena* arena, const JsonValue* response)
+void lsp_send_response(Arena* arena, JsonValue* response)
 {
     string output = json_stringify(arena, response, .pretty = false);
     lsp_log("Sending message:\n" STRINGP, STRINGV(output));
     fprintf(stdout, "Content-Length: %zu\r\n\r\n", output.count);
     fwrite(output.data, 1, output.count, stdout);
     fflush(stdout);
+    json_done(response);
 }
 
 void lsp_publish_diagnostics(Arena* arena, string uri, JsonValue* diagnostics)
