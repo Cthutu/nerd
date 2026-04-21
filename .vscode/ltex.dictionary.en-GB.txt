@@ -3,3 +3,5 @@ lexer
 toolchain
 lexing
 subprocess
+globals
+Sema
