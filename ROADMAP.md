@@ -298,6 +298,11 @@ needed earlier.
   - Fold pure built-in operator expressions on literals.
   - Fold references to any symbol recognised as a constant value, including
     top-level constant bindings.
+  - Any pure operation whose inputs are compile-time constants should fold to a
+    constant result, whether that is a whole expression tree or only a
+    constant subtree.
+  - Do not fold operations with side effects or operations whose compile-time
+    failure behaviour has not been defined yet.
   - Keep this table-driven and compatible with the AST's RPN layout.
   - Keep the first implementation in semantic side tables keyed by AST node
     index rather than introducing a second AST representation.
