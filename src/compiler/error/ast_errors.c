@@ -73,9 +73,8 @@ bool error_0203_expected_token(NerdSource source,
     return false;
 }
 
-bool error_0204_unexpected_token(NerdSource source,
-                                 ErrorSpan  span,
-                                 TokenKind  actual_kind)
+bool error_0204_unexpected_token(
+    NerdSource source, ErrorSpan span, TokenKind actual_kind, cstr format, ...)
 {
     string    actual = token_kind_to_string(actual_kind);
     ErrorInfo error =
@@ -91,10 +90,32 @@ bool error_0204_unexpected_token(NerdSource source,
                        "Add the missing opening parenthesis or remove the "
                        "extra right parenthesis");
     } else {
-        error_add_help(&error,
-                       "Remove the extra token or add an operator to continue "
-                       "the expression");
+        va_list args;
+        va_start(args, format);
+        error_add_helpv(&error, format, args);
+        va_end(args);
     }
+
+    error_render(&error);
+    return false;
+}
+
+bool error_0205_expected_declaration_or_expression(NerdSource source,
+                                                   ErrorSpan  span,
+                                                   TokenKind  actual_kind,
+                                                   cstr       help_format,
+                                                   ...)
+{
+    string    actual = token_kind_to_string(actual_kind);
+    ErrorInfo error =
+        error_init(205, source, span, "Expected declaration or expression");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
+
+    va_list args;
+    va_start(args, help_format);
+    error_add_helpv(&error, help_format, args);
+    va_end(args);
 
     error_render(&error);
     return false;

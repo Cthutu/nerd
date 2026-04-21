@@ -78,8 +78,8 @@ bool error_0103_invalid_number_literal(NerdSource source,
 bool error_0104_symbol_too_long(NerdSource source, ErrorSpan span);
 bool error_0105_too_many_symbols(NerdSource source);
 
-// Used when the AST node array can't be formed because AstNode.ref is out of
-// bounds
+// Used when the AST node array can't be formed because we have more than 4
+// billion nodes
 bool error_0200_code_too_complex(NerdSource source, ErrorSpan span);
 
 // Used when an operator is found without a previous value.
@@ -105,6 +105,13 @@ bool error_0204_unexpected_token(NerdSource source,
                                  TokenKind  actual_kind,
                                  cstr       help_format,
                                  ...);
+
+// Expected decalaration or expression
+bool error_0205_expected_declaration_or_expression(NerdSource source,
+                                                   ErrorSpan  span,
+                                                   TokenKind  actual_kind,
+                                                   cstr       help_format,
+                                                   ...);
 
 //------------------------------------------------------------------------------
 // Low-level error system
@@ -144,6 +151,7 @@ ErrorInfo warning_init(
 void error_add_reference(
     ErrorInfo* error_info, ErrorRefKind kind, ErrorSpan span, cstr format, ...);
 void error_add_note(ErrorInfo* error_info, cstr format, ...);
+void error_add_helpv(ErrorInfo* error_info, cstr format, va_list args);
 void error_add_help(ErrorInfo* error_info, cstr format, ...);
 
 // Renders the error information to the console.  If the error system is in test
