@@ -522,7 +522,8 @@ internal bool testing_run_language_test(const LanguageTest* test)
     Arena output_arena = {0};
     arena_init(&output_arena);
 
-    string actual_ir = ir_render(&front_results.ir, &output_arena);
+    string actual_ir =
+        ir_render(&front_results.ir, &front_results.lexer, &output_arena);
     string actual_c =
         testing_extract_generated_c_body(testing_strip_section_edges(
             cgen_render(&back_results.cgen, &output_arena)));

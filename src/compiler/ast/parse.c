@@ -70,10 +70,9 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
     EMIT_NODE(AK_FnStart, 0, 0, 0, fn_start_index);
 
     if (!ast_next_token(state)) {
-        return error_0201_missing_value(
-            state->token.source,
-            ast_token_span(state, &state->token),
-            state->token.kind);
+        return error_0201_missing_value(state->token.source,
+                                        ast_token_span(state, &state->token),
+                                        state->token.kind);
     }
     if (!ast_parse_expr(state, NULL)) {
         return false;
@@ -191,10 +190,29 @@ Ast ast_parse(Lexer* lexer)
             break;
 
         default:
-            error_0204_unexpected_token(lexer->source,
-                                        ast_token_span(&state, &token),
-                                        token.kind,
-                                        "Expected a symbol to start a binding");
+            if (!ast_parse_expr(&state, NULL)) {
+                goto error;
+            }
+
+            if (ast_peek_token(&state)) {
+                error_0204_unexpected_token(
+                    lexer->source,
+                    ast_token_span(&state, &state.token),
+                    state.token.kind,
+                    "Expected a symbol to start a binding");
+            } else {
+                AstToken eof = {
+                    .kind        = TK_EOF,
+                    .source      = lexer->source,
+                    .offset      = lexer->source.source.count,
+                    .token_index = (u32)array_count(lexer->tokens),
+                };
+                error_0204_unexpected_token(lexer->source,
+                                            ast_token_span(&state, &eof),
+                                            eof.kind,
+                                            "Expected a symbol to start a "
+                                            "binding");
+            }
             goto error;
         }
     }

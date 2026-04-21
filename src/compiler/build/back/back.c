@@ -54,7 +54,8 @@ internal bool back_end_timing_add(Timing* timing,
 
 internal bool back_end_cgen(BackEndContext* ctx)
 {
-    ctx->results.cgen = cgen_init(&ctx->front_end_results->ir);
+    ctx->results.cgen =
+        cgen_init(&ctx->front_end_results->ir, &ctx->front_end_results->lexer);
     return true;
 }
 
@@ -125,7 +126,9 @@ bool back_end(const FrontEndState*      front_end_results,
     }
 
     if (artifacts->emit_ir_file) {
-        ir_save(&front_end_results->ir, artifacts->ir_path);
+        ir_save(&front_end_results->ir,
+                &front_end_results->lexer,
+                artifacts->ir_path);
     }
 
     BackEndContext ctx = {.front_end_results = front_end_results,

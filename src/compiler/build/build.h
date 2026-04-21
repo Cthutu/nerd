@@ -11,12 +11,14 @@
 #include <compiler/compiler.h>
 #include <compiler/ir/ir.h>
 #include <compiler/lexer/lexer.h>
+#include <compiler/sema/sema.h>
 
 //------------------------------------------------------------------------------
 
 typedef struct {
     Lexer lexer;
     Ast   ast;
+    Sema  sema;
     Ir    ir;
 } FrontEndState;
 

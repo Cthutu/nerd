@@ -32,9 +32,21 @@ internal bool front_end_parse(FrontEndContext* ctx)
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Run semantic analysis over the parsed AST.
+
+internal bool front_end_sema(FrontEndContext* ctx)
+{
+    return sema_analyse(&ctx->results.ast, &ctx->results.sema);
+}
+
+//------------------------------------------------------------------------------
+// Lower the analysed front-end state to IR.
+
 internal bool front_end_ir_gen(FrontEndContext* ctx)
 {
-    ctx->results.ir = ir_generate(&ctx->results.lexer, &ctx->results.ast);
+    ctx->results.ir =
+        ir_generate(&ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
     return true;
 }
 
@@ -80,6 +92,19 @@ bool front_end(NerdSource     source,
     if (result) {
         if (timing != NULL) {
             ThreadTimePoint start = thread_time_now();
+            result                = front_end_sema(&ctx);
+            timing_add(timing,
+                       COMPILER_STAGE_FRONT_END,
+                       COMPILER_PHASE_SEMA,
+                       thread_time_elapsed(start, thread_time_now()));
+        } else {
+            result = front_end_sema(&ctx);
+        }
+    }
+
+    if (result) {
+        if (timing != NULL) {
+            ThreadTimePoint start = thread_time_now();
             result                = front_end_ir_gen(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
@@ -89,7 +114,7 @@ bool front_end(NerdSource     source,
             result = front_end_ir_gen(&ctx);
         }
         if (result && verbose) {
-            ir_dump(&ctx.results.ir);
+            ir_dump(&ctx.results.ir, &ctx.results.lexer);
         }
     }
 
@@ -103,6 +128,9 @@ void front_end_results_done(FrontEndState* results)
 {
     ir_done(&results->ir);
     results->ir = (Ir){0};
+
+    sema_done(&results->sema);
+    results->sema = (Sema){0};
 
     ast_done(&results->ast);
     results->ast = (Ast){0};

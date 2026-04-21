@@ -15,31 +15,31 @@ string token_kind_to_string(TokenKind kind)
     case TK_EOF:
         return string_from_cstr("EOF");
     case TK_Integer:
-        return string_from_cstr("integer");
+        return string_from_cstr("Integer");
     case TK_Symbol:
-        return string_from_cstr("symbol");
+        return string_from_cstr("Symbol");
     case TK_Plus:
-        return string_from_cstr("plus `+`");
+        return string_from_cstr("Plus `+`");
     case TK_Minus:
-        return string_from_cstr("minus `-`");
+        return string_from_cstr("Minus `-`");
     case TK_Star:
-        return string_from_cstr("star `*`");
+        return string_from_cstr("Star `*`");
     case TK_Slash:
-        return string_from_cstr("slash `/`");
+        return string_from_cstr("Slash `/`");
     case TK_Percent:
-        return string_from_cstr("percent `%`");
+        return string_from_cstr("Percent `%`");
     case TK_LParen:
-        return string_from_cstr("open parenthesis `(`");
+        return string_from_cstr("LeftParen `(`");
     case TK_RParen:
-        return string_from_cstr("close parenthesis `)`");
+        return string_from_cstr("RightParen `)`");
     case TK_Colon:
-        return string_from_cstr("colon `:`");
+        return string_from_cstr("Colon `:`");
     case TK_FatArrow:
-        return string_from_cstr("fat arrow `=>`");
+        return string_from_cstr("FatArrow `=>`");
     case TK_fn:
-        return string_from_cstr("keyword `fn`");
+        return string_from_cstr("Keyword `fn`");
     default:
-        return string_from_cstr("unknown");
+        return string_from_cstr("Unknown");
     }
 }
 

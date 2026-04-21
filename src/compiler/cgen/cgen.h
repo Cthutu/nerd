@@ -13,11 +13,12 @@
 // C generation API
 
 typedef struct {
-    Arena arena;
-    int   indent_level;
+    Arena        arena;
+    int          indent_level;
+    const Lexer* lexer;
 } CGen;
 
-CGen   cgen_init(const Ir* ir);
+CGen   cgen_init(const Ir* ir, const Lexer* lexer);
 void   cgen_done(CGen* cgen);
 string cgen_render(const CGen* cgen, Arena* arena);
 void   cgen_save(const CGen* cgen, const char* path);

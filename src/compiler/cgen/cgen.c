@@ -17,6 +17,8 @@ static const char g_cgen_epilogue[] = {
 //------------------------------------------------------------------------------
 // C generation helpers
 
+// Emit the current indentation prefix.
+
 void cgen_start_line(CGen* cgen)
 {
     for (int i = 0; i < cgen->indent_level; ++i) {
@@ -24,7 +26,13 @@ void cgen_start_line(CGen* cgen)
     }
 }
 
+//------------------------------------------------------------------------------
+// Append a text fragment to the generated C buffer.
+
 void cgen_add(CGen* cgen, cstr line) { arena_format(&cgen->arena, "%s", line); }
+
+//------------------------------------------------------------------------------
+// Append raw bytes to the generated C buffer.
 
 void cgen_add_bytes(CGen* cgen, const char* text, usize count)
 {
@@ -36,11 +44,17 @@ void cgen_add_bytes(CGen* cgen, const char* text, usize count)
     memcpy(dst, text, count);
 }
 
+//------------------------------------------------------------------------------
+// Append a text fragment followed by a newline.
+
 void cgen_addn(CGen* cgen, cstr line)
 {
     cgen_add(cgen, line);
     arena_format(&cgen->arena, "\n");
 }
+
+//------------------------------------------------------------------------------
+// Append an indented line followed by a newline.
 
 void cgen_add_line(CGen* cgen, cstr line)
 {
@@ -48,7 +62,13 @@ void cgen_add_line(CGen* cgen, cstr line)
     cgen_addn(cgen, line);
 }
 
+//------------------------------------------------------------------------------
+// Increase indentation for subsequent lines.
+
 void cgen_indent(CGen* cgen) { ++cgen->indent_level; }
+
+//------------------------------------------------------------------------------
+// Decrease indentation for subsequent lines.
 
 void cgen_dedent(CGen* cgen)
 {
@@ -77,6 +97,19 @@ void cgen_add_epilogue(CGen* cgen)
 //------------------------------------------------------------------------------
 // C generation for IR instructions
 
+//------------------------------------------------------------------------------
+// Render a C symbol name for a Nerd function.
+
+void cgen_add_symbol_name(CGen* cgen, u32 symbol_handle)
+{
+    cgen_add(cgen, "$");
+    arena_format(
+        &cgen->arena, STRINGP, STRINGV(lex_symbol(cgen->lexer, symbol_handle)));
+}
+
+//------------------------------------------------------------------------------
+// Render an IR value into C syntax.
+
 void cgen_add_value(CGen* cgen, const IrValue* value)
 {
     switch (value->kind) {
@@ -92,6 +125,9 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
     }
 }
 
+//------------------------------------------------------------------------------
+// Emit a C assignment from an IR assignment instruction.
+
 void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE, "Expected variable lvalue");
@@ -103,6 +139,9 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+//------------------------------------------------------------------------------
+// Emit a C return from an IR return instruction.
+
 void cgen_add_return(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
@@ -110,6 +149,9 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
 }
+
+//------------------------------------------------------------------------------
+// Emit a C unary expression from an IR unary instruction.
 
 void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
@@ -122,6 +164,9 @@ void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
 }
+
+//------------------------------------------------------------------------------
+// Emit a C binary expression from an IR binary instruction.
 
 void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
@@ -141,12 +186,20 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 
 void cgen_generate(CGen* cgen, const Ir* ir)
 {
-    cgen_add_line(cgen, "int $main() {");
-    cgen_indent(cgen);
-
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];
         switch (instr->op) {
+        case IR_OP_FN_START:
+            cgen_start_line(cgen);
+            cgen_add(cgen, "int ");
+            cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
+            cgen_addn(cgen, "() {");
+            cgen_indent(cgen);
+            break;
+        case IR_OP_FN_END:
+            cgen_dedent(cgen);
+            cgen_add_line(cgen, "}");
+            break;
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);
             break;
@@ -177,16 +230,15 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         }
     }
-
-    cgen_dedent(cgen);
-    cgen_add_line(cgen, "}");
 }
 
 //------------------------------------------------------------------------------
 
-CGen cgen_init(const Ir* ir)
+// Build the generated C buffer from IR.
+
+CGen cgen_init(const Ir* ir, const Lexer* lexer)
 {
-    CGen cgen = {0};
+    CGen cgen = {.lexer = lexer};
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);

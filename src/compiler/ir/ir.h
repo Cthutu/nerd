@@ -7,10 +7,13 @@
 #pragma once
 
 #include <compiler/ast/ast.h>
+#include <compiler/sema/sema.h>
 
 //------------------------------------------------------------------------------
 
 typedef enum : u8 {
+    IR_OP_FN_START,
+    IR_OP_FN_END,
     IR_OP_ASSIGN,
     IR_OP_NEGATE,
     IR_OP_ADD,
@@ -25,6 +28,7 @@ typedef enum : u8 {
     IR_VALUE_NONE,
     IR_VALUE_VARIABLE,
     IR_VALUE_INTEGER,
+    IR_VALUE_SYMBOL,
 } IrValueKind;
 
 typedef struct {
@@ -47,11 +51,11 @@ typedef struct {
 //------------------------------------------------------------------------------
 // IR generation API
 
-Ir     ir_generate(const Lexer* lex, const Ast* ast);
+Ir     ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema);
 void   ir_done(Ir* ir);
-string ir_render(const Ir* ir, Arena* arena);
-void   ir_save(const Ir* ir, cstr path);
-void   ir_dump(const Ir* ir);
+string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena);
+void   ir_save(const Ir* ir, const Lexer* lexer, cstr path);
+void   ir_dump(const Ir* ir, const Lexer* lexer);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

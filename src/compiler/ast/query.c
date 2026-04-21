@@ -23,3 +23,14 @@ u64 ast_get_integer(const Lexer* lexer, const AstNode* node)
     }
     return lexer->integers[integer_index];
 }
+
+//------------------------------------------------------------------------------
+// Extract the bound symbol handle from an AK_Bind node.
+
+u32 ast_get_symbol(const AstNode* node)
+{
+    if (node->kind != AK_Bind) {
+        error_ice("Node is not a binding");
+    }
+    return node->a;
+}

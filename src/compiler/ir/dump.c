@@ -8,8 +8,10 @@
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
+// Render a single IR value into a string builder.
 
-internal void ir_render_value(StringBuilder* sb, const IrValue* value)
+internal void
+ir_render_value(StringBuilder* sb, const Lexer* lexer, const IrValue* value)
 {
     switch (value->kind) {
     case IR_VALUE_VARIABLE:
@@ -17,6 +19,9 @@ internal void ir_render_value(StringBuilder* sb, const IrValue* value)
         break;
     case IR_VALUE_INTEGER:
         sb_format(sb, "%u", (u32)value->value.integer);
+        break;
+    case IR_VALUE_SYMBOL:
+        sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));
         break;
     case IR_VALUE_NONE:
         break;
@@ -26,7 +31,10 @@ internal void ir_render_value(StringBuilder* sb, const IrValue* value)
     }
 }
 
-string ir_render(const Ir* ir, Arena* arena)
+//------------------------------------------------------------------------------
+// Render IR to its stable textual snapshot form.
+
+string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
@@ -35,24 +43,31 @@ string ir_render(const Ir* ir, Arena* arena)
         const IrInstruction* instr = &ir->instructions[i];
 
         switch (instr->op) {
+        case IR_OP_FN_START:
+            sb_append_cstr(&sb, "fn ");
+            ir_render_value(&sb, lexer, &instr->lvalue);
+            break;
+        case IR_OP_FN_END:
+            sb_append_cstr(&sb, "end");
+            break;
         case IR_OP_ASSIGN:
-            ir_render_value(&sb, &instr->lvalue);
+            ir_render_value(&sb, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, &instr->rvalue[0]);
+            ir_render_value(&sb, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_NEGATE:
-            ir_render_value(&sb, &instr->lvalue);
+            ir_render_value(&sb, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = -");
-            ir_render_value(&sb, &instr->rvalue[0]);
+            ir_render_value(&sb, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_ADD:
         case IR_OP_SUBTRACT:
         case IR_OP_MULTIPLY:
         case IR_OP_DIVIDE:
         case IR_OP_MODULO:
-            ir_render_value(&sb, &instr->lvalue);
+            ir_render_value(&sb, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, &instr->rvalue[0]);
+            ir_render_value(&sb, lexer, &instr->rvalue[0]);
             switch (instr->op) {
             case IR_OP_ADD:
                 sb_append_cstr(&sb, " + ");
@@ -72,11 +87,11 @@ string ir_render(const Ir* ir, Arena* arena)
             default:
                 break;
             }
-            ir_render_value(&sb, &instr->rvalue[1]);
+            ir_render_value(&sb, lexer, &instr->rvalue[1]);
             break;
         case IR_OP_RETURN:
             sb_append_cstr(&sb, "return ");
-            ir_render_value(&sb, &instr->rvalue[0]);
+            ir_render_value(&sb, lexer, &instr->rvalue[0]);
             break;
         default:
             sb_append_cstr(&sb, "<unknown>");
@@ -91,11 +106,14 @@ string ir_render(const Ir* ir, Arena* arena)
     return sb_to_string(&sb);
 }
 
-void ir_save(const Ir* ir, cstr path)
+//------------------------------------------------------------------------------
+// Save rendered IR to a file.
+
+void ir_save(const Ir* ir, const Lexer* lexer, cstr path)
 {
     Arena arena = {0};
     arena_init(&arena);
-    string rendered = ir_render(ir, &arena);
+    string rendered = ir_render(ir, lexer, &arena);
 
     FILE* file      = fopen(path, "wb");
     if (!file) {
@@ -112,11 +130,14 @@ void ir_save(const Ir* ir, cstr path)
     }
 }
 
-void ir_dump(const Ir* ir)
+//------------------------------------------------------------------------------
+// Print rendered IR for debugging.
+
+void ir_dump(const Ir* ir, const Lexer* lexer)
 {
     Arena arena = {0};
     arena_init(&arena);
-    string rendered = ir_render(ir, &arena);
+    string rendered = ir_render(ir, lexer, &arena);
     prn("\nIR:\n");
     if (rendered.count > 0) {
         prn(STRINGP, STRINGV(rendered));

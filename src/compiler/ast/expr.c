@@ -35,6 +35,7 @@ bool ast_token_starts_expression(TokenKind kind)
 {
     switch (kind) {
     case TK_Integer:
+    case TK_Symbol:
     case TK_Minus:
     case TK_LParen:
         return true;
@@ -65,6 +66,21 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     }
 }
 
+//------------------------------------------------------------------------------
+// Report whether the upcoming token sequence starts a new top-level binding.
+
+internal bool ast_next_tokens_start_binding(const AstParseState* state)
+{
+    if (state->token_index + 2 >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+
+    const Token* tokens = state->lexer->tokens;
+    return tokens[state->token_index].kind == TK_Symbol &&
+           tokens[state->token_index + 1].kind == TK_Colon &&
+           tokens[state->token_index + 2].kind == TK_Colon;
+}
+
 // Pratt parsing terminology:
 //
 // - `nud` ("null denotation") parses a token that starts an expression, such
@@ -88,6 +104,15 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .kind        = AK_IntegerLiteral,
                 .token_index = token.token_index,
                 .a           = token.value.integer_index,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
+    case TK_Symbol:
+        {
+            AstNode node = {
+                .kind        = AK_SymbolRef,
+                .token_index = token.token_index,
+                .a           = token.value.symbol_handle,
             };
             return ast_emit_node(state, node, out_node);
         }
@@ -143,10 +168,9 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
     }
 
     if (!ast_next_token(state)) {
-        return error_0201_missing_value(
-            state->token.source,
-            ast_token_span(state, &state->token),
-            state->token.kind);
+        return error_0201_missing_value(state->token.source,
+                                        ast_token_span(state, &state->token),
+                                        state->token.kind);
     }
     if (!ast_parse_expr_bp(state, right_bp, &right_node)) {
         return false;
@@ -162,7 +186,8 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
-// Parse an expression starting at the current token and wrap it in AK_Expression.
+// Parse an expression starting at the current token and wrap it in
+// AK_Expression.
 
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node)
 {
@@ -201,6 +226,9 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
         next = state->token;
 
         if (!ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
+            if (ast_next_tokens_start_binding(state)) {
+                break;
+            }
             if (ast_token_starts_expression(next.kind)) {
                 return error_0202_missing_operator(
                     next.source, ast_token_span(state, &next), next.kind);

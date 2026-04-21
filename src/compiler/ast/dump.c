@@ -14,6 +14,8 @@ string ast_kind_to_string(AstKind kind)
     switch (kind) {
     case AK_IntegerLiteral:
         return s("IntegerLiteral");
+    case AK_SymbolRef:
+        return s("SymbolRef");
     case AK_IntegerNegate:
         return s("IntegerNegate");
     case AK_IntegerPlus:
@@ -72,6 +74,9 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         switch (node->kind) {
         case AK_IntegerLiteral:
             row[3] = table_cell_u64(lexer->integers[node->a]);
+            break;
+        case AK_SymbolRef:
+            row[3] = table_cell_string(lex_symbol(lexer, node->a));
             break;
         case AK_IntegerNegate:
             row[3] = table_cell_string(

@@ -16,6 +16,7 @@
 // | Name               | a                 | b                               |
 // |--------------------|-------------------|---------------------------------|
 // | AK_IntegerLiteral  | Integer index     | 0                               |
+// | AK_SymbolRef       | Symbol handle     | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
 // | AK_IntegerMinus    | Ast index of left | Ast index of right              |
@@ -32,6 +33,7 @@
 
 typedef enum {
     AK_IntegerLiteral,
+    AK_SymbolRef,
     AK_IntegerNegate,
     AK_IntegerPlus,
     AK_IntegerMinus,
@@ -65,6 +67,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer);
 // Extraction API
 
 u64 ast_get_integer(const Lexer* lexer, const AstNode* node);
+u32 ast_get_symbol(const AstNode* node);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
