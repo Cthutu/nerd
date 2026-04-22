@@ -40,6 +40,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("RightBrace `}`");
     case TK_Colon:
         return string_from_cstr("Colon `:`");
+    case TK_Bang:
+        return string_from_cstr("Bang `!`");
     case TK_FatArrow:
         return string_from_cstr("FatArrow `=>`");
     case TK_ThinArrow:

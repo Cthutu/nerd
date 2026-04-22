@@ -9,8 +9,6 @@
 
 #define LEXER_ARRAY_INIT_CAPACITY 256
 
-//------------------------------------------------------------------------------
-
 bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 {
     string source_code = source.source;
@@ -197,7 +195,7 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 cstr      name;
                 u8        length;
                 TokenKind kind;
-            } keywords[]    = {
+            } keywords[] = {
                 {"fn", 2, TK_fn},
                 {"return", 6, TK_return},
                 {NULL, 0, 0},
@@ -277,6 +275,7 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 ['{']       = TK_LBrace,
                 ['}']       = TK_RBrace,
                 [':']       = TK_Colon,
+                ['!']       = TK_Bang,
             };
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic pop
@@ -362,6 +361,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_LBrace:
     case TK_RBrace:
     case TK_Colon:
+    case TK_Bang:
     case TK_Minus:
         return token->offset + 1;
 
