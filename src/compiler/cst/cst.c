@@ -133,7 +133,8 @@ internal bool cst_starts_variable(const CstParseState* state)
            cst_peek_kind_at(state, 2) != TK_Colon;
 }
 
-internal TokenKind cst_kind_at_stream_index(const CstParseState* state, u32 index)
+internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
+                                            u32                  index)
 {
     if (index >= array_count(state->lexer->tokens)) {
         return TK_EOF;
@@ -168,7 +169,8 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     return cst_skip_type_tokens(state, io_index);
 }
 
-internal bool cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
+internal bool
+cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
 {
     u32 token_index = state->token_index;
     if (!cst_skip_type_tokens(state, &token_index)) {
@@ -472,7 +474,8 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 return false;
             }
             cst_advance(state);
-            if (!cst_consume(state, TK_LParen) || !cst_parse_type(state, &right) ||
+            if (!cst_consume(state, TK_LParen) ||
+                !cst_parse_type(state, &right) ||
                 !cst_consume(state, TK_RParen)) {
                 return false;
             }
@@ -543,7 +546,7 @@ cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
     }
 
     while (cst_current_token(state).kind != TK_RBrace) {
-        u32 token_index    = state->token_index;
+        u32 token_index = state->token_index;
 
         if (cst_current_token(state).kind == TK_return) {
             u32 expr = 0;
@@ -691,9 +694,8 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
     return cst_parse_expr_bp(state, 0, out_node);
 }
 
-internal bool cst_parse_variable_payload(CstParseState* state,
-                                         u32            token_index,
-                                         u32*           out_node)
+internal bool
+cst_parse_variable_payload(CstParseState* state, u32 token_index, u32* out_node)
 {
     u32 type_node = CST_NO_VALUE;
     u32 value     = 0;

@@ -85,7 +85,9 @@ bool error_0302_dependency_cycle(NerdSource source,
 //------------------------------------------------------------------------------
 // Report a type annotation that names an unsupported type.
 
-bool error_0303_unknown_type(NerdSource source, ErrorSpan span, string type_name)
+bool error_0303_unknown_type(NerdSource source,
+                             ErrorSpan  span,
+                             string     type_name)
 {
     ErrorInfo error = error_init(
         303, source, span, "Unknown type `" STRINGP "`", STRINGV(type_name));
@@ -132,18 +134,16 @@ bool error_0305_invalid_assignment_target(NerdSource source,
                                           ErrorSpan  span,
                                           string     symbol)
 {
-    ErrorInfo error = error_init(305,
-                                 source,
-                                 span,
-                                 "Cannot assign to `" STRINGP "`",
-                                 STRINGV(symbol));
+    ErrorInfo error = error_init(
+        305, source, span, "Cannot assign to `" STRINGP "`", STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
                         "`" STRINGP "` is not a mutable variable",
                         STRINGV(symbol));
     error_add_help(&error,
-                   "Declare `" STRINGP "` as a variable with `:` or assign to a "
+                   "Declare `" STRINGP
+                   "` as a variable with `:` or assign to a "
                    "different mutable symbol.",
                    STRINGV(symbol));
     error_render(&error);
@@ -187,10 +187,8 @@ bool error_0307_invalid_cast(NerdSource source,
                                  "Cannot cast `" STRINGP "` to `" STRINGP "`",
                                  STRINGV(source_type),
                                  STRINGV(target_type));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This cast is not supported");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This cast is not supported");
     error_add_help(&error,
                    "Use explicit casts only between compatible primitive "
                    "types in the current milestone.");
@@ -216,6 +214,36 @@ bool error_0308_type_used_as_value(NerdSource source,
                    "Use `" STRINGP "` in a type annotation or bind a runtime "
                    "value instead.",
                    STRINGV(type_name));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a dependency cycle between type aliases.
+
+bool error_0309_type_alias_cycle(NerdSource source,
+                                 ErrorSpan  span,
+                                 string     symbol,
+                                 ErrorSpan  dependency_span,
+                                 string     dependency_symbol)
+{
+    ErrorInfo error = error_init(309,
+                                 source,
+                                 span,
+                                 "Type alias cycle involving `" STRINGP "`",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This alias participates in a type cycle");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        dependency_span,
+                        "Cycle closes through `" STRINGP "` here",
+                        STRINGV(dependency_symbol));
+    error_add_help(&error,
+                   "Break the cycle by rewriting one of the aliases so it "
+                   "resolves to a concrete type.");
     error_render(&error);
     return false;
 }

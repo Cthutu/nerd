@@ -372,7 +372,7 @@ needed earlier.
 
 ## Milestone 5: Primitive Types, Variables, And Casts
 
-- [ ] 33. Introduce primitive built-in types.
+- [X] 33. Introduce primitive built-in types.
   - Add signed integers such as `i8`, `i16`, `i32`, and `i64`.
   - Add unsigned integers such as `u8`, `u16`, `u32`, and `u64`.
   - Add floating-point types `f32` and `f64`.
@@ -380,7 +380,7 @@ needed earlier.
   - Add compact semantic type tables rather than storing type information ad
     hoc in the AST or IR.
 
-- [ ] 34. Add explicit type annotations and variable bindings while preserving inference.
+- [X] 34. Add explicit type annotations and variable bindings while preserving inference.
   - Place explicit annotations between the colons in bindings.
   - `hello :: "Hello"` should remain equivalent to `hello: string: "Hello"`.
   - Add variable bindings using `:` and `=`.
@@ -400,7 +400,7 @@ needed earlier.
   - Allow later passes to refine earlier placeholder or unresolved inferred
     types as more declaration and usage information becomes available.
 
-- [ ] 35. Define integer literal typing rules.
+- [X] 35. Define integer literal typing rules.
   - Top-level numeric bindings are initially untyped integers until use fixes
     their type.
   - Using an untyped integer in a typed context should adopt that target type
@@ -416,7 +416,7 @@ needed earlier.
     - `b :: value`
     - Here `value` starts untyped, `a` becomes `u8`, and `b` becomes `i32`.
 
-- [ ] 36. Require exact type matches for arithmetic and add explicit casts.
+- [X] 36. Require exact type matches for arithmetic and add explicit casts.
   - Do not introduce implicit conversions.
   - Add explicit casts through a `.cast(<type>)` form.
   - Support casts on both named values and literals, for example:
@@ -428,7 +428,7 @@ needed earlier.
     parser special cases.
   - Keep this no-implicit-casts rule as a language principle.
 
-- [ ] 37. Extend tests, formatter support, and LSP support for primitive types, variables, and casts.
+- [X] 37. Extend tests, formatter support, and LSP support for primitive types, variables, and casts.
   - Add language tests for type annotations, inference, variable bindings,
     exact-match arithmetic, and casts.
   - Add error tests for mismatched primitive operations, invalid casts, and

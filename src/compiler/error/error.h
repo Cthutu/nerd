@@ -129,7 +129,9 @@ bool error_0302_dependency_cycle(NerdSource source,
                                  string     symbol,
                                  ErrorSpan  dependency_span,
                                  string     dependency_symbol);
-bool error_0303_unknown_type(NerdSource source, ErrorSpan span, string type_name);
+bool error_0303_unknown_type(NerdSource source,
+                             ErrorSpan  span,
+                             string     type_name);
 bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,
@@ -147,6 +149,11 @@ bool error_0307_invalid_cast(NerdSource source,
 bool error_0308_type_used_as_value(NerdSource source,
                                    ErrorSpan  span,
                                    string     type_name);
+bool error_0309_type_alias_cycle(NerdSource source,
+                                 ErrorSpan  span,
+                                 string     symbol,
+                                 ErrorSpan  dependency_span,
+                                 string     dependency_symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

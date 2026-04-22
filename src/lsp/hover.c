@@ -254,8 +254,9 @@ internal string lsp_decl_signature(const LspDocument* doc,
         if (string_eq(name, s("pr")) || string_eq(name, s("prn"))) {
             string rendered =
                 sema_type_name(&doc->front_end.sema, arena, decl->type_index);
-            return string_eq(rendered, s("<unknown>")) ? s("fn (string) -> void")
-                                                       : rendered;
+            return string_eq(rendered, s("<unknown>"))
+                       ? s("fn (string) -> void")
+                       : rendered;
         }
     }
     return sema_type_name(&doc->front_end.sema, arena, decl->type_index);
@@ -275,8 +276,9 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
         return s("<unknown>");
     }
 
-    return sema_type_name(
-        &doc->front_end.sema, arena, doc->front_end.sema.node_type_indices[node_index]);
+    return sema_type_name(&doc->front_end.sema,
+                          arena,
+                          doc->front_end.sema.node_type_indices[node_index]);
 }
 
 //------------------------------------------------------------------------------
@@ -313,14 +315,16 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     string kind = s("value");
     string inferred_type = s("<unknown>");
     if (decl->kind == SK_TypeAlias) {
-        kind          = s("type alias");
-        inferred_type = sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+        kind = s("type alias");
+        inferred_type =
+            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
     } else if (decl->kind == SK_Constant) {
         kind          = s("constant");
         inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
     } else if (decl->kind == SK_Variable) {
-        kind          = s("variable");
-        inferred_type = sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+        kind = s("variable");
+        inferred_type =
+            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
     } else {
         kind          = s("function");
         inferred_type = lsp_decl_signature(doc, arena, decl);
@@ -340,15 +344,17 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     }
 
     if (decl->kind == SK_TypeAlias) {
-        return string_format(
-            arena,
-            STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`",
-            STRINGV(lsp_markdown_code_block(
-                arena,
-                string_format(
-                    arena, STRINGP " :: " STRINGP, STRINGV(name), STRINGV(inferred_type)))),
-            STRINGV(kind),
-            STRINGV(inferred_type));
+        return string_format(arena,
+                             STRINGP "\n\n- Kind: " STRINGP
+                                     "\n- Type: `" STRINGP "`",
+                             STRINGV(lsp_markdown_code_block(
+                                 arena,
+                                 string_format(arena,
+                                               STRINGP " :: " STRINGP,
+                                               STRINGV(name),
+                                               STRINGV(inferred_type)))),
+                             STRINGV(kind),
+                             STRINGV(inferred_type));
     }
 
     i64 value = 0;
@@ -493,11 +499,11 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             lsp_set_markdown_hover(
                 response,
                 message->arena,
-                string_format(message->arena,
-                              STRINGP "\n\n- Type: `" STRINGP "`",
-                              STRINGV(lsp_markdown_code_block(message->arena,
-                                                              raw_text)),
-                              STRINGV(s("untyped integer"))));
+                string_format(
+                    message->arena,
+                    STRINGP "\n\n- Type: `" STRINGP "`",
+                    STRINGV(lsp_markdown_code_block(message->arena, raw_text)),
+                    STRINGV(s("untyped integer"))));
         }
         break;
     case TK_String:
@@ -534,21 +540,23 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
 
     case TK_fn:
         {
-            string signature = s("fn ()");
+            string signature  = s("fn ()");
             u32    decl_index = lsp_find_decl_index_for_token(doc, token_index);
             if (decl_index != LSP_NO_DECL) {
-                signature = lsp_decl_signature(
-                    doc, message->arena, &doc->front_end.sema.decls[decl_index]);
+                signature =
+                    lsp_decl_signature(doc,
+                                       message->arena,
+                                       &doc->front_end.sema.decls[decl_index]);
             }
-        lsp_set_markdown_hover(
-            response,
-            message->arena,
-            string_format(message->arena,
-                          STRINGP "\n\n- Kind: function expression"
-                                  "\n- Signature: `" STRINGP "`",
-                          STRINGV(lsp_markdown_code_block(message->arena,
-                                                          signature)),
-                          STRINGV(signature)));
+            lsp_set_markdown_hover(
+                response,
+                message->arena,
+                string_format(
+                    message->arena,
+                    STRINGP "\n\n- Kind: function expression"
+                            "\n- Signature: `" STRINGP "`",
+                    STRINGV(lsp_markdown_code_block(message->arena, signature)),
+                    STRINGV(signature)));
         }
         break;
 
@@ -667,10 +675,8 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                                                   end_offset));
 
             if (decl->kind == SK_TypeAlias) {
-                json_object_set_string(symbol,
-                                       message->arena,
-                                       "detail",
-                                       s("type alias"));
+                json_object_set_string(
+                    symbol, message->arena, "detail", s("type alias"));
             } else if (decl->kind == SK_Constant) {
                 i64 value = 0;
                 if (lsp_eval_decl_value(doc, decl_index, &value)) {

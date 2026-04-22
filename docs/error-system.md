@@ -40,6 +40,11 @@ The project keeps phase-specific ranges:
 
 That convention matters for readability, tests, and future coverage.
 
+Recent semantic examples in the current milestone include:
+
+- `0302` for runtime/value dependency cycles
+- `0309` for type-alias cycles during type resolution
+
 ## Render Modes
 
 The same `ErrorInfo` can be rendered in three modes:

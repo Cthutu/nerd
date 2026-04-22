@@ -59,13 +59,13 @@ void ir_add_fn_end(Ir* ir)
 
 void ir_add_local(Ir* ir, u32 symbol_handle, IrValue rvalue)
 {
-    array_push(ir->instructions,
-               (IrInstruction){
-                   .op     = IR_OP_LOCAL,
-                   .lvalue = {.kind = IR_VALUE_LOCAL,
-                              .value.integer = symbol_handle},
-                   .rvalue = {rvalue, {0}},
-               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_LOCAL,
+            .lvalue = {.kind = IR_VALUE_LOCAL, .value.integer = symbol_handle},
+            .rvalue = {rvalue, {0}},
+        });
 }
 
 //------------------------------------------------------------------------------
@@ -98,13 +98,14 @@ void ir_add_call(Ir* ir, IrValue callee, IrValue arg)
 
 void ir_add_cast(Ir* ir, IrValue lvalue, IrValue value, u32 type_index)
 {
-    array_push(ir->instructions,
-               (IrInstruction){
-                   .op     = IR_OP_CAST,
-                   .lvalue = lvalue,
-                   .rvalue = {value, {.kind = IR_VALUE_INTEGER,
-                                      .value.integer = type_index}},
-               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_CAST,
+            .lvalue = lvalue,
+            .rvalue = {value,
+                       {.kind = IR_VALUE_INTEGER, .value.integer = type_index}},
+        });
 }
 
 //------------------------------------------------------------------------------
@@ -280,7 +281,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
             IrValue value = {0};
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 value = (IrValue){
-                    .kind          = IR_VALUE_LOCAL,
+                    .kind = IR_VALUE_LOCAL,
                     .value.integer =
                         sema->locals[sema->node_local_indices[node_index]]
                             .symbol_handle,
@@ -291,10 +292,10 @@ internal IrValue ir_lower_node(const Lexer* lex,
                        "Expected resolved symbol reference");
                 const SemaDecl* decl = &sema->decls[decl_index];
 
-                value = (IrValue){
-                    .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
-                                                             : IR_VALUE_SYMBOL,
-                    .value.integer = decl->symbol_handle,
+                value                = (IrValue){
+                                   .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
+                                                                            : IR_VALUE_SYMBOL,
+                                   .value.integer = decl->symbol_handle,
                 };
             }
             node_values[node_index] = value;
@@ -513,8 +514,13 @@ internal void ir_generate_function(const Lexer*    lex,
             }
 
             if (node->kind == AK_Assign) {
-                IrValue value = ir_lower_node(
-                    lex, ast, sema, node->b, node_values, &next_value_index, ir);
+                IrValue value  = ir_lower_node(lex,
+                                              ast,
+                                              sema,
+                                              node->b,
+                                              node_values,
+                                              &next_value_index,
+                                              ir);
                 IrValue target = sema->node_local_indices[i] != sema_no_local()
                                      ? (IrValue){.kind = IR_VALUE_LOCAL,
                                                  .value.integer = node->a}

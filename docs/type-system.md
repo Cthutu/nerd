@@ -1,7 +1,7 @@
 # Type System
 
 This document describes the current implementation of type information in the
-semantic layer.
+semantic layer for Milestone 5.
 
 The main code is in
 [src/compiler/sema/sema.h](/home/matt/nerd/src/compiler/sema/sema.h) and
@@ -35,6 +35,7 @@ The current `SemaTypeKind` set includes:
 - `string`
 - `bool`
 - integer primitives such as `i32`, `u16`, `isize`, and `usize`
+- floating-point primitives `f32` and `f64`
 - function types
 
 Function types currently use the payload fields to encode parameter and return
@@ -84,6 +85,50 @@ delay commitment until surrounding context is known.
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
 
+## Type Aliases
+
+Type aliases are normal top-level bindings whose right-hand side resolves to a
+type:
+
+- `Price :: u16`
+- `MainFn :: fn () -> i32`
+
+Alias classification is a semantic pass, not a parser special case. The parser
+still records a normal binding shape and semantic analysis decides whether the
+binding names a runtime value or a type alias.
+
+Alias cycles are diagnosed during type classification before normal dependency
+ordering. They now have a dedicated semantic error so alias cycles are kept
+distinct from value dependency cycles.
+
+## Variables And Storage
+
+Variables are represented semantically rather than through wider AST nodes.
+Current storage-eligible types are:
+
+- concrete integer types
+- `bool`
+- `string`
+- `f32`
+- `f64`
+
+Zero-initialised declarations such as `count: i32` and `name: string` are
+checked in sema and then lowered using type-aware zero values.
+
+## Casts
+
+Explicit casts use postfix syntax:
+
+- `value.cast(u8)`
+- `128.cast(u8)`
+
+Cast validity is semantic and table-driven. The parser only records a cast node
+with a source expression and a target type expression.
+
+The current milestone allows explicit casts across compatible primitive
+numeric/bool types and rejects unsupported casts such as `string.cast(u8)` with
+structured semantic diagnostics.
+
 ## Type Names
 
 `sema_type_name(...)` renders source-facing type text. It is used by:
@@ -100,9 +145,12 @@ Today the semantic type system is focused on:
 
 - built-in primitive types
 - function signatures
-- integer and string typing
+- alias resolution
+- variable storage eligibility
+- untyped integer materialisation
 - exact-match type checks for the implemented arithmetic surface
+- explicit cast validation
 
-The type system is still under active expansion, so future features such as
-aliases, casts, and richer inference should continue to follow the same
-side-table model rather than expanding AST node size.
+One implementation caveat remains: the IR is not yet fully self-describing and
+some backend stages still consult semantic tables. A future cleanup should move
+that remaining type knowledge into IR so VM-style execution becomes practical.

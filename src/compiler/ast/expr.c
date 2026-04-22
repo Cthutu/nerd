@@ -229,12 +229,14 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              TK_EOF);
         }
         if (state->token.kind != TK_Symbol ||
-            !string_eq(lex_symbol(state->lexer, state->token.value.symbol_handle),
-                       s("cast"))) {
-            return error_0203_expected_token(state->token.source,
-                                             ast_token_span(state, &state->token),
-                                             TK_Symbol,
-                                             state->token.kind);
+            !string_eq(
+                lex_symbol(state->lexer, state->token.value.symbol_handle),
+                s("cast"))) {
+            return error_0203_expected_token(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
         }
         if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
             return false;

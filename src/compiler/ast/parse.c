@@ -17,16 +17,19 @@ internal TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead)
 
 internal bool ast_symbol_starts_assignment(const AstParseState* state)
 {
-    return state->token.kind == TK_Symbol && ast_peek_kind_at(state, 0) == TK_Equal;
+    return state->token.kind == TK_Symbol &&
+           ast_peek_kind_at(state, 0) == TK_Equal;
 }
 
 internal bool ast_symbol_starts_variable(const AstParseState* state)
 {
-    return state->token.kind == TK_Symbol && ast_peek_kind_at(state, 0) == TK_Colon &&
+    return state->token.kind == TK_Symbol &&
+           ast_peek_kind_at(state, 0) == TK_Colon &&
            ast_peek_kind_at(state, 1) != TK_Colon;
 }
 
-internal TokenKind ast_kind_at_stream_index(const AstParseState* state, u32 index)
+internal TokenKind ast_kind_at_stream_index(const AstParseState* state,
+                                            u32                  index)
 {
     if (index >= array_count(state->lexer->tokens)) {
         return TK_EOF;
@@ -66,7 +69,8 @@ bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index)
     return ast_skip_type_tokens(state, &token_index);
 }
 
-internal bool ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
+internal bool
+ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
 {
     u32 token_index = state->token.token_index;
     if (!ast_skip_type_tokens(state, &token_index)) {
@@ -81,7 +85,8 @@ internal bool ast_remaining_bind_value_is_type_syntax(const AstParseState* state
 
 internal bool ast_symbol_starts_bind(const AstParseState* state)
 {
-    if (state->token.kind != TK_Symbol || ast_peek_kind_at(state, 0) != TK_Colon) {
+    if (state->token.kind != TK_Symbol ||
+        ast_peek_kind_at(state, 0) != TK_Colon) {
         return false;
     }
     if (ast_peek_kind_at(state, 1) == TK_Colon) {
@@ -121,7 +126,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
     }
 
     AstToken fn_token = state->token;
-    if (!ast_expect_token(state, TK_LParen) || !ast_expect_token(state, TK_RParen) ||
+    if (!ast_expect_token(state, TK_LParen) ||
+        !ast_expect_token(state, TK_RParen) ||
         !ast_expect_token(state, TK_ThinArrow) || !ast_next_token(state)) {
         return false;
     }
@@ -188,7 +194,7 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 
     while (state->token.kind != TK_RBrace) {
         if (state->token.kind == TK_return) {
-            u32 return_token_index    = state->token.token_index;
+            u32 return_token_index   = state->token.token_index;
             u32 statement_expr_index = 0;
             if (!ast_next_token(state)) {
                 return error_0201_missing_value(
@@ -204,11 +210,11 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
             }
             state->allow_statement_boundary = previous_boundary;
 
-            u32     statement_index = 0;
-            AstNode statement       = {
-                      .kind        = AK_Return,
-                      .token_index = return_token_index,
-                      .a           = statement_expr_index,
+            u32     statement_index         = 0;
+            AstNode statement               = {
+                              .kind        = AK_Return,
+                              .token_index = return_token_index,
+                              .a           = statement_expr_index,
             };
             if (!ast_emit_node(state, statement, &statement_index)) {
                 return false;
@@ -222,8 +228,8 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
                 return false;
             }
         } else {
-            u32 statement_expr_index = 0;
-            u32 statement_token      = state->token.token_index;
+            u32 statement_expr_index        = 0;
+            u32 statement_token             = state->token.token_index;
 
             bool previous_boundary          = state->allow_statement_boundary;
             state->allow_statement_boundary = true;
@@ -233,11 +239,11 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
             }
             state->allow_statement_boundary = previous_boundary;
 
-            u32     statement_index = 0;
-            AstNode statement       = {
-                      .kind        = AK_Statement,
-                      .token_index = statement_token,
-                      .a           = statement_expr_index,
+            u32     statement_index         = 0;
+            AstNode statement               = {
+                              .kind        = AK_Statement,
+                              .token_index = statement_token,
+                              .a           = statement_expr_index,
             };
             if (!ast_emit_node(state, statement, &statement_index)) {
                 return false;
@@ -402,9 +408,9 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     }
 
     bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
-    ParsingQuery query = starts_type ? PQ_Invalid
-                                     : ast_parsing_query_for_token(
-                                           state->token.kind);
+    ParsingQuery query       = starts_type
+                                   ? PQ_Invalid
+                                   : ast_parsing_query_for_token(state->token.kind);
     if (query == PQ_Invalid && !starts_type) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,
@@ -520,7 +526,8 @@ internal bool ast_parse_variable_payload(AstParseState* state,
 
 bool ast_parse_variable(AstParseState* state, u32* out_node)
 {
-    ASSERT(state->token.kind == TK_Symbol, "Expected symbol token for variable");
+    ASSERT(state->token.kind == TK_Symbol,
+           "Expected symbol token for variable");
     AstToken symbol_token = state->token;
     u32      payload_node = 0;
     if (!ast_parse_variable_payload(state, symbol_token, &payload_node)) {
@@ -614,7 +621,7 @@ Ast ast_parse(Lexer* lexer)
             break;
 
         default:
-invalid_binding_start:
+        invalid_binding_start:
             if (!ast_parse_expr(&state, NULL)) {
                 goto error;
             }
