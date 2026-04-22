@@ -76,7 +76,8 @@ internal u32 lsp_find_bind_node_at_token(const Ast* ast, u32 token_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind == AK_Bind && node->token_index == token_index) {
+        if ((node->kind == AK_Bind || node->kind == AK_Variable) &&
+            node->token_index == token_index) {
             return i;
         }
     }
@@ -317,6 +318,9 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     } else if (decl->kind == SK_Constant) {
         kind          = s("constant");
         inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
+    } else if (decl->kind == SK_Variable) {
+        kind          = s("variable");
+        inferred_type = sema_type_name(&doc->front_end.sema, arena, decl->type_index);
     } else {
         kind          = s("function");
         inferred_type = lsp_decl_signature(doc, arena, decl);

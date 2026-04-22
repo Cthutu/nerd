@@ -18,9 +18,9 @@ return narrowed
 end
 ¬
 void init() {}
-int $main() {
-    int $amount = 1000;
-    int $0 = (uint8_t)$amount;
-    int $narrowed = $0;
+uint8_t $main() {
+    uint16_t $amount = 1000;
+    uint8_t $0 = (uint8_t)$amount;
+    uint8_t $narrowed = $0;
     return $narrowed;
 }

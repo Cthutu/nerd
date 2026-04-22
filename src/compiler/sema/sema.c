@@ -1111,9 +1111,48 @@ internal bool sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_
            sema->types[actual_type].kind == STK_UntypedInteger;
 }
 
+internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_UntypedInteger:
+    case STK_Bool:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_F32:
+    case STK_F64:
+    case STK_Isize:
+    case STK_Usize:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
 {
-    return sema_type_is_concrete_integer(sema, type_index);
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_String:
+    case STK_Bool:
+    case STK_F32:
+    case STK_F64:
+        return true;
+    default:
+        return sema_type_is_concrete_integer(sema, type_index);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -1188,8 +1227,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
 
-            if (!(sema_type_is_integer(sema, source_type) &&
-                  sema_type_is_concrete_integer(sema, target_type))) {
+            if (!(sema_type_is_castable_primitive(sema, source_type) &&
+                  sema_type_is_castable_primitive(sema, target_type) &&
+                  sema->types[target_type].kind != STK_UntypedInteger)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),

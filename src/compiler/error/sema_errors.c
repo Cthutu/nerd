@@ -167,8 +167,8 @@ bool error_0306_invalid_variable_type(NerdSource source,
                         span,
                         "This variable type is not supported yet");
     error_add_help(&error,
-                   "For this milestone, variables must use a concrete integer "
-                   "type.");
+                   "For this milestone, variables may use concrete integer, "
+                   "`bool`, `string`, `f32`, or `f64` types.");
     error_render(&error);
     return false;
 }

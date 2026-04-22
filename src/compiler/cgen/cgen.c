@@ -14,6 +14,8 @@ static const char g_cgen_epilogue[] = {
 #embed "../../../data/epilogue.c"
     , 0};
 
+internal void cgen_add_value(CGen* cgen, const IrValue* value);
+
 //------------------------------------------------------------------------------
 // C generation helpers
 
@@ -159,7 +161,7 @@ internal cstr cgen_c_integer_type(const Sema* sema, u32 type_index)
     case STK_I16:
         return "int16_t";
     case STK_I32:
-        return "int32_t";
+        return "int";
     case STK_I64:
         return "int64_t";
     case STK_U8:
@@ -177,6 +179,108 @@ internal cstr cgen_c_integer_type(const Sema* sema, u32 type_index)
     default:
         return "int";
     }
+}
+
+internal cstr cgen_c_type(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return "int";
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_String:
+        return "string";
+    case STK_Bool:
+        return "bool";
+    case STK_F32:
+        return "float";
+    case STK_F64:
+        return "double";
+    default:
+        return cgen_c_integer_type(sema, type_index);
+    }
+}
+
+internal u32 cgen_find_decl_index(const CGen* cgen, u32 symbol_handle)
+{
+    for (u32 i = 0; i < array_count(cgen->sema->decls); ++i) {
+        if (cgen->sema->decls[i].symbol_handle == symbol_handle) {
+            return i;
+        }
+    }
+
+    return sema_no_decl();
+}
+
+internal u32 cgen_find_local_type_index(const CGen* cgen, u32 symbol_handle)
+{
+    if (cgen->current_function_decl_index == sema_no_decl()) {
+        return sema_no_type();
+    }
+
+    for (u32 i = 0; i < array_count(cgen->sema->locals); ++i) {
+        const SemaLocal* local = &cgen->sema->locals[i];
+        if (local->owner_decl_index == cgen->current_function_decl_index &&
+            local->symbol_handle == symbol_handle) {
+            return local->type_index;
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal u32 cgen_lvalue_type(const CGen* cgen, const IrValue* value)
+{
+    switch (value->kind) {
+    case IR_VALUE_SYMBOL:
+        {
+            u32 decl_index = cgen_find_decl_index(cgen, (u32)value->value.integer);
+            return decl_index == sema_no_decl()
+                       ? sema_no_type()
+                       : cgen->sema->decls[decl_index].type_index;
+        }
+    case IR_VALUE_LOCAL:
+        return cgen_find_local_type_index(cgen, (u32)value->value.integer);
+    default:
+        return sema_no_type();
+    }
+}
+
+internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        cgen_add(cgen, "0");
+        return;
+    }
+
+    switch (cgen->sema->types[type_index].kind) {
+    case STK_String:
+        cgen_add(cgen, "(string){0}");
+        break;
+    case STK_Bool:
+        cgen_add(cgen, "false");
+        break;
+    case STK_F32:
+        cgen_add(cgen, "0.0f");
+        break;
+    case STK_F64:
+        cgen_add(cgen, "0.0");
+        break;
+    default:
+        cgen_add(cgen, "0");
+        break;
+    }
+}
+
+internal void cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
+{
+    if (value->kind == IR_VALUE_INTEGER && value->value.integer == 0 &&
+        !sema_type_is_integer(cgen->sema, type_index)) {
+        cgen_add_zero_value(cgen, type_index);
+        return;
+    }
+
+    cgen_add_value(cgen, value);
 }
 
 //------------------------------------------------------------------------------
@@ -220,16 +324,12 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
 void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
-    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, "int ");
-    } else {
-        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
-                   instr->lvalue.kind == IR_VALUE_LOCAL,
-               "Expected assignable lvalue");
-    }
+    ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
+               instr->lvalue.kind == IR_VALUE_LOCAL,
+           "Expected assignable lvalue");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
-    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add_typed_value(cgen, &instr->rvalue[0], cgen_lvalue_type(cgen, &instr->lvalue));
     cgen_addn(cgen, ";");
 }
 
@@ -261,9 +361,11 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
 {
+    u32 target_type = (u32)instr->rvalue[1].value.integer;
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, "int ");
+        cgen_add(cgen, cgen_c_type(cgen->sema, target_type));
+        cgen_add(cgen, " ");
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
@@ -271,9 +373,7 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     }
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen,
-             cgen_c_integer_type(cgen->sema,
-                                 (u32)instr->rvalue[1].value.integer));
+    cgen_add(cgen, cgen_c_type(cgen->sema, target_type));
     cgen_add(cgen, ")");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
@@ -327,7 +427,8 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL, "Expected global symbol");
     cgen_start_line(cgen);
-    cgen_add(cgen, "int ");
+    cgen_add(cgen, cgen_c_type(cgen->sema, cgen_lvalue_type(cgen, &instr->lvalue)));
+    cgen_add(cgen, " ");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_addn(cgen, ";");
 }
@@ -335,11 +436,13 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL, "Expected local symbol");
+    u32 type_index = cgen_lvalue_type(cgen, &instr->lvalue);
     cgen_start_line(cgen);
-    cgen_add(cgen, "int ");
+    cgen_add(cgen, cgen_c_type(cgen->sema, type_index));
+    cgen_add(cgen, " ");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
-    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add_typed_value(cgen, &instr->rvalue[0], type_index);
     cgen_addn(cgen, ";");
 }
 
@@ -376,12 +479,25 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_FN_START:
             cgen_start_line(cgen);
-            cgen_add(cgen, "int ");
+            cgen->current_function_decl_index =
+                cgen_find_decl_index(cgen, (u32)instr->lvalue.value.integer);
+            u32 return_type = sema_no_type();
+            if (cgen->current_function_decl_index != sema_no_decl()) {
+                u32 fn_type =
+                    cgen->sema->decls[cgen->current_function_decl_index].type_index;
+                if (fn_type != sema_no_type() &&
+                    cgen->sema->types[fn_type].kind == STK_Function) {
+                    return_type = cgen->sema->types[fn_type].b;
+                }
+            }
+            cgen_add(cgen, cgen_c_type(cgen->sema, return_type));
+            cgen_add(cgen, " ");
             cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
             cgen_addn(cgen, "() {");
             cgen_indent(cgen);
             break;
         case IR_OP_FN_END:
+            cgen->current_function_decl_index = sema_no_decl();
             cgen_dedent(cgen);
             cgen_add_line(cgen, "}");
             break;
@@ -432,7 +548,10 @@ void cgen_generate(CGen* cgen, const Ir* ir)
 
 CGen cgen_init(const Ir* ir, const Lexer* lexer, const Sema* sema)
 {
-    CGen cgen = {.ir = ir, .lexer = lexer, .sema = sema};
+    CGen cgen = {.ir = ir,
+                 .lexer = lexer,
+                 .sema = sema,
+                 .current_function_decl_index = sema_no_decl()};
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);

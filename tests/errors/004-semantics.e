@@ -135,11 +135,11 @@ main :: fn () {
     ]
 }
 ¬
-name: string
+handler: fn () -> i32
 ¬
 {
     "code": "0306",
-    "message": "Invalid variable type `string`",
+    "message": "Invalid variable type `fn () -> i32`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
         "line": 1,
@@ -150,13 +150,13 @@ name: string
             "kind": "primary",
             "line": 1,
             "column": 1,
-            "length": 4,
+            "length": 7,
             "message": "This variable type is not supported yet"
         }
     ],
     "notes": [],
     "help": [
-        "For this milestone, variables must use a concrete integer type."
+        "For this milestone, variables may use concrete integer, `bool`, `string`, `f32`, or `f64` types."
     ]
 }
 ¬
