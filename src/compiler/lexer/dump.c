@@ -18,6 +18,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Integer");
     case TK_String:
         return string_from_cstr("String");
+    case TK_InterpolatedStringStart:
+        return string_from_cstr("InterpolatedStringStart `$\"`");
+    case TK_InterpolatedStringEnd:
+        return string_from_cstr("InterpolatedStringEnd `\"`");
     case TK_Symbol:
         return string_from_cstr("Symbol");
     case TK_Plus:

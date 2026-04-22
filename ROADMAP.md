@@ -453,6 +453,7 @@ needed earlier.
   - Add `to_string$<type>` helpers in the prologue for all primitive types.
   - Restrict conversion support to built-in types in the initial design.
   - Leave user-defined conversion mechanisms for a later trait system.
+  - Keep the first lowering explicit in IR rather than hiding it in C codegen.
 
 - [ ] 41. Use a simple arena-backed runtime string builder first.
   - A global arena plus helper functions in the prologue is acceptable for the
@@ -460,6 +461,10 @@ needed earlier.
   - Build the string, return a fat pointer to it, and reset the arena as
     appropriate for the chosen runtime model.
   - Leave constant-expression optimisation and smarter storage for later work.
+  - First IR shape:
+    - explicit reset/mark/append/finish operations
+    - no hidden sema-side interpolation lowering
+    - future VM work should be able to execute the same IR model
 
 - [ ] 42. Extend tests, formatter support, and LSP support for interpolated strings.
   - Add language tests for mixed literal and interpolated segments.

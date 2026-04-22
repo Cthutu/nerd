@@ -18,6 +18,8 @@
 // | AK_IntegerLiteral  | Integer index     | 0                               |
 // | AK_StringLiteral   | String index      | 0                               |
 // | AK_StringConcat    | Ast index of lhs  | Ast index of rhs                |
+// | AK_InterpPartExpr  | Ast index of expr | 0                               |
+// | AK_InterpolatedString | First part index | End-exclusive part index      |
 // | AK_SymbolRef       | Symbol handle     | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
@@ -46,6 +48,8 @@ typedef enum {
     AK_IntegerLiteral,
     AK_StringLiteral,
     AK_StringConcat,
+    AK_InterpPartExpr,
+    AK_InterpolatedString,
     AK_SymbolRef,
     AK_IntegerNegate,
     AK_IntegerPlus,

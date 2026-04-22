@@ -40,6 +40,7 @@ main :: fn () {
 
 - integer literals
 - string literals
+- interpolated strings with `$"...{expr}..."`
 - symbol references
 - unary integer negation
 - integer arithmetic operators
@@ -60,6 +61,7 @@ main :: fn () {
 <type> ::= "fn" "(" ")" "->" <type>
 <expression> ::= <integer>
                | <string>
+               | <interpolated-string>
                | <symbol>
                | "fn" "(" ")" "=>" <expression>
                | "fn" "(" ")" "{" <statement>* "}"

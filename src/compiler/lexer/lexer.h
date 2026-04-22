@@ -23,6 +23,8 @@ typedef enum {
     // Values
     TK_Integer,
     TK_String,
+    TK_InterpolatedStringStart,
+    TK_InterpolatedStringEnd,
     TK_Symbol,
 
     // Operators & punctuation

@@ -16,6 +16,8 @@
 // | CK_IntegerLiteral  | Integer index         | 0                     |
 // | CK_StringLiteral   | Lexer string index    | 0                     |
 // | CK_StringConcat    | Left node index       | Right node index      |
+// | CK_InterpPartExpr  | Expr node index       | 0                     |
+// | CK_InterpolatedString | First part index    | End-exclusive index   |
 // | CK_SymbolRef       | Symbol handle         | 0                     |
 // | CK_Group           | Inner node index      | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
@@ -41,6 +43,8 @@ typedef enum {
     CK_IntegerLiteral,
     CK_StringLiteral,
     CK_StringConcat,
+    CK_InterpPartExpr,
+    CK_InterpolatedString,
     CK_SymbolRef,
     CK_Group,
     CK_IntegerNegate,

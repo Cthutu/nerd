@@ -102,13 +102,17 @@ bool ast_peek_token(AstParseState* state)
         return true;
 
     case TK_String:
+    case TK_InterpolatedStringStart:
+    case TK_InterpolatedStringEnd:
         state->token = (AstToken){
-            .kind               = TK_String,
+            .kind               = token.kind,
             .source             = source,
             .offset             = token.offset,
             .token_index        = state->token_index,
-            .value.string_index = state->string_index,
         };
+        if (token.kind == TK_String) {
+            state->token.value.string_index = state->string_index;
+        }
         return true;
 
     case TK_Symbol:

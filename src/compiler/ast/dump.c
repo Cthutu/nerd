@@ -18,6 +18,10 @@ string ast_kind_to_string(AstKind kind)
         return s("StringLiteral");
     case AK_StringConcat:
         return s("StringConcat");
+    case AK_InterpPartExpr:
+        return s("InterpPartExpr");
+    case AK_InterpolatedString:
+        return s("InterpolatedString");
     case AK_SymbolRef:
         return s("SymbolRef");
     case AK_IntegerNegate:
@@ -114,6 +118,14 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_StringConcat:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
+            break;
+        case AK_InterpPartExpr:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "expr=%u", node->a));
+            break;
+        case AK_InterpolatedString:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "parts=%u..%u", node->a, node->b));
             break;
         case AK_SymbolRef:
             row[3] = table_cell_string(lex_symbol(lexer, node->a));

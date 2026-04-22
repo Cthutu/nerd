@@ -155,6 +155,8 @@ internal int format_expr_precedence(const CstNode* node)
         return 35;
     case CK_StringConcat:
         return 37;
+    case CK_InterpolatedString:
+        return 37;
     default:
         return 40;
     }
@@ -162,6 +164,32 @@ internal int format_expr_precedence(const CstNode* node)
 
 //------------------------------------------------------------------------------
 // Format one expression node with the minimal required parentheses.
+
+internal void format_emit_string_text(StringBuilder* sb, string text)
+{
+    for (usize i = 0; i < text.count; ++i) {
+        switch (text.data[i]) {
+        case '\n':
+            sb_append_cstr(sb, "\\n");
+            break;
+        case '\r':
+            sb_append_cstr(sb, "\\r");
+            break;
+        case '\t':
+            sb_append_cstr(sb, "\\t");
+            break;
+        case '\\':
+            sb_append_cstr(sb, "\\\\");
+            break;
+        case '"':
+            sb_append_cstr(sb, "\\\"");
+            break;
+        default:
+            sb_append_char(sb, (char)text.data[i]);
+            break;
+        }
+    }
+}
 
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
@@ -183,13 +211,31 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_StringLiteral:
         sb_append_char(sb, '"');
-        sb_append_string(sb, lexer->strings[node->a]);
+        format_emit_string_text(sb, lexer->strings[node->a]);
         sb_append_char(sb, '"');
         break;
     case CK_StringConcat:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, ' ');
         format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+        break;
+    case CK_InterpolatedString:
+        sb_append_cstr(sb, "$\"");
+        for (u32 i = node->a; i < node->b; ++i) {
+            const CstNode* part = &cst->nodes[i];
+            if (part->kind == CK_StringLiteral) {
+                format_emit_string_text(sb, lexer->strings[part->a]);
+                continue;
+            }
+            if (part->kind == CK_InterpPartExpr) {
+                sb_append_char(sb, '{');
+                format_emit_expr(sb, cst, lexer, part->a, 0);
+                sb_append_char(sb, '}');
+                continue;
+            }
+            kill("Unhandled interpolated string part kind: %u", part->kind);
+        }
+        sb_append_char(sb, '"');
         break;
     case CK_SymbolRef:
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(node)));
