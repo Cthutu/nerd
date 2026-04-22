@@ -1,6 +1,6 @@
 value:i32:120
 main:fn()->i32:fn()=>value
 ¬
-value : i32: 120
+value : i32 : 120
 
-main : fn () -> i32: fn () => value
+main : fn () -> i32 : fn () => value

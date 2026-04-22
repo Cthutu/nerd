@@ -272,7 +272,7 @@ internal void format_emit_value(StringBuilder* sb,
 
     if (node->kind == CK_AnnotatedValue) {
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(sb, ": ");
+        sb_append_cstr(sb, " : ");
         format_emit_value(sb, cst, lexer, node->b);
         return;
     }
