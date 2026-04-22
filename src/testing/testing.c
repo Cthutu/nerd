@@ -1336,7 +1336,11 @@ internal bool testing_run_format_test(const FormatTest* test)
         return false;
     }
 
-    bool ok = format_file(input_path, output_path);
+    NerdFormatConfig config = {
+        .input_path  = s(input_path),
+        .output_path = s(output_path),
+    };
+    bool ok = compiler_cmd_format(&config) == 0;
     path_remove(input_path);
     if (!ok) {
         arena_done(&artifact_arena);

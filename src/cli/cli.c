@@ -720,11 +720,11 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             }
 
             json_done(result);
-            return cli_parse_error(
-                parser,
-                arena,
-                "Unknown option '--" STRINGP "'. Use --help to list options.",
-                STRINGV(option_name));
+            return cli_parse_error(parser,
+                                   arena,
+                                   "Unknown option '--" STRINGP
+                                   "'. Use --help to list options.",
+                                   STRINGV(option_name));
         }
 
         if (arg[0] == '-' && arg[1] != '\0' && arg[2] == '\0') {
@@ -875,8 +875,8 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             json_done(result);
             return cli_parse_error(parser,
                                    arena,
-                                   "Missing required global parameter "
-                                   STRINGP ".",
+                                   "Missing required global parameter " STRINGP
+                                   ".",
                                    STRINGV(param->name));
         }
     }

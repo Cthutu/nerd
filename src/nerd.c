@@ -192,6 +192,14 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             NULL,
                                             "Source file to format",
                                             true));
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "output",
+                                            "named",
+                                            "output",
+                                            "o",
+                                            "Formatted output path",
+                                            false));
         json_array_push(
             commands,
             nerd_cli_make_command(
@@ -322,6 +330,8 @@ nerd_format_config_from_json(const JsonValue* cli_result)
     return (NerdFormatConfig){
         .input_path = nerd_cli_param_string(
             cli_result, "command.params.input", (string){0}),
+        .output_path = nerd_cli_param_string(
+            cli_result, "command.params.output", (string){0}),
     };
 }
 

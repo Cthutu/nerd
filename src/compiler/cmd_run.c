@@ -56,11 +56,9 @@ int compiler_cmd_run(const NerdRunConfig* config)
     }
 
 #if OS_POSIX
-    string command =
-        string_format(&arena, "\"%s\"", artifacts.binary_path);
+    string command = string_format(&arena, "\"%s\"", artifacts.binary_path);
 #elif OS_WINDOWS
-    string command =
-        string_format(&arena, "\"%s\"", artifacts.binary_path);
+    string command = string_format(&arena, "\"%s\"", artifacts.binary_path);
 #endif
 
     int result = shell((cstr)command.data);

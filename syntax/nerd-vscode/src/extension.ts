@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
+import { execFile } from "child_process";
 import {
     Executable,
     LanguageClient,
@@ -14,6 +16,30 @@ let clientContext: vscode.ExtensionContext | undefined;
 let launchedServerPath: string | undefined;
 let restartTimer: NodeJS.Timeout | undefined;
 let serverWatcher: fs.FSWatcher | undefined;
+let formatterRegistration: vscode.Disposable | undefined;
+
+function execFileAsync(
+    command: string,
+    args: string[]
+): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+        execFile(command, args, (error, stdout, stderr) => {
+            if (error) {
+                reject(
+                    new Error(
+                        stderr?.trim() ||
+                            stdout?.trim() ||
+                            error.message ||
+                            String(error)
+                    )
+                );
+                return;
+            }
+
+            resolve({ stdout, stderr });
+        });
+    });
+}
 
 function cleanupLaunchedServer() {
     if (!launchedServerPath) {
@@ -125,6 +151,52 @@ function getServerExecutable(
 function disposeServerWatcher() {
     serverWatcher?.close();
     serverWatcher = undefined;
+}
+
+function getToolExecutablePath(): string {
+    const config = vscode.workspace.getConfiguration("nerd");
+    const configuredPath = config.get<string>("languageServer.path", "").trim();
+    return configuredPath || findWorkspaceServer() || findUserServer() || "nerd";
+}
+
+async function provideFormattedText(
+    document: vscode.TextDocument
+): Promise<string> {
+    const executablePath = getToolExecutablePath();
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nerd-format-"));
+    const inputPath = path.join(tempDir, `input${path.extname(document.fileName) || ".n"}`);
+    const outputPath = path.join(tempDir, "output.n");
+
+    try {
+        fs.writeFileSync(inputPath, document.getText(), "utf8");
+        await execFileAsync(executablePath, ["format", inputPath, "-o", outputPath]);
+        return fs.readFileSync(outputPath, "utf8");
+    } finally {
+        try {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch {
+            // Ignore cleanup failures.
+        }
+    }
+}
+
+function registerFormatter(context: vscode.ExtensionContext) {
+    formatterRegistration?.dispose();
+    formatterRegistration = vscode.languages.registerDocumentFormattingEditProvider(
+        { scheme: "file", language: "nerd" },
+        {
+            async provideDocumentFormattingEdits(document) {
+                const formattedText = await provideFormattedText(document);
+                const lastLine = document.lineCount > 0 ? document.lineAt(document.lineCount - 1) : undefined;
+                const fullRange = lastLine
+                    ? new vscode.Range(0, 0, document.lineCount - 1, lastLine.text.length)
+                    : new vscode.Range(0, 0, 0, 0);
+
+                return [vscode.TextEdit.replace(fullRange, formattedText)];
+            },
+        }
+    );
+    context.subscriptions.push(formatterRegistration);
 }
 
 function scheduleRestart(reason: string) {
@@ -239,6 +311,8 @@ export function activate(
         dispose: () => {
             disposeServerWatcher();
             cleanupLaunchedServer();
+            formatterRegistration?.dispose();
+            formatterRegistration = undefined;
         },
     });
 
@@ -249,6 +323,7 @@ export function activate(
         // Ignore stale or locked files from previous sessions.
     }
 
+    registerFormatter(context);
     return startLanguageServer(context);
 }
 

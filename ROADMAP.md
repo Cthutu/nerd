@@ -456,6 +456,12 @@ milestone yet.
   later features require runtime setup before `$main`.
 - [ ] Optimise interpolated strings for constant expressions once the first
   runtime-based version works.
+- [ ] Extend the formatter to reflow long string literals into consecutive
+  adjacent string literals, and to merge adjacent short literals when that
+  improves readability.
+  - Prefer breaking at spaces so normal prose does not split words where
+    practical.
+  - Keep the emitted literals semantically equivalent to the original source.
 - [ ] Add trait-based conversion and formatting support for user-defined types.
 - [ ] Revisit whether in-place AST compaction is the best home for constant
   folding after a first implementation exists and can be measured.

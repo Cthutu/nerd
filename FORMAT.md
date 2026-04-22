@@ -43,15 +43,13 @@ The current formatter implementation is intentionally narrow:
 
 More rules can be added here as the formatter grows.
 
-## Planned CLI Behaviour
+## CLI Behaviour
 
-The current formatter writes to a sibling `.format` file so the workflow stays
-non-destructive while the formatting rules are still changing.
+The formatter CLI now behaves as follows:
 
-Later, once the formatter is more stable, the CLI should change to:
+- `nerd format <input>` rewrites the input file in place
+- `nerd format <input> -o <filename>` writes the formatted result to the named
+  output file instead
 
-- rewrite the input file in place by default
-- support `-o <filename>` to redirect formatted output elsewhere
-
-When that happens, the formatter tests should be updated to match the new CLI
-behaviour without losing snapshot-style verification.
+The formatter tests still use explicit output-file paths so they can compare
+stable snapshots without mutating the checked-in test sources.

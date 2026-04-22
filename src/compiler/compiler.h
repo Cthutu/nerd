@@ -30,6 +30,7 @@ typedef struct {
 
 typedef struct {
     string input_path;
+    string output_path;
 } NerdFormatConfig;
 
 typedef struct {
