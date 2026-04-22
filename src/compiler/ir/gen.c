@@ -228,14 +228,15 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
             IrValue rhs = ir_lower_node(
                 lex, ast, sema, node->b, node_values, next_value_index, ir);
-            ASSERT(lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING,
-                   "Expected adjacent string literals to lower to string values");
+            ASSERT(
+                lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING,
+                "Expected adjacent string literals to lower to string values");
             IrValue value = {
                 .kind = IR_VALUE_STRING,
-                .value.integer = ir_add_concat_string(
-                    ir,
-                    ir->strings[(u32)lhs.value.integer],
-                    ir->strings[(u32)rhs.value.integer]),
+                .value.integer =
+                    ir_add_concat_string(ir,
+                                         ir->strings[(u32)lhs.value.integer],
+                                         ir->strings[(u32)rhs.value.integer]),
             };
             node_values[node_index] = value;
             return value;

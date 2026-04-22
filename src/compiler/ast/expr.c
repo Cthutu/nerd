@@ -284,9 +284,8 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
                 ast_node_is_stringish(state, left_node)) {
                 u32 right_node = 0;
                 if (!ast_next_token(state)) {
-                    return error_0201_missing_value(next.source,
-                                                    ast_token_span(state, &next),
-                                                    next.kind);
+                    return error_0201_missing_value(
+                        next.source, ast_token_span(state, &next), next.kind);
                 }
                 if (!ast_parse_nud(state, state->token, &right_node)) {
                     return false;

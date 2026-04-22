@@ -67,7 +67,7 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
             }
         }
 
-        bool previous_boundary = state->allow_statement_boundary;
+        bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;
         if (!ast_parse_expr(state, &statement_expr_index)) {
             state->allow_statement_boundary = previous_boundary;
@@ -75,11 +75,11 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
         }
         state->allow_statement_boundary = previous_boundary;
 
-        u32     statement_index = 0;
-        AstNode statement       = {
-                  .kind        = statement_kind,
-                  .token_index = statement_token,
-                  .a           = statement_expr_index,
+        u32     statement_index         = 0;
+        AstNode statement               = {
+                          .kind        = statement_kind,
+                          .token_index = statement_token,
+                          .a           = statement_expr_index,
         };
         if (!ast_emit_node(state, statement, &statement_index)) {
             return false;

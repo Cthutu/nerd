@@ -290,14 +290,15 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 if (!cst_parse_prefix(state, &right)) {
                     return false;
                 }
-                if (!cst_emit_node(state,
-                                   (CstNode){
-                                       .kind        = CK_StringConcat,
-                                       .token_index = state->cst.nodes[right].token_index,
-                                       .a           = left,
-                                       .b           = right,
-                                   },
-                                   &left)) {
+                if (!cst_emit_node(
+                        state,
+                        (CstNode){
+                            .kind        = CK_StringConcat,
+                            .token_index = state->cst.nodes[right].token_index,
+                            .a           = left,
+                            .b           = right,
+                        },
+                        &left)) {
                     return false;
                 }
                 continue;
@@ -395,14 +396,13 @@ cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
         }
 
         u32 statement = 0;
-        if (!cst_emit_node(
-                state,
-                (CstNode){
-                    .kind        = statement_kind,
-                    .token_index = token_index,
-                    .a           = expr,
-                },
-                &statement)) {
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = statement_kind,
+                               .token_index = token_index,
+                               .a           = expr,
+                           },
+                           &statement)) {
             return false;
         }
 
