@@ -201,6 +201,53 @@ internal cstr cgen_c_type(const Sema* sema, u32 type_index)
     }
 }
 
+internal u32 cgen_materialise_type(const CGen* cgen, u32 type_index)
+{
+    return sema_materialise_type(cgen->sema, type_index);
+}
+
+internal cstr cgen_string_helper_suffix(const CGen* cgen, u32 type_index)
+{
+    type_index = cgen_materialise_type(cgen, type_index);
+    if (type_index == sema_no_type()) {
+        return "i32";
+    }
+
+    switch (cgen->sema->types[type_index].kind) {
+    case STK_UntypedInteger:
+    case STK_I32:
+        return "i32";
+    case STK_String:
+        return "string";
+    case STK_Bool:
+        return "bool";
+    case STK_I8:
+        return "i8";
+    case STK_I16:
+        return "i16";
+    case STK_I64:
+        return "i64";
+    case STK_U8:
+        return "u8";
+    case STK_U16:
+        return "u16";
+    case STK_U32:
+        return "u32";
+    case STK_U64:
+        return "u64";
+    case STK_F32:
+        return "f32";
+    case STK_F64:
+        return "f64";
+    case STK_Isize:
+        return "isize";
+    case STK_Usize:
+        return "usize";
+    default:
+        return NULL;
+    }
+}
+
 internal u32 cgen_find_decl_index(const CGen* cgen, u32 symbol_handle)
 {
     for (u32 i = 0; i < array_count(cgen->sema->decls); ++i) {
@@ -382,6 +429,50 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+void cgen_add_string_reset(CGen* cgen)
+{
+    cgen_add_line(cgen, "string_builder_reset();");
+}
+
+void cgen_add_string_start(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE,
+           "Expected temporary lvalue for string start");
+    cgen_add(cgen, "size_t ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = string_builder_mark();");
+    cgen_addn(cgen, "");
+}
+
+void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
+{
+    u32  type_index = (u32)instr->rvalue[1].value.integer;
+    cstr suffix     = cgen_string_helper_suffix(cgen, type_index);
+    ASSERT(suffix != NULL, "Expected interpolatable type suffix");
+
+    cgen_start_line(cgen);
+    cgen_add(cgen, "string_builder_append_string(to_string$");
+    cgen_add(cgen, suffix);
+    cgen_add(cgen, "(");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, "));");
+    cgen_addn(cgen, "");
+}
+
+void cgen_add_string_finish(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    ASSERT(instr->lvalue.kind == IR_VALUE_VARIABLE,
+           "Expected temporary lvalue for string finish");
+    cgen_add(cgen, "string ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = string_builder_finish(");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, ");");
+    cgen_addn(cgen, "");
+}
+
 //------------------------------------------------------------------------------
 // Emit a C unary expression from an IR unary instruction.
 
@@ -517,6 +608,18 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_CAST:
             cgen_add_cast(cgen, instr);
+            break;
+        case IR_OP_STRING_RESET:
+            cgen_add_string_reset(cgen);
+            break;
+        case IR_OP_STRING_START:
+            cgen_add_string_start(cgen, instr);
+            break;
+        case IR_OP_STRING_APPEND:
+            cgen_add_string_append(cgen, instr);
+            break;
+        case IR_OP_STRING_FINISH:
+            cgen_add_string_finish(cgen, instr);
             break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");

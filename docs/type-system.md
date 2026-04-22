@@ -129,6 +129,27 @@ The current milestone allows explicit casts across compatible primitive
 numeric/bool types and rejects unsupported casts such as `string.cast(u8)` with
 structured semantic diagnostics.
 
+## Interpolated Strings
+
+Interpolated strings are typed as `string`, but each `{expr}` segment is
+checked independently in sema.
+
+Today sema accepts interpolation of:
+
+- `string`
+- `bool`
+- concrete integer types
+- `f32`
+- `f64`
+- `untyped integer`, which materialises to `i32` for runtime conversion
+
+Unsupported segment types, such as function values, produce a dedicated
+semantic error.
+
+The current runtime model also treats interpolated strings as temporary
+statement-local values. Sema rejects uses that would let them escape, such as
+returning or storing them.
+
 ## Type Names
 
 `sema_type_name(...)` renders source-facing type text. It is used by:

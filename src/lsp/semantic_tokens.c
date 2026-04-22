@@ -124,6 +124,8 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
         *out_type = LSP_SEMANTIC_NUMBER;
         return true;
     case TK_String:
+    case TK_InterpolatedStringStart:
+    case TK_InterpolatedStringEnd:
         *out_type = LSP_SEMANTIC_STRING;
         return true;
 

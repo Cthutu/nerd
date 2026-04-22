@@ -735,6 +735,21 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_StringLiteral:
     case AK_ZeroInit:
         return true;
+    case AK_InterpPartExpr:
+        return sema_resolve_node_refs(
+            lexer, ast, owner_decl_index, node->a, sema);
+    case AK_InterpolatedString:
+        if (owner_decl_index == sema_no_decl() ||
+            sema->decls[owner_decl_index].kind != SK_Function) {
+            return error_0310_invalid_interpolation_context(
+                lexer->source, sema_node_span(lexer, node));
+        }
+        for (u32 i = node->a; i < node->b; ++i) {
+            if (!sema_resolve_node_refs(lexer, ast, owner_decl_index, i, sema)) {
+                return false;
+            }
+        }
+        return true;
     case AK_StringConcat:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -805,6 +820,14 @@ internal void sema_collect_node_deps(const Ast*  ast,
     switch (node->kind) {
     case AK_IntegerLiteral:
     case AK_StringLiteral:
+        return;
+    case AK_InterpPartExpr:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        return;
+    case AK_InterpolatedString:
+        for (u32 i = node->a; i < node->b; ++i) {
+            sema_collect_node_deps(ast, sema, owner_decl_index, i, out_sema);
+        }
         return;
     case AK_StringConcat:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
@@ -1181,6 +1204,144 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     }
 }
 
+internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_String:
+    case STK_Bool:
+    case STK_F32:
+    case STK_F64:
+        return true;
+    default:
+        return sema_type_is_integer(sema, type_index);
+    }
+}
+
+internal bool sema_infer_node_type(const Lexer* lexer,
+                                   const Ast*   ast,
+                                   Sema*        sema,
+                                   u32          node_index,
+                                   u32          expected_type,
+                                   u32*         out_type_index);
+
+internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_InterpolatedString:
+        return true;
+    case AK_InterpPartExpr:
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+    case AK_IntegerNegate:
+    case AK_Cast:
+        return sema_node_contains_interpolation(ast, node->a);
+    case AK_StringConcat:
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_Call:
+        return sema_node_contains_interpolation(ast, node->a) ||
+               sema_node_contains_interpolation(ast, node->b);
+    case AK_Variable:
+    case AK_Assign:
+    case AK_AnnotatedValue:
+        return sema_node_contains_interpolation(ast, node->b);
+    case AK_TypeFn:
+        return sema_node_contains_interpolation(ast, node->a);
+    case AK_FnDef:
+        {
+            const AstNode* fn_start = &ast->nodes[node->a];
+            for (u32 i = node->a + 1; i < fn_start->b; ++i) {
+                if (sema_node_contains_interpolation(ast, i)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
+internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    if (node->kind == AK_InterpolatedString) {
+        return node_index;
+    }
+
+    switch (node->kind) {
+    case AK_InterpPartExpr:
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+    case AK_IntegerNegate:
+    case AK_Cast:
+        return sema_find_interpolated_string_node(ast, node->a);
+    case AK_StringConcat:
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_Call:
+        {
+            u32 left = sema_find_interpolated_string_node(ast, node->a);
+            return left != sema_no_decl()
+                       ? left
+                       : sema_find_interpolated_string_node(ast, node->b);
+        }
+    default:
+        return sema_no_decl();
+    }
+}
+
+internal bool sema_validate_interpolated_strings(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 Sema*        sema,
+                                                 u32          node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    if (node->kind == AK_InterpolatedString) {
+        u32 ignored = sema_no_type();
+        return sema_infer_node_type(
+            lexer, ast, sema, node_index, sema_no_type(), &ignored);
+    }
+
+    switch (node->kind) {
+    case AK_InterpPartExpr:
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+    case AK_IntegerNegate:
+    case AK_Cast:
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
+    case AK_StringConcat:
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_Call:
+        return sema_validate_interpolated_strings(
+                   lexer, ast, sema, node->a) &&
+               sema_validate_interpolated_strings(lexer, ast, sema, node->b);
+    default:
+        return true;
+    }
+}
+
 //------------------------------------------------------------------------------
 // Infer one AST node type, optionally using an expected context type.
 
@@ -1203,6 +1364,39 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_StringLiteral:
     case AK_StringConcat:
+        type_index = sema_builtin_type(sema, STK_String);
+        break;
+
+    case AK_InterpPartExpr:
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->a, expected_type, &type_index)) {
+            return false;
+        }
+        break;
+
+    case AK_InterpolatedString:
+        for (u32 i = node->a; i < node->b; ++i) {
+            const AstNode* part      = &ast->nodes[i];
+            u32            part_type = sema_no_type();
+
+            if (part->kind == AK_StringLiteral) {
+                continue;
+            }
+            ASSERT(part->kind == AK_InterpPartExpr,
+                   "Expected interpolated string part wrapper");
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, part->a, sema_no_type(), &part_type)) {
+                return false;
+            }
+            part_type = sema_materialise_type(sema, part_type);
+            sema->node_type_indices[i] = part_type;
+            if (!sema_type_is_interpolatable(sema, part_type)) {
+                return error_0311_invalid_interpolation_type(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[part->a]),
+                    sema_type_name(sema, &temp_arena, part_type));
+            }
+        }
         type_index = sema_builtin_type(sema, STK_String);
         break;
 
@@ -1374,6 +1568,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 break;
             }
 
+            if (sema_node_contains_interpolation(ast, local->value_node_index)) {
+                u32 interp_index = sema_find_interpolated_string_node(
+                    ast, local->value_node_index);
+                return error_0312_interpolated_string_escapes(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[interp_index == sema_no_decl()
+                                                   ? local->value_node_index
+                                                   : interp_index]));
+            }
+
             if (!sema_infer_node_type(lexer,
                                       ast,
                                       sema,
@@ -1415,6 +1620,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 target_type = sema->decls[decl_index].type_index;
             }
 
+            if (sema_node_contains_interpolation(ast, node->b)) {
+                u32 interp_index = sema_find_interpolated_string_node(ast, node->b);
+                return error_0312_interpolated_string_escapes(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[interp_index == sema_no_decl()
+                                                   ? node->b
+                                                   : interp_index]));
+            }
+
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->b, target_type, &type_index)) {
                 return false;
@@ -1430,6 +1645,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema, node->b == AFK_Block ? STK_I32 : STK_UntypedInteger);
 
             if (node->b == AFK_Expr) {
+                if (sema_node_contains_interpolation(ast, fn_start->b - 1)) {
+                    u32 interp_index =
+                        sema_find_interpolated_string_node(ast, fn_start->b - 1);
+                    return error_0312_interpolated_string_escapes(
+                        lexer->source,
+                        sema_node_span(lexer,
+                                       &ast->nodes[interp_index == sema_no_decl()
+                                                       ? fn_start->b - 1
+                                                       : interp_index]));
+                }
                 if (!sema_infer_node_type(lexer,
                                           ast,
                                           sema,
@@ -1454,8 +1679,26 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         }
                         continue;
                     }
+                    if (ast->nodes[i].kind == AK_Statement &&
+                        sema_node_contains_interpolation(ast, i)) {
+                        if (!sema_validate_interpolated_strings(
+                                lexer, ast, sema, i)) {
+                            return false;
+                        }
+                        continue;
+                    }
                     if (ast->nodes[i].kind != AK_Return) {
                         continue;
+                    }
+                    if (sema_node_contains_interpolation(ast, ast->nodes[i].a)) {
+                        u32 interp_index = sema_find_interpolated_string_node(
+                            ast, ast->nodes[i].a);
+                        return error_0312_interpolated_string_escapes(
+                            lexer->source,
+                            sema_node_span(lexer,
+                                           &ast->nodes[interp_index == sema_no_decl()
+                                                           ? ast->nodes[i].a
+                                                           : interp_index]));
                     }
                     if (!sema_infer_node_type(lexer,
                                               ast,
@@ -1621,6 +1864,8 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
         break;
 
     case AK_StringLiteral:
+    case AK_InterpPartExpr:
+    case AK_InterpolatedString:
         ok = false;
         break;
     case AK_StringConcat:
@@ -1791,12 +2036,19 @@ internal bool sema_fold_node(const Lexer* lex,
             case AK_Return:
             case AK_IntegerNegate:
             case AK_Cast:
+            case AK_InterpPartExpr:
                 sema_push_fold_frame(&stack, node->a);
                 break;
 
             case AK_Call:
                 sema_push_fold_frame(&stack, node->b);
                 sema_push_fold_frame(&stack, node->a);
+                break;
+
+            case AK_InterpolatedString:
+                for (u32 i = node->b; i-- > node->a;) {
+                    sema_push_fold_frame(&stack, i);
+                }
                 break;
 
             case AK_IntegerPlus:

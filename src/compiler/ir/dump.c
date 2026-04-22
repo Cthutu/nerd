@@ -122,6 +122,23 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
             sb_format(&sb, ", type=%u", (u32)instr->rvalue[1].value.integer);
             break;
+        case IR_OP_STRING_RESET:
+            sb_append_cstr(&sb, "string.reset");
+            break;
+        case IR_OP_STRING_START:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = string.start");
+            break;
+        case IR_OP_STRING_APPEND:
+            sb_append_cstr(&sb, "string.append ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_format(&sb, ", type=%u", (u32)instr->rvalue[1].value.integer);
+            break;
+        case IR_OP_STRING_FINISH:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = string.finish ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            break;
         case IR_OP_NEGATE:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = -");

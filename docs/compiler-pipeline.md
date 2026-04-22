@@ -91,6 +91,7 @@ uses the semantic output to emit:
 - init-time work
 - function bodies
 - assignments, locals, calls, arithmetic, and returns
+- explicit string-builder operations for interpolated strings
 
 The current IR is intentionally straightforward. It acts as the bridge from
 semantic structure to stable C emission.

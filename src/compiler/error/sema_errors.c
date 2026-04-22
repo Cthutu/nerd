@@ -249,3 +249,62 @@ bool error_0309_type_alias_cycle(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report use of interpolation outside a supported function-local context.
+
+bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(
+        310, source, span, "Interpolated strings are only supported inside functions");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This interpolated string appears at top level");
+    error_add_help(&error,
+                   "Move the interpolation inside a function body for the "
+                   "current milestone.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report interpolation of an unsupported semantic type.
+
+bool error_0311_invalid_interpolation_type(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     type_name)
+{
+    ErrorInfo error =
+        error_init(311,
+                   source,
+                   span,
+                   "Cannot interpolate values of type `" STRINGP "`",
+                   STRINGV(type_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression type cannot be converted to string yet");
+    error_add_help(&error,
+                   "Use a built-in primitive or `string`, or cast the value "
+                   "to a supported type first.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report use of an interpolated temporary where the value could outlive
+// statement scope.
+
+bool error_0312_interpolated_string_escapes(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(
+        312, source, span, "Interpolated string cannot escape statement scope");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This value would outlive the temporary string arena");
+    error_add_help(&error,
+                   "Use interpolated strings only in statement-local contexts "
+                   "such as call arguments for now.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

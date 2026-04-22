@@ -10,8 +10,9 @@ If you are new to the codebase, read these first:
 2. [compiler-pipeline.md](/home/matt/nerd/docs/compiler-pipeline.md)
 3. [error-system.md](/home/matt/nerd/docs/error-system.md)
 4. [type-system.md](/home/matt/nerd/docs/type-system.md)
-5. [lsp.md](/home/matt/nerd/docs/lsp.md)
-6. [testing.md](/home/matt/nerd/docs/testing.md)
+5. [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
+6. [lsp.md](/home/matt/nerd/docs/lsp.md)
+7. [testing.md](/home/matt/nerd/docs/testing.md)
 
 ## Overviews
 
@@ -32,6 +33,8 @@ If you are new to the codebase, read these first:
   Structured error construction, render modes, and test coverage.
 - [type-system.md](/home/matt/nerd/docs/type-system.md)
   How semantic types are represented and inferred today.
+- [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
+  Interpolated-string lowering, IR string ops, and runtime helper model.
 - [lsp.md](/home/matt/nerd/docs/lsp.md)
   Document lifecycle, analysis flow, and editor-facing features.
 - [testing.md](/home/matt/nerd/docs/testing.md)

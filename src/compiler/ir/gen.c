@@ -109,6 +109,44 @@ void ir_add_cast(Ir* ir, IrValue lvalue, IrValue value, u32 type_index)
 }
 
 //------------------------------------------------------------------------------
+// Append explicit string-builder instructions to the IR stream.
+
+void ir_add_string_reset(Ir* ir)
+{
+    array_push(ir->instructions, (IrInstruction){.op = IR_OP_STRING_RESET});
+}
+
+void ir_add_string_start(Ir* ir, IrValue lvalue)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_STRING_START,
+                   .lvalue = lvalue,
+               });
+}
+
+void ir_add_string_append(Ir* ir, IrValue value, u32 type_index)
+{
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_STRING_APPEND,
+            .rvalue = {value,
+                       {.kind = IR_VALUE_INTEGER, .value.integer = type_index}},
+        });
+}
+
+void ir_add_string_finish(Ir* ir, IrValue lvalue, IrValue start_value)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_STRING_FINISH,
+                   .lvalue = lvalue,
+                   .rvalue = {start_value, {0}},
+               });
+}
+
+//------------------------------------------------------------------------------
 // Append a return instruction to the IR stream.
 
 void ir_add_return(Ir* ir, IrValue rvalue)
@@ -199,6 +237,182 @@ internal u32 ir_add_concat_string(Ir* ir, string lhs, string rhs)
     return ir_add_string_literal(ir, string_from(data, lhs.count + rhs.count));
 }
 
+internal u32 ir_builtin_string_type(const Sema* sema)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == STK_String) {
+            return i;
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal u32 ir_string_append_type(const Sema* sema, u32 node_type_index)
+{
+    return sema_materialise_type(sema, node_type_index);
+}
+
+internal u32 ir_node_type_index(const Ast* ast, const Sema* sema, u32 node_index)
+{
+    if (node_index < array_count(sema->node_type_indices) &&
+        sema->node_type_indices[node_index] != sema_no_type()) {
+        return ir_string_append_type(sema, sema->node_type_indices[node_index]);
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_InterpPartExpr) {
+        return ir_node_type_index(ast, sema, node->a);
+    }
+
+    if (node->kind == AK_SymbolRef) {
+        if (sema->node_local_indices[node_index] != sema_no_local()) {
+            return sema->locals[sema->node_local_indices[node_index]].type_index;
+        }
+        if (sema->node_decl_indices[node_index] != sema_no_decl()) {
+            return sema->decls[sema->node_decl_indices[node_index]].type_index;
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_InterpolatedString:
+        return true;
+    case AK_InterpPartExpr:
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+    case AK_IntegerNegate:
+    case AK_Cast:
+        return ir_node_contains_interpolation(ast, node->a);
+    case AK_StringConcat:
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_Call:
+        return ir_node_contains_interpolation(ast, node->a) ||
+               ir_node_contains_interpolation(ast, node->b);
+    default:
+        return false;
+    }
+}
+
+internal IrValue ir_lower_node(const Lexer* lex,
+                               const Ast*   ast,
+                               const Sema*  sema,
+                               u32          node_index,
+                               Array(IrValue) node_values,
+                               u64* next_value_index,
+                               Ir*  ir);
+
+internal void ir_append_string_node(const Lexer* lex,
+                                    const Ast*   ast,
+                                    const Sema*  sema,
+                                    u32          node_index,
+                                    Array(IrValue) node_values,
+                                    u64* next_value_index,
+                                    Ir*  ir);
+
+internal IrValue ir_build_runtime_string(const Lexer* lex,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index,
+                                         Array(IrValue) node_values,
+                                         u64* next_value_index,
+                                         Ir*  ir)
+{
+    IrValue start_value = {
+        .kind          = IR_VALUE_VARIABLE,
+        .value.integer = (i64)(*next_value_index)++,
+    };
+    IrValue result = {
+        .kind          = IR_VALUE_VARIABLE,
+        .value.integer = (i64)(*next_value_index)++,
+    };
+
+    ir_add_string_start(ir, start_value);
+    ir_append_string_node(
+        lex, ast, sema, node_index, node_values, next_value_index, ir);
+    ir_add_string_finish(ir, result, start_value);
+    return result;
+}
+
+internal void ir_append_string_node(const Lexer* lex,
+                                    const Ast*   ast,
+                                    const Sema*  sema,
+                                    u32          node_index,
+                                    Array(IrValue) node_values,
+                                    u64* next_value_index,
+                                    Ir*  ir)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_StringLiteral:
+        ir_add_string_append(
+            ir,
+            (IrValue){
+                .kind = IR_VALUE_STRING,
+                .value.integer =
+                    ir_add_string_literal(ir, ast_get_string(lex, node)),
+            },
+            ir_builtin_string_type(sema));
+        return;
+
+    case AK_StringConcat:
+        ir_append_string_node(
+            lex, ast, sema, node->a, node_values, next_value_index, ir);
+        ir_append_string_node(
+            lex, ast, sema, node->b, node_values, next_value_index, ir);
+        return;
+
+    case AK_InterpolatedString:
+        for (u32 i = node->a; i < node->b; ++i) {
+            const AstNode* part = &ast->nodes[i];
+            if (part->kind == AK_StringLiteral) {
+                ir_add_string_append(
+                    ir,
+                    (IrValue){
+                        .kind = IR_VALUE_STRING,
+                        .value.integer =
+                            ir_add_string_literal(ir, ast_get_string(lex, part)),
+                    },
+                    ir_builtin_string_type(sema));
+                continue;
+            }
+
+            ASSERT(part->kind == AK_InterpPartExpr,
+                   "Expected interpolated string part expression");
+            IrValue part_value = ir_lower_node(
+                lex, ast, sema, part->a, node_values, next_value_index, ir);
+            ir_add_string_append(
+                ir,
+                part_value,
+                ir_node_type_index(ast, sema, part->a));
+        }
+        return;
+
+    default:
+        {
+            IrValue value = ir_lower_node(
+                lex, ast, sema, node_index, node_values, next_value_index, ir);
+            ir_add_string_append(
+                ir,
+                value,
+                ir_node_type_index(ast, sema, node_index));
+            return;
+        }
+    }
+}
+
 //------------------------------------------------------------------------------
 // Return whether one declaration still requires emitted runtime state.
 
@@ -254,16 +468,27 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
             IrValue rhs = ir_lower_node(
                 lex, ast, sema, node->b, node_values, next_value_index, ir);
-            ASSERT(
-                lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING,
-                "Expected adjacent string literals to lower to string values");
-            IrValue value = {
-                .kind = IR_VALUE_STRING,
-                .value.integer =
-                    ir_add_concat_string(ir,
-                                         ir->strings[(u32)lhs.value.integer],
-                                         ir->strings[(u32)rhs.value.integer]),
-            };
+            IrValue value = {0};
+            if (lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING) {
+                value = (IrValue){
+                    .kind = IR_VALUE_STRING,
+                    .value.integer =
+                        ir_add_concat_string(ir,
+                                             ir->strings[(u32)lhs.value.integer],
+                                             ir->strings[(u32)rhs.value.integer]),
+                };
+            } else {
+                value = ir_build_runtime_string(
+                    lex, ast, sema, node_index, node_values, next_value_index, ir);
+            }
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_InterpolatedString:
+        {
+            IrValue value = ir_build_runtime_string(
+                lex, ast, sema, node_index, node_values, next_value_index, ir);
             node_values[node_index] = value;
             return value;
         }
@@ -459,6 +684,17 @@ internal void ir_generate_function(const Lexer*    lex,
 
     ir_add_fn_start(ir, ast_get_symbol(bind_node));
 
+    bool needs_string_runtime = false;
+    for (u32 i = fn_def_node->a; i < fn_start_node->b; ++i) {
+        if (ast->nodes[i].kind == AK_InterpolatedString) {
+            needs_string_runtime = true;
+            break;
+        }
+    }
+    if (needs_string_runtime) {
+        ir_add_string_reset(ir);
+    }
+
     Array(IrValue) node_values = ir_make_node_values(ast);
     u64 next_value_index       = 0;
 
@@ -548,6 +784,10 @@ internal void ir_generate_function(const Lexer*    lex,
                                     node_values,
                                     &next_value_index,
                                     ir);
+            }
+
+            if (ir_node_contains_interpolation(ast, expr_root_index)) {
+                ir_add_string_reset(ir);
             }
         }
 

@@ -154,6 +154,13 @@ bool error_0309_type_alias_cycle(NerdSource source,
                                  string     symbol,
                                  ErrorSpan  dependency_span,
                                  string     dependency_symbol);
+bool error_0310_invalid_interpolation_context(NerdSource source,
+                                              ErrorSpan  span);
+bool error_0311_invalid_interpolation_type(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     type_name);
+bool error_0312_interpolated_string_escapes(NerdSource source,
+                                            ErrorSpan  span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

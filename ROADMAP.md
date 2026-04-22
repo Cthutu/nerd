@@ -439,23 +439,23 @@ needed earlier.
 
 ## Milestone 6: Interpolated Strings
 
-- [ ] 38. Add `$"...{expr}..."` interpolated strings.
+- [X] 38. Add `$"...{expr}..."` interpolated strings.
   - Keep interpolation distinct from normal string literals.
   - Only strings prefixed with `$` may contain interpolation.
   - Support left-to-right evaluation and append behaviour.
 
-- [ ] 39. Keep the first interpolation implementation function-local.
+- [X] 39. Keep the first interpolation implementation function-local.
   - Initially allow interpolated strings only inside functions.
   - Defer top-level interpolated bindings until a later milestone if they
     require broader init-time support.
 
-- [ ] 40. Lower interpolation through prologue helper routines.
+- [X] 40. Lower interpolation through prologue helper routines.
   - Add `to_string$<type>` helpers in the prologue for all primitive types.
   - Restrict conversion support to built-in types in the initial design.
   - Leave user-defined conversion mechanisms for a later trait system.
   - Keep the first lowering explicit in IR rather than hiding it in C codegen.
 
-- [ ] 41. Use a simple arena-backed runtime string builder first.
+- [X] 41. Use a simple arena-backed runtime string builder first.
   - A global arena plus helper functions in the prologue is acceptable for the
     first implementation.
   - Build the string, return a fat pointer to it, and reset the arena as
@@ -466,7 +466,7 @@ needed earlier.
     - no hidden sema-side interpolation lowering
     - future VM work should be able to execute the same IR model
 
-- [ ] 42. Extend tests, formatter support, and LSP support for interpolated strings.
+- [X] 42. Extend tests, formatter support, and LSP support for interpolated strings.
   - Add language tests for mixed literal and interpolated segments.
   - Add error tests for invalid interpolation forms and unsupported types.
   - Extend tooling surfaces at the same time as the syntax lands.
