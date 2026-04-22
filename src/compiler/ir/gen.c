@@ -397,7 +397,7 @@ internal void ir_generate_function(const Lexer*    lex,
                                    Ir*             ir)
 {
     const AstNode* bind_node     = &ast->nodes[decl->bind_node_index];
-    const AstNode* fn_def_node   = &ast->nodes[bind_node->b];
+    const AstNode* fn_def_node   = &ast->nodes[decl->value_node_index];
     const AstNode* fn_start_node = &ast->nodes[fn_def_node->a];
 
     ASSERT(fn_def_node->kind == AK_FnDef, "Expected function definition");

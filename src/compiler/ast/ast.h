@@ -26,10 +26,12 @@
 // | AK_IntegerDivide   | Ast index of left | Ast index of right              |
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast index of arg                |
+// | AK_TypeFn          | Ast index of return type | 0                        |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
+// | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |
 // | AK_FnStart         | AK_FnDef index    | AK_FnEnd index                  |
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
@@ -48,10 +50,12 @@ typedef enum {
     AK_IntegerDivide,
     AK_IntegerModulo,
     AK_Call,
+    AK_TypeFn,
     AK_Expression,
     AK_Statement,
     AK_Return,
     AK_Bind,
+    AK_AnnotatedValue,
     AK_FnDef,
     AK_FnStart,
     AK_FnEnd,

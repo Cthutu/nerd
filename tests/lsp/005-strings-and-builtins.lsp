@@ -92,7 +92,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nmain :: fn ()\n```\n\n- Kind: function"
+                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
             }
         }
     },
@@ -102,7 +102,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string)\n```\n\n- Kind: function"
+                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function"
             }
         }
     },

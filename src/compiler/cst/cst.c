@@ -109,13 +109,12 @@ internal bool cst_emit_node(CstParseState* state, CstNode node, u32* out_index)
 
 internal bool cst_starts_binding(const CstParseState* state)
 {
-    if (state->token_index + 2 >= array_count(state->lexer->tokens)) {
+    if (state->token_index + 1 >= array_count(state->lexer->tokens)) {
         return false;
     }
 
     return state->lexer->tokens[state->token_index].kind == TK_Symbol &&
-           state->lexer->tokens[state->token_index + 1].kind == TK_Colon &&
-           state->lexer->tokens[state->token_index + 2].kind == TK_Colon;
+           state->lexer->tokens[state->token_index + 1].kind == TK_Colon;
 }
 
 //------------------------------------------------------------------------------
@@ -151,6 +150,50 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 // Parse one expression using Pratt binding powers.
 
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
+
+//------------------------------------------------------------------------------
+// Parse one type annotation.
+
+internal bool cst_parse_type(CstParseState* state, u32* out_node)
+{
+    Token token = cst_current_token(state);
+
+    if (token.kind == TK_Symbol) {
+        u32 symbol_handle = cst_current_symbol_handle(state);
+        if (symbol_handle == CST_NO_VALUE) {
+            return false;
+        }
+
+        cst_advance(state);
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_SymbolRef,
+                                 .token_index = state->token_index - 1,
+                                 .a           = symbol_handle,
+                             },
+                             out_node);
+    }
+
+    if (token.kind != TK_fn) {
+        return false;
+    }
+
+    u32 token_index = state->token_index;
+    u32 return_type = 0;
+    if (!cst_consume(state, TK_fn) || !cst_consume(state, TK_LParen) ||
+        !cst_consume(state, TK_RParen) || !cst_consume(state, TK_ThinArrow) ||
+        !cst_parse_type(state, &return_type)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_TypeFn,
+                             .token_index = token_index,
+                             .a           = return_type,
+                         },
+                         out_node);
+}
 
 //------------------------------------------------------------------------------
 // Return whether one CST node already represents a string-literal chain.
@@ -488,15 +531,41 @@ internal bool cst_parse_bind(CstParseState* state, u32* out_node)
 
     u32 token_index   = state->token_index;
     u32 symbol_handle = cst_current_symbol_handle(state);
+    u32 type_node     = CST_NO_VALUE;
     u32 value         = 0;
     if (symbol_handle == CST_NO_VALUE) {
         return false;
     }
 
     cst_advance(state);
-    if (!cst_consume(state, TK_Colon) || !cst_consume(state, TK_Colon) ||
-        !cst_parse_value(state, &value)) {
+    if (!cst_consume(state, TK_Colon)) {
         return false;
+    }
+
+    if (cst_current_token(state).kind == TK_Colon) {
+        cst_advance(state);
+    } else {
+        if (!cst_parse_type(state, &type_node) ||
+            !cst_consume(state, TK_Colon)) {
+            return false;
+        }
+    }
+
+    if (!cst_parse_value(state, &value)) {
+        return false;
+    }
+
+    if (type_node != CST_NO_VALUE) {
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_AnnotatedValue,
+                               .token_index = token_index,
+                               .a           = type_node,
+                               .b           = value,
+                           },
+                           &value)) {
+            return false;
+        }
     }
 
     return cst_emit_node(state,

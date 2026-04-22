@@ -83,3 +83,46 @@ bool error_0302_dependency_cycle(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a type annotation that names an unsupported type.
+
+bool error_0303_unknown_type(NerdSource source, ErrorSpan span, string type_name)
+{
+    ErrorInfo error = error_init(
+        303, source, span, "Unknown type `" STRINGP "`", STRINGV(type_name));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This type name is not defined");
+    error_add_help(&error,
+                   "Use one of the built-in primitive types supported by the "
+                   "current milestone.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a semantic type mismatch.
+
+bool error_0304_type_mismatch(NerdSource source,
+                              ErrorSpan  span,
+                              string     expected_type,
+                              string     actual_type)
+{
+    ErrorInfo error =
+        error_init(304,
+                   source,
+                   span,
+                   "Type mismatch: expected `" STRINGP "`, found `" STRINGP "`",
+                   STRINGV(expected_type),
+                   STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    error_add_help(&error,
+                   "Change the expression or annotation so both sides use the "
+                   "same type.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

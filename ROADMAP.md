@@ -370,7 +370,7 @@ needed earlier.
   - Lower explicit block returns directly into IR and generated C.
   - Keep compiler, formatter, LSP, and tests in sync as the syntax lands.
 
-## Milestone 5: Primitive Types
+## Milestone 5: Primitive Types, Variables, And Casts
 
 - [ ] 33. Introduce primitive built-in types.
   - Add signed integers such as `i8`, `i16`, `i32`, and `i64`.
@@ -380,9 +380,20 @@ needed earlier.
   - Add compact semantic type tables rather than storing type information ad
     hoc in the AST or IR.
 
-- [ ] 34. Add explicit type annotations while preserving inference.
+- [ ] 34. Add explicit type annotations and variable bindings while preserving inference.
   - Place explicit annotations between the colons in bindings.
   - `hello :: "Hello"` should remain equivalent to `hello: string: "Hello"`.
+  - Add variable bindings using `:` and `=`.
+  - Support the syntax `<var-name> : <optional-type> = <value>`.
+  - Support the shorthand `<var-name> := <value>` as sugar for inferred
+    variable bindings.
+  - Allow variable bindings both at top level and within functions.
+  - Treat the annotation on a binding as the type of the bound value itself.
+    This applies equally to values, variables, and functions.
+  - Example:
+    - `main: fn () -> i32: fn () => 1`
+    - Here the annotation describes the type of `main`, not the type of
+      calling `main()`.
   - Keep inferred types visible to the LSP so editor tooling can surface them.
   - Treat semantic type resolution as a multi-pass analysis problem rather than
     a single-pass walk.
@@ -405,15 +416,25 @@ needed earlier.
     - `b :: value`
     - Here `value` starts untyped, `a` becomes `u8`, and `b` becomes `i32`.
 
-- [ ] 36. Require exact type matches for arithmetic.
+- [ ] 36. Require exact type matches for arithmetic and add explicit casts.
   - Do not introduce implicit conversions.
-  - Add explicit casts later through a `.cast(<type>)` form.
+  - Add explicit casts through a `.cast(<type>)` form.
+  - Support casts on both named values and literals, for example:
+    - `my_byte := my_word.cast(u8)`
+    - `my_other_byte := 128.cast(u8)`
+  - If casting from one type to another is not defined by the current language
+    rules, report a compiler error.
+  - Keep cast validity semantic and table-driven rather than encoding it as
+    parser special cases.
   - Keep this no-implicit-casts rule as a language principle.
 
-- [ ] 37. Extend tests, formatter support, and LSP support for primitive types.
-  - Add language tests for type annotations, inference, and exact-match
-    arithmetic.
-  - Add error tests for mismatched primitive operations.
+- [ ] 37. Extend tests, formatter support, and LSP support for primitive types, variables, and casts.
+  - Add language tests for type annotations, inference, variable bindings,
+    exact-match arithmetic, and casts.
+  - Add error tests for mismatched primitive operations, invalid casts, and
+    invalid variable/type combinations.
+  - Ensure new feature work is covered through the structured error system as
+    well as unit tests under `tests/errors`.
   - Extend tooling surfaces at the same time as the compiler support.
 
 ## Milestone 6: Interpolated Strings

@@ -1,6 +1,5 @@
-main :: fn () {
-    return 42
-}
+value: i32: 120
+main: fn () -> i32: fn () => value
 ¬
 [
     {
@@ -13,6 +12,20 @@ main :: fn () {
             },
             "position": {
                 "line": 0,
+                "character": 0
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 1,
                 "character": 0
             }
         }
@@ -61,6 +74,16 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nvalue :: 120\n```\n\n- Kind: constant\n- Type: `i32`\n- Value: `120`"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
         "result": {
             "contents": {
                 "kind": "markdown",

@@ -34,6 +34,8 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerModulo");
     case AK_Call:
         return s("Call");
+    case AK_TypeFn:
+        return s("TypeFn");
     case AK_Expression:
         return s("Expression");
     case AK_Statement:
@@ -42,6 +44,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Return");
     case AK_Bind:
         return s("Bind");
+    case AK_AnnotatedValue:
+        return s("AnnotatedValue");
     case AK_FnDef:
         return s("FnDef");
     case AK_FnStart:
@@ -122,6 +126,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             row[3] = table_cell_string(string_format(
                 &temp_arena, "callee=%u arg=%u", node->a, node->b));
             break;
+        case AK_TypeFn:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "return=%u", node->a));
+            break;
         case AK_Expression:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "root=%u", node->a));
@@ -140,6 +148,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                               "symbol=" STRINGP " value=%u",
                               STRINGV(lex_symbol(lexer, node->a)),
                               node->b));
+            break;
+        case AK_AnnotatedValue:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "type=%u value=%u", node->a, node->b));
             break;
         case AK_FnDef:
             row[3] = table_cell_string(

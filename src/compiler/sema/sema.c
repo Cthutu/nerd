@@ -8,9 +8,14 @@
 #include <compiler/sema/sema.h>
 
 //------------------------------------------------------------------------------
-// Return the sentinel declaration index used for unresolved entries.
+// Return sentinel semantic indices used for unresolved entries.
 
-internal u32 sema_no_decl(void) { return U32_MAX; }
+u32 sema_no_decl(void) { return U32_MAX; }
+
+//------------------------------------------------------------------------------
+// Return the sentinel type index used for unresolved entries.
+
+u32 sema_no_type(void) { return U32_MAX; }
 
 //------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
@@ -27,12 +32,176 @@ internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
 }
 
 //------------------------------------------------------------------------------
+// Add one semantic type row and return its canonical index.
+
+internal u32 sema_add_type(Sema* sema, SemaType type)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (memcmp(&sema->types[i], &type, sizeof(type)) == 0) {
+            return i;
+        }
+    }
+
+    u32 index = (u32)array_count(sema->types);
+    array_push(sema->types, type);
+    return index;
+}
+
+//------------------------------------------------------------------------------
+// Return the canonical type index for one built-in type.
+
+internal u32 sema_builtin_type(Sema* sema, SemaTypeKind kind)
+{
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind        = kind,
+                             .param_count = 0,
+                             .a           = sema_no_type(),
+                             .b           = sema_no_type(),
+                         });
+}
+
+//------------------------------------------------------------------------------
+// Return whether one type kind is integer-like.
+
+internal bool sema_type_kind_is_integer(SemaTypeKind kind)
+{
+    switch (kind) {
+    case STK_UntypedInteger:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Isize:
+    case STK_Usize:
+        return true;
+    default:
+        return false;
+    }
+}
+
+//------------------------------------------------------------------------------
+// Return whether one semantic type is integer-like.
+
+bool sema_type_is_integer(const Sema* sema, u32 type_index)
+{
+    return type_index != sema_no_type() &&
+           sema_type_kind_is_integer(sema->types[type_index].kind);
+}
+
+//------------------------------------------------------------------------------
+// Return whether one semantic type is a concrete integer type.
+
+bool sema_type_is_concrete_integer(const Sema* sema, u32 type_index)
+{
+    return sema_type_is_integer(sema, type_index) &&
+           sema->types[type_index].kind != STK_UntypedInteger;
+}
+
+//------------------------------------------------------------------------------
+// Materialise abstract semantic types for runtime-facing uses.
+
+u32 sema_materialise_type(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return type_index;
+    }
+
+    if (sema->types[type_index].kind != STK_UntypedInteger) {
+        return type_index;
+    }
+
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == STK_I32) {
+            return i;
+        }
+    }
+
+    return type_index;
+}
+
+//------------------------------------------------------------------------------
+// Render one semantic type as source-facing text.
+
+string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return s("<unknown>");
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    switch (type->kind) {
+    case STK_Void:
+        return s("void");
+    case STK_UntypedInteger:
+        return s("untyped integer");
+    case STK_String:
+        return s("string");
+    case STK_Bool:
+        return s("bool");
+    case STK_I8:
+        return s("i8");
+    case STK_I16:
+        return s("i16");
+    case STK_I32:
+        return s("i32");
+    case STK_I64:
+        return s("i64");
+    case STK_U8:
+        return s("u8");
+    case STK_U16:
+        return s("u16");
+    case STK_U32:
+        return s("u32");
+    case STK_U64:
+        return s("u64");
+    case STK_F32:
+        return s("f32");
+    case STK_F64:
+        return s("f64");
+    case STK_Isize:
+        return s("isize");
+    case STK_Usize:
+        return s("usize");
+    case STK_Function:
+        if (type->param_count == 0) {
+            return string_format(arena,
+                                 "fn () -> " STRINGP,
+                                 STRINGV(sema_type_name(sema, arena, type->b)));
+        }
+        if (type->param_count == 1) {
+            return string_format(
+                arena,
+                "fn (" STRINGP ") -> " STRINGP,
+                STRINGV(sema_type_name(sema, arena, type->a)),
+                STRINGV(sema_type_name(sema, arena, type->b)));
+        }
+        return s("fn (...)");
+    default:
+        return s("<unknown>");
+    }
+}
+
+//------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
 
 internal void sema_add_builtin_decls(const Lexer* lexer, Sema* sema)
 {
     u32 pr_symbol  = sema_find_symbol_handle_by_name(lexer, s("pr"));
     u32 prn_symbol = sema_find_symbol_handle_by_name(lexer, s("prn"));
+    u32 string_type = sema_builtin_type(sema, STK_String);
+    u32 void_type   = sema_builtin_type(sema, STK_Void);
+    u32 print_type  = sema_add_type(sema,
+                                   (SemaType){
+                                       .kind        = STK_Function,
+                                       .param_count = 1,
+                                       .a           = string_type,
+                                       .b           = void_type,
+                                   });
 
     if (pr_symbol != sema_no_decl()) {
         array_push(sema->decls,
@@ -40,7 +209,9 @@ internal void sema_add_builtin_decls(const Lexer* lexer, Sema* sema)
                        .kind             = SK_BuiltinFunction,
                        .symbol_handle    = pr_symbol,
                        .bind_node_index  = sema_no_decl(),
+                       .type_node_index  = sema_no_type(),
                        .value_node_index = sema_no_decl(),
+                       .type_index       = print_type,
                    });
     }
 
@@ -50,7 +221,9 @@ internal void sema_add_builtin_decls(const Lexer* lexer, Sema* sema)
                        .kind             = SK_BuiltinFunction,
                        .symbol_handle    = prn_symbol,
                        .bind_node_index  = sema_no_decl(),
+                       .type_node_index  = sema_no_type(),
                        .value_node_index = sema_no_decl(),
+                       .type_index       = print_type,
                    });
     }
 }
@@ -163,7 +336,15 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
                           lexer, &ast->nodes[existing_decl->bind_node_index]));
         }
 
-        const AstNode* value = &ast->nodes[node->b];
+        u32            type_node_index  = sema_no_type();
+        u32            value_node_index = node->b;
+        const AstNode* value            = &ast->nodes[value_node_index];
+        if (value->kind == AK_AnnotatedValue) {
+            type_node_index  = value->a;
+            value_node_index = value->b;
+            value            = &ast->nodes[value_node_index];
+        }
+
         SemaDeclKind kind = value->kind == AK_FnDef ? SK_Function : SK_Constant;
 
         array_push(sema->decls,
@@ -171,11 +352,35 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
                        .kind             = kind,
                        .symbol_handle    = ast_get_symbol(node),
                        .bind_node_index  = i,
-                       .value_node_index = node->b,
+                       .type_node_index  = type_node_index,
+                       .value_node_index = value_node_index,
+                       .type_index       = sema_no_type(),
                    });
     }
 
     return true;
+}
+
+//------------------------------------------------------------------------------
+// Mark one type-annotation subtree so normal symbol resolution can skip it.
+
+internal void sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
+{
+    if (node_index >= array_count(sema->node_is_type_expr) ||
+        sema->node_is_type_expr[node_index]) {
+        return;
+    }
+
+    sema->node_is_type_expr[node_index] = true;
+    const AstNode* node                 = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_TypeFn:
+        sema_mark_type_expr_nodes(ast, sema, node->a);
+        break;
+    default:
+        break;
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -361,6 +566,9 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
         if (node->kind != AK_SymbolRef) {
             continue;
         }
+        if (sema->node_is_type_expr[i]) {
+            continue;
+        }
 
         u32 decl_index = sema_find_decl(sema, node->a);
         if (decl_index == sema_no_decl()) {
@@ -370,6 +578,354 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
         }
 
         sema->node_decl_indices[i] = decl_index;
+    }
+
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Resolve one type-name symbol to a built-in semantic type.
+
+internal u32 sema_type_index_for_name(Sema* sema, string name)
+{
+    if (string_eq(name, s("bool"))) {
+        return sema_builtin_type(sema, STK_Bool);
+    }
+    if (string_eq(name, s("string"))) {
+        return sema_builtin_type(sema, STK_String);
+    }
+    if (string_eq(name, s("i8"))) {
+        return sema_builtin_type(sema, STK_I8);
+    }
+    if (string_eq(name, s("i16"))) {
+        return sema_builtin_type(sema, STK_I16);
+    }
+    if (string_eq(name, s("i32"))) {
+        return sema_builtin_type(sema, STK_I32);
+    }
+    if (string_eq(name, s("i64"))) {
+        return sema_builtin_type(sema, STK_I64);
+    }
+    if (string_eq(name, s("u8"))) {
+        return sema_builtin_type(sema, STK_U8);
+    }
+    if (string_eq(name, s("u16"))) {
+        return sema_builtin_type(sema, STK_U16);
+    }
+    if (string_eq(name, s("u32"))) {
+        return sema_builtin_type(sema, STK_U32);
+    }
+    if (string_eq(name, s("u64"))) {
+        return sema_builtin_type(sema, STK_U64);
+    }
+    if (string_eq(name, s("f32"))) {
+        return sema_builtin_type(sema, STK_F32);
+    }
+    if (string_eq(name, s("f64"))) {
+        return sema_builtin_type(sema, STK_F64);
+    }
+    if (string_eq(name, s("isize"))) {
+        return sema_builtin_type(sema, STK_Isize);
+    }
+    if (string_eq(name, s("usize"))) {
+        return sema_builtin_type(sema, STK_Usize);
+    }
+
+    return sema_no_type();
+}
+
+//------------------------------------------------------------------------------
+// Resolve one parsed type node into a semantic type row.
+
+internal bool sema_resolve_type_node(const Lexer* lexer,
+                                     const Ast*   ast,
+                                     Sema*        sema,
+                                     u32          node_index,
+                                     u32*         out_type_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        {
+            u32 type_index =
+                sema_type_index_for_name(sema, lex_symbol(lexer, node->a));
+            if (type_index == sema_no_type()) {
+                return error_0303_unknown_type(lexer->source,
+                                               sema_node_span(lexer, node),
+                                               lex_symbol(lexer, node->a));
+            }
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
+    case AK_TypeFn:
+        {
+            u32 return_type = sema_no_type();
+            if (!sema_resolve_type_node(lexer, ast, sema, node->a, &return_type)) {
+                return false;
+            }
+
+            u32 type_index = sema_add_type(sema,
+                                           (SemaType){
+                                               .kind        = STK_Function,
+                                               .param_count = 0,
+                                               .a           = sema_no_type(),
+                                               .b           = return_type,
+                                           });
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
+    default:
+        return error_0303_unknown_type(
+            lexer->source, sema_node_span(lexer, node), s("<expression>"));
+    }
+}
+
+//------------------------------------------------------------------------------
+// Return whether one source type satisfies one target type without casts.
+
+internal bool sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
+{
+    if (expected_type == sema_no_type() || actual_type == sema_no_type()) {
+        return true;
+    }
+    if (expected_type == actual_type) {
+        return true;
+    }
+
+    return sema_type_is_concrete_integer(sema, expected_type) &&
+           sema->types[actual_type].kind == STK_UntypedInteger;
+}
+
+//------------------------------------------------------------------------------
+// Infer one AST node type, optionally using an expected context type.
+
+internal bool sema_infer_node_type(const Lexer* lexer,
+                                   const Ast*   ast,
+                                   Sema*        sema,
+                                   u32          node_index,
+                                   u32          expected_type,
+                                   u32*         out_type_index)
+{
+    const AstNode* node       = &ast->nodes[node_index];
+    u32            type_index = sema_no_type();
+
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        type_index = sema_type_is_concrete_integer(sema, expected_type)
+                         ? expected_type
+                         : sema_builtin_type(sema, STK_UntypedInteger);
+        break;
+
+    case AK_StringLiteral:
+    case AK_StringConcat:
+        type_index = sema_builtin_type(sema, STK_String);
+        break;
+
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->a, expected_type, &type_index)) {
+            return false;
+        }
+        break;
+
+    case AK_SymbolRef:
+        {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            ASSERT(decl_index != sema_no_decl(),
+                   "Expected resolved symbol reference");
+            type_index = sema->decls[decl_index].type_index;
+            if (sema_type_is_concrete_integer(sema, expected_type) &&
+                type_index != sema_no_type() &&
+                sema->types[type_index].kind == STK_UntypedInteger) {
+                type_index = expected_type;
+            }
+        }
+        break;
+
+    case AK_IntegerNegate:
+        if (!sema_infer_node_type(
+                lexer, ast, sema, node->a, expected_type, &type_index)) {
+            return false;
+        }
+        break;
+
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+        {
+            u32 lhs_type = sema_no_type();
+            u32 rhs_type = sema_no_type();
+
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, expected_type, &lhs_type)) {
+                return false;
+            }
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->b, lhs_type, &rhs_type)) {
+                return false;
+            }
+
+            if (sema_type_is_concrete_integer(sema, lhs_type) &&
+                rhs_type != sema_no_type() &&
+                sema->types[rhs_type].kind == STK_UntypedInteger) {
+                rhs_type = lhs_type;
+            } else if (sema_type_is_concrete_integer(sema, rhs_type) &&
+                       lhs_type != sema_no_type() &&
+                       sema->types[lhs_type].kind == STK_UntypedInteger) {
+                lhs_type = rhs_type;
+            }
+
+            if (lhs_type != rhs_type) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    sema_type_name(sema, &temp_arena, lhs_type),
+                    sema_type_name(sema, &temp_arena, rhs_type));
+            }
+            type_index = lhs_type;
+        }
+        break;
+
+    case AK_Call:
+        {
+            u32 callee_type = sema_no_type();
+            u32 arg_type    = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &callee_type)) {
+                return false;
+            }
+            if (callee_type == sema_no_type() ||
+                sema->types[callee_type].kind != STK_Function) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("function"),
+                    sema_type_name(sema, &temp_arena, callee_type));
+            }
+
+            const SemaType* fn_type = &sema->types[callee_type];
+            u32 arg_expected        =
+                fn_type->param_count == 1 ? fn_type->a : sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->b, arg_expected, &arg_type)) {
+                return false;
+            }
+            if (fn_type->param_count == 1 &&
+                !sema_type_matches(sema, fn_type->a, arg_type)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->b]),
+                    sema_type_name(sema, &temp_arena, fn_type->a),
+                    sema_type_name(sema, &temp_arena, arg_type));
+            }
+
+            type_index = fn_type->b;
+        }
+        break;
+
+    case AK_FnDef:
+        {
+            const AstNode* fn_start = &ast->nodes[node->a];
+            u32            return_type =
+                sema_builtin_type(sema, node->b == AFK_Block ? STK_I32
+                                                             : STK_UntypedInteger);
+
+            if (node->b == AFK_Expr) {
+                if (!sema_infer_node_type(
+                        lexer, ast, sema, fn_start->b - 1, sema_no_type(), &return_type)) {
+                    return false;
+                }
+                return_type = sema_materialise_type(sema, return_type);
+            } else {
+                for (u32 i = node->a + 1; i < fn_start->b; ++i) {
+                    if (ast->nodes[i].kind != AK_Return) {
+                        continue;
+                    }
+                    if (!sema_infer_node_type(
+                            lexer, ast, sema, ast->nodes[i].a, sema_no_type(), &return_type)) {
+                        return false;
+                    }
+                    return_type = sema_materialise_type(sema, return_type);
+                    break;
+                }
+            }
+
+            type_index = sema_add_type(sema,
+                                       (SemaType){
+                                           .kind        = STK_Function,
+                                           .param_count = 0,
+                                           .a           = sema_no_type(),
+                                           .b           = return_type,
+                                       });
+        }
+        break;
+
+    default:
+        type_index = sema_no_type();
+        break;
+    }
+
+    if (expected_type != sema_no_type() &&
+        !sema_type_matches(sema, expected_type, type_index)) {
+        return error_0304_type_mismatch(
+            lexer->source,
+            sema_node_span(lexer, node),
+            sema_type_name(sema, &temp_arena, expected_type),
+            sema_type_name(sema, &temp_arena, type_index));
+    }
+
+    sema->node_type_indices[node_index] = type_index;
+    *out_type_index                     = type_index;
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Resolve type annotations and infer declaration/value types.
+
+internal bool sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
+{
+    for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
+        SemaDecl* decl          = &sema->decls[sema->ordered_decl_indices[i]];
+        u32       annotated     = sema_no_type();
+        u32       inferred_type = sema_no_type();
+
+        if (decl->value_node_index == sema_no_type()) {
+            continue;
+        }
+
+        if (decl->type_node_index != sema_no_type() &&
+            !sema_resolve_type_node(
+                lexer, ast, sema, decl->type_node_index, &annotated)) {
+            return false;
+        }
+
+        if (!sema_infer_node_type(lexer,
+                                  ast,
+                                  sema,
+                                  decl->value_node_index,
+                                  annotated,
+                                  &inferred_type)) {
+            return false;
+        }
+
+        decl->type_index = annotated != sema_no_type()
+                               ? annotated
+                               : (decl->kind == SK_Function
+                                      ? inferred_type
+                                      : sema_materialise_type(sema, inferred_type));
+
+        if (decl->bind_node_index != sema_no_decl()) {
+            sema->node_type_indices[decl->bind_node_index] = decl->type_index;
+        }
     }
 
     return true;
@@ -541,6 +1097,11 @@ internal bool sema_fold_node(const Lexer* lex,
                              Sema*        out_sema,
                              i64*         out_value)
 {
+    if (root_node_index < array_count(sema->node_is_type_expr) &&
+        sema->node_is_type_expr[root_node_index]) {
+        return false;
+    }
+
     Array(SemaFoldFrame) stack = NULL;
     sema_push_fold_frame(&stack, root_node_index);
 
@@ -548,6 +1109,12 @@ internal bool sema_fold_node(const Lexer* lex,
         SemaFoldFrame* frame = &stack[array_count(stack) - 1];
         AstNode*       node  = &ast->nodes[frame->node_index];
         i64            value = 0;
+
+        if (frame->node_index < array_count(sema->node_is_type_expr) &&
+            sema->node_is_type_expr[frame->node_index]) {
+            array_pop(stack);
+            continue;
+        }
 
         if (frame->phase == SEMA_FOLD_ENTER) {
             if (sema_try_get_constant(
@@ -634,8 +1201,17 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
 {
     Sema sema = {0};
 
+    // Seed commonly-used built-in types so later materialisation can always
+    // canonicalise untyped integers to i32.
+    sema_builtin_type(&sema, STK_Void);
+    sema_builtin_type(&sema, STK_UntypedInteger);
+    sema_builtin_type(&sema, STK_String);
+    sema_builtin_type(&sema, STK_I32);
+
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         array_push(sema.node_decl_indices, sema_no_decl());
+        array_push(sema.node_type_indices, sema_no_type());
+        array_push(sema.node_is_type_expr, false);
         array_push(sema.node_const_known, false);
         array_push(sema.node_const_values, 0);
     }
@@ -646,12 +1222,21 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
         sema_done(&sema);
         return false;
     }
+    for (u32 i = 0; i < array_count(sema.decls); ++i) {
+        if (sema.decls[i].type_node_index != sema_no_type()) {
+            sema_mark_type_expr_nodes(ast, &sema, sema.decls[i].type_node_index);
+        }
+    }
     if (!sema_resolve_symbol_refs(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }
     sema_collect_deps(ast, &sema, &sema);
     if (!sema_order_decls(lexer, ast, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_assign_decl_types(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }
@@ -667,10 +1252,13 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
 
 void sema_done(Sema* sema)
 {
+    array_free(sema->types);
     array_free(sema->decls);
     array_free(sema->deps);
     array_free(sema->ordered_decl_indices);
     array_free(sema->node_decl_indices);
+    array_free(sema->node_type_indices);
+    array_free(sema->node_is_type_expr);
     array_free(sema->node_const_known);
     array_free(sema->node_const_values);
     *sema = (Sema){0};

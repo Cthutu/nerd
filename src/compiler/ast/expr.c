@@ -76,14 +76,13 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 
 internal bool ast_next_tokens_start_binding(const AstParseState* state)
 {
-    if (state->token_index + 2 >= array_count(state->lexer->tokens)) {
+    if (state->token_index + 1 >= array_count(state->lexer->tokens)) {
         return false;
     }
 
     const Token* tokens = state->lexer->tokens;
     return tokens[state->token_index].kind == TK_Symbol &&
-           tokens[state->token_index + 1].kind == TK_Colon &&
-           tokens[state->token_index + 2].kind == TK_Colon;
+           tokens[state->token_index + 1].kind == TK_Colon;
 }
 
 //------------------------------------------------------------------------------

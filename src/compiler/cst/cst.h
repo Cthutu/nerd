@@ -25,10 +25,12 @@
 // | CK_IntegerDivide   | Left node index       | Right node index      |
 // | CK_IntegerModulo   | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Arg node index        |
+// | CK_TypeFn          | Return type node      | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
+// | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_Bind            | Symbol handle         | Value node index      |
 
 typedef enum {
@@ -44,10 +46,12 @@ typedef enum {
     CK_IntegerDivide,
     CK_IntegerModulo,
     CK_Call,
+    CK_TypeFn,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,
     CK_Return,
+    CK_AnnotatedValue,
     CK_Bind,
 } CstKind;
 

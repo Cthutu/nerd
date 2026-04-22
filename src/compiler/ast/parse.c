@@ -7,6 +7,51 @@
 #include <compiler/ast/parse_internal.h>
 
 //------------------------------------------------------------------------------
+// Parse one type annotation.
+
+bool ast_parse_type(AstParseState* state, u32* out_node)
+{
+    ASSERT(out_node != NULL, "Type parser requires an output node");
+
+    if (state->token.kind == TK_Symbol) {
+        AstNode node = {
+            .kind        = AK_SymbolRef,
+            .token_index = state->token.token_index,
+            .a           = state->token.value.symbol_handle,
+        };
+        return ast_emit_node(state, node, out_node);
+    }
+
+    if (state->token.kind != TK_fn) {
+        return error_0205_expected_declaration_or_expression(
+            state->token.source,
+            ast_token_span(state, &state->token),
+            state->token.kind,
+            "Expected a type annotation after ':', but found " STRINGP,
+            STRINGV(token_kind_to_string(state->token.kind)));
+    }
+
+    AstToken fn_token = state->token;
+    if (!ast_expect_token(state, TK_LParen) || !ast_expect_token(state, TK_RParen) ||
+        !ast_expect_token(state, TK_ThinArrow) || !ast_next_token(state)) {
+        return false;
+    }
+
+    u32 return_type = 0;
+    if (!ast_parse_type(state, &return_type)) {
+        return false;
+    }
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_TypeFn,
+                             .token_index = fn_token.token_index,
+                             .a           = return_type,
+                         },
+                         out_node);
+}
+
+//------------------------------------------------------------------------------
 // Classify which top-level parser should handle a token.
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
@@ -183,22 +228,65 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     // Assume current token is a symbol
     ASSERT(state->token.kind == TK_Symbol, "Expected symbol token for binding");
     AstToken bind_token = state->token;
+    u32      type_index = U32_MAX;
 
     if (!ast_expect_token(state, TK_Colon)) {
         return false;
     }
-    if (!ast_expect_token(state, TK_Colon)) {
-        return false;
-    }
 
-    if (!ast_next_token(state)) {
+    if (!ast_peek_token(state)) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,
             ast_token_span(state, &state->token),
             TK_EOF,
-            "Expected a declaration or expression after '::', but found end of "
+            "Expected a declaration or expression after ':', but found end of "
             "file");
     }
+
+    if (state->token.kind == TK_Colon) {
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a declaration or expression after '::', but found "
+                "end of file");
+        }
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a declaration or expression after '::', but found "
+                "end of file");
+        }
+    } else {
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a type after ':', but found end of file");
+        }
+
+        if (!ast_parse_type(state, &type_index)) {
+            return false;
+        }
+
+        if (!ast_expect_token(state, TK_Colon)) {
+            return false;
+        }
+
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a declaration or expression after the type "
+                "annotation, but found end of file");
+        }
+    }
+
     ParsingQuery query = ast_parsing_query_for_token(state->token.kind);
     if (query == PQ_Invalid) {
         return error_0205_expected_declaration_or_expression(
@@ -220,6 +308,18 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
 
     } else {
         if (!ast_parse_expr(state, &expr_index)) {
+            return false;
+        }
+    }
+
+    if (type_index != U32_MAX) {
+        AstNode annotated = {
+            .kind        = AK_AnnotatedValue,
+            .token_index = bind_token.token_index,
+            .a           = type_index,
+            .b           = expr_index,
+        };
+        if (!ast_emit_node(state, annotated, &expr_index)) {
             return false;
         }
     }

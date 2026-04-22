@@ -245,23 +245,10 @@ internal string lsp_decl_signature(const LspDocument* doc,
                                    Arena*             arena,
                                    const SemaDecl*    decl)
 {
-    if (decl->kind == SK_BuiltinFunction) {
-        return s("fn (string)");
-    }
-
-    if (decl->kind != SK_Function || decl->value_node_index == LSP_NO_DECL) {
+    if (decl->kind != SK_Function && decl->kind != SK_BuiltinFunction) {
         return s("<unknown>");
     }
-
-    const AstNode* fn_def = &doc->front_end.ast.nodes[decl->value_node_index];
-    ASSERT(fn_def->kind == AK_FnDef, "Expected function definition");
-
-    if (fn_def->b == AFK_Block) {
-        return s("fn ()");
-    }
-
-    UNUSED(arena);
-    return s("fn () -> i32");
+    return sema_type_name(&doc->front_end.sema, arena, decl->type_index);
 }
 
 //------------------------------------------------------------------------------
@@ -272,42 +259,14 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
                                    u32                node_index)
 {
     const AstNode* node = &doc->front_end.ast.nodes[node_index];
+    UNUSED(node);
 
-    switch (node->kind) {
-    case AK_StringLiteral:
-    case AK_StringConcat:
-        return s("string");
-    case AK_IntegerLiteral:
-    case AK_IntegerNegate:
-    case AK_IntegerPlus:
-    case AK_IntegerMinus:
-    case AK_IntegerMultiply:
-    case AK_IntegerDivide:
-    case AK_IntegerModulo:
-        return s("untyped integer");
-
-    case AK_Expression:
-        return lsp_infer_ast_type(doc, arena, node->a);
-
-    case AK_SymbolRef:
-        {
-            u32 decl_index = doc->front_end.sema.node_decl_indices[node_index];
-            if (decl_index == LSP_NO_DECL) {
-                return s("<unknown>");
-            }
-            const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
-            if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
-                return lsp_decl_signature(doc, arena, decl);
-            }
-            return lsp_infer_ast_type(doc, arena, decl->value_node_index);
-        }
-
-    case AK_FnDef:
-        return node->b == AFK_Block ? s("fn ()") : s("fn () -> i32");
-
-    default:
+    if (node_index >= array_count(doc->front_end.sema.node_type_indices)) {
         return s("<unknown>");
     }
+
+    return sema_type_name(
+        &doc->front_end.sema, arena, doc->front_end.sema.node_type_indices[node_index]);
 }
 
 //------------------------------------------------------------------------------
@@ -503,9 +462,10 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                 response,
                 message->arena,
                 string_format(message->arena,
-                              STRINGP "\n\n- Type: `untyped integer`",
+                              STRINGP "\n\n- Type: `" STRINGP "`",
                               STRINGV(lsp_markdown_code_block(message->arena,
-                                                              raw_text))));
+                                                              raw_text)),
+                              STRINGV(s("untyped integer"))));
         }
         break;
     case TK_String:
@@ -541,14 +501,23 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
         break;
 
     case TK_fn:
+        {
+            string signature = s("fn ()");
+            u32    decl_index = lsp_find_decl_index_for_token(doc, token_index);
+            if (decl_index != LSP_NO_DECL) {
+                signature = lsp_decl_signature(
+                    doc, message->arena, &doc->front_end.sema.decls[decl_index]);
+            }
         lsp_set_markdown_hover(
             response,
             message->arena,
             string_format(message->arena,
                           STRINGP "\n\n- Kind: function expression"
-                                  "\n- Signature: `fn () -> i32`",
+                                  "\n- Signature: `" STRINGP "`",
                           STRINGV(lsp_markdown_code_block(message->arena,
-                                                          s("fn () -> i32")))));
+                                                          signature)),
+                          STRINGV(signature)));
+        }
         break;
 
     default:

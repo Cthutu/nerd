@@ -232,6 +232,10 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
         break;
+    case CK_TypeFn:
+        sb_append_cstr(sb, "fn () -> ");
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        break;
     default:
         kill("Unhandled CST node kind in formatter expression rendering: %u",
              node->kind);
@@ -252,6 +256,13 @@ internal void format_emit_value(StringBuilder* sb,
                                 u32            node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
+
+    if (node->kind == CK_AnnotatedValue) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_cstr(sb, ": ");
+        format_emit_value(sb, cst, lexer, node->b);
+        return;
+    }
 
     switch (node->kind) {
     case CK_FnExpr:
@@ -306,7 +317,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
-        sb_append_cstr(sb, " :: ");
+        sb_append_cstr(
+            sb, cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
         format_emit_value(sb, &cst, &lexer, node->b);
         sb_append_char(sb, '\n');
         first_binding = false;

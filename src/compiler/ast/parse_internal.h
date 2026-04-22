@@ -76,6 +76,7 @@ bool ast_expect_token(AstParseState* state, TokenKind expected_kind);
 
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node);
 bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node);
+bool ast_parse_type(AstParseState* state, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Parsing queries
