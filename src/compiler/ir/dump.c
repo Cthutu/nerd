@@ -70,6 +70,95 @@ internal void ir_render_value(StringBuilder* sb,
     }
 }
 
+internal void ir_render_type_name(StringBuilder* sb,
+                                  const Ir*      ir,
+                                  u32            type_index)
+{
+    if (type_index == U32_MAX || type_index >= array_count(ir->types)) {
+        sb_append_cstr(sb, "<unknown>");
+        return;
+    }
+
+    const SemaType* type = &ir->types[type_index];
+    switch (type->kind) {
+    case STK_Void:
+        sb_append_cstr(sb, "void");
+        break;
+    case STK_UntypedInteger:
+        sb_append_cstr(sb, "untyped-integer");
+        break;
+    case STK_String:
+        sb_append_cstr(sb, "string");
+        break;
+    case STK_Bool:
+        sb_append_cstr(sb, "bool");
+        break;
+    case STK_I8:
+        sb_append_cstr(sb, "i8");
+        break;
+    case STK_I16:
+        sb_append_cstr(sb, "i16");
+        break;
+    case STK_I32:
+        sb_append_cstr(sb, "i32");
+        break;
+    case STK_I64:
+        sb_append_cstr(sb, "i64");
+        break;
+    case STK_U8:
+        sb_append_cstr(sb, "u8");
+        break;
+    case STK_U16:
+        sb_append_cstr(sb, "u16");
+        break;
+    case STK_U32:
+        sb_append_cstr(sb, "u32");
+        break;
+    case STK_U64:
+        sb_append_cstr(sb, "u64");
+        break;
+    case STK_F32:
+        sb_append_cstr(sb, "f32");
+        break;
+    case STK_F64:
+        sb_append_cstr(sb, "f64");
+        break;
+    case STK_Isize:
+        sb_append_cstr(sb, "isize");
+        break;
+    case STK_Usize:
+        sb_append_cstr(sb, "usize");
+        break;
+    case STK_Function:
+        if (type->param_count == 0) {
+            sb_append_cstr(sb, "fn()->");
+            ir_render_type_name(sb, ir, type->b);
+        } else if (type->param_count == 1) {
+            sb_append_cstr(sb, "fn(");
+            ir_render_type_name(sb, ir, type->a);
+            sb_append_cstr(sb, ")->");
+            ir_render_type_name(sb, ir, type->b);
+        } else {
+            sb_append_cstr(sb, "fn(...)");
+        }
+        break;
+    default:
+        sb_append_cstr(sb, "<unknown>");
+        break;
+    }
+}
+
+internal void ir_render_typed_value(StringBuilder* sb,
+                                    const Ir*      ir,
+                                    const Lexer*   lexer,
+                                    const IrValue* value,
+                                    u32            type_index)
+{
+    ir_render_type_name(sb, ir, type_index);
+    sb_append_char(sb, ':');
+    ir_render_value(sb, ir, lexer, value);
+}
+
 //------------------------------------------------------------------------------
 // Render IR to its stable textual snapshot form.
 
@@ -119,8 +208,11 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_CAST:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = cast ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
-            sb_format(&sb, ", type=%u", (u32)instr->rvalue[1].value.integer);
+            ir_render_typed_value(&sb,
+                                  ir,
+                                  lexer,
+                                  &instr->rvalue[0],
+                                  (u32)instr->rvalue[1].value.integer);
             break;
         case IR_OP_STRING_RESET:
             sb_append_cstr(&sb, "string.reset");
@@ -131,8 +223,11 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_STRING_APPEND:
             sb_append_cstr(&sb, "string.append ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
-            sb_format(&sb, ", type=%u", (u32)instr->rvalue[1].value.integer);
+            ir_render_typed_value(&sb,
+                                  ir,
+                                  lexer,
+                                  &instr->rvalue[0],
+                                  (u32)instr->rvalue[1].value.integer);
             break;
         case IR_OP_STRING_FINISH:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

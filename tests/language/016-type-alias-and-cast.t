@@ -12,7 +12,7 @@ main :: fn () {
 ¬
 fn main
 local amount = 1000
-$0 = cast amount, type=6
+$0 = cast u8:amount
 local narrowed = $0
 return narrowed
 end

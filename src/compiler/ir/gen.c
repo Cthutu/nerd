@@ -813,6 +813,10 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     bool has_constants = false;
     arena_init(&ir.arena);
 
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        array_push(ir.types, sema->types[i]);
+    }
+
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
         if (ir_decl_requires_runtime(sema, decl)) {
@@ -851,6 +855,7 @@ void ir_done(Ir* ir)
 {
     array_free(ir->instructions);
     array_free(ir->strings);
+    array_free(ir->types);
     if (ir->arena.data != NULL) {
         arena_done(&ir->arena);
     }

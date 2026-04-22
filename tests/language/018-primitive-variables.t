@@ -15,14 +15,14 @@ global ratio
 global weight
 init
 greeting = "Hello"
-$0 = cast 1, type=5
+$0 = cast bool:1
 enabled = $0
-$1 = cast 42, type=6
+$1 = cast f32:42
 ratio = $1
 weight = 0
 end
 fn main
-$0 = cast enabled, type=3
+$0 = cast i32:enabled
 return $0
 end
 ¬

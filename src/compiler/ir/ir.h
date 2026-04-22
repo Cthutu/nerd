@@ -60,6 +60,7 @@ typedef struct {
 typedef struct {
     Array(IrInstruction) instructions;
     Array(string) strings;
+    Array(SemaType) types;
     Arena arena;
 } Ir;
 
