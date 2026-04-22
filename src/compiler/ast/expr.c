@@ -55,6 +55,10 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = AST_BP_POSTFIX;
         *out_right_bp = AST_BP_POSTFIX;
         return true;
+    case TK_Dot:
+        *out_left_bp  = AST_BP_POSTFIX;
+        *out_right_bp = AST_BP_POSTFIX;
+        return true;
     case TK_Plus:
     case TK_Minus:
         *out_left_bp  = AST_BP_ADDITIVE;
@@ -213,6 +217,42 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             .token_index = op.token_index,
             .a           = left_node,
             .b           = right_node,
+        };
+        return ast_emit_node(state, node, out_node);
+    }
+
+    if (op.kind == TK_Dot) {
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &op),
+                                             TK_Symbol,
+                                             TK_EOF);
+        }
+        if (state->token.kind != TK_Symbol ||
+            !string_eq(lex_symbol(state->lexer, state->token.value.symbol_handle),
+                       s("cast"))) {
+            return error_0203_expected_token(state->token.source,
+                                             ast_token_span(state, &state->token),
+                                             TK_Symbol,
+                                             state->token.kind);
+        }
+        if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
+            return false;
+        }
+
+        u32 type_node = 0;
+        if (!ast_parse_type(state, &type_node)) {
+            return false;
+        }
+        if (!ast_expect_token(state, TK_RParen)) {
+            return false;
+        }
+
+        AstNode node = {
+            .kind        = AK_Cast,
+            .token_index = op.token_index,
+            .a           = left_node,
+            .b           = type_node,
         };
         return ast_emit_node(state, node, out_node);
     }

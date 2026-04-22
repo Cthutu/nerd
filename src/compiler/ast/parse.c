@@ -61,6 +61,24 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     return ast_skip_type_tokens(state, io_index);
 }
 
+bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index)
+{
+    return ast_skip_type_tokens(state, &token_index);
+}
+
+internal bool ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
+{
+    u32 token_index = state->token.token_index;
+    if (!ast_skip_type_tokens(state, &token_index)) {
+        return false;
+    }
+
+    TokenKind next_kind = ast_kind_at_stream_index(state, token_index);
+    return next_kind == TK_EOF ||
+           (next_kind == TK_Symbol &&
+            ast_kind_at_stream_index(state, token_index + 1) == TK_Colon);
+}
+
 internal bool ast_symbol_starts_bind(const AstParseState* state)
 {
     if (state->token.kind != TK_Symbol || ast_peek_kind_at(state, 0) != TK_Colon) {
@@ -383,8 +401,11 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
         }
     }
 
-    ParsingQuery query = ast_parsing_query_for_token(state->token.kind);
-    if (query == PQ_Invalid) {
+    bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
+    ParsingQuery query = starts_type ? PQ_Invalid
+                                     : ast_parsing_query_for_token(
+                                           state->token.kind);
+    if (query == PQ_Invalid && !starts_type) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,
             ast_token_span(state, &state->token),
@@ -397,7 +418,11 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     AstNode node = {0};
     u32     expr_index;
 
-    if (query == PQ_Declaration) {
+    if (starts_type) {
+        if (!ast_parse_type(state, &expr_index)) {
+            return false;
+        }
+    } else if (query == PQ_Declaration) {
         if (!ast_parse_declaration(state, &expr_index)) {
             return false;
         }
@@ -463,9 +488,9 @@ internal bool ast_parse_variable_payload(AstParseState* state,
         return false;
     }
 
-    if (state->token.kind == TK_Equal) {
+    if (ast_peek_token(state) && state->token.kind == TK_Equal) {
         u32 value_index = 0;
-        if (!ast_next_token(state)) {
+        if (!ast_expect_token(state, TK_Equal) || !ast_next_token(state)) {
             return error_0205_expected_declaration_or_expression(
                 state->token.source,
                 ast_token_span(state, &state->token),

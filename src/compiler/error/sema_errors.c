@@ -174,3 +174,50 @@ bool error_0306_invalid_variable_type(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report an explicit cast between incompatible types.
+
+bool error_0307_invalid_cast(NerdSource source,
+                             ErrorSpan  span,
+                             string     source_type,
+                             string     target_type)
+{
+    ErrorInfo error = error_init(307,
+                                 source,
+                                 span,
+                                 "Cannot cast `" STRINGP "` to `" STRINGP "`",
+                                 STRINGV(source_type),
+                                 STRINGV(target_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This cast is not supported");
+    error_add_help(&error,
+                   "Use explicit casts only between compatible primitive "
+                   "types in the current milestone.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report use of a type name in a value position.
+
+bool error_0308_type_used_as_value(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     type_name)
+{
+    ErrorInfo error = error_init(308,
+                                 source,
+                                 span,
+                                 "Cannot use type `" STRINGP "` as a value",
+                                 STRINGV(type_name));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This name refers to a type");
+    error_add_help(&error,
+                   "Use `" STRINGP "` in a type annotation or bind a runtime "
+                   "value instead.",
+                   STRINGV(type_name));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

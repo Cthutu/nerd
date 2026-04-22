@@ -26,6 +26,7 @@
 // | AK_IntegerDivide   | Ast index of left | Ast index of right              |
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast index of arg                |
+// | AK_Cast            | Ast index value   | Ast index of target type        |
 // | AK_TypeFn          | Ast index of return type | 0                        |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
@@ -53,6 +54,7 @@ typedef enum {
     AK_IntegerDivide,
     AK_IntegerModulo,
     AK_Call,
+    AK_Cast,
     AK_TypeFn,
     AK_Expression,
     AK_Statement,

@@ -94,6 +94,20 @@ void ir_add_call(Ir* ir, IrValue callee, IrValue arg)
 }
 
 //------------------------------------------------------------------------------
+// Append an explicit cast instruction to the IR stream.
+
+void ir_add_cast(Ir* ir, IrValue lvalue, IrValue value, u32 type_index)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_CAST,
+                   .lvalue = lvalue,
+                   .rvalue = {value, {.kind = IR_VALUE_INTEGER,
+                                      .value.integer = type_index}},
+               });
+}
+
+//------------------------------------------------------------------------------
 // Append a return instruction to the IR stream.
 
 void ir_add_return(Ir* ir, IrValue rvalue)
@@ -296,6 +310,19 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .value.integer = (i64)(*next_value_index)++,
             };
             ir_add_unary(ir, IR_OP_NEGATE, value, rhs);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Cast:
+        {
+            IrValue source = ir_lower_node(
+                lex, ast, sema, node->a, node_values, next_value_index, ir);
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_cast(ir, value, source, sema->node_type_indices[node_index]);
             node_values[node_index] = value;
             return value;
         }

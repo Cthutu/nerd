@@ -159,3 +159,54 @@ name: string
         "For this milestone, variables must use a concrete integer type."
     ]
 }
+¬
+Price :: u16
+main :: fn () => Price
+¬
+{
+    "code": "0308",
+    "message": "Cannot use type `Price` as a value",
+    "source_file": "tests/errors/004-semantics.e",
+    "primary_location": {
+        "line": 2,
+        "column": 18
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 18,
+            "length": 5,
+            "message": "This name refers to a type"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Price` in a type annotation or bind a runtime value instead."
+    ]
+}
+¬
+main :: fn () => "hi".cast(u8)
+¬
+{
+    "code": "0307",
+    "message": "Cannot cast `string` to `u8`",
+    "source_file": "tests/errors/004-semantics.e",
+    "primary_location": {
+        "line": 1,
+        "column": 22
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 22,
+            "length": 1,
+            "message": "This cast is not supported"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use explicit casts only between compatible primitive types in the current milestone."
+    ]
+}

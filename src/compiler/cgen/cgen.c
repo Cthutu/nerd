@@ -147,6 +147,38 @@ void cgen_add_c_string_literal(CGen* cgen, string text)
     cgen_add(cgen, "\"");
 }
 
+internal cstr cgen_c_integer_type(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return "int";
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_I8:
+        return "int8_t";
+    case STK_I16:
+        return "int16_t";
+    case STK_I32:
+        return "int32_t";
+    case STK_I64:
+        return "int64_t";
+    case STK_U8:
+        return "uint8_t";
+    case STK_U16:
+        return "uint16_t";
+    case STK_U32:
+        return "uint32_t";
+    case STK_U64:
+        return "uint64_t";
+    case STK_Isize:
+        return "intptr_t";
+    case STK_Usize:
+        return "uintptr_t";
+    default:
+        return "int";
+    }
+}
+
 //------------------------------------------------------------------------------
 // Render an IR value into C syntax.
 
@@ -222,6 +254,29 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, "(");
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, ");");
+}
+
+//------------------------------------------------------------------------------
+// Emit a C cast expression from an IR cast instruction.
+
+void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
+        cgen_add(cgen, "int ");
+    } else {
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
+                   instr->lvalue.kind == IR_VALUE_LOCAL,
+               "Expected assignable lvalue");
+    }
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen,
+             cgen_c_integer_type(cgen->sema,
+                                 (u32)instr->rvalue[1].value.integer));
+    cgen_add(cgen, ")");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_addn(cgen, ";");
 }
 
 //------------------------------------------------------------------------------
@@ -339,6 +394,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_CALL:
             cgen_add_call(cgen, instr);
             break;
+        case IR_OP_CAST:
+            cgen_add_cast(cgen, instr);
+            break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");
             break;
@@ -372,9 +430,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
 
 // Build the generated C buffer from IR.
 
-CGen cgen_init(const Ir* ir, const Lexer* lexer)
+CGen cgen_init(const Ir* ir, const Lexer* lexer, const Sema* sema)
 {
-    CGen cgen = {.ir = ir, .lexer = lexer};
+    CGen cgen = {.ir = ir, .lexer = lexer, .sema = sema};
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);

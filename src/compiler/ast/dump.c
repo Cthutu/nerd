@@ -34,6 +34,8 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerModulo");
     case AK_Call:
         return s("Call");
+    case AK_Cast:
+        return s("Cast");
     case AK_TypeFn:
         return s("TypeFn");
     case AK_Expression:
@@ -131,6 +133,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Call:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "callee=%u arg=%u", node->a, node->b));
+            break;
+        case AK_Cast:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "value=%u type=%u", node->a, node->b));
             break;
         case AK_TypeFn:
             row[3] = table_cell_string(

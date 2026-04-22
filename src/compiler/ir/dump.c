@@ -116,6 +116,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_cstr(&sb, ", ");
             ir_render_value(&sb, ir, lexer, &instr->rvalue[1]);
             break;
+        case IR_OP_CAST:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = cast ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_format(&sb, ", type=%u", (u32)instr->rvalue[1].value.integer);
+            break;
         case IR_OP_NEGATE:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = -");

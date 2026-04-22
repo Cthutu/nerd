@@ -25,6 +25,7 @@
 // | CK_IntegerDivide   | Left node index       | Right node index      |
 // | CK_IntegerModulo   | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Arg node index        |
+// | CK_Cast            | Value node index      | Target type node      |
 // | CK_TypeFn          | Return type node      | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
@@ -49,6 +50,7 @@ typedef enum {
     CK_IntegerDivide,
     CK_IntegerModulo,
     CK_Call,
+    CK_Cast,
     CK_TypeFn,
     CK_FnExpr,
     CK_FnBlock,

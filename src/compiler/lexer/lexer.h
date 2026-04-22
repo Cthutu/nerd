@@ -35,6 +35,7 @@ typedef enum {
     TK_RParen,
     TK_LBrace,
     TK_RBrace,
+    TK_Dot,
     TK_Colon,
     TK_Equal,
     TK_Bang,

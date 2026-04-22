@@ -258,6 +258,10 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                            (Token){.kind = minus_token, .offset = (u32)i});
                 i++;
             }
+        } else if (c == '.') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Dot, .offset = (u32)i});
+            i++;
         } else {
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic push
@@ -276,6 +280,7 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 [')']       = TK_RParen,
                 ['{']       = TK_LBrace,
                 ['}']       = TK_RBrace,
+                ['.']       = TK_Dot,
                 [':']       = TK_Colon,
                 ['=']       = TK_Equal,
                 ['!']       = TK_Bang,
@@ -363,6 +368,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_RParen:
     case TK_LBrace:
     case TK_RBrace:
+    case TK_Dot:
     case TK_Colon:
     case TK_Equal:
     case TK_Bang:

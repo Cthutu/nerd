@@ -20,6 +20,7 @@ typedef enum : u8 {
     IR_OP_LOCAL,
     IR_OP_ASSIGN,
     IR_OP_CALL,
+    IR_OP_CAST,
     IR_OP_NEGATE,
     IR_OP_ADD,
     IR_OP_SUBTRACT,

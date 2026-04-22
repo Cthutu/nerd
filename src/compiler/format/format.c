@@ -151,6 +151,8 @@ internal int format_expr_precedence(const CstNode* node)
         return 30;
     case CK_Call:
         return 35;
+    case CK_Cast:
+        return 35;
     case CK_StringConcat:
         return 37;
     default:
@@ -229,6 +231,12 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Call:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '(');
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        sb_append_char(sb, ')');
+        break;
+    case CK_Cast:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, ".cast(");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
         break;

@@ -54,8 +54,9 @@ internal bool back_end_timing_add(Timing* timing,
 
 internal bool back_end_cgen(BackEndContext* ctx)
 {
-    ctx->results.cgen =
-        cgen_init(&ctx->front_end_results->ir, &ctx->front_end_results->lexer);
+    ctx->results.cgen = cgen_init(&ctx->front_end_results->ir,
+                                  &ctx->front_end_results->lexer,
+                                  &ctx->front_end_results->sema);
     return true;
 }
 

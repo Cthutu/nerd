@@ -168,6 +168,19 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     return cst_skip_type_tokens(state, io_index);
 }
 
+internal bool cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
+{
+    u32 token_index = state->token_index;
+    if (!cst_skip_type_tokens(state, &token_index)) {
+        return false;
+    }
+
+    TokenKind next_kind = cst_kind_at_stream_index(state, token_index);
+    return next_kind == TK_EOF ||
+           (next_kind == TK_Symbol &&
+            cst_kind_at_stream_index(state, token_index + 1) == TK_Colon);
+}
+
 internal bool cst_starts_annotated_bind(const CstParseState* state)
 {
     if (cst_current_token(state).kind != TK_Symbol ||
@@ -199,6 +212,10 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
     case TK_LParen:
+        *out_left_bp  = CST_BP_PREFIX + 10;
+        *out_right_bp = CST_BP_PREFIX + 10;
+        return true;
+    case TK_Dot:
         *out_left_bp  = CST_BP_PREFIX + 10;
         *out_right_bp = CST_BP_PREFIX + 10;
         return true;
@@ -447,6 +464,30 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             }
             continue;
         }
+        if (token.kind == TK_Dot) {
+            if (cst_current_token(state).kind != TK_Symbol ||
+                !string_eq(
+                    lex_symbol(state->lexer, cst_current_symbol_handle(state)),
+                    s("cast"))) {
+                return false;
+            }
+            cst_advance(state);
+            if (!cst_consume(state, TK_LParen) || !cst_parse_type(state, &right) ||
+                !cst_consume(state, TK_RParen)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Cast,
+                                   .token_index = token_index,
+                                   .a           = left,
+                                   .b           = right,
+                               },
+                               &left)) {
+                return false;
+            }
+            continue;
+        }
 
         if (!cst_parse_expr_bp(state, right_bp, &right)) {
             return false;
@@ -639,6 +680,10 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_value(CstParseState* state, u32* out_node)
 {
+    if (cst_remaining_bind_value_is_type_syntax(state)) {
+        return cst_parse_type(state, out_node);
+    }
+
     if (cst_current_token(state).kind == TK_fn) {
         return cst_parse_fn_expr(state, out_node);
     }

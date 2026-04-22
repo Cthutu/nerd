@@ -132,6 +132,7 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_Star:
     case TK_Slash:
     case TK_Percent:
+    case TK_Dot:
     case TK_Colon:
     case TK_FatArrow:
     case TK_ThinArrow:

@@ -66,6 +66,7 @@ bool      ast_emit_node(AstParseState* state, AstNode node, u32* out_index);
 bool ast_token_starts_expression(TokenKind kind);
 bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp);
 bool ast_expect_token(AstParseState* state, TokenKind expected_kind);
+bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index);
 
 //------------------------------------------------------------------------------
 // Expression parsing entry points.

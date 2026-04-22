@@ -140,6 +140,13 @@ bool error_0305_invalid_assignment_target(NerdSource source,
 bool error_0306_invalid_variable_type(NerdSource source,
                                       ErrorSpan  span,
                                       string     type_name);
+bool error_0307_invalid_cast(NerdSource source,
+                             ErrorSpan  span,
+                             string     source_type,
+                             string     target_type);
+bool error_0308_type_used_as_value(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     type_name);
 
 //------------------------------------------------------------------------------
 // Low-level error system

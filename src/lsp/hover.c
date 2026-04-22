@@ -309,11 +309,18 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
 {
     const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
     string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
-    string kind = decl->kind == SK_Constant ? s("constant") : s("function");
-    string inferred_type =
-        decl->kind == SK_Function || decl->kind == SK_BuiltinFunction
-            ? lsp_decl_signature(doc, arena, decl)
-            : lsp_infer_ast_type(doc, arena, decl->value_node_index);
+    string kind = s("value");
+    string inferred_type = s("<unknown>");
+    if (decl->kind == SK_TypeAlias) {
+        kind          = s("type alias");
+        inferred_type = sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+    } else if (decl->kind == SK_Constant) {
+        kind          = s("constant");
+        inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
+    } else {
+        kind          = s("function");
+        inferred_type = lsp_decl_signature(doc, arena, decl);
+    }
 
     if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
         return string_format(arena,
@@ -326,6 +333,18 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                                STRINGV(inferred_type)))),
                              STRINGV(kind),
                              STRINGV(inferred_type));
+    }
+
+    if (decl->kind == SK_TypeAlias) {
+        return string_format(
+            arena,
+            STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`",
+            STRINGV(lsp_markdown_code_block(
+                arena,
+                string_format(
+                    arena, STRINGP " :: " STRINGP, STRINGV(name), STRINGV(inferred_type)))),
+            STRINGV(kind),
+            STRINGV(inferred_type));
     }
 
     i64 value = 0;
@@ -643,7 +662,12 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                                                   start_offset,
                                                   end_offset));
 
-            if (decl->kind == SK_Constant) {
+            if (decl->kind == SK_TypeAlias) {
+                json_object_set_string(symbol,
+                                       message->arena,
+                                       "detail",
+                                       s("type alias"));
+            } else if (decl->kind == SK_Constant) {
                 i64 value = 0;
                 if (lsp_eval_decl_value(doc, decl_index, &value)) {
                     json_object_set_string(symbol,
