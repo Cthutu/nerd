@@ -92,6 +92,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     //       "summary": "Format one source file"
     //     },
     //     {
+    //       "name": "run",
+    //       "summary": "Build and run one program"
+    //     },
+    //     {
     //       "name": "lsp",
     //       "summary": "Run the LSP server"
     //     }
@@ -109,9 +113,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             arena, "verbose", "v", "Enable verbose debug dump output"));
 
     {
-        JsonValue* params = json_new_array(arena);
-        JsonValue* flags  = json_new_array(arena);
-        json_array_push(params,
+        JsonValue* build_params = json_new_array(arena);
+        JsonValue* build_flags  = json_new_array(arena);
+        json_array_push(build_params,
                         nerd_cli_make_param(arena,
                                             "source",
                                             "positional",
@@ -119,14 +123,14 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             NULL,
                                             "Source snippet to compile",
                                             false));
-        json_array_push(flags,
+        json_array_push(build_flags,
                         nerd_cli_make_flag(
                             arena, "ir", NULL, "Write generated IR to a file"));
         json_array_push(
-            flags,
+            build_flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
-        json_array_push(params,
+        json_array_push(build_params,
                         nerd_cli_make_param(arena,
                                             "output",
                                             "named",
@@ -134,10 +138,45 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             "o",
                                             "Output binary path",
                                             false));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "build",
+                                              "Run one normal build",
+                                              build_flags,
+                                              build_params));
+    }
+    {
+        JsonValue* run_params = json_new_array(arena);
+        JsonValue* run_flags  = json_new_array(arena);
+        json_array_push(run_params,
+                        nerd_cli_make_param(arena,
+                                            "source",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Source snippet to compile",
+                                            false));
+        json_array_push(run_flags,
+                        nerd_cli_make_flag(
+                            arena, "ir", NULL, "Write generated IR to a file"));
         json_array_push(
-            commands,
-            nerd_cli_make_command(
-                arena, "build", "Run one normal build", flags, params));
+            run_flags,
+            nerd_cli_make_flag(
+                arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(run_params,
+                        nerd_cli_make_param(arena,
+                                            "output",
+                                            "named",
+                                            "output",
+                                            "o",
+                                            "Output binary path",
+                                            false));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "run",
+                                              "Build and run one program",
+                                              run_flags,
+                                              run_params));
     }
     json_array_push(
         commands,
@@ -286,6 +325,18 @@ nerd_format_config_from_json(const JsonValue* cli_result)
     };
 }
 
+internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
+{
+    NerdBuildConfig build = nerd_build_config_from_json(cli_result);
+    return (NerdRunConfig){
+        .source      = build.source,
+        .output_path = build.output_path,
+        .emit_ir     = build.emit_ir,
+        .emit_c      = build.emit_c,
+        .verbose     = build.verbose,
+    };
+}
+
 internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
@@ -339,12 +390,13 @@ internal int nerd_run_with_cli(int argc, char** argv)
         cli_print_help(&parser);
         if (error && error->kind == JSON_STRING) {
             string error_message = json_string(error);
+            eprn("%.*s", STRINGV(error_message));
             json_done(cli_result);
             cli_done(&parser);
             json_done(schema);
             arena_done(&arena);
             error_system_done();
-            kill("%.*s", STRINGV(error_message));
+            return 1;
         }
 
         json_done(cli_result);
@@ -352,7 +404,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         json_done(schema);
         arena_done(&arena);
         error_system_done();
-        kill("CLI parse failed.");
+        eprn("CLI parse failed.");
+        return 1;
     }
 
     ASSERT(command && command->kind == JSON_OBJECT,
@@ -374,6 +427,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
     if (string_eq_cstr(name, "build")) {
         NerdBuildConfig config = nerd_build_config_from_json(cli_result);
         result                 = compiler_cmd_build(&config);
+    } else if (string_eq_cstr(name, "run")) {
+        NerdRunConfig config = nerd_run_config_from_json(cli_result);
+        result               = compiler_cmd_run(&config);
     } else if (string_eq_cstr(name, "test")) {
         NerdTestConfig config = nerd_test_config_from_json(cli_result);
         result                = compiler_cmd_test(&config);

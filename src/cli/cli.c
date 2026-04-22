@@ -534,8 +534,7 @@ internal void cli_require_no_extra_positionals(const CliCommand* command,
 {
     usize positional_count = cli_count_positionals(command);
     if (positional_index > positional_count) {
-        kill("Too many positional arguments for command " STRINGP ".",
-             STRINGV(command->name));
+        UNUSED(command);
     }
 }
 
@@ -720,8 +719,12 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
                 continue;
             }
 
-            kill("Unknown option '--" STRINGP "'. Use --help to list options.",
-                 STRINGV(option_name));
+            json_done(result);
+            return cli_parse_error(
+                parser,
+                arena,
+                "Unknown option '--" STRINGP "'. Use --help to list options.",
+                STRINGV(option_name));
         }
 
         if (arg[0] == '-' && arg[1] != '\0' && arg[2] == '\0') {
@@ -770,13 +773,23 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
                 continue;
             }
 
-            kill("Unknown option '-%c'. Use --help to list options.", option);
+            json_done(result);
+            return cli_parse_error(
+                parser,
+                arena,
+                "Unknown option '-%c'. Use --help to list options.",
+                option);
         }
 
         isize command_index = cli_find_command_index(parser, arg);
         if (command_index >= 0) {
             if (current_command) {
-                kill("Only one command can be used at a time. Got '%s'.", arg);
+                json_done(result);
+                return cli_parse_error(
+                    parser,
+                    arena,
+                    "Only one command can be used at a time. Got '%s'.",
+                    arg);
             }
 
             current_command  = &parser->commands[command_index];
@@ -796,14 +809,23 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
         }
 
         if (!current_command) {
-            kill("Unknown argument '%s'. Use --help to list options.", arg);
+            json_done(result);
+            return cli_parse_error(
+                parser,
+                arena,
+                "Unknown argument '%s'. Use --help to list options.",
+                arg);
         }
 
         CliParam* positional =
             cli_next_positional_param(current_command, &positional_index);
         if (!positional) {
-            kill("Too many positional arguments for command " STRINGP ".",
-                 STRINGV(current_command->name));
+            json_done(result);
+            return cli_parse_error(
+                parser,
+                arena,
+                "Too many positional arguments for command " STRINGP ".",
+                STRINGV(current_command->name));
         }
 
         JsonValue* command_params =
@@ -823,6 +845,7 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             return result;
         }
 
+        json_done(result);
         return cli_parse_error(
             parser, arena, "Missing command. Use --help to list commands.");
     }
@@ -834,11 +857,14 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
         JsonValue* value = json_object_get(
             json_object_get_cstr(command_result, "params"), param->name);
         if (param->required && !value) {
-            kill("Missing required %s parameter " STRINGP
-                 " for command " STRINGP ".",
-                 cli_param_kind_label(param->kind),
-                 STRINGV(param->name),
-                 STRINGV(current_command->name));
+            json_done(result);
+            return cli_parse_error(parser,
+                                   arena,
+                                   "Missing required %s parameter " STRINGP
+                                   " for command " STRINGP ".",
+                                   cli_param_kind_label(param->kind),
+                                   STRINGV(param->name),
+                                   STRINGV(current_command->name));
         }
     }
 
@@ -846,8 +872,12 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
         CliParam*  param = &parser->root_params[i];
         JsonValue* value = json_object_get(global_params, param->name);
         if (param->required && !value) {
-            kill("Missing required global parameter " STRINGP ".",
-                 STRINGV(param->name));
+            json_done(result);
+            return cli_parse_error(parser,
+                                   arena,
+                                   "Missing required global parameter "
+                                   STRINGP ".",
+                                   STRINGV(param->name));
         }
     }
 

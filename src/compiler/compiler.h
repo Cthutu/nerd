@@ -33,6 +33,14 @@ typedef struct {
 } NerdFormatConfig;
 
 typedef struct {
+    NerdSource source;
+    string     output_path;
+    bool       emit_ir;
+    bool       emit_c;
+    bool       verbose;
+} NerdRunConfig;
+
+typedef struct {
     cstr binary_path;
     cstr ir_path;
     cstr c_path;
@@ -46,5 +54,6 @@ typedef struct {
 int compiler_cmd_build(const NerdBuildConfig* config);
 int compiler_cmd_test(const NerdTestConfig* config);
 int compiler_cmd_format(const NerdFormatConfig* config);
+int compiler_cmd_run(const NerdRunConfig* config);
 
 //------------------------------------------------------------------------------
