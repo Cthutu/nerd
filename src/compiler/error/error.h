@@ -134,6 +134,12 @@ bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,
                               string     actual_type);
+bool error_0305_invalid_assignment_target(NerdSource source,
+                                          ErrorSpan  span,
+                                          string     symbol);
+bool error_0306_invalid_variable_type(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     type_name);
 
 //------------------------------------------------------------------------------
 // Low-level error system

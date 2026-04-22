@@ -47,6 +47,9 @@ internal void ir_render_value(StringBuilder* sb,
     case IR_VALUE_VARIABLE:
         sb_format(sb, "$%u", (u32)value->value.integer);
         break;
+    case IR_VALUE_LOCAL:
+        sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));
+        break;
     case IR_VALUE_INTEGER:
         sb_format(sb, "%lld", value->value.integer);
         break;
@@ -95,6 +98,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_FN_END:
             sb_append_cstr(&sb, "end");
+            break;
+        case IR_OP_LOCAL:
+            sb_append_cstr(&sb, "local ");
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_ASSIGN:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

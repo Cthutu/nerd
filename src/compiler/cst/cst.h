@@ -31,7 +31,10 @@
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
+// | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
+// | CK_Variable        | Symbol handle         | Value node index      |
+// | CK_Assign          | Symbol handle         | Value node index      |
 
 typedef enum {
     CK_IntegerLiteral,
@@ -52,7 +55,10 @@ typedef enum {
     CK_Statement,
     CK_Return,
     CK_AnnotatedValue,
+    CK_ZeroInit,
     CK_Bind,
+    CK_Variable,
+    CK_Assign,
 } CstKind;
 
 typedef struct {

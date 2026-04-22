@@ -248,6 +248,15 @@ internal string lsp_decl_signature(const LspDocument* doc,
     if (decl->kind != SK_Function && decl->kind != SK_BuiltinFunction) {
         return s("<unknown>");
     }
+    if (decl->kind == SK_BuiltinFunction) {
+        string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
+        if (string_eq(name, s("pr")) || string_eq(name, s("prn"))) {
+            string rendered =
+                sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+            return string_eq(rendered, s("<unknown>")) ? s("fn (string) -> void")
+                                                       : rendered;
+        }
+    }
     return sema_type_name(&doc->front_end.sema, arena, decl->type_index);
 }
 

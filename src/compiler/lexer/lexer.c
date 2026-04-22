@@ -243,7 +243,9 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                            (Token){.kind = TK_FatArrow, .offset = (u32)i});
                 i += 2;
             } else {
-                return error_0100_unexpected_character(source, i, (char)c);
+                array_push(lexer->tokens,
+                           (Token){.kind = TK_Equal, .offset = (u32)i});
+                i++;
             }
         } else if (c == '-') {
             if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
@@ -275,6 +277,7 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
                 ['{']       = TK_LBrace,
                 ['}']       = TK_RBrace,
                 [':']       = TK_Colon,
+                ['=']       = TK_Equal,
                 ['!']       = TK_Bang,
             };
 #if COMPILER_CLANG || COMPILER_GCC
@@ -361,6 +364,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_LBrace:
     case TK_RBrace:
     case TK_Colon:
+    case TK_Equal:
     case TK_Bang:
     case TK_Minus:
         return token->offset + 1;

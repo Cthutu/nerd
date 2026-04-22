@@ -247,6 +247,11 @@ internal void format_emit_expr(StringBuilder* sb,
     }
 }
 
+internal void format_emit_variable_payload(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            node_index);
+
 //------------------------------------------------------------------------------
 // Format one top-level value node.
 
@@ -264,6 +269,11 @@ internal void format_emit_value(StringBuilder* sb,
         return;
     }
 
+    if (node->kind == CK_ZeroInit) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        return;
+    }
+
     switch (node->kind) {
     case CK_FnExpr:
         sb_append_cstr(sb, "fn () => ");
@@ -273,12 +283,31 @@ internal void format_emit_value(StringBuilder* sb,
         sb_append_cstr(sb, "fn () {\n");
         for (u32 i = node->a; i < node->b; ++i) {
             const CstNode* stmt = &cst->nodes[i];
-            if (stmt->kind != CK_Statement && stmt->kind != CK_Return) {
+            if (stmt->kind != CK_Statement && stmt->kind != CK_Return &&
+                stmt->kind != CK_Variable && stmt->kind != CK_Assign) {
                 continue;
             }
             sb_append_cstr(sb, "    ");
             if (stmt->kind == CK_Return) {
                 sb_append_cstr(sb, "return ");
+            } else if (stmt->kind == CK_Variable) {
+                sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+                if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
+                    cst->nodes[stmt->b].kind == CK_ZeroInit) {
+                    sb_append_cstr(sb, ": ");
+                    format_emit_variable_payload(sb, cst, lexer, stmt->b);
+                } else {
+                    sb_append_cstr(sb, " := ");
+                    format_emit_expr(sb, cst, lexer, stmt->b, 0);
+                }
+                sb_append_char(sb, '\n');
+                continue;
+            } else if (stmt->kind == CK_Assign) {
+                sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+                sb_append_cstr(sb, " = ");
+                format_emit_expr(sb, cst, lexer, stmt->b, 0);
+                sb_append_char(sb, '\n');
+                continue;
             }
             format_emit_expr(sb, cst, lexer, stmt->a, 0);
             sb_append_char(sb, '\n');
@@ -289,6 +318,29 @@ internal void format_emit_value(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node_index, 0);
         break;
     }
+}
+
+internal void format_emit_variable_payload(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+
+    if (node->kind == CK_AnnotatedValue) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_cstr(sb, " = ");
+        format_emit_value(sb, cst, lexer, node->b);
+        return;
+    }
+
+    if (node->kind == CK_ZeroInit) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        return;
+    }
+
+    sb_append_cstr(sb, "= ");
+    format_emit_expr(sb, cst, lexer, node_index, 0);
 }
 
 //------------------------------------------------------------------------------
@@ -317,9 +369,21 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
-        sb_append_cstr(
-            sb, cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
-        format_emit_value(sb, &cst, &lexer, node->b);
+        if (node->kind == CK_Bind) {
+            sb_append_cstr(
+                sb,
+                cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
+            format_emit_value(sb, &cst, &lexer, node->b);
+        } else {
+            if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
+                cst.nodes[node->b].kind == CK_ZeroInit) {
+                sb_append_cstr(sb, ": ");
+                format_emit_variable_payload(sb, &cst, &lexer, node->b);
+            } else {
+                sb_append_cstr(sb, " := ");
+                format_emit_expr(sb, &cst, &lexer, node->b, 0);
+            }
+        }
         sb_append_char(sb, '\n');
         first_binding = false;
     }

@@ -17,6 +17,7 @@ typedef enum : u8 {
     IR_OP_INIT_END,
     IR_OP_FN_START,
     IR_OP_FN_END,
+    IR_OP_LOCAL,
     IR_OP_ASSIGN,
     IR_OP_CALL,
     IR_OP_NEGATE,
@@ -31,6 +32,7 @@ typedef enum : u8 {
 typedef enum : u8 {
     IR_VALUE_NONE,
     IR_VALUE_VARIABLE,
+    IR_VALUE_LOCAL,
     IR_VALUE_INTEGER,
     IR_VALUE_SYMBOL,
     IR_VALUE_BUILTIN,

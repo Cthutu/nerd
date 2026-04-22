@@ -126,3 +126,51 @@ bool error_0304_type_mismatch(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report assignment to a non-variable symbol.
+
+bool error_0305_invalid_assignment_target(NerdSource source,
+                                          ErrorSpan  span,
+                                          string     symbol)
+{
+    ErrorInfo error = error_init(305,
+                                 source,
+                                 span,
+                                 "Cannot assign to `" STRINGP "`",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is not a mutable variable",
+                        STRINGV(symbol));
+    error_add_help(&error,
+                   "Declare `" STRINGP "` as a variable with `:` or assign to a "
+                   "different mutable symbol.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a variable declaration using an unsupported storage type.
+
+bool error_0306_invalid_variable_type(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     type_name)
+{
+    ErrorInfo error = error_init(306,
+                                 source,
+                                 span,
+                                 "Invalid variable type `" STRINGP "`",
+                                 STRINGV(type_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This variable type is not supported yet");
+    error_add_help(&error,
+                   "For this milestone, variables must use a concrete integer "
+                   "type.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

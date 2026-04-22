@@ -12,6 +12,7 @@
 
 typedef enum : u8 {
     SK_Constant,
+    SK_Variable,
     SK_Function,
     SK_BuiltinFunction,
 } SemaDeclKind;
@@ -59,6 +60,15 @@ typedef struct {
     u32          type_index;
 } SemaDecl;
 
+typedef struct {
+    u32 symbol_handle;
+    u32 owner_decl_index;
+    u32 decl_node_index;
+    u32 type_node_index;
+    u32 value_node_index;
+    u32 type_index;
+} SemaLocal;
+
 //------------------------------------------------------------------------------
 // A dependency edge between two top-level declarations.
 
@@ -73,9 +83,11 @@ typedef struct {
 typedef struct {
     Array(SemaType) types;
     Array(SemaDecl) decls;
+    Array(SemaLocal) locals;
     Array(SemaDeclDep) deps;
     Array(u32) ordered_decl_indices;
     Array(u32) node_decl_indices;
+    Array(u32) node_local_indices;
     Array(u32) node_type_indices;
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
@@ -88,6 +100,7 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema);
 void sema_done(Sema* sema);
 
 u32    sema_no_decl(void);
+u32    sema_no_local(void);
 u32    sema_no_type(void);
 u32    sema_materialise_type(const Sema* sema, u32 type_index);
 bool   sema_type_is_integer(const Sema* sema, u32 type_index);

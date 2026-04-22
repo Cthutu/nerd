@@ -1,44 +1,26 @@
-# Build Directives
+# Nerd
 
-This project uses a small directive system to declare module dependencies and
-compile-time defines.
+Nerd is a small compiler toolchain and language server implemented in C.
 
-## Source file directives
+The codebase is split into a few major areas:
 
-Add directives as line comments:
+- `src/compiler` contains the compiler pipeline
+- `src/lsp` contains the language server
+- `src/testing` contains the test runner
+- `tests` contains language, error, formatter, and LSP tests
+- `docs` contains developer-facing documentation
 
-```c
-//> use: greet core
-//> def: FEATURE_X GREETING=42
+Start here if you are new to the repository:
+
+- [docs/README.md](/home/matt/nerd/docs/README.md)
+- [docs/overviews/INTERNALS.md](/home/matt/nerd/docs/overviews/INTERNALS.md)
+- [ROADMAP.md](/home/matt/nerd/ROADMAP.md)
+- [tests/README.md](/home/matt/nerd/tests/README.md)
+
+Useful commands:
+
+```sh
+just test
+python3 build/build.py
+./_bin/nerd --help
 ```
-
-- `use`: list module names (directories under `src/`)
-- `def`: list preprocessor symbols (optionally `NAME=VALUE`)
-
-Unknown directives are errors.
-
-## Module `.build` files
-
-Each module directory may include a `.build` file with directive lines:
-
-```
-use: util net
-def: LOGGING LOG_LEVEL=2
-```
-
-Blank lines are ignored. Non-empty lines must match `command: params`.
-
-## Module headers
-
-- A module maps to a top-level directory in `src/` (for example `src/core`).
-- The canonical module header must be named after the directory:
-  - `src/<module>/<module>.h` (for example `src/core/core.h`)
-- Additional `*.h` files inside the module tree are allowed as internal headers.
-- Any header change inside a module tree triggers rebuild for all sources in that
-  module, including nested sub-directories.
-- Top-level headers directly under `src/` are ignored for header dependency
-  rebuild tracking.
-
-## Root `.build`
-
-`src/.build` applies to all projects. Touching it forces a full rebuild.

@@ -105,3 +105,57 @@ value: string: 1
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+value :: 1
+main :: fn () {
+    value = 2
+    return value
+}
+¬
+{
+    "code": "0305",
+    "message": "Cannot assign to `value`",
+    "source_file": "tests/errors/004-semantics.e",
+    "primary_location": {
+        "line": 3,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 5,
+            "length": 5,
+            "message": "`value` is not a mutable variable"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Declare `value` as a variable with `:` or assign to a different mutable symbol."
+    ]
+}
+¬
+name: string
+¬
+{
+    "code": "0306",
+    "message": "Invalid variable type `string`",
+    "source_file": "tests/errors/004-semantics.e",
+    "primary_location": {
+        "line": 1,
+        "column": 1
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 1,
+            "length": 4,
+            "message": "This variable type is not supported yet"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "For this milestone, variables must use a concrete integer type."
+    ]
+}

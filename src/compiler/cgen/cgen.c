@@ -156,6 +156,9 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
     case IR_VALUE_VARIABLE:
         arena_format(&cgen->arena, "$%u", (u32)value->value.integer);
         break;
+    case IR_VALUE_LOCAL:
+        cgen_add_symbol_name(cgen, (u32)value->value.integer);
+        break;
     case IR_VALUE_INTEGER:
         arena_format(&cgen->arena, "%lld", value->value.integer);
         break;
@@ -188,7 +191,8 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
         cgen_add(cgen, "int ");
     } else {
-        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
+                   instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
     cgen_add_value(cgen, &instr->lvalue);
@@ -229,7 +233,8 @@ void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
         cgen_add(cgen, "int ");
     } else {
-        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
+                   instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
     cgen_add_value(cgen, &instr->lvalue);
@@ -248,7 +253,8 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
         cgen_add(cgen, "int ");
     } else {
-        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL,
+        ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
+                   instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
     cgen_add_value(cgen, &instr->lvalue);
@@ -268,6 +274,17 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
     cgen_start_line(cgen);
     cgen_add(cgen, "int ");
     cgen_add_value(cgen, &instr->lvalue);
+    cgen_addn(cgen, ";");
+}
+
+void cgen_add_local(CGen* cgen, const IrInstruction* instr)
+{
+    ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL, "Expected local symbol");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "int ");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
 }
 
@@ -312,6 +329,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_FN_END:
             cgen_dedent(cgen);
             cgen_add_line(cgen, "}");
+            break;
+        case IR_OP_LOCAL:
+            cgen_add_local(cgen, instr);
             break;
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);

@@ -44,8 +44,14 @@ string ast_kind_to_string(AstKind kind)
         return s("Return");
     case AK_Bind:
         return s("Bind");
+    case AK_Variable:
+        return s("Variable");
+    case AK_Assign:
+        return s("Assign");
     case AK_AnnotatedValue:
         return s("AnnotatedValue");
+    case AK_ZeroInit:
+        return s("ZeroInit");
     case AK_FnDef:
         return s("FnDef");
     case AK_FnStart:
@@ -149,9 +155,27 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                               STRINGV(lex_symbol(lexer, node->a)),
                               node->b));
             break;
+        case AK_Variable:
+            row[3] = table_cell_string(
+                string_format(&temp_arena,
+                              "symbol=" STRINGP " value=%u",
+                              STRINGV(lex_symbol(lexer, node->a)),
+                              node->b));
+            break;
+        case AK_Assign:
+            row[3] = table_cell_string(
+                string_format(&temp_arena,
+                              "symbol=" STRINGP " value=%u",
+                              STRINGV(lex_symbol(lexer, node->a)),
+                              node->b));
+            break;
         case AK_AnnotatedValue:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "type=%u value=%u", node->a, node->b));
+            break;
+        case AK_ZeroInit:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "type=%u", node->a));
             break;
         case AK_FnDef:
             row[3] = table_cell_string(

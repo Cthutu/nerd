@@ -43,11 +43,11 @@ string ast_get_string(const Lexer* lexer, const AstNode* node)
 }
 
 //------------------------------------------------------------------------------
-// Extract the bound symbol handle from an AK_Bind node.
+// Extract the bound symbol handle from a symbol-bearing declaration node.
 
 u32 ast_get_symbol(const AstNode* node)
 {
-    if (node->kind != AK_Bind) {
+    if (node->kind != AK_Bind && node->kind != AK_Variable) {
         error_ice("Node is not a binding");
     }
     return node->a;

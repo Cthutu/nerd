@@ -117,6 +117,80 @@ internal bool cst_starts_binding(const CstParseState* state)
            state->lexer->tokens[state->token_index + 1].kind == TK_Colon;
 }
 
+internal TokenKind cst_peek_kind_at(const CstParseState* state, u32 lookahead)
+{
+    u32 index = state->token_index + lookahead;
+    if (index >= array_count(state->lexer->tokens)) {
+        return TK_EOF;
+    }
+    return state->lexer->tokens[index].kind;
+}
+
+internal bool cst_starts_variable(const CstParseState* state)
+{
+    return cst_current_token(state).kind == TK_Symbol &&
+           cst_peek_kind_at(state, 1) == TK_Colon &&
+           cst_peek_kind_at(state, 2) != TK_Colon;
+}
+
+internal TokenKind cst_kind_at_stream_index(const CstParseState* state, u32 index)
+{
+    if (index >= array_count(state->lexer->tokens)) {
+        return TK_EOF;
+    }
+    return state->lexer->tokens[index].kind;
+}
+
+internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
+{
+    TokenKind kind = cst_kind_at_stream_index(state, *io_index);
+    if (kind == TK_Symbol) {
+        (*io_index)++;
+        return true;
+    }
+    if (kind != TK_fn) {
+        return false;
+    }
+
+    (*io_index)++;
+    if (cst_kind_at_stream_index(state, *io_index) != TK_LParen) {
+        return false;
+    }
+    (*io_index)++;
+    if (cst_kind_at_stream_index(state, *io_index) != TK_RParen) {
+        return false;
+    }
+    (*io_index)++;
+    if (cst_kind_at_stream_index(state, *io_index) != TK_ThinArrow) {
+        return false;
+    }
+    (*io_index)++;
+    return cst_skip_type_tokens(state, io_index);
+}
+
+internal bool cst_starts_annotated_bind(const CstParseState* state)
+{
+    if (cst_current_token(state).kind != TK_Symbol ||
+        cst_peek_kind_at(state, 1) != TK_Colon) {
+        return false;
+    }
+    if (cst_peek_kind_at(state, 2) == TK_Colon) {
+        return true;
+    }
+
+    u32 type_index = state->token_index + 2;
+    if (!cst_skip_type_tokens(state, &type_index)) {
+        return false;
+    }
+    return cst_kind_at_stream_index(state, type_index) == TK_Colon;
+}
+
+internal bool cst_starts_assignment(const CstParseState* state)
+{
+    return cst_current_token(state).kind == TK_Symbol &&
+           cst_peek_kind_at(state, 1) == TK_Equal;
+}
+
 //------------------------------------------------------------------------------
 // Return the infix binding powers for the given token kind.
 
@@ -150,6 +224,9 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 // Parse one expression using Pratt binding powers.
 
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
+internal bool cst_parse_variable_payload(CstParseState* state,
+                                         u32            token_index,
+                                         u32*           out_node);
 
 //------------------------------------------------------------------------------
 // Parse one type annotation.
@@ -425,28 +502,78 @@ cst_parse_fn_block(CstParseState* state, u32 fn_token_index, u32* out_node)
     }
 
     while (cst_current_token(state).kind != TK_RBrace) {
-        u32 expr           = 0;
-        u32 statement_kind = CK_Statement;
         u32 token_index    = state->token_index;
 
         if (cst_current_token(state).kind == TK_return) {
-            statement_kind = CK_Return;
+            u32 expr = 0;
             cst_advance(state);
-        }
-
-        if (!cst_parse_expr_bp(state, 0, &expr)) {
-            return false;
-        }
-
-        u32 statement = 0;
-        if (!cst_emit_node(state,
-                           (CstNode){
-                               .kind        = statement_kind,
-                               .token_index = token_index,
-                               .a           = expr,
-                           },
-                           &statement)) {
-            return false;
+            if (!cst_parse_expr_bp(state, 0, &expr)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Return,
+                                   .token_index = token_index,
+                                   .a           = expr,
+                               },
+                               &expr)) {
+                return false;
+            }
+        } else if (cst_starts_variable(state)) {
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            u32 payload       = 0;
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            cst_advance(state);
+            if (!cst_parse_variable_payload(state, token_index, &payload)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Variable,
+                                   .token_index = token_index,
+                                   .a           = symbol_handle,
+                                   .b           = payload,
+                               },
+                               &payload)) {
+                return false;
+            }
+        } else if (cst_starts_assignment(state)) {
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            u32 value         = 0;
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            cst_advance(state);
+            if (!cst_consume(state, TK_Equal) ||
+                !cst_parse_expr_bp(state, 0, &value)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Assign,
+                                   .token_index = token_index,
+                                   .a           = symbol_handle,
+                                   .b           = value,
+                               },
+                               &value)) {
+                return false;
+            }
+        } else {
+            u32 expr = 0;
+            if (!cst_parse_expr_bp(state, 0, &expr)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Statement,
+                                   .token_index = token_index,
+                                   .a           = expr,
+                               },
+                               &expr)) {
+                return false;
+            }
         }
 
         if (cst_current_token(state).kind == TK_EOF) {
@@ -519,6 +646,50 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
     return cst_parse_expr_bp(state, 0, out_node);
 }
 
+internal bool cst_parse_variable_payload(CstParseState* state,
+                                         u32            token_index,
+                                         u32*           out_node)
+{
+    u32 type_node = CST_NO_VALUE;
+    u32 value     = 0;
+
+    if (!cst_consume(state, TK_Colon)) {
+        return false;
+    }
+
+    if (cst_current_token(state).kind == TK_Equal) {
+        cst_advance(state);
+        return cst_parse_expr_bp(state, 0, out_node);
+    }
+
+    if (!cst_parse_type(state, &type_node)) {
+        return false;
+    }
+
+    if (cst_current_token(state).kind == TK_Equal) {
+        cst_advance(state);
+        if (!cst_parse_expr_bp(state, 0, &value)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_AnnotatedValue,
+                                 .token_index = token_index,
+                                 .a           = type_node,
+                                 .b           = value,
+                             },
+                             out_node);
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_ZeroInit,
+                             .token_index = token_index,
+                             .a           = type_node,
+                         },
+                         out_node);
+}
+
 //------------------------------------------------------------------------------
 // Parse one top-level binding.
 
@@ -571,6 +742,35 @@ internal bool cst_parse_bind(CstParseState* state, u32* out_node)
     return cst_emit_node(state,
                          (CstNode){
                              .kind        = CK_Bind,
+                             .token_index = token_index,
+                             .a           = symbol_handle,
+                             .b           = value,
+                         },
+                         out_node);
+}
+
+internal bool cst_parse_variable(CstParseState* state, u32* out_node)
+{
+    Token token = cst_current_token(state);
+    if (token.kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 token_index   = state->token_index;
+    u32 symbol_handle = cst_current_symbol_handle(state);
+    u32 value         = 0;
+    if (symbol_handle == CST_NO_VALUE) {
+        return false;
+    }
+
+    cst_advance(state);
+    if (!cst_parse_variable_payload(state, token_index, &value)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_Variable,
                              .token_index = token_index,
                              .a           = symbol_handle,
                              .b           = value,
@@ -638,7 +838,15 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         }
 
         u32 bind_index = 0;
-        if (!cst_parse_bind(&state, &bind_index)) {
+        if (cst_starts_variable(&state) && !cst_starts_annotated_bind(&state)) {
+            if (!cst_parse_variable(&state, &bind_index)) {
+                cst_done(&state.cst);
+                array_free(state.token_integer_indices);
+                array_free(state.token_string_indices);
+                array_free(state.token_symbol_handles);
+                return false;
+            }
+        } else if (!cst_parse_bind(&state, &bind_index)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
             array_free(state.token_string_indices);
@@ -687,7 +895,8 @@ u64 cst_get_integer(const Cst* cst, const CstNode* node)
 
 u32 cst_get_symbol(const CstNode* node)
 {
-    ASSERT(node->kind == CK_SymbolRef || node->kind == CK_Bind,
+    ASSERT(node->kind == CK_SymbolRef || node->kind == CK_Bind ||
+               node->kind == CK_Variable || node->kind == CK_Assign,
            "Expected symbol-bearing CST node");
     return node->a;
 }

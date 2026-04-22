@@ -31,7 +31,10 @@
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
+// | AK_Variable        | Symbol            | Ast index of type/value/zero    |
+// | AK_Assign          | Symbol            | Ast index of value              |
 // | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
+// | AK_ZeroInit        | Ast index of type | 0                               |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |
 // | AK_FnStart         | AK_FnDef index    | AK_FnEnd index                  |
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
@@ -55,7 +58,10 @@ typedef enum {
     AK_Statement,
     AK_Return,
     AK_Bind,
+    AK_Variable,
+    AK_Assign,
     AK_AnnotatedValue,
+    AK_ZeroInit,
     AK_FnDef,
     AK_FnStart,
     AK_FnEnd,

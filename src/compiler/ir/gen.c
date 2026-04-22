@@ -57,6 +57,17 @@ void ir_add_fn_end(Ir* ir)
     array_push(ir->instructions, (IrInstruction){.op = IR_OP_FN_END});
 }
 
+void ir_add_local(Ir* ir, u32 symbol_handle, IrValue rvalue)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_LOCAL,
+                   .lvalue = {.kind = IR_VALUE_LOCAL,
+                              .value.integer = symbol_handle},
+                   .rvalue = {rvalue, {0}},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append an assignment instruction to the IR stream.
 
@@ -179,7 +190,7 @@ internal u32 ir_add_concat_string(Ir* ir, string lhs, string rhs)
 internal bool ir_decl_requires_runtime(const Sema* sema, const SemaDecl* decl)
 {
     if (decl->kind != SK_Constant) {
-        return false;
+        return decl->kind == SK_Variable;
     }
 
     return !sema->node_const_known[decl->value_node_index];
@@ -252,15 +263,26 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_SymbolRef:
         {
-            u32 decl_index = sema->node_decl_indices[node_index];
-            ASSERT(decl_index != U32_MAX, "Expected resolved symbol reference");
-            const SemaDecl* decl = &sema->decls[decl_index];
+            IrValue value = {0};
+            if (sema->node_local_indices[node_index] != sema_no_local()) {
+                value = (IrValue){
+                    .kind          = IR_VALUE_LOCAL,
+                    .value.integer =
+                        sema->locals[sema->node_local_indices[node_index]]
+                            .symbol_handle,
+                };
+            } else {
+                u32 decl_index = sema->node_decl_indices[node_index];
+                ASSERT(decl_index != U32_MAX,
+                       "Expected resolved symbol reference");
+                const SemaDecl* decl = &sema->decls[decl_index];
 
-            IrValue value        = {
-                       .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
-                                                                : IR_VALUE_SYMBOL,
-                       .value.integer = decl->symbol_handle,
-            };
+                value = (IrValue){
+                    .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
+                                                             : IR_VALUE_SYMBOL,
+                    .value.integer = decl->symbol_handle,
+                };
+            }
             node_values[node_index] = value;
             return value;
         }
@@ -373,13 +395,16 @@ internal void ir_generate_global_init(const Lexer*    lex,
                                       Ir*             ir)
 {
     Array(IrValue) node_values = ir_make_node_values(ast);
-    IrValue result             = ir_lower_node(lex,
-                                   ast,
-                                   sema,
-                                   decl->value_node_index,
-                                   node_values,
-                                   next_value_index,
-                                   ir);
+    IrValue result             = {.kind = IR_VALUE_INTEGER, .value.integer = 0};
+    if (decl->value_node_index != sema_no_decl()) {
+        result = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               decl->value_node_index,
+                               node_values,
+                               next_value_index,
+                               ir);
+    }
     ir_add_assign(ir,
                   (IrValue){.kind          = IR_VALUE_SYMBOL,
                             .value.integer = decl->symbol_handle},
@@ -425,7 +450,8 @@ internal void ir_generate_function(const Lexer*    lex,
 
         for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
             const AstNode* node = &ast->nodes[i];
-            if (node->kind != AK_Statement && node->kind != AK_Return) {
+            if (node->kind != AK_Statement && node->kind != AK_Return &&
+                node->kind != AK_Variable && node->kind != AK_Assign) {
                 continue;
             }
 
@@ -434,6 +460,41 @@ internal void ir_generate_function(const Lexer*    lex,
                 ir_generate_return_statement(
                     lex, ast, sema, node, node_values, &next_value_index, ir);
                 break;
+            }
+
+            if (node->kind == AK_Variable) {
+                IrValue value = {.kind = IR_VALUE_INTEGER, .value.integer = 0};
+                if (ast->nodes[node->b].kind == AK_AnnotatedValue) {
+                    value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          ast->nodes[node->b].b,
+                                          node_values,
+                                          &next_value_index,
+                                          ir);
+                } else if (ast->nodes[node->b].kind != AK_ZeroInit) {
+                    value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->b,
+                                          node_values,
+                                          &next_value_index,
+                                          ir);
+                }
+                ir_add_local(ir, node->a, value);
+                continue;
+            }
+
+            if (node->kind == AK_Assign) {
+                IrValue value = ir_lower_node(
+                    lex, ast, sema, node->b, node_values, &next_value_index, ir);
+                IrValue target = sema->node_local_indices[i] != sema_no_local()
+                                     ? (IrValue){.kind = IR_VALUE_LOCAL,
+                                                 .value.integer = node->a}
+                                     : (IrValue){.kind = IR_VALUE_SYMBOL,
+                                                 .value.integer = node->a};
+                ir_add_assign(ir, target, value);
+                continue;
             }
 
             const AstNode* expr            = &ast->nodes[node->a];
