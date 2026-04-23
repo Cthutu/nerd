@@ -70,9 +70,8 @@ internal void ir_render_value(StringBuilder* sb,
     }
 }
 
-internal void ir_render_type_name(StringBuilder* sb,
-                                  const Ir*      ir,
-                                  u32            type_index)
+internal void
+ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
 {
     if (type_index == U32_MAX || type_index >= array_count(ir->types)) {
         sb_append_cstr(sb, "<unknown>");
@@ -159,6 +158,20 @@ internal void ir_render_typed_value(StringBuilder* sb,
     ir_render_value(sb, ir, lexer, value);
 }
 
+internal void ir_render_maybe_typed_value(StringBuilder* sb,
+                                          const Ir*      ir,
+                                          const Lexer*   lexer,
+                                          const IrValue* value,
+                                          u32            type_index)
+{
+    if (type_index != U32_MAX) {
+        ir_render_typed_value(sb, ir, lexer, value, type_index);
+        return;
+    }
+
+    ir_render_value(sb, ir, lexer, value);
+}
+
 //------------------------------------------------------------------------------
 // Render IR to its stable textual snapshot form.
 
@@ -192,18 +205,22 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_cstr(&sb, "local ");
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             break;
         case IR_OP_ASSIGN:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             break;
         case IR_OP_CALL:
             sb_append_cstr(&sb, "call ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             sb_append_cstr(&sb, ", ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[1]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[1], instr->rvalue_type[1]);
             break;
         case IR_OP_CAST:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
@@ -212,7 +229,7 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                                   ir,
                                   lexer,
                                   &instr->rvalue[0],
-                                  (u32)instr->rvalue[1].value.integer);
+                                  instr->rvalue_type[0]);
             break;
         case IR_OP_STRING_RESET:
             sb_append_cstr(&sb, "string.reset");
@@ -227,17 +244,19 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                                   ir,
                                   lexer,
                                   &instr->rvalue[0],
-                                  (u32)instr->rvalue[1].value.integer);
+                                  instr->rvalue_type[0]);
             break;
         case IR_OP_STRING_FINISH:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = string.finish ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             break;
         case IR_OP_NEGATE:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = -");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             break;
         case IR_OP_ADD:
         case IR_OP_SUBTRACT:
@@ -246,7 +265,8 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_MODULO:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             switch (instr->op) {
             case IR_OP_ADD:
                 sb_append_cstr(&sb, " + ");
@@ -266,11 +286,13 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             default:
                 break;
             }
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[1]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[1], instr->rvalue_type[1]);
             break;
         case IR_OP_RETURN:
             sb_append_cstr(&sb, "return ");
-            ir_render_value(&sb, ir, lexer, &instr->rvalue[0]);
+            ir_render_maybe_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue_type[0]);
             break;
         default:
             sb_append_cstr(&sb, "<unknown>");

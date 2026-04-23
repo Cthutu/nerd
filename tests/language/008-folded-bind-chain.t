@@ -8,7 +8,7 @@ main :: fn () => answer
 ¬
 ¬
 fn main
-return 22
+return i32:22
 end
 ¬
 void init() {}

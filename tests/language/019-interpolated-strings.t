@@ -13,8 +13,8 @@ Hello, world! count=3
 global name
 global count
 init
-name = "world"
-count = 3
+name = string:"world"
+count = i32:3
 end
 fn main
 string.reset
@@ -24,9 +24,9 @@ string.append string:name
 string.append string:"! count="
 string.append i32:count
 $1 = string.finish $0
-call prn, $1
+call prn, string:$1
 string.reset
-return 0
+return i32:0
 end
 ¬
 string $name;

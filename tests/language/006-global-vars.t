@@ -7,7 +7,7 @@ main :: fn () => answer / magic_number
 ¬
 ¬
 fn main
-return 6
+return i32:6
 end
 ¬
 void init() {}

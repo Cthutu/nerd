@@ -4,7 +4,7 @@ main :: fn () => 1+2*3
 ¬
 ¬
 fn main
-return 7
+return i32:7
 end
 ¬
 void init() {}

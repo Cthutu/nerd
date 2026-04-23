@@ -4,7 +4,7 @@ main :: fn () => 42
 ¬
 ¬
 fn main
-return 42
+return i32:42
 end
 ¬
 void init() {}

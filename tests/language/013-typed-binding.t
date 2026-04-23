@@ -6,7 +6,7 @@ main :: fn () => value
 ¬
 ¬
 fn main
-return 120
+return i32:120
 end
 ¬
 void init() {}

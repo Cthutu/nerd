@@ -10,13 +10,15 @@
 //------------------------------------------------------------------------------
 // Append a global declaration marker to the IR stream.
 
-void ir_add_global(Ir* ir, u32 symbol_handle)
+void ir_add_global(Ir* ir, u32 symbol_handle, u32 type_index)
 {
     array_push(
         ir->instructions,
         (IrInstruction){
-            .op     = IR_OP_GLOBAL,
-            .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+            .op          = IR_OP_GLOBAL,
+            .lvalue      = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+            .lvalue_type = type_index,
+            .rvalue_type = {U32_MAX, U32_MAX},
         });
 }
 
@@ -25,7 +27,12 @@ void ir_add_global(Ir* ir, u32 symbol_handle)
 
 void ir_add_init_start(Ir* ir)
 {
-    array_push(ir->instructions, (IrInstruction){.op = IR_OP_INIT_START});
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op          = IR_OP_INIT_START,
+                   .lvalue_type = U32_MAX,
+                   .rvalue_type = {U32_MAX, U32_MAX},
+               });
 }
 
 //------------------------------------------------------------------------------
@@ -33,19 +40,26 @@ void ir_add_init_start(Ir* ir)
 
 void ir_add_init_end(Ir* ir)
 {
-    array_push(ir->instructions, (IrInstruction){.op = IR_OP_INIT_END});
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op          = IR_OP_INIT_END,
+                   .lvalue_type = U32_MAX,
+                   .rvalue_type = {U32_MAX, U32_MAX},
+               });
 }
 
 //------------------------------------------------------------------------------
 // Append a function start marker to the IR stream.
 
-void ir_add_fn_start(Ir* ir, u32 symbol_handle)
+void ir_add_fn_start(Ir* ir, u32 symbol_handle, u32 type_index)
 {
     array_push(
         ir->instructions,
         (IrInstruction){
-            .op     = IR_OP_FN_START,
-            .lvalue = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+            .op          = IR_OP_FN_START,
+            .lvalue      = {.kind = IR_VALUE_SYMBOL, .value.integer = symbol_handle},
+            .lvalue_type = type_index,
+            .rvalue_type = {U32_MAX, U32_MAX},
         });
 }
 
@@ -54,57 +68,72 @@ void ir_add_fn_start(Ir* ir, u32 symbol_handle)
 
 void ir_add_fn_end(Ir* ir)
 {
-    array_push(ir->instructions, (IrInstruction){.op = IR_OP_FN_END});
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op          = IR_OP_FN_END,
+                   .lvalue_type = U32_MAX,
+                   .rvalue_type = {U32_MAX, U32_MAX},
+               });
 }
 
-void ir_add_local(Ir* ir, u32 symbol_handle, IrValue rvalue)
+void ir_add_local(Ir* ir, u32 symbol_handle, u32 type_index, IrValue rvalue, u32 rvalue_type)
 {
     array_push(
         ir->instructions,
         (IrInstruction){
-            .op     = IR_OP_LOCAL,
-            .lvalue = {.kind = IR_VALUE_LOCAL, .value.integer = symbol_handle},
-            .rvalue = {rvalue, {0}},
+            .op          = IR_OP_LOCAL,
+            .lvalue      = {.kind = IR_VALUE_LOCAL, .value.integer = symbol_handle},
+            .lvalue_type = type_index,
+            .rvalue      = {rvalue, {0}},
+            .rvalue_type = {rvalue_type, U32_MAX},
         });
 }
 
 //------------------------------------------------------------------------------
 // Append an assignment instruction to the IR stream.
 
-void ir_add_assign(Ir* ir, IrValue lvalue, IrValue rvalue)
+void ir_add_assign(
+    Ir* ir, IrValue lvalue, u32 lvalue_type, IrValue rvalue, u32 rvalue_type)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = IR_OP_ASSIGN,
-                   .lvalue = lvalue,
-                   .rvalue = {rvalue, {0}},
+                   .op          = IR_OP_ASSIGN,
+                   .lvalue      = lvalue,
+                   .lvalue_type = lvalue_type,
+                   .rvalue      = {rvalue, {0}},
+                   .rvalue_type = {rvalue_type, U32_MAX},
                });
 }
 
 //------------------------------------------------------------------------------
 // Append a call instruction to the IR stream.
 
-void ir_add_call(Ir* ir, IrValue callee, IrValue arg)
+void ir_add_call(
+    Ir* ir, IrValue callee, u32 callee_type, IrValue arg, u32 arg_type)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = IR_OP_CALL,
-                   .rvalue = {callee, arg},
+                   .op          = IR_OP_CALL,
+                   .lvalue_type = U32_MAX,
+                   .rvalue      = {callee, arg},
+                   .rvalue_type = {callee_type, arg_type},
                });
 }
 
 //------------------------------------------------------------------------------
 // Append an explicit cast instruction to the IR stream.
 
-void ir_add_cast(Ir* ir, IrValue lvalue, IrValue value, u32 type_index)
+void ir_add_cast(
+    Ir* ir, IrValue lvalue, u32 lvalue_type, IrValue value, u32 value_type)
 {
     array_push(
         ir->instructions,
         (IrInstruction){
-            .op     = IR_OP_CAST,
-            .lvalue = lvalue,
-            .rvalue = {value,
-                       {.kind = IR_VALUE_INTEGER, .value.integer = type_index}},
+            .op          = IR_OP_CAST,
+            .lvalue      = lvalue,
+            .lvalue_type = lvalue_type,
+            .rvalue      = {value, {0}},
+            .rvalue_type = {value_type, U32_MAX},
         });
 }
 
@@ -113,15 +142,22 @@ void ir_add_cast(Ir* ir, IrValue lvalue, IrValue value, u32 type_index)
 
 void ir_add_string_reset(Ir* ir)
 {
-    array_push(ir->instructions, (IrInstruction){.op = IR_OP_STRING_RESET});
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op          = IR_OP_STRING_RESET,
+                   .lvalue_type = U32_MAX,
+                   .rvalue_type = {U32_MAX, U32_MAX},
+               });
 }
 
 void ir_add_string_start(Ir* ir, IrValue lvalue)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = IR_OP_STRING_START,
-                   .lvalue = lvalue,
+                   .op          = IR_OP_STRING_START,
+                   .lvalue      = lvalue,
+                   .lvalue_type = U32_MAX,
+                   .rvalue_type = {U32_MAX, U32_MAX},
                });
 }
 
@@ -130,9 +166,10 @@ void ir_add_string_append(Ir* ir, IrValue value, u32 type_index)
     array_push(
         ir->instructions,
         (IrInstruction){
-            .op     = IR_OP_STRING_APPEND,
-            .rvalue = {value,
-                       {.kind = IR_VALUE_INTEGER, .value.integer = type_index}},
+            .op          = IR_OP_STRING_APPEND,
+            .lvalue_type = U32_MAX,
+            .rvalue      = {value, {0}},
+            .rvalue_type = {type_index, U32_MAX},
         });
 }
 
@@ -140,34 +177,45 @@ void ir_add_string_finish(Ir* ir, IrValue lvalue, IrValue start_value)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = IR_OP_STRING_FINISH,
-                   .lvalue = lvalue,
-                   .rvalue = {start_value, {0}},
-               });
+                   .op          = IR_OP_STRING_FINISH,
+                   .lvalue      = lvalue,
+                   .lvalue_type = U32_MAX,
+                   .rvalue      = {start_value, {0}},
+                   .rvalue_type = {U32_MAX, U32_MAX},
+                });
 }
 
 //------------------------------------------------------------------------------
 // Append a return instruction to the IR stream.
 
-void ir_add_return(Ir* ir, IrValue rvalue)
+void ir_add_return(Ir* ir, IrValue rvalue, u32 rvalue_type)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = IR_OP_RETURN,
-                   .rvalue = {rvalue, {0}},
+                   .op          = IR_OP_RETURN,
+                   .lvalue_type = U32_MAX,
+                   .rvalue      = {rvalue, {0}},
+                   .rvalue_type = {rvalue_type, U32_MAX},
                });
 }
 
 //------------------------------------------------------------------------------
 // Append a unary instruction to the IR stream.
 
-void ir_add_unary(Ir* ir, IrOperation op, IrValue lvalue, IrValue rhs)
+void ir_add_unary(Ir*      ir,
+                  IrOperation op,
+                  IrValue   lvalue,
+                  u32       lvalue_type,
+                  IrValue   rhs,
+                  u32       rhs_type)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = op,
-                   .lvalue = lvalue,
-                   .rvalue = {rhs, {0}},
+                   .op          = op,
+                   .lvalue      = lvalue,
+                   .lvalue_type = lvalue_type,
+                   .rvalue      = {rhs, {0}},
+                   .rvalue_type = {rhs_type, U32_MAX},
                });
 }
 
@@ -175,13 +223,15 @@ void ir_add_unary(Ir* ir, IrOperation op, IrValue lvalue, IrValue rhs)
 // Append a binary instruction to the IR stream.
 
 void ir_add_binary(
-    Ir* ir, IrOperation op, IrValue lvalue, IrValue lhs, IrValue rhs)
+    Ir* ir, IrOperation op, IrValue lvalue, u32 lvalue_type, IrValue lhs, u32 lhs_type, IrValue rhs, u32 rhs_type)
 {
     array_push(ir->instructions,
                (IrInstruction){
-                   .op     = op,
-                   .lvalue = lvalue,
-                   .rvalue = {lhs, rhs},
+                   .op          = op,
+                   .lvalue      = lvalue,
+                   .lvalue_type = lvalue_type,
+                   .rvalue      = {lhs, rhs},
+                   .rvalue_type = {lhs_type, rhs_type},
                });
 }
 
@@ -248,12 +298,25 @@ internal u32 ir_builtin_string_type(const Sema* sema)
     return sema_no_type();
 }
 
+internal u32 ir_builtin_type(const Sema* sema, SemaTypeKind kind)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == kind) {
+            return i;
+        }
+    }
+
+    return sema_no_type();
+}
+
 internal u32 ir_string_append_type(const Sema* sema, u32 node_type_index)
 {
     return sema_materialise_type(sema, node_type_index);
 }
 
-internal u32 ir_node_type_index(const Ast* ast, const Sema* sema, u32 node_index)
+internal u32 ir_node_type_index(const Ast*  ast,
+                                const Sema* sema,
+                                u32         node_index)
 {
     if (node_index < array_count(sema->node_type_indices) &&
         sema->node_type_indices[node_index] != sema_no_type()) {
@@ -267,10 +330,33 @@ internal u32 ir_node_type_index(const Ast* ast, const Sema* sema, u32 node_index
 
     if (node->kind == AK_SymbolRef) {
         if (sema->node_local_indices[node_index] != sema_no_local()) {
-            return sema->locals[sema->node_local_indices[node_index]].type_index;
+            return sema->locals[sema->node_local_indices[node_index]]
+                .type_index;
         }
         if (sema->node_decl_indices[node_index] != sema_no_decl()) {
             return sema->decls[sema->node_decl_indices[node_index]].type_index;
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal u32 ir_value_type_for_local(const Sema* sema, u32 symbol_handle)
+{
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        if (sema->locals[i].symbol_handle == symbol_handle) {
+            return sema->locals[i].type_index;
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal u32 ir_value_type_for_decl(const Sema* sema, u32 symbol_handle)
+{
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        if (sema->decls[i].symbol_handle == symbol_handle) {
+            return sema->decls[i].type_index;
         }
     }
 
@@ -357,14 +443,13 @@ internal void ir_append_string_node(const Lexer* lex,
 
     switch (node->kind) {
     case AK_StringLiteral:
-        ir_add_string_append(
-            ir,
-            (IrValue){
-                .kind = IR_VALUE_STRING,
-                .value.integer =
-                    ir_add_string_literal(ir, ast_get_string(lex, node)),
-            },
-            ir_builtin_string_type(sema));
+        ir_add_string_append(ir,
+                             (IrValue){
+                                 .kind          = IR_VALUE_STRING,
+                                 .value.integer = ir_add_string_literal(
+                                     ir, ast_get_string(lex, node)),
+                             },
+                             ir_builtin_string_type(sema));
         return;
 
     case AK_StringConcat:
@@ -378,14 +463,13 @@ internal void ir_append_string_node(const Lexer* lex,
         for (u32 i = node->a; i < node->b; ++i) {
             const AstNode* part = &ast->nodes[i];
             if (part->kind == AK_StringLiteral) {
-                ir_add_string_append(
-                    ir,
-                    (IrValue){
-                        .kind = IR_VALUE_STRING,
-                        .value.integer =
-                            ir_add_string_literal(ir, ast_get_string(lex, part)),
-                    },
-                    ir_builtin_string_type(sema));
+                ir_add_string_append(ir,
+                                     (IrValue){
+                                         .kind          = IR_VALUE_STRING,
+                                         .value.integer = ir_add_string_literal(
+                                             ir, ast_get_string(lex, part)),
+                                     },
+                                     ir_builtin_string_type(sema));
                 continue;
             }
 
@@ -394,9 +478,7 @@ internal void ir_append_string_node(const Lexer* lex,
             IrValue part_value = ir_lower_node(
                 lex, ast, sema, part->a, node_values, next_value_index, ir);
             ir_add_string_append(
-                ir,
-                part_value,
-                ir_node_type_index(ast, sema, part->a));
+                ir, part_value, ir_node_type_index(ast, sema, part->a));
         }
         return;
 
@@ -405,9 +487,7 @@ internal void ir_append_string_node(const Lexer* lex,
             IrValue value = ir_lower_node(
                 lex, ast, sema, node_index, node_values, next_value_index, ir);
             ir_add_string_append(
-                ir,
-                value,
-                ir_node_type_index(ast, sema, node_index));
+                ir, value, ir_node_type_index(ast, sema, node_index));
             return;
         }
     }
@@ -471,15 +551,20 @@ internal IrValue ir_lower_node(const Lexer* lex,
             IrValue value = {0};
             if (lhs.kind == IR_VALUE_STRING && rhs.kind == IR_VALUE_STRING) {
                 value = (IrValue){
-                    .kind = IR_VALUE_STRING,
-                    .value.integer =
-                        ir_add_concat_string(ir,
-                                             ir->strings[(u32)lhs.value.integer],
-                                             ir->strings[(u32)rhs.value.integer]),
+                    .kind          = IR_VALUE_STRING,
+                    .value.integer = ir_add_concat_string(
+                        ir,
+                        ir->strings[(u32)lhs.value.integer],
+                        ir->strings[(u32)rhs.value.integer]),
                 };
             } else {
-                value = ir_build_runtime_string(
-                    lex, ast, sema, node_index, node_values, next_value_index, ir);
+                value = ir_build_runtime_string(lex,
+                                                ast,
+                                                sema,
+                                                node_index,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
             }
             node_values[node_index] = value;
             return value;
@@ -535,7 +620,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .kind          = IR_VALUE_VARIABLE,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_unary(ir, IR_OP_NEGATE, value, rhs);
+            ir_add_unary(ir,
+                         IR_OP_NEGATE,
+                         value,
+                         ir_node_type_index(ast, sema, node_index),
+                         rhs,
+                         ir_node_type_index(ast, sema, node->a));
             node_values[node_index] = value;
             return value;
         }
@@ -548,7 +638,11 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .kind          = IR_VALUE_VARIABLE,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_cast(ir, value, source, sema->node_type_indices[node_index]);
+            ir_add_cast(ir,
+                        value,
+                        sema->node_type_indices[node_index],
+                        source,
+                        ir_node_type_index(ast, sema, node->a));
             node_values[node_index] = value;
             return value;
         }
@@ -588,7 +682,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .kind          = IR_VALUE_VARIABLE,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_binary(ir, op, value, lhs, rhs);
+            ir_add_binary(ir,
+                          op,
+                          value,
+                          ir_node_type_index(ast, sema, node_index),
+                          lhs,
+                          ir_node_type_index(ast, sema, node->a),
+                          rhs,
+                          ir_node_type_index(ast, sema, node->b));
             node_values[node_index] = value;
             return value;
         }
@@ -616,7 +717,11 @@ internal void ir_generate_call_statement(const Lexer*   lex,
         lex, ast, sema, call_node->a, node_values, next_value_index, ir);
     IrValue arg = ir_lower_node(
         lex, ast, sema, call_node->b, node_values, next_value_index, ir);
-    ir_add_call(ir, callee, arg);
+    ir_add_call(ir,
+                callee,
+                ir_node_type_index(ast, sema, call_node->a),
+                arg,
+                ir_node_type_index(ast, sema, call_node->b));
 }
 
 //------------------------------------------------------------------------------
@@ -634,7 +739,7 @@ internal void ir_generate_return_statement(const Lexer*   lex,
 
     IrValue value = ir_lower_node(
         lex, ast, sema, return_node->a, node_values, next_value_index, ir);
-    ir_add_return(ir, value);
+    ir_add_return(ir, value, ir_node_type_index(ast, sema, return_node->a));
 }
 
 //------------------------------------------------------------------------------
@@ -661,7 +766,9 @@ internal void ir_generate_global_init(const Lexer*    lex,
     ir_add_assign(ir,
                   (IrValue){.kind          = IR_VALUE_SYMBOL,
                             .value.integer = decl->symbol_handle},
-                  result);
+                  decl->type_index,
+                  result,
+                  decl->type_index);
     array_free(node_values);
 }
 
@@ -682,7 +789,7 @@ internal void ir_generate_function(const Lexer*    lex,
     ASSERT(fn_start_node->kind == AK_FnStart, "Expected function start");
     ASSERT(fn_start_node->b > fn_def_node->a, "Expected valid function range");
 
-    ir_add_fn_start(ir, ast_get_symbol(bind_node));
+    ir_add_fn_start(ir, ast_get_symbol(bind_node), decl->type_index);
 
     bool needs_string_runtime = false;
     for (u32 i = fn_def_node->a; i < fn_start_node->b; ++i) {
@@ -708,7 +815,9 @@ internal void ir_generate_function(const Lexer*    lex,
                                        node_values,
                                        &next_value_index,
                                        ir);
-        ir_add_return(ir, result);
+        ir_add_return(ir,
+                      result,
+                      ir_node_type_index(ast, sema, fn_start_node->b - 1));
     } else {
         bool has_explicit_return = false;
 
@@ -745,7 +854,11 @@ internal void ir_generate_function(const Lexer*    lex,
                                           &next_value_index,
                                           ir);
                 }
-                ir_add_local(ir, node->a, value);
+                ir_add_local(ir,
+                             node->a,
+                             ir_value_type_for_local(sema, node->a),
+                             value,
+                             ir_value_type_for_local(sema, node->a));
                 continue;
             }
 
@@ -762,7 +875,10 @@ internal void ir_generate_function(const Lexer*    lex,
                                                  .value.integer = node->a}
                                      : (IrValue){.kind = IR_VALUE_SYMBOL,
                                                  .value.integer = node->a};
-                ir_add_assign(ir, target, value);
+                u32 target_type = sema->node_local_indices[i] != sema_no_local()
+                                      ? ir_value_type_for_local(sema, node->a)
+                                      : ir_value_type_for_decl(sema, node->a);
+                ir_add_assign(ir, target, target_type, value, target_type);
                 continue;
             }
 
@@ -795,8 +911,9 @@ internal void ir_generate_function(const Lexer*    lex,
             // Normal block functions currently omit explicit return types, so
             // the first implementation lowers them as i32-returning functions
             // with an implicit zero result.
-            ir_add_return(
-                ir, (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0});
+            ir_add_return(ir,
+                          (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0},
+                          ir_builtin_type(sema, STK_I32));
         }
     }
 
@@ -821,7 +938,7 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
         if (ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;
-            ir_add_global(&ir, decl->symbol_handle);
+            ir_add_global(&ir, decl->symbol_handle, decl->type_index);
         }
     }
 

@@ -11,10 +11,10 @@ main :: fn () {
 
 ¬
 fn main
-local amount = 1000
-$0 = cast u8:amount
-local narrowed = $0
-return narrowed
+local amount = u16:1000
+$0 = cast u16:amount
+local narrowed = u8:$0
+return u8:narrowed
 end
 ¬
 void init() {}

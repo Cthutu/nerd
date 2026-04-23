@@ -6,7 +6,7 @@ main: MainFn: fn () => 7
 
 ¬
 fn main
-return 7
+return i32:7
 end
 ¬
 void init() {}

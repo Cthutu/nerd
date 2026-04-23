@@ -411,7 +411,7 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
 {
-    u32 target_type = (u32)instr->rvalue[1].value.integer;
+    u32 target_type = instr->lvalue_type;
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
         cgen_add(cgen, cgen_c_type(cgen->sema, target_type));
@@ -447,7 +447,7 @@ void cgen_add_string_start(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
 {
-    u32  type_index = (u32)instr->rvalue[1].value.integer;
+    u32  type_index = instr->rvalue_type[0];
     cstr suffix     = cgen_string_helper_suffix(cgen, type_index);
     ASSERT(suffix != NULL, "Expected interpolatable type suffix");
 

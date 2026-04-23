@@ -54,7 +54,9 @@ typedef struct {
 typedef struct {
     IrOperation op;
     IrValue     lvalue;
+    u32         lvalue_type;
     IrValue     rvalue[2];
+    u32         rvalue_type[2];
 } IrInstruction;
 
 typedef struct {

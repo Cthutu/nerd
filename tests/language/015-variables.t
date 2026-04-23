@@ -13,15 +13,15 @@ main :: fn () {
 ¬
 global base
 init
-base = 40
+base = i32:40
 end
 fn main
-$0 = base + 1
-base = $0
-local extra = 0
-extra = 1
-$1 = base + extra
-return $1
+$0 = i32:base + i32:1
+base = i32:$0
+local extra = i32:0
+extra = i32:1
+$1 = i32:base + i32:extra
+return i32:$1
 end
 ¬
 int $base;

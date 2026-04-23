@@ -4,7 +4,7 @@ main: fn () -> i32: fn () => 1
 ¬
 ¬
 fn main
-return 1
+return i32:1
 end
 ¬
 void init() {}

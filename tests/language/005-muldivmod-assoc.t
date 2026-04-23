@@ -4,7 +4,7 @@ main :: fn () => 20/3%4
 ¬
 ¬
 fn main
-return 2
+return i32:2
 end
 ¬
 void init() {}

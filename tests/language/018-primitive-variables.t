@@ -14,16 +14,16 @@ global enabled
 global ratio
 global weight
 init
-greeting = "Hello"
-$0 = cast bool:1
-enabled = $0
-$1 = cast f32:42
-ratio = $1
-weight = 0
+greeting = string:"Hello"
+$0 = cast i32:1
+enabled = bool:$0
+$1 = cast i32:42
+ratio = f32:$1
+weight = f64:0
 end
 fn main
-$0 = cast i32:enabled
-return $0
+$0 = cast bool:enabled
+return i32:$0
 end
 ¬
 string $greeting;

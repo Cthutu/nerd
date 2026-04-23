@@ -9,7 +9,7 @@ Hello, world!
 ¬
 fn main
 call prn, "Hello, world!"
-return 0
+return i32:0
 end
 ¬
 void init() {}
