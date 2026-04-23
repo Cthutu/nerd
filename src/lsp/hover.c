@@ -499,7 +499,10 @@ internal bool lsp_get_request_context(LspState*         state,
 
     *out_uri = json_string(uri_value);
     *out_doc = LspDocumentMap_find(&state->documents, *out_uri);
-    if (!*out_doc || !(*out_doc)->analysis_ok) {
+    if (!*out_doc) {
+        return false;
+    }
+    if (!(*out_doc)->analysis_ok) {
         return false;
     }
 

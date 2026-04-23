@@ -61,7 +61,18 @@ typedef struct {
     u32          type_index;
 } SemaDecl;
 
+typedef enum : u8 {
+    SLK_Param,
+    SLK_Variable,
+    SLK_Constant,
+    SLK_Function,
+    SLK_TypeAlias,
+} SemaLocalKind;
+
 typedef struct {
+    SemaLocalKind kind;
+    u8            _pad0;
+    u16           _pad1;
     u32 symbol_handle;
     u32 owner_decl_index;
     u32 scope_index;
@@ -69,6 +80,7 @@ typedef struct {
     u32 type_node_index;
     u32 value_node_index;
     u32 type_index;
+    u32 lowered_symbol_handle;
 } SemaLocal;
 
 typedef struct {
@@ -99,6 +111,8 @@ typedef struct {
     Array(u32) ordered_decl_indices;
     Array(u32) node_decl_indices;
     Array(u32) node_local_indices;
+    Array(u32) node_scope_indices;
+    Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;

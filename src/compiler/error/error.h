@@ -180,6 +180,9 @@ bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span);
 bool error_0316_invalid_entry_point(NerdSource source,
                                     ErrorSpan  span,
                                     string     actual_type);
+bool error_0317_non_closure_capture(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

@@ -553,7 +553,7 @@ needed earlier.
   - Keep the rule simple: fat arrow means inferred return, thin arrow means an
     explicit return type in the function type.
 
-- [ ] 49. Add nested non-closure functions.
+- [X] 49. Add nested non-closure functions.
   - Allow nested functions inside function scopes.
   - Nested functions may reference globals and their own parameters and locals.
   - Nested functions may not capture parameters or locals from enclosing
@@ -577,6 +577,10 @@ needed earlier.
   - Calls automatically dereference outer pointer layers for function values.
   - Allow reassignment only when the full function signature matches exactly.
   - Keep this fully type-safe; no implicit signature conversions.
+  - Current implementation status:
+    - anonymous function values and named-function assignment are supported
+    - generated C lowers these through function-pointer-compatible storage
+    - explicit `^fn(...) -> ...` pointer syntax remains future work
 
 - [ ] 51. Extend scoped declarations and tooling for local function bindings.
   - Allow forward references for scoped constant declarations of the form

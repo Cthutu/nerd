@@ -386,6 +386,13 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_nested_block(state, NULL);
     }
 
+    if (ast_symbol_starts_bind(state)) {
+        if (ast_symbol_starts_variable(state)) {
+            return ast_parse_variable(state, NULL);
+        }
+        return ast_parse_bind(state, NULL);
+    }
+
     if (ast_symbol_starts_variable(state)) {
         return ast_parse_variable(state, NULL);
     }

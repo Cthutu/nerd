@@ -40,6 +40,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_Symbol:
     case TK_Minus:
     case TK_LParen:
+    case TK_fn:
         return true;
     default:
         return false;
@@ -289,6 +290,8 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             return false;
         }
         return ast_expect_token(state, TK_RParen);
+    case TK_fn:
+        return ast_parse_declaration(state, out_node);
     default:
         return error_0201_missing_value(
             token.source, ast_token_span(state, &token), token.kind);

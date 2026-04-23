@@ -197,6 +197,15 @@ internal void format_emit_fn_signature(StringBuilder* sb,
                                        const Lexer*   lexer,
                                        u32            signature_index,
                                        bool           include_return_type);
+internal void format_emit_value(StringBuilder* sb,
+                                const Cst*     cst,
+                                const Lexer*   lexer,
+                                u32            node_index);
+internal void format_emit_block_contents(StringBuilder* sb,
+                                         const Cst*     cst,
+                                         const Lexer*   lexer,
+                                         u32            block_node_index,
+                                         u32            indent_level);
 
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
@@ -306,6 +315,17 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
         break;
+    case CK_FnExpr:
+        format_emit_fn_signature(sb, cst, lexer, node->a, false);
+        sb_append_cstr(sb, " => ");
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        break;
+    case CK_FnBlock:
+        format_emit_fn_signature(sb, cst, lexer, node->a, true);
+        sb_append_cstr(sb, " {\n");
+        format_emit_block_contents(sb, cst, lexer, node->b, 1);
+        sb_append_cstr(sb, "}");
+        break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
                   "%u",
@@ -348,7 +368,8 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
 internal bool format_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
-           node->kind == CK_Return || node->kind == CK_Variable ||
+           node->kind == CK_Return || node->kind == CK_Bind ||
+           node->kind == CK_Variable ||
            node->kind == CK_Assign;
 }
 
@@ -443,6 +464,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, " := ");
             format_emit_expr(sb, cst, lexer, stmt->b, 0);
         }
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Bind) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+        sb_append_cstr(sb, " :: ");
+        format_emit_value(sb, cst, lexer, stmt->b);
         sb_append_char(sb, '\n');
         return;
     }

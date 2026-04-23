@@ -12,10 +12,6 @@ Hello, world! count=3
 ¬
 global name
 global count
-init
-name = string:"world"
-count = i32:3
-end
 fn main
 string.reset
 $0 = string.start
@@ -28,13 +24,13 @@ call fn(string)->void:prn, string:$1
 string.reset
 return i32:0
 end
+init
+name = string:"world"
+count = i32:3
+end
 ¬
 string $name;
 int $count;
-void init() {
-    $name = (string){.data = (u8*)"world", .count = 5};
-    $count = 3;
-}
 int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
@@ -46,4 +42,8 @@ int $main() {
     prn($1);
     string_builder_reset();
     return 0;
+}
+void init() {
+    $name = (string){.data = (u8*)"world", .count = 5};
+    $count = 3;
 }

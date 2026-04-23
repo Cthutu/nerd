@@ -202,6 +202,34 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     }
 }
 
+internal void
+cgen_add_decl_type_and_name(CGen* cgen, u32 type_index, const IrValue* value)
+{
+    if (type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Function) {
+        const SemaType* fn_type = &cgen->ir->types[type_index];
+        cgen_add(cgen, cgen_c_type(cgen->ir, fn_type->return_type));
+        cgen_add(cgen, " (*");
+        cgen_add_value(cgen, value);
+        cgen_add(cgen, ")(");
+        for (u32 i = 0; i < fn_type->param_count; ++i) {
+            if (i > 0) {
+                cgen_add(cgen, ", ");
+            }
+            cgen_add(cgen,
+                     cgen_c_type(cgen->ir,
+                                 cgen->ir->type_param_types
+                                     [fn_type->first_param_type + i]));
+        }
+        cgen_add(cgen, ")");
+        return;
+    }
+
+    cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+    cgen_add(cgen, " ");
+    cgen_add_value(cgen, value);
+}
+
 internal u32 cgen_materialise_type(const CGen* cgen, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -393,8 +421,9 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-        cgen_add(cgen, " ");
+        cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+        cgen_add(cgen, " = ");
+    } else if (instr->lvalue.kind != IR_VALUE_NONE) {
         cgen_add_value(cgen, &instr->lvalue);
         cgen_add(cgen, " = ");
     }
@@ -419,14 +448,15 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     u32 target_type = instr->lvalue.type;
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
-        cgen_add(cgen, " ");
+        cgen_add_decl_type_and_name(cgen, target_type, &instr->lvalue);
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
-    cgen_add_value(cgen, &instr->lvalue);
+    if (instr->lvalue.kind != IR_VALUE_VARIABLE) {
+        cgen_add_value(cgen, &instr->lvalue);
+    }
     cgen_add(cgen, " = (");
     cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
     cgen_add(cgen, ")");
@@ -488,14 +518,15 @@ void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-        cgen_add(cgen, " ");
+        cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
-    cgen_add_value(cgen, &instr->lvalue);
+    if (instr->lvalue.kind != IR_VALUE_VARIABLE) {
+        cgen_add_value(cgen, &instr->lvalue);
+    }
     cgen_add(cgen, " = ");
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[0]);
@@ -509,14 +540,15 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-        cgen_add(cgen, " ");
+        cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
                "Expected assignable lvalue");
     }
-    cgen_add_value(cgen, &instr->lvalue);
+    if (instr->lvalue.kind != IR_VALUE_VARIABLE) {
+        cgen_add_value(cgen, &instr->lvalue);
+    }
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
@@ -531,9 +563,7 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL, "Expected global symbol");
     cgen_start_line(cgen);
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-    cgen_add(cgen, " ");
-    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_addn(cgen, ";");
 }
 
@@ -542,9 +572,7 @@ void cgen_add_local(CGen* cgen, const IrInstruction* instr)
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL, "Expected local symbol");
     u32 type_index = instr->lvalue.type;
     cgen_start_line(cgen);
-    cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
-    cgen_add(cgen, " ");
-    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add_decl_type_and_name(cgen, type_index, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_typed_value(cgen, &instr->rvalue[0], type_index);
     cgen_addn(cgen, ";");
@@ -605,9 +633,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
                     &cgen->ir->locals[function->first_local + i];
                 ASSERT(param->is_param,
                        "Expected function params first in local table");
-                cgen_add(cgen, cgen_c_type(cgen->ir, param->type));
-                cgen_add(cgen, " ");
-                cgen_add_symbol_name(cgen, param->symbol);
+                cgen_add_decl_type_and_name(
+                    cgen,
+                    param->type,
+                    &(IrValue){.kind = IR_VALUE_LOCAL,
+                               .type = param->type,
+                               .value.integer = param->symbol});
             }
             cgen_addn(cgen, ") {");
             cgen_indent(cgen);

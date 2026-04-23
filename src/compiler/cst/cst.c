@@ -22,6 +22,8 @@ typedef struct {
     Cst cst;
 } CstParseState;
 
+internal bool cst_parse_bind(CstParseState* state, u32* out_node);
+
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
 // the end of the lexer token stream.
@@ -260,6 +262,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
+internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
                                      bool           allow_named_params,
@@ -593,6 +596,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  out_node);
         }
 
+    case TK_fn:
+        return cst_parse_fn_expr(state, out_node);
+
     default:
         return false;
     }
@@ -814,6 +820,30 @@ internal bool cst_parse_block_statement(CstParseState* state)
 
     if (cst_current_token(state).kind == TK_LBrace) {
         return cst_parse_nested_block(state, NULL);
+    }
+
+    if (cst_starts_binding(state)) {
+        if (cst_starts_variable(state) && !cst_starts_annotated_bind(state)) {
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            u32 payload       = 0;
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            cst_advance(state);
+            if (!cst_parse_variable_payload(state, token_index, &payload)) {
+                return false;
+            }
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_Variable,
+                                     .token_index = token_index,
+                                     .a           = symbol_handle,
+                                     .b           = payload,
+                                 },
+                                 NULL);
+        }
+
+        return cst_parse_bind(state, NULL);
     }
 
     if (cst_starts_variable(state)) {

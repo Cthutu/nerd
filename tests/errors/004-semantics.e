@@ -135,28 +135,33 @@ main :: fn () {
     ]
 }
 ¬
-handler: fn () -> i32
+main :: fn () {
+    x := 1
+    f := fn () => x
+    y := 0
+    return y
+}
 ¬
 {
-    "code": "0306",
-    "message": "Invalid variable type `fn () -> i32`",
+    "code": "0317",
+    "message": "Cannot capture outer binding `x`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
-        "line": 1,
-        "column": 1
+        "line": 3,
+        "column": 19
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
-            "column": 1,
-            "length": 7,
-            "message": "This variable type is not supported yet"
+            "line": 3,
+            "column": 19,
+            "length": 1,
+            "message": "Nested functions are non-closures, so `x` is not available here"
         }
     ],
     "notes": [],
     "help": [
-        "For this milestone, variables may use concrete integer, `bool`, `string`, `f32`, or `f64` types."
+        "Pass `x` as a parameter instead of referencing it from the enclosing function scope."
     ]
 }
 ¬

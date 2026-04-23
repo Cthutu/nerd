@@ -415,3 +415,30 @@ bool error_0316_invalid_entry_point(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a nested function trying to capture an enclosing local binding.
+
+bool error_0317_non_closure_capture(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     symbol)
+{
+    ErrorInfo error = error_init(317,
+                                 source,
+                                 span,
+                                 "Cannot capture outer binding `" STRINGP "`",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "Nested functions are non-closures, so `" STRINGP
+                        "` is not available here",
+                        STRINGV(symbol));
+    error_add_help(&error,
+                   "Pass `" STRINGP
+                   "` as a parameter instead of referencing it from the "
+                   "enclosing function scope.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -43,6 +43,11 @@ Function types store their parameter list in the flattened
 `return_type`. The representation is intentionally table-oriented rather than
 pointer-heavy.
 
+Function values currently reuse the same canonical signature rows. Named
+functions therefore have a semantic function type such as `fn (i32, i32) ->
+i32`, and when they are used as runtime values the back end lowers them through
+function-pointer-compatible storage in generated C.
+
 ## Canonicalisation
 
 `sema_add_type(...)` interns type rows by value. If the same type row already
@@ -124,6 +129,33 @@ later locals are not visible before their declaration.
 
 Duplicate local names are rejected within the same scope. Inner block scopes may
 shadow outer locals, and references resolve to the nearest visible declaration.
+
+Scoped constant declarations are tracked separately from mutable locals. This is
+what allows nested function declarations and other scoped `::` bindings to be
+predeclared for forward reference within one scope.
+
+## Nested Functions
+
+Nested functions are non-closures. Semantic analysis allows a nested function to
+reference:
+
+- globals
+- its own parameters
+- its own locals
+
+It may not capture parameters or locals from an enclosing function. Capture
+attempts produce a dedicated semantic error instead of being lowered through a
+hidden environment object.
+
+The lowering strategy keeps this simple:
+
+- semantic analysis records a lowered symbol handle for each function node
+- nested functions are mangled by lexical ownership, for example `main$add`
+- generated C uses the corresponding Nerd-visible symbol form, for example
+  `$main$add`
+
+This keeps the IR and generated C closure-free while still allowing nested
+functions and function values.
 
 ## Casts
 
