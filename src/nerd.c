@@ -163,6 +163,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             run_flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(
+            run_flags,
+            nerd_cli_make_flag(arena,
+                               "keep",
+                               "k",
+                               "Keep the generated executable after running"));
         json_array_push(run_params,
                         nerd_cli_make_param(arena,
                                             "output",
@@ -347,6 +353,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
             cli_result, "command.params.output", (string){0}),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .keep_binary =
+            nerd_cli_flag_bool(cli_result, "command.flags.keep", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };

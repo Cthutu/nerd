@@ -47,6 +47,7 @@ typedef struct {
 } LspTest;
 
 typedef struct {
+    cstr   run_mode;
     cstr   path;
     string source;
     string expected_return_value;
@@ -327,11 +328,11 @@ internal bool testing_parse_command_test(Arena*       arena,
                                          string       file_text,
                                          CommandTest* out_test)
 {
-    string sections[3]   = {0};
+    string sections[4]   = {0};
     usize  cursor        = 0;
     usize  section_count = 0;
 
-    while (section_count < 3 &&
+    while (section_count < 4 &&
            testing_split_next_section(
                file_text, &cursor, &sections[section_count])) {
         section_count++;
@@ -340,12 +341,33 @@ internal bool testing_parse_command_test(Arena*       arena,
         }
     }
 
-    if (section_count != 3 || cursor <= file_text.count) {
+    if ((section_count != 3 && section_count != 4) || cursor <= file_text.count) {
         eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
 
+    string run_mode = section_count == 4
+                          ? testing_trim_ascii_whitespace(sections[3])
+                          : (string){0};
+
+    if (run_mode.count > 0 && !string_eq(run_mode, s("delete")) &&
+        !string_eq(run_mode, s("keep"))) {
+        eprn("%sInvalid command test mode:%s %s", ANSI_RED, ANSI_RESET, path);
+        return false;
+    }
+
     *out_test = (CommandTest){
+        .run_mode              = section_count == 4
+                                     ? testing_copy_cstr(
+                                           arena,
+                                           run_mode.count > 0
+                                               ? (cstr)string_format(
+                                                     arena,
+                                                     STRINGP,
+                                                     STRINGV(run_mode))
+                                                     .data
+                                               : "")
+                                     : "",
         .path                  = testing_copy_cstr(arena, path),
         .source                = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
@@ -1686,6 +1708,7 @@ internal bool testing_run_command_test(const CommandTest* test)
                 (NerdSource){
                     .source_path = s(input_arg),
                 },
+            .keep_binary = strcmp(test->run_mode, "keep") == 0,
         };
         int result = compiler_cmd_run(&config);
         if (!testing_compare_exit_code(test->expected_return_value, result)) {
@@ -1695,6 +1718,15 @@ internal bool testing_run_command_test(const CommandTest* test)
         if (!testing_set_current_directory(original_cwd)) {
             eprn("Failed to restore test runner working directory: %s",
                  original_cwd);
+            passed = false;
+        }
+
+        if (strcmp(test->run_mode, "delete") == 0 && path_exists(binary_path)) {
+            eprn("Expected run command to delete executable: %s", binary_path);
+            passed = false;
+        }
+        if (strcmp(test->run_mode, "keep") == 0 && !path_exists(binary_path)) {
+            eprn("Expected run command to keep executable: %s", binary_path);
             passed = false;
         }
     }

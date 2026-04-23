@@ -127,6 +127,14 @@ int compiler_cmd_run(const NerdRunConfig* config)
 #endif
 
     int result = shell((cstr)command.data);
+
+    if (!config->keep_binary && !path_remove(artifacts.binary_path)) {
+        error_runtime("Failed to remove generated executable: %s",
+                      artifacts.binary_path);
+        arena_done(&arena);
+        return 1;
+    }
+
     arena_done(&arena);
     return result;
 }

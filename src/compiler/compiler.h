@@ -38,6 +38,7 @@ typedef struct {
     string     output_path;
     bool       emit_ir;
     bool       emit_c;
+    bool       keep_binary;
     bool       verbose;
 } NerdRunConfig;
 
