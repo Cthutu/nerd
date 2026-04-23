@@ -8,6 +8,7 @@
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
+#include <compiler/compiler.h>
 #include <compiler/error/error.h>
 #include <compiler/format/format.h>
 #include <object/object.h>
@@ -46,6 +47,13 @@ typedef struct {
 } LspTest;
 
 typedef struct {
+    cstr   path;
+    string source;
+    string expected_return_value;
+    string expected_stdout;
+} CommandTest;
+
+typedef struct {
     usize passed;
     usize failed;
     usize language_passed;
@@ -56,6 +64,8 @@ typedef struct {
     usize format_failed;
     usize lsp_passed;
     usize lsp_failed;
+    usize command_passed;
+    usize command_failed;
 } TestCounts;
 
 //------------------------------------------------------------------------------
@@ -309,6 +319,47 @@ internal bool testing_parse_lsp_test(Arena*   arena,
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Parse one command test with source, expected exit code, and expected stdout.
+
+internal bool testing_parse_command_test(Arena*       arena,
+                                         cstr         path,
+                                         string       file_text,
+                                         CommandTest* out_test)
+{
+    string sections[3]   = {0};
+    usize  cursor        = 0;
+    usize  section_count = 0;
+
+    while (section_count < 3 &&
+           testing_split_next_section(
+               file_text, &cursor, &sections[section_count])) {
+        section_count++;
+        if (cursor > file_text.count) {
+            break;
+        }
+    }
+
+    if (section_count != 3 || cursor <= file_text.count) {
+        eprn("%sInvalid command test format:%s %s",
+             ANSI_RED,
+             ANSI_RESET,
+             path);
+        return false;
+    }
+
+    *out_test = (CommandTest){
+        .path = testing_copy_cstr(arena, path),
+        .source =
+            testing_copy_string(arena, testing_strip_section_edges(sections[0])),
+        .expected_return_value = testing_copy_string(
+            arena, testing_trim_ascii_whitespace(sections[1])),
+        .expected_stdout = testing_copy_string(
+            arena, testing_strip_section_edges(sections[2])),
+    };
+    return true;
+}
+
 internal int testing_compare_cstrs(const void* left, const void* right)
 {
     cstr a = *(const cstr*)left;
@@ -364,6 +415,13 @@ internal void testing_print_summary_table(const TestCounts* counts)
         table_cell_u64(counts->lsp_failed),
     };
     table_add_row(&table, lsp_row);
+
+    TableCell command_row[3] = {
+        table_cell_string(s("command")),
+        table_cell_u64(counts->command_passed),
+        table_cell_u64(counts->command_failed),
+    };
+    table_add_row(&table, command_row);
 
     TableCell total_row[3] = {
         table_cell_string(s("total")),
@@ -511,6 +569,40 @@ testing_collect_lsp_tests(Arena* arena, cstr directory, Array(cstr) * out_paths)
     dir_iter_done(&iter);
 }
 
+internal void testing_collect_command_tests(Arena* arena,
+                                            cstr   directory,
+                                            Array(cstr) * out_paths)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, directory)) {
+        return;
+    }
+
+    Arena child_arena = {0};
+    arena_init(&child_arena);
+
+    cstr child_path   = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, &child_arena, &child_path, &is_directory)) {
+        if (is_directory) {
+            testing_collect_command_tests(arena, child_path, out_paths);
+            arena_done(&child_arena);
+            arena_init(&child_arena);
+            continue;
+        }
+
+        if (path_has_extension(s(child_path), ".cmd")) {
+            array_push(*out_paths, testing_copy_cstr(arena, child_path));
+        }
+
+        arena_done(&child_arena);
+        arena_init(&child_arena);
+    }
+
+    arena_done(&child_arena);
+    dir_iter_done(&iter);
+}
+
 internal void testing_cleanup_generated_files(cstr artifact_root)
 {
     Arena arena = {0};
@@ -582,6 +674,12 @@ internal void testing_cleanup_generated_tree(cstr directory)
                    path_has_extension(s(child_path), ".lsp.in") ||
                    path_has_extension(s(child_path), ".lsp.out")) {
             path_remove(child_path);
+        } else if (path_has_extension(s(child_path), ".input")) {
+            path_remove(child_path);
+#if OS_WINDOWS
+        } else if (path_has_extension(s(child_path), ".input.exe")) {
+            path_remove(child_path);
+#endif
         }
 
         arena_done(&arena);
@@ -613,6 +711,55 @@ internal bool testing_compare_exit_code(string expected_text,
         testing_compare_text("return value", expected_text, actual_text);
     arena_done(&arena);
     return matches;
+}
+
+internal cstr testing_path_directory(Arena* arena, cstr path)
+{
+    usize last_separator = 0;
+    bool  found          = false;
+    for (usize i = 0; path[i] != '\0'; ++i) {
+        if (path[i] == '/' || path[i] == '\\') {
+            last_separator = i;
+            found          = true;
+        }
+    }
+
+    if (!found) {
+        return ".";
+    }
+
+    char* copy = (char*)arena_alloc(arena, last_separator + 1);
+    memcpy(copy, path, last_separator);
+    copy[last_separator] = '\0';
+    return copy;
+}
+
+internal cstr testing_current_directory(Arena* arena)
+{
+#if OS_WINDOWS
+    DWORD required = GetCurrentDirectoryA(0, NULL);
+    ASSERT(required > 0, "Failed to read current directory");
+    char* buffer = (char*)arena_alloc(arena, required);
+    DWORD written = GetCurrentDirectoryA(required, buffer);
+    ASSERT(written > 0 && written < required,
+           "Failed to read current directory");
+    return buffer;
+#elif OS_POSIX
+    char* cwd = getcwd(NULL, 0);
+    ASSERT(cwd != NULL, "Failed to read current directory");
+    cstr result = testing_copy_cstr(arena, cwd);
+    free(cwd);
+    return result;
+#endif
+}
+
+internal bool testing_set_current_directory(cstr path)
+{
+#if OS_WINDOWS
+    return SetCurrentDirectoryA(path) != 0;
+#elif OS_POSIX
+    return chdir(path) == 0;
+#endif
 }
 
 internal string testing_normalise_json(Arena* arena, string text)
@@ -1489,6 +1636,139 @@ internal int testing_run_lsp_suite(cstr tests_root, TestCounts* counts)
     return counts->failed == 0 ? 0 : 1;
 }
 
+//------------------------------------------------------------------------------
+// Run command-level tests that exercise public compiler commands.
+
+internal bool testing_run_command_test(const CommandTest* test)
+{
+    Arena artifact_arena = {0};
+    arena_init(&artifact_arena);
+
+    cstr artifact_root =
+        path_replace_extension(&artifact_arena, test->path, "");
+    cstr input_path =
+        path_replace_extension(&artifact_arena, artifact_root, ".input.n");
+    cstr binary_path = path_replace_extension(&artifact_arena, input_path, "");
+
+    path_remove(input_path);
+    path_remove(binary_path);
+#if OS_WINDOWS
+    path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
+#endif
+
+    FILE* file = fopen(input_path, "wb");
+    if (!file) {
+        eprn("Failed to open command input file: %s", input_path);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    usize written = fwrite(test->source.data, 1, test->source.count, file);
+    fclose(file);
+    if (written != test->source.count) {
+        eprn("Failed to write command input file: %s", input_path);
+        arena_done(&artifact_arena);
+        return false;
+    }
+
+    Arena cwd_arena = {0};
+    arena_init(&cwd_arena);
+    cstr original_cwd = testing_current_directory(&cwd_arena);
+    cstr test_dir     = testing_path_directory(&artifact_arena, input_path);
+    string input_name = path_filename(s(input_path));
+    cstr input_arg =
+        (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
+
+    bool passed = true;
+    if (!testing_set_current_directory(test_dir)) {
+        eprn("Failed to change directory to command test dir: %s", test_dir);
+        passed = false;
+    } else {
+        NerdRunConfig config = {
+            .source =
+                (NerdSource){
+                    .source      = test->source,
+                    .source_path = s(input_arg),
+                },
+        };
+        int result = compiler_cmd_run(&config);
+        if (!testing_compare_exit_code(test->expected_return_value, result)) {
+            passed = false;
+        }
+
+        if (!testing_set_current_directory(original_cwd)) {
+            eprn("Failed to restore test runner working directory: %s",
+                 original_cwd);
+            passed = false;
+        }
+    }
+
+    path_remove(input_path);
+    path_remove(binary_path);
+#if OS_WINDOWS
+    path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
+#endif
+
+    arena_done(&cwd_arena);
+    arena_done(&artifact_arena);
+    return passed;
+}
+
+internal int testing_run_command_suite(cstr tests_root, TestCounts* counts)
+{
+    Arena test_arena = {0};
+    arena_init(&test_arena);
+
+    cstr command_dir  = path_join(&test_arena, tests_root, "commands");
+    Array(cstr) paths = NULL;
+    testing_collect_command_tests(&test_arena, command_dir, &paths);
+    qsort(paths, array_count(paths), sizeof(paths[0]), testing_compare_cstrs);
+
+    for (usize i = 0; i < array_count(paths); i++) {
+        cstr path         = paths[i];
+
+        FileMap map       = {0};
+        string  file_text = filemap_load(path, &map);
+        if (file_text.data == NULL) {
+            counts->failed++;
+            counts->command_failed++;
+            testing_print_result_line(false, "command", path);
+            continue;
+        }
+
+        Arena case_arena = {0};
+        arena_init(&case_arena);
+        CommandTest test = {0};
+        bool ok =
+            testing_parse_command_test(&case_arena, path, file_text, &test);
+        if (!ok) {
+            counts->failed++;
+            counts->command_failed++;
+            testing_print_result_line(false, "command", path);
+            arena_done(&case_arena);
+            filemap_unload(&map);
+            continue;
+        }
+
+        if (testing_run_command_test(&test)) {
+            counts->passed++;
+            counts->command_passed++;
+            testing_print_result_line(true, "command", path);
+        } else {
+            counts->failed++;
+            counts->command_failed++;
+            testing_print_result_line(false, "command", path);
+        }
+
+        arena_done(&case_arena);
+        filemap_unload(&map);
+    }
+
+    array_free(paths);
+    arena_done(&test_arena);
+    return counts->failed == 0 ? 0 : 1;
+}
+
 int testing_run_suite(cstr tests_root)
 {
     testing_cleanup_generated_tree(tests_root);
@@ -1502,6 +1782,9 @@ int testing_run_suite(cstr tests_root)
         result = 1;
     }
     if (testing_run_lsp_suite(tests_root, &counts) != 0) {
+        result = 1;
+    }
+    if (testing_run_command_suite(tests_root, &counts) != 0) {
         result = 1;
     }
 

@@ -7,6 +7,7 @@ tests within them:
   generation, and code generation.
 - `error` - test cases for error handling, such as syntax errors, type errors,
   and runtime errors.
+- `commands` - command-level regressions for public compiler subcommands.
 
 ## Language Tests
 
@@ -64,9 +65,8 @@ sections: the code to test and the expected error message in JSON format.
 
 The unit tests can be run using the `test` command in the CLI.  This command
 will run all the tests in the `tests` folder and report the results.  It will
-iterate through all the `.t` and `.e` files in the `tests` folder and run each
-test case, comparing the actual output to the expected output and reporting any
-discrepancies.
+iterate through the supported test folders and run each test case, comparing the
+actual output to the expected output and reporting any discrepancies.
 
 For the purposes of helping write the tests, if the IR generation or code
 generation sections are left blank, the test runner will output the actual IR or

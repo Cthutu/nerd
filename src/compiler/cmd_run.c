@@ -73,6 +73,8 @@ internal cstr compiler_cmd_absolute_path(Arena* arena, cstr path)
     char* cwd = getcwd(NULL, 0);
     ASSERT(cwd != NULL, "Failed to resolve current working directory");
 
+    // `run hello.n` emits `hello`; execute it by absolute path so POSIX shells
+    // do not search PATH and miss binaries in the current directory.
     cstr result = path_join(arena, cwd, path);
     free(cwd);
     return result;

@@ -96,6 +96,12 @@ uses the semantic output to emit:
 The current IR is intentionally straightforward. It acts as the bridge from
 semantic structure to stable C emission.
 
+The IR is also becoming self-contained. `IrValue` carries its semantic type, and
+`Ir` owns copies of the semantic type rows plus explicit records for globals,
+functions, and locals. Back ends should prefer those IR facts over reaching back
+into semantic side tables. This keeps the representation suitable for future
+non-C back ends and VM-style execution.
+
 ## C Generation
 
 The C back end translates IR operations to emitted C. Generated C remains a
