@@ -105,10 +105,10 @@ bool ast_peek_token(AstParseState* state)
     case TK_InterpolatedStringStart:
     case TK_InterpolatedStringEnd:
         state->token = (AstToken){
-            .kind               = token.kind,
-            .source             = source,
-            .offset             = token.offset,
-            .token_index        = state->token_index,
+            .kind        = token.kind,
+            .source      = source,
+            .offset      = token.offset,
+            .token_index = state->token_index,
         };
         if (token.kind == TK_String) {
             state->token.value.string_index = state->string_index;

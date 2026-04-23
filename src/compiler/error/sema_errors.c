@@ -253,10 +253,15 @@ bool error_0309_type_alias_cycle(NerdSource source,
 
 bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error = error_init(
-        310, source, span, "Interpolated strings are only supported inside functions");
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "This interpolated string appears at top level");
+    ErrorInfo error =
+        error_init(310,
+                   source,
+                   span,
+                   "Interpolated strings are only supported inside functions");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This interpolated string appears at top level");
     error_add_help(&error,
                    "Move the interpolation inside a function body for the "
                    "current milestone.");
@@ -277,10 +282,11 @@ bool error_0311_invalid_interpolation_type(NerdSource source,
                    span,
                    "Cannot interpolate values of type `" STRINGP "`",
                    STRINGV(type_name));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This expression type cannot be converted to string yet");
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "This expression type cannot be converted to string yet");
     error_add_help(&error,
                    "Use a built-in primitive or `string`, or cast the value "
                    "to a supported type first.");

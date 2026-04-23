@@ -745,7 +745,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 lexer->source, sema_node_span(lexer, node));
         }
         for (u32 i = node->a; i < node->b; ++i) {
-            if (!sema_resolve_node_refs(lexer, ast, owner_decl_index, i, sema)) {
+            if (!sema_resolve_node_refs(
+                    lexer, ast, owner_decl_index, i, sema)) {
                 return false;
             }
         }
@@ -1334,8 +1335,7 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_IntegerDivide:
     case AK_IntegerModulo:
     case AK_Call:
-        return sema_validate_interpolated_strings(
-                   lexer, ast, sema, node->a) &&
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->a) &&
                sema_validate_interpolated_strings(lexer, ast, sema, node->b);
     default:
         return true;
@@ -1388,7 +1388,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer, ast, sema, part->a, sema_no_type(), &part_type)) {
                 return false;
             }
-            part_type = sema_materialise_type(sema, part_type);
+            part_type                  = sema_materialise_type(sema, part_type);
             sema->node_type_indices[i] = part_type;
             if (!sema_type_is_interpolatable(sema, part_type)) {
                 return error_0311_invalid_interpolation_type(
@@ -1568,7 +1568,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 break;
             }
 
-            if (sema_node_contains_interpolation(ast, local->value_node_index)) {
+            if (sema_node_contains_interpolation(ast,
+                                                 local->value_node_index)) {
                 u32 interp_index = sema_find_interpolated_string_node(
                     ast, local->value_node_index);
                 return error_0312_interpolated_string_escapes(
@@ -1621,7 +1622,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             if (sema_node_contains_interpolation(ast, node->b)) {
-                u32 interp_index = sema_find_interpolated_string_node(ast, node->b);
+                u32 interp_index =
+                    sema_find_interpolated_string_node(ast, node->b);
                 return error_0312_interpolated_string_escapes(
                     lexer->source,
                     sema_node_span(lexer,
@@ -1646,14 +1648,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
             if (node->b == AFK_Expr) {
                 if (sema_node_contains_interpolation(ast, fn_start->b - 1)) {
-                    u32 interp_index =
-                        sema_find_interpolated_string_node(ast, fn_start->b - 1);
+                    u32 interp_index = sema_find_interpolated_string_node(
+                        ast, fn_start->b - 1);
                     return error_0312_interpolated_string_escapes(
                         lexer->source,
-                        sema_node_span(lexer,
-                                       &ast->nodes[interp_index == sema_no_decl()
-                                                       ? fn_start->b - 1
-                                                       : interp_index]));
+                        sema_node_span(
+                            lexer,
+                            &ast->nodes[interp_index == sema_no_decl()
+                                            ? fn_start->b - 1
+                                            : interp_index]));
                 }
                 if (!sema_infer_node_type(lexer,
                                           ast,
@@ -1690,15 +1693,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     if (ast->nodes[i].kind != AK_Return) {
                         continue;
                     }
-                    if (sema_node_contains_interpolation(ast, ast->nodes[i].a)) {
+                    if (sema_node_contains_interpolation(ast,
+                                                         ast->nodes[i].a)) {
                         u32 interp_index = sema_find_interpolated_string_node(
                             ast, ast->nodes[i].a);
                         return error_0312_interpolated_string_escapes(
                             lexer->source,
-                            sema_node_span(lexer,
-                                           &ast->nodes[interp_index == sema_no_decl()
-                                                           ? ast->nodes[i].a
-                                                           : interp_index]));
+                            sema_node_span(
+                                lexer,
+                                &ast->nodes[interp_index == sema_no_decl()
+                                                ? ast->nodes[i].a
+                                                : interp_index]));
                     }
                     if (!sema_infer_node_type(lexer,
                                               ast,

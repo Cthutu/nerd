@@ -123,7 +123,7 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
             return error_0106_unterminated_string_literal(
                 state->lexer->source,
                 (ErrorSpan){.start = start_token.offset,
-                            .end = state->lexer->source.source.count});
+                            .end   = state->lexer->source.source.count});
         }
 
         if (state->token.kind == TK_InterpolatedStringEnd) {
@@ -135,8 +135,8 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
             u32 part_start = (u32)array_count(state->nodes);
             for (u32 i = 0; i < array_count(parts); ++i) {
                 AstNode part_node = {
-                    .kind        = parts[i].is_expr ? AK_InterpPartExpr
-                                                    : AK_StringLiteral,
+                    .kind =
+                        parts[i].is_expr ? AK_InterpPartExpr : AK_StringLiteral,
                     .token_index = parts[i].token_index,
                     .a           = parts[i].payload,
                 };
@@ -165,9 +165,9 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
 
             array_push(parts,
                        ((InterpPart){
-                           .is_expr    = false,
+                           .is_expr     = false,
                            .token_index = part_token.token_index,
-                           .payload    = part_token.value.string_index,
+                           .payload     = part_token.value.string_index,
                        }));
             continue;
         }
@@ -180,9 +180,10 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
             }
             if (!ast_next_token(state)) {
                 array_free(parts);
-                return error_0201_missing_value(state->lexer->source,
-                                                ast_token_span(state, &state->token),
-                                                TK_RBrace);
+                return error_0201_missing_value(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_RBrace);
             }
             if (!ast_parse_expr_bp(state, 0, &expr_root)) {
                 array_free(parts);
@@ -195,18 +196,19 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
 
             array_push(parts,
                        ((InterpPart){
-                           .is_expr    = true,
+                           .is_expr     = true,
                            .token_index = start_token.token_index,
-                           .payload    = expr_root,
+                           .payload     = expr_root,
                        }));
             continue;
         }
 
         array_free(parts);
-        return error_0204_unexpected_token(state->lexer->source,
-                                           ast_token_span(state, &state->token),
-                                           state->token.kind,
-                                           "Continue the interpolated string or close it with `\"`.");
+        return error_0204_unexpected_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            state->token.kind,
+            "Continue the interpolated string or close it with `\"`.");
     }
 }
 

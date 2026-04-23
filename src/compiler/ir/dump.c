@@ -220,11 +220,8 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_CAST:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = cast ");
-            ir_render_typed_value(&sb,
-                                  ir,
-                                  lexer,
-                                  &instr->rvalue[0],
-                                  instr->rvalue[0].type);
+            ir_render_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue[0].type);
             break;
         case IR_OP_STRING_RESET:
             sb_append_cstr(&sb, "string.reset");
@@ -235,11 +232,8 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_STRING_APPEND:
             sb_append_cstr(&sb, "string.append ");
-            ir_render_typed_value(&sb,
-                                  ir,
-                                  lexer,
-                                  &instr->rvalue[0],
-                                  instr->rvalue[0].type);
+            ir_render_typed_value(
+                &sb, ir, lexer, &instr->rvalue[0], instr->rvalue[0].type);
             break;
         case IR_OP_STRING_FINISH:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

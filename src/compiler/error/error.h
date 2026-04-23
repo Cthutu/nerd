@@ -159,8 +159,7 @@ bool error_0310_invalid_interpolation_context(NerdSource source,
 bool error_0311_invalid_interpolation_type(NerdSource source,
                                            ErrorSpan  span,
                                            string     type_name);
-bool error_0312_interpolated_string_escapes(NerdSource source,
-                                            ErrorSpan  span);
+bool error_0312_interpolated_string_escapes(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

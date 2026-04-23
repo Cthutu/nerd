@@ -103,7 +103,7 @@ internal string testing_next_line(string text, usize* cursor)
 internal Array(string) testing_split_lines(string text)
 {
     Array(string) lines = NULL;
-    usize         cursor = 0;
+    usize cursor        = 0;
 
     while (cursor < text.count) {
         array_push(lines, testing_next_line(text, &cursor));
@@ -117,9 +117,9 @@ internal Array(string) testing_split_lines(string text)
 }
 
 internal isize testing_find_matching_line(Array(string) haystack,
-                                          usize         start_index,
-                                          string        needle,
-                                          usize         max_lookahead)
+                                          usize  start_index,
+                                          string needle,
+                                          usize  max_lookahead)
 {
     usize end_index = start_index + max_lookahead;
     if (end_index > array_count(haystack)) {
@@ -187,9 +187,9 @@ void testing_diff_print(string expected, string actual)
 
     Array(string) expected_lines = testing_split_lines(expected);
     Array(string) actual_lines   = testing_split_lines(actual);
-    usize         expected_index = 0;
-    usize         actual_index   = 0;
-    usize         lookahead      = 6;
+    usize expected_index         = 0;
+    usize actual_index           = 0;
+    usize lookahead              = 6;
 
     while (expected_index < array_count(expected_lines) ||
            actual_index < array_count(actual_lines)) {
@@ -203,25 +203,27 @@ void testing_diff_print(string expected, string actual)
         if (expected_index < array_count(expected_lines) &&
             actual_index < array_count(actual_lines) &&
             string_eq(expected_line, actual_line)) {
-            testing_diff_print_line_pair(
-                expected_index + 1, expected_line, actual_index + 1, actual_line);
+            testing_diff_print_line_pair(expected_index + 1,
+                                         expected_line,
+                                         actual_index + 1,
+                                         actual_line);
             ++expected_index;
             ++actual_index;
             continue;
         }
 
-        isize actual_match = expected_index < array_count(expected_lines)
-                                 ? testing_find_matching_line(actual_lines,
-                                                              actual_index + 1,
-                                                              expected_line,
-                                                              lookahead)
-                                 : -1;
-        isize expected_match = actual_index < array_count(actual_lines)
-                                   ? testing_find_matching_line(expected_lines,
-                                                                expected_index + 1,
-                                                                actual_line,
-                                                                lookahead)
-                                   : -1;
+        isize actual_match =
+            expected_index < array_count(expected_lines)
+                ? testing_find_matching_line(
+                      actual_lines, actual_index + 1, expected_line, lookahead)
+                : -1;
+        isize expected_match =
+            actual_index < array_count(actual_lines)
+                ? testing_find_matching_line(expected_lines,
+                                             expected_index + 1,
+                                             actual_line,
+                                             lookahead)
+                : -1;
 
         if (actual_match >= 0 &&
             (expected_match < 0 ||

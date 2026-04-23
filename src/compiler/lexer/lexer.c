@@ -9,10 +9,8 @@
 
 #define LEXER_ARRAY_INIT_CAPACITY 256
 
-internal bool lexer_emit_string_token(Lexer* lexer,
-                                      usize  offset,
-                                      const u8* text,
-                                      usize  count)
+internal bool
+lexer_emit_string_token(Lexer* lexer, usize offset, const u8* text, usize count)
 {
     if (lexer->string_arena.data == NULL) {
         arena_init(&lexer->string_arena);
@@ -23,7 +21,8 @@ internal bool lexer_emit_string_token(Lexer* lexer,
         memcpy(buffer, text, count);
     }
 
-    array_push(lexer->tokens, (Token){.kind = TK_String, .offset = (u32)offset});
+    array_push(lexer->tokens,
+               (Token){.kind = TK_String, .offset = (u32)offset});
     array_push(lexer->strings, string_from(buffer, count));
     return true;
 }
@@ -116,16 +115,16 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
 
     while (i < source_code.count) {
         if (source_code.data[i] == '{') {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_LBrace, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_LBrace, .offset = (u32)i});
             ++depth;
             ++i;
             continue;
         }
 
         if (source_code.data[i] == '}') {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_RBrace, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_RBrace, .offset = (u32)i});
             --depth;
             ++i;
             if (depth == 0) {
@@ -173,7 +172,7 @@ internal bool lexer_lex_interpolated_text(NerdSource source,
                 lexer_emit_string_token(lexer, chunk_start, buffer, length);
             }
             array_push(lexer->tokens,
-                       (Token){.kind = TK_InterpolatedStringEnd,
+                       (Token){.kind   = TK_InterpolatedStringEnd,
                                .offset = (u32)(i - 1)});
             *io_index = i;
             return true;
@@ -278,9 +277,9 @@ internal bool lexer_lex_one_token(NerdSource source,
 
     if (allow_interpolation_start && c == '$' && i + 1 < source_code.count &&
         source_code.data[i + 1] == '"') {
-        array_push(lexer->tokens,
-                   (Token){.kind = TK_InterpolatedStringStart,
-                           .offset = (u32)i});
+        array_push(
+            lexer->tokens,
+            (Token){.kind = TK_InterpolatedStringStart, .offset = (u32)i});
         i += 2;
         *io_index = i;
         return lexer_lex_interpolated_text(
@@ -328,12 +327,11 @@ internal bool lexer_lex_one_token(NerdSource source,
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
         usize start = i;
-        while (
-            i < source_code.count &&
-            ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
-             (source_code.data[i] >= 'A' && source_code.data[i] <= 'Z') ||
-             (source_code.data[i] >= '0' && source_code.data[i] <= '9') ||
-             source_code.data[i] == '_')) {
+        while (i < source_code.count &&
+               ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
+                (source_code.data[i] >= 'A' && source_code.data[i] <= 'Z') ||
+                (source_code.data[i] >= '0' && source_code.data[i] <= '9') ||
+                source_code.data[i] == '_')) {
             i++;
         }
         string str = string_from(source_code.data + start, i - start);
@@ -352,9 +350,9 @@ internal bool lexer_lex_one_token(NerdSource source,
         for (usize k = 0; keywords[k].name != NULL; k++) {
             if (str.count == keywords[k].length &&
                 memcmp(str.data, keywords[k].name, str.count) == 0) {
-                array_push(lexer->tokens,
-                           (Token){.kind = keywords[k].kind,
-                                   .offset = (u32)start});
+                array_push(
+                    lexer->tokens,
+                    (Token){.kind = keywords[k].kind, .offset = (u32)start});
                 is_keyword = true;
                 break;
             }
@@ -384,12 +382,12 @@ internal bool lexer_lex_one_token(NerdSource source,
 
     if (c == '=') {
         if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_FatArrow, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_FatArrow, .offset = (u32)i});
             *io_index = i + 2;
         } else {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_Equal, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Equal, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -401,8 +399,8 @@ internal bool lexer_lex_one_token(NerdSource source,
                        (Token){.kind = TK_ThinArrow, .offset = (u32)i});
             *io_index = i + 2;
         } else {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_Minus, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Minus, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -537,15 +535,14 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_Symbol:
         {
             usize index = token->offset;
-            while (
-                index < lexer->source.source.count &&
-                ((lexer->source.source.data[index] >= 'a' &&
-                  lexer->source.source.data[index] <= 'z') ||
-                 (lexer->source.source.data[index] >= 'A' &&
-                  lexer->source.source.data[index] <= 'Z') ||
-                 (lexer->source.source.data[index] >= '0' &&
-                  lexer->source.source.data[index] <= '9') ||
-                 lexer->source.source.data[index] == '_')) {
+            while (index < lexer->source.source.count &&
+                   ((lexer->source.source.data[index] >= 'a' &&
+                     lexer->source.source.data[index] <= 'z') ||
+                    (lexer->source.source.data[index] >= 'A' &&
+                     lexer->source.source.data[index] <= 'Z') ||
+                    (lexer->source.source.data[index] >= '0' &&
+                     lexer->source.source.data[index] <= '9') ||
+                    lexer->source.source.data[index] == '_')) {
                 index++;
             }
             return index;

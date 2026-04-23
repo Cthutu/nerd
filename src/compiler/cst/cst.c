@@ -319,8 +319,8 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
         u32  payload;
     } InterpPart;
 
-    u32               token_index = state->token_index;
-    Array(InterpPart) parts       = NULL;
+    u32 token_index         = state->token_index;
+    Array(InterpPart) parts = NULL;
     cst_advance(state);
 
     for (;;) {
@@ -332,9 +332,9 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
             for (u32 i = 0; i < array_count(parts); ++i) {
                 if (!cst_emit_node(state,
                                    (CstNode){
-                                       .kind = parts[i].is_expr
-                                                   ? CK_InterpPartExpr
-                                                   : CK_StringLiteral,
+                                       .kind        = parts[i].is_expr
+                                                          ? CK_InterpPartExpr
+                                                          : CK_StringLiteral,
                                        .token_index = parts[i].token_index,
                                        .a           = parts[i].payload,
                                    },
@@ -366,9 +366,9 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
             cst_advance(state);
             array_push(parts,
                        ((InterpPart){
-                           .is_expr    = false,
+                           .is_expr     = false,
                            .token_index = string_token_index,
-                           .payload    = string_index,
+                           .payload     = string_index,
                        }));
             continue;
         }
@@ -384,9 +384,9 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
 
             array_push(parts,
                        ((InterpPart){
-                           .is_expr    = true,
+                           .is_expr     = true,
                            .token_index = token_index,
-                           .payload    = expr,
+                           .payload     = expr,
                        }));
             continue;
         }
