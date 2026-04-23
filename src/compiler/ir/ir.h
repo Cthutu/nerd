@@ -58,8 +58,35 @@ typedef struct {
     IrValue     rvalue[2];
 } IrInstruction;
 
+// Program-structure records make the IR self-contained for later back ends and
+// VM execution. The instruction stream remains the stable textual form, while
+// these tables describe storage and function boundaries without consulting sema.
+
+typedef struct {
+    u32 symbol;
+    u32 type;
+} IrGlobal;
+
+typedef struct {
+    u32 symbol;
+    u32 type;
+    u32 function_index;
+} IrLocal;
+
+typedef struct {
+    u32 symbol;
+    u32 type;
+    u32 first_instruction;
+    u32 one_past_last_instruction;
+    u32 first_local;
+    u32 local_count;
+} IrFunction;
+
 typedef struct {
     Array(IrInstruction) instructions;
+    Array(IrGlobal) globals;
+    Array(IrFunction) functions;
+    Array(IrLocal) locals;
     Array(string) strings;
     Array(SemaType) types;
     Arena arena;

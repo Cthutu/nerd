@@ -12,6 +12,11 @@
 
 void ir_add_global(Ir* ir, u32 symbol_handle, u32 type_index)
 {
+    array_push(ir->globals,
+               (IrGlobal){
+                   .symbol = symbol_handle,
+                   .type   = type_index,
+               });
     array_push(ir->instructions,
                (IrInstruction){
                    .op     = IR_OP_GLOBAL,
@@ -69,9 +74,20 @@ void ir_add_fn_end(Ir* ir)
 }
 
 void ir_add_local(
-    Ir* ir, u32 symbol_handle, u32 type_index, IrValue rvalue, u32 rvalue_type)
+    Ir* ir,
+    u32 function_index,
+    u32 symbol_handle,
+    u32 type_index,
+    IrValue rvalue,
+    u32 rvalue_type)
 {
     rvalue.type = rvalue_type;
+    array_push(ir->locals,
+               (IrLocal){
+                   .symbol         = symbol_handle,
+                   .type           = type_index,
+                   .function_index = function_index,
+               });
     array_push(ir->instructions,
                (IrInstruction){
                    .op     = IR_OP_LOCAL,
@@ -790,6 +806,15 @@ internal void ir_generate_function(const Lexer*    lex,
     ASSERT(fn_start_node->kind == AK_FnStart, "Expected function start");
     ASSERT(fn_start_node->b > fn_def_node->a, "Expected valid function range");
 
+    u32 function_index = (u32)array_count(ir->functions);
+    array_push(ir->functions,
+               (IrFunction){
+                   .symbol            = ast_get_symbol(bind_node),
+                   .type              = decl->type_index,
+                   .first_instruction = (u32)array_count(ir->instructions),
+                   .first_local       = (u32)array_count(ir->locals),
+               });
+
     ir_add_fn_start(ir, ast_get_symbol(bind_node), decl->type_index);
 
     bool needs_string_runtime = false;
@@ -857,7 +882,8 @@ internal void ir_generate_function(const Lexer*    lex,
                                           &next_value_index,
                                           ir);
                 }
-                ir_add_local(ir, node->a, local_type, value, local_type);
+                ir_add_local(
+                    ir, function_index, node->a, local_type, value, local_type);
                 continue;
             }
 
@@ -924,6 +950,11 @@ internal void ir_generate_function(const Lexer*    lex,
     }
 
     ir_add_fn_end(ir);
+    IrFunction* function              = &ir->functions[function_index];
+    function->one_past_last_instruction =
+        (u32)array_count(ir->instructions);
+    function->local_count =
+        (u32)array_count(ir->locals) - function->first_local;
     array_free(node_values);
 }
 
@@ -977,6 +1008,9 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 void ir_done(Ir* ir)
 {
     array_free(ir->instructions);
+    array_free(ir->globals);
+    array_free(ir->functions);
+    array_free(ir->locals);
     array_free(ir->strings);
     array_free(ir->types);
     if (ir->arena.data != NULL) {
