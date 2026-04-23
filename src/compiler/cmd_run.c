@@ -63,7 +63,7 @@ internal cstr compiler_cmd_absolute_path(Arena* arena, cstr path)
     DWORD required = GetFullPathNameA(path, 0, NULL, NULL);
     ASSERT(required > 0, "Failed to resolve absolute path for `%s`", path);
 
-    char* buffer = (char*)arena_alloc(arena, required);
+    char* buffer  = (char*)arena_alloc(arena, required);
     DWORD written = GetFullPathNameA(path, required, buffer, NULL);
     ASSERT(written > 0 && written < required,
            "Failed to resolve absolute path for `%s`",
@@ -99,12 +99,12 @@ int compiler_cmd_run(const NerdRunConfig* config)
     }
 
 #if OS_POSIX
-    cstr executable_path = compiler_cmd_absolute_path(
-        &arena, artifacts.binary_path);
+    cstr executable_path =
+        compiler_cmd_absolute_path(&arena, artifacts.binary_path);
     string command = string_format(&arena, "\"%s\"", executable_path);
 #elif OS_WINDOWS
-    cstr executable_path = compiler_cmd_absolute_path(
-        &arena, artifacts.binary_path);
+    cstr executable_path =
+        compiler_cmd_absolute_path(&arena, artifacts.binary_path);
     string command = string_format(&arena, "\"%s\"", executable_path);
 #endif
 
