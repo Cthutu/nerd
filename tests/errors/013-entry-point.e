@@ -20,7 +20,7 @@
         "Programs currently require a `main` entry point."
     ],
     "help": [
-        "Add `main :: fn () => 0` or another zero-parameter function returning `i32`."
+        "Add `main :: fn () => 0` or another zero-parameter function bound to main returning `i32` or no type at all."
     ]
 }
 ¬
@@ -45,6 +45,6 @@ main :: 1
     ],
     "notes": [],
     "help": [
-        "Change `main` so it takes no parameters and returns an integer type."
+        "Change `main` so it takes no parameters and returns an integer type or no type at all."
     ]
 }

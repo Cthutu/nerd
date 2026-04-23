@@ -375,13 +375,15 @@ bool error_0314_missing_return(NerdSource source,
 
 bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error = error_init(315, source, span, "Missing entry point `main`");
+    ErrorInfo error =
+        error_init(315, source, span, "Missing entry point `main`");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "No `main` function is defined");
     error_add_note(&error, "Programs currently require a `main` entry point.");
     error_add_help(
-        &error, "Add `main :: fn () => 0` or another zero-parameter function "
-                "returning `i32`.");
+        &error,
+        "Add `main :: fn () => 0` or another zero-parameter function bound "
+        "to main returning `i32` or no type at all.");
     error_render(&error);
     return false;
 }
@@ -393,19 +395,21 @@ bool error_0316_invalid_entry_point(NerdSource source,
                                     ErrorSpan  span,
                                     string     actual_type)
 {
-    ErrorInfo error = error_init(316,
-                                 source,
-                                 span,
-                                 "Invalid type for entry point `main`: found `"
-                                 STRINGP "`",
-                                 STRINGV(actual_type));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "`main` must be a zero-parameter function returning an integer");
+    ErrorInfo error =
+        error_init(316,
+                   source,
+                   span,
+                   "Invalid type for entry point `main`: found `" STRINGP "`",
+                   STRINGV(actual_type));
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "`main` must be a zero-parameter function returning an integer");
     error_add_help(
         &error,
-        "Change `main` so it takes no parameters and returns an integer type.");
+        "Change `main` so it takes no parameters and returns an integer type "
+        "or no type at all.");
     error_render(&error);
     return false;
 }
