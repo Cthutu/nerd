@@ -272,8 +272,7 @@ internal bool cst_parse_fn_signature(CstParseState* state,
 internal bool cst_parse_type_signature(CstParseState* state,
                                        u32*           out_signature_index)
 {
-    return cst_parse_fn_signature(
-        state, false, true, out_signature_index);
+    return cst_parse_fn_signature(state, false, true, out_signature_index);
 }
 
 internal bool cst_parse_fn_signature(CstParseState* state,
@@ -899,8 +898,8 @@ internal bool cst_parse_fn_block(CstParseState* state,
 
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
 {
-    u32 token_index = state->token_index;
-    u32 body        = 0;
+    u32 token_index     = state->token_index;
+    u32 body            = 0;
     u32 signature_index = 0;
 
     if (!cst_parse_fn_signature(state, true, false, &signature_index)) {

@@ -72,9 +72,9 @@ typedef struct {
 } IrGlobal;
 
 typedef struct {
-    u32 symbol;
-    u32 type;
-    u32 function_index;
+    u32  symbol;
+    u32  type;
+    u32  function_index;
     bool is_param;
 } IrLocal;
 

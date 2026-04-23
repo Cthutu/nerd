@@ -375,11 +375,9 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     }
     sb_append_char(sb, ')');
 
-    if (include_return_type &&
-        signature->return_type_node_index != U32_MAX) {
+    if (include_return_type && signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(sb, " -> ");
-        format_emit_expr(
-            sb, cst, lexer, signature->return_type_node_index, 0);
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
 }
 

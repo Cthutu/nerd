@@ -151,15 +151,15 @@ void ir_add_assign(
 //------------------------------------------------------------------------------
 // Append a call instruction to the IR stream.
 
-void ir_add_call(Ir*            ir,
-                 IrValue        lvalue,
-                 u32            lvalue_type,
-                 IrValue        callee,
-                 u32            callee_type,
+void ir_add_call(Ir*     ir,
+                 IrValue lvalue,
+                 u32     lvalue_type,
+                 IrValue callee,
+                 u32     callee_type,
                  Array(IrValue) args,
-                 Array(u32)     arg_types)
+                 Array(u32) arg_types)
 {
-    callee.type = callee_type;
+    callee.type   = callee_type;
     u32 first_arg = (u32)array_count(ir->call_args);
     for (u32 i = 0; i < array_count(args); ++i) {
         IrValue arg = args[i];
@@ -178,14 +178,14 @@ void ir_add_call(Ir*            ir,
                    .arg_count = (u32)array_count(args),
                });
     lvalue.type = lvalue_type;
-    array_push(ir->instructions,
-               (IrInstruction){
-                   .op     = IR_OP_CALL,
-                   .lvalue = lvalue,
-                   .rvalue = {callee,
-                              {.kind          = IR_VALUE_INTEGER,
-                               .value.integer = call_index}},
-               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_CALL,
+            .lvalue = lvalue,
+            .rvalue = {callee,
+                       {.kind = IR_VALUE_INTEGER, .value.integer = call_index}},
+        });
 }
 
 //------------------------------------------------------------------------------
@@ -536,13 +536,13 @@ internal IrValue ir_build_runtime_string(const Lexer* lex,
     return result;
 }
 
-internal IrValue ir_lower_call(const Lexer*    lex,
-                               const Ast*      ast,
-                               const Sema*     sema,
-                               const AstNode*  call_node,
-                               Array(IrValue)  node_values,
-                               u64*            next_value_index,
-                               Ir*             ir)
+internal IrValue ir_lower_call(const Lexer*   lex,
+                               const Ast*     ast,
+                               const Sema*    sema,
+                               const AstNode* call_node,
+                               Array(IrValue) node_values,
+                               u64* next_value_index,
+                               Ir*  ir)
 {
     ASSERT(call_node->kind == AK_Call, "Expected call node");
 
@@ -550,12 +550,13 @@ internal IrValue ir_lower_call(const Lexer*    lex,
         lex, ast, sema, call_node->a, node_values, next_value_index, ir);
     const AstCallInfo* call = &ast->calls[call_node->b];
     Array(IrValue) args     = NULL;
-    Array(u32)     arg_types = NULL;
+    Array(u32) arg_types    = NULL;
     for (u32 i = 0; i < call->arg_count; ++i) {
         u32 arg_node = ast->call_args[call->first_arg + i];
-        array_push(args,
-                   ir_lower_node(
-                       lex, ast, sema, arg_node, node_values, next_value_index, ir));
+        array_push(
+            args,
+            ir_lower_node(
+                lex, ast, sema, arg_node, node_values, next_value_index, ir));
         array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
     }
 
@@ -1056,7 +1057,7 @@ internal void ir_generate_function(const Lexer*    lex,
     ASSERT(fn_start_node->b > fn_def_node->a, "Expected valid function range");
     const AstFnSignature* signature = &ast->fn_signatures[fn_start_node->a];
 
-    u32 function_index = (u32)array_count(ir->functions);
+    u32 function_index              = (u32)array_count(ir->functions);
     array_push(ir->functions,
                (IrFunction){
                    .symbol            = ast_get_symbol(bind_node),
@@ -1070,9 +1071,10 @@ internal void ir_generate_function(const Lexer*    lex,
 
     for (u32 i = 0; i < signature->param_count; ++i) {
         const AstParam* param = &ast->params[signature->first_param + i];
-        u32 local_index =
+        u32             local_index =
             ir_find_function_param_local(sema, decl - sema->decls, param);
-        ASSERT(local_index != sema_no_local(), "Expected semantic parameter local");
+        ASSERT(local_index != sema_no_local(),
+               "Expected semantic parameter local");
         ir_add_param(ir,
                      function_index,
                      param->symbol_handle,

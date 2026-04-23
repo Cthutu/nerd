@@ -58,8 +58,8 @@ typedef struct {
 //------------------------------------------------------------------------------
 // Token stream access over the sequential lexer arrays.
 
-bool ast_peek_token(AstParseState* state);
-bool ast_next_token(AstParseState* state);
+bool      ast_peek_token(AstParseState* state);
+bool      ast_next_token(AstParseState* state);
 TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead);
 
 //------------------------------------------------------------------------------

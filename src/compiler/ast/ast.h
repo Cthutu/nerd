@@ -112,11 +112,11 @@ typedef struct {
 } AstCallInfo;
 
 typedef struct {
-    Array(AstNode)        nodes;
-    Array(AstParam)       params;
+    Array(AstNode) nodes;
+    Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
-    Array(u32)            call_args;
-    Array(AstCallInfo)    calls;
+    Array(u32) call_args;
+    Array(AstCallInfo) calls;
 } Ast;
 
 Ast  ast_parse(Lexer* lexer);

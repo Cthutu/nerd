@@ -147,7 +147,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Call:
             {
                 const AstCallInfo* call = &ast->calls[node->b];
-                row[3] = table_cell_string(
+                row[3]                  = table_cell_string(
                     string_format(&temp_arena,
                                   "callee=%u args=%u..%u",
                                   node->a,
@@ -216,12 +216,12 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                               node->b == AFK_Block ? "block" : "expr"));
             break;
         case AK_FnStart:
-            row[3] = table_cell_string(
-                string_format(&temp_arena, "signature=%u end=%u", node->a, node->b));
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "signature=%u end=%u", node->a, node->b));
             break;
         case AK_FnEnd:
-            row[3] = table_cell_string(
-                string_format(&temp_arena, "def=%u start=%u", node->a, node->b));
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "def=%u start=%u", node->a, node->b));
             break;
         default:
             row[3] = table_cell_string(s("Unknown"));

@@ -156,14 +156,15 @@ internal usize error_terminal_width(void)
     return 80;
 }
 
-internal void error_print_wrapped(string prefix, string styled_prefix, string text)
+internal void
+error_print_wrapped(string prefix, string styled_prefix, string text)
 {
     usize terminal_width = error_terminal_width();
     usize prefix_width   = prefix.count;
-    usize line_width     =
+    usize line_width =
         terminal_width > prefix_width ? terminal_width - prefix_width : 1;
-    usize cursor         = 0;
-    bool  first_line     = true;
+    usize cursor     = 0;
+    bool  first_line = true;
 
     while (true) {
         while (cursor < text.count &&
@@ -421,9 +422,10 @@ internal void error_normal_render(const ErrorInfo* error_info)
                                       error_kind_label(error_info->kind),
                                       ANSI_RESET);
     } else {
-        prefix = string_format(
-            &temp_arena, "%s[%04u]: ", error_kind_label(error_info->kind),
-            error_info->code);
+        prefix        = string_format(&temp_arena,
+                               "%s[%04u]: ",
+                               error_kind_label(error_info->kind),
+                               error_info->code);
         styled_prefix = string_format(&temp_arena,
                                       "%s%s[%04u]:%s ",
                                       primary_colour,
@@ -470,10 +472,11 @@ internal void error_normal_render(const ErrorInfo* error_info)
     //
 
     for (usize i = 0; i < array_count(error_info->notes); i++) {
-        error_print_wrapped(s("note: "),
-                            string_format(
-                                &temp_arena, "%snote:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
-                            error_info->notes[i]);
+        error_print_wrapped(
+            s("note: "),
+            string_format(
+                &temp_arena, "%snote:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
+            error_info->notes[i]);
     }
 
     //
@@ -481,10 +484,11 @@ internal void error_normal_render(const ErrorInfo* error_info)
     //
 
     for (usize i = 0; i < array_count(error_info->help_messages); i++) {
-        error_print_wrapped(s("help: "),
-                            string_format(
-                                &temp_arena, "%shelp:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
-                            error_info->help_messages[i]);
+        error_print_wrapped(
+            s("help: "),
+            string_format(
+                &temp_arena, "%shelp:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
+            error_info->help_messages[i]);
     }
 }
 

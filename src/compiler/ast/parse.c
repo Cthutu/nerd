@@ -147,7 +147,8 @@ bool ast_parse_fn_signature(AstParseState* state,
                 }
 
                 AstToken param_token = state->token;
-                if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
+                if (!ast_expect_token(state, TK_Colon) ||
+                    !ast_next_token(state)) {
                     return false;
                 }
 
@@ -158,13 +159,13 @@ bool ast_parse_fn_signature(AstParseState* state,
 
                 array_push(state->params,
                            (AstParam){
-                               .token_index     = param_token.token_index,
-                               .symbol_handle   = param_token.value.symbol_handle,
+                               .token_index   = param_token.token_index,
+                               .symbol_handle = param_token.value.symbol_handle,
                                .type_node_index = type_node,
                            });
             } else {
                 AstToken type_token = state->token;
-                u32 type_node = 0;
+                u32      type_node  = 0;
                 if (!ast_parse_type(state, &type_node)) {
                     return false;
                 }
@@ -179,7 +180,8 @@ bool ast_parse_fn_signature(AstParseState* state,
 
             ++param_count;
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
-                if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                if (!ast_expect_token(state, TK_Comma) ||
+                    !ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -222,8 +224,7 @@ bool ast_parse_fn_signature(AstParseState* state,
 
 bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index)
 {
-    return ast_parse_fn_signature(
-        state, false, true, out_signature_index);
+    return ast_parse_fn_signature(state, false, true, out_signature_index);
 }
 
 bool ast_parse_type(AstParseState* state, u32* out_node)
@@ -462,7 +463,7 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
 {
     // Assume current token is `fn`
     ASSERT(state->token.kind == TK_fn, "Expected 'fn' token for declaration");
-    AstToken fn_token = state->token;
+    AstToken fn_token        = state->token;
     u32      signature_index = 0;
 
     if (!ast_parse_fn_signature(state, true, false, &signature_index)) {

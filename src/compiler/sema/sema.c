@@ -2561,9 +2561,8 @@ internal void sema_fold_constants(const Lexer* lex, Ast* ast, Sema* sema)
     }
 }
 
-internal bool sema_validate_entry_point(const Lexer* lexer,
-                                        const Ast*   ast,
-                                        Sema*        sema)
+internal bool
+sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
     u32 main_symbol = sema_find_symbol_handle_by_name(lexer, s("main"));
     if (main_symbol == sema_no_decl()) {
@@ -2577,23 +2576,23 @@ internal bool sema_validate_entry_point(const Lexer* lexer,
             lexer->source, (ErrorSpan){.start = 0, .end = 0});
     }
 
-    const SemaDecl* decl      = &sema->decls[decl_index];
+    const SemaDecl* decl       = &sema->decls[decl_index];
     u32             type_index = decl->type_index;
     if (decl->kind != SK_Function || type_index == sema_no_type() ||
         sema->types[type_index].kind != STK_Function) {
-        return error_0316_invalid_entry_point(lexer->source,
-                                              sema_decl_span(lexer, ast, decl),
-                                              sema_type_name(
-                                                  sema, &temp_arena, type_index));
+        return error_0316_invalid_entry_point(
+            lexer->source,
+            sema_decl_span(lexer, ast, decl),
+            sema_type_name(sema, &temp_arena, type_index));
     }
 
     const SemaType* fn_type = &sema->types[type_index];
     if (fn_type->param_count != 0 ||
         !sema_type_is_integer(sema, fn_type->return_type)) {
-        return error_0316_invalid_entry_point(lexer->source,
-                                              sema_decl_span(lexer, ast, decl),
-                                              sema_type_name(
-                                                  sema, &temp_arena, type_index));
+        return error_0316_invalid_entry_point(
+            lexer->source,
+            sema_decl_span(lexer, ast, decl),
+            sema_type_name(sema, &temp_arena, type_index));
     }
 
     return true;

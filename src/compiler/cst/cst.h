@@ -94,13 +94,13 @@ typedef struct {
 } CstCallInfo;
 
 typedef struct {
-    Array(CstNode)        nodes;
-    Array(u64)            integers;
-    Array(u32)            bindings;
-    Array(CstParam)       params;
+    Array(CstNode) nodes;
+    Array(u64) integers;
+    Array(u32) bindings;
+    Array(CstParam) params;
     Array(CstFnSignature) fn_signatures;
-    Array(u32)            call_args;
-    Array(CstCallInfo)    calls;
+    Array(u32) call_args;
+    Array(CstCallInfo) calls;
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);

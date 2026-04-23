@@ -400,7 +400,8 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
     }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, "(");
-    const IrCallInfo* call = &cgen->ir->calls[(u32)instr->rvalue[1].value.integer];
+    const IrCallInfo* call =
+        &cgen->ir->calls[(u32)instr->rvalue[1].value.integer];
     for (u32 i = 0; i < call->arg_count; ++i) {
         if (i > 0) {
             cgen_add(cgen, ", ");
@@ -600,8 +601,10 @@ void cgen_generate(CGen* cgen, const Ir* ir)
                 if (i > 0) {
                     cgen_add(cgen, ", ");
                 }
-                const IrLocal* param = &cgen->ir->locals[function->first_local + i];
-                ASSERT(param->is_param, "Expected function params first in local table");
+                const IrLocal* param =
+                    &cgen->ir->locals[function->first_local + i];
+                ASSERT(param->is_param,
+                       "Expected function params first in local table");
                 cgen_add(cgen, cgen_c_type(cgen->ir, param->type));
                 cgen_add(cgen, " ");
                 cgen_add_symbol_name(cgen, param->symbol);
