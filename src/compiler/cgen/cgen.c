@@ -396,7 +396,8 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
     ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
-               instr->lvalue.kind == IR_VALUE_LOCAL,
+               instr->lvalue.kind == IR_VALUE_LOCAL ||
+               instr->lvalue.kind == IR_VALUE_VARIABLE,
            "Expected assignable lvalue");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
@@ -570,13 +571,39 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
-    ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL, "Expected local symbol");
+    ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL ||
+               instr->lvalue.kind == IR_VALUE_VARIABLE,
+           "Expected local or temporary symbol");
     u32 type_index = instr->lvalue.type;
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, type_index, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_typed_value(cgen, &instr->rvalue[0], type_index);
     cgen_addn(cgen, ";");
+}
+
+void cgen_add_branch_false(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add(cgen, "if (!");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, ") goto ");
+    arena_format(&cgen->arena, "L%lld;", instr->rvalue[1].value.integer);
+    cgen_addn(cgen, "");
+}
+
+void cgen_add_jump(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena, "goto L%lld;", instr->rvalue[0].value.integer);
+    cgen_addn(cgen, "");
+}
+
+void cgen_add_label(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena, "L%lld: ;", instr->lvalue.value.integer);
+    cgen_addn(cgen, "");
 }
 
 //------------------------------------------------------------------------------
@@ -681,6 +708,15 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_STRING_FINISH:
             cgen_add_string_finish(cgen, instr);
+            break;
+        case IR_OP_BRANCH_FALSE:
+            cgen_add_branch_false(cgen, instr);
+            break;
+        case IR_OP_JUMP:
+            cgen_add_jump(cgen, instr);
+            break;
+        case IR_OP_LABEL:
+            cgen_add_label(cgen, instr);
             break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");

@@ -274,6 +274,7 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
     case TK_Integer:
     case TK_String:
     case TK_LParen:
+    case TK_on:
         return PQ_Expresssion;
 
     case TK_fn:
@@ -854,6 +855,7 @@ Ast ast_parse(Lexer* lexer)
         .fn_signatures = state.fn_signatures,
         .call_args     = state.call_args,
         .calls         = state.calls,
+        .ons           = state.ons,
     };
 
 error:
@@ -861,7 +863,8 @@ error:
                     .params        = state.params,
                     .fn_signatures = state.fn_signatures,
                     .call_args     = state.call_args,
-                    .calls         = state.calls});
+                    .calls         = state.calls,
+                    .ons           = state.ons});
     return (Ast){0};
 }
 
@@ -875,6 +878,7 @@ void ast_done(Ast* ast)
     array_free(ast->fn_signatures);
     array_free(ast->call_args);
     array_free(ast->calls);
+    array_free(ast->ons);
     *ast = (Ast){0};
 }
 

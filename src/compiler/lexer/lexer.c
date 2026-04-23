@@ -342,6 +342,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             TokenKind kind;
         } keywords[] = {
             {"fn", 2, TK_fn},
+            {"on", 2, TK_on},
+            {"else", 4, TK_else},
             {"return", 6, TK_return},
             {NULL, 0, 0},
         };
@@ -552,7 +554,10 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_ThinArrow:
         return token->offset + 2;
     case TK_fn:
+    case TK_on:
         return token->offset + 2;
+    case TK_else:
+        return token->offset + 4;
     case TK_return:
         return token->offset + 6;
     default:

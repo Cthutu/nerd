@@ -468,3 +468,55 @@ bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report a non-boolean condition in an `on` expression.
+
+bool error_0319_invalid_on_condition(NerdSource source,
+                                     ErrorSpan  span,
+                                     string     actual_type)
+{
+    ErrorInfo error = error_init(319,
+                                 source,
+                                 span,
+                                 "`on` condition must have type `bool`, found "
+                                 "`" STRINGP "`",
+                                 STRINGV(actual_type));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This condition is not boolean");
+    error_add_help(&error,
+                   "Use a `bool` expression here. Comparisons and richer "
+                   "patterns can be added in later milestones.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report mismatched branch result types in an `on` expression.
+
+bool error_0320_on_branch_type_mismatch(NerdSource source,
+                                        ErrorSpan  true_span,
+                                        string     true_type,
+                                        ErrorSpan  false_span,
+                                        string     false_type)
+{
+    ErrorInfo error =
+        error_init(320,
+                   source,
+                   false_span,
+                   "`on` branches must return the same type");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        false_span,
+                        "This branch has type `" STRINGP "`",
+                        STRINGV(false_type));
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        true_span,
+                        "The other branch has type `" STRINGP "`",
+                        STRINGV(true_type));
+    error_add_help(
+        &error, "Make both branches produce exactly the same type.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

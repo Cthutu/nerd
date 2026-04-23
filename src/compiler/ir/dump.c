@@ -39,6 +39,11 @@ internal void ir_render_string(StringBuilder* sb, string text)
     sb_append_char(sb, '"');
 }
 
+internal void ir_render_label(StringBuilder* sb, i64 label_id)
+{
+    sb_format(sb, "L%lld", label_id);
+}
+
 internal void ir_render_value(StringBuilder* sb,
                               const Ir*      ir,
                               const Lexer*   lexer,
@@ -261,6 +266,20 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = string.finish ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            break;
+        case IR_OP_BRANCH_FALSE:
+            sb_append_cstr(&sb, "branch.false ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_append_cstr(&sb, ", ");
+            ir_render_label(&sb, instr->rvalue[1].value.integer);
+            break;
+        case IR_OP_JUMP:
+            sb_append_cstr(&sb, "jump ");
+            ir_render_label(&sb, instr->rvalue[0].value.integer);
+            break;
+        case IR_OP_LABEL:
+            sb_append_cstr(&sb, "label ");
+            ir_render_label(&sb, instr->lvalue.value.integer);
             break;
         case IR_OP_NEGATE:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

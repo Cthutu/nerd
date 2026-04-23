@@ -116,6 +116,8 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
         return true;
 
     case TK_fn:
+    case TK_on:
+    case TK_else:
     case TK_return:
         *out_type = LSP_SEMANTIC_KEYWORD;
         return true;

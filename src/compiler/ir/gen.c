@@ -114,6 +114,20 @@ void ir_add_local(Ir*     ir,
                });
 }
 
+void ir_add_temp_local(Ir* ir, IrValue lvalue, u32 type_index)
+{
+    lvalue.type = type_index;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_LOCAL,
+                   .lvalue = lvalue,
+                   .rvalue = {{.kind = IR_VALUE_INTEGER,
+                               .type = type_index,
+                               .value.integer = 0},
+                              {0}},
+               });
+}
+
 void ir_add_param(Ir* ir, u32 function_index, u32 symbol_handle, u32 type_index)
 {
     array_push(ir->locals,
@@ -254,6 +268,36 @@ void ir_add_return(Ir* ir, IrValue rvalue, u32 rvalue_type)
                (IrInstruction){
                    .op     = IR_OP_RETURN,
                    .rvalue = {rvalue, {0}},
+               });
+}
+
+void ir_add_branch_false(Ir* ir, IrValue condition, u32 condition_type, i64 label)
+{
+    condition.type = condition_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_BRANCH_FALSE,
+                   .rvalue = {condition,
+                              {.kind = IR_VALUE_INTEGER, .value.integer = label}},
+               });
+}
+
+void ir_add_jump(Ir* ir, i64 label)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_JUMP,
+                   .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = label},
+                              {0}},
+               });
+}
+
+void ir_add_label(Ir* ir, i64 label)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_LABEL,
+                   .lvalue = {.kind = IR_VALUE_INTEGER, .value.integer = label},
                });
 }
 
@@ -463,11 +507,20 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
     case AK_StringConcat:
+    case AK_On:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            return ir_node_contains_interpolation(ast, node->a) ||
+                   ir_node_contains_interpolation(ast,
+                                                  on->true_expr_node_index) ||
+                   ir_node_contains_interpolation(ast,
+                                                  on->false_expr_node_index);
+        }
         return ir_node_contains_interpolation(ast, node->a) ||
                ir_node_contains_interpolation(ast, node->b);
     case AK_Call:
@@ -832,6 +885,70 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 lex, ast, sema, node, node_values, next_value_index, ir);
             node_values[node_index] = value;
             return value;
+        }
+
+    case AK_On:
+        {
+            const AstOnInfo* on = &ast->ons[node->b];
+            IrValue condition = ir_lower_node(
+                lex, ast, sema, node->a, node_values, next_value_index, ir);
+            u32 result_type = ir_node_type_index(ast, sema, node_index);
+            bool produces_value = result_type != ir_builtin_type(sema, STK_Void);
+
+            IrValue result = ir_unset_value();
+            if (produces_value) {
+                result = (IrValue){
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = result_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_temp_local(ir, result, result_type);
+            }
+
+            i64 false_label = (i64)(*next_value_index)++;
+            i64 end_label   = (i64)(*next_value_index)++;
+            ir_add_branch_false(
+                ir, condition, ir_node_type_index(ast, sema, node->a), false_label);
+
+            IrValue true_value = ir_lower_node(lex,
+                                               ast,
+                                               sema,
+                                               on->true_expr_node_index,
+                                               node_values,
+                                               next_value_index,
+                                               ir);
+            if (produces_value) {
+                ir_add_assign(ir,
+                              result,
+                              result_type,
+                              true_value,
+                              ir_node_type_index(ast,
+                                                 sema,
+                                                 on->true_expr_node_index));
+            }
+            ir_add_jump(ir, end_label);
+            ir_add_label(ir, false_label);
+
+            IrValue false_value = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                on->false_expr_node_index,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+            if (produces_value) {
+                ir_add_assign(ir,
+                              result,
+                              result_type,
+                              false_value,
+                              ir_node_type_index(ast,
+                                                 sema,
+                                                 on->false_expr_node_index));
+            }
+            ir_add_label(ir, end_label);
+
+            node_values[node_index] = result;
+            return result;
         }
 
     case AK_IntegerPlus:

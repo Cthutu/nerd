@@ -29,6 +29,7 @@
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
+// | AK_On              | Ast index cond    | Ast on-info index               |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
@@ -60,6 +61,7 @@ typedef enum {
     AK_IntegerModulo,
     AK_Call,
     AK_Cast,
+    AK_On,
     AK_TypeFn,
     AK_Expression,
     AK_Statement,
@@ -112,11 +114,17 @@ typedef struct {
 } AstCallInfo;
 
 typedef struct {
+    u32 true_expr_node_index;
+    u32 false_expr_node_index;
+} AstOnInfo;
+
+typedef struct {
     Array(AstNode) nodes;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(AstCallInfo) calls;
+    Array(AstOnInfo) ons;
 } Ast;
 
 Ast  ast_parse(Lexer* lexer);

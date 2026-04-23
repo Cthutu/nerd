@@ -47,6 +47,7 @@ typedef struct {
     Array(AstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(AstCallInfo) calls;
+    Array(AstOnInfo) ons;
 
     // Current top-level expression start
     // u32 expr_start_node_index;

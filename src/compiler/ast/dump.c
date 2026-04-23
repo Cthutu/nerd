@@ -40,6 +40,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Call");
     case AK_Cast:
         return s("Cast");
+    case AK_On:
+        return s("On");
     case AK_TypeFn:
         return s("TypeFn");
     case AK_Expression:
@@ -158,6 +160,17 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Cast:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "value=%u type=%u", node->a, node->b));
+            break;
+        case AK_On:
+            {
+                const AstOnInfo* on = &ast->ons[node->b];
+                row[3]              = table_cell_string(
+                    string_format(&temp_arena,
+                                  "cond=%u true=%u false=%u",
+                                  node->a,
+                                  on->true_expr_node_index,
+                                  on->false_expr_node_index));
+            }
             break;
         case AK_TypeFn:
             row[3] = table_cell_string(

@@ -263,6 +263,7 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
+internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
                                      bool           allow_named_params,
@@ -598,10 +599,54 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
     case TK_fn:
         return cst_parse_fn_expr(state, out_node);
+    case TK_on:
+        return cst_parse_on_expr(state, out_node);
 
     default:
         return false;
     }
+}
+
+internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    u32 condition = 0;
+    if (!cst_parse_expr_bp(state, 0, &condition)) {
+        return false;
+    }
+    if (!cst_consume(state, TK_FatArrow)) {
+        return false;
+    }
+
+    u32 true_expr = 0;
+    if (!cst_parse_expr_bp(state, 0, &true_expr)) {
+        return false;
+    }
+    if (!cst_consume(state, TK_else)) {
+        return false;
+    }
+
+    u32 false_expr = 0;
+    if (!cst_parse_expr_bp(state, 0, &false_expr)) {
+        return false;
+    }
+
+    u32 on_index = (u32)array_count(state->cst.ons);
+    array_push(state->cst.ons,
+               (CstOnInfo){
+                   .true_expr_node_index  = true_expr,
+                   .false_expr_node_index = false_expr,
+               });
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_On,
+                             .token_index = token_index,
+                             .a           = condition,
+                             .b           = on_index,
+                         },
+                         out_node);
 }
 
 //------------------------------------------------------------------------------
@@ -1210,6 +1255,7 @@ void cst_done(Cst* cst)
     array_free(cst->fn_signatures);
     array_free(cst->call_args);
     array_free(cst->calls);
+    array_free(cst->ons);
     *cst = (Cst){0};
 }
 

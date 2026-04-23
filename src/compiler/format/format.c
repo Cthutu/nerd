@@ -141,6 +141,8 @@ internal void format_emit_comment_paragraph(StringBuilder* sb,
 internal int format_expr_precedence(const CstNode* node)
 {
     switch (node->kind) {
+    case CK_On:
+        return 5;
     case CK_IntegerPlus:
     case CK_IntegerMinus:
         return 10;
@@ -311,6 +313,17 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, ".cast(");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
+        break;
+    case CK_On:
+        {
+            const CstOnInfo* on = &cst->ons[node->b];
+            sb_append_cstr(sb, "on ");
+            format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+            sb_append_cstr(sb, " => ");
+            format_emit_expr(sb, cst, lexer, on->true_expr_node_index, 0);
+            sb_append_cstr(sb, " else ");
+            format_emit_expr(sb, cst, lexer, on->false_expr_node_index, 0);
+        }
         break;
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);

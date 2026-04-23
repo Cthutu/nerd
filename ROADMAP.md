@@ -597,6 +597,9 @@ needed earlier.
   - `on` replaces ad hoc `if`-style branching for the language surface.
   - Support the short boolean form:
     - `on (x > 0) => "positive" else "non-positive"`
+  - Current implementation status:
+    - short-form boolean `on <bool-expr> => <expr> else <expr>` is supported
+    - block-form `on value { ... }` is still pending
   - Support the block form:
     - `on size { ... }`
   - Prefer syntax that does not require branch separators when the parser can
@@ -632,6 +635,9 @@ needed earlier.
   - Introduce phi nodes or equivalent explicit typed merge instructions in IR.
   - Keep the IR self-contained so a future VM can execute the same control-flow
     model without semantic side tables.
+  - Current implementation status:
+    - short-form `on` lowers to explicit branch labels, jumps, and a typed
+      temporary merge slot in IR
   - Extend C generation, formatter, LSP, and tests together as `on` lands.
 
 ## Milestone 10: Basic `for` Loops

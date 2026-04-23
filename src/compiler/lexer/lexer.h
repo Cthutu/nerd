@@ -47,6 +47,8 @@ typedef enum {
 
     // Keywords
     TK_fn,
+    TK_on,
+    TK_else,
     TK_return,
 } TokenKind;
 

@@ -28,6 +28,7 @@
 // | CK_IntegerModulo   | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
+// | CK_On              | Condition node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
@@ -56,6 +57,7 @@ typedef enum {
     CK_IntegerModulo,
     CK_Call,
     CK_Cast,
+    CK_On,
     CK_TypeFn,
     CK_FnExpr,
     CK_FnBlock,
@@ -94,6 +96,11 @@ typedef struct {
 } CstCallInfo;
 
 typedef struct {
+    u32 true_expr_node_index;
+    u32 false_expr_node_index;
+} CstOnInfo;
+
+typedef struct {
     Array(CstNode) nodes;
     Array(u64) integers;
     Array(u32) bindings;
@@ -101,6 +108,7 @@ typedef struct {
     Array(CstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(CstCallInfo) calls;
+    Array(CstOnInfo) ons;
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);

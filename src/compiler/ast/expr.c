@@ -41,6 +41,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_Minus:
     case TK_LParen:
     case TK_fn:
+    case TK_on:
         return true;
     default:
         return false;
@@ -213,6 +214,71 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
     }
 }
 
+internal bool ast_parse_on_expr(AstParseState* state,
+                                AstToken       on_token,
+                                u32*           out_node)
+{
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source, ast_token_span(state, &on_token), TK_FatArrow);
+    }
+
+    u32 condition_node = 0;
+    if (!ast_parse_expr_bp(state, 0, &condition_node)) {
+        return false;
+    }
+
+    if (state->token.kind != TK_FatArrow) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_FatArrow,
+                                         state->token.kind);
+    }
+
+    if (!ast_next_token(state) || !ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source, ast_token_span(state, &state->token), TK_else);
+    }
+
+    u32 true_expr_node = 0;
+    if (!ast_parse_expr_bp(state, 0, &true_expr_node)) {
+        return false;
+    }
+
+    if (state->token.kind != TK_else) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_else,
+                                         state->token.kind);
+    }
+
+    if (!ast_next_token(state) || !ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source, ast_token_span(state, &state->token), TK_EOF);
+    }
+
+    u32 false_expr_node = 0;
+    if (!ast_parse_expr_bp(state, 0, &false_expr_node)) {
+        return false;
+    }
+
+    u32 on_index = (u32)array_count(state->ons);
+    array_push(state->ons,
+               (AstOnInfo){
+                   .true_expr_node_index  = true_expr_node,
+                   .false_expr_node_index = false_expr_node,
+               });
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_On,
+                             .token_index = on_token.token_index,
+                             .a           = condition_node,
+                             .b           = on_index,
+                         },
+                         out_node);
+}
+
 // Pratt parsing terminology:
 //
 // - `nud` ("null denotation") parses a token that starts an expression, such
@@ -292,6 +358,8 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         return ast_expect_token(state, TK_RParen);
     case TK_fn:
         return ast_parse_declaration(state, out_node);
+    case TK_on:
+        return ast_parse_on_expr(state, token, out_node);
     default:
         return error_0201_missing_value(
             token.source, ast_token_span(state, &token), token.kind);

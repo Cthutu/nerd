@@ -184,6 +184,14 @@ bool error_0317_non_closure_capture(NerdSource source,
                                     ErrorSpan  span,
                                     string     symbol);
 bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span);
+bool error_0319_invalid_on_condition(NerdSource source,
+                                     ErrorSpan  span,
+                                     string     actual_type);
+bool error_0320_on_branch_type_mismatch(NerdSource source,
+                                        ErrorSpan  true_span,
+                                        string     true_type,
+                                        ErrorSpan  false_span,
+                                        string     false_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system

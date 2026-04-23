@@ -62,6 +62,12 @@ Function-body style is also part of the type rules:
 - thin-arrow function types pair with block bodies and explicit `return`
 - mixing `->` with `=>` is rejected with a dedicated semantic diagnostic
 
+Short-form `on` expressions also participate in semantic typing:
+
+- the condition must have type `bool`
+- both branches must produce exactly the same type
+- no implicit casts are inserted between branches
+
 ## Canonicalisation
 
 `sema_add_type(...)` interns type rows by value. If the same type row already

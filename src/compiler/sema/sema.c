@@ -1221,11 +1221,39 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
         }
         return true;
     case AK_StringConcat:
+    case AK_On:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            return sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          node->a,
+                                          sema) &&
+                   sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          on->true_expr_node_index,
+                                          sema) &&
+                   sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          on->false_expr_node_index,
+                                          sema);
+        }
         return sema_resolve_node_refs(lexer,
                                       ast,
                                       owner_decl_index,
@@ -1375,6 +1403,20 @@ internal void sema_collect_node_deps(const Ast*  ast,
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         return;
+    case AK_On:
+        {
+            const AstOnInfo* on = &ast->ons[node->b];
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, node->a, out_sema);
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, on->true_expr_node_index, out_sema);
+            sema_collect_node_deps(ast,
+                                   sema,
+                                   owner_decl_index,
+                                   on->false_expr_node_index,
+                                   out_sema);
+            return;
+        }
     case AK_Call:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         {
@@ -1985,11 +2027,20 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Cast:
         return sema_node_contains_interpolation(ast, node->a);
     case AK_StringConcat:
+    case AK_On:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            return sema_node_contains_interpolation(ast, node->a) ||
+                   sema_node_contains_interpolation(ast,
+                                                    on->true_expr_node_index) ||
+                   sema_node_contains_interpolation(
+                       ast, on->false_expr_node_index);
+        }
         return sema_node_contains_interpolation(ast, node->a) ||
                sema_node_contains_interpolation(ast, node->b);
     case AK_Call:
@@ -2057,11 +2108,25 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_Cast:
         return sema_find_interpolated_string_node(ast, node->a);
     case AK_StringConcat:
+    case AK_On:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            u32 found = sema_find_interpolated_string_node(ast, node->a);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+            found = sema_find_interpolated_string_node(
+                ast, on->true_expr_node_index);
+            return found != sema_no_decl()
+                       ? found
+                       : sema_find_interpolated_string_node(
+                             ast, on->false_expr_node_index);
+        }
         {
             u32 left = sema_find_interpolated_string_node(ast, node->a);
             return left != sema_no_decl()
@@ -2123,11 +2188,20 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_Cast:
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_StringConcat:
+    case AK_On:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            return sema_validate_interpolated_strings(lexer, ast, sema, node->a) &&
+                   sema_validate_interpolated_strings(
+                       lexer, ast, sema, on->true_expr_node_index) &&
+                   sema_validate_interpolated_strings(
+                       lexer, ast, sema, on->false_expr_node_index);
+        }
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a) &&
                sema_validate_interpolated_strings(lexer, ast, sema, node->b);
     case AK_Call:
@@ -2307,6 +2381,71 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             type_index = target_type;
+        }
+        break;
+
+    case AK_On:
+        {
+            const AstOnInfo* on        = &ast->ons[node->b];
+            u32              bool_type = sema_builtin_type(sema, STK_Bool);
+            u32              condition_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &condition_type)) {
+                return false;
+            }
+            if (condition_type != bool_type) {
+                return error_0319_invalid_on_condition(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->a]),
+                    sema_type_name(sema, &temp_arena, condition_type));
+            }
+
+            u32 true_type = sema_no_type();
+            if (!sema_infer_node_type(lexer,
+                                      ast,
+                                      sema,
+                                      on->true_expr_node_index,
+                                      expected_type,
+                                      &true_type)) {
+                return false;
+            }
+
+            u32 false_expected = expected_type;
+            if (false_expected == sema_no_type() &&
+                sema_type_is_concrete_integer(sema, true_type)) {
+                false_expected = true_type;
+            }
+
+            u32 false_type = sema_no_type();
+            if (!sema_infer_node_type(lexer,
+                                      ast,
+                                      sema,
+                                      on->false_expr_node_index,
+                                      false_expected,
+                                      &false_type)) {
+                return false;
+            }
+
+            if (sema_type_is_concrete_integer(sema, true_type) &&
+                false_type != sema_no_type() &&
+                sema->types[false_type].kind == STK_UntypedInteger) {
+                false_type = true_type;
+            } else if (sema_type_is_concrete_integer(sema, false_type) &&
+                       true_type != sema_no_type() &&
+                       sema->types[true_type].kind == STK_UntypedInteger) {
+                true_type = false_type;
+            }
+
+            if (true_type != false_type) {
+                return error_0320_on_branch_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[on->true_expr_node_index]),
+                    sema_type_name(sema, &temp_arena, true_type),
+                    sema_node_span(lexer, &ast->nodes[on->false_expr_node_index]),
+                    sema_type_name(sema, &temp_arena, false_type));
+            }
+
+            type_index = true_type;
         }
         break;
 
