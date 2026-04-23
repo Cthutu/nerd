@@ -30,6 +30,27 @@ All public error helpers return `bool` so callers can write:
 return error_0300_unknown_symbol(...);
 ```
 
+## Failure Policy
+
+Every failure point while compiling user language source must be one of two
+things:
+
+- a categorised compiler diagnostic, when the source program is invalid or uses
+  unsupported language features
+- an ICE, when an internal compiler invariant is violated and the compiler
+  itself is buggy
+
+Use diagnostics for anything a user can reasonably fix in their source. Use
+`error_ice(...)` only for states that should be impossible after earlier
+compiler phases have done their job.
+
+`help` and `note` messages have different roles:
+
+- `help` is contextual fix guidance. It should point at what the user can change
+  for this specific diagnostic.
+- `note` is static explanatory context. It should explain a rule, limitation, or
+  background fact that is not tailored to one specific fix.
+
 ## Error-Code Ranges
 
 The project keeps phase-specific ranges:
@@ -93,8 +114,9 @@ The usual pattern is:
 1. add the function declaration in [error.h](/home/matt/nerd/src/compiler/error/error.h)
 2. implement the helper in the relevant phase-specific file
 3. attach the right primary and secondary references
-4. add notes or help text if they improve the fix path
-5. add or update `tests/errors/*.e`
-6. verify the LSP diagnostics rendering still makes sense
+4. add contextual help text for likely fixes
+5. add notes for static rule explanations when useful
+6. add or update `tests/errors/*.e`
+7. verify the LSP diagnostics rendering still makes sense
 
 New feature work is not complete until the error path is covered as well.

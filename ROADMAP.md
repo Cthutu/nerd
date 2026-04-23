@@ -65,6 +65,13 @@ From the current codebase and test suite:
   - `0100`-`0199` lexer
   - `0200`-`0299` parser / AST construction
   - `0300`-`0399` semantic analysis
+- Every language-compilation failure point must produce either:
+  - a categorised compiler diagnostic with source spans, useful references, and
+    appropriate notes or help text, or
+  - an ICE when the failure represents a compiler bug or violated internal
+    invariant rather than invalid user source.
+- Use help messages for contextual fix guidance. Use note messages for more
+  static explanatory context that is not tailored to one specific fix.
 - Test artefact clean-up must stay developer-friendly:
   - remove generated intermediate files for passing tests
   - keep generated intermediate files for failing tests, so failures can be
@@ -476,6 +483,8 @@ needed earlier.
 - [ ] 43. Audit and complete compiler error coverage.
   - Keep every compiler error as a structured `ErrorInfo` with a phase-specific
     code.
+  - Audit all compile-language failure points and classify each as either a
+    user-facing diagnostic or an ICE-only compiler invariant failure.
   - Add at least one unit test for every reachable public error category.
   - Cover meaningful distinct occurrences of reused categories when the source
     span, related information, or help text can differ.
