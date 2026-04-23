@@ -8,6 +8,13 @@
 #include <compiler/lexer/lexer.h>
 #include <object/object.h>
 
+#if OS_WINDOWS
+#    include <windows.h>
+#elif OS_POSIX
+#    include <sys/ioctl.h>
+#    include <unistd.h>
+#endif
+
 //------------------------------------------------------------------------------
 
 internal void error_info_done(ErrorInfo* error_info)
@@ -122,6 +129,115 @@ internal usize error_decimal_width(u32 value)
         width++;
     }
     return width;
+}
+
+internal usize error_terminal_width(void)
+{
+#if OS_WINDOWS
+    CONSOLE_SCREEN_BUFFER_INFO info = {0};
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &info)) {
+        return (usize)(info.srWindow.Right - info.srWindow.Left + 1);
+    }
+#elif OS_POSIX
+    struct winsize ws = {0};
+    if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+        return (usize)ws.ws_col;
+    }
+#endif
+
+    cstr columns_env = getenv("COLUMNS");
+    if (columns_env != NULL && columns_env[0] != '\0') {
+        usize width = (usize)strtoull(columns_env, NULL, 10);
+        if (width > 0) {
+            return width;
+        }
+    }
+
+    return 80;
+}
+
+internal void error_print_wrapped(string prefix, string styled_prefix, string text)
+{
+    usize terminal_width = error_terminal_width();
+    usize prefix_width   = prefix.count;
+    usize line_width     =
+        terminal_width > prefix_width ? terminal_width - prefix_width : 1;
+    usize cursor         = 0;
+    bool  first_line     = true;
+
+    while (true) {
+        while (cursor < text.count &&
+               (text.data[cursor] == ' ' || text.data[cursor] == '\t')) {
+            cursor++;
+        }
+
+        if (cursor >= text.count) {
+            if (first_line) {
+                epr(STRINGP "\n", STRINGV(styled_prefix));
+            }
+            return;
+        }
+
+        if (!first_line) {
+            epr("%*s", (int)prefix_width, "");
+        } else {
+            epr(STRINGP, STRINGV(styled_prefix));
+        }
+
+        usize line_start    = cursor;
+        usize probe         = cursor;
+        usize line_len      = 0;
+        usize last_word_end = cursor;
+
+        while (probe < text.count) {
+            if (text.data[probe] == '\n') {
+                last_word_end = probe;
+                break;
+            }
+
+            while (probe < text.count &&
+                   (text.data[probe] == ' ' || text.data[probe] == '\t')) {
+                probe++;
+            }
+            if (probe >= text.count || text.data[probe] == '\n') {
+                break;
+            }
+
+            usize word_end = probe;
+            while (word_end < text.count && text.data[word_end] != ' ' &&
+                   text.data[word_end] != '\t' && text.data[word_end] != '\n') {
+                word_end++;
+            }
+
+            usize word_len = word_end - probe;
+            usize needed   = line_len == 0 ? word_len : line_len + 1 + word_len;
+            if (line_len != 0 && needed > line_width) {
+                break;
+            }
+            if (line_len == 0 && word_len > line_width) {
+                last_word_end = probe + line_width;
+                break;
+            }
+
+            line_len      = needed;
+            last_word_end = word_end;
+            probe         = word_end;
+        }
+
+        if (last_word_end <= line_start) {
+            last_word_end = MIN(line_start + line_width, text.count);
+        }
+
+        epr(STRINGP "\n",
+            STRINGV(string_from(text.data + line_start,
+                                last_word_end - line_start)));
+
+        cursor = last_word_end;
+        if (cursor < text.count && text.data[cursor] == '\n') {
+            cursor++;
+        }
+        first_line = false;
+    }
 }
 
 internal void error_print_gutter_blank(usize gutter_width)
@@ -294,20 +410,28 @@ internal void error_normal_render(const ErrorInfo* error_info)
     // Output the main error message and code
     //
 
+    string prefix        = {0};
+    string styled_prefix = {0};
     if (error_info->kind == ERROR_KIND_RUNTIME) {
-        eprn("%s%s:%s " STRINGP,
-             primary_colour,
-             error_kind_label(error_info->kind),
-             ANSI_RESET,
-             STRINGV(error_info->error_message));
+        prefix = string_format(
+            &temp_arena, "%s: ", error_kind_label(error_info->kind));
+        styled_prefix = string_format(&temp_arena,
+                                      "%s%s:%s ",
+                                      primary_colour,
+                                      error_kind_label(error_info->kind),
+                                      ANSI_RESET);
     } else {
-        eprn("%s%s[%04u]:%s " STRINGP,
-             primary_colour,
-             error_kind_label(error_info->kind),
-             error_info->code,
-             ANSI_RESET,
-             STRINGV(error_info->error_message));
+        prefix = string_format(
+            &temp_arena, "%s[%04u]: ", error_kind_label(error_info->kind),
+            error_info->code);
+        styled_prefix = string_format(&temp_arena,
+                                      "%s%s[%04u]:%s ",
+                                      primary_colour,
+                                      error_kind_label(error_info->kind),
+                                      error_info->code,
+                                      ANSI_RESET);
     }
+    error_print_wrapped(prefix, styled_prefix, error_info->error_message);
 
     bool has_source = error_info->source.source.count > 0 ||
                       error_info->source.source_path.count > 0;
@@ -346,10 +470,10 @@ internal void error_normal_render(const ErrorInfo* error_info)
     //
 
     for (usize i = 0; i < array_count(error_info->notes); i++) {
-        eprn("%snote:%s " STRINGP,
-             ANSI_BOLD_CYAN,
-             ANSI_RESET,
-             STRINGV(error_info->notes[i]));
+        error_print_wrapped(s("note: "),
+                            string_format(
+                                &temp_arena, "%snote:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
+                            error_info->notes[i]);
     }
 
     //
@@ -357,10 +481,10 @@ internal void error_normal_render(const ErrorInfo* error_info)
     //
 
     for (usize i = 0; i < array_count(error_info->help_messages); i++) {
-        eprn("%shelp:%s " STRINGP,
-             ANSI_BOLD_CYAN,
-             ANSI_RESET,
-             STRINGV(error_info->help_messages[i]));
+        error_print_wrapped(s("help: "),
+                            string_format(
+                                &temp_arena, "%shelp:%s ", ANSI_BOLD_CYAN, ANSI_RESET),
+                            error_info->help_messages[i]);
     }
 }
 
