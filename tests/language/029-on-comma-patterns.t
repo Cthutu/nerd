@@ -1,10 +1,9 @@
--- Matches integer values with block-form `on` branches.
+-- Matches multiple integer values in one block-form `on` branch.
 size :: 2
 
 test_branch :: fn (size: u32) -> i32 {
     return on size {
-        0 => 10
-        1 => 20
+        0, 1 => 10
         else => 30
     }
 }
@@ -20,7 +19,7 @@ main :: fn () {
 30
 ¬
 0: 10
-1: 20
+1: 10
 2: 30
 
 ¬
@@ -28,17 +27,15 @@ fn test_branch
 param u32:size
 local $0 = i32:0
 $4 = u32:size == u32:0
-branch.false bool:$4, L2
+branch.false bool:$4, L5
+jump L3
+label L5
+$6 = u32:size == u32:1
+branch.false bool:$6, L2
 label L3
 $0 = i32:10
 jump L1
 label L2
-$7 = u32:size == u32:1
-branch.false bool:$7, L5
-label L6
-$0 = i32:20
-jump L1
-label L5
 $0 = i32:30
 label L1
 return i32:$0
@@ -74,17 +71,15 @@ void init() {}
 int $test_branch(uint32_t $size) {
     int $0 = 0;
     bool $4 = $size == 0;
-    if (!$4) goto L2;
+    if (!$4) goto L5;
+    goto L3;
+    L5: ;
+    bool $6 = $size == 1;
+    if (!$6) goto L2;
     L3: ;
     $0 = 10;
     goto L1;
     L2: ;
-    bool $7 = $size == 1;
-    if (!$7) goto L5;
-    L6: ;
-    $0 = 20;
-    goto L1;
-    L5: ;
     $0 = 30;
     L1: ;
     return $0;
