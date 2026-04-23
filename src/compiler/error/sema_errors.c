@@ -347,12 +347,12 @@ bool error_0314_missing_return(NerdSource source,
                                ErrorSpan  span,
                                string     return_type)
 {
-    ErrorInfo error = error_init(314,
-                                 source,
-                                 span,
-                                 "Missing return for function returning `"
-                                 STRINGP "`",
-                                 STRINGV(return_type));
+    ErrorInfo error =
+        error_init(314,
+                   source,
+                   span,
+                   "Missing return for function returning `" STRINGP "`",
+                   STRINGV(return_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -366,6 +366,46 @@ bool error_0314_missing_return(NerdSource source,
                    "Add `return <expr>` to the function body or remove the "
                    "explicit return type if the function should not produce a "
                    "value.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a program with no valid `main` entry point.
+
+bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(315, source, span, "Missing entry point `main`");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "No `main` function is defined");
+    error_add_note(&error, "Programs currently require a `main` entry point.");
+    error_add_help(
+        &error, "Add `main :: fn () => 0` or another zero-parameter function "
+                "returning `i32`.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a `main` binding that does not have the required entry-point type.
+
+bool error_0316_invalid_entry_point(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     actual_type)
+{
+    ErrorInfo error = error_init(316,
+                                 source,
+                                 span,
+                                 "Invalid type for entry point `main`: found `"
+                                 STRINGP "`",
+                                 STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`main` must be a zero-parameter function returning an integer");
+    error_add_help(
+        &error,
+        "Change `main` so it takes no parameters and returns an integer type.");
     error_render(&error);
     return false;
 }

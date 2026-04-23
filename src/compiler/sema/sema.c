@@ -2110,9 +2110,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_FnDef:
         {
-            const AstNode*         fn_start  = &ast->nodes[node->a];
-            const AstFnSignature*  signature = &ast->fn_signatures[fn_start->a];
-            bool                   has_explicit_return_type =
+            const AstNode*        fn_start  = &ast->nodes[node->a];
+            const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+            bool                  has_explicit_return_type =
                 signature->return_type_node_index != U32_MAX;
             u32 return_type = sema_builtin_type(
                 sema, node->b == AFK_Block ? STK_I32 : STK_UntypedInteger);
@@ -2166,7 +2166,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            Array(u32) param_types          = NULL;
+            Array(u32) param_types = NULL;
             for (u32 i = 0; i < signature->param_count; ++i) {
                 u32 param_type = sema_no_type();
                 if (!sema_resolve_type_node(
@@ -2561,6 +2561,44 @@ internal void sema_fold_constants(const Lexer* lex, Ast* ast, Sema* sema)
     }
 }
 
+internal bool sema_validate_entry_point(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        Sema*        sema)
+{
+    u32 main_symbol = sema_find_symbol_handle_by_name(lexer, s("main"));
+    if (main_symbol == sema_no_decl()) {
+        return error_0315_missing_entry_point(
+            lexer->source, (ErrorSpan){.start = 0, .end = 0});
+    }
+
+    u32 decl_index = sema_find_decl(sema, main_symbol);
+    if (decl_index == sema_no_decl()) {
+        return error_0315_missing_entry_point(
+            lexer->source, (ErrorSpan){.start = 0, .end = 0});
+    }
+
+    const SemaDecl* decl      = &sema->decls[decl_index];
+    u32             type_index = decl->type_index;
+    if (decl->kind != SK_Function || type_index == sema_no_type() ||
+        sema->types[type_index].kind != STK_Function) {
+        return error_0316_invalid_entry_point(lexer->source,
+                                              sema_decl_span(lexer, ast, decl),
+                                              sema_type_name(
+                                                  sema, &temp_arena, type_index));
+    }
+
+    const SemaType* fn_type = &sema->types[type_index];
+    if (fn_type->param_count != 0 ||
+        !sema_type_is_integer(sema, fn_type->return_type)) {
+        return error_0316_invalid_entry_point(lexer->source,
+                                              sema_decl_span(lexer, ast, decl),
+                                              sema_type_name(
+                                                  sema, &temp_arena, type_index));
+    }
+
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Analyse the AST into compact declaration and resolution tables.
 
@@ -2623,6 +2661,10 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
         return false;
     }
     if (!sema_assign_decl_types(lexer, ast, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_validate_entry_point(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

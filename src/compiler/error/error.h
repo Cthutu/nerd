@@ -176,6 +176,10 @@ bool error_0313_argument_count_mismatch(NerdSource source,
 bool error_0314_missing_return(NerdSource source,
                                ErrorSpan  span,
                                string     return_type);
+bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span);
+bool error_0316_invalid_entry_point(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     actual_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system
