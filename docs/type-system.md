@@ -48,6 +48,20 @@ functions therefore have a semantic function type such as `fn (i32, i32) ->
 i32`, and when they are used as runtime values the back end lowers them through
 function-pointer-compatible storage in generated C.
 
+At the current milestone boundary, source-level function-valued annotations also
+reuse that same function type syntax:
+
+- `adder: fn (i32, i32) -> i32 = add`
+
+Explicit `^fn (...) -> ...` pointer syntax is deferred until the wider pointer
+type system is introduced.
+
+Function-body style is also part of the type rules:
+
+- fat-arrow functions infer their return type from the body expression
+- thin-arrow function types pair with block bodies and explicit `return`
+- mixing `->` with `=>` is rejected with a dedicated semantic diagnostic
+
 ## Canonicalisation
 
 `sema_add_type(...)` interns type rows by value. If the same type row already

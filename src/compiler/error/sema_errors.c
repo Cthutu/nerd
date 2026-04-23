@@ -442,3 +442,29 @@ bool error_0317_non_closure_capture(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report use of an explicit return type together with a fat-arrow body.
+
+bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(318,
+                                 source,
+                                 span,
+                                 "Cannot combine an explicit return type with "
+                                 "a fat-arrow body");
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "This function uses `->` for an explicit return type and `=>` for an "
+        "expression body");
+    error_add_note(&error,
+                   "Fat-arrow functions infer their return type from the body "
+                   "expression.");
+    error_add_help(&error,
+                   "Use `fn (...) => expr` for inferred returns, or rewrite "
+                   "the function as `fn (...) -> T { return expr }`.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

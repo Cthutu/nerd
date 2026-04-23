@@ -1,0 +1,85 @@
+main :: fn () {
+    result := add(20, 22)
+    add :: fn (a: i32, b: i32) => a + b
+    return result
+}
+¬
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 1,
+                "character": 14
+            }
+        }
+    }
+]
+¬
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+            "serverInfo": {
+                "name": "Nerd LSP",
+                "version": "0.1.0"
+            },
+            "capabilities": {
+                "textDocumentSync": 1,
+                "hoverProvider": true,
+                "definitionProvider": true,
+                "documentSymbolProvider": true,
+                "semanticTokensProvider": {
+                    "legend": {
+                        "tokenTypes": [
+                            "variable",
+                            "function",
+                            "keyword",
+                            "number",
+                            "operator",
+                            "string"
+                        ],
+                        "tokenModifiers": []
+                    },
+                    "full": true
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "file:///test.n",
+            "diagnostics": []
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+            "uri": "file:///test.n",
+            "range": {
+                "start": {
+                    "line": 2,
+                    "character": 4
+                },
+                "end": {
+                    "line": 2,
+                    "character": 7
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 999,
+        "result": null
+    }
+]

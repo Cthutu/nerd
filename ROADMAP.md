@@ -535,7 +535,7 @@ needed earlier.
   - [X] Update documentation in `docs/compiler-pipeline.md` and
     `docs/type-system.md` as the implementation lands.
 
-## Milestone 8: Functions
+## Milestone 8: Functions (Completed)
 
 - [X] 47. Add function parameters and call arguments.
   - Support typed parameters in both top-level and nested functions.
@@ -543,7 +543,7 @@ needed earlier.
     and tests together.
   - Keep argument count and argument type checking exact and explicit.
 
-- [ ] 48. Support both expression-bodied and block-bodied function forms.
+- [X] 48. Support both expression-bodied and block-bodied function forms.
   - Support inferred-return expression bodies such as:
     - `add :: fn(a: i32, b: i32) => a + b`
   - Support explicit-return block bodies such as:
@@ -564,25 +564,25 @@ needed earlier.
   - Lower nested functions into generated C by flattening lexical names, for
     example `bar` -> `$bar` and nested `foo` inside `bar` -> `$bar$foo`.
 
-- [ ] 50. Add function values and function-pointer-compatible assignment.
+- [X] 50. Add function values and function-pointer-compatible assignment.
   - Constant bindings remain the normal way to name functions.
   - Variable bindings may hold unnamed function values or references to named
     functions.
   - Support examples such as:
     - `pfoo := fn(a: i32, b: i32) => a + b`
     - `pfoo := foo`
-    - `pfoo : ^fn(i32, i32) -> i32 = foo`
-  - Treat named function values as decaying to `^fn(...) -> ...` when used as
-    values.
-  - Calls automatically dereference outer pointer layers for function values.
+    - `pfoo : fn(i32, i32) -> i32 = foo`
+  - Treat named function values as runtime-callable function values with the
+    same semantic signature they expose through hover and diagnostics.
+  - Calls automatically use the function-value lowering emitted by the back
+    end.
   - Allow reassignment only when the full function signature matches exactly.
   - Keep this fully type-safe; no implicit signature conversions.
-  - Current implementation status:
-    - anonymous function values and named-function assignment are supported
-    - generated C lowers these through function-pointer-compatible storage
-    - explicit `^fn(...) -> ...` pointer syntax remains future work
+  - Generated C lowers these through function-pointer-compatible storage.
+  - Defer explicit `^fn(...) -> ...` source syntax until the general
+    pointer-type milestone.
 
-- [ ] 51. Extend scoped declarations and tooling for local function bindings.
+- [X] 51. Extend scoped declarations and tooling for local function bindings.
   - Allow forward references for scoped constant declarations of the form
     `<name> :: <value-or-type>` so declaration order does not matter in a
     scope.

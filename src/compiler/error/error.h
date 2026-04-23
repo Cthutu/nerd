@@ -183,6 +183,7 @@ bool error_0316_invalid_entry_point(NerdSource source,
 bool error_0317_non_closure_capture(NerdSource source,
                                     ErrorSpan  span,
                                     string     symbol);
+bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

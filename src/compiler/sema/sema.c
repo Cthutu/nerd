@@ -881,6 +881,10 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         }
 
         const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_FnStart) {
+            i = node->b + 2;
+            continue;
+        }
         if (node->kind == AK_Block) {
             i = node->b;
             continue;
@@ -2513,6 +2517,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
             bool                  has_explicit_return_type =
                 signature->return_type_node_index != U32_MAX;
+
+            if (node->b == AFK_Expr && has_explicit_return_type) {
+                return error_0318_mixed_function_return_style(
+                    lexer->source, sema_node_span(lexer, node));
+            }
+
             u32 return_type = sema_builtin_type(
                 sema, node->b == AFK_Block ? STK_I32 : STK_UntypedInteger);
 
