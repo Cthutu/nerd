@@ -599,6 +599,7 @@ needed earlier.
     - `on (x > 0) => "positive" else "non-positive"`
   - Current implementation status:
     - short-form boolean `on <bool-expr> => <expr> else <expr>` is supported
+    - source-level boolean literals `true` and `false` are supported
     - block-form `on value { ... }` is still pending
   - Support the block form:
     - `on size { ... }`

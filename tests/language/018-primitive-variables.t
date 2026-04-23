@@ -1,6 +1,6 @@
 -- Declares primitive variables with explicit types and casts.
 greeting: string = "Hello"
-enabled: bool = 1.cast(bool)
+enabled: bool = true
 ratio: f32 = 42.cast(f32)
 weight: f64
 
@@ -20,10 +20,9 @@ return i32:$0
 end
 init
 greeting = string:"Hello"
-$0 = cast i32:1
-enabled = bool:$0
-$1 = cast i32:42
-ratio = f32:$1
+enabled = bool:true
+$0 = cast i32:42
+ratio = f32:$0
 weight = f64:0
 end
 ¬
@@ -37,9 +36,8 @@ int $main() {
 }
 void init() {
     $greeting = (string){.data = (u8*)"Hello", .count = 5};
-    bool $0 = (bool)1;
-    $enabled = $0;
-    float $1 = (float)42;
-    $ratio = $1;
+    $enabled = true;
+    float $0 = (float)42;
+    $ratio = $0;
     $weight = 0.0;
 }

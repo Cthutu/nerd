@@ -16,6 +16,8 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerLiteral");
     case AK_StringLiteral:
         return s("StringLiteral");
+    case AK_BoolLiteral:
+        return s("BoolLiteral");
     case AK_StringConcat:
         return s("StringConcat");
     case AK_InterpPartExpr:
@@ -118,6 +120,9 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_StringLiteral:
             row[3] = table_cell_string(ast_get_string(lexer, node));
+            break;
+        case AK_BoolLiteral:
+            row[3] = table_cell_string(node->a != 0 ? s("true") : s("false"));
             break;
         case AK_StringConcat:
             row[3] = table_cell_string(

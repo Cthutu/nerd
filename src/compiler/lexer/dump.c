@@ -64,6 +64,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `else`");
     case TK_return:
         return string_from_cstr("Keyword `return`");
+    case TK_true:
+        return string_from_cstr("Keyword `true`");
+    case TK_false:
+        return string_from_cstr("Keyword `false`");
     default:
         return string_from_cstr("Unknown");
     }

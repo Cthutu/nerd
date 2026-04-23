@@ -68,6 +68,11 @@ Short-form `on` expressions also participate in semantic typing:
 - both branches must produce exactly the same type
 - no implicit casts are inserted between branches
 
+Source-level boolean values are also available as literal keywords:
+
+- `true`
+- `false`
+
 ## Canonicalisation
 
 `sema_add_type(...)` interns type rows by value. If the same type row already

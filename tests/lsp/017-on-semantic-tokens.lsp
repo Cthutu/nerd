@@ -1,4 +1,4 @@
-enabled: bool = 1.cast(bool)
+enabled: bool = true
 main :: fn () => on enabled => 42 else 7
 ¬
 [
@@ -75,23 +75,8 @@ main :: fn () => on enabled => 42 else 7
                 0,
                 0,
                 7,
-                1,
-                3,
-                0,
-                0,
-                1,
-                1,
                 4,
-                0,
-                0,
-                1,
-                4,
-                0,
-                0,
-                0,
-                5,
-                4,
-                0,
+                2,
                 0,
                 1,
                 0,

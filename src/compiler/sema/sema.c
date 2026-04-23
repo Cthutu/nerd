@@ -1189,6 +1189,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     switch (node->kind) {
     case AK_IntegerLiteral:
     case AK_StringLiteral:
+    case AK_BoolLiteral:
     case AK_ZeroInit:
     case AK_Block:
         return true;
@@ -1390,6 +1391,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
     switch (node->kind) {
     case AK_IntegerLiteral:
     case AK_StringLiteral:
+    case AK_BoolLiteral:
         return;
     case AK_InterpPartExpr:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
@@ -2256,6 +2258,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                          : sema_builtin_type(sema, STK_UntypedInteger);
         break;
 
+    case AK_BoolLiteral:
+        type_index = sema_builtin_type(sema, STK_Bool);
+        break;
+
     case AK_StringLiteral:
     case AK_StringConcat:
         type_index = sema_builtin_type(sema, STK_String);
@@ -2879,6 +2885,11 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
     switch (node->kind) {
     case AK_IntegerLiteral:
         value = (i64)ast_get_integer(lex, node);
+        ok    = true;
+        break;
+
+    case AK_BoolLiteral:
+        value = node->a != 0 ? 1 : 0;
         ok    = true;
         break;
 

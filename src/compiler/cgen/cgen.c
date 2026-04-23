@@ -346,6 +346,12 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
 internal void
 cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
 {
+    if (value->kind == IR_VALUE_INTEGER && type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Bool) {
+        cgen_add(cgen, value->value.integer != 0 ? "true" : "false");
+        return;
+    }
+
     if (value->kind == IR_VALUE_INTEGER && value->value.integer == 0 &&
         !cgen_type_is_integer(cgen, type_index)) {
         cgen_add_zero_value(cgen, type_index);

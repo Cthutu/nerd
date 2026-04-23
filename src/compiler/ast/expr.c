@@ -37,6 +37,8 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_Integer:
     case TK_String:
     case TK_InterpolatedStringStart:
+    case TK_true:
+    case TK_false:
     case TK_Symbol:
     case TK_Minus:
     case TK_LParen:
@@ -311,6 +313,16 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .kind        = AK_StringLiteral,
                 .token_index = token.token_index,
                 .a           = token.value.string_index,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
+    case TK_true:
+    case TK_false:
+        {
+            AstNode node = {
+                .kind        = AK_BoolLiteral,
+                .token_index = token.token_index,
+                .a           = token.kind == TK_true ? 1u : 0u,
             };
             return ast_emit_node(state, node, out_node);
         }

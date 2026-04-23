@@ -540,6 +540,17 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  out_node);
         }
 
+    case TK_true:
+    case TK_false:
+        cst_advance(state);
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_BoolLiteral,
+                                 .token_index = state->token_index - 1,
+                                 .a           = token.kind == TK_true ? 1u : 0u,
+                             },
+                             out_node);
+
     case TK_InterpolatedStringStart:
         return cst_parse_interpolated_string(state, out_node);
 

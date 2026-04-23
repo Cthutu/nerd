@@ -1,6 +1,6 @@
-enabled:bool=1.cast(bool)
+enabled:bool=true
 main::fn()=>on enabled=>42 else 7
 ¬
-enabled: bool = 1.cast(bool)
+enabled: bool = true
 
 main :: fn () => on enabled => 42 else 7

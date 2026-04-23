@@ -1,4 +1,4 @@
-enabled: bool = 1.cast(bool)
+enabled: bool = true
 greeting: string = "Hello"
 ratio: f32 = 42.cast(f32)
 main :: fn () => enabled.cast(i32)

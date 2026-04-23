@@ -50,6 +50,8 @@ typedef enum {
     TK_on,
     TK_else,
     TK_return,
+    TK_true,
+    TK_false,
 } TokenKind;
 
 typedef struct {

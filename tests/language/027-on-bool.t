@@ -1,5 +1,5 @@
 -- Chooses between two values with a short-form boolean `on` expression.
-enabled: bool = 1.cast(bool)
+enabled: bool = true
 
 main :: fn () => on enabled => 42 else 7
 ¬
@@ -19,8 +19,7 @@ label L2
 return i32:$0
 end
 init
-$0 = cast i32:1
-enabled = bool:$0
+enabled = bool:true
 end
 ¬
 bool $enabled;
@@ -35,6 +34,5 @@ int $main() {
     return $0;
 }
 void init() {
-    bool $0 = (bool)1;
-    $enabled = $0;
+    $enabled = true;
 }

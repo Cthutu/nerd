@@ -160,6 +160,11 @@ internal void ir_render_typed_value(StringBuilder* sb,
 {
     ir_render_type_name(sb, ir, type_index);
     sb_append_char(sb, ':');
+    if (type_index != U32_MAX && value->kind == IR_VALUE_INTEGER &&
+        ir->types[type_index].kind == STK_Bool) {
+        sb_append_cstr(sb, value->value.integer != 0 ? "true" : "false");
+        return;
+    }
     ir_render_value(sb, ir, lexer, value);
 }
 

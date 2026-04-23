@@ -227,6 +227,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_IntegerLiteral:
         sb_format(sb, "%u", (u32)cst_get_integer(cst, node));
         break;
+    case CK_BoolLiteral:
+        sb_append_cstr(sb, node->a != 0 ? "true" : "false");
+        break;
     case CK_StringLiteral:
         sb_append_char(sb, '"');
         format_emit_string_text(sb, lexer->strings[node->a]);
