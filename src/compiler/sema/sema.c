@@ -1410,16 +1410,21 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                if (!(branch->flags & AOBF_Else) &&
-                    !sema_resolve_node_refs(lexer,
-                                            ast,
-                                            owner_decl_index,
-                                            current_function_symbol,
-                                            capture_scope_index,
-                                            scope_index,
-                                            branch->pattern_node_index,
-                                            sema)) {
-                    return false;
+                if (!(branch->flags & AOBF_Else)) {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (!sema_resolve_node_refs(
+                                lexer,
+                                ast,
+                                owner_decl_index,
+                                current_function_symbol,
+                                capture_scope_index,
+                                scope_index,
+                                branch->pattern_node_index + pattern,
+                                sema)) {
+                            return false;
+                        }
+                    }
                 }
                 if (!sema_resolve_node_refs(lexer,
                                             ast,
@@ -1593,11 +1598,15 @@ internal void sema_collect_node_deps(const Ast*  ast,
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
                 if (!(branch->flags & AOBF_Else)) {
-                    sema_collect_node_deps(ast,
-                                           sema,
-                                           owner_decl_index,
-                                           branch->pattern_node_index,
-                                           out_sema);
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        sema_collect_node_deps(ast,
+                                               sema,
+                                               owner_decl_index,
+                                               branch->pattern_node_index +
+                                                   pattern,
+                                               out_sema);
+                    }
                 }
                 sema_collect_node_deps(ast,
                                        sema,
@@ -2232,10 +2241,15 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                if (!(branch->flags & AOBF_Else) &&
-                    sema_node_contains_interpolation(ast,
-                                                     branch->pattern_node_index)) {
-                    return true;
+                if (!(branch->flags & AOBF_Else)) {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (sema_node_contains_interpolation(
+                                ast,
+                                branch->pattern_node_index + pattern)) {
+                            return true;
+                        }
+                    }
                 }
                 if (sema_node_contains_interpolation(ast,
                                                      branch->expr_node_index)) {
@@ -2327,10 +2341,13 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
                 if (!(branch->flags & AOBF_Else)) {
-                    found = sema_find_interpolated_string_node(
-                        ast, branch->pattern_node_index);
-                    if (found != sema_no_decl()) {
-                        return found;
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        found = sema_find_interpolated_string_node(
+                            ast, branch->pattern_node_index + pattern);
+                        if (found != sema_no_decl()) {
+                            return found;
+                        }
                     }
                 }
                 found =
@@ -2416,10 +2433,17 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                if (!(branch->flags & AOBF_Else) &&
-                    !sema_validate_interpolated_strings(
-                        lexer, ast, sema, branch->pattern_node_index)) {
-                    return false;
+                if (!(branch->flags & AOBF_Else)) {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (!sema_validate_interpolated_strings(
+                                lexer,
+                                ast,
+                                sema,
+                                branch->pattern_node_index + pattern)) {
+                            return false;
+                        }
+                    }
                 }
                 if (!sema_validate_interpolated_strings(
                         lexer, ast, sema, branch->expr_node_index)) {
@@ -2655,21 +2679,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
                 if (!(branch->flags & AOBF_Else)) {
-                    u32 pattern_type = sema_no_type();
-                    if (!sema_infer_node_type(lexer,
-                                              ast,
-                                              sema,
-                                              branch->pattern_node_index,
-                                              scrutinee_type,
-                                              &pattern_type)) {
-                        return false;
-                    }
-                    if (!sema_expr_is_constantish(
-                            ast, sema, branch->pattern_node_index)) {
-                        return error_0322_non_constant_on_pattern(
-                            lexer->source,
-                            sema_node_span(
-                                lexer, &ast->nodes[branch->pattern_node_index]));
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        u32 pattern_node = branch->pattern_node_index + pattern;
+                        u32 pattern_type = sema_no_type();
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  pattern_node,
+                                                  scrutinee_type,
+                                                  &pattern_type)) {
+                            return false;
+                        }
+                        if (!sema_expr_is_constantish(ast, sema, pattern_node)) {
+                            return error_0322_non_constant_on_pattern(
+                                lexer->source,
+                                sema_node_span(
+                                    lexer, &ast->nodes[pattern_node]));
+                        }
                     }
                 }
 

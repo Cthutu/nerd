@@ -270,8 +270,23 @@ internal bool ast_parse_on_expr(AstParseState* state,
                         TK_RBrace);
                 }
             } else {
-                if (!ast_parse_expr_bp(state, 0, &branch.pattern_node_index)) {
-                    return false;
+                branch.pattern_node_index = (u32)array_count(state->nodes);
+                branch.pattern_count      = 0;
+                for (;;) {
+                    u32 ignored_pattern = 0;
+                    if (!ast_parse_expr_bp(state, 0, &ignored_pattern)) {
+                        return false;
+                    }
+                    ++branch.pattern_count;
+                    if (state->token.kind != TK_Comma) {
+                        break;
+                    }
+                    if (!ast_next_token(state) || !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_FatArrow);
+                    }
                 }
                 if (state->token.kind != TK_FatArrow) {
                     return error_0203_expected_token(

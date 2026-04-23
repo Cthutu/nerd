@@ -648,8 +648,20 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     return false;
                 }
             } else {
-                if (!cst_parse_expr_bp(state, 0, &branch.pattern_node_index) ||
-                    !cst_consume(state, TK_FatArrow)) {
+                branch.pattern_node_index = (u32)array_count(state->cst.nodes);
+                branch.pattern_count      = 0;
+                for (;;) {
+                    u32 ignored_pattern = 0;
+                    if (!cst_parse_expr_bp(state, 0, &ignored_pattern)) {
+                        return false;
+                    }
+                    ++branch.pattern_count;
+                    if (cst_current_token(state).kind != TK_Comma) {
+                        break;
+                    }
+                    cst_advance(state);
+                }
+                if (!cst_consume(state, TK_FatArrow)) {
                     return false;
                 }
             }

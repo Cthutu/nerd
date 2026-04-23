@@ -614,7 +614,8 @@ needed earlier.
   - Support `else => ...` in block form for consistency with other branches.
   - Current implementation status:
     - simple constant value branches are supported
-    - range and comma-pattern branches are still pending
+    - comma-separated value alternatives in one branch are supported
+    - range branches are still pending
   - Support comma-separated alternative values in one branch.
   - Support exclusive and inclusive integer ranges through `..<` and `..=`.
   - Keep exact type matching throughout; do not add implicit casts.

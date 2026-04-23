@@ -344,8 +344,17 @@ internal void format_emit_expr(StringBuilder* sb,
                 if (branch->flags & COBF_Else) {
                     sb_append_cstr(sb, "else");
                 } else {
-                    format_emit_expr(
-                        sb, cst, lexer, branch->pattern_node_index, 0);
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (pattern > 0) {
+                            sb_append_cstr(sb, ", ");
+                        }
+                        format_emit_expr(sb,
+                                         cst,
+                                         lexer,
+                                         branch->pattern_node_index + pattern,
+                                         0);
+                    }
                 }
                 sb_append_cstr(sb, " => ");
                 format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);

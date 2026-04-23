@@ -118,6 +118,7 @@ typedef struct {
 typedef struct {
     u32 pattern_node_index;
     u32 expr_node_index;
+    u32 pattern_count;
     u32 flags;
 } AstOnBranch;
 

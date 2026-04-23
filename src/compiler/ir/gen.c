@@ -540,10 +540,15 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                if (!(branch->flags & AOBF_Else) &&
-                    ir_node_contains_interpolation(ast,
-                                                   branch->pattern_node_index)) {
-                    return true;
+                if (!(branch->flags & AOBF_Else)) {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (ir_node_contains_interpolation(
+                                ast,
+                                branch->pattern_node_index + pattern)) {
+                            return true;
+                        }
+                    }
                 }
                 if (ir_node_contains_interpolation(ast, branch->expr_node_index)) {
                     return true;
@@ -951,29 +956,46 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                             next_label);
                     }
                 } else if (!(branch->flags & AOBF_Else)) {
-                    IrValue pattern = ir_lower_node(lex,
-                                                    ast,
-                                                    sema,
-                                                    branch->pattern_node_index,
-                                                    node_values,
-                                                    next_value_index,
-                                                    ir);
                     u32 bool_type = ir_builtin_type(sema, STK_Bool);
-                    IrValue matches = {
-                        .kind          = IR_VALUE_VARIABLE,
-                        .type          = bool_type,
-                        .value.integer = (i64)(*next_value_index)++,
-                    };
-                    ir_add_equal(ir,
-                                 matches,
-                                 bool_type,
-                                 scrutinee,
-                                 ir_node_type_index(ast, sema, node->a),
-                                 pattern,
-                                 ir_node_type_index(ast,
-                                                    sema,
-                                                    branch->pattern_node_index));
-                    ir_add_branch_false(ir, matches, bool_type, next_label);
+                    i64 match_label = (i64)(*next_value_index)++;
+                    for (u32 pattern_index = 0;
+                         pattern_index < branch->pattern_count;
+                         ++pattern_index) {
+                        u32 pattern_node =
+                            branch->pattern_node_index + pattern_index;
+                        IrValue pattern = ir_lower_node(lex,
+                                                        ast,
+                                                        sema,
+                                                        pattern_node,
+                                                        node_values,
+                                                        next_value_index,
+                                                        ir);
+                        IrValue matches = {
+                            .kind          = IR_VALUE_VARIABLE,
+                            .type          = bool_type,
+                            .value.integer = (i64)(*next_value_index)++,
+                        };
+                        ir_add_equal(ir,
+                                     matches,
+                                     bool_type,
+                                     scrutinee,
+                                     ir_node_type_index(ast, sema, node->a),
+                                     pattern,
+                                     ir_node_type_index(
+                                         ast, sema, pattern_node));
+
+                        i64 mismatch_label = next_label;
+                        if (pattern_index + 1 < branch->pattern_count) {
+                            mismatch_label = (i64)(*next_value_index)++;
+                        }
+                        ir_add_branch_false(
+                            ir, matches, bool_type, mismatch_label);
+                        if (pattern_index + 1 < branch->pattern_count) {
+                            ir_add_jump(ir, match_label);
+                            ir_add_label(ir, mismatch_label);
+                        }
+                    }
+                    ir_add_label(ir, match_label);
                 }
 
                 IrValue branch_value = ir_lower_node(lex,
