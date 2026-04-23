@@ -73,14 +73,14 @@ typedef struct {
     SemaLocalKind kind;
     u8            _pad0;
     u16           _pad1;
-    u32 symbol_handle;
-    u32 owner_decl_index;
-    u32 scope_index;
-    u32 decl_node_index;
-    u32 type_node_index;
-    u32 value_node_index;
-    u32 type_index;
-    u32 lowered_symbol_handle;
+    u32           symbol_handle;
+    u32           owner_decl_index;
+    u32           scope_index;
+    u32           decl_node_index;
+    u32           type_node_index;
+    u32           value_node_index;
+    u32           type_index;
+    u32           lowered_symbol_handle;
 } SemaLocal;
 
 typedef struct {

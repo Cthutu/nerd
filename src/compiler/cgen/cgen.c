@@ -216,10 +216,11 @@ cgen_add_decl_type_and_name(CGen* cgen, u32 type_index, const IrValue* value)
             if (i > 0) {
                 cgen_add(cgen, ", ");
             }
-            cgen_add(cgen,
-                     cgen_c_type(cgen->ir,
-                                 cgen->ir->type_param_types
-                                     [fn_type->first_param_type + i]));
+            cgen_add(
+                cgen,
+                cgen_c_type(
+                    cgen->ir,
+                    cgen->ir->type_param_types[fn_type->first_param_type + i]));
         }
         cgen_add(cgen, ")");
         return;
@@ -636,8 +637,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
                 cgen_add_decl_type_and_name(
                     cgen,
                     param->type,
-                    &(IrValue){.kind = IR_VALUE_LOCAL,
-                               .type = param->type,
+                    &(IrValue){.kind          = IR_VALUE_LOCAL,
+                               .type          = param->type,
                                .value.integer = param->symbol});
             }
             cgen_addn(cgen, ") {");

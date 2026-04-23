@@ -369,8 +369,7 @@ internal bool format_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
-           node->kind == CK_Variable ||
-           node->kind == CK_Assign;
+           node->kind == CK_Variable || node->kind == CK_Assign;
 }
 
 internal void format_emit_fn_signature(StringBuilder* sb,

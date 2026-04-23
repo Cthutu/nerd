@@ -806,41 +806,38 @@ internal bool sema_local_is_decl_binding(const SemaLocal* local)
 }
 
 internal u32 sema_mangle_child_function_symbol(const Lexer* lexer,
-                                               u32          parent_symbol_handle,
-                                               string       child_name)
+                                               u32    parent_symbol_handle,
+                                               string child_name)
 {
     string owner   = lex_symbol(lexer, parent_symbol_handle);
-    string mangled = string_format(&temp_arena,
-                                   STRINGP "$" STRINGP,
-                                   STRINGV(owner),
-                                   STRINGV(child_name));
+    string mangled = string_format(
+        &temp_arena, STRINGP "$" STRINGP, STRINGV(owner), STRINGV(child_name));
     InternAddResult ignored = 0;
     return lex_add_symbol((Lexer*)lexer, mangled, &ignored);
 }
 
 internal u32 sema_mangle_nested_function_symbol(const Lexer* lexer,
-                                                u32          parent_symbol_handle,
-                                                u32          symbol_handle)
+                                                u32 parent_symbol_handle,
+                                                u32 symbol_handle)
 {
     return sema_mangle_child_function_symbol(
         lexer, parent_symbol_handle, lex_symbol(lexer, symbol_handle));
 }
 
 internal u32 sema_mangle_anonymous_function_symbol(const Lexer* lexer,
-                                                   u32          parent_symbol_handle,
-                                                   u32          fn_node_index)
+                                                   u32 parent_symbol_handle,
+                                                   u32 fn_node_index)
 {
     string suffix = string_format(&temp_arena, "anon%u", fn_node_index);
     return sema_mangle_child_function_symbol(
         lexer, parent_symbol_handle, suffix);
 }
 
-internal void sema_mark_fn_signature_type_nodes(const Ast* ast,
-                                                Sema*      sema,
-                                                u32        fn_node_index)
+internal void
+sema_mark_fn_signature_type_nodes(const Ast* ast, Sema* sema, u32 fn_node_index)
 {
-    const AstNode* fn_def   = &ast->nodes[fn_node_index];
-    const AstNode* fn_start = &ast->nodes[fn_def->a];
+    const AstNode*        fn_def    = &ast->nodes[fn_node_index];
+    const AstNode*        fn_start  = &ast->nodes[fn_def->a];
     const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
     for (u32 i = 0; i < signature->param_count; ++i) {
         sema_mark_type_expr_nodes(
@@ -868,11 +865,11 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
 internal bool sema_collect_block_statements(const Lexer* lexer,
                                             const Ast*   ast,
                                             u32          owner_decl_index,
-                                            u32          current_function_symbol,
-                                            u32          scope_index,
-                                            u32          first_node,
-                                            u32          end_node,
-                                            Sema*        sema)
+                                            u32   current_function_symbol,
+                                            u32   scope_index,
+                                            u32   first_node,
+                                            u32   end_node,
+                                            Sema* sema)
 {
     for (u32 i = first_node; i < end_node;) {
         if (sema->node_is_type_expr[i]) {
@@ -903,24 +900,24 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             value            = &ast->nodes[value_node_index];
         }
 
-        u32 duplicate_local = sema_find_local_in_scope(sema, scope_index, node->a);
+        u32 duplicate_local =
+            sema_find_local_in_scope(sema, scope_index, node->a);
         if (duplicate_local != sema_no_local()) {
             const SemaLocal* previous = &sema->locals[duplicate_local];
-            return error_0301_duplicate_binding(lexer->source,
-                                                sema_node_span(lexer, node),
-                                                lex_symbol(lexer, node->a),
-                                                sema_local_span(
-                                                    lexer, ast, previous));
+            return error_0301_duplicate_binding(
+                lexer->source,
+                sema_node_span(lexer, node),
+                lex_symbol(lexer, node->a),
+                sema_local_span(lexer, ast, previous));
         }
 
         SemaLocalKind kind = ast->nodes[value_node_index].kind == AK_FnDef
                                  ? SLK_Function
                                  : SLK_Constant;
-        u32 lowered_symbol_handle =
-            kind == SLK_Function
-                ? sema_mangle_nested_function_symbol(
-                      lexer, current_function_symbol, node->a)
-                : node->a;
+        u32           lowered_symbol_handle =
+            kind == SLK_Function ? sema_mangle_nested_function_symbol(
+                                       lexer, current_function_symbol, node->a)
+                                           : node->a;
 
         if (type_node_index != sema_no_type()) {
             sema_mark_type_expr_nodes(ast, sema, type_node_index);
@@ -928,14 +925,14 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
 
         array_push(sema->locals,
                    (SemaLocal){
-                       .kind             = kind,
-                       .symbol_handle    = node->a,
-                       .owner_decl_index = owner_decl_index,
-                       .scope_index      = scope_index,
-                       .decl_node_index  = i,
-                       .type_node_index  = type_node_index,
-                       .value_node_index = value_node_index,
-                       .type_index       = sema_no_type(),
+                       .kind                  = kind,
+                       .symbol_handle         = node->a,
+                       .owner_decl_index      = owner_decl_index,
+                       .scope_index           = scope_index,
+                       .decl_node_index       = i,
+                       .type_node_index       = type_node_index,
+                       .value_node_index      = value_node_index,
+                       .type_index            = sema_no_type(),
                        .lowered_symbol_handle = lowered_symbol_handle,
                    });
         sema->node_local_indices[i] = (u32)array_count(sema->locals) - 1;
@@ -1030,14 +1027,14 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
 
             array_push(sema->locals,
                        (SemaLocal){
-                           .kind             = SLK_Variable,
-                           .symbol_handle    = node->a,
-                           .owner_decl_index = owner_decl_index,
-                           .scope_index      = scope_index,
-                           .decl_node_index  = i,
-                           .type_node_index  = type_node_index,
-                           .value_node_index = value_node_index,
-                           .type_index       = sema_no_type(),
+                           .kind                  = SLK_Variable,
+                           .symbol_handle         = node->a,
+                           .owner_decl_index      = owner_decl_index,
+                           .scope_index           = scope_index,
+                           .decl_node_index       = i,
+                           .type_node_index       = type_node_index,
+                           .value_node_index      = value_node_index,
+                           .type_index            = sema_no_type(),
                            .lowered_symbol_handle = node->a,
                        });
             sema->node_local_indices[i] = (u32)array_count(sema->locals) - 1;
@@ -1066,15 +1063,14 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                 }
                 sema->node_decl_indices[i] = decl_index;
             }
-            if (!sema_resolve_node_refs(
-                    lexer,
-                    ast,
-                    owner_decl_index,
-                    current_function_symbol,
-                    sema_no_scope(),
-                    scope_index,
-                    node->b,
-                    sema)) {
+            if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        sema_no_scope(),
+                                        scope_index,
+                                        node->b,
+                                        sema)) {
                 return false;
             }
             i++;
@@ -1145,14 +1141,14 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
         }
         array_push(sema->locals,
                    (SemaLocal){
-                       .kind             = SLK_Param,
-                       .symbol_handle    = param->symbol_handle,
-                       .owner_decl_index = owner_decl_index,
-                       .scope_index      = scope_index,
-                       .decl_node_index  = sema_no_decl(),
-                       .type_node_index  = param->type_node_index,
-                       .value_node_index = sema_no_decl(),
-                       .type_index       = param_type,
+                       .kind                  = SLK_Param,
+                       .symbol_handle         = param->symbol_handle,
+                       .owner_decl_index      = owner_decl_index,
+                       .scope_index           = scope_index,
+                       .decl_node_index       = sema_no_decl(),
+                       .type_node_index       = param->type_node_index,
+                       .value_node_index      = sema_no_decl(),
+                       .type_index            = param_type,
                        .lowered_symbol_handle = param->symbol_handle,
                    });
         sema->scopes[scope_index].local_count++;
@@ -1197,15 +1193,14 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_Block:
         return true;
     case AK_InterpPartExpr:
-        return sema_resolve_node_refs(
-            lexer,
-            ast,
-            owner_decl_index,
-            current_function_symbol,
-            capture_scope_index,
-            scope_index,
-            node->a,
-            sema);
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema);
     case AK_InterpolatedString:
         if (owner_decl_index == sema_no_decl() ||
             sema->decls[owner_decl_index].kind != SK_Function) {
@@ -1213,15 +1208,14 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 lexer->source, sema_node_span(lexer, node));
         }
         for (u32 i = node->a; i < node->b; ++i) {
-            if (!sema_resolve_node_refs(
-                    lexer,
-                    ast,
-                    owner_decl_index,
-                    current_function_symbol,
-                    capture_scope_index,
-                    scope_index,
-                    i,
-                    sema)) {
+            if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        capture_scope_index,
+                                        scope_index,
+                                        i,
+                                        sema)) {
                 return false;
             }
         }
@@ -1232,35 +1226,32 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
-        return sema_resolve_node_refs(
-                   lexer,
-                   ast,
-                   owner_decl_index,
-                   current_function_symbol,
-                   capture_scope_index,
-                   scope_index,
-                   node->a,
-                   sema) &&
-               sema_resolve_node_refs(
-                   lexer,
-                   ast,
-                   owner_decl_index,
-                   current_function_symbol,
-                   capture_scope_index,
-                   scope_index,
-                   node->b,
-                   sema);
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema) &&
+               sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->b,
+                                      sema);
     case AK_Call:
         {
-            if (!sema_resolve_node_refs(
-                    lexer,
-                    ast,
-                    owner_decl_index,
-                    current_function_symbol,
-                    capture_scope_index,
-                    scope_index,
-                    node->a,
-                    sema)) {
+            if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        capture_scope_index,
+                                        scope_index,
+                                        node->a,
+                                        sema)) {
                 return false;
             }
             const AstCallInfo* call = &ast->calls[node->b];
@@ -1283,15 +1274,14 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_Expression:
     case AK_Statement:
     case AK_Return:
-        return sema_resolve_node_refs(
-            lexer,
-            ast,
-            owner_decl_index,
-            current_function_symbol,
-            capture_scope_index,
-            scope_index,
-            node->a,
-            sema);
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema);
     case AK_SymbolRef:
         if (sema->node_is_type_expr[node_index]) {
             return true;
@@ -1860,18 +1850,19 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
 
     AstNode* bind_node = &ast->nodes[local->decl_node_index];
     if (ast_has_flag(bind_node, ANF_ConstBusy)) {
-        return error_0302_dependency_cycle(lexer->source,
-                                           sema_local_span(lexer, ast, local),
-                                           lex_symbol(lexer, local->symbol_handle),
-                                           sema_local_span(lexer, ast, local),
-                                           lex_symbol(lexer, local->symbol_handle));
+        return error_0302_dependency_cycle(
+            lexer->source,
+            sema_local_span(lexer, ast, local),
+            lex_symbol(lexer, local->symbol_handle),
+            sema_local_span(lexer, ast, local),
+            lex_symbol(lexer, local->symbol_handle));
     }
 
     ast_set_flag(bind_node, ANF_ConstBusy);
 
-    u32 annotated = sema_no_type();
-    u32 inferred  = sema_no_type();
-    bool ok       = true;
+    u32  annotated = sema_no_type();
+    u32  inferred  = sema_no_type();
+    bool ok        = true;
 
     if (local->type_node_index != sema_no_type() &&
         !sema_resolve_type_node(
@@ -1880,22 +1871,17 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     }
 
     if (ok && local->value_node_index != sema_no_decl() &&
-        !sema_infer_node_type(lexer,
-                              ast,
-                              sema,
-                              local->value_node_index,
-                              annotated,
-                              &inferred)) {
+        !sema_infer_node_type(
+            lexer, ast, sema, local->value_node_index, annotated, &inferred)) {
         ok = false;
     }
 
     if (ok) {
-        local->type_index =
-            annotated != sema_no_type()
-                ? annotated
-                : (local->kind == SLK_Function
-                       ? inferred
-                       : sema_materialise_type(sema, inferred));
+        local->type_index = annotated != sema_no_type()
+                                ? annotated
+                                : (local->kind == SLK_Function
+                                       ? inferred
+                                       : sema_materialise_type(sema, inferred));
         sema->node_type_indices[local->decl_node_index] = local->type_index;
         *out_type_index                                 = local->type_index;
     }
@@ -2253,8 +2239,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 break;
             }
             if (sema->node_local_indices[node_index] != sema_no_local()) {
-                u32              local_index = sema->node_local_indices[node_index];
-                const SemaLocal* local       = &sema->locals[local_index];
+                u32 local_index        = sema->node_local_indices[node_index];
+                const SemaLocal* local = &sema->locals[local_index];
                 if (sema_local_is_decl_binding(local) &&
                     local->type_index == sema_no_type()) {
                     if (!sema_infer_local_binding_type(
@@ -2281,7 +2267,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_Bind:
         {
             u32 local_index = sema->node_local_indices[node_index];
-            ASSERT(local_index != sema_no_local(), "Expected resolved local bind");
+            ASSERT(local_index != sema_no_local(),
+                   "Expected resolved local bind");
             if (!sema_infer_local_binding_type(
                     lexer, ast, sema, local_index, &type_index)) {
                 return false;
@@ -2919,10 +2906,12 @@ internal bool sema_fold_node(const Lexer* lex,
                 {
                     if (out_sema->node_local_indices[frame->node_index] !=
                         sema_no_local()) {
-                        const SemaLocal* local = &sema->locals
-                            [out_sema->node_local_indices[frame->node_index]];
+                        const SemaLocal* local =
+                            &sema->locals[out_sema->node_local_indices
+                                              [frame->node_index]];
                         if (local->kind == SLK_Constant) {
-                            sema_push_fold_frame(&stack, local->value_node_index);
+                            sema_push_fold_frame(&stack,
+                                                 local->value_node_index);
                         }
                         break;
                     }
