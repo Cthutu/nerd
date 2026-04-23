@@ -40,6 +40,7 @@ From the current codebase and test suite:
 - Use British spelling throughout code, comments, tests, and documentation.
   This applies to identifiers and filenames where practical, so prefer names
   such as `analyse`, `optimise`, `behaviour`, and `initialise`.
+- Use British spelling in git commit messages as well.
 - In generated C, emit a leading `$` prefix only for C symbols that correspond
   directly to Nerd-language names.
 - Keep hidden runtime/compiler helper names such as `init` unprefixed.
