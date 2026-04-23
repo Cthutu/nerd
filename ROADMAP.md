@@ -471,6 +471,51 @@ needed earlier.
   - Add error tests for invalid interpolation forms and unsupported types.
   - Extend tooling surfaces at the same time as the syntax lands.
 
+## Milestone 7: Scopes, Blocks, And Coverage Hardening
+
+- [ ] 43. Audit and complete compiler error coverage.
+  - Keep every compiler error as a structured `ErrorInfo` with a phase-specific
+    code.
+  - Add at least one unit test for every reachable public error category.
+  - Cover meaningful distinct occurrences of reused categories when the source
+    span, related information, or help text can differ.
+  - Current known gaps include hard-to-trigger or currently untested categories
+    such as `0101`, `0102`, `0104`, `0105`, `0200`, and `0205`.
+  - Extend LSP diagnostic transcript coverage for semantic errors that editor
+    users are likely to hit, rather than only relying on JSON error tests.
+  - Keep error tests under `tests/errors` as the primary structured diagnostic
+    coverage.
+
+- [ ] 44. Introduce lexical variable scopes in semantic analysis.
+  - Replace the current function-wide local lookup with explicit scope rows.
+  - Keep scope data in semantic side tables; do not enlarge AST nodes for scope
+    ownership.
+  - Track parent scope, declaration order, and local ownership so lookups are
+    lexical and declaration-order aware.
+  - Decide and document whether inner scopes may shadow outer locals.
+  - Add error tests for duplicate locals in the same scope, invalid references
+    outside scope, and references before declaration.
+  - Add LSP tests for hover/definition when the same name exists in different
+    scopes.
+
+- [ ] 45. Add arbitrary block statements.
+  - Support standalone `{ ... }` blocks inside function bodies.
+  - Treat each block as a lexical scope boundary.
+  - Allow statements already supported in function bodies inside nested blocks:
+    variable declarations, assignments, expression statements, and returns.
+  - Define return behaviour for nested blocks, including whether later
+    statements become unreachable diagnostics in a future milestone.
+  - Extend IR generation so block scopes do not require CGen or future VM back
+    ends to ask semantic side tables for local lifetime information.
+
+- [ ] 46. Keep formatter and LSP work synchronised with scoped blocks.
+  - Add formatter snapshots for nested blocks, indentation, locals, assignments,
+    and returns.
+  - Add LSP document-symbol, semantic-token, hover, definition, and diagnostic
+    tests for scoped locals.
+  - Update documentation in `docs/compiler-pipeline.md`,
+    `docs/type-system.md`, and `docs/testing.md` as the implementation lands.
+
 ## Future Ideas
 
 These items are worth keeping visible, but they are not assigned to a numbered
