@@ -43,6 +43,10 @@ typedef struct {
 
     // Output
     Array(AstNode) nodes;
+    Array(AstParam) params;
+    Array(AstFnSignature) fn_signatures;
+    Array(u32) call_args;
+    Array(AstCallInfo) calls;
 
     // Current top-level expression start
     // u32 expr_start_node_index;
@@ -56,6 +60,7 @@ typedef struct {
 
 bool ast_peek_token(AstParseState* state);
 bool ast_next_token(AstParseState* state);
+TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead);
 
 //------------------------------------------------------------------------------
 // Shared parsing utilities for spans, node emission, and operator metadata.
@@ -78,6 +83,11 @@ bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index);
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node);
 bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node);
 bool ast_parse_type(AstParseState* state, u32* out_node);
+bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index);
+bool ast_parse_fn_signature(AstParseState* state,
+                            bool           allow_named_params,
+                            bool           require_return_type,
+                            u32*           out_signature_index);
 bool ast_parse_variable(AstParseState* state, u32* out_node);
 bool ast_parse_assignment(AstParseState* state, u32* out_node);
 

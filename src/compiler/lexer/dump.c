@@ -38,6 +38,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("LeftParen `(`");
     case TK_RParen:
         return string_from_cstr("RightParen `)`");
+    case TK_Comma:
+        return string_from_cstr("Comma `,`");
     case TK_LBrace:
         return string_from_cstr("LeftBrace `{`");
     case TK_RBrace:

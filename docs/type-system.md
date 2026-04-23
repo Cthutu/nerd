@@ -25,8 +25,8 @@ Each semantic type is stored as a compact `SemaType` row:
 
 - `kind`
 - `param_count`
-- `a`
-- `b`
+- `first_param_type`
+- `return_type`
 
 The current `SemaTypeKind` set includes:
 
@@ -38,8 +38,9 @@ The current `SemaTypeKind` set includes:
 - floating-point primitives `f32` and `f64`
 - function types
 
-Function types currently use the payload fields to encode parameter and return
-type indices. The representation is intentionally table-oriented rather than
+Function types store their parameter list in the flattened
+`Sema.type_param_types` side table and keep the return type in
+`return_type`. The representation is intentionally table-oriented rather than
 pointer-heavy.
 
 ## Canonicalisation

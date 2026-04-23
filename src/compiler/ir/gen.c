@@ -102,6 +102,7 @@ void ir_add_local(Ir*     ir,
                    .symbol         = symbol_handle,
                    .type           = type_index,
                    .function_index = function_index,
+                   .is_param       = false,
                });
     array_push(ir->instructions,
                (IrInstruction){
@@ -110,6 +111,24 @@ void ir_add_local(Ir*     ir,
                               .type          = type_index,
                               .value.integer = symbol_handle},
                    .rvalue = {rvalue, {0}},
+               });
+}
+
+void ir_add_param(Ir* ir, u32 function_index, u32 symbol_handle, u32 type_index)
+{
+    array_push(ir->locals,
+               (IrLocal){
+                   .symbol         = symbol_handle,
+                   .type           = type_index,
+                   .function_index = function_index,
+                   .is_param       = true,
+               });
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_PARAM,
+                   .lvalue = {.kind          = IR_VALUE_LOCAL,
+                              .type          = type_index,
+                              .value.integer = symbol_handle},
                });
 }
 
@@ -132,15 +151,40 @@ void ir_add_assign(
 //------------------------------------------------------------------------------
 // Append a call instruction to the IR stream.
 
-void ir_add_call(
-    Ir* ir, IrValue callee, u32 callee_type, IrValue arg, u32 arg_type)
+void ir_add_call(Ir*            ir,
+                 IrValue        lvalue,
+                 u32            lvalue_type,
+                 IrValue        callee,
+                 u32            callee_type,
+                 Array(IrValue) args,
+                 Array(u32)     arg_types)
 {
     callee.type = callee_type;
-    arg.type    = arg_type;
+    u32 first_arg = (u32)array_count(ir->call_args);
+    for (u32 i = 0; i < array_count(args); ++i) {
+        IrValue arg = args[i];
+        arg.type    = arg_types[i];
+        array_push(ir->call_args,
+                   (IrCallArg){
+                       .value = arg,
+                       .type  = arg_types[i],
+                   });
+    }
+
+    u32 call_index = (u32)array_count(ir->calls);
+    array_push(ir->calls,
+               (IrCallInfo){
+                   .first_arg = first_arg,
+                   .arg_count = (u32)array_count(args),
+               });
+    lvalue.type = lvalue_type;
     array_push(ir->instructions,
                (IrInstruction){
                    .op     = IR_OP_CALL,
-                   .rvalue = {callee, arg},
+                   .lvalue = lvalue,
+                   .rvalue = {callee,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = call_index}},
                });
 }
 
@@ -392,6 +436,23 @@ internal u32 ir_value_type_for_decl(const Sema* sema, u32 symbol_handle)
     return sema_no_type();
 }
 
+internal u32 ir_find_function_param_local(const Sema*     sema,
+                                          u32             owner_decl_index,
+                                          const AstParam* param)
+{
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        if (local->owner_decl_index == owner_decl_index &&
+            local->decl_node_index == sema_no_decl() &&
+            local->symbol_handle == param->symbol_handle &&
+            local->type_node_index == param->type_node_index) {
+            return i;
+        }
+    }
+
+    return sema_no_local();
+}
+
 internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
 {
     const AstNode* node = &ast->nodes[node_index];
@@ -412,9 +473,22 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
-    case AK_Call:
         return ir_node_contains_interpolation(ast, node->a) ||
                ir_node_contains_interpolation(ast, node->b);
+    case AK_Call:
+        if (ir_node_contains_interpolation(ast, node->a)) {
+            return true;
+        }
+        {
+            const AstCallInfo* call = &ast->calls[node->b];
+            for (u32 i = 0; i < call->arg_count; ++i) {
+                if (ir_node_contains_interpolation(
+                        ast, ast->call_args[call->first_arg + i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
     default:
         return false;
     }
@@ -459,6 +533,50 @@ internal IrValue ir_build_runtime_string(const Lexer* lex,
     ir_append_string_node(
         lex, ast, sema, node_index, node_values, next_value_index, ir);
     ir_add_string_finish(ir, result, start_value);
+    return result;
+}
+
+internal IrValue ir_lower_call(const Lexer*    lex,
+                               const Ast*      ast,
+                               const Sema*     sema,
+                               const AstNode*  call_node,
+                               Array(IrValue)  node_values,
+                               u64*            next_value_index,
+                               Ir*             ir)
+{
+    ASSERT(call_node->kind == AK_Call, "Expected call node");
+
+    IrValue callee = ir_lower_node(
+        lex, ast, sema, call_node->a, node_values, next_value_index, ir);
+    const AstCallInfo* call = &ast->calls[call_node->b];
+    Array(IrValue) args     = NULL;
+    Array(u32)     arg_types = NULL;
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        u32 arg_node = ast->call_args[call->first_arg + i];
+        array_push(args,
+                   ir_lower_node(
+                       lex, ast, sema, arg_node, node_values, next_value_index, ir));
+        array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
+    }
+
+    u32     result_type = ir_node_type_index(ast, sema, call_node - ast->nodes);
+    IrValue result      = {.kind = IR_VALUE_NONE};
+    if (result_type != ir_builtin_type(sema, STK_Void)) {
+        result = (IrValue){
+            .kind          = IR_VALUE_VARIABLE,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+    }
+
+    ir_add_call(ir,
+                result,
+                result_type,
+                callee,
+                ir_node_type_index(ast, sema, call_node->a),
+                args,
+                arg_types);
+    array_free(args);
+    array_free(arg_types);
     return result;
 }
 
@@ -685,6 +803,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
             return value;
         }
 
+    case AK_Call:
+        {
+            IrValue value = ir_lower_call(
+                lex, ast, sema, node, node_values, next_value_index, ir);
+            node_values[node_index] = value;
+            return value;
+        }
+
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -751,15 +877,8 @@ internal void ir_generate_call_statement(const Lexer*   lex,
 {
     ASSERT(call_node->kind == AK_Call, "Expected call node");
 
-    IrValue callee = ir_lower_node(
-        lex, ast, sema, call_node->a, node_values, next_value_index, ir);
-    IrValue arg = ir_lower_node(
-        lex, ast, sema, call_node->b, node_values, next_value_index, ir);
-    ir_add_call(ir,
-                callee,
-                ir_node_type_index(ast, sema, call_node->a),
-                arg,
-                ir_node_type_index(ast, sema, call_node->b));
+    (void)ir_lower_call(
+        lex, ast, sema, call_node, node_values, next_value_index, ir);
 }
 
 //------------------------------------------------------------------------------
@@ -935,6 +1054,7 @@ internal void ir_generate_function(const Lexer*    lex,
     ASSERT(fn_def_node->kind == AK_FnDef, "Expected function definition");
     ASSERT(fn_start_node->kind == AK_FnStart, "Expected function start");
     ASSERT(fn_start_node->b > fn_def_node->a, "Expected valid function range");
+    const AstFnSignature* signature = &ast->fn_signatures[fn_start_node->a];
 
     u32 function_index = (u32)array_count(ir->functions);
     array_push(ir->functions,
@@ -943,9 +1063,21 @@ internal void ir_generate_function(const Lexer*    lex,
                    .type              = decl->type_index,
                    .first_instruction = (u32)array_count(ir->instructions),
                    .first_local       = (u32)array_count(ir->locals),
+                   .param_count       = signature->param_count,
                });
 
     ir_add_fn_start(ir, ast_get_symbol(bind_node), decl->type_index);
+
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        const AstParam* param = &ast->params[signature->first_param + i];
+        u32 local_index =
+            ir_find_function_param_local(sema, decl - sema->decls, param);
+        ASSERT(local_index != sema_no_local(), "Expected semantic parameter local");
+        ir_add_param(ir,
+                     function_index,
+                     param->symbol_handle,
+                     sema->locals[local_index].type_index);
+    }
 
     bool needs_string_runtime = false;
     for (u32 i = fn_def_node->a; i < fn_start_node->b; ++i) {
@@ -1025,6 +1157,9 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(sema->types); ++i) {
         array_push(ir.types, sema->types[i]);
     }
+    for (u32 i = 0; i < array_count(sema->type_param_types); ++i) {
+        array_push(ir.type_param_types, sema->type_param_types[i]);
+    }
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
@@ -1066,8 +1201,11 @@ void ir_done(Ir* ir)
     array_free(ir->globals);
     array_free(ir->functions);
     array_free(ir->locals);
+    array_free(ir->call_args);
+    array_free(ir->calls);
     array_free(ir->strings);
     array_free(ir->types);
+    array_free(ir->type_param_types);
     if (ir->arena.data != NULL) {
         arena_done(&ir->arena);
     }

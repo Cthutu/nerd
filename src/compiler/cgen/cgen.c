@@ -392,9 +392,21 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
 void cgen_add_call(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
+    if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
+        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+        cgen_add(cgen, " ");
+        cgen_add_value(cgen, &instr->lvalue);
+        cgen_add(cgen, " = ");
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, "(");
-    cgen_add_value(cgen, &instr->rvalue[1]);
+    const IrCallInfo* call = &cgen->ir->calls[(u32)instr->rvalue[1].value.integer];
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        if (i > 0) {
+            cgen_add(cgen, ", ");
+        }
+        cgen_add_value(cgen, &cgen->ir->call_args[call->first_arg + i].value);
+    }
     cgen_addn(cgen, ");");
 }
 
@@ -543,6 +555,7 @@ void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 void cgen_generate(CGen* cgen, const Ir* ir)
 {
     bool has_init_section = false;
+    u32  function_index   = 0;
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         if (ir->instructions[i].op == IR_OP_INIT_START) {
             has_init_section = true;
@@ -569,17 +582,31 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             cgen_add_line(cgen, "}");
             break;
         case IR_OP_FN_START:
+            ASSERT(function_index < array_count(ir->functions),
+                   "Expected function record for fn.start");
+            const IrFunction* function = &ir->functions[function_index++];
             cgen_start_line(cgen);
             u32 return_type = sema_no_type();
             u32 fn_type     = instr->lvalue.type;
             if (fn_type != sema_no_type() &&
                 cgen->ir->types[fn_type].kind == STK_Function) {
-                return_type = cgen->ir->types[fn_type].b;
+                return_type = cgen->ir->types[fn_type].return_type;
             }
             cgen_add(cgen, cgen_c_type(cgen->ir, return_type));
             cgen_add(cgen, " ");
             cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
-            cgen_addn(cgen, "() {");
+            cgen_add(cgen, "(");
+            for (u32 i = 0; i < function->param_count; ++i) {
+                if (i > 0) {
+                    cgen_add(cgen, ", ");
+                }
+                const IrLocal* param = &cgen->ir->locals[function->first_local + i];
+                ASSERT(param->is_param, "Expected function params first in local table");
+                cgen_add(cgen, cgen_c_type(cgen->ir, param->type));
+                cgen_add(cgen, " ");
+                cgen_add_symbol_name(cgen, param->symbol);
+            }
+            cgen_addn(cgen, ") {");
             cgen_indent(cgen);
             break;
         case IR_OP_FN_END:
@@ -596,6 +623,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_LOCAL:
             cgen_add_local(cgen, instr);
+            break;
+        case IR_OP_PARAM:
             break;
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);

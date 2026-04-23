@@ -192,6 +192,12 @@ internal void format_emit_string_text(StringBuilder* sb, string text)
     }
 }
 
+internal void format_emit_fn_signature(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            signature_index,
+                                       bool           include_return_type);
+
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
                                const Lexer*   lexer,
@@ -279,7 +285,16 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Call:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '(');
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        {
+            const CstCallInfo* call = &cst->calls[node->b];
+            for (u32 i = 0; i < call->arg_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                format_emit_expr(
+                    sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
+            }
+        }
         sb_append_char(sb, ')');
         break;
     case CK_Cast:
@@ -289,8 +304,7 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, ')');
         break;
     case CK_TypeFn:
-        sb_append_cstr(sb, "fn () -> ");
-        format_emit_expr(sb, cst, lexer, node->a, 0);
+        format_emit_fn_signature(sb, cst, lexer, node->a, true);
         break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
@@ -308,6 +322,16 @@ internal void format_emit_variable_payload(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
                                            u32            node_index);
+internal void format_emit_fn_signature(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            signature_index,
+                                       bool           include_return_type);
+internal void format_emit_block_contents(StringBuilder* sb,
+                                         const Cst*     cst,
+                                         const Lexer*   lexer,
+                                         u32            block_node_index,
+                                         u32            indent_level);
 internal void format_emit_block_statement(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
@@ -326,6 +350,57 @@ internal bool format_is_block_statement(const CstNode* node)
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Variable ||
            node->kind == CK_Assign;
+}
+
+internal void format_emit_fn_signature(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            signature_index,
+                                       bool           include_return_type)
+{
+    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
+
+    sb_append_cstr(sb, "fn (");
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+
+        const CstParam* param = &cst->params[signature->first_param + i];
+        if (param->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
+            sb_append_cstr(sb, ": ");
+        }
+        format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
+    }
+    sb_append_char(sb, ')');
+
+    if (include_return_type &&
+        signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(
+            sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+}
+
+internal void format_emit_block_contents(StringBuilder* sb,
+                                         const Cst*     cst,
+                                         const Lexer*   lexer,
+                                         u32            block_node_index,
+                                         u32            indent_level)
+{
+    const CstNode* block = &cst->nodes[block_node_index];
+    ASSERT(block->kind == CK_Block, "Expected block node");
+
+    for (u32 i = block->a; i < block->b; ++i) {
+        if (!format_is_block_statement(&cst->nodes[i])) {
+            continue;
+        }
+        format_emit_block_statement(sb, cst, lexer, i, indent_level);
+        if (cst->nodes[i].kind == CK_Block) {
+            i = cst->nodes[i].b - 1;
+        }
+    }
 }
 
 internal void format_emit_block_statement(StringBuilder* sb,
@@ -412,20 +487,14 @@ internal void format_emit_value(StringBuilder* sb,
 
     switch (node->kind) {
     case CK_FnExpr:
-        sb_append_cstr(sb, "fn () => ");
-        format_emit_expr(sb, cst, lexer, node->a, 0);
+        format_emit_fn_signature(sb, cst, lexer, node->a, false);
+        sb_append_cstr(sb, " => ");
+        format_emit_expr(sb, cst, lexer, node->b, 0);
         break;
     case CK_FnBlock:
-        sb_append_cstr(sb, "fn () {\n");
-        for (u32 i = node->a; i < node->b; ++i) {
-            if (!format_is_block_statement(&cst->nodes[i])) {
-                continue;
-            }
-            format_emit_block_statement(sb, cst, lexer, i, 1);
-            if (cst->nodes[i].kind == CK_Block) {
-                i = cst->nodes[i].b - 1;
-            }
-        }
+        format_emit_fn_signature(sb, cst, lexer, node->a, true);
+        sb_append_cstr(sb, " {\n");
+        format_emit_block_contents(sb, cst, lexer, node->b, 1);
         sb_append_cstr(sb, "}");
         break;
     default:

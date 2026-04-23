@@ -536,7 +536,7 @@ needed earlier.
 
 ## Milestone 8: Functions
 
-- [ ] 47. Add function parameters and call arguments.
+- [X] 47. Add function parameters and call arguments.
   - Support typed parameters in both top-level and nested functions.
   - Extend call parsing, semantic analysis, IR, C generation, formatter, LSP,
     and tests together.

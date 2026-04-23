@@ -8,7 +8,7 @@ Hello, world!
 
 ¬
 fn main
-call prn, "Hello, world!"
+call fn(string)->void:prn, string:"Hello, world!"
 return i32:0
 end
 ¬

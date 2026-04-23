@@ -145,8 +145,15 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
             break;
         case AK_Call:
-            row[3] = table_cell_string(string_format(
-                &temp_arena, "callee=%u arg=%u", node->a, node->b));
+            {
+                const AstCallInfo* call = &ast->calls[node->b];
+                row[3] = table_cell_string(
+                    string_format(&temp_arena,
+                                  "callee=%u args=%u..%u",
+                                  node->a,
+                                  call->first_arg,
+                                  call->first_arg + call->arg_count));
+            }
             break;
         case AK_Cast:
             row[3] = table_cell_string(string_format(
@@ -154,7 +161,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_TypeFn:
             row[3] = table_cell_string(
-                string_format(&temp_arena, "return=%u", node->a));
+                string_format(&temp_arena, "signature=%u", node->a));
             break;
         case AK_Expression:
             row[3] = table_cell_string(
@@ -209,9 +216,12 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                               node->b == AFK_Block ? "block" : "expr"));
             break;
         case AK_FnStart:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "signature=%u end=%u", node->a, node->b));
+            break;
         case AK_FnEnd:
             row[3] = table_cell_string(
-                string_format(&temp_arena, "a=%u b=%u", node->a, node->b));
+                string_format(&temp_arena, "def=%u start=%u", node->a, node->b));
             break;
         default:
             row[3] = table_cell_string(s("Unknown"));

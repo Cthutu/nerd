@@ -26,14 +26,14 @@ $1 = string.start
 string.append string:"inner="
 string.append i32:value
 $2 = string.finish $1
-call prn, string:$2
+call fn(string)->void:prn, string:$2
 string.reset
 end
 $3 = string.start
 string.append string:"outer="
 string.append i32:value
 $4 = string.finish $3
-call prn, string:$4
+call fn(string)->void:prn, string:$4
 string.reset
 return i32:value
 end

@@ -314,3 +314,29 @@ bool error_0312_interpolated_string_escapes(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report a function call with the wrong number of arguments.
+
+bool error_0313_argument_count_mismatch(NerdSource source,
+                                        ErrorSpan  span,
+                                        u32        expected_count,
+                                        u32        actual_count)
+{
+    ErrorInfo error = error_init(
+        313,
+        source,
+        span,
+        "Argument count mismatch: expected %u, found %u",
+        expected_count,
+        actual_count);
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This call uses the wrong arity");
+    error_add_help(&error,
+                   "Pass exactly %u argument%s to match the function "
+                   "signature.",
+                   expected_count,
+                   expected_count == 1 ? "" : "s");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

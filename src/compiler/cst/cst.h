@@ -26,9 +26,9 @@
 // | CK_IntegerMultiply | Left node index       | Right node index      |
 // | CK_IntegerDivide   | Left node index       | Right node index      |
 // | CK_IntegerModulo   | Left node index       | Right node index      |
-// | CK_Call            | Callee node index     | Arg node index        |
+// | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
-// | CK_TypeFn          | Return type node      | 0                     |
+// | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
@@ -78,9 +78,29 @@ typedef struct {
 } CstNode;
 
 typedef struct {
-    Array(CstNode) nodes;
-    Array(u64) integers;
-    Array(u32) bindings;
+    u32 symbol_handle;
+    u32 type_node_index;
+} CstParam;
+
+typedef struct {
+    u32 first_param;
+    u32 param_count;
+    u32 return_type_node_index;
+} CstFnSignature;
+
+typedef struct {
+    u32 first_arg;
+    u32 arg_count;
+} CstCallInfo;
+
+typedef struct {
+    Array(CstNode)        nodes;
+    Array(u64)            integers;
+    Array(u32)            bindings;
+    Array(CstParam)       params;
+    Array(CstFnSignature) fn_signatures;
+    Array(u32)            call_args;
+    Array(CstCallInfo)    calls;
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);

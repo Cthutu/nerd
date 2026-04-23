@@ -27,9 +27,9 @@
 // | AK_IntegerMultiply | Ast index of left | Ast index of right              |
 // | AK_IntegerDivide   | Ast index of left | Ast index of right              |
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
-// | AK_Call            | Ast index callee  | Ast index of arg                |
+// | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
-// | AK_TypeFn          | Ast index of return type | 0                        |
+// | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -40,7 +40,7 @@
 // | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
 // | AK_ZeroInit        | Ast index of type | 0                               |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |
-// | AK_FnStart         | AK_FnDef index    | AK_FnEnd index                  |
+// | AK_FnStart         | Ast fn-signature index | AK_FnEnd index             |
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
 //
 // clang-format on
@@ -95,7 +95,28 @@ typedef struct {
 } AstNode;
 
 typedef struct {
-    Array(AstNode) nodes;
+    u32 token_index;
+    u32 symbol_handle;
+    u32 type_node_index;
+} AstParam;
+
+typedef struct {
+    u32 first_param;
+    u32 param_count;
+    u32 return_type_node_index;
+} AstFnSignature;
+
+typedef struct {
+    u32 first_arg;
+    u32 arg_count;
+} AstCallInfo;
+
+typedef struct {
+    Array(AstNode)        nodes;
+    Array(AstParam)       params;
+    Array(AstFnSignature) fn_signatures;
+    Array(u32)            call_args;
+    Array(AstCallInfo)    calls;
 } Ast;
 
 Ast  ast_parse(Lexer* lexer);

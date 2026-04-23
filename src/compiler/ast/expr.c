@@ -316,18 +316,58 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 ast_token_span(state, &state->token),
                 state->token.kind);
         }
-        if (!ast_parse_expr_bp(state, 0, &right_node)) {
+
+        u32 first_arg = (u32)array_count(state->call_args);
+        u32 arg_count = 0;
+        if (state->token.kind != TK_RParen) {
+            for (;;) {
+                right_node = 0;
+                if (!ast_parse_expr_bp(state, 0, &right_node)) {
+                    return false;
+                }
+                array_push(state->call_args, right_node);
+                ++arg_count;
+                if (state->token.kind == TK_Comma) {
+                    if (!ast_next_token(state) || !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_RParen);
+                    }
+                    continue;
+                }
+                if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                    if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_RParen);
+                    }
+                    continue;
+                }
+                break;
+            }
+        }
+        if (state->token.kind == TK_RParen) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        } else if (!ast_expect_token(state, TK_RParen)) {
             return false;
         }
-        if (!ast_expect_token(state, TK_RParen)) {
-            return false;
-        }
+
+        u32 call_index = (u32)array_count(state->calls);
+        array_push(state->calls,
+                   (AstCallInfo){
+                       .first_arg = first_arg,
+                       .arg_count = arg_count,
+                   });
 
         AstNode node = {
             .kind        = AK_Call,
             .token_index = op.token_index,
             .a           = left_node,
-            .b           = right_node,
+            .b           = call_index,
         };
         return ast_emit_node(state, node, out_node);
     }

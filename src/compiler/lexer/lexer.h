@@ -35,6 +35,7 @@ typedef enum {
     TK_Percent,
     TK_LParen,
     TK_RParen,
+    TK_Comma,
     TK_LBrace,
     TK_RBrace,
     TK_Dot,

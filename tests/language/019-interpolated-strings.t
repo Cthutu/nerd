@@ -24,7 +24,7 @@ string.append string:name
 string.append string:"! count="
 string.append i32:count
 $1 = string.finish $0
-call prn, string:$1
+call fn(string)->void:prn, string:$1
 string.reset
 return i32:0
 end

@@ -19,6 +19,7 @@ typedef enum : u8 {
     IR_OP_FN_END,
     IR_OP_BLOCK_START,
     IR_OP_BLOCK_END,
+    IR_OP_PARAM,
     IR_OP_LOCAL,
     IR_OP_ASSIGN,
     IR_OP_CALL,
@@ -74,6 +75,7 @@ typedef struct {
     u32 symbol;
     u32 type;
     u32 function_index;
+    bool is_param;
 } IrLocal;
 
 typedef struct {
@@ -83,15 +85,29 @@ typedef struct {
     u32 one_past_last_instruction;
     u32 first_local;
     u32 local_count;
+    u32 param_count;
 } IrFunction;
+
+typedef struct {
+    IrValue value;
+    u32     type;
+} IrCallArg;
+
+typedef struct {
+    u32 first_arg;
+    u32 arg_count;
+} IrCallInfo;
 
 typedef struct {
     Array(IrInstruction) instructions;
     Array(IrGlobal) globals;
     Array(IrFunction) functions;
     Array(IrLocal) locals;
+    Array(IrCallArg) call_args;
+    Array(IrCallInfo) calls;
     Array(string) strings;
     Array(SemaType) types;
+    Array(u32) type_param_types;
     Arena arena;
 } Ir;
 

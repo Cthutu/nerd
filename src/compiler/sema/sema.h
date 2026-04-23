@@ -43,10 +43,10 @@ typedef enum : u8 {
 
 typedef struct {
     SemaTypeKind kind;
-    u8           param_count;
+    u16          param_count;
     u16          _pad2;
-    u32          a;
-    u32          b;
+    u32          first_param_type;
+    u32          return_type;
 } SemaType;
 
 //------------------------------------------------------------------------------
@@ -91,6 +91,7 @@ typedef struct {
 
 typedef struct {
     Array(SemaType) types;
+    Array(u32) type_param_types;
     Array(SemaDecl) decls;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;

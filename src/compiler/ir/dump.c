@@ -130,17 +130,16 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         sb_append_cstr(sb, "usize");
         break;
     case STK_Function:
-        if (type->param_count == 0) {
-            sb_append_cstr(sb, "fn()->");
-            ir_render_type_name(sb, ir, type->b);
-        } else if (type->param_count == 1) {
-            sb_append_cstr(sb, "fn(");
-            ir_render_type_name(sb, ir, type->a);
-            sb_append_cstr(sb, ")->");
-            ir_render_type_name(sb, ir, type->b);
-        } else {
-            sb_append_cstr(sb, "fn(...)");
+        sb_append_cstr(sb, "fn(");
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ",");
+            }
+            ir_render_type_name(
+                sb, ir, ir->type_param_types[type->first_param_type + i]);
         }
+        sb_append_cstr(sb, ")->");
+        ir_render_type_name(sb, ir, type->return_type);
         break;
     default:
         sb_append_cstr(sb, "<unknown>");
@@ -207,6 +206,10 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_BLOCK_END:
             sb_append_cstr(&sb, "end");
             break;
+        case IR_OP_PARAM:
+            sb_append_cstr(&sb, "param ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->lvalue);
+            break;
         case IR_OP_LOCAL:
             sb_append_cstr(&sb, "local ");
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
@@ -219,10 +222,22 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_CALL:
+            if (instr->lvalue.kind != IR_VALUE_NONE) {
+                ir_render_value(&sb, ir, lexer, &instr->lvalue);
+                sb_append_cstr(&sb, " = ");
+            }
             sb_append_cstr(&sb, "call ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
-            sb_append_cstr(&sb, ", ");
-            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            {
+                const IrCallInfo* call =
+                    &ir->calls[(u32)instr->rvalue[1].value.integer];
+                for (u32 i = 0; i < call->arg_count; ++i) {
+                    sb_append_cstr(&sb, i == 0 ? ", " : ", ");
+                    IrValue value = ir->call_args[call->first_arg + i].value;
+                    value.type    = ir->call_args[call->first_arg + i].type;
+                    ir_render_maybe_typed_value(&sb, ir, lexer, &value);
+                }
+            }
             break;
         case IR_OP_CAST:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
