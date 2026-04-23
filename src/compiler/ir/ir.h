@@ -46,6 +46,7 @@ typedef enum : u8 {
 
 typedef struct {
     IrValueKind kind;
+    u32         type;
     union {
         i64 integer;
     } value;
@@ -54,9 +55,7 @@ typedef struct {
 typedef struct {
     IrOperation op;
     IrValue     lvalue;
-    u32         lvalue_type;
     IrValue     rvalue[2];
-    u32         rvalue_type[2];
 } IrInstruction;
 
 typedef struct {
