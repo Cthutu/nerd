@@ -586,6 +586,14 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             cgen_dedent(cgen);
             cgen_add_line(cgen, "}");
             break;
+        case IR_OP_BLOCK_START:
+            cgen_add_line(cgen, "{");
+            cgen_indent(cgen);
+            break;
+        case IR_OP_BLOCK_END:
+            cgen_dedent(cgen);
+            cgen_add_line(cgen, "}");
+            break;
         case IR_OP_LOCAL:
             cgen_add_local(cgen, instr);
             break;

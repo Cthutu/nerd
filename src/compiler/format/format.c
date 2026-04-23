@@ -308,6 +308,85 @@ internal void format_emit_variable_payload(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
                                            u32            node_index);
+internal void format_emit_block_statement(StringBuilder* sb,
+                                          const Cst*     cst,
+                                          const Lexer*   lexer,
+                                          u32            node_index,
+                                          u32            indent_level);
+
+internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
+{
+    for (u32 i = 0; i < indent_level; ++i) {
+        sb_append_cstr(sb, "    ");
+    }
+}
+
+internal bool format_is_block_statement(const CstNode* node)
+{
+    return node->kind == CK_Block || node->kind == CK_Statement ||
+           node->kind == CK_Return || node->kind == CK_Variable ||
+           node->kind == CK_Assign;
+}
+
+internal void format_emit_block_statement(StringBuilder* sb,
+                                          const Cst*     cst,
+                                          const Lexer*   lexer,
+                                          u32            node_index,
+                                          u32            indent_level)
+{
+    const CstNode* stmt = &cst->nodes[node_index];
+    format_emit_indent(sb, indent_level);
+
+    if (stmt->kind == CK_Block) {
+        sb_append_cstr(sb, "{\n");
+        for (u32 i = stmt->a; i < stmt->b; ++i) {
+            if (!format_is_block_statement(&cst->nodes[i])) {
+                continue;
+            }
+            format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
+            if (cst->nodes[i].kind == CK_Block) {
+                i = cst->nodes[i].b - 1;
+            }
+        }
+        format_emit_indent(sb, indent_level);
+        sb_append_cstr(sb, "}\n");
+        return;
+    }
+
+    if (stmt->kind == CK_Return) {
+        sb_append_cstr(sb, "return ");
+        format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Variable) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+        if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
+            cst->nodes[stmt->b].kind == CK_ZeroInit) {
+            sb_append_cstr(sb, ": ");
+            format_emit_variable_payload(sb, cst, lexer, stmt->b);
+        } else {
+            sb_append_cstr(sb, " := ");
+            format_emit_expr(sb, cst, lexer, stmt->b, 0);
+        }
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Assign) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+        sb_append_cstr(sb, " = ");
+        format_emit_expr(sb, cst, lexer, stmt->b, 0);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Statement) {
+        format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        sb_append_char(sb, '\n');
+    }
+}
 
 //------------------------------------------------------------------------------
 // Format one top-level value node.
@@ -339,35 +418,13 @@ internal void format_emit_value(StringBuilder* sb,
     case CK_FnBlock:
         sb_append_cstr(sb, "fn () {\n");
         for (u32 i = node->a; i < node->b; ++i) {
-            const CstNode* stmt = &cst->nodes[i];
-            if (stmt->kind != CK_Statement && stmt->kind != CK_Return &&
-                stmt->kind != CK_Variable && stmt->kind != CK_Assign) {
+            if (!format_is_block_statement(&cst->nodes[i])) {
                 continue;
             }
-            sb_append_cstr(sb, "    ");
-            if (stmt->kind == CK_Return) {
-                sb_append_cstr(sb, "return ");
-            } else if (stmt->kind == CK_Variable) {
-                sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
-                if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
-                    cst->nodes[stmt->b].kind == CK_ZeroInit) {
-                    sb_append_cstr(sb, ": ");
-                    format_emit_variable_payload(sb, cst, lexer, stmt->b);
-                } else {
-                    sb_append_cstr(sb, " := ");
-                    format_emit_expr(sb, cst, lexer, stmt->b, 0);
-                }
-                sb_append_char(sb, '\n');
-                continue;
-            } else if (stmt->kind == CK_Assign) {
-                sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
-                sb_append_cstr(sb, " = ");
-                format_emit_expr(sb, cst, lexer, stmt->b, 0);
-                sb_append_char(sb, '\n');
-                continue;
+            format_emit_block_statement(sb, cst, lexer, i, 1);
+            if (cst->nodes[i].kind == CK_Block) {
+                i = cst->nodes[i].b - 1;
             }
-            format_emit_expr(sb, cst, lexer, stmt->a, 0);
-            sb_append_char(sb, '\n');
         }
         sb_append_cstr(sb, "}");
         break;

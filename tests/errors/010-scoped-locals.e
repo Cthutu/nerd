@@ -90,3 +90,33 @@ main :: fn () {
         "Add a binding for `value` or fix the spelling."
     ]
 }
+¬
+main :: fn () {
+    {
+        inner := 1
+    }
+    return inner
+}
+¬
+{
+    "code": "0300",
+    "message": "Unknown symbol `inner`",
+    "source_file": "tests/errors/010-scoped-locals.e",
+    "primary_location": {
+        "line": 5,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 12,
+            "length": 5,
+            "message": "This symbol is not defined"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Add a binding for `inner` or fix the spelling."
+    ]
+}

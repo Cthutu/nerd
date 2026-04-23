@@ -33,6 +33,7 @@
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
+// | CK_Block           | First stmt index      | End-exclusive index   |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
@@ -60,6 +61,7 @@ typedef enum {
     CK_FnBlock,
     CK_Statement,
     CK_Return,
+    CK_Block,
     CK_AnnotatedValue,
     CK_ZeroInit,
     CK_Bind,

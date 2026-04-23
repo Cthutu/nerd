@@ -138,6 +138,30 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
     return LSP_NO_DECL;
 }
 
+internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
+                                            u32                token_index)
+{
+    u32 bind_node_index =
+        lsp_find_bind_node_at_token(&doc->front_end.ast, token_index);
+    if (bind_node_index != U32_MAX &&
+        bind_node_index < array_count(doc->front_end.sema.node_local_indices)) {
+        u32 local_index =
+            doc->front_end.sema.node_local_indices[bind_node_index];
+        if (local_index != sema_no_local()) {
+            return local_index;
+        }
+    }
+
+    u32 ref_node_index =
+        lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
+    if (ref_node_index != U32_MAX &&
+        ref_node_index < array_count(doc->front_end.sema.node_local_indices)) {
+        return doc->front_end.sema.node_local_indices[ref_node_index];
+    }
+
+    return sema_no_local();
+}
+
 //------------------------------------------------------------------------------
 // Evaluate a top-level constant declaration to a signed integer when possible.
 
@@ -382,6 +406,23 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         STRINGV(inferred_type));
 }
 
+internal string lsp_local_hover_text(const LspDocument* doc,
+                                     Arena*             arena,
+                                     u32                local_index)
+{
+    const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+    string name = lex_symbol(&doc->front_end.lexer, local->symbol_handle);
+    string type =
+        sema_type_name(&doc->front_end.sema, arena, local->type_index);
+
+    return string_format(
+        arena,
+        STRINGP "\n\n- Kind: local variable\n- Type: `" STRINGP "`",
+        STRINGV(lsp_markdown_code_block(
+            arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(type));
+}
+
 //------------------------------------------------------------------------------
 // Build a location object for one top-level declaration binding.
 
@@ -397,6 +438,28 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
     const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
     usize          start_offset;
     usize          end_offset;
+    lsp_token_offsets(
+        &doc->front_end.lexer, bind->token_index, &start_offset, &end_offset);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_range(
+            arena, doc->front_end.lexer.source, start_offset, end_offset));
+    return location;
+}
+
+internal JsonValue* lsp_local_location(const LspDocument* doc,
+                                       Arena*             arena,
+                                       string             uri,
+                                       u32                local_index)
+{
+    const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+    const AstNode*   bind  = &doc->front_end.ast.nodes[local->decl_node_index];
+    usize            start_offset;
+    usize            end_offset;
     lsp_token_offsets(
         &doc->front_end.lexer, bind->token_index, &start_offset, &end_offset);
 
@@ -525,6 +588,15 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
 
     case TK_Symbol:
         {
+            u32 local_index = lsp_find_local_index_for_token(doc, token_index);
+            if (local_index != sema_no_local()) {
+                lsp_set_markdown_hover(
+                    response,
+                    message->arena,
+                    lsp_local_hover_text(doc, message->arena, local_index));
+                break;
+            }
+
             u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
             if (decl_index == LSP_NO_DECL) {
                 lsp_cancel(response, message->arena);
@@ -591,6 +663,15 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     if (token->kind != TK_Symbol) {
         lsp_cancel(response, message->arena);
+        return;
+    }
+
+    u32 local_index = lsp_find_local_index_for_token(doc, token_index);
+    if (local_index != sema_no_local()) {
+        JsonValue* location =
+            lsp_local_location(doc, message->arena, uri, local_index);
+        json_object_set_object(response, "result", location);
+        lsp_send_response(message->arena, response);
         return;
     }
 

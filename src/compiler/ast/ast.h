@@ -33,6 +33,7 @@
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
+// | AK_Block           | First stmt index  | End-exclusive stmt index        |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_Variable        | Symbol            | Ast index of type/value/zero    |
 // | AK_Assign          | Symbol            | Ast index of value              |
@@ -63,6 +64,7 @@ typedef enum {
     AK_Expression,
     AK_Statement,
     AK_Return,
+    AK_Block,
     AK_Bind,
     AK_Variable,
     AK_Assign,

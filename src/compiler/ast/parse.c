@@ -179,8 +179,125 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
         }                                                                      \
     } while (0)
 
+internal bool ast_parse_block_statement(AstParseState* state);
+
 //------------------------------------------------------------------------------
-// Parse one function block body as a sequence of expression statements.
+// Parse one standalone block statement.
+
+internal bool ast_parse_nested_block(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_LBrace, "Expected '{' token for block");
+
+    u32 block_token_index = state->token.token_index;
+    u32 block_index       = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_Block,
+                           .token_index = block_token_index,
+                       },
+                       &block_index)) {
+        return false;
+    }
+    u32 first_statement = (u32)array_count(state->nodes);
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_RBrace,
+                                         TK_EOF);
+    }
+
+    while (state->token.kind != TK_RBrace) {
+        if (!ast_parse_block_statement(state)) {
+            return false;
+        }
+
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                TK_EOF);
+        }
+
+        if (state->token.kind == TK_RBrace) {
+            break;
+        }
+    }
+
+    state->nodes[block_index].a = first_statement;
+    state->nodes[block_index].b = (u32)array_count(state->nodes);
+    if (out_node) {
+        *out_node = block_index;
+    }
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Parse one statement inside a function or nested block.
+
+internal bool ast_parse_block_statement(AstParseState* state)
+{
+    if (state->token.kind == TK_return) {
+        u32 return_token_index   = state->token.token_index;
+        u32 statement_expr_index = 0;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
+        }
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        if (!ast_parse_expr(state, &statement_expr_index)) {
+            state->allow_statement_boundary = previous_boundary;
+            return false;
+        }
+        state->allow_statement_boundary = previous_boundary;
+
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_Return,
+                                 .token_index = return_token_index,
+                                 .a           = statement_expr_index,
+                             },
+                             NULL);
+    }
+
+    if (state->token.kind == TK_LBrace) {
+        return ast_parse_nested_block(state, NULL);
+    }
+
+    if (ast_symbol_starts_variable(state)) {
+        return ast_parse_variable(state, NULL);
+    }
+
+    if (ast_symbol_starts_assignment(state)) {
+        return ast_parse_assignment(state, NULL);
+    }
+
+    u32 statement_expr_index        = 0;
+    u32 statement_token             = state->token.token_index;
+
+    bool previous_boundary          = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    if (!ast_parse_expr(state, &statement_expr_index)) {
+        state->allow_statement_boundary = previous_boundary;
+        return false;
+    }
+    state->allow_statement_boundary = previous_boundary;
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Statement,
+                             .token_index = statement_token,
+                             .a           = statement_expr_index,
+                         },
+                         NULL);
+}
+
+//------------------------------------------------------------------------------
+// Parse one function block body as a sequence of statements.
 
 internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 {
@@ -193,61 +310,8 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
     }
 
     while (state->token.kind != TK_RBrace) {
-        if (state->token.kind == TK_return) {
-            u32 return_token_index   = state->token.token_index;
-            u32 statement_expr_index = 0;
-            if (!ast_next_token(state)) {
-                return error_0201_missing_value(
-                    state->token.source,
-                    ast_token_span(state, &state->token),
-                    state->token.kind);
-            }
-            bool previous_boundary          = state->allow_statement_boundary;
-            state->allow_statement_boundary = true;
-            if (!ast_parse_expr(state, &statement_expr_index)) {
-                state->allow_statement_boundary = previous_boundary;
-                return false;
-            }
-            state->allow_statement_boundary = previous_boundary;
-
-            u32     statement_index         = 0;
-            AstNode statement               = {
-                              .kind        = AK_Return,
-                              .token_index = return_token_index,
-                              .a           = statement_expr_index,
-            };
-            if (!ast_emit_node(state, statement, &statement_index)) {
-                return false;
-            }
-        } else if (ast_symbol_starts_variable(state)) {
-            if (!ast_parse_variable(state, NULL)) {
-                return false;
-            }
-        } else if (ast_symbol_starts_assignment(state)) {
-            if (!ast_parse_assignment(state, NULL)) {
-                return false;
-            }
-        } else {
-            u32 statement_expr_index        = 0;
-            u32 statement_token             = state->token.token_index;
-
-            bool previous_boundary          = state->allow_statement_boundary;
-            state->allow_statement_boundary = true;
-            if (!ast_parse_expr(state, &statement_expr_index)) {
-                state->allow_statement_boundary = previous_boundary;
-                return false;
-            }
-            state->allow_statement_boundary = previous_boundary;
-
-            u32     statement_index         = 0;
-            AstNode statement               = {
-                              .kind        = AK_Statement,
-                              .token_index = statement_token,
-                              .a           = statement_expr_index,
-            };
-            if (!ast_emit_node(state, statement, &statement_index)) {
-                return false;
-            }
+        if (!ast_parse_block_statement(state)) {
+            return false;
         }
 
         if (!ast_next_token(state)) {
@@ -487,7 +551,11 @@ internal bool ast_parse_variable_payload(AstParseState* state,
                 TK_EOF,
                 "Expected an initializer after ':=', but found end of file");
         }
-        return ast_parse_expr(state, out_value_node);
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_expr(state, out_value_node);
+        state->allow_statement_boundary = previous_boundary;
+        return ok;
     }
 
     if (!ast_parse_type(state, &type_index)) {
@@ -503,7 +571,11 @@ internal bool ast_parse_variable_payload(AstParseState* state,
                 TK_EOF,
                 "Expected an initializer after '=', but found end of file");
         }
-        if (!ast_parse_expr(state, &value_index)) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_expr(state, &value_index);
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
             return false;
         }
         AstNode annotated = {
@@ -561,8 +633,12 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
             "Expected an expression after '=', but found end of file");
     }
 
-    u32 value_node = 0;
-    if (!ast_parse_expr(state, &value_node)) {
+    u32  value_node                 = 0;
+    bool previous_boundary          = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool ok                         = ast_parse_expr(state, &value_node);
+    state->allow_statement_boundary = previous_boundary;
+    if (!ok) {
         return false;
     }
 

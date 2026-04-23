@@ -17,6 +17,8 @@ typedef enum : u8 {
     IR_OP_INIT_END,
     IR_OP_FN_START,
     IR_OP_FN_END,
+    IR_OP_BLOCK_START,
+    IR_OP_BLOCK_END,
     IR_OP_LOCAL,
     IR_OP_ASSIGN,
     IR_OP_CALL,

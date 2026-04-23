@@ -66,6 +66,10 @@ The AST should answer syntax questions such as:
 
 It should not become the place where semantic meaning is stored.
 
+Function bodies and nested block statements are represented structurally in the
+AST, but scope ownership is still semantic data. A block node describes its
+statement range; semantic analysis decides which declarations are visible.
+
 ## Semantic Analysis
 
 The semantic pass in [src/compiler/sema/sema.c](/home/matt/nerd/src/compiler/sema/sema.c)
@@ -82,6 +86,10 @@ currently does several jobs:
 The output is a `Sema` object built mostly from compact side tables keyed by
 AST node index or declaration index.
 
+Local variable scopes are also semantic side tables. Each function body creates
+a root local scope, and nested block statements create child scopes. Lookup is
+lexical and declaration-order aware.
+
 ## IR Generation
 
 IR lowering in [src/compiler/ir/gen.c](/home/matt/nerd/src/compiler/ir/gen.c)
@@ -91,6 +99,7 @@ uses the semantic output to emit:
 - init-time work
 - function bodies
 - assignments, locals, calls, arithmetic, and returns
+- explicit block start/end markers for nested scopes
 - explicit string-builder operations for interpolated strings
 
 The current IR is intentionally straightforward. It acts as the bridge from

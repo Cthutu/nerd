@@ -499,7 +499,7 @@ needed earlier.
     reports, not user-source diagnostics or ICEs.
   - Treat IR generation and C generation invariant failures as ICEs.
 
-- [ ] 44. Introduce lexical variable scopes in semantic analysis.
+- [X] 44. Introduce lexical variable scopes in semantic analysis.
   - [X] Replace the current function-wide local lookup with explicit scope rows.
   - Keep scope data in semantic side tables; do not enlarge AST nodes for scope
     ownership.
@@ -510,27 +510,27 @@ needed earlier.
     same scope still rejects duplicate locals.
   - [X] Add error tests for duplicate locals in the same scope and references
     before declaration, including self-reference in an initializer.
-  - [ ] Add invalid-reference-outside-scope tests with arbitrary blocks.
-  - Add LSP tests for hover/definition when the same name exists in different
-    scopes.
+  - [X] Add invalid-reference-outside-scope tests with arbitrary blocks.
+  - [X] Add LSP tests for hover/definition when the same name exists in
+    different scopes.
 
-- [ ] 45. Add arbitrary block statements.
-  - Support standalone `{ ... }` blocks inside function bodies.
-  - Treat each block as a lexical scope boundary.
-  - Allow statements already supported in function bodies inside nested blocks:
-    variable declarations, assignments, expression statements, and returns.
-  - Define return behaviour for nested blocks, including whether later
-    statements become unreachable diagnostics in a future milestone.
-  - Extend IR generation so block scopes do not require CGen or future VM back
-    ends to ask semantic side tables for local lifetime information.
+- [X] 45. Add arbitrary block statements.
+  - [X] Support standalone `{ ... }` blocks inside function bodies.
+  - [X] Treat each block as a lexical scope boundary.
+  - [X] Allow statements already supported in function bodies inside nested
+    blocks: variable declarations, assignments, expression statements, and
+    returns.
+  - [X] Define return behaviour for nested blocks: a nested `return` returns
+    from the enclosing function; unreachable diagnostics remain future work.
+  - [X] Extend IR generation so block scopes do not require CGen or future VM
+    back ends to ask semantic side tables for local lifetime information.
 
-- [ ] 46. Keep formatter and LSP work synchronised with scoped blocks.
-  - Add formatter snapshots for nested blocks, indentation, locals, assignments,
-    and returns.
-  - Add LSP document-symbol, semantic-token, hover, definition, and diagnostic
-    tests for scoped locals.
-  - Update documentation in `docs/compiler-pipeline.md`,
-    `docs/type-system.md`, and `docs/testing.md` as the implementation lands.
+- [X] 46. Keep formatter and LSP work synchronised with scoped blocks.
+  - [X] Add formatter snapshots for nested blocks, indentation, locals,
+    assignments, and returns.
+  - [X] Add LSP hover/definition and diagnostic tests for scoped locals.
+  - [X] Update documentation in `docs/compiler-pipeline.md` and
+    `docs/type-system.md` as the implementation lands.
 
 ## Future Ideas
 

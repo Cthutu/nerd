@@ -201,6 +201,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_FN_END:
             sb_append_cstr(&sb, "end");
             break;
+        case IR_OP_BLOCK_START:
+            sb_append_cstr(&sb, "block");
+            break;
+        case IR_OP_BLOCK_END:
+            sb_append_cstr(&sb, "end");
+            break;
         case IR_OP_LOCAL:
             sb_append_cstr(&sb, "local ");
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

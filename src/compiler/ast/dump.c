@@ -48,6 +48,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Statement");
     case AK_Return:
         return s("Return");
+    case AK_Block:
+        return s("Block");
     case AK_Bind:
         return s("Bind");
     case AK_Variable:
@@ -165,6 +167,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Return:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "expr=%u", node->a));
+            break;
+        case AK_Block:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "stmts=%u..%u", node->a, node->b));
             break;
         case AK_Bind:
             row[3] = table_cell_string(

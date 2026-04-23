@@ -73,6 +73,22 @@ void ir_add_fn_end(Ir* ir)
                });
 }
 
+void ir_add_block_start(Ir* ir)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op = IR_OP_BLOCK_START,
+               });
+}
+
+void ir_add_block_end(Ir* ir)
+{
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op = IR_OP_BLOCK_END,
+               });
+}
+
 void ir_add_local(Ir*     ir,
                   u32     function_index,
                   u32     symbol_handle,
@@ -355,6 +371,14 @@ internal u32 ir_value_type_for_local(const Sema* sema, u32 symbol_handle)
     }
 
     return sema_no_type();
+}
+
+internal u32 ir_value_type_for_local_index(const Sema* sema, u32 local_index)
+{
+    if (local_index == sema_no_local()) {
+        return sema_no_type();
+    }
+    return sema->locals[local_index].type_index;
 }
 
 internal u32 ir_value_type_for_decl(const Sema* sema, u32 symbol_handle)
@@ -756,6 +780,113 @@ internal void ir_generate_return_statement(const Lexer*   lex,
     ir_add_return(ir, value, ir_node_type_index(ast, sema, return_node->a));
 }
 
+internal bool ir_generate_statement(const Lexer* lex,
+                                    const Ast*   ast,
+                                    const Sema*  sema,
+                                    u32          function_index,
+                                    u32          node_index,
+                                    Array(IrValue) node_values,
+                                    u64* next_value_index,
+                                    Ir*  ir)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    if (node->kind == AK_Block) {
+        ir_add_block_start(ir);
+        for (u32 i = node->a; i < node->b; ++i) {
+            if (ir_generate_statement(lex,
+                                      ast,
+                                      sema,
+                                      function_index,
+                                      i,
+                                      node_values,
+                                      next_value_index,
+                                      ir)) {
+                ir_add_block_end(ir);
+                return true;
+            }
+            if (ast->nodes[i].kind == AK_Block) {
+                i = ast->nodes[i].b - 1;
+            }
+        }
+        ir_add_block_end(ir);
+        return false;
+    }
+
+    if (node->kind == AK_Return) {
+        ir_generate_return_statement(
+            lex, ast, sema, node, node_values, next_value_index, ir);
+        return true;
+    }
+
+    if (node->kind == AK_Variable) {
+        u32     local_index = sema->node_local_indices[node_index];
+        u32     local_type  = ir_value_type_for_local_index(sema, local_index);
+        IrValue value       = {
+                  .kind = IR_VALUE_INTEGER, .type = local_type, .value.integer = 0};
+        if (ast->nodes[node->b].kind == AK_AnnotatedValue) {
+            value = ir_lower_node(lex,
+                                  ast,
+                                  sema,
+                                  ast->nodes[node->b].b,
+                                  node_values,
+                                  next_value_index,
+                                  ir);
+        } else if (ast->nodes[node->b].kind != AK_ZeroInit) {
+            value = ir_lower_node(
+                lex, ast, sema, node->b, node_values, next_value_index, ir);
+        }
+        ir_add_local(
+            ir, function_index, node->a, local_type, value, local_type);
+        return false;
+    }
+
+    if (node->kind == AK_Assign) {
+        IrValue value = ir_lower_node(
+            lex, ast, sema, node->b, node_values, next_value_index, ir);
+        u32     local_index = sema->node_local_indices[node_index];
+        IrValue target =
+            local_index != sema_no_local()
+                ? (IrValue){.kind          = IR_VALUE_LOCAL,
+                            .type          = ir_value_type_for_local_index(sema,
+                                                                  local_index),
+                            .value.integer = node->a}
+                : (IrValue){.kind = IR_VALUE_SYMBOL,
+                            .type = ir_value_type_for_decl(sema, node->a),
+                            .value.integer = node->a};
+        u32 target_type = local_index != sema_no_local()
+                              ? ir_value_type_for_local_index(sema, local_index)
+                              : ir_value_type_for_decl(sema, node->a);
+        ir_add_assign(ir, target, target_type, value, target_type);
+        return false;
+    }
+
+    if (node->kind != AK_Statement) {
+        return false;
+    }
+
+    const AstNode* expr            = &ast->nodes[node->a];
+    u32            expr_root_index = node->a;
+    if (expr->kind == AK_Expression) {
+        expr_root_index = expr->a;
+        expr            = &ast->nodes[expr_root_index];
+    }
+
+    if (expr->kind == AK_Call) {
+        ir_generate_call_statement(
+            lex, ast, sema, expr, node_values, next_value_index, ir);
+    } else {
+        (void)ir_lower_node(
+            lex, ast, sema, expr_root_index, node_values, next_value_index, ir);
+    }
+
+    if (ir_node_contains_interpolation(ast, expr_root_index)) {
+        ir_add_string_reset(ir);
+    }
+
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Lower one top-level constant binding into the generated init function.
 
@@ -846,93 +977,19 @@ internal void ir_generate_function(const Lexer*    lex,
         bool has_explicit_return = false;
 
         for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
-            const AstNode* node = &ast->nodes[i];
-            if (node->kind != AK_Statement && node->kind != AK_Return &&
-                node->kind != AK_Variable && node->kind != AK_Assign) {
-                continue;
-            }
-
-            if (node->kind == AK_Return) {
+            if (ir_generate_statement(lex,
+                                      ast,
+                                      sema,
+                                      function_index,
+                                      i,
+                                      node_values,
+                                      &next_value_index,
+                                      ir)) {
                 has_explicit_return = true;
-                ir_generate_return_statement(
-                    lex, ast, sema, node, node_values, &next_value_index, ir);
                 break;
             }
-
-            if (node->kind == AK_Variable) {
-                u32     local_type = ir_value_type_for_local(sema, node->a);
-                IrValue value      = {.kind          = IR_VALUE_INTEGER,
-                                      .type          = local_type,
-                                      .value.integer = 0};
-                if (ast->nodes[node->b].kind == AK_AnnotatedValue) {
-                    value = ir_lower_node(lex,
-                                          ast,
-                                          sema,
-                                          ast->nodes[node->b].b,
-                                          node_values,
-                                          &next_value_index,
-                                          ir);
-                } else if (ast->nodes[node->b].kind != AK_ZeroInit) {
-                    value = ir_lower_node(lex,
-                                          ast,
-                                          sema,
-                                          node->b,
-                                          node_values,
-                                          &next_value_index,
-                                          ir);
-                }
-                ir_add_local(
-                    ir, function_index, node->a, local_type, value, local_type);
-                continue;
-            }
-
-            if (node->kind == AK_Assign) {
-                IrValue value = ir_lower_node(lex,
-                                              ast,
-                                              sema,
-                                              node->b,
-                                              node_values,
-                                              &next_value_index,
-                                              ir);
-                IrValue target =
-                    sema->node_local_indices[i] != sema_no_local()
-                        ? (IrValue){.kind = IR_VALUE_LOCAL,
-                                    .type =
-                                        ir_value_type_for_local(sema, node->a),
-                                    .value.integer = node->a}
-                        : (IrValue){.kind = IR_VALUE_SYMBOL,
-                                    .type =
-                                        ir_value_type_for_decl(sema, node->a),
-                                    .value.integer = node->a};
-                u32 target_type = sema->node_local_indices[i] != sema_no_local()
-                                      ? ir_value_type_for_local(sema, node->a)
-                                      : ir_value_type_for_decl(sema, node->a);
-                ir_add_assign(ir, target, target_type, value, target_type);
-                continue;
-            }
-
-            const AstNode* expr            = &ast->nodes[node->a];
-            u32            expr_root_index = node->a;
-            if (expr->kind == AK_Expression) {
-                expr_root_index = expr->a;
-                expr            = &ast->nodes[expr_root_index];
-            }
-
-            if (expr->kind == AK_Call) {
-                ir_generate_call_statement(
-                    lex, ast, sema, expr, node_values, &next_value_index, ir);
-            } else {
-                (void)ir_lower_node(lex,
-                                    ast,
-                                    sema,
-                                    expr_root_index,
-                                    node_values,
-                                    &next_value_index,
-                                    ir);
-            }
-
-            if (ir_node_contains_interpolation(ast, expr_root_index)) {
-                ir_add_string_reset(ir);
+            if (ast->nodes[i].kind == AK_Block) {
+                i = ast->nodes[i].b - 1;
             }
         }
 
