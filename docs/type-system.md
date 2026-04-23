@@ -115,6 +115,16 @@ Current storage-eligible types are:
 Zero-initialised declarations such as `count: i32` and `name: string` are
 checked in sema and then lowered using type-aware zero values.
 
+Local variables are resolved through semantic scope rows, not through AST node
+payloads. A function body currently creates one scope. Locals enter that scope
+after their initializer has been resolved, so an initializer cannot reference
+the variable being declared and later locals are not visible before their
+declaration.
+
+Duplicate local names are rejected within the same scope. The scope structure
+already records parent links so nested block scopes can allow inner shadowing
+while still rejecting duplicates in one block when arbitrary blocks land.
+
 ## Casts
 
 Explicit casts use postfix syntax:

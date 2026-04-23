@@ -500,14 +500,17 @@ needed earlier.
   - Treat IR generation and C generation invariant failures as ICEs.
 
 - [ ] 44. Introduce lexical variable scopes in semantic analysis.
-  - Replace the current function-wide local lookup with explicit scope rows.
+  - [X] Replace the current function-wide local lookup with explicit scope rows.
   - Keep scope data in semantic side tables; do not enlarge AST nodes for scope
     ownership.
-  - Track parent scope, declaration order, and local ownership so lookups are
-    lexical and declaration-order aware.
-  - Decide and document whether inner scopes may shadow outer locals.
-  - Add error tests for duplicate locals in the same scope, invalid references
-    outside scope, and references before declaration.
+  - [X] Track parent scope, declaration order, and local ownership so lookups
+    are lexical and declaration-order aware.
+  - [X] Decide and document whether inner scopes may shadow outer locals.
+    Inner scopes may shadow outer locals once arbitrary blocks are added; the
+    same scope still rejects duplicate locals.
+  - [X] Add error tests for duplicate locals in the same scope and references
+    before declaration, including self-reference in an initializer.
+  - [ ] Add invalid-reference-outside-scope tests with arbitrary blocks.
   - Add LSP tests for hover/definition when the same name exists in different
     scopes.
 

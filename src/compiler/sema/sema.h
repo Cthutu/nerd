@@ -64,11 +64,19 @@ typedef struct {
 typedef struct {
     u32 symbol_handle;
     u32 owner_decl_index;
+    u32 scope_index;
     u32 decl_node_index;
     u32 type_node_index;
     u32 value_node_index;
     u32 type_index;
 } SemaLocal;
+
+typedef struct {
+    u32 owner_decl_index;
+    u32 parent_scope_index;
+    u32 first_local;
+    u32 local_count;
+} SemaScope;
 
 //------------------------------------------------------------------------------
 // A dependency edge between two top-level declarations.
@@ -85,6 +93,7 @@ typedef struct {
     Array(SemaType) types;
     Array(SemaDecl) decls;
     Array(SemaLocal) locals;
+    Array(SemaScope) scopes;
     Array(SemaDeclDep) deps;
     Array(u32) ordered_decl_indices;
     Array(u32) node_decl_indices;
