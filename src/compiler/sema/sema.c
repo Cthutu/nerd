@@ -148,6 +148,27 @@ bool sema_type_is_concrete_integer(const Sema* sema, u32 type_index)
 }
 
 //------------------------------------------------------------------------------
+// Return whether one semantic type is an unsigned concrete integer type.
+
+internal bool sema_type_is_unsigned_integer(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Usize:
+        return true;
+    default:
+        return false;
+    }
+}
+
+//------------------------------------------------------------------------------
 // Materialise abstract semantic types for runtime-facing uses.
 
 u32 sema_materialise_type(const Sema* sema, u32 type_index)
@@ -348,6 +369,110 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
     case AK_IntegerModulo:
         return sema_expr_is_constantish(ast, sema, node->a) &&
                sema_expr_is_constantish(ast, sema, node->b);
+    default:
+        return false;
+    }
+}
+
+//------------------------------------------------------------------------------
+// Evaluate one integer-like constant expression before the folding pass has
+// populated semantic constant tables.
+
+internal bool sema_try_eval_integer_constant(const Lexer* lexer,
+                                             const Ast*   ast,
+                                             const Sema*  sema,
+                                             u32          node_index,
+                                             i64*         out_value)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        *out_value = (i64)ast_get_integer(lexer, node);
+        return true;
+    case AK_BoolLiteral:
+        *out_value = node->a != 0 ? 1 : 0;
+        return true;
+    case AK_Expression:
+    case AK_Statement:
+    case AK_Return:
+    case AK_InterpPartExpr:
+        return sema_try_eval_integer_constant(
+            lexer, ast, sema, node->a, out_value);
+    case AK_IntegerNegate:
+        if (!sema_try_eval_integer_constant(
+                lexer, ast, sema, node->a, out_value)) {
+            return false;
+        }
+        *out_value = -*out_value;
+        return true;
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+        {
+            i64 lhs = 0;
+            i64 rhs = 0;
+            if (!sema_try_eval_integer_constant(
+                    lexer, ast, sema, node->a, &lhs) ||
+                !sema_try_eval_integer_constant(
+                    lexer, ast, sema, node->b, &rhs)) {
+                return false;
+            }
+
+            switch (node->kind) {
+            case AK_IntegerPlus:
+                *out_value = lhs + rhs;
+                return true;
+            case AK_IntegerMinus:
+                *out_value = lhs - rhs;
+                return true;
+            case AK_IntegerMultiply:
+                *out_value = lhs * rhs;
+                return true;
+            case AK_IntegerDivide:
+                if (rhs == 0) {
+                    return false;
+                }
+                *out_value = lhs / rhs;
+                return true;
+            case AK_IntegerModulo:
+                if (rhs == 0) {
+                    return false;
+                }
+                *out_value = lhs % rhs;
+                return true;
+            default:
+                return false;
+            }
+        }
+    case AK_SymbolRef:
+        if (node_index < array_count(sema->node_local_indices)) {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index != sema_no_local() &&
+                sema->locals[local_index].kind == SLK_Constant) {
+                return sema_try_eval_integer_constant(lexer,
+                                                      ast,
+                                                      sema,
+                                                      sema->locals[local_index]
+                                                          .value_node_index,
+                                                      out_value);
+            }
+        }
+        if (node_index < array_count(sema->node_decl_indices)) {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant) {
+                return sema_try_eval_integer_constant(
+                    lexer,
+                    ast,
+                    sema,
+                    sema->decls[decl_index].value_node_index,
+                    out_value);
+            }
+        }
+        return false;
     default:
         return false;
     }
@@ -1986,7 +2111,8 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     if (ok) {
         local->type_index = annotated != sema_no_type()
                                 ? annotated
-                                : (local->kind == SLK_Function
+                                : (local->kind == SLK_Function ||
+                                           local->kind == SLK_Constant
                                        ? inferred
                                        : sema_materialise_type(sema, inferred));
         sema->node_type_indices[local->decl_node_index] = local->type_index;
@@ -2437,6 +2563,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (sema_type_is_concrete_integer(sema, expected_type) &&
                 type_index != sema_no_type() &&
                 sema->types[type_index].kind == STK_UntypedInteger) {
+                if (sema_type_is_unsigned_integer(sema, expected_type)) {
+                    i64 value = 0;
+                    if (sema_try_eval_integer_constant(
+                            lexer, ast, sema, node_index, &value) &&
+                        value < 0) {
+                        return error_0323_negative_unsigned_inference(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            sema_type_name(sema, &temp_arena, expected_type));
+                    }
+                }
                 type_index = expected_type;
             }
         }
@@ -2861,6 +2998,20 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     }
 
     if (expected_type != sema_no_type() &&
+        sema_type_is_unsigned_integer(sema, expected_type) &&
+        type_index != sema_no_type() &&
+        sema->types[type_index].kind == STK_UntypedInteger) {
+        i64 value = 0;
+        if (sema_try_eval_integer_constant(lexer, ast, sema, node_index, &value) &&
+            value < 0) {
+            return error_0323_negative_unsigned_inference(
+                lexer->source,
+                sema_node_span(lexer, node),
+                sema_type_name(sema, &temp_arena, expected_type));
+        }
+    }
+
+    if (expected_type != sema_no_type() &&
         !sema_type_matches(sema, expected_type, type_index)) {
         return error_0304_type_mismatch(
             lexer->source,
@@ -2928,7 +3079,7 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
             decl->type_index =
                 annotated != sema_no_type()
                     ? annotated
-                    : (decl->kind == SK_Function
+                    : (decl->kind == SK_Function || decl->kind == SK_Constant
                            ? inferred_type
                            : sema_materialise_type(sema, inferred_type));
         }

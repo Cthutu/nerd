@@ -559,3 +559,28 @@ bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report implicit use of a negative untyped integer where an unsigned type is
+// required.
+
+bool error_0323_negative_unsigned_inference(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     target_type)
+{
+    ErrorInfo error = error_init(323,
+                                 source,
+                                 span,
+                                 "Cannot infer negative integer as `" STRINGP "`",
+                                 STRINGV(target_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This value is negative but `" STRINGP "` is unsigned",
+                        STRINGV(target_type));
+    error_add_help(&error,
+                   "Use a non-negative value here, or change the destination "
+                   "type to a signed integer.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

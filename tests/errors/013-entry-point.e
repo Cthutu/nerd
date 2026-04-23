@@ -28,7 +28,7 @@ main :: 1
 ¬
 {
     "code": "0316",
-    "message": "Invalid type for entry point `main`: found `i32`",
+    "message": "Invalid type for entry point `main`: found `untyped integer`",
     "source_file": "tests/errors/013-entry-point.e",
     "primary_location": {
         "line": 1,

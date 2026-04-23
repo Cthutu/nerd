@@ -533,18 +533,18 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 state->token.kind);
         }
 
-        u32 first_arg = (u32)array_count(state->call_args);
-        u32 arg_count = 0;
+        Array(u32) arg_nodes = NULL;
         if (state->token.kind != TK_RParen) {
             for (;;) {
                 right_node = 0;
                 if (!ast_parse_expr_bp(state, 0, &right_node)) {
+                    array_free(arg_nodes);
                     return false;
                 }
-                array_push(state->call_args, right_node);
-                ++arg_count;
+                array_push(arg_nodes, right_node);
                 if (state->token.kind == TK_Comma) {
                     if (!ast_next_token(state) || !ast_next_token(state)) {
+                        array_free(arg_nodes);
                         return error_0201_missing_value(
                             state->token.source,
                             ast_token_span(state, &state->token),
@@ -555,6 +555,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 if (ast_peek_kind_at(state, 0) == TK_Comma) {
                     if (!ast_expect_token(state, TK_Comma) ||
                         !ast_next_token(state)) {
+                        array_free(arg_nodes);
                         return error_0201_missing_value(
                             state->token.source,
                             ast_token_span(state, &state->token),
@@ -567,11 +568,20 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         }
         if (state->token.kind == TK_RParen) {
             if (!ast_next_token(state)) {
+                array_free(arg_nodes);
                 return false;
             }
         } else if (!ast_expect_token(state, TK_RParen)) {
+            array_free(arg_nodes);
             return false;
         }
+
+        u32 first_arg = (u32)array_count(state->call_args);
+        for (u32 i = 0; i < array_count(arg_nodes); ++i) {
+            array_push(state->call_args, arg_nodes[i]);
+        }
+        u32 arg_count = (u32)array_count(arg_nodes);
+        array_free(arg_nodes);
 
         u32 call_index = (u32)array_count(state->calls);
         array_push(state->calls,

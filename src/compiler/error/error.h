@@ -196,6 +196,9 @@ bool error_0321_invalid_on_match_type(NerdSource source,
                                       ErrorSpan  span,
                                       string     actual_type);
 bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span);
+bool error_0323_negative_unsigned_inference(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     target_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system
