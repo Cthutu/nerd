@@ -416,6 +416,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
                                           const Lexer*   lexer,
                                           u32            node_index,
                                           u32            indent_level);
+internal u32  format_node_end_token_index(const Cst* cst,
+                                          const Lexer* lexer,
+                                          u32          node_index);
+internal bool format_has_blank_line_between_statements(const Cst*   cst,
+                                                       const Lexer* lexer,
+                                                       u32 previous_node_index,
+                                                       u32 current_node_index);
 
 internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
 {
@@ -429,6 +436,192 @@ internal bool format_is_block_statement(const CstNode* node)
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_Variable || node->kind == CK_Assign;
+}
+
+internal u32 format_find_matching_close_token_index(const Lexer* lexer,
+                                                    u32          open_index,
+                                                    TokenKind    open_kind,
+                                                    TokenKind    close_kind)
+{
+    u32 depth = 1;
+    for (u32 i = open_index + 1; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == open_kind) {
+            depth++;
+        } else if (kind == close_kind) {
+            depth--;
+            if (depth == 0) {
+                return i;
+            }
+        }
+    }
+
+    return open_index;
+}
+
+internal u32 format_fn_signature_end_token_index(const Cst*   cst,
+                                                 const Lexer* lexer,
+                                                 u32 fn_token_index,
+                                                 u32 signature_index)
+{
+    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
+    u32 paren_index                 = U32_MAX;
+
+    for (u32 i = fn_token_index; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind == TK_LParen) {
+            paren_index = i;
+            break;
+        }
+    }
+
+    if (paren_index == U32_MAX) {
+        return 0;
+    }
+
+    u32 close_index = format_find_matching_close_token_index(
+        lexer, paren_index, TK_LParen, TK_RParen);
+    if (signature->return_type_node_index == U32_MAX) {
+        return close_index;
+    }
+
+    return format_node_end_token_index(
+        cst, lexer, signature->return_type_node_index);
+}
+
+internal u32 format_find_interpolated_string_end_token_index(const Lexer* lexer,
+                                                             u32 token_index)
+{
+    for (u32 i = token_index + 1; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind == TK_InterpolatedStringEnd) {
+            return i;
+        }
+    }
+
+    return token_index;
+}
+
+internal u32
+format_node_end_token_index(const Cst* cst, const Lexer* lexer, u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+
+    switch (node->kind) {
+    case CK_IntegerLiteral:
+    case CK_StringLiteral:
+    case CK_BoolLiteral:
+    case CK_SymbolRef:
+        return node->token_index;
+    case CK_InterpolatedString:
+        return format_find_interpolated_string_end_token_index(
+            lexer, node->token_index);
+    case CK_Group:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LParen, TK_RParen);
+    case CK_IntegerNegate:
+    case CK_Statement:
+    case CK_Return:
+        return format_node_end_token_index(cst, lexer, node->a);
+    case CK_IntegerPlus:
+    case CK_IntegerMinus:
+    case CK_IntegerMultiply:
+    case CK_IntegerDivide:
+    case CK_IntegerModulo:
+    case CK_StringConcat:
+    case CK_RangeExclusive:
+    case CK_RangeInclusive:
+    case CK_AnnotatedValue:
+    case CK_Bind:
+    case CK_Variable:
+    case CK_Assign:
+        return format_node_end_token_index(cst, lexer, node->b);
+    case CK_Call:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LParen, TK_RParen);
+    case CK_Cast:
+        for (u32 i = node->token_index + 1; i < array_count(lexer->tokens);
+             ++i) {
+            if (lexer->tokens[i].kind == TK_LParen) {
+                return format_find_matching_close_token_index(
+                    lexer, i, TK_LParen, TK_RParen);
+            }
+        }
+        return node->token_index;
+    case CK_On:
+        {
+            const CstOnInfo* on = &cst->ons[node->b];
+            if (on->kind == COK_Bool) {
+                const CstOnBranch* else_branch =
+                    &cst->on_branches[on->first_branch + 1];
+                return format_node_end_token_index(
+                    cst, lexer, else_branch->expr_node_index);
+            }
+
+            u32 scrutinee_end = format_node_end_token_index(cst, lexer, node->a);
+            for (u32 i = scrutinee_end + 1; i < array_count(lexer->tokens);
+                 ++i) {
+                if (lexer->tokens[i].kind == TK_LBrace) {
+                    return format_find_matching_close_token_index(
+                        lexer, i, TK_LBrace, TK_RBrace);
+                }
+            }
+
+            const CstOnBranch* last_branch =
+                &cst->on_branches[on->first_branch + on->branch_count - 1];
+            return format_node_end_token_index(
+                cst, lexer, last_branch->expr_node_index);
+        }
+    case CK_TypeFn:
+        return format_fn_signature_end_token_index(
+            cst, lexer, node->token_index, node->a);
+    case CK_FnExpr:
+        return format_node_end_token_index(cst, lexer, node->b);
+    case CK_FnBlock:
+        return format_node_end_token_index(cst, lexer, node->b);
+    case CK_Block:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LBrace, TK_RBrace);
+    case CK_ZeroInit:
+        return format_node_end_token_index(cst, lexer, node->a);
+    default:
+        return node->token_index;
+    }
+}
+
+internal bool format_has_blank_line_between_statements(const Cst*   cst,
+                                                       const Lexer* lexer,
+                                                       u32 previous_node_index,
+                                                       u32 current_node_index)
+{
+    const CstNode* current = &cst->nodes[current_node_index];
+    u32            previous_end_line = 0;
+    u32            previous_end_col  = 0;
+    u32            current_start_line = 0;
+    u32            current_start_col  = 0;
+    u32 previous_end_token_index =
+        format_node_end_token_index(cst, lexer, previous_node_index);
+    usize previous_end_offset = lex_token_end_offset(
+        lexer, &lexer->tokens[previous_end_token_index]);
+    if (previous_end_offset > 0) {
+        previous_end_offset--;
+    }
+
+    if (!lex_offset_to_line_col(lexer->source,
+                                previous_end_offset,
+                                &previous_end_line,
+                                &previous_end_col)) {
+        return false;
+    }
+
+    if (!lex_offset_to_line_col(lexer->source,
+                                lexer->tokens[current->token_index].offset,
+                                &current_start_line,
+                                &current_start_col)) {
+        return false;
+    }
+
+    UNUSED(previous_end_col);
+    UNUSED(current_start_col);
+    return current_start_line > previous_end_line + 1;
 }
 
 internal void format_emit_fn_signature(StringBuilder* sb,
@@ -468,12 +661,21 @@ internal void format_emit_block_contents(StringBuilder* sb,
 {
     const CstNode* block = &cst->nodes[block_node_index];
     ASSERT(block->kind == CK_Block, "Expected block node");
+    u32 previous_statement_index = U32_MAX;
 
     for (u32 i = block->a; i < block->b; ++i) {
         if (!format_is_block_statement(&cst->nodes[i])) {
             continue;
         }
+
+        if (previous_statement_index != U32_MAX &&
+            format_has_blank_line_between_statements(
+                cst, lexer, previous_statement_index, i)) {
+            sb_append_char(sb, '\n');
+        }
+
         format_emit_block_statement(sb, cst, lexer, i, indent_level);
+        previous_statement_index = i;
         if (cst->nodes[i].kind == CK_Block) {
             i = cst->nodes[i].b - 1;
         }
