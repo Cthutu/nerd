@@ -60,7 +60,8 @@ typedef struct {
 
 // Program-structure records make the IR self-contained for later back ends and
 // VM execution. The instruction stream remains the stable textual form, while
-// these tables describe storage and function boundaries without consulting sema.
+// these tables describe storage and function boundaries without consulting
+// sema.
 
 typedef struct {
     u32 symbol;

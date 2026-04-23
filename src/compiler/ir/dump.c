@@ -4,8 +4,8 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
-#include <compiler/ir/ir.h>
 #include <compiler/error/error.h>
+#include <compiler/ir/ir.h>
 #include <stdio.h>
 
 //------------------------------------------------------------------------------

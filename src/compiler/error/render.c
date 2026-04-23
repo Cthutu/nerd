@@ -309,9 +309,8 @@ internal void error_normal_render(const ErrorInfo* error_info)
              STRINGV(error_info->error_message));
     }
 
-    bool has_source =
-        error_info->source.source.count > 0 ||
-        error_info->source.source_path.count > 0;
+    bool has_source = error_info->source.source.count > 0 ||
+                      error_info->source.source_path.count > 0;
     //
     // Determine the line and column number
     //

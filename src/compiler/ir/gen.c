@@ -73,13 +73,12 @@ void ir_add_fn_end(Ir* ir)
                });
 }
 
-void ir_add_local(
-    Ir* ir,
-    u32 function_index,
-    u32 symbol_handle,
-    u32 type_index,
-    IrValue rvalue,
-    u32 rvalue_type)
+void ir_add_local(Ir*     ir,
+                  u32     function_index,
+                  u32     symbol_handle,
+                  u32     type_index,
+                  IrValue rvalue,
+                  u32     rvalue_type)
 {
     rvalue.type = rvalue_type;
     array_push(ir->locals,
@@ -950,9 +949,8 @@ internal void ir_generate_function(const Lexer*    lex,
     }
 
     ir_add_fn_end(ir);
-    IrFunction* function              = &ir->functions[function_index];
-    function->one_past_last_instruction =
-        (u32)array_count(ir->instructions);
+    IrFunction* function                = &ir->functions[function_index];
+    function->one_past_last_instruction = (u32)array_count(ir->instructions);
     function->local_count =
         (u32)array_count(ir->locals) - function->first_local;
     array_free(node_values);

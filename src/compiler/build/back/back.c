@@ -87,8 +87,9 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
-        return error_runtime("Failed to compile generated C file (exit code %d)",
-                             compile_result);
+        return error_runtime(
+            "Failed to compile generated C file (exit code %d)",
+            compile_result);
     }
     if (chmod(exe_path, 0755) != 0) {
         arena_done(&arena);
@@ -100,8 +101,9 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
-        return error_runtime("Failed to compile generated C file (exit code %d)",
-                             compile_result);
+        return error_runtime(
+            "Failed to compile generated C file (exit code %d)",
+            compile_result);
     }
 #endif
 

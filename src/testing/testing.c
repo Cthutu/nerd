@@ -341,17 +341,14 @@ internal bool testing_parse_command_test(Arena*       arena,
     }
 
     if (section_count != 3 || cursor <= file_text.count) {
-        eprn("%sInvalid command test format:%s %s",
-             ANSI_RED,
-             ANSI_RESET,
-             path);
+        eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
 
     *out_test = (CommandTest){
-        .path = testing_copy_cstr(arena, path),
-        .source =
-            testing_copy_string(arena, testing_strip_section_edges(sections[0])),
+        .path                  = testing_copy_cstr(arena, path),
+        .source                = testing_copy_string(arena,
+                                      testing_strip_section_edges(sections[0])),
         .expected_return_value = testing_copy_string(
             arena, testing_trim_ascii_whitespace(sections[1])),
         .expected_stdout = testing_copy_string(
@@ -739,7 +736,7 @@ internal cstr testing_current_directory(Arena* arena)
 #if OS_WINDOWS
     DWORD required = GetCurrentDirectoryA(0, NULL);
     ASSERT(required > 0, "Failed to read current directory");
-    char* buffer = (char*)arena_alloc(arena, required);
+    char* buffer  = (char*)arena_alloc(arena, required);
     DWORD written = GetCurrentDirectoryA(required, buffer);
     ASSERT(written > 0 && written < required,
            "Failed to read current directory");
@@ -1673,10 +1670,10 @@ internal bool testing_run_command_test(const CommandTest* test)
 
     Arena cwd_arena = {0};
     arena_init(&cwd_arena);
-    cstr original_cwd = testing_current_directory(&cwd_arena);
-    cstr test_dir     = testing_path_directory(&artifact_arena, input_path);
-    string input_name = path_filename(s(input_path));
-    cstr input_arg =
+    cstr   original_cwd = testing_current_directory(&cwd_arena);
+    cstr   test_dir     = testing_path_directory(&artifact_arena, input_path);
+    string input_name   = path_filename(s(input_path));
+    cstr   input_arg =
         (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
 
     bool passed = true;
@@ -1739,7 +1736,7 @@ internal int testing_run_command_suite(cstr tests_root, TestCounts* counts)
         Arena case_arena = {0};
         arena_init(&case_arena);
         CommandTest test = {0};
-        bool ok =
+        bool        ok =
             testing_parse_command_test(&case_arena, path, file_text, &test);
         if (!ok) {
             counts->failed++;
