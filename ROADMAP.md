@@ -534,6 +534,157 @@ needed earlier.
   - [X] Update documentation in `docs/compiler-pipeline.md` and
     `docs/type-system.md` as the implementation lands.
 
+## Milestone 8: Functions
+
+- [ ] 47. Add function parameters and call arguments.
+  - Support typed parameters in both top-level and nested functions.
+  - Extend call parsing, semantic analysis, IR, C generation, formatter, LSP,
+    and tests together.
+  - Keep argument count and argument type checking exact and explicit.
+
+- [ ] 48. Support both expression-bodied and block-bodied function forms.
+  - Support inferred-return expression bodies such as:
+    - `add :: fn(a: i32, b: i32) => a + b`
+  - Support explicit-return block bodies such as:
+    - `add :: fn(a: i32, b: i32) -> i32 { return a + b }`
+  - Reject mixed explicit return annotations with fat-arrow bodies such as:
+    - `add :: fn(a: i32, b: i32) -> i32 => a + b`
+  - Keep the rule simple: fat arrow means inferred return, thin arrow means an
+    explicit return type in the function type.
+
+- [ ] 49. Add nested non-closure functions.
+  - Allow nested functions inside function scopes.
+  - Nested functions may reference globals and their own parameters and locals.
+  - Nested functions may not capture parameters or locals from enclosing
+    function scopes.
+  - Any outer function value needed by a nested function must be passed
+    explicitly as a parameter.
+  - Capturing attempts must be semantic errors with contextual help text.
+  - Lower nested functions into generated C by flattening lexical names, for
+    example `bar` -> `$bar` and nested `foo` inside `bar` -> `$bar$foo`.
+
+- [ ] 50. Add function values and function-pointer-compatible assignment.
+  - Constant bindings remain the normal way to name functions.
+  - Variable bindings may hold unnamed function values or references to named
+    functions.
+  - Support examples such as:
+    - `pfoo := fn(a: i32, b: i32) => a + b`
+    - `pfoo := foo`
+    - `pfoo : ^fn(i32, i32) -> i32 = foo`
+  - Treat named function values as decaying to `^fn(...) -> ...` when used as
+    values.
+  - Calls automatically dereference outer pointer layers for function values.
+  - Allow reassignment only when the full function signature matches exactly.
+  - Keep this fully type-safe; no implicit signature conversions.
+
+- [ ] 51. Extend scoped declarations and tooling for local function bindings.
+  - Allow forward references for scoped constant declarations of the form
+    `<name> :: <value-or-type>` so declaration order does not matter in a
+    scope.
+  - Keep local variable lookup rules distinct from local declaration lookup
+    rules where needed.
+  - Add language tests, error tests, formatter snapshots, and LSP coverage for
+    nested functions, function values, and invalid captures.
+
+## Milestone 9: `on` Branching And Pattern Matching Foundations
+
+- [ ] 52. Add `on` as the branching construct.
+  - `on` replaces ad hoc `if`-style branching for the language surface.
+  - Support the short boolean form:
+    - `on (x > 0) => "positive" else "non-positive"`
+  - Support the block form:
+    - `on size { ... }`
+  - Prefer syntax that does not require branch separators when the parser can
+    unambiguously detect the start of the next branch.
+
+- [ ] 53. Add block-form branches, `else`, and simple value/range matching.
+  - Support branch bodies as general expressions, including blocks.
+  - Support `else => ...` in block form for consistency with other branches.
+  - Support comma-separated alternative values in one branch.
+  - Support exclusive and inclusive integer ranges through `..<` and `..=`.
+  - Keep exact type matching throughout; do not add implicit casts.
+
+- [ ] 54. Add branch-local pattern binders.
+  - Use `<name> @ <pattern>` to bind the matched value for one branch.
+  - Allow binders on `else` branches as well, for example:
+    - `other @ else => ...`
+  - Binder scope is limited to that branch expression or block.
+  - Reusing the same binder name in different branches is valid because branch
+    scopes are separate.
+  - Keep binders immutable unless a later milestone explicitly adds mutable
+    pattern bindings.
+
+- [ ] 55. Define `on` typing and exhaustiveness rules.
+  - Treat `on` as an expression form.
+  - When used in a statement position, `on` has type `void`.
+  - Non-void `on` expressions must be exhaustive.
+  - For broad domains such as integers, require `else` unless the compiler can
+    trivially prove exhaustiveness.
+  - Void `on` expressions may omit branches because missing cases are a no-op.
+  - All value-producing branches must converge to exactly the same type.
+
+- [ ] 56. Add IR merge support for value-producing branches.
+  - Introduce phi nodes or equivalent explicit typed merge instructions in IR.
+  - Keep the IR self-contained so a future VM can execute the same control-flow
+    model without semantic side tables.
+  - Extend C generation, formatter, LSP, and tests together as `on` lands.
+
+## Milestone 10: Basic `for` Loops
+
+- [ ] 57. Add statement-oriented loop forms.
+  - Support infinite loops:
+    - `for { ... }`
+  - Support while-style loops:
+    - `for condition { ... }`
+  - Support C-style loops:
+    - `for init; condition; update { ... }`
+  - Defer iterable/range iteration syntax if it materially slows the first loop
+    milestone.
+
+- [ ] 58. Add loop control flow.
+  - Support `break` and `continue`.
+  - `continue` in C-style loops must still run the update expression before the
+    next condition check.
+  - Add semantic validation for invalid `break` and `continue` usage.
+  - Treat statement loops as `void` in the initial implementation.
+
+- [ ] 59. Keep the first loop milestone horizontal.
+  - Add language tests, error tests, formatter snapshots, and LSP support for
+    the loop forms that land.
+  - Keep generated IR explicit about loop structure rather than hiding control
+    flow in C generation.
+  - Defer value-producing loop expressions and labelled blocks to the next
+    milestone.
+
+## Milestone 11: Labelled Blocks, Expression Blocks, And Loop Expressions
+
+- [ ] 60. Add labelled block syntax.
+  - Use `$` for labels rather than `@`.
+  - General block syntax becomes `[$label] { ... }`.
+  - This label model should apply cleanly to loop bodies as they are block
+    forms.
+
+- [ ] 61. Add expression blocks.
+  - Add expression-block syntax as:
+    - `$ [$label] { ... }`
+  - Expression blocks should later allow structured value flow out of the block
+    without overloading ordinary statement blocks.
+  - Keep the semantics compatible with future VM execution and explicit IR.
+
+- [ ] 62. Add labelled `break`/`continue` and loop expressions.
+  - Support `break $label <expr>` and `continue $label`.
+  - Add value-producing loop expressions with `break <expr>`.
+  - Add `else` branches for loops only when the associated loop has reachable
+    value-producing `break` paths.
+  - Keep loop-expression typing exact and explicit.
+
+- [ ] 63. Extend typed control-flow merging beyond `on`.
+  - Reuse or extend the branch-merge IR model for expression blocks and loop
+    expressions.
+  - Keep control-flow value merges explicit in IR rather than hidden in later
+    code generation.
+  - Extend tests, formatter support, LSP coverage, and documentation together.
+
 ## Future Ideas
 
 These items are worth keeping visible, but they are not assigned to a numbered
