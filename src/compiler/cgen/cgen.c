@@ -724,6 +724,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_LABEL:
             cgen_add_label(cgen, instr);
             break;
+        case IR_OP_EQUAL:
+            cgen_add_binary(cgen, instr, " == ");
+            break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");
             break;

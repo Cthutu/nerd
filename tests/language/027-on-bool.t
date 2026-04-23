@@ -10,12 +10,12 @@ main :: fn () => on enabled => 42 else 7
 global enabled
 fn main
 local $0 = i32:0
-branch.false bool:enabled, L1
+branch.false bool:enabled, L2
 $0 = i32:42
-jump L2
-label L1
-$0 = i32:7
+jump L1
 label L2
+$0 = i32:7
+label L1
 return i32:$0
 end
 init
@@ -25,12 +25,12 @@ end
 bool $enabled;
 int $main() {
     int $0 = 0;
-    if (!$enabled) goto L1;
+    if (!$enabled) goto L2;
     $0 = 42;
-    goto L2;
-    L1: ;
-    $0 = 7;
+    goto L1;
     L2: ;
+    $0 = 7;
+    L1: ;
     return $0;
 }
 void init() {

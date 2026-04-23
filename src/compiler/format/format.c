@@ -322,10 +322,35 @@ internal void format_emit_expr(StringBuilder* sb,
             const CstOnInfo* on = &cst->ons[node->b];
             sb_append_cstr(sb, "on ");
             format_emit_expr(sb, cst, lexer, node->a, node_precedence);
-            sb_append_cstr(sb, " => ");
-            format_emit_expr(sb, cst, lexer, on->true_expr_node_index, 0);
-            sb_append_cstr(sb, " else ");
-            format_emit_expr(sb, cst, lexer, on->false_expr_node_index, 0);
+            if (on->kind == COK_Bool) {
+                const CstOnBranch* true_branch =
+                    &cst->on_branches[on->first_branch];
+                const CstOnBranch* else_branch =
+                    &cst->on_branches[on->first_branch + 1];
+                sb_append_cstr(sb, " => ");
+                format_emit_expr(sb, cst, lexer, true_branch->expr_node_index, 0);
+                sb_append_cstr(sb, " else ");
+                format_emit_expr(sb, cst, lexer, else_branch->expr_node_index, 0);
+                break;
+            }
+
+            sb_append_cstr(sb, " { ");
+            for (u32 i = 0; i < on->branch_count; ++i) {
+                if (i > 0) {
+                    sb_append_char(sb, ' ');
+                }
+                const CstOnBranch* branch =
+                    &cst->on_branches[on->first_branch + i];
+                if (branch->flags & COBF_Else) {
+                    sb_append_cstr(sb, "else");
+                } else {
+                    format_emit_expr(
+                        sb, cst, lexer, branch->pattern_node_index, 0);
+                }
+                sb_append_cstr(sb, " => ");
+                format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+            }
+            sb_append_cstr(sb, " }");
         }
         break;
     case CK_TypeFn:

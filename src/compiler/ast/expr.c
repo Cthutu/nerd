@@ -230,6 +230,116 @@ internal bool ast_parse_on_expr(AstParseState* state,
         return false;
     }
 
+    u32 first_branch = (u32)array_count(state->on_branches);
+
+    if (state->token.kind == TK_LBrace) {
+        if (!ast_next_token(state) || !ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_else);
+        }
+
+        bool saw_else = false;
+        while (state->token.kind != TK_RBrace) {
+            if (state->token.kind == TK_EOF) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_RBrace,
+                    state->token.kind);
+            }
+
+            if (state->token.token_index == state->token_index &&
+                !ast_next_token(state)) {
+                return error_0201_missing_value(state->token.source,
+                                                ast_token_span(state,
+                                                               &state->token),
+                                                TK_RBrace);
+            }
+
+            AstOnBranch branch = {0};
+            if (state->token.kind == TK_else) {
+                branch.flags = AOBF_Else;
+                saw_else     = true;
+                if (!ast_next_token(state) || state->token.kind != TK_FatArrow ||
+                    !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+            } else {
+                if (!ast_parse_expr_bp(state, 0, &branch.pattern_node_index)) {
+                    return false;
+                }
+                if (state->token.kind != TK_FatArrow) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_FatArrow,
+                        state->token.kind);
+                }
+                if (!ast_next_token(state) || state->token.kind != TK_FatArrow ||
+                    !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+            }
+
+            bool saved_statement_boundary = state->allow_statement_boundary;
+            state->allow_statement_boundary = true;
+            bool parsed_branch_expr =
+                ast_parse_expr_bp(state, 0, &branch.expr_node_index);
+            state->allow_statement_boundary = saved_statement_boundary;
+            if (!parsed_branch_expr) {
+                return false;
+            }
+
+            array_push(state->on_branches, branch);
+
+            if (branch.flags & AOBF_Else) {
+                break;
+            }
+        }
+
+        if (!saw_else) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &state->token),
+                                             TK_else,
+                                             state->token.kind);
+        }
+        if (state->token.kind != TK_RBrace) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &state->token),
+                                             TK_RBrace,
+                                             state->token.kind);
+        }
+        if (!ast_expect_token(state, TK_RBrace)) {
+            return false;
+        }
+
+        u32 on_index = (u32)array_count(state->ons);
+        array_push(state->ons,
+                   (AstOnInfo){
+                       .kind        = AOK_Value,
+                       .first_branch = first_branch,
+                       .branch_count =
+                           (u32)array_count(state->on_branches) - first_branch,
+                   });
+
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_On,
+                                 .token_index = on_token.token_index,
+                                 .a           = condition_node,
+                                 .b           = on_index,
+                             },
+                             out_node);
+    }
+
     if (state->token.kind != TK_FatArrow) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -264,11 +374,34 @@ internal bool ast_parse_on_expr(AstParseState* state,
         return false;
     }
 
+    u32 true_pattern = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_BoolLiteral,
+                           .token_index = on_token.token_index,
+                           .a           = 1,
+                       },
+                       &true_pattern)) {
+        return false;
+    }
+    array_push(state->on_branches,
+               (AstOnBranch){
+                   .pattern_node_index = true_pattern,
+                   .expr_node_index    = true_expr_node,
+                   .flags              = AOBF_None,
+               });
+    array_push(state->on_branches,
+               (AstOnBranch){
+                   .expr_node_index = false_expr_node,
+                   .flags           = AOBF_Else,
+               });
+
     u32 on_index = (u32)array_count(state->ons);
     array_push(state->ons,
                (AstOnInfo){
-                   .true_expr_node_index  = true_expr_node,
-                   .false_expr_node_index = false_expr_node,
+                   .kind         = AOK_Bool,
+                   .first_branch = first_branch,
+                   .branch_count = 2,
                });
 
     return ast_emit_node(state,

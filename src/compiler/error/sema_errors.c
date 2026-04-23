@@ -520,3 +520,42 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report value-form `on` over an unsupported scrutinee type.
+
+bool error_0321_invalid_on_match_type(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     actual_type)
+{
+    ErrorInfo error =
+        error_init(321,
+                   source,
+                   span,
+                   "Block-form `on` does not support values of type `" STRINGP
+                   "`",
+                   STRINGV(actual_type));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This matched value type is unsupported");
+    error_add_help(&error,
+                   "For this milestone, block-form `on` supports `bool` and "
+                   "concrete integer scrutinees.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a value-form `on` branch pattern that is not compile-time constant.
+
+bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(
+        322, source, span, "Block-form `on` patterns must be compile-time constants");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This pattern is not constant");
+    error_add_help(&error,
+                   "Use a literal or folded constant binding for this pattern "
+                   "until richer pattern forms land.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

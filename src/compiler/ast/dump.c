@@ -171,10 +171,11 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 const AstOnInfo* on = &ast->ons[node->b];
                 row[3]              = table_cell_string(
                     string_format(&temp_arena,
-                                  "cond=%u true=%u false=%u",
+                                  "scrutinee=%u kind=%u branches=%u..%u",
                                   node->a,
-                                  on->true_expr_node_index,
-                                  on->false_expr_node_index));
+                                  on->kind,
+                                  on->first_branch,
+                                  on->first_branch + on->branch_count));
             }
             break;
         case AK_TypeFn:

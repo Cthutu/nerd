@@ -600,7 +600,10 @@ needed earlier.
   - Current implementation status:
     - short-form boolean `on <bool-expr> => <expr> else <expr>` is supported
     - source-level boolean literals `true` and `false` are supported
-    - block-form `on value { ... }` is still pending
+    - block-form `on value { ... }` with simple constant-value branches and
+      `else => ...` is supported
+    - block-form currently accepts `bool` and concrete integer scrutinees only
+    - branch patterns currently must be compile-time constants
   - Support the block form:
     - `on size { ... }`
   - Prefer syntax that does not require branch separators when the parser can
@@ -609,6 +612,9 @@ needed earlier.
 - [ ] 53. Add block-form branches, `else`, and simple value/range matching.
   - Support branch bodies as general expressions, including blocks.
   - Support `else => ...` in block form for consistency with other branches.
+  - Current implementation status:
+    - simple constant value branches are supported
+    - range and comma-pattern branches are still pending
   - Support comma-separated alternative values in one branch.
   - Support exclusive and inclusive integer ranges through `..<` and `..=`.
   - Keep exact type matching throughout; do not add implicit casts.

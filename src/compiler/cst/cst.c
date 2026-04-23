@@ -623,19 +623,77 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
-    u32 condition = 0;
-    if (!cst_parse_expr_bp(state, 0, &condition)) {
+    u32 scrutinee = 0;
+    if (!cst_parse_expr_bp(state, 0, &scrutinee)) {
         return false;
     }
+
+    u32 first_branch = (u32)array_count(state->cst.on_branches);
+
+    if (cst_current_token(state).kind == TK_LBrace) {
+        cst_advance(state);
+        bool saw_else = false;
+
+        while (cst_current_token(state).kind != TK_RBrace) {
+            if (cst_current_token(state).kind == TK_EOF) {
+                return false;
+            }
+
+            CstOnBranch branch = {0};
+            if (cst_current_token(state).kind == TK_else) {
+                branch.flags = COBF_Else;
+                saw_else     = true;
+                cst_advance(state);
+                if (!cst_consume(state, TK_FatArrow)) {
+                    return false;
+                }
+            } else {
+                if (!cst_parse_expr_bp(state, 0, &branch.pattern_node_index) ||
+                    !cst_consume(state, TK_FatArrow)) {
+                    return false;
+                }
+            }
+
+            if (!cst_parse_expr_bp(state, 0, &branch.expr_node_index)) {
+                return false;
+            }
+            array_push(state->cst.on_branches, branch);
+
+            if (branch.flags & COBF_Else) {
+                break;
+            }
+        }
+
+        if (!saw_else || !cst_consume(state, TK_RBrace)) {
+            return false;
+        }
+
+        u32 on_index = (u32)array_count(state->cst.ons);
+        array_push(state->cst.ons,
+                   (CstOnInfo){
+                       .kind         = COK_Value,
+                       .first_branch = first_branch,
+                       .branch_count =
+                           (u32)array_count(state->cst.on_branches) -
+                           first_branch,
+                   });
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_On,
+                                 .token_index = token_index,
+                                 .a           = scrutinee,
+                                 .b           = on_index,
+                             },
+                             out_node);
+    }
+
     if (!cst_consume(state, TK_FatArrow)) {
         return false;
     }
 
     u32 true_expr = 0;
-    if (!cst_parse_expr_bp(state, 0, &true_expr)) {
-        return false;
-    }
-    if (!cst_consume(state, TK_else)) {
+    if (!cst_parse_expr_bp(state, 0, &true_expr) ||
+        !cst_consume(state, TK_else)) {
         return false;
     }
 
@@ -644,17 +702,39 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         return false;
     }
 
+    u32 true_pattern = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_BoolLiteral,
+                           .token_index = token_index,
+                           .a           = 1,
+                       },
+                       &true_pattern)) {
+        return false;
+    }
+    array_push(state->cst.on_branches,
+               (CstOnBranch){
+                   .pattern_node_index = true_pattern,
+                   .expr_node_index    = true_expr,
+               });
+    array_push(state->cst.on_branches,
+               (CstOnBranch){
+                   .expr_node_index = false_expr,
+                   .flags           = COBF_Else,
+               });
+
     u32 on_index = (u32)array_count(state->cst.ons);
     array_push(state->cst.ons,
                (CstOnInfo){
-                   .true_expr_node_index  = true_expr,
-                   .false_expr_node_index = false_expr,
+                   .kind         = COK_Bool,
+                   .first_branch = first_branch,
+                   .branch_count = 2,
                });
     return cst_emit_node(state,
                          (CstNode){
                              .kind        = CK_On,
                              .token_index = token_index,
-                             .a           = condition,
+                             .a           = scrutinee,
                              .b           = on_index,
                          },
                          out_node);
@@ -1266,6 +1346,7 @@ void cst_done(Cst* cst)
     array_free(cst->fn_signatures);
     array_free(cst->call_args);
     array_free(cst->calls);
+    array_free(cst->on_branches);
     array_free(cst->ons);
     *cst = (Cst){0};
 }

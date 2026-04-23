@@ -29,7 +29,7 @@
 // | CK_IntegerModulo   | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
-// | CK_On              | Condition node index  | On-info index         |
+// | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
@@ -98,8 +98,25 @@ typedef struct {
 } CstCallInfo;
 
 typedef struct {
-    u32 true_expr_node_index;
-    u32 false_expr_node_index;
+    u32 pattern_node_index;
+    u32 expr_node_index;
+    u32 flags;
+} CstOnBranch;
+
+typedef enum : u32 {
+    COK_Bool,
+    COK_Value,
+} CstOnKind;
+
+typedef enum : u32 {
+    COBF_None = 0,
+    COBF_Else = 1 << 0,
+} CstOnBranchFlag;
+
+typedef struct {
+    CstOnKind kind;
+    u32       first_branch;
+    u32       branch_count;
 } CstOnInfo;
 
 typedef struct {
@@ -110,6 +127,7 @@ typedef struct {
     Array(CstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(CstCallInfo) calls;
+    Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
 } Cst;
 

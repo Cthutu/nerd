@@ -192,6 +192,10 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
                                         string     true_type,
                                         ErrorSpan  false_span,
                                         string     false_type);
+bool error_0321_invalid_on_match_type(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     actual_type);
+bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

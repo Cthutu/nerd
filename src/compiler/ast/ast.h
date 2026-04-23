@@ -30,7 +30,7 @@
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
-// | AK_On              | Ast index cond    | Ast on-info index               |
+// | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
@@ -116,8 +116,25 @@ typedef struct {
 } AstCallInfo;
 
 typedef struct {
-    u32 true_expr_node_index;
-    u32 false_expr_node_index;
+    u32 pattern_node_index;
+    u32 expr_node_index;
+    u32 flags;
+} AstOnBranch;
+
+typedef enum : u32 {
+    AOK_Bool,
+    AOK_Value,
+} AstOnKind;
+
+typedef enum : u32 {
+    AOBF_None = 0,
+    AOBF_Else = 1 << 0,
+} AstOnBranchFlag;
+
+typedef struct {
+    AstOnKind kind;
+    u32       first_branch;
+    u32       branch_count;
 } AstOnInfo;
 
 typedef struct {
@@ -126,6 +143,7 @@ typedef struct {
     Array(AstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(AstCallInfo) calls;
+    Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
 } Ast;
 
