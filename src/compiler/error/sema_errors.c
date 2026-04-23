@@ -321,13 +321,13 @@ bool error_0313_argument_count_mismatch(NerdSource source,
                                         u32        expected_count,
                                         u32        actual_count)
 {
-    ErrorInfo error = error_init(
-        313,
-        source,
-        span,
-        "Argument count mismatch: expected %u, found %u",
-        expected_count,
-        actual_count);
+    ErrorInfo error =
+        error_init(313,
+                   source,
+                   span,
+                   "Argument count mismatch: expected %u, found %u",
+                   expected_count,
+                   actual_count);
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This call uses the wrong arity");
     error_add_help(&error,
@@ -335,6 +335,37 @@ bool error_0313_argument_count_mismatch(NerdSource source,
                    "signature.",
                    expected_count,
                    expected_count == 1 ? "" : "s");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a block-bodied function with an explicit return type that falls
+// through without returning a value.
+
+bool error_0314_missing_return(NerdSource source,
+                               ErrorSpan  span,
+                               string     return_type)
+{
+    ErrorInfo error = error_init(314,
+                                 source,
+                                 span,
+                                 "Missing return for function returning `"
+                                 STRINGP "`",
+                                 STRINGV(return_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This function can reach the end without returning a "
+                        "`" STRINGP "` value",
+                        STRINGV(return_type));
+    error_add_note(&error,
+                   "Block-bodied functions with explicit return types must "
+                   "return a value before they end.");
+    error_add_help(&error,
+                   "Add `return <expr>` to the function body or remove the "
+                   "explicit return type if the function should not produce a "
+                   "value.");
     error_render(&error);
     return false;
 }

@@ -1684,7 +1684,6 @@ internal bool testing_run_command_test(const CommandTest* test)
         NerdRunConfig config = {
             .source =
                 (NerdSource){
-                    .source      = test->source,
                     .source_path = s(input_arg),
                 },
         };

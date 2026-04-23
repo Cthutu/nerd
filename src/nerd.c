@@ -150,12 +150,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         JsonValue* run_flags  = json_new_array(arena);
         json_array_push(run_params,
                         nerd_cli_make_param(arena,
-                                            "source",
+                                            "input",
                                             "positional",
                                             NULL,
                                             NULL,
-                                            "Source snippet to compile",
-                                            false));
+                                            "Source file to build and run",
+                                            true));
         json_array_push(run_flags,
                         nerd_cli_make_flag(
                             arena, "ir", NULL, "Write generated IR to a file"));
@@ -337,13 +337,18 @@ nerd_format_config_from_json(const JsonValue* cli_result)
 
 internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
 {
-    NerdBuildConfig build = nerd_build_config_from_json(cli_result);
     return (NerdRunConfig){
-        .source      = build.source,
-        .output_path = build.output_path,
-        .emit_ir     = build.emit_ir,
-        .emit_c      = build.emit_c,
-        .verbose     = build.verbose,
+        .source =
+            (NerdSource){
+                .source_path = nerd_cli_param_string(
+                    cli_result, "command.params.input", (string){0}),
+            },
+        .output_path = nerd_cli_param_string(
+            cli_result, "command.params.output", (string){0}),
+        .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
+        .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .verbose =
+            nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };
 }
 

@@ -173,6 +173,9 @@ bool error_0313_argument_count_mismatch(NerdSource source,
                                         ErrorSpan  span,
                                         u32        expected_count,
                                         u32        actual_count);
+bool error_0314_missing_return(NerdSource source,
+                               ErrorSpan  span,
+                               string     return_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system
