@@ -95,6 +95,23 @@ The same `ErrorInfo` can be rendered in three modes:
 This is the key architectural choice: the structured error is the source of
 truth, and each consumer gets a different projection of it.
 
+## Coverage Policy
+
+Every reachable public language diagnostic should have structured coverage under
+`tests/errors/*.e`. Add separate tests for reused categories when the source
+span, related references, notes, or help text differ in a meaningful way.
+
+Some diagnostics describe hard implementation limits rather than ordinary source
+mistakes. Those should still remain categorised and structured, but they do not
+need source-file tests that require enormous inputs or fragile machine-resource
+setup. Cover those through a synthetic diagnostic harness when one exists.
+
+The current deferred hard-limit categories are:
+
+- `0102`
+- `0105`
+- `0200`
+
 ## Global Error State
 
 The current implementation uses a small global error subsystem to manage:

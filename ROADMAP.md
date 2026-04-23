@@ -478,9 +478,9 @@ needed earlier.
   - Add error tests for invalid interpolation forms and unsupported types.
   - Extend tooling surfaces at the same time as the syntax lands.
 
-## Milestone 7: Scopes, Blocks, And Coverage Hardening
+## Milestone 7: Scopes, Blocks, And Coverage Hardening (Completed)
 
-- [ ] 43. Audit and complete compiler error coverage.
+- [X] 43. Audit and complete compiler error coverage.
   - Keep every compiler error as a structured `ErrorInfo` with a phase-specific
     code.
   - Audit all compile-language failure points and classify each as either a
@@ -489,8 +489,10 @@ needed earlier.
   - Cover meaningful distinct occurrences of reused categories when the source
     span, related information, or help text can differ.
   - Reachable coverage added for `0101`, `0104`, and `0205`.
-  - Remaining known gaps are hard-limit diagnostics that need synthetic harness
-    support or intentionally enormous inputs: `0102`, `0105`, and `0200`.
+  - Known hard-limit diagnostics `0102`, `0105`, and `0200` are intentionally
+    deferred until there is a synthetic diagnostic harness; exercising them
+    through normal source inputs would require intentionally enormous files or
+    resource-limit setup.
   - Extend LSP diagnostic transcript coverage for semantic errors that editor
     users are likely to hit, rather than only relying on JSON error tests.
   - Keep error tests under `tests/errors` as the primary structured diagnostic
@@ -552,6 +554,9 @@ milestone yet.
 - [ ] Add trait-based conversion and formatting support for user-defined types.
 - [ ] Revisit whether in-place AST compaction is the best home for constant
   folding after a first implementation exists and can be measured.
+- [ ] Add a synthetic diagnostic harness for hard-limit error categories that
+  are impractical to trigger through normal source files, including `0102`,
+  `0105`, and `0200`.
 
 ## Semantic Layout Sketch
 
