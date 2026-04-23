@@ -100,6 +100,15 @@ bool ast_peek_token(AstParseState* state)
             .value.integer_index = state->integer_index,
         };
         return true;
+    case TK_Float:
+        state->token = (AstToken){
+            .kind              = TK_Float,
+            .source            = source,
+            .offset            = token.offset,
+            .token_index       = state->token_index,
+            .value.float_index = state->float_index,
+        };
+        return true;
 
     case TK_String:
     case TK_InterpolatedStringStart:
@@ -148,6 +157,9 @@ bool ast_next_token(AstParseState* state)
     switch (state->token.kind) {
     case TK_Integer:
         state->integer_index++;
+        break;
+    case TK_Float:
+        state->float_index++;
         break;
     case TK_String:
         state->string_index++;

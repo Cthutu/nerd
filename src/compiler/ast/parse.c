@@ -850,25 +850,25 @@ Ast ast_parse(Lexer* lexer)
     }
 
     return (Ast){
-        .nodes         = state.nodes,
-        .params        = state.params,
-        .fn_signatures = state.fn_signatures,
-        .call_args     = state.call_args,
-        .calls         = state.calls,
+        .nodes            = state.nodes,
+        .params           = state.params,
+        .fn_signatures    = state.fn_signatures,
+        .call_args        = state.call_args,
+        .calls            = state.calls,
         .on_pattern_nodes = state.on_pattern_nodes,
-        .on_branches   = state.on_branches,
-        .ons           = state.ons,
+        .on_branches      = state.on_branches,
+        .ons              = state.ons,
     };
 
 error:
-    ast_done(&(Ast){.nodes         = state.nodes,
-                    .params        = state.params,
-                    .fn_signatures = state.fn_signatures,
-                    .call_args     = state.call_args,
-                    .calls         = state.calls,
+    ast_done(&(Ast){.nodes            = state.nodes,
+                    .params           = state.params,
+                    .fn_signatures    = state.fn_signatures,
+                    .call_args        = state.call_args,
+                    .calls            = state.calls,
                     .on_pattern_nodes = state.on_pattern_nodes,
-                    .on_branches   = state.on_branches,
-                    .ons           = state.ons});
+                    .on_branches      = state.on_branches,
+                    .ons              = state.ons});
     return (Ast){0};
 }
 

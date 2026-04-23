@@ -426,6 +426,15 @@ needed earlier.
 
 - [X] 36. Require exact type matches for arithmetic and add explicit casts.
   - Do not introduce implicit conversions.
+  - Extend the primitive operator surface to include:
+    - comparison operators `<`, `<=`, `>`, `>=`, `==`, and `!=`
+    - bitwise operators `&`, `^`, and `|`
+    - logical operators `!`, `&&`, and `||`
+    - integer `%`
+  - Restrict each operator family semantically:
+    - arithmetic and comparisons use matching numeric operands
+    - bitwise operators use matching integer operands
+    - logical operators use `bool` operands
   - Add explicit casts through a `.cast(<type>)` form.
   - Support casts on both named values and literals, for example:
     - `my_byte := my_word.cast(u8)`
@@ -438,7 +447,7 @@ needed earlier.
 
 - [X] 37. Extend tests, formatter support, and LSP support for primitive types, variables, and casts.
   - Add language tests for type annotations, inference, variable bindings,
-    exact-match arithmetic, and casts.
+    exact-match arithmetic, primitive operators, float literals, and casts.
   - Add error tests for mismatched primitive operations, invalid casts, and
     invalid variable/type combinations.
   - Ensure new feature work is covered through the structured error system as

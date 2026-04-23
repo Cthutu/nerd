@@ -39,12 +39,17 @@ main :: fn () {
 ## Current Core Expressions
 
 - integer literals
+- floating-point literals
+- boolean literals
 - string literals
 - interpolated strings with `$"...{expr}..."`
 - symbol references
-- unary integer negation
-- integer arithmetic operators
-- calls with a single argument
+- unary `-` and `!`
+- arithmetic operators `+`, `-`, `*`, `/`, `%`
+- comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=`
+- bitwise operators `&`, `^`, `|`
+- logical operators `&&`, `||`
+- calls with zero or more arguments
 
 ## Current Grammar Sketch
 

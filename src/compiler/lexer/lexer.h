@@ -22,6 +22,7 @@ typedef enum {
 
     // Values
     TK_Integer,
+    TK_Float,
     TK_String,
     TK_InterpolatedStringStart,
     TK_InterpolatedStringEnd,
@@ -43,7 +44,18 @@ typedef enum {
     TK_RangeInclusive,
     TK_Colon,
     TK_Equal,
+    TK_EqualEqual,
     TK_Bang,
+    TK_BangEqual,
+    TK_Amp,
+    TK_AmpAmp,
+    TK_Pipe,
+    TK_PipePipe,
+    TK_Caret,
+    TK_Less,
+    TK_LessEqual,
+    TK_Greater,
+    TK_GreaterEqual,
     TK_FatArrow,
     TK_ThinArrow,
 
@@ -82,6 +94,7 @@ typedef struct {
     LexerMode  mode;
     Array(Token) tokens;
     Array(u64) integers;
+    Array(f64) floats;
     Array(string) strings;
     Array(u32) symbol_handles;
     Arena string_arena;

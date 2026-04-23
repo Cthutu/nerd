@@ -16,18 +16,31 @@
 // | Name               | a                 | b                               |
 // |--------------------|-------------------|---------------------------------|
 // | AK_IntegerLiteral  | Integer index     | 0                               |
+// | AK_FloatLiteral    | Float index       | 0                               |
 // | AK_StringLiteral   | String index      | 0                               |
 // | AK_BoolLiteral     | 0 false, 1 true   | 0                               |
 // | AK_StringConcat    | Ast index of lhs  | Ast index of rhs                |
 // | AK_InterpPartExpr  | Ast index of expr | 0                               |
 // | AK_InterpolatedString | First part index | End-exclusive part index      |
 // | AK_SymbolRef       | Symbol handle     | 0                               |
+// | AK_LogicalNot      | Ast index of rhs  | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
 // | AK_IntegerMinus    | Ast index of left | Ast index of right              |
 // | AK_IntegerMultiply | Ast index of left | Ast index of right              |
 // | AK_IntegerDivide   | Ast index of left | Ast index of right              |
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
+// | AK_BitwiseAnd      | Ast index of left | Ast index of right              |
+// | AK_BitwiseXor      | Ast index of left | Ast index of right              |
+// | AK_BitwiseOr       | Ast index of left | Ast index of right              |
+// | AK_Equal           | Ast index of left | Ast index of right              |
+// | AK_NotEqual        | Ast index of left | Ast index of right              |
+// | AK_Less            | Ast index of left | Ast index of right              |
+// | AK_LessEqual       | Ast index of left | Ast index of right              |
+// | AK_Greater         | Ast index of left | Ast index of right              |
+// | AK_GreaterEqual    | Ast index of left | Ast index of right              |
+// | AK_LogicalAnd      | Ast index of left | Ast index of right              |
+// | AK_LogicalOr       | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
@@ -51,18 +64,31 @@
 
 typedef enum {
     AK_IntegerLiteral,
+    AK_FloatLiteral,
     AK_StringLiteral,
     AK_BoolLiteral,
     AK_StringConcat,
     AK_InterpPartExpr,
     AK_InterpolatedString,
     AK_SymbolRef,
+    AK_LogicalNot,
     AK_IntegerNegate,
     AK_IntegerPlus,
     AK_IntegerMinus,
     AK_IntegerMultiply,
     AK_IntegerDivide,
     AK_IntegerModulo,
+    AK_BitwiseAnd,
+    AK_BitwiseXor,
+    AK_BitwiseOr,
+    AK_Equal,
+    AK_NotEqual,
+    AK_Less,
+    AK_LessEqual,
+    AK_Greater,
+    AK_GreaterEqual,
+    AK_LogicalAnd,
+    AK_LogicalOr,
     AK_Call,
     AK_Cast,
     AK_RangeExclusive,
@@ -161,6 +187,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer);
 // Extraction API
 
 u64    ast_get_integer(const Lexer* lexer, const AstNode* node);
+f64    ast_get_float(const Lexer* lexer, const AstNode* node);
 string ast_get_string(const Lexer* lexer, const AstNode* node);
 u32    ast_get_symbol(const AstNode* node);
 

@@ -21,6 +21,7 @@ typedef enum : u8 {
 typedef enum : u8 {
     STK_Void,
     STK_UntypedInteger,
+    STK_UntypedFloat,
     STK_String,
     STK_Bool,
     STK_I8,
@@ -130,6 +131,7 @@ u32    sema_no_type(void);
 u32    sema_materialise_type(const Sema* sema, u32 type_index);
 bool   sema_type_is_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_concrete_integer(const Sema* sema, u32 type_index);
+bool   sema_type_is_float(const Sema* sema, u32 type_index);
 string sema_type_name(const Sema* sema, Arena* arena, u32 type_index);
 
 //------------------------------------------------------------------------------

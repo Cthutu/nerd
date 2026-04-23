@@ -143,25 +143,44 @@ internal int format_expr_precedence(const CstNode* node)
     switch (node->kind) {
     case CK_On:
         return 5;
+    case CK_LogicalOr:
+        return 10;
+    case CK_LogicalAnd:
+        return 15;
+    case CK_BitwiseOr:
+        return 20;
+    case CK_BitwiseXor:
+        return 25;
+    case CK_BitwiseAnd:
+        return 30;
+    case CK_Equal:
+    case CK_NotEqual:
+        return 35;
+    case CK_Less:
+    case CK_LessEqual:
+    case CK_Greater:
+    case CK_GreaterEqual:
+        return 40;
     case CK_IntegerPlus:
     case CK_IntegerMinus:
-        return 10;
+        return 50;
     case CK_IntegerMultiply:
     case CK_IntegerDivide:
     case CK_IntegerModulo:
-        return 20;
+        return 60;
+    case CK_LogicalNot:
     case CK_IntegerNegate:
-        return 30;
+        return 70;
     case CK_Call:
-        return 35;
+        return 80;
     case CK_Cast:
-        return 35;
+        return 80;
     case CK_StringConcat:
-        return 37;
+        return 85;
     case CK_InterpolatedString:
-        return 37;
+        return 85;
     default:
-        return 40;
+        return 100;
     }
 }
 
@@ -191,6 +210,23 @@ internal void format_emit_string_text(StringBuilder* sb, string text)
             sb_append_char(sb, (char)text.data[i]);
             break;
         }
+    }
+}
+
+internal void format_emit_float_literal(StringBuilder* sb, f64 value)
+{
+    usize start = sb->size;
+    sb_format(sb, "%.17g", value);
+    bool has_decimal = false;
+    for (usize i = start; i < sb->size; ++i) {
+        if (sb->data[i] == '.' || sb->data[i] == 'e' || sb->data[i] == 'E') {
+            has_decimal = true;
+            break;
+        }
+    }
+
+    if (!has_decimal) {
+        sb_append_cstr(sb, ".0");
     }
 }
 
@@ -226,6 +262,9 @@ internal void format_emit_expr(StringBuilder* sb,
     switch (node->kind) {
     case CK_IntegerLiteral:
         sb_format(sb, "%u", (u32)cst_get_integer(cst, node));
+        break;
+    case CK_FloatLiteral:
+        format_emit_float_literal(sb, cst_get_float(cst, node));
         break;
     case CK_BoolLiteral:
         sb_append_cstr(sb, node->a != 0 ? "true" : "false");
@@ -271,6 +310,10 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, '-');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
+    case CK_LogicalNot:
+        sb_append_char(sb, '!');
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        break;
     case CK_IntegerPlus:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " + ");
@@ -294,6 +337,61 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_IntegerModulo:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " % ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_BitwiseAnd:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " & ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_BitwiseXor:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " ^ ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_BitwiseOr:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " | ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_Equal:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " == ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_NotEqual:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " != ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_Less:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " < ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_LessEqual:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " <= ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_Greater:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " > ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_GreaterEqual:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " >= ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_LogicalAnd:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " && ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_LogicalOr:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " || ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
     case CK_Call:
@@ -320,8 +418,7 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_RangeExclusive:
     case CK_RangeInclusive:
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(
-            sb, node->kind == CK_RangeExclusive ? "..<" : "..=");
+        sb_append_cstr(sb, node->kind == CK_RangeExclusive ? "..<" : "..=");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         break;
     case CK_On:
@@ -335,9 +432,11 @@ internal void format_emit_expr(StringBuilder* sb,
                 const CstOnBranch* else_branch =
                     &cst->on_branches[on->first_branch + 1];
                 sb_append_cstr(sb, " => ");
-                format_emit_expr(sb, cst, lexer, true_branch->expr_node_index, 0);
+                format_emit_expr(
+                    sb, cst, lexer, true_branch->expr_node_index, 0);
                 sb_append_cstr(sb, " else ");
-                format_emit_expr(sb, cst, lexer, else_branch->expr_node_index, 0);
+                format_emit_expr(
+                    sb, cst, lexer, else_branch->expr_node_index, 0);
                 break;
             }
 
@@ -356,13 +455,13 @@ internal void format_emit_expr(StringBuilder* sb,
                         if (pattern > 0) {
                             sb_append_cstr(sb, ", ");
                         }
-                        format_emit_expr(sb,
-                                         cst,
-                                         lexer,
-                                         cst->on_pattern_nodes
-                                             [branch->pattern_node_index +
-                                              pattern],
-                                         0);
+                        format_emit_expr(
+                            sb,
+                            cst,
+                            lexer,
+                            cst->on_pattern_nodes[branch->pattern_node_index +
+                                                  pattern],
+                            0);
                     }
                 }
                 sb_append_cstr(sb, " => ");
@@ -416,7 +515,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
                                           const Lexer*   lexer,
                                           u32            node_index,
                                           u32            indent_level);
-internal u32  format_node_end_token_index(const Cst* cst,
+internal u32  format_node_end_token_index(const Cst*   cst,
                                           const Lexer* lexer,
                                           u32          node_index);
 internal bool format_has_blank_line_between_statements(const Cst*   cst,
@@ -461,11 +560,11 @@ internal u32 format_find_matching_close_token_index(const Lexer* lexer,
 
 internal u32 format_fn_signature_end_token_index(const Cst*   cst,
                                                  const Lexer* lexer,
-                                                 u32 fn_token_index,
-                                                 u32 signature_index)
+                                                 u32          fn_token_index,
+                                                 u32          signature_index)
 {
-    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
-    u32 paren_index                 = U32_MAX;
+    const CstFnSignature* signature   = &cst->fn_signatures[signature_index];
+    u32                   paren_index = U32_MAX;
 
     for (u32 i = fn_token_index; i < array_count(lexer->tokens); ++i) {
         if (lexer->tokens[i].kind == TK_LParen) {
@@ -500,8 +599,9 @@ internal u32 format_find_interpolated_string_end_token_index(const Lexer* lexer,
     return token_index;
 }
 
-internal u32
-format_node_end_token_index(const Cst* cst, const Lexer* lexer, u32 node_index)
+internal u32 format_node_end_token_index(const Cst*   cst,
+                                         const Lexer* lexer,
+                                         u32          node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
 
@@ -556,7 +656,8 @@ format_node_end_token_index(const Cst* cst, const Lexer* lexer, u32 node_index)
                     cst, lexer, else_branch->expr_node_index);
             }
 
-            u32 scrutinee_end = format_node_end_token_index(cst, lexer, node->a);
+            u32 scrutinee_end =
+                format_node_end_token_index(cst, lexer, node->a);
             for (u32 i = scrutinee_end + 1; i < array_count(lexer->tokens);
                  ++i) {
                 if (lexer->tokens[i].kind == TK_LBrace) {
@@ -592,15 +693,15 @@ internal bool format_has_blank_line_between_statements(const Cst*   cst,
                                                        u32 previous_node_index,
                                                        u32 current_node_index)
 {
-    const CstNode* current = &cst->nodes[current_node_index];
-    u32            previous_end_line = 0;
-    u32            previous_end_col  = 0;
+    const CstNode* current            = &cst->nodes[current_node_index];
+    u32            previous_end_line  = 0;
+    u32            previous_end_col   = 0;
     u32            current_start_line = 0;
     u32            current_start_col  = 0;
-    u32 previous_end_token_index =
+    u32            previous_end_token_index =
         format_node_end_token_index(cst, lexer, previous_node_index);
-    usize previous_end_offset = lex_token_end_offset(
-        lexer, &lexer->tokens[previous_end_token_index]);
+    usize previous_end_offset =
+        lex_token_end_offset(lexer, &lexer->tokens[previous_end_token_index]);
     if (previous_end_offset > 0) {
         previous_end_offset--;
     }

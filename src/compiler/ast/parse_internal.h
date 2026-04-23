@@ -12,10 +12,17 @@
 
 //------------------------------------------------------------------------------
 
-#define AST_BP_ADDITIVE 10
-#define AST_BP_MULTIPLICATIVE 20
-#define AST_BP_PREFIX 30
-#define AST_BP_POSTFIX 40
+#define AST_BP_LOGICAL_OR 10
+#define AST_BP_LOGICAL_AND 20
+#define AST_BP_BITWISE_OR 30
+#define AST_BP_BITWISE_XOR 40
+#define AST_BP_BITWISE_AND 50
+#define AST_BP_EQUALITY 60
+#define AST_BP_COMPARISON 70
+#define AST_BP_ADDITIVE 80
+#define AST_BP_MULTIPLICATIVE 90
+#define AST_BP_PREFIX 100
+#define AST_BP_POSTFIX 110
 
 typedef struct {
     TokenKind  kind;
@@ -25,6 +32,7 @@ typedef struct {
 
     union {
         u32 integer_index;
+        u32 float_index;
         u32 string_index;
         u32 symbol_handle;
     } value;
@@ -34,6 +42,7 @@ typedef struct {
     Lexer* lexer;
     u32    token_index;
     u32    integer_index;
+    u32    float_index;
     u32    string_index;
     u32    symbol_index;
     bool   allow_statement_boundary;

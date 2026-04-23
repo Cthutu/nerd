@@ -59,6 +59,24 @@ internal void ir_render_value(StringBuilder* sb,
     case IR_VALUE_INTEGER:
         sb_format(sb, "%lld", value->value.integer);
         break;
+    case IR_VALUE_FLOAT:
+        {
+            string rendered =
+                string_format(&temp_arena, "%.17g", value->value.floating);
+            bool needs_decimal = true;
+            for (usize i = 0; i < rendered.count; ++i) {
+                if (rendered.data[i] == '.' || rendered.data[i] == 'e' ||
+                    rendered.data[i] == 'E') {
+                    needs_decimal = false;
+                    break;
+                }
+            }
+            sb_append_string(sb, rendered);
+            if (needs_decimal) {
+                sb_append_cstr(sb, ".0");
+            }
+        }
+        break;
     case IR_VALUE_SYMBOL:
         sb_append_string(sb, lex_symbol(lexer, (u32)value->value.integer));
         break;
@@ -91,6 +109,9 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         break;
     case STK_UntypedInteger:
         sb_append_cstr(sb, "untyped-integer");
+        break;
+    case STK_UntypedFloat:
+        sb_append_cstr(sb, "untyped-float");
         break;
     case STK_String:
         sb_append_cstr(sb, "string");
@@ -287,16 +308,46 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_label(&sb, instr->lvalue.value.integer);
             break;
         case IR_OP_EQUAL:
+        case IR_OP_NOT_EQUAL:
         case IR_OP_LESS:
         case IR_OP_LESS_EQUAL:
+        case IR_OP_BITWISE_AND:
+        case IR_OP_BITWISE_XOR:
+        case IR_OP_BITWISE_OR:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
-            sb_append_cstr(&sb,
-                           instr->op == IR_OP_EQUAL
-                               ? " == "
-                               : (instr->op == IR_OP_LESS ? " < " : " <= "));
+            switch (instr->op) {
+            case IR_OP_EQUAL:
+                sb_append_cstr(&sb, " == ");
+                break;
+            case IR_OP_NOT_EQUAL:
+                sb_append_cstr(&sb, " != ");
+                break;
+            case IR_OP_LESS:
+                sb_append_cstr(&sb, " < ");
+                break;
+            case IR_OP_LESS_EQUAL:
+                sb_append_cstr(&sb, " <= ");
+                break;
+            case IR_OP_BITWISE_AND:
+                sb_append_cstr(&sb, " & ");
+                break;
+            case IR_OP_BITWISE_XOR:
+                sb_append_cstr(&sb, " ^ ");
+                break;
+            case IR_OP_BITWISE_OR:
+                sb_append_cstr(&sb, " | ");
+                break;
+            default:
+                break;
+            }
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            break;
+        case IR_OP_LOGICAL_NOT:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = !");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
         case IR_OP_NEGATE:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

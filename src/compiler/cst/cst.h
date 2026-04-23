@@ -14,6 +14,7 @@
 // | Name               | a                     | b                     |
 // |--------------------|-----------------------|-----------------------|
 // | CK_IntegerLiteral  | Integer index         | 0                     |
+// | CK_FloatLiteral    | Float index           | 0                     |
 // | CK_StringLiteral   | Lexer string index    | 0                     |
 // | CK_BoolLiteral     | 0 false, 1 true       | 0                     |
 // | CK_StringConcat    | Left node index       | Right node index      |
@@ -21,12 +22,24 @@
 // | CK_InterpolatedString | First part index    | End-exclusive index   |
 // | CK_SymbolRef       | Symbol handle         | 0                     |
 // | CK_Group           | Inner node index      | 0                     |
+// | CK_LogicalNot      | Operand node index    | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
 // | CK_IntegerPlus     | Left node index       | Right node index      |
 // | CK_IntegerMinus    | Left node index       | Right node index      |
 // | CK_IntegerMultiply | Left node index       | Right node index      |
 // | CK_IntegerDivide   | Left node index       | Right node index      |
 // | CK_IntegerModulo   | Left node index       | Right node index      |
+// | CK_BitwiseAnd      | Left node index       | Right node index      |
+// | CK_BitwiseXor      | Left node index       | Right node index      |
+// | CK_BitwiseOr       | Left node index       | Right node index      |
+// | CK_Equal           | Left node index       | Right node index      |
+// | CK_NotEqual        | Left node index       | Right node index      |
+// | CK_Less            | Left node index       | Right node index      |
+// | CK_LessEqual       | Left node index       | Right node index      |
+// | CK_Greater         | Left node index       | Right node index      |
+// | CK_GreaterEqual    | Left node index       | Right node index      |
+// | CK_LogicalAnd      | Left node index       | Right node index      |
+// | CK_LogicalOr       | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
 // | CK_RangeExclusive  | Start node index      | End node index        |
@@ -46,6 +59,7 @@
 
 typedef enum {
     CK_IntegerLiteral,
+    CK_FloatLiteral,
     CK_StringLiteral,
     CK_BoolLiteral,
     CK_StringConcat,
@@ -53,12 +67,24 @@ typedef enum {
     CK_InterpolatedString,
     CK_SymbolRef,
     CK_Group,
+    CK_LogicalNot,
     CK_IntegerNegate,
     CK_IntegerPlus,
     CK_IntegerMinus,
     CK_IntegerMultiply,
     CK_IntegerDivide,
     CK_IntegerModulo,
+    CK_BitwiseAnd,
+    CK_BitwiseXor,
+    CK_BitwiseOr,
+    CK_Equal,
+    CK_NotEqual,
+    CK_Less,
+    CK_LessEqual,
+    CK_Greater,
+    CK_GreaterEqual,
+    CK_LogicalAnd,
+    CK_LogicalOr,
     CK_Call,
     CK_Cast,
     CK_RangeExclusive,
@@ -127,6 +153,7 @@ typedef struct {
 typedef struct {
     Array(CstNode) nodes;
     Array(u64) integers;
+    Array(f64) floats;
     Array(u32) bindings;
     Array(CstParam) params;
     Array(CstFnSignature) fn_signatures;
@@ -141,6 +168,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst);
 void cst_done(Cst* cst);
 
 u64 cst_get_integer(const Cst* cst, const CstNode* node);
+f64 cst_get_float(const Cst* cst, const CstNode* node);
 u32 cst_get_symbol(const CstNode* node);
 
 //------------------------------------------------------------------------------

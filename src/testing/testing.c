@@ -341,7 +341,8 @@ internal bool testing_parse_command_test(Arena*       arena,
         }
     }
 
-    if ((section_count != 3 && section_count != 4) || cursor <= file_text.count) {
+    if ((section_count != 3 && section_count != 4) ||
+        cursor <= file_text.count) {
         eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
@@ -357,17 +358,15 @@ internal bool testing_parse_command_test(Arena*       arena,
     }
 
     *out_test = (CommandTest){
-        .run_mode              = section_count == 4
-                                     ? testing_copy_cstr(
-                                           arena,
-                                           run_mode.count > 0
-                                               ? (cstr)string_format(
-                                                     arena,
-                                                     STRINGP,
-                                                     STRINGV(run_mode))
-                                                     .data
-                                               : "")
-                                     : "",
+        .run_mode =
+            section_count == 4
+                ? testing_copy_cstr(arena,
+                                    run_mode.count > 0
+                                        ? (cstr)string_format(
+                                              arena, STRINGP, STRINGV(run_mode))
+                                              .data
+                                        : "")
+                : "",
         .path                  = testing_copy_cstr(arena, path),
         .source                = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),

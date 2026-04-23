@@ -147,6 +147,29 @@ bool sema_type_is_concrete_integer(const Sema* sema, u32 type_index)
            sema->types[type_index].kind != STK_UntypedInteger;
 }
 
+internal bool sema_type_kind_is_float(SemaTypeKind kind)
+{
+    return kind == STK_UntypedFloat || kind == STK_F32 || kind == STK_F64;
+}
+
+bool sema_type_is_float(const Sema* sema, u32 type_index)
+{
+    return type_index != sema_no_type() &&
+           sema_type_kind_is_float(sema->types[type_index].kind);
+}
+
+internal bool sema_type_is_concrete_float(const Sema* sema, u32 type_index)
+{
+    return sema_type_is_float(sema, type_index) &&
+           sema->types[type_index].kind != STK_UntypedFloat;
+}
+
+internal bool sema_type_is_numeric(const Sema* sema, u32 type_index)
+{
+    return sema_type_is_integer(sema, type_index) ||
+           sema_type_is_float(sema, type_index);
+}
+
 //------------------------------------------------------------------------------
 // Return whether one semantic type is an unsigned concrete integer type.
 
@@ -177,13 +200,19 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         return type_index;
     }
 
-    if (sema->types[type_index].kind != STK_UntypedInteger) {
-        return type_index;
+    if (sema->types[type_index].kind == STK_UntypedInteger) {
+        for (u32 i = 0; i < array_count(sema->types); ++i) {
+            if (sema->types[i].kind == STK_I32) {
+                return i;
+            }
+        }
     }
 
-    for (u32 i = 0; i < array_count(sema->types); ++i) {
-        if (sema->types[i].kind == STK_I32) {
-            return i;
+    if (sema->types[type_index].kind == STK_UntypedFloat) {
+        for (u32 i = 0; i < array_count(sema->types); ++i) {
+            if (sema->types[i].kind == STK_F64) {
+                return i;
+            }
         }
     }
 
@@ -205,6 +234,8 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
         return s("void");
     case STK_UntypedInteger:
         return s("untyped integer");
+    case STK_UntypedFloat:
+        return s("untyped float");
     case STK_String:
         return s("string");
     case STK_Bool:
@@ -459,12 +490,12 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
             u32 local_index = sema->node_local_indices[node_index];
             if (local_index != sema_no_local() &&
                 sema->locals[local_index].kind == SLK_Constant) {
-                return sema_try_eval_integer_constant(lexer,
-                                                      ast,
-                                                      sema,
-                                                      sema->locals[local_index]
-                                                          .value_node_index,
-                                                      out_value);
+                return sema_try_eval_integer_constant(
+                    lexer,
+                    ast,
+                    sema,
+                    sema->locals[local_index].value_node_index,
+                    out_value);
             }
         }
         if (node_index < array_count(sema->node_decl_indices)) {
@@ -1362,6 +1393,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
 
     switch (node->kind) {
     case AK_IntegerLiteral:
+    case AK_FloatLiteral:
     case AK_StringLiteral:
     case AK_BoolLiteral:
     case AK_ZeroInit:
@@ -1402,6 +1434,17 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -1493,6 +1536,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             return true;
         }
     case AK_IntegerNegate:
+    case AK_LogicalNot:
     case AK_Cast:
     case AK_Expression:
     case AK_Statement:
@@ -1584,6 +1628,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
 
     switch (node->kind) {
     case AK_IntegerLiteral:
+    case AK_FloatLiteral:
     case AK_StringLiteral:
     case AK_BoolLiteral:
         return;
@@ -1610,13 +1655,13 @@ internal void sema_collect_node_deps(const Ast*  ast,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        sema_collect_node_deps(ast,
-                                               sema,
-                                               owner_decl_index,
-                                               ast->on_pattern_nodes
-                                                   [branch->pattern_node_index +
-                                                    pattern],
-                                               out_sema);
+                        sema_collect_node_deps(
+                            ast,
+                            sema,
+                            owner_decl_index,
+                            ast->on_pattern_nodes[branch->pattern_node_index +
+                                                  pattern],
+                            out_sema);
                     }
                 }
                 sema_collect_node_deps(ast,
@@ -1658,6 +1703,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
             return;
         }
     case AK_IntegerNegate:
+    case AK_LogicalNot:
     case AK_Cast:
     case AK_Expression:
     case AK_Statement:
@@ -1697,6 +1743,17 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
@@ -2006,8 +2063,13 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
 
-    return sema_type_is_concrete_integer(sema, expected_type) &&
-           sema->types[actual_type].kind == STK_UntypedInteger;
+    if (sema_type_is_concrete_integer(sema, expected_type) &&
+        sema->types[actual_type].kind == STK_UntypedInteger) {
+        return true;
+    }
+
+    return sema_type_is_concrete_float(sema, expected_type) &&
+           sema->types[actual_type].kind == STK_UntypedFloat;
 }
 
 internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
@@ -2018,6 +2080,7 @@ internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
 
     switch (sema->types[type_index].kind) {
     case STK_UntypedInteger:
+    case STK_UntypedFloat:
     case STK_Bool:
     case STK_I8:
     case STK_I16:
@@ -2070,6 +2133,34 @@ internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
     default:
         return sema_type_is_integer(sema, type_index);
     }
+}
+
+internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (sema->types[type_index].kind) {
+    case STK_Bool:
+        return true;
+    default:
+        return sema_type_is_numeric(sema, type_index);
+    }
+}
+
+internal u32 sema_expected_numeric_type(const Sema* sema, u32 expected_type)
+{
+    if (expected_type == sema_no_type()) {
+        return sema_no_type();
+    }
+
+    if (sema_type_is_concrete_integer(sema, expected_type) ||
+        sema_type_is_concrete_float(sema, expected_type)) {
+        return expected_type;
+    }
+
+    return sema_no_type();
 }
 
 internal bool sema_infer_node_type(const Lexer* lexer,
@@ -2131,12 +2222,12 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     }
 
     if (ok) {
-        local->type_index = annotated != sema_no_type()
-                                ? annotated
-                                : (local->kind == SLK_Function ||
-                                           local->kind == SLK_Constant
-                                       ? inferred
-                                       : sema_materialise_type(sema, inferred));
+        local->type_index =
+            annotated != sema_no_type()
+                ? annotated
+                : (local->kind == SLK_Function || local->kind == SLK_Constant
+                       ? inferred
+                       : sema_materialise_type(sema, inferred));
         sema->node_type_indices[local->decl_node_index] = local->type_index;
         *out_type_index                                 = local->type_index;
     }
@@ -2237,6 +2328,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_Return:
     case AK_IntegerNegate:
+    case AK_LogicalNot:
     case AK_Cast:
         return sema_node_contains_interpolation(ast, node->a);
     case AK_StringConcat:
@@ -2246,6 +2338,17 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -2338,6 +2441,7 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_Return:
     case AK_IntegerNegate:
+    case AK_LogicalNot:
     case AK_Cast:
         return sema_find_interpolated_string_node(ast, node->a);
     case AK_StringConcat:
@@ -2347,6 +2451,17 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -2363,15 +2478,15 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
                          ++pattern) {
                         found = sema_find_interpolated_string_node(
                             ast,
-                            ast->on_pattern_nodes
-                                [branch->pattern_node_index + pattern]);
+                            ast->on_pattern_nodes[branch->pattern_node_index +
+                                                  pattern]);
                         if (found != sema_no_decl()) {
                             return found;
                         }
                     }
                 }
-                found =
-                    sema_find_interpolated_string_node(ast, branch->expr_node_index);
+                found = sema_find_interpolated_string_node(
+                    ast, branch->expr_node_index);
                 if (found != sema_no_decl()) {
                     return found;
                 }
@@ -2436,6 +2551,7 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_Statement:
     case AK_Return:
     case AK_IntegerNegate:
+    case AK_LogicalNot:
     case AK_Cast:
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_StringConcat:
@@ -2445,11 +2561,23 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (!sema_validate_interpolated_strings(lexer, ast, sema, node->a)) {
+            if (!sema_validate_interpolated_strings(
+                    lexer, ast, sema, node->a)) {
                 return false;
             }
             for (u32 i = 0; i < on->branch_count; ++i) {
@@ -2527,6 +2655,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         type_index = sema_type_is_concrete_integer(sema, expected_type)
                          ? expected_type
                          : sema_builtin_type(sema, STK_UntypedInteger);
+        break;
+
+    case AK_FloatLiteral:
+        type_index = sema_type_is_concrete_float(sema, expected_type)
+                         ? expected_type
+                         : sema_builtin_type(sema, STK_UntypedFloat);
         break;
 
     case AK_BoolLiteral:
@@ -2622,6 +2756,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
                 type_index = expected_type;
+            } else if (sema_type_is_concrete_float(sema, expected_type) &&
+                       type_index != sema_no_type() &&
+                       sema->types[type_index].kind == STK_UntypedFloat) {
+                type_index = expected_type;
             }
         }
         break;
@@ -2639,9 +2777,30 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_IntegerNegate:
+    case AK_LogicalNot:
         if (!sema_infer_node_type(
                 lexer, ast, sema, node->a, expected_type, &type_index)) {
             return false;
+        }
+        if (node->kind == AK_LogicalNot) {
+            if (type_index != sema_builtin_type(sema, STK_Bool)) {
+                return error_0325_invalid_unary_operand(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("!"),
+                    s("bool"),
+                    sema_type_name(sema, &temp_arena, type_index));
+            }
+            type_index = sema_builtin_type(sema, STK_Bool);
+            break;
+        }
+        if (!sema_type_is_numeric(sema, type_index)) {
+            return error_0325_invalid_unary_operand(
+                lexer->source,
+                sema_node_span(lexer, node),
+                s("-"),
+                s("numeric"),
+                sema_type_name(sema, &temp_arena, type_index));
         }
         break;
 
@@ -2660,7 +2819,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
             if (!(sema_type_is_castable_primitive(sema, source_type) &&
                   sema_type_is_castable_primitive(sema, target_type) &&
-                  sema->types[target_type].kind != STK_UntypedInteger)) {
+                  sema->types[target_type].kind != STK_UntypedInteger &&
+                  sema->types[target_type].kind != STK_UntypedFloat)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -2674,15 +2834,20 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_RangeExclusive:
     case AK_RangeInclusive:
-        return error_ice("Range patterns must only appear inside block-form `on`");
+        return error_ice(
+            "Range patterns must only appear inside block-form `on`");
 
     case AK_On:
         {
-            const AstOnInfo* on = &ast->ons[node->b];
-            u32 bool_type       = sema_builtin_type(sema, STK_Bool);
-            u32 scrutinee_type  = sema_no_type();
-            if (!sema_infer_node_type(
-                    lexer, ast, sema, node->a, sema_no_type(), &scrutinee_type)) {
+            const AstOnInfo* on             = &ast->ons[node->b];
+            u32              bool_type      = sema_builtin_type(sema, STK_Bool);
+            u32              scrutinee_type = sema_no_type();
+            if (!sema_infer_node_type(lexer,
+                                      ast,
+                                      sema,
+                                      node->a,
+                                      sema_no_type(),
+                                      &scrutinee_type)) {
                 return false;
             }
             if (on->kind == AOK_Bool) {
@@ -2708,8 +2873,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        u32 pattern_node = ast->on_pattern_nodes
-                            [branch->pattern_node_index + pattern];
+                        u32 pattern_node =
+                            ast->on_pattern_nodes[branch->pattern_node_index +
+                                                  pattern];
                         const AstNode* pattern = &ast->nodes[pattern_node];
                         if (pattern->kind == AK_RangeExclusive ||
                             pattern->kind == AK_RangeInclusive) {
@@ -2729,8 +2895,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                       &end_type)) {
                                 return false;
                             }
-                            if (!(sema_expr_is_constantish(ast, sema, pattern->a) &&
-                                  sema_expr_is_constantish(ast, sema, pattern->b))) {
+                            if (!(sema_expr_is_constantish(
+                                      ast, sema, pattern->a) &&
+                                  sema_expr_is_constantish(
+                                      ast, sema, pattern->b))) {
                                 return error_0322_non_constant_on_pattern(
                                     lexer->source,
                                     sema_node_span(lexer, pattern));
@@ -2738,14 +2906,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
                             i64 start_value = 0;
                             i64 end_value   = 0;
-                            if (sema_try_eval_integer_constant(
-                                    lexer, ast, sema, pattern->a, &start_value) &&
+                            if (sema_try_eval_integer_constant(lexer,
+                                                               ast,
+                                                               sema,
+                                                               pattern->a,
+                                                               &start_value) &&
                                 sema_try_eval_integer_constant(
                                     lexer, ast, sema, pattern->b, &end_value)) {
                                 bool inclusive =
                                     pattern->kind == AK_RangeInclusive;
-                                bool valid = inclusive ? start_value <= end_value
-                                                       : start_value < end_value;
+                                bool valid = inclusive
+                                                 ? start_value <= end_value
+                                                 : start_value < end_value;
                                 if (!valid) {
                                     return error_0324_invalid_on_range_bounds(
                                         lexer->source,
@@ -2767,8 +2939,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                     ast, sema, pattern_node)) {
                                 return error_0322_non_constant_on_pattern(
                                     lexer->source,
-                                    sema_node_span(
-                                        lexer, &ast->nodes[pattern_node]));
+                                    sema_node_span(lexer,
+                                                   &ast->nodes[pattern_node]));
                             }
                         }
                     }
@@ -2778,6 +2950,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (current_expected == sema_no_type() &&
                     branch_type != sema_no_type() &&
                     sema_type_is_concrete_integer(sema, branch_type)) {
+                    current_expected = branch_type;
+                } else if (current_expected == sema_no_type() &&
+                           branch_type != sema_no_type() &&
+                           sema_type_is_concrete_float(sema, branch_type)) {
                     current_expected = branch_type;
                 }
 
@@ -2803,7 +2979,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     current_type = branch_type;
                 } else if (sema_type_is_concrete_integer(sema, current_type) &&
                            branch_type != sema_no_type() &&
-                           sema->types[branch_type].kind == STK_UntypedInteger) {
+                           sema->types[branch_type].kind ==
+                               STK_UntypedInteger) {
+                    branch_type      = current_type;
+                    branch_type_node = branch->expr_node_index;
+                } else if (sema_type_is_concrete_float(sema, branch_type) &&
+                           current_type != sema_no_type() &&
+                           sema->types[current_type].kind == STK_UntypedFloat) {
+                    current_type = branch_type;
+                } else if (sema_type_is_concrete_float(sema, current_type) &&
+                           branch_type != sema_no_type() &&
+                           sema->types[branch_type].kind == STK_UntypedFloat) {
                     branch_type      = current_type;
                     branch_type_node = branch->expr_node_index;
                 }
@@ -2813,7 +2999,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[branch_type_node]),
                         sema_type_name(sema, &temp_arena, branch_type),
-                        sema_node_span(lexer, &ast->nodes[branch->expr_node_index]),
+                        sema_node_span(lexer,
+                                       &ast->nodes[branch->expr_node_index]),
                         sema_type_name(sema, &temp_arena, current_type));
                 }
             }
@@ -2827,16 +3014,32 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
         {
             u32 lhs_type = sema_no_type();
             u32 rhs_type = sema_no_type();
+            u32 binary_expected = sema_expected_numeric_type(sema, expected_type);
 
             if (!sema_infer_node_type(
-                    lexer, ast, sema, node->a, expected_type, &lhs_type)) {
+                    lexer, ast, sema, node->a, binary_expected, &lhs_type)) {
                 return false;
             }
+            u32 rhs_expected = lhs_type;
+            if (sema_type_is_numeric(sema, lhs_type)) {
+                rhs_expected = sema_expected_numeric_type(sema, lhs_type);
+            }
             if (!sema_infer_node_type(
-                    lexer, ast, sema, node->b, lhs_type, &rhs_type)) {
+                    lexer, ast, sema, node->b, rhs_expected, &rhs_type)) {
                 return false;
             }
 
@@ -2848,6 +3051,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                        lhs_type != sema_no_type() &&
                        sema->types[lhs_type].kind == STK_UntypedInteger) {
                 lhs_type = rhs_type;
+            } else if (sema_type_is_concrete_float(sema, lhs_type) &&
+                       rhs_type != sema_no_type() &&
+                       sema->types[rhs_type].kind == STK_UntypedFloat) {
+                rhs_type = lhs_type;
+            } else if (sema_type_is_concrete_float(sema, rhs_type) &&
+                       lhs_type != sema_no_type() &&
+                       sema->types[lhs_type].kind == STK_UntypedFloat) {
+                lhs_type = rhs_type;
             }
 
             if (lhs_type != rhs_type) {
@@ -2857,7 +3068,99 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(sema, &temp_arena, lhs_type),
                     sema_type_name(sema, &temp_arena, rhs_type));
             }
-            type_index = lhs_type;
+
+            switch (node->kind) {
+            case AK_IntegerPlus:
+            case AK_IntegerMinus:
+            case AK_IntegerMultiply:
+            case AK_IntegerDivide:
+                if (!sema_type_is_numeric(sema, lhs_type)) {
+                    return error_0326_invalid_binary_operands(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        node->kind == AK_IntegerPlus
+                            ? s("+")
+                            : (node->kind == AK_IntegerMinus
+                                   ? s("-")
+                                   : (node->kind == AK_IntegerMultiply
+                                          ? s("*")
+                                          : s("/"))),
+                        s("matching numeric operands"),
+                        sema_type_name(sema, &temp_arena, lhs_type),
+                        sema_type_name(sema, &temp_arena, rhs_type));
+                }
+                type_index = lhs_type;
+                break;
+            case AK_IntegerModulo:
+            case AK_BitwiseAnd:
+            case AK_BitwiseXor:
+            case AK_BitwiseOr:
+                if (!sema_type_is_integer(sema, lhs_type)) {
+                    return error_0326_invalid_binary_operands(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        node->kind == AK_IntegerModulo
+                            ? s("%")
+                            : (node->kind == AK_BitwiseAnd
+                                   ? s("&")
+                                   : (node->kind == AK_BitwiseXor ? s("^")
+                                                                  : s("|"))),
+                        s("matching integer operands"),
+                        sema_type_name(sema, &temp_arena, lhs_type),
+                        sema_type_name(sema, &temp_arena, rhs_type));
+                }
+                type_index = lhs_type;
+                break;
+            case AK_Equal:
+            case AK_NotEqual:
+                if (!sema_type_is_equality_comparable(sema, lhs_type)) {
+                    return error_0326_invalid_binary_operands(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        node->kind == AK_Equal ? s("==") : s("!="),
+                        s("matching numeric or bool operands"),
+                        sema_type_name(sema, &temp_arena, lhs_type),
+                        sema_type_name(sema, &temp_arena, rhs_type));
+                }
+                type_index = sema_builtin_type(sema, STK_Bool);
+                break;
+            case AK_Less:
+            case AK_LessEqual:
+            case AK_Greater:
+            case AK_GreaterEqual:
+                if (!sema_type_is_numeric(sema, lhs_type)) {
+                    return error_0326_invalid_binary_operands(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        node->kind == AK_Less
+                            ? s("<")
+                            : (node->kind == AK_LessEqual
+                                   ? s("<=")
+                                   : (node->kind == AK_Greater ? s(">")
+                                                               : s(">="))),
+                        s("matching numeric operands"),
+                        sema_type_name(sema, &temp_arena, lhs_type),
+                        sema_type_name(sema, &temp_arena, rhs_type));
+                }
+                type_index = sema_builtin_type(sema, STK_Bool);
+                break;
+            case AK_LogicalAnd:
+            case AK_LogicalOr:
+                if (lhs_type != sema_builtin_type(sema, STK_Bool)) {
+                    return error_0326_invalid_binary_operands(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        node->kind == AK_LogicalAnd ? s("&&") : s("||"),
+                        s("matching bool operands"),
+                        sema_type_name(sema, &temp_arena, lhs_type),
+                        sema_type_name(sema, &temp_arena, rhs_type));
+                }
+                type_index = sema_builtin_type(sema, STK_Bool);
+                break;
+            default:
+                type_index = lhs_type;
+                break;
+            }
         }
         break;
 
@@ -3103,7 +3406,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         type_index != sema_no_type() &&
         sema->types[type_index].kind == STK_UntypedInteger) {
         i64 value = 0;
-        if (sema_try_eval_integer_constant(lexer, ast, sema, node_index, &value) &&
+        if (sema_try_eval_integer_constant(
+                lexer, ast, sema, node_index, &value) &&
             value < 0) {
             return error_0323_negative_unsigned_inference(
                 lexer->source,

@@ -202,6 +202,17 @@ bool error_0323_negative_unsigned_inference(NerdSource source,
 bool error_0324_invalid_on_range_bounds(NerdSource source,
                                         ErrorSpan  span,
                                         bool       inclusive);
+bool error_0325_invalid_unary_operand(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     operator_name,
+                                      string     expected_type,
+                                      string     actual_type);
+bool error_0326_invalid_binary_operands(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     operator_name,
+                                        string     expected_rule,
+                                        string     left_type,
+                                        string     right_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system

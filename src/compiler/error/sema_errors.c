@@ -498,11 +498,8 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
                                         ErrorSpan  false_span,
                                         string     false_type)
 {
-    ErrorInfo error =
-        error_init(320,
-                   source,
-                   false_span,
-                   "`on` branches must return the same type");
+    ErrorInfo error = error_init(
+        320, source, false_span, "`on` branches must return the same type");
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         false_span,
@@ -513,8 +510,7 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
                         true_span,
                         "The other branch has type `" STRINGP "`",
                         STRINGV(true_type));
-    error_add_help(
-        &error, "Make both branches produce exactly the same type.");
+    error_add_help(&error, "Make both branches produce exactly the same type.");
     error_render(&error);
     return false;
 }
@@ -526,15 +522,16 @@ bool error_0321_invalid_on_match_type(NerdSource source,
                                       ErrorSpan  span,
                                       string     actual_type)
 {
-    ErrorInfo error =
-        error_init(321,
-                   source,
-                   span,
-                   "Block-form `on` does not support values of type `" STRINGP
-                   "`",
-                   STRINGV(actual_type));
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "This matched value type is unsupported");
+    ErrorInfo error = error_init(
+        321,
+        source,
+        span,
+        "Block-form `on` does not support values of type `" STRINGP "`",
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This matched value type is unsupported");
     error_add_help(&error,
                    "For this milestone, block-form `on` supports `bool` and "
                    "concrete integer scrutinees.");
@@ -547,8 +544,11 @@ bool error_0321_invalid_on_match_type(NerdSource source,
 
 bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error = error_init(
-        322, source, span, "Block-form `on` patterns must be compile-time constants");
+    ErrorInfo error =
+        error_init(322,
+                   source,
+                   span,
+                   "Block-form `on` patterns must be compile-time constants");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This pattern is not constant");
     error_add_help(&error,
@@ -566,11 +566,12 @@ bool error_0323_negative_unsigned_inference(NerdSource source,
                                             ErrorSpan  span,
                                             string     target_type)
 {
-    ErrorInfo error = error_init(323,
-                                 source,
-                                 span,
-                                 "Cannot infer negative integer as `" STRINGP "`",
-                                 STRINGV(target_type));
+    ErrorInfo error =
+        error_init(323,
+                   source,
+                   span,
+                   "Cannot infer negative integer as `" STRINGP "`",
+                   STRINGV(target_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -591,20 +592,80 @@ bool error_0324_invalid_on_range_bounds(NerdSource source,
                                         bool       inclusive)
 {
     ErrorInfo error =
-        error_init(324,
-                   source,
-                   span,
-                   "Block-form `on` range pattern is empty");
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This range cannot match any values");
+        error_init(324, source, span, "Block-form `on` range pattern is empty");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This range cannot match any values");
     error_add_help(&error,
                    inclusive
                        ? "Use a lower bound that is less than or equal to the "
                          "upper bound for `..=` ranges."
                        : "Use a lower bound that is strictly less than the "
                          "upper bound for `..<` ranges.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report an invalid unary operator operand type.
+
+bool error_0325_invalid_unary_operand(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     operator_name,
+                                      string     expected_type,
+                                      string     actual_type)
+{
+    ErrorInfo error = error_init(
+        325,
+        source,
+        span,
+        "Operator `" STRINGP "` requires `" STRINGP "`, found `" STRINGP "`",
+        STRINGV(operator_name),
+        STRINGV(expected_type),
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This operand has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    error_add_help(&error,
+                   "Apply `" STRINGP "` only to `" STRINGP "` values.",
+                   STRINGV(operator_name),
+                   STRINGV(expected_type));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report an invalid binary operator operand combination.
+
+bool error_0326_invalid_binary_operands(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     operator_name,
+                                        string     expected_rule,
+                                        string     left_type,
+                                        string     right_type)
+{
+    ErrorInfo error = error_init(
+        326,
+        source,
+        span,
+        "Operator `" STRINGP "` requires " STRINGP ", found `" STRINGP
+        "` and `" STRINGP "`",
+        STRINGV(operator_name),
+        STRINGV(expected_rule),
+        STRINGV(left_type),
+        STRINGV(right_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "These operands have types `" STRINGP "` and `"
+                        STRINGP "`",
+                        STRINGV(left_type),
+                        STRINGV(right_type));
+    error_add_help(&error,
+                   "Use `" STRINGP "` only with " STRINGP ".",
+                   STRINGV(operator_name),
+                   STRINGV(expected_rule));
     error_render(&error);
     return false;
 }

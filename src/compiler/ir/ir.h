@@ -32,8 +32,13 @@ typedef enum : u8 {
     IR_OP_JUMP,
     IR_OP_LABEL,
     IR_OP_EQUAL,
+    IR_OP_NOT_EQUAL,
     IR_OP_LESS,
     IR_OP_LESS_EQUAL,
+    IR_OP_BITWISE_AND,
+    IR_OP_BITWISE_XOR,
+    IR_OP_BITWISE_OR,
+    IR_OP_LOGICAL_NOT,
     IR_OP_NEGATE,
     IR_OP_ADD,
     IR_OP_SUBTRACT,
@@ -48,6 +53,7 @@ typedef enum : u8 {
     IR_VALUE_VARIABLE,
     IR_VALUE_LOCAL,
     IR_VALUE_INTEGER,
+    IR_VALUE_FLOAT,
     IR_VALUE_SYMBOL,
     IR_VALUE_BUILTIN,
     IR_VALUE_STRING,
@@ -58,6 +64,7 @@ typedef struct {
     u32         type;
     union {
         i64 integer;
+        f64 floating;
     } value;
 } IrValue;
 

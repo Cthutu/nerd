@@ -16,6 +16,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("EOF");
     case TK_Integer:
         return string_from_cstr("Integer");
+    case TK_Float:
+        return string_from_cstr("Float");
     case TK_String:
         return string_from_cstr("String");
     case TK_InterpolatedStringStart:
@@ -54,8 +56,30 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Colon `:`");
     case TK_Equal:
         return string_from_cstr("Equal `=`");
+    case TK_EqualEqual:
+        return string_from_cstr("EqualEqual `==`");
     case TK_Bang:
         return string_from_cstr("Bang `!`");
+    case TK_BangEqual:
+        return string_from_cstr("BangEqual `!=`");
+    case TK_Amp:
+        return string_from_cstr("Amp `&`");
+    case TK_AmpAmp:
+        return string_from_cstr("AmpAmp `&&`");
+    case TK_Pipe:
+        return string_from_cstr("Pipe `|`");
+    case TK_PipePipe:
+        return string_from_cstr("PipePipe `||`");
+    case TK_Caret:
+        return string_from_cstr("Caret `^`");
+    case TK_Less:
+        return string_from_cstr("Less `<`");
+    case TK_LessEqual:
+        return string_from_cstr("LessEqual `<=`");
+    case TK_Greater:
+        return string_from_cstr("Greater `>`");
+    case TK_GreaterEqual:
+        return string_from_cstr("GreaterEqual `>=`");
     case TK_FatArrow:
         return string_from_cstr("FatArrow `=>`");
     case TK_ThinArrow:
@@ -91,6 +115,7 @@ void lex_dump(const Lexer* lexer)
     table_reserve_rows(&table, array_count(lexer->tokens));
 
     usize integer_index = 0;
+    usize float_index   = 0;
     usize string_index  = 0;
     usize symbol_index  = 0;
 
@@ -108,6 +133,10 @@ void lex_dump(const Lexer* lexer)
                 row[3]    = table_cell_u64(value);
                 break;
             }
+        case TK_Float:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "%.17g", lexer->floats[float_index++]));
+            break;
         case TK_String:
             row[3] = table_cell_string(lexer->strings[string_index++]);
             break;

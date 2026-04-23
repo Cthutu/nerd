@@ -126,6 +126,14 @@ delay commitment until surrounding context is known.
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
 
+## Untyped Floats
+
+Floating-point literals begin life as `untyped float`.
+
+As with untyped integers, the semantic pass can adopt a concrete destination
+type from surrounding numeric context. When no narrower type is forced,
+`sema_materialise_type(...)` currently maps `untyped float` to `f64`.
+
 ## Type Aliases
 
 Type aliases are normal top-level bindings whose right-hand side resolves to a
@@ -205,6 +213,21 @@ with a source expression and a target type expression.
 The current milestone allows explicit casts across compatible primitive
 numeric/bool types and rejects unsupported casts such as `string.cast(u8)` with
 structured semantic diagnostics.
+
+## Primitive Operators
+
+Primitive operators are checked semantically and require exact type agreement
+within their operator family:
+
+- `+`, `-`, `*`, `/` require matching numeric operands
+- `%`, `&`, `^`, `|` require matching integer operands
+- `==` and `!=` require matching numeric or `bool` operands
+- `<`, `<=`, `>`, `>=` require matching numeric operands
+- `!`, `&&`, `||` require `bool` operands
+
+No implicit casts are inserted between operands. Untyped numeric literals may
+still be adopted by a surrounding concrete numeric type before that exact-match
+check is applied.
 
 ## Interpolated Strings
 

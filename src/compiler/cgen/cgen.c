@@ -6,6 +6,7 @@
 
 #include <compiler/cgen/cgen.h>
 #include <compiler/error/error.h>
+#include <stdio.h>
 
 static const char g_cgen_prelude[] = {
 #embed "../../../data/prelude.c"
@@ -16,6 +17,7 @@ static const char g_cgen_epilogue[] = {
     , 0};
 
 internal void cgen_add_value(CGen* cgen, const IrValue* value);
+internal void cgen_add_float_literal(CGen* cgen, f64 value, u32 type_index);
 
 //------------------------------------------------------------------------------
 // C generation helpers
@@ -237,12 +239,16 @@ internal u32 cgen_materialise_type(const CGen* cgen, u32 type_index)
         return type_index;
     }
 
-    if (cgen->ir->types[type_index].kind != STK_UntypedInteger) {
+    if (cgen->ir->types[type_index].kind != STK_UntypedInteger &&
+        cgen->ir->types[type_index].kind != STK_UntypedFloat) {
         return type_index;
     }
 
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
-        if (cgen->ir->types[i].kind == STK_I32) {
+        if ((cgen->ir->types[type_index].kind == STK_UntypedInteger &&
+             cgen->ir->types[i].kind == STK_I32) ||
+            (cgen->ir->types[type_index].kind == STK_UntypedFloat &&
+             cgen->ir->types[i].kind == STK_F64)) {
             return i;
         }
     }
@@ -358,7 +364,36 @@ cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
         return;
     }
 
+    if (value->kind == IR_VALUE_FLOAT) {
+        cgen_add_float_literal(cgen, value->value.floating, type_index);
+        return;
+    }
+
     cgen_add_value(cgen, value);
+}
+
+internal void cgen_add_float_literal(CGen* cgen, f64 value, u32 type_index)
+{
+    char rendered[64] = {0};
+    int  len          = snprintf(rendered, sizeof(rendered), "%.17g", value);
+    ASSERT(len > 0 && (usize)len < sizeof(rendered),
+           "Float literal rendering overflow");
+    bool   needs_decimal = true;
+    for (int i = 0; i < len; ++i) {
+        if (rendered[i] == '.' || rendered[i] == 'e' || rendered[i] == 'E') {
+            needs_decimal = false;
+            break;
+        }
+    }
+
+    cgen_add(cgen, rendered);
+    if (needs_decimal) {
+        cgen_add(cgen, ".0");
+    }
+    if (type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_F32) {
+        cgen_add(cgen, "f");
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -375,6 +410,9 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         break;
     case IR_VALUE_INTEGER:
         arena_format(&cgen->arena, "%lld", value->value.integer);
+        break;
+    case IR_VALUE_FLOAT:
+        cgen_add_float_literal(cgen, value->value.floating, value->type);
         break;
     case IR_VALUE_SYMBOL:
         cgen_add_symbol_name(cgen, (u32)value->value.integer);
@@ -727,11 +765,26 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_EQUAL:
             cgen_add_binary(cgen, instr, " == ");
             break;
+        case IR_OP_NOT_EQUAL:
+            cgen_add_binary(cgen, instr, " != ");
+            break;
         case IR_OP_LESS:
             cgen_add_binary(cgen, instr, " < ");
             break;
         case IR_OP_LESS_EQUAL:
             cgen_add_binary(cgen, instr, " <= ");
+            break;
+        case IR_OP_BITWISE_AND:
+            cgen_add_binary(cgen, instr, " & ");
+            break;
+        case IR_OP_BITWISE_XOR:
+            cgen_add_binary(cgen, instr, " ^ ");
+            break;
+        case IR_OP_BITWISE_OR:
+            cgen_add_binary(cgen, instr, " | ");
+            break;
+        case IR_OP_LOGICAL_NOT:
+            cgen_add_unary(cgen, instr, "!");
             break;
         case IR_OP_NEGATE:
             cgen_add_unary(cgen, instr, "-");

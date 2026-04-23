@@ -121,8 +121,8 @@ void ir_add_temp_local(Ir* ir, IrValue lvalue, u32 type_index)
                (IrInstruction){
                    .op     = IR_OP_LOCAL,
                    .lvalue = lvalue,
-                   .rvalue = {{.kind = IR_VALUE_INTEGER,
-                               .type = type_index,
+                   .rvalue = {{.kind          = IR_VALUE_INTEGER,
+                               .type          = type_index,
                                .value.integer = 0},
                               {0}},
                });
@@ -271,25 +271,29 @@ void ir_add_return(Ir* ir, IrValue rvalue, u32 rvalue_type)
                });
 }
 
-void ir_add_branch_false(Ir* ir, IrValue condition, u32 condition_type, i64 label)
+void ir_add_branch_false(Ir*     ir,
+                         IrValue condition,
+                         u32     condition_type,
+                         i64     label)
 {
     condition.type = condition_type;
-    array_push(ir->instructions,
-               (IrInstruction){
-                   .op     = IR_OP_BRANCH_FALSE,
-                   .rvalue = {condition,
-                              {.kind = IR_VALUE_INTEGER, .value.integer = label}},
-               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_BRANCH_FALSE,
+            .rvalue = {condition,
+                       {.kind = IR_VALUE_INTEGER, .value.integer = label}},
+        });
 }
 
 void ir_add_jump(Ir* ir, i64 label)
 {
-    array_push(ir->instructions,
-               (IrInstruction){
-                   .op     = IR_OP_JUMP,
-                   .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = label},
-                              {0}},
-               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_JUMP,
+            .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = label}, {0}},
+        });
 }
 
 void ir_add_label(Ir* ir, i64 label)
@@ -301,13 +305,13 @@ void ir_add_label(Ir* ir, i64 label)
                });
 }
 
-void ir_add_equal(Ir*         ir,
-                  IrValue     lvalue,
-                  u32         lvalue_type,
-                  IrValue     lhs,
-                  u32         lhs_type,
-                  IrValue     rhs,
-                  u32         rhs_type)
+void ir_add_equal(Ir*     ir,
+                  IrValue lvalue,
+                  u32     lvalue_type,
+                  IrValue lhs,
+                  u32     lhs_type,
+                  IrValue rhs,
+                  u32     rhs_type)
 {
     lvalue.type = lvalue_type;
     lhs.type    = lhs_type;
@@ -320,13 +324,13 @@ void ir_add_equal(Ir*         ir,
                });
 }
 
-void ir_add_less(Ir*         ir,
-                 IrValue     lvalue,
-                 u32         lvalue_type,
-                 IrValue     lhs,
-                 u32         lhs_type,
-                 IrValue     rhs,
-                 u32         rhs_type)
+void ir_add_less(Ir*     ir,
+                 IrValue lvalue,
+                 u32     lvalue_type,
+                 IrValue lhs,
+                 u32     lhs_type,
+                 IrValue rhs,
+                 u32     rhs_type)
 {
     lvalue.type = lvalue_type;
     lhs.type    = lhs_type;
@@ -339,13 +343,13 @@ void ir_add_less(Ir*         ir,
                });
 }
 
-void ir_add_less_equal(Ir*         ir,
-                       IrValue     lvalue,
-                       u32         lvalue_type,
-                       IrValue     lhs,
-                       u32         lhs_type,
-                       IrValue     rhs,
-                       u32         rhs_type)
+void ir_add_less_equal(Ir*     ir,
+                       IrValue lvalue,
+                       u32     lvalue_type,
+                       IrValue lhs,
+                       u32     lhs_type,
+                       IrValue rhs,
+                       u32     rhs_type)
 {
     lvalue.type = lvalue_type;
     lhs.type    = lhs_type;
@@ -399,6 +403,15 @@ void ir_add_binary(Ir*         ir,
                    .lvalue = lvalue,
                    .rvalue = {lhs, rhs},
                });
+}
+
+internal IrValue ir_make_bool_literal(u32 bool_type, bool value)
+{
+    return (IrValue){
+        .kind          = IR_VALUE_INTEGER,
+        .type          = bool_type,
+        .value.integer = value ? 1 : 0,
+    };
 }
 
 //------------------------------------------------------------------------------
@@ -591,7 +604,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
                         }
                     }
                 }
-                if (ir_node_contains_interpolation(ast, branch->expr_node_index)) {
+                if (ir_node_contains_interpolation(ast,
+                                                   branch->expr_node_index)) {
                     return true;
                 }
             }
@@ -806,6 +820,17 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
+    case AK_FloatLiteral:
+        {
+            IrValue value = {
+                .kind           = IR_VALUE_FLOAT,
+                .type           = ir_node_type_index(ast, sema, node_index),
+                .value.floating = ast_get_float(lex, node),
+            };
+            node_values[node_index] = value;
+            return value;
+        }
+
     case AK_StringLiteral:
         {
             IrValue value = {
@@ -921,6 +946,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
         }
 
     case AK_IntegerNegate:
+    case AK_LogicalNot:
         {
             IrValue rhs = ir_lower_node(
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
@@ -929,7 +955,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .value.integer = (i64)(*next_value_index)++,
             };
             ir_add_unary(ir,
-                         IR_OP_NEGATE,
+                         node->kind == AK_LogicalNot ? IR_OP_LOGICAL_NOT
+                                                     : IR_OP_NEGATE,
                          value,
                          ir_node_type_index(ast, sema, node_index),
                          rhs,
@@ -965,11 +992,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_On:
         {
-            const AstOnInfo* on = &ast->ons[node->b];
-            IrValue scrutinee = ir_lower_node(
+            const AstOnInfo* on        = &ast->ons[node->b];
+            IrValue          scrutinee = ir_lower_node(
                 lex, ast, sema, node->a, node_values, next_value_index, ir);
-            u32 result_type = ir_node_type_index(ast, sema, node_index);
-            bool produces_value = result_type != ir_builtin_type(sema, STK_Void);
+            u32  result_type = ir_node_type_index(ast, sema, node_index);
+            bool produces_value =
+                result_type != ir_builtin_type(sema, STK_Void);
 
             IrValue result = ir_unset_value();
             if (produces_value) {
@@ -991,19 +1019,21 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
                 if (on->kind == AOK_Bool) {
                     if (!(branch->flags & AOBF_Else)) {
-                        ir_add_branch_false(ir,
-                                            scrutinee,
-                                            ir_node_type_index(ast, sema, node->a),
-                                            next_label);
+                        ir_add_branch_false(
+                            ir,
+                            scrutinee,
+                            ir_node_type_index(ast, sema, node->a),
+                            next_label);
                     }
                 } else if (!(branch->flags & AOBF_Else)) {
-                    u32 bool_type = ir_builtin_type(sema, STK_Bool);
+                    u32 bool_type   = ir_builtin_type(sema, STK_Bool);
                     i64 match_label = (i64)(*next_value_index)++;
                     for (u32 pattern_index = 0;
                          pattern_index < branch->pattern_count;
                          ++pattern_index) {
-                        u32 pattern_node = ast->on_pattern_nodes
-                            [branch->pattern_node_index + pattern_index];
+                        u32 pattern_node =
+                            ast->on_pattern_nodes[branch->pattern_node_index +
+                                                  pattern_index];
                         i64 mismatch_label = next_label;
                         if (pattern_index + 1 < branch->pattern_count) {
                             mismatch_label = (i64)(*next_value_index)++;
@@ -1011,7 +1041,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         const AstNode* pattern = &ast->nodes[pattern_node];
                         if (pattern->kind == AK_RangeExclusive ||
                             pattern->kind == AK_RangeInclusive) {
-                            IrValue start = ir_lower_node(lex,
+                            IrValue start         = ir_lower_node(lex,
                                                           ast,
                                                           sema,
                                                           pattern->a,
@@ -1023,20 +1053,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                 .type          = bool_type,
                                 .value.integer = (i64)(*next_value_index)++,
                             };
-                            ir_add_less_equal(ir,
-                                              start_matches,
-                                              bool_type,
-                                              start,
-                                              ir_node_type_index(
-                                                  ast, sema, pattern->a),
-                                              scrutinee,
-                                              ir_node_type_index(ast,
-                                                                 sema,
-                                                                 node->a));
+                            ir_add_less_equal(
+                                ir,
+                                start_matches,
+                                bool_type,
+                                start,
+                                ir_node_type_index(ast, sema, pattern->a),
+                                scrutinee,
+                                ir_node_type_index(ast, sema, node->a));
                             ir_add_branch_false(
                                 ir, start_matches, bool_type, mismatch_label);
 
-                            IrValue end = ir_lower_node(lex,
+                            IrValue end         = ir_lower_node(lex,
                                                         ast,
                                                         sema,
                                                         pattern->b,
@@ -1049,52 +1077,48 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                 .value.integer = (i64)(*next_value_index)++,
                             };
                             if (pattern->kind == AK_RangeInclusive) {
-                                ir_add_less_equal(ir,
-                                                  end_matches,
-                                                  bool_type,
-                                                  scrutinee,
-                                                  ir_node_type_index(ast,
-                                                                     sema,
-                                                                     node->a),
-                                                  end,
-                                                  ir_node_type_index(
-                                                      ast, sema, pattern->b));
+                                ir_add_less_equal(
+                                    ir,
+                                    end_matches,
+                                    bool_type,
+                                    scrutinee,
+                                    ir_node_type_index(ast, sema, node->a),
+                                    end,
+                                    ir_node_type_index(ast, sema, pattern->b));
                             } else {
-                                ir_add_less(ir,
-                                            end_matches,
-                                            bool_type,
-                                            scrutinee,
-                                            ir_node_type_index(ast,
-                                                               sema,
-                                                               node->a),
-                                            end,
-                                            ir_node_type_index(ast,
-                                                               sema,
-                                                               pattern->b));
+                                ir_add_less(
+                                    ir,
+                                    end_matches,
+                                    bool_type,
+                                    scrutinee,
+                                    ir_node_type_index(ast, sema, node->a),
+                                    end,
+                                    ir_node_type_index(ast, sema, pattern->b));
                             }
                             ir_add_branch_false(
                                 ir, end_matches, bool_type, mismatch_label);
                         } else {
-                            IrValue pattern_value = ir_lower_node(lex,
-                                                                  ast,
-                                                                  sema,
-                                                                  pattern_node,
-                                                                  node_values,
-                                                                  next_value_index,
-                                                                  ir);
+                            IrValue pattern_value =
+                                ir_lower_node(lex,
+                                              ast,
+                                              sema,
+                                              pattern_node,
+                                              node_values,
+                                              next_value_index,
+                                              ir);
                             IrValue matches = {
                                 .kind          = IR_VALUE_VARIABLE,
                                 .type          = bool_type,
                                 .value.integer = (i64)(*next_value_index)++,
                             };
-                            ir_add_equal(ir,
-                                         matches,
-                                         bool_type,
-                                         scrutinee,
-                                         ir_node_type_index(ast, sema, node->a),
-                                         pattern_value,
-                                         ir_node_type_index(
-                                             ast, sema, pattern_node));
+                            ir_add_equal(
+                                ir,
+                                matches,
+                                bool_type,
+                                scrutinee,
+                                ir_node_type_index(ast, sema, node->a),
+                                pattern_value,
+                                ir_node_type_index(ast, sema, pattern_node));
                             ir_add_branch_false(
                                 ir, matches, bool_type, mismatch_label);
                         }
@@ -1114,13 +1138,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                                      next_value_index,
                                                      ir);
                 if (produces_value) {
-                    ir_add_assign(ir,
-                                  result,
-                                  result_type,
-                                  branch_value,
-                                  ir_node_type_index(ast,
-                                                     sema,
-                                                     branch->expr_node_index));
+                    ir_add_assign(
+                        ir,
+                        result,
+                        result_type,
+                        branch_value,
+                        ir_node_type_index(ast, sema, branch->expr_node_index));
                 }
                 if (i + 1 < on->branch_count) {
                     ir_add_jump(ir, end_label);
@@ -1138,13 +1161,109 @@ internal IrValue ir_lower_node(const Lexer* lex,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         {
             if (node->kind == AK_RangeExclusive ||
                 node->kind == AK_RangeInclusive) {
-                error_ice("Range patterns must only appear inside block-form `on`");
+                error_ice(
+                    "Range patterns must only appear inside block-form `on`");
             }
+            if (node->kind == AK_LogicalAnd || node->kind == AK_LogicalOr) {
+                u32 bool_type = ir_builtin_type(sema, STK_Bool);
+                IrValue result = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = bool_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_temp_local(ir, result, bool_type);
+
+                if (node->kind == AK_LogicalAnd) {
+                    i64 false_label = (i64)(*next_value_index)++;
+                    i64 end_label   = (i64)(*next_value_index)++;
+                    IrValue lhs = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                node->a,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+                    ir_add_branch_false(ir,
+                                        lhs,
+                                        ir_node_type_index(ast, sema, node->a),
+                                        false_label);
+                    IrValue rhs = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                node->b,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+                    ir_add_branch_false(ir,
+                                        rhs,
+                                        ir_node_type_index(ast, sema, node->b),
+                                        false_label);
+                    ir_add_assign(
+                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_jump(ir, end_label);
+                    ir_add_label(ir, false_label);
+                    ir_add_assign(
+                        ir, result, bool_type, ir_make_bool_literal(bool_type, false), bool_type);
+                    ir_add_label(ir, end_label);
+                } else {
+                    i64 eval_rhs_label = (i64)(*next_value_index)++;
+                    i64 false_label    = (i64)(*next_value_index)++;
+                    i64 end_label      = (i64)(*next_value_index)++;
+                    IrValue lhs = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                node->a,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+                    ir_add_branch_false(ir,
+                                        lhs,
+                                        ir_node_type_index(ast, sema, node->a),
+                                        eval_rhs_label);
+                    ir_add_assign(
+                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_jump(ir, end_label);
+                    ir_add_label(ir, eval_rhs_label);
+                    IrValue rhs = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                node->b,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+                    ir_add_branch_false(ir,
+                                        rhs,
+                                        ir_node_type_index(ast, sema, node->b),
+                                        false_label);
+                    ir_add_assign(
+                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_jump(ir, end_label);
+                    ir_add_label(ir, false_label);
+                    ir_add_assign(
+                        ir, result, bool_type, ir_make_bool_literal(bool_type, false), bool_type);
+                    ir_add_label(ir, end_label);
+                }
+
+                node_values[node_index] = result;
+                return result;
+            }
+
             IrOperation op = IR_OP_ADD;
             switch (node->kind) {
             case AK_IntegerPlus:
@@ -1162,6 +1281,29 @@ internal IrValue ir_lower_node(const Lexer* lex,
             case AK_IntegerModulo:
                 op = IR_OP_MODULO;
                 break;
+            case AK_BitwiseAnd:
+                op = IR_OP_BITWISE_AND;
+                break;
+            case AK_BitwiseXor:
+                op = IR_OP_BITWISE_XOR;
+                break;
+            case AK_BitwiseOr:
+                op = IR_OP_BITWISE_OR;
+                break;
+            case AK_Equal:
+                op = IR_OP_EQUAL;
+                break;
+            case AK_NotEqual:
+                op = IR_OP_NOT_EQUAL;
+                break;
+            case AK_Less:
+            case AK_Greater:
+                op = IR_OP_LESS;
+                break;
+            case AK_LessEqual:
+            case AK_GreaterEqual:
+                op = IR_OP_LESS_EQUAL;
+                break;
             default:
                 break;
             }
@@ -1174,14 +1316,24 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .kind          = IR_VALUE_VARIABLE,
                 .value.integer = (i64)(*next_value_index)++,
             };
+            IrValue op_lhs = lhs;
+            IrValue op_rhs = rhs;
+            u32 lhs_type   = ir_node_type_index(ast, sema, node->a);
+            u32 rhs_type   = ir_node_type_index(ast, sema, node->b);
+            if (node->kind == AK_Greater || node->kind == AK_GreaterEqual) {
+                op_lhs = rhs;
+                op_rhs = lhs;
+                lhs_type = ir_node_type_index(ast, sema, node->b);
+                rhs_type = ir_node_type_index(ast, sema, node->a);
+            }
             ir_add_binary(ir,
                           op,
                           value,
                           ir_node_type_index(ast, sema, node_index),
-                          lhs,
-                          ir_node_type_index(ast, sema, node->a),
-                          rhs,
-                          ir_node_type_index(ast, sema, node->b));
+                          op_lhs,
+                          lhs_type,
+                          op_rhs,
+                          rhs_type);
             node_values[node_index] = value;
             return value;
         }

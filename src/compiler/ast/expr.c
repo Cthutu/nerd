@@ -22,6 +22,28 @@ internal AstKind ast_binary_kind_from_token(TokenKind kind)
         return AK_IntegerDivide;
     case TK_Percent:
         return AK_IntegerModulo;
+    case TK_Amp:
+        return AK_BitwiseAnd;
+    case TK_Caret:
+        return AK_BitwiseXor;
+    case TK_Pipe:
+        return AK_BitwiseOr;
+    case TK_EqualEqual:
+        return AK_Equal;
+    case TK_BangEqual:
+        return AK_NotEqual;
+    case TK_Less:
+        return AK_Less;
+    case TK_LessEqual:
+        return AK_LessEqual;
+    case TK_Greater:
+        return AK_Greater;
+    case TK_GreaterEqual:
+        return AK_GreaterEqual;
+    case TK_AmpAmp:
+        return AK_LogicalAnd;
+    case TK_PipePipe:
+        return AK_LogicalOr;
     default:
         error_ice("Unhandled binary token kind: %d", kind);
         return AK_IntegerPlus;
@@ -35,11 +57,13 @@ bool ast_token_starts_expression(TokenKind kind)
 {
     switch (kind) {
     case TK_Integer:
+    case TK_Float:
     case TK_String:
     case TK_InterpolatedStringStart:
     case TK_true:
     case TK_false:
     case TK_Symbol:
+    case TK_Bang:
     case TK_Minus:
     case TK_LParen:
     case TK_fn:
@@ -68,6 +92,38 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_Minus:
         *out_left_bp  = AST_BP_ADDITIVE;
         *out_right_bp = AST_BP_ADDITIVE + 1;
+        return true;
+    case TK_Less:
+    case TK_LessEqual:
+    case TK_Greater:
+    case TK_GreaterEqual:
+        *out_left_bp  = AST_BP_COMPARISON;
+        *out_right_bp = AST_BP_COMPARISON + 1;
+        return true;
+    case TK_EqualEqual:
+    case TK_BangEqual:
+        *out_left_bp  = AST_BP_EQUALITY;
+        *out_right_bp = AST_BP_EQUALITY + 1;
+        return true;
+    case TK_Amp:
+        *out_left_bp  = AST_BP_BITWISE_AND;
+        *out_right_bp = AST_BP_BITWISE_AND + 1;
+        return true;
+    case TK_Caret:
+        *out_left_bp  = AST_BP_BITWISE_XOR;
+        *out_right_bp = AST_BP_BITWISE_XOR + 1;
+        return true;
+    case TK_Pipe:
+        *out_left_bp  = AST_BP_BITWISE_OR;
+        *out_right_bp = AST_BP_BITWISE_OR + 1;
+        return true;
+    case TK_AmpAmp:
+        *out_left_bp  = AST_BP_LOGICAL_AND;
+        *out_right_bp = AST_BP_LOGICAL_AND + 1;
+        return true;
+    case TK_PipePipe:
+        *out_left_bp  = AST_BP_LOGICAL_OR;
+        *out_right_bp = AST_BP_LOGICAL_OR + 1;
         return true;
     case TK_Star:
     case TK_Slash:
@@ -218,9 +274,8 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
     }
 }
 
-internal bool ast_parse_on_expr(AstParseState* state,
-                                AstToken       on_token,
-                                u32*           out_node)
+internal bool
+ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 {
     if (!ast_next_token(state)) {
         return error_0201_missing_value(
@@ -254,17 +309,18 @@ internal bool ast_parse_on_expr(AstParseState* state,
 
             if (state->token.token_index == state->token_index &&
                 !ast_next_token(state)) {
-                return error_0201_missing_value(state->token.source,
-                                                ast_token_span(state,
-                                                               &state->token),
-                                                TK_RBrace);
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    TK_RBrace);
             }
 
             AstOnBranch branch = {0};
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
                 saw_else     = true;
-                if (!ast_next_token(state) || state->token.kind != TK_FatArrow ||
+                if (!ast_next_token(state) ||
+                    state->token.kind != TK_FatArrow ||
                     !ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
@@ -274,7 +330,7 @@ internal bool ast_parse_on_expr(AstParseState* state,
             } else {
                 branch.pattern_node_index =
                     (u32)array_count(state->on_pattern_nodes);
-                branch.pattern_count      = 0;
+                branch.pattern_count = 0;
                 for (;;) {
                     u32 pattern_root = 0;
                     if (!ast_parse_on_branch_pattern(state, &pattern_root)) {
@@ -299,7 +355,8 @@ internal bool ast_parse_on_expr(AstParseState* state,
                         TK_FatArrow,
                         state->token.kind);
                 }
-                if (!ast_next_token(state) || state->token.kind != TK_FatArrow ||
+                if (!ast_next_token(state) ||
+                    state->token.kind != TK_FatArrow ||
                     !ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
@@ -308,7 +365,7 @@ internal bool ast_parse_on_expr(AstParseState* state,
                 }
             }
 
-            bool saved_statement_boundary = state->allow_statement_boundary;
+            bool saved_statement_boundary   = state->allow_statement_boundary;
             state->allow_statement_boundary = true;
             bool parsed_branch_expr =
                 ast_parse_expr_bp(state, 0, &branch.expr_node_index);
@@ -325,16 +382,18 @@ internal bool ast_parse_on_expr(AstParseState* state,
         }
 
         if (!saw_else) {
-            return error_0203_expected_token(state->lexer->source,
-                                             ast_token_span(state, &state->token),
-                                             TK_else,
-                                             state->token.kind);
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_else,
+                state->token.kind);
         }
         if (state->token.kind != TK_RBrace) {
-            return error_0203_expected_token(state->lexer->source,
-                                             ast_token_span(state, &state->token),
-                                             TK_RBrace,
-                                             state->token.kind);
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                state->token.kind);
         }
         if (!ast_expect_token(state, TK_RBrace)) {
             return false;
@@ -343,7 +402,7 @@ internal bool ast_parse_on_expr(AstParseState* state,
         u32 on_index = (u32)array_count(state->ons);
         array_push(state->ons,
                    (AstOnInfo){
-                       .kind        = AOK_Value,
+                       .kind         = AOK_Value,
                        .first_branch = first_branch,
                        .branch_count =
                            (u32)array_count(state->on_branches) - first_branch,
@@ -498,6 +557,15 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             };
             return ast_emit_node(state, node, out_node);
         }
+    case TK_Float:
+        {
+            AstNode node = {
+                .kind        = AK_FloatLiteral,
+                .token_index = token.token_index,
+                .a           = token.value.float_index,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
     case TK_String:
         {
             AstNode node = {
@@ -529,6 +597,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             return ast_emit_node(state, node, out_node);
         }
     case TK_Minus:
+    case TK_Bang:
         {
             u32 rhs;
             if (!ast_next_token(state)) {
@@ -542,7 +611,8 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             }
 
             AstNode node = {
-                .kind        = AK_IntegerNegate,
+                .kind = token.kind == TK_Bang ? AK_LogicalNot
+                                              : AK_IntegerNegate,
                 .token_index = token.token_index,
                 .a           = rhs,
             };

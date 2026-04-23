@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/error/error.h>
+#include <errno.h>
 #include <compiler/lexer/lexer.h>
 
 #define LEXER_ARRAY_INIT_CAPACITY 256
@@ -303,9 +304,43 @@ internal bool lexer_lex_one_token(NerdSource source,
             i++;
         }
 
-        array_push(lexer->tokens,
-                   (Token){.kind = TK_Integer, .offset = (u32)start});
-        array_push(lexer->integers, total);
+        bool is_float = i + 1 < source_code.count && source_code.data[i] == '.' &&
+                        source_code.data[i + 1] >= '0' &&
+                        source_code.data[i + 1] <= '9';
+        if (is_float) {
+            i += 2;
+            while (i < source_code.count && source_code.data[i] >= '0' &&
+                   source_code.data[i] <= '9') {
+                i++;
+            }
+
+            usize literal_len = i - start;
+            if (lexer->string_arena.data == NULL) {
+                arena_init(&lexer->string_arena);
+            }
+
+            char* buffer =
+                (char*)arena_alloc(&lexer->string_arena, literal_len + 1);
+            memcpy(buffer, source_code.data + start, literal_len);
+            buffer[literal_len] = '\0';
+
+            errno     = 0;
+            f64 value = strtod(buffer, NULL);
+            if (errno == ERANGE) {
+                return error_0103_invalid_number_literal(
+                    source,
+                    (ErrorSpan){.start = start, .end = i},
+                    buffer[literal_len - 1]);
+            }
+
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Float, .offset = (u32)start});
+            array_push(lexer->floats, value);
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Integer, .offset = (u32)start});
+            array_push(lexer->integers, total);
+        }
 
         if (i < source_code.count &&
             ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
@@ -385,13 +420,30 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '=') {
-        if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_EqualEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_FatArrow, .offset = (u32)i});
             *io_index = i + 2;
         } else {
             array_push(lexer->tokens,
                        (Token){.kind = TK_Equal, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '!') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_BangEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Bang, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -423,8 +475,60 @@ internal bool lexer_lex_one_token(NerdSource source,
                        (Token){.kind = TK_RangeInclusive, .offset = (u32)i});
             *io_index = i + 3;
         } else {
-            array_push(
-                lexer->tokens, (Token){.kind = TK_Dot, .offset = (u32)i});
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Dot, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '&') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '&') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_AmpAmp, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Amp, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '|') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '|') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_PipePipe, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Pipe, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '<') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_LessEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Less, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '>') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_GreaterEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Greater, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -450,6 +554,11 @@ internal bool lexer_lex_one_token(NerdSource source,
         [':']       = TK_Colon,
         ['=']       = TK_Equal,
         ['!']       = TK_Bang,
+        ['&']       = TK_Amp,
+        ['|']       = TK_Pipe,
+        ['^']       = TK_Caret,
+        ['<']       = TK_Less,
+        ['>']       = TK_Greater,
     };
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic pop
@@ -499,6 +608,7 @@ void lex_done(Lexer* lexer)
 {
     array_free(lexer->tokens);
     array_free(lexer->integers);
+    array_free(lexer->floats);
     array_free(lexer->strings);
     array_free(lexer->symbol_handles);
     array_free(lexer->comments);
@@ -520,12 +630,22 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
 {
     switch (token->kind) {
     case TK_Integer:
+    case TK_Float:
         {
             usize index = token->offset;
             while (index < lexer->source.source.count &&
                    lexer->source.source.data[index] >= '0' &&
                    lexer->source.source.data[index] <= '9') {
                 index++;
+            }
+            if (token->kind == TK_Float && index < lexer->source.source.count &&
+                lexer->source.source.data[index] == '.') {
+                index++;
+                while (index < lexer->source.source.count &&
+                       lexer->source.source.data[index] >= '0' &&
+                       lexer->source.source.data[index] <= '9') {
+                    index++;
+                }
             }
             return index;
         }
@@ -568,6 +688,12 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         }
     case TK_FatArrow:
     case TK_ThinArrow:
+    case TK_EqualEqual:
+    case TK_BangEqual:
+    case TK_AmpAmp:
+    case TK_PipePipe:
+    case TK_LessEqual:
+    case TK_GreaterEqual:
         return token->offset + 2;
     case TK_RangeExclusive:
     case TK_RangeInclusive:

@@ -24,6 +24,21 @@ u64 ast_get_integer(const Lexer* lexer, const AstNode* node)
     return lexer->integers[integer_index];
 }
 
+f64 ast_get_float(const Lexer* lexer, const AstNode* node)
+{
+    if (node->kind != AK_FloatLiteral) {
+        error_ice("Node is not a float literal");
+    }
+    usize float_index = node->a;
+    if (float_index >= array_count(lexer->floats)) {
+        error_ice("Float index out of bounds");
+    }
+    if (lexer->tokens[node->token_index].kind != TK_Float) {
+        error_ice("Token is not a float");
+    }
+    return lexer->floats[float_index];
+}
+
 //------------------------------------------------------------------------------
 // Extract the decoded string literal contents from an AK_StringLiteral node.
 

@@ -14,6 +14,8 @@ string ast_kind_to_string(AstKind kind)
     switch (kind) {
     case AK_IntegerLiteral:
         return s("IntegerLiteral");
+    case AK_FloatLiteral:
+        return s("FloatLiteral");
     case AK_StringLiteral:
         return s("StringLiteral");
     case AK_BoolLiteral:
@@ -26,6 +28,8 @@ string ast_kind_to_string(AstKind kind)
         return s("InterpolatedString");
     case AK_SymbolRef:
         return s("SymbolRef");
+    case AK_LogicalNot:
+        return s("LogicalNot");
     case AK_IntegerNegate:
         return s("IntegerNegate");
     case AK_IntegerPlus:
@@ -38,6 +42,28 @@ string ast_kind_to_string(AstKind kind)
         return s("IntegerDivide");
     case AK_IntegerModulo:
         return s("IntegerModulo");
+    case AK_BitwiseAnd:
+        return s("BitwiseAnd");
+    case AK_BitwiseXor:
+        return s("BitwiseXor");
+    case AK_BitwiseOr:
+        return s("BitwiseOr");
+    case AK_Equal:
+        return s("Equal");
+    case AK_NotEqual:
+        return s("NotEqual");
+    case AK_Less:
+        return s("Less");
+    case AK_LessEqual:
+        return s("LessEqual");
+    case AK_Greater:
+        return s("Greater");
+    case AK_GreaterEqual:
+        return s("GreaterEqual");
+    case AK_LogicalAnd:
+        return s("LogicalAnd");
+    case AK_LogicalOr:
+        return s("LogicalOr");
     case AK_Call:
         return s("Call");
     case AK_Cast:
@@ -122,6 +148,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_IntegerLiteral:
             row[3] = table_cell_u64(lexer->integers[node->a]);
             break;
+        case AK_FloatLiteral:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "%.17g", ast_get_float(lexer, node)));
+            break;
         case AK_StringLiteral:
             row[3] = table_cell_string(ast_get_string(lexer, node));
             break;
@@ -143,6 +173,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_SymbolRef:
             row[3] = table_cell_string(lex_symbol(lexer, node->a));
             break;
+        case AK_LogicalNot:
         case AK_IntegerNegate:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "rhs=%u", node->a));
@@ -152,6 +183,17 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_IntegerMultiply:
         case AK_IntegerDivide:
         case AK_IntegerModulo:
+        case AK_BitwiseAnd:
+        case AK_BitwiseXor:
+        case AK_BitwiseOr:
+        case AK_Equal:
+        case AK_NotEqual:
+        case AK_Less:
+        case AK_LessEqual:
+        case AK_Greater:
+        case AK_GreaterEqual:
+        case AK_LogicalAnd:
+        case AK_LogicalOr:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "lhs=%u rhs=%u", node->a, node->b));
             break;
@@ -172,8 +214,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_RangeExclusive:
         case AK_RangeInclusive:
-            row[3] = table_cell_string(
-                string_format(&temp_arena, "start=%u end=%u", node->a, node->b));
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "start=%u end=%u", node->a, node->b));
             break;
         case AK_On:
             {

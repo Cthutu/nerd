@@ -9,14 +9,22 @@
 //------------------------------------------------------------------------------
 
 #define CST_NO_VALUE UINT32_MAX
-#define CST_BP_ADDITIVE 10
-#define CST_BP_MULTIPLICATIVE 20
-#define CST_BP_PREFIX 30
+#define CST_BP_LOGICAL_OR 10
+#define CST_BP_LOGICAL_AND 20
+#define CST_BP_BITWISE_OR 30
+#define CST_BP_BITWISE_XOR 40
+#define CST_BP_BITWISE_AND 50
+#define CST_BP_EQUALITY 60
+#define CST_BP_COMPARISON 70
+#define CST_BP_ADDITIVE 80
+#define CST_BP_MULTIPLICATIVE 90
+#define CST_BP_PREFIX 100
 
 typedef struct {
     const Lexer* lexer;
     u32          token_index;
     Array(u32) token_integer_indices;
+    Array(u32) token_float_indices;
     Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
     Cst cst;
@@ -50,6 +58,14 @@ internal u32 cst_current_integer_index(const CstParseState* state)
         return CST_NO_VALUE;
     }
     return state->token_integer_indices[state->token_index];
+}
+
+internal u32 cst_current_float_index(const CstParseState* state)
+{
+    if (state->token_index >= array_count(state->token_float_indices)) {
+        return CST_NO_VALUE;
+    }
+    return state->token_float_indices[state->token_index];
 }
 
 //------------------------------------------------------------------------------
@@ -243,7 +259,38 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = CST_BP_ADDITIVE;
         *out_right_bp = CST_BP_ADDITIVE + 1;
         return true;
-
+    case TK_Less:
+    case TK_LessEqual:
+    case TK_Greater:
+    case TK_GreaterEqual:
+        *out_left_bp  = CST_BP_COMPARISON;
+        *out_right_bp = CST_BP_COMPARISON + 1;
+        return true;
+    case TK_EqualEqual:
+    case TK_BangEqual:
+        *out_left_bp  = CST_BP_EQUALITY;
+        *out_right_bp = CST_BP_EQUALITY + 1;
+        return true;
+    case TK_Amp:
+        *out_left_bp  = CST_BP_BITWISE_AND;
+        *out_right_bp = CST_BP_BITWISE_AND + 1;
+        return true;
+    case TK_Caret:
+        *out_left_bp  = CST_BP_BITWISE_XOR;
+        *out_right_bp = CST_BP_BITWISE_XOR + 1;
+        return true;
+    case TK_Pipe:
+        *out_left_bp  = CST_BP_BITWISE_OR;
+        *out_right_bp = CST_BP_BITWISE_OR + 1;
+        return true;
+    case TK_AmpAmp:
+        *out_left_bp  = CST_BP_LOGICAL_AND;
+        *out_right_bp = CST_BP_LOGICAL_AND + 1;
+        return true;
+    case TK_PipePipe:
+        *out_left_bp  = CST_BP_LOGICAL_OR;
+        *out_right_bp = CST_BP_LOGICAL_OR + 1;
+        return true;
     case TK_Star:
     case TK_Slash:
     case TK_Percent:
@@ -524,6 +571,23 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  out_node);
         }
 
+    case TK_Float:
+        {
+            u32 float_index = cst_current_float_index(state);
+            if (float_index == CST_NO_VALUE) {
+                return false;
+            }
+
+            cst_advance(state);
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_FloatLiteral,
+                                     .token_index = state->token_index - 1,
+                                     .a           = float_index,
+                                 },
+                                 out_node);
+        }
+
     case TK_String:
         {
             u32 string_index = cst_current_string_index(state);
@@ -573,6 +637,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
         }
 
     case TK_Minus:
+    case TK_Bang:
         {
             u32 token_index = state->token_index;
             u32 operand     = 0;
@@ -583,7 +648,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind        = CK_IntegerNegate,
+                                     .kind = token.kind == TK_Bang
+                                                 ? CK_LogicalNot
+                                                 : CK_IntegerNegate,
                                      .token_index = token_index,
                                      .a           = operand,
                                  },
@@ -651,7 +718,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
             } else {
                 branch.pattern_node_index =
                     (u32)array_count(state->cst.on_pattern_nodes);
-                branch.pattern_count      = 0;
+                branch.pattern_count = 0;
                 for (;;) {
                     u32 pattern_root = 0;
                     if (!cst_parse_on_branch_pattern(state, &pattern_root)) {
@@ -684,14 +751,14 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         }
 
         u32 on_index = (u32)array_count(state->cst.ons);
-        array_push(state->cst.ons,
-                   (CstOnInfo){
-                       .kind         = COK_Value,
-                       .first_branch = first_branch,
-                       .branch_count =
-                           (u32)array_count(state->cst.on_branches) -
-                           first_branch,
-                   });
+        array_push(
+            state->cst.ons,
+            (CstOnInfo){
+                .kind         = COK_Value,
+                .first_branch = first_branch,
+                .branch_count =
+                    (u32)array_count(state->cst.on_branches) - first_branch,
+            });
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = CK_On,
@@ -918,6 +985,39 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         case TK_Percent:
             kind = CK_IntegerModulo;
+            break;
+        case TK_Amp:
+            kind = CK_BitwiseAnd;
+            break;
+        case TK_Caret:
+            kind = CK_BitwiseXor;
+            break;
+        case TK_Pipe:
+            kind = CK_BitwiseOr;
+            break;
+        case TK_EqualEqual:
+            kind = CK_Equal;
+            break;
+        case TK_BangEqual:
+            kind = CK_NotEqual;
+            break;
+        case TK_Less:
+            kind = CK_Less;
+            break;
+        case TK_LessEqual:
+            kind = CK_LessEqual;
+            break;
+        case TK_Greater:
+            kind = CK_Greater;
+            break;
+        case TK_GreaterEqual:
+            kind = CK_GreaterEqual;
+            break;
+        case TK_AmpAmp:
+            kind = CK_LogicalAnd;
+            break;
+        case TK_PipePipe:
+            kind = CK_LogicalOr;
             break;
         default:
             return false;
@@ -1300,6 +1400,7 @@ internal bool cst_parse_variable(CstParseState* state, u32* out_node)
 internal void cst_build_token_value_tables(CstParseState* state)
 {
     u32 integer_index = 0;
+    u32 float_index   = 0;
     u32 string_index  = 0;
     u32 symbol_index  = 0;
 
@@ -1309,18 +1410,27 @@ internal void cst_build_token_value_tables(CstParseState* state)
         switch (token.kind) {
         case TK_Integer:
             array_push(state->token_integer_indices, integer_index++);
+            array_push(state->token_float_indices, CST_NO_VALUE);
+            array_push(state->token_string_indices, CST_NO_VALUE);
+            array_push(state->token_symbol_handles, CST_NO_VALUE);
+            break;
+        case TK_Float:
+            array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_float_indices, float_index++);
             array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
 
         case TK_String:
             array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_float_indices, CST_NO_VALUE);
             array_push(state->token_string_indices, string_index++);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
 
         case TK_Symbol:
             array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_float_indices, CST_NO_VALUE);
             array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles,
                        state->lexer->symbol_handles[symbol_index++]);
@@ -1328,6 +1438,7 @@ internal void cst_build_token_value_tables(CstParseState* state)
 
         default:
             array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_float_indices, CST_NO_VALUE);
             array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
@@ -1347,6 +1458,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         if (!cst_starts_binding(&state)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
+            array_free(state.token_float_indices);
             array_free(state.token_string_indices);
             array_free(state.token_symbol_handles);
             return false;
@@ -1357,6 +1469,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
             if (!cst_parse_variable(&state, &bind_index)) {
                 cst_done(&state.cst);
                 array_free(state.token_integer_indices);
+                array_free(state.token_float_indices);
                 array_free(state.token_string_indices);
                 array_free(state.token_symbol_handles);
                 return false;
@@ -1364,6 +1477,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         } else if (!cst_parse_bind(&state, &bind_index)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
+            array_free(state.token_float_indices);
             array_free(state.token_string_indices);
             array_free(state.token_symbol_handles);
             return false;
@@ -1375,8 +1489,12 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
     for (u32 i = 0; i < array_count(lexer->integers); ++i) {
         array_push(state.cst.integers, lexer->integers[i]);
     }
+    for (u32 i = 0; i < array_count(lexer->floats); ++i) {
+        array_push(state.cst.floats, lexer->floats[i]);
+    }
 
     array_free(state.token_integer_indices);
+    array_free(state.token_float_indices);
     array_free(state.token_string_indices);
     array_free(state.token_symbol_handles);
     *out_cst = state.cst;
@@ -1390,6 +1508,7 @@ void cst_done(Cst* cst)
 {
     array_free(cst->nodes);
     array_free(cst->integers);
+    array_free(cst->floats);
     array_free(cst->bindings);
     array_free(cst->params);
     array_free(cst->fn_signatures);
@@ -1410,6 +1529,13 @@ u64 cst_get_integer(const Cst* cst, const CstNode* node)
            "Expected integer literal CST node");
     ASSERT(node->a < array_count(cst->integers), "Integer index out of bounds");
     return cst->integers[node->a];
+}
+
+f64 cst_get_float(const Cst* cst, const CstNode* node)
+{
+    ASSERT(node->kind == CK_FloatLiteral, "Expected float literal CST node");
+    ASSERT(node->a < array_count(cst->floats), "Float index out of bounds");
+    return cst->floats[node->a];
 }
 
 //------------------------------------------------------------------------------
