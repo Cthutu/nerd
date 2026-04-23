@@ -1,3 +1,4 @@
+-- Stores an anonymous function value in a binding and calls it.
 adder := fn (a: i32, b: i32) => a + b
 main :: fn () => adder(20, 22)
 ¬

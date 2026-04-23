@@ -1,3 +1,4 @@
+-- Folds a small constant-expression tree across bindings.
 left :: 2 + 3
 right :: left * (10 - 4)
 

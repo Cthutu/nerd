@@ -1,3 +1,4 @@
+-- Checks left-associative division and modulo evaluation.
 main :: fn () => 20/3%4
 ¬
 2

@@ -1,3 +1,4 @@
+-- Adds two integer literals in an expression-bodied main.
 main :: fn () => 123 + 44
 ¬
 167

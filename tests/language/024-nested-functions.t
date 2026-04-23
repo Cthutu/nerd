@@ -1,3 +1,4 @@
+-- Declares and calls a nested non-closure function.
 main :: fn () {
     add :: fn (a: i32, b: i32) => a + b
     return add(20, 22)

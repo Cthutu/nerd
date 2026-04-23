@@ -1,3 +1,4 @@
+-- Declares a top-level constant with an explicit type annotation.
 value: i32: 120
 
 main :: fn () => value

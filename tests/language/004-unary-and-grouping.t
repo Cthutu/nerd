@@ -1,3 +1,4 @@
+-- Checks unary minus combined with grouped subtraction.
 main :: fn () => -(2-5)
 ¬
 3

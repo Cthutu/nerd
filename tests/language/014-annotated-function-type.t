@@ -1,3 +1,4 @@
+-- Binds main with an explicit function type annotation.
 main: fn () -> i32: fn () => 1
 ¬
 1

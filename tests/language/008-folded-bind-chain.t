@@ -1,3 +1,4 @@
+-- Folds a chain of dependent top-level constant bindings.
 base :: 4
 factor :: 5
 answer :: base * factor + 2

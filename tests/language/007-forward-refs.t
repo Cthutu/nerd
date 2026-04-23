@@ -1,3 +1,4 @@
+-- Resolves a top-level constant through a forward reference.
 magic_number :: answer / 6
 answer :: 42
 

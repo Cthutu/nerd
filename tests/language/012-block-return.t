@@ -1,3 +1,4 @@
+-- Returns a value explicitly from a block-bodied main.
 main :: fn () {
     return 42
 }

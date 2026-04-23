@@ -1,3 +1,4 @@
+-- Returns a single integer literal from main.
 main :: fn () => 42
 ¬
 42

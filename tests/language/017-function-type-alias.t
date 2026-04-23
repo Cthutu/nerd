@@ -1,3 +1,4 @@
+-- Reuses a function type alias for the main binding.
 MainFn :: fn () -> i32
 main: MainFn: fn () => 7
 ¬

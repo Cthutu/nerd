@@ -1,3 +1,4 @@
+-- Mutates variables and zero-initialises an explicit local variable.
 base := 40
 
 main :: fn () {

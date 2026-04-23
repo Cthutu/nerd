@@ -1,3 +1,4 @@
+-- Declares primitive variables with explicit types and casts.
 greeting: string = "Hello"
 enabled: bool = 1.cast(bool)
 ratio: f32 = 42.cast(f32)

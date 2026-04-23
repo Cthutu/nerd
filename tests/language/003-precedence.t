@@ -1,3 +1,4 @@
+-- Checks operator precedence between addition and multiplication.
 main :: fn () => 1+2*3
 ¬
 7

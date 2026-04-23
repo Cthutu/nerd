@@ -1,3 +1,4 @@
+-- Uses a type alias and narrows a value with an explicit cast.
 Price :: u16
 
 main :: fn () {

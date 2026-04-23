@@ -1,3 +1,4 @@
+-- Uses top-level constant bindings from main.
 answer :: 42
 magic_number :: 7
 
