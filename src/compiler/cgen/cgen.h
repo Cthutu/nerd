@@ -17,8 +17,6 @@ typedef struct {
     int          indent_level;
     const Ir*    ir;
     const Lexer* lexer;
-    const Sema*  sema;
-    u32          current_function_decl_index;
     usize        generated_start;
     usize        generated_end;
 } CGen;

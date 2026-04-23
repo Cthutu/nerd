@@ -149,13 +149,13 @@ void cgen_add_c_string_literal(CGen* cgen, string text)
     cgen_add(cgen, "\"");
 }
 
-internal cstr cgen_c_integer_type(const Sema* sema, u32 type_index)
+internal cstr cgen_c_integer_type(const Ir* ir, u32 type_index)
 {
     if (type_index == sema_no_type()) {
         return "int";
     }
 
-    switch (sema->types[type_index].kind) {
+    switch (ir->types[type_index].kind) {
     case STK_I8:
         return "int8_t";
     case STK_I16:
@@ -181,13 +181,13 @@ internal cstr cgen_c_integer_type(const Sema* sema, u32 type_index)
     }
 }
 
-internal cstr cgen_c_type(const Sema* sema, u32 type_index)
+internal cstr cgen_c_type(const Ir* ir, u32 type_index)
 {
     if (type_index == sema_no_type()) {
         return "int";
     }
 
-    switch (sema->types[type_index].kind) {
+    switch (ir->types[type_index].kind) {
     case STK_String:
         return "string";
     case STK_Bool:
@@ -197,13 +197,27 @@ internal cstr cgen_c_type(const Sema* sema, u32 type_index)
     case STK_F64:
         return "double";
     default:
-        return cgen_c_integer_type(sema, type_index);
+        return cgen_c_integer_type(ir, type_index);
     }
 }
 
 internal u32 cgen_materialise_type(const CGen* cgen, u32 type_index)
 {
-    return sema_materialise_type(cgen->sema, type_index);
+    if (type_index == sema_no_type()) {
+        return type_index;
+    }
+
+    if (cgen->ir->types[type_index].kind != STK_UntypedInteger) {
+        return type_index;
+    }
+
+    for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
+        if (cgen->ir->types[i].kind == STK_I32) {
+            return i;
+        }
+    }
+
+    return type_index;
 }
 
 internal cstr cgen_string_helper_suffix(const CGen* cgen, u32 type_index)
@@ -213,7 +227,7 @@ internal cstr cgen_string_helper_suffix(const CGen* cgen, u32 type_index)
         return "i32";
     }
 
-    switch (cgen->sema->types[type_index].kind) {
+    switch (cgen->ir->types[type_index].kind) {
     case STK_UntypedInteger:
     case STK_I32:
         return "i32";
@@ -248,49 +262,28 @@ internal cstr cgen_string_helper_suffix(const CGen* cgen, u32 type_index)
     }
 }
 
-internal u32 cgen_find_decl_index(const CGen* cgen, u32 symbol_handle)
+internal bool cgen_type_is_integer(const CGen* cgen, u32 type_index)
 {
-    for (u32 i = 0; i < array_count(cgen->sema->decls); ++i) {
-        if (cgen->sema->decls[i].symbol_handle == symbol_handle) {
-            return i;
-        }
+    type_index = cgen_materialise_type(cgen, type_index);
+    if (type_index == sema_no_type()) {
+        return false;
     }
 
-    return sema_no_decl();
-}
-
-internal u32 cgen_find_local_type_index(const CGen* cgen, u32 symbol_handle)
-{
-    if (cgen->current_function_decl_index == sema_no_decl()) {
-        return sema_no_type();
-    }
-
-    for (u32 i = 0; i < array_count(cgen->sema->locals); ++i) {
-        const SemaLocal* local = &cgen->sema->locals[i];
-        if (local->owner_decl_index == cgen->current_function_decl_index &&
-            local->symbol_handle == symbol_handle) {
-            return local->type_index;
-        }
-    }
-
-    return sema_no_type();
-}
-
-internal u32 cgen_lvalue_type(const CGen* cgen, const IrValue* value)
-{
-    switch (value->kind) {
-    case IR_VALUE_SYMBOL:
-        {
-            u32 decl_index =
-                cgen_find_decl_index(cgen, (u32)value->value.integer);
-            return decl_index == sema_no_decl()
-                       ? sema_no_type()
-                       : cgen->sema->decls[decl_index].type_index;
-        }
-    case IR_VALUE_LOCAL:
-        return cgen_find_local_type_index(cgen, (u32)value->value.integer);
+    switch (cgen->ir->types[type_index].kind) {
+    case STK_UntypedInteger:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Isize:
+    case STK_Usize:
+        return true;
     default:
-        return sema_no_type();
+        return false;
     }
 }
 
@@ -301,7 +294,7 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
         return;
     }
 
-    switch (cgen->sema->types[type_index].kind) {
+    switch (cgen->ir->types[type_index].kind) {
     case STK_String:
         cgen_add(cgen, "(string){0}");
         break;
@@ -324,7 +317,7 @@ internal void
 cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
 {
     if (value->kind == IR_VALUE_INTEGER && value->value.integer == 0 &&
-        !sema_type_is_integer(cgen->sema, type_index)) {
+        !cgen_type_is_integer(cgen, type_index)) {
         cgen_add_zero_value(cgen, type_index);
         return;
     }
@@ -378,8 +371,7 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
            "Expected assignable lvalue");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
-    cgen_add_typed_value(
-        cgen, &instr->rvalue[0], cgen_lvalue_type(cgen, &instr->lvalue));
+    cgen_add_typed_value(cgen, &instr->rvalue[0], instr->lvalue.type);
     cgen_addn(cgen, ";");
 }
 
@@ -414,7 +406,7 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     u32 target_type = instr->lvalue.type;
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, cgen_c_type(cgen->sema, target_type));
+        cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
         cgen_add(cgen, " ");
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
@@ -423,7 +415,7 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     }
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->sema, target_type));
+    cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
     cgen_add(cgen, ")");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
@@ -480,7 +472,8 @@ void cgen_add_unary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, "int ");
+        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+        cgen_add(cgen, " ");
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
@@ -500,7 +493,8 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
 {
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
-        cgen_add(cgen, "int ");
+        cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+        cgen_add(cgen, " ");
     } else {
         ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL ||
                    instr->lvalue.kind == IR_VALUE_LOCAL,
@@ -521,8 +515,7 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_SYMBOL, "Expected global symbol");
     cgen_start_line(cgen);
-    cgen_add(cgen,
-             cgen_c_type(cgen->sema, cgen_lvalue_type(cgen, &instr->lvalue)));
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
     cgen_add(cgen, " ");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_addn(cgen, ";");
@@ -531,9 +524,9 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL, "Expected local symbol");
-    u32 type_index = cgen_lvalue_type(cgen, &instr->lvalue);
+    u32 type_index = instr->lvalue.type;
     cgen_start_line(cgen);
-    cgen_add(cgen, cgen_c_type(cgen->sema, type_index));
+    cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
     cgen_add(cgen, " ");
     cgen_add_value(cgen, &instr->lvalue);
     cgen_add(cgen, " = ");
@@ -574,26 +567,19 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_FN_START:
             cgen_start_line(cgen);
-            cgen->current_function_decl_index =
-                cgen_find_decl_index(cgen, (u32)instr->lvalue.value.integer);
             u32 return_type = sema_no_type();
-            if (cgen->current_function_decl_index != sema_no_decl()) {
-                u32 fn_type =
-                    cgen->sema->decls[cgen->current_function_decl_index]
-                        .type_index;
-                if (fn_type != sema_no_type() &&
-                    cgen->sema->types[fn_type].kind == STK_Function) {
-                    return_type = cgen->sema->types[fn_type].b;
-                }
+            u32 fn_type     = instr->lvalue.type;
+            if (fn_type != sema_no_type() &&
+                cgen->ir->types[fn_type].kind == STK_Function) {
+                return_type = cgen->ir->types[fn_type].b;
             }
-            cgen_add(cgen, cgen_c_type(cgen->sema, return_type));
+            cgen_add(cgen, cgen_c_type(cgen->ir, return_type));
             cgen_add(cgen, " ");
             cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
             cgen_addn(cgen, "() {");
             cgen_indent(cgen);
             break;
         case IR_OP_FN_END:
-            cgen->current_function_decl_index = sema_no_decl();
             cgen_dedent(cgen);
             cgen_add_line(cgen, "}");
             break;
@@ -656,10 +642,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
 
 CGen cgen_init(const Ir* ir, const Lexer* lexer, const Sema* sema)
 {
-    CGen cgen = {.ir                          = ir,
-                 .lexer                       = lexer,
-                 .sema                        = sema,
-                 .current_function_decl_index = sema_no_decl()};
+    UNUSED(sema);
+    CGen cgen = {.ir = ir, .lexer = lexer};
     arena_init(&cgen.arena);
 
     cgen_add_prologue(&cgen);
