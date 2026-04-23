@@ -855,6 +855,7 @@ Ast ast_parse(Lexer* lexer)
         .fn_signatures = state.fn_signatures,
         .call_args     = state.call_args,
         .calls         = state.calls,
+        .on_pattern_nodes = state.on_pattern_nodes,
         .on_branches   = state.on_branches,
         .ons           = state.ons,
     };
@@ -865,6 +866,7 @@ error:
                     .fn_signatures = state.fn_signatures,
                     .call_args     = state.call_args,
                     .calls         = state.calls,
+                    .on_pattern_nodes = state.on_pattern_nodes,
                     .on_branches   = state.on_branches,
                     .ons           = state.ons});
     return (Ast){0};
@@ -880,6 +882,7 @@ void ast_done(Ast* ast)
     array_free(ast->fn_signatures);
     array_free(ast->call_args);
     array_free(ast->calls);
+    array_free(ast->on_pattern_nodes);
     array_free(ast->on_branches);
     array_free(ast->ons);
     *ast = (Ast){0};

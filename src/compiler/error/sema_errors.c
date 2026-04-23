@@ -584,3 +584,29 @@ bool error_0323_negative_unsigned_inference(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report an integer range pattern whose bounds cannot match any value.
+
+bool error_0324_invalid_on_range_bounds(NerdSource source,
+                                        ErrorSpan  span,
+                                        bool       inclusive)
+{
+    ErrorInfo error =
+        error_init(324,
+                   source,
+                   span,
+                   "Block-form `on` range pattern is empty");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This range cannot match any values");
+    error_add_help(&error,
+                   inclusive
+                       ? "Use a lower bound that is less than or equal to the "
+                         "upper bound for `..=` ranges."
+                       : "Use a lower bound that is strictly less than the "
+                         "upper bound for `..<` ranges.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

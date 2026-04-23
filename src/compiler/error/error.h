@@ -199,6 +199,9 @@ bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span);
 bool error_0323_negative_unsigned_inference(NerdSource source,
                                             ErrorSpan  span,
                                             string     target_type);
+bool error_0324_invalid_on_range_bounds(NerdSource source,
+                                        ErrorSpan  span,
+                                        bool       inclusive);
 
 //------------------------------------------------------------------------------
 // Low-level error system

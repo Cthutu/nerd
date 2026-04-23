@@ -287,10 +287,15 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_label(&sb, instr->lvalue.value.integer);
             break;
         case IR_OP_EQUAL:
+        case IR_OP_LESS:
+        case IR_OP_LESS_EQUAL:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
-            sb_append_cstr(&sb, " == ");
+            sb_append_cstr(&sb,
+                           instr->op == IR_OP_EQUAL
+                               ? " == "
+                               : (instr->op == IR_OP_LESS ? " < " : " <= "));
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
             break;
         case IR_OP_NEGATE:

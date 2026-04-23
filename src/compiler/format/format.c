@@ -317,6 +317,13 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
         break;
+    case CK_RangeExclusive:
+    case CK_RangeInclusive:
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_cstr(
+            sb, node->kind == CK_RangeExclusive ? "..<" : "..=");
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        break;
     case CK_On:
         {
             const CstOnInfo* on = &cst->ons[node->b];
@@ -352,7 +359,9 @@ internal void format_emit_expr(StringBuilder* sb,
                         format_emit_expr(sb,
                                          cst,
                                          lexer,
-                                         branch->pattern_node_index + pattern,
+                                         cst->on_pattern_nodes
+                                             [branch->pattern_node_index +
+                                              pattern],
                                          0);
                     }
                 }

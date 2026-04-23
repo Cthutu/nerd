@@ -109,6 +109,8 @@ internal bool ast_node_is_stringish(const AstParseState* state, u32 node_index)
     }
 }
 
+internal bool ast_parse_on_branch_pattern(AstParseState* state, u32* out_node);
+
 internal bool ast_parse_interpolated_string(AstParseState* state,
                                             AstToken       start_token,
                                             u32*           out_node)
@@ -270,13 +272,15 @@ internal bool ast_parse_on_expr(AstParseState* state,
                         TK_RBrace);
                 }
             } else {
-                branch.pattern_node_index = (u32)array_count(state->nodes);
+                branch.pattern_node_index =
+                    (u32)array_count(state->on_pattern_nodes);
                 branch.pattern_count      = 0;
                 for (;;) {
-                    u32 ignored_pattern = 0;
-                    if (!ast_parse_expr_bp(state, 0, &ignored_pattern)) {
+                    u32 pattern_root = 0;
+                    if (!ast_parse_on_branch_pattern(state, &pattern_root)) {
                         return false;
                     }
+                    array_push(state->on_pattern_nodes, pattern_root);
                     ++branch.pattern_count;
                     if (state->token.kind != TK_Comma) {
                         break;
@@ -425,6 +429,45 @@ internal bool ast_parse_on_expr(AstParseState* state,
                              .token_index = on_token.token_index,
                              .a           = condition_node,
                              .b           = on_index,
+                         },
+                         out_node);
+}
+
+internal bool ast_parse_on_branch_pattern(AstParseState* state, u32* out_node)
+{
+    u32 start_node = 0;
+    if (!ast_parse_expr_bp(state, 0, &start_node)) {
+        return false;
+    }
+
+    AstKind range_kind = AK_IntegerPlus;
+    if (state->token.kind == TK_RangeExclusive) {
+        range_kind = AK_RangeExclusive;
+    } else if (state->token.kind == TK_RangeInclusive) {
+        range_kind = AK_RangeInclusive;
+    } else {
+        *out_node = start_node;
+        return true;
+    }
+
+    AstToken range_token = state->token;
+    if (!ast_next_token(state) || !ast_next_token(state)) {
+        return error_0201_missing_value(state->token.source,
+                                        ast_token_span(state, &range_token),
+                                        TK_Integer);
+    }
+
+    u32 end_node = 0;
+    if (!ast_parse_expr_bp(state, 0, &end_node)) {
+        return false;
+    }
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = range_kind,
+                             .token_index = range_token.token_index,
+                             .a           = start_node,
+                             .b           = end_node,
                          },
                          out_node);
 }

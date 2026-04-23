@@ -29,6 +29,8 @@
 // | CK_IntegerModulo   | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
+// | CK_RangeExclusive  | Start node index      | End node index        |
+// | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
@@ -59,6 +61,8 @@ typedef enum {
     CK_IntegerModulo,
     CK_Call,
     CK_Cast,
+    CK_RangeExclusive,
+    CK_RangeInclusive,
     CK_On,
     CK_TypeFn,
     CK_FnExpr,
@@ -128,6 +132,7 @@ typedef struct {
     Array(CstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(CstCallInfo) calls;
+    Array(u32) on_pattern_nodes;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
 } Cst;

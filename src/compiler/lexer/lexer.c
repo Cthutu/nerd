@@ -411,8 +411,22 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '.') {
-        array_push(lexer->tokens, (Token){.kind = TK_Dot, .offset = (u32)i});
-        *io_index = i + 1;
+        if (i + 2 < source_code.count && source_code.data[i + 1] == '.' &&
+            source_code.data[i + 2] == '<') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_RangeExclusive, .offset = (u32)i});
+            *io_index = i + 3;
+        } else if (i + 2 < source_code.count &&
+                   source_code.data[i + 1] == '.' &&
+                   source_code.data[i + 2] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_RangeInclusive, .offset = (u32)i});
+            *io_index = i + 3;
+        } else {
+            array_push(
+                lexer->tokens, (Token){.kind = TK_Dot, .offset = (u32)i});
+            *io_index = i + 1;
+        }
         return true;
     }
 
@@ -555,6 +569,9 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_FatArrow:
     case TK_ThinArrow:
         return token->offset + 2;
+    case TK_RangeExclusive:
+    case TK_RangeInclusive:
+        return token->offset + 3;
     case TK_fn:
     case TK_on:
         return token->offset + 2;

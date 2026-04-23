@@ -30,6 +30,8 @@
 // | AK_IntegerModulo   | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
+// | AK_RangeExclusive  | Ast index start   | Ast index of end                |
+// | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
@@ -63,6 +65,8 @@ typedef enum {
     AK_IntegerModulo,
     AK_Call,
     AK_Cast,
+    AK_RangeExclusive,
+    AK_RangeInclusive,
     AK_On,
     AK_TypeFn,
     AK_Expression,
@@ -144,6 +148,7 @@ typedef struct {
     Array(AstFnSignature) fn_signatures;
     Array(u32) call_args;
     Array(AstCallInfo) calls;
+    Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
 } Ast;

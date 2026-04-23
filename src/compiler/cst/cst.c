@@ -23,6 +23,7 @@ typedef struct {
 } CstParseState;
 
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
+internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
@@ -648,13 +649,15 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     return false;
                 }
             } else {
-                branch.pattern_node_index = (u32)array_count(state->cst.nodes);
+                branch.pattern_node_index =
+                    (u32)array_count(state->cst.on_pattern_nodes);
                 branch.pattern_count      = 0;
                 for (;;) {
-                    u32 ignored_pattern = 0;
-                    if (!cst_parse_expr_bp(state, 0, &ignored_pattern)) {
+                    u32 pattern_root = 0;
+                    if (!cst_parse_on_branch_pattern(state, &pattern_root)) {
                         return false;
                     }
+                    array_push(state->cst.on_pattern_nodes, pattern_root);
                     ++branch.pattern_count;
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;
@@ -748,6 +751,40 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                              .token_index = token_index,
                              .a           = scrutinee,
                              .b           = on_index,
+                         },
+                         out_node);
+}
+
+internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node)
+{
+    u32 start_node = 0;
+    if (!cst_parse_expr_bp(state, 0, &start_node)) {
+        return false;
+    }
+
+    CstKind range_kind = CK_IntegerPlus;
+    if (cst_current_token(state).kind == TK_RangeExclusive) {
+        range_kind = CK_RangeExclusive;
+    } else if (cst_current_token(state).kind == TK_RangeInclusive) {
+        range_kind = CK_RangeInclusive;
+    } else {
+        *out_node = start_node;
+        return true;
+    }
+
+    u32 token_index = state->token_index;
+    cst_advance(state);
+    u32 end_node = 0;
+    if (!cst_parse_expr_bp(state, 0, &end_node)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = range_kind,
+                             .token_index = token_index,
+                             .a           = start_node,
+                             .b           = end_node,
                          },
                          out_node);
 }
@@ -1358,6 +1395,7 @@ void cst_done(Cst* cst)
     array_free(cst->fn_signatures);
     array_free(cst->call_args);
     array_free(cst->calls);
+    array_free(cst->on_pattern_nodes);
     array_free(cst->on_branches);
     array_free(cst->ons);
     *cst = (Cst){0};

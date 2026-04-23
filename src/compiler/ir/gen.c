@@ -320,6 +320,44 @@ void ir_add_equal(Ir*         ir,
                });
 }
 
+void ir_add_less(Ir*         ir,
+                 IrValue     lvalue,
+                 u32         lvalue_type,
+                 IrValue     lhs,
+                 u32         lhs_type,
+                 IrValue     rhs,
+                 u32         rhs_type)
+{
+    lvalue.type = lvalue_type;
+    lhs.type    = lhs_type;
+    rhs.type    = rhs_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_LESS,
+                   .lvalue = lvalue,
+                   .rvalue = {lhs, rhs},
+               });
+}
+
+void ir_add_less_equal(Ir*         ir,
+                       IrValue     lvalue,
+                       u32         lvalue_type,
+                       IrValue     lhs,
+                       u32         lhs_type,
+                       IrValue     rhs,
+                       u32         rhs_type)
+{
+    lvalue.type = lvalue_type;
+    lhs.type    = lhs_type;
+    rhs.type    = rhs_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_LESS_EQUAL,
+                   .lvalue = lvalue,
+                   .rvalue = {lhs, rhs},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append a unary instruction to the IR stream.
 
@@ -532,6 +570,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_RangeExclusive:
+    case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
             if (ir_node_contains_interpolation(ast, node->a)) {
@@ -545,7 +585,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
                          ++pattern) {
                         if (ir_node_contains_interpolation(
                                 ast,
-                                branch->pattern_node_index + pattern)) {
+                                ast->on_pattern_nodes
+                                    [branch->pattern_node_index + pattern])) {
                             return true;
                         }
                     }
@@ -961,35 +1002,102 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     for (u32 pattern_index = 0;
                          pattern_index < branch->pattern_count;
                          ++pattern_index) {
-                        u32 pattern_node =
-                            branch->pattern_node_index + pattern_index;
-                        IrValue pattern = ir_lower_node(lex,
-                                                        ast,
-                                                        sema,
-                                                        pattern_node,
-                                                        node_values,
-                                                        next_value_index,
-                                                        ir);
-                        IrValue matches = {
-                            .kind          = IR_VALUE_VARIABLE,
-                            .type          = bool_type,
-                            .value.integer = (i64)(*next_value_index)++,
-                        };
-                        ir_add_equal(ir,
-                                     matches,
-                                     bool_type,
-                                     scrutinee,
-                                     ir_node_type_index(ast, sema, node->a),
-                                     pattern,
-                                     ir_node_type_index(
-                                         ast, sema, pattern_node));
-
+                        u32 pattern_node = ast->on_pattern_nodes
+                            [branch->pattern_node_index + pattern_index];
                         i64 mismatch_label = next_label;
                         if (pattern_index + 1 < branch->pattern_count) {
                             mismatch_label = (i64)(*next_value_index)++;
                         }
-                        ir_add_branch_false(
-                            ir, matches, bool_type, mismatch_label);
+                        const AstNode* pattern = &ast->nodes[pattern_node];
+                        if (pattern->kind == AK_RangeExclusive ||
+                            pattern->kind == AK_RangeInclusive) {
+                            IrValue start = ir_lower_node(lex,
+                                                          ast,
+                                                          sema,
+                                                          pattern->a,
+                                                          node_values,
+                                                          next_value_index,
+                                                          ir);
+                            IrValue start_matches = {
+                                .kind          = IR_VALUE_VARIABLE,
+                                .type          = bool_type,
+                                .value.integer = (i64)(*next_value_index)++,
+                            };
+                            ir_add_less_equal(ir,
+                                              start_matches,
+                                              bool_type,
+                                              start,
+                                              ir_node_type_index(
+                                                  ast, sema, pattern->a),
+                                              scrutinee,
+                                              ir_node_type_index(ast,
+                                                                 sema,
+                                                                 node->a));
+                            ir_add_branch_false(
+                                ir, start_matches, bool_type, mismatch_label);
+
+                            IrValue end = ir_lower_node(lex,
+                                                        ast,
+                                                        sema,
+                                                        pattern->b,
+                                                        node_values,
+                                                        next_value_index,
+                                                        ir);
+                            IrValue end_matches = {
+                                .kind          = IR_VALUE_VARIABLE,
+                                .type          = bool_type,
+                                .value.integer = (i64)(*next_value_index)++,
+                            };
+                            if (pattern->kind == AK_RangeInclusive) {
+                                ir_add_less_equal(ir,
+                                                  end_matches,
+                                                  bool_type,
+                                                  scrutinee,
+                                                  ir_node_type_index(ast,
+                                                                     sema,
+                                                                     node->a),
+                                                  end,
+                                                  ir_node_type_index(
+                                                      ast, sema, pattern->b));
+                            } else {
+                                ir_add_less(ir,
+                                            end_matches,
+                                            bool_type,
+                                            scrutinee,
+                                            ir_node_type_index(ast,
+                                                               sema,
+                                                               node->a),
+                                            end,
+                                            ir_node_type_index(ast,
+                                                               sema,
+                                                               pattern->b));
+                            }
+                            ir_add_branch_false(
+                                ir, end_matches, bool_type, mismatch_label);
+                        } else {
+                            IrValue pattern_value = ir_lower_node(lex,
+                                                                  ast,
+                                                                  sema,
+                                                                  pattern_node,
+                                                                  node_values,
+                                                                  next_value_index,
+                                                                  ir);
+                            IrValue matches = {
+                                .kind          = IR_VALUE_VARIABLE,
+                                .type          = bool_type,
+                                .value.integer = (i64)(*next_value_index)++,
+                            };
+                            ir_add_equal(ir,
+                                         matches,
+                                         bool_type,
+                                         scrutinee,
+                                         ir_node_type_index(ast, sema, node->a),
+                                         pattern_value,
+                                         ir_node_type_index(
+                                             ast, sema, pattern_node));
+                            ir_add_branch_false(
+                                ir, matches, bool_type, mismatch_label);
+                        }
                         if (pattern_index + 1 < branch->pattern_count) {
                             ir_add_jump(ir, match_label);
                             ir_add_label(ir, mismatch_label);
@@ -1030,7 +1138,13 @@ internal IrValue ir_lower_node(const Lexer* lex,
     case AK_IntegerMultiply:
     case AK_IntegerDivide:
     case AK_IntegerModulo:
+    case AK_RangeExclusive:
+    case AK_RangeInclusive:
         {
+            if (node->kind == AK_RangeExclusive ||
+                node->kind == AK_RangeInclusive) {
+                error_ice("Range patterns must only appear inside block-form `on`");
+            }
             IrOperation op = IR_OP_ADD;
             switch (node->kind) {
             case AK_IntegerPlus:

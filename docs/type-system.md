@@ -68,6 +68,16 @@ Short-form `on` expressions also participate in semantic typing:
 - both branches must produce exactly the same type
 - no implicit casts are inserted between branches
 
+Block-form `on` currently supports:
+
+- constant value patterns
+- comma-separated constant alternatives
+- integer ranges through `..<` and `..=`
+
+Range endpoints are checked semantically against the scrutinee type and must be
+compile-time constants. Empty integer ranges are rejected with a dedicated
+semantic error.
+
 Source-level boolean values are also available as literal keywords:
 
 - `true`

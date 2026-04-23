@@ -32,6 +32,8 @@ typedef enum : u8 {
     IR_OP_JUMP,
     IR_OP_LABEL,
     IR_OP_EQUAL,
+    IR_OP_LESS,
+    IR_OP_LESS_EQUAL,
     IR_OP_NEGATE,
     IR_OP_ADD,
     IR_OP_SUBTRACT,

@@ -46,6 +46,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("RightBrace `}`");
     case TK_Dot:
         return string_from_cstr("Dot `.`");
+    case TK_RangeExclusive:
+        return string_from_cstr("RangeExclusive `..<`");
+    case TK_RangeInclusive:
+        return string_from_cstr("RangeInclusive `..=`");
     case TK_Colon:
         return string_from_cstr("Colon `:`");
     case TK_Equal:

@@ -42,6 +42,10 @@ string ast_kind_to_string(AstKind kind)
         return s("Call");
     case AK_Cast:
         return s("Cast");
+    case AK_RangeExclusive:
+        return s("RangeExclusive");
+    case AK_RangeInclusive:
+        return s("RangeInclusive");
     case AK_On:
         return s("On");
     case AK_TypeFn:
@@ -165,6 +169,11 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Cast:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "value=%u type=%u", node->a, node->b));
+            break;
+        case AK_RangeExclusive:
+        case AK_RangeInclusive:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "start=%u end=%u", node->a, node->b));
             break;
         case AK_On:
             {

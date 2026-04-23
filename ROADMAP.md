@@ -609,13 +609,13 @@ needed earlier.
   - Prefer syntax that does not require branch separators when the parser can
     unambiguously detect the start of the next branch.
 
-- [ ] 53. Add block-form branches, `else`, and simple value/range matching.
+- [x] 53. Add block-form branches, `else`, and simple value/range matching.
   - Support branch bodies as general expressions, including blocks.
   - Support `else => ...` in block form for consistency with other branches.
   - Current implementation status:
     - simple constant value branches are supported
     - comma-separated value alternatives in one branch are supported
-    - range branches are still pending
+    - exclusive and inclusive integer range branches are supported
   - Support comma-separated alternative values in one branch.
   - Support exclusive and inclusive integer ranges through `..<` and `..=`.
   - Keep exact type matching throughout; do not add implicit casts.

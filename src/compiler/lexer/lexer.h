@@ -39,6 +39,8 @@ typedef enum {
     TK_LBrace,
     TK_RBrace,
     TK_Dot,
+    TK_RangeExclusive,
+    TK_RangeInclusive,
     TK_Colon,
     TK_Equal,
     TK_Bang,
