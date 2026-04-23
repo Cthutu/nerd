@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/cst/cst.h>
+#include <compiler/error/error.h>
 #include <compiler/format/format.h>
 #include <compiler/lexer/lexer.h>
 
@@ -233,7 +234,8 @@ internal void format_emit_expr(StringBuilder* sb,
                 sb_append_char(sb, '}');
                 continue;
             }
-            kill("Unhandled interpolated string part kind: %u", part->kind);
+            error_ice("Unhandled interpolated string part kind: %u",
+                      part->kind);
         }
         sb_append_char(sb, '"');
         break;
@@ -291,8 +293,9 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, 0);
         break;
     default:
-        kill("Unhandled CST node kind in formatter expression rendering: %u",
-             node->kind);
+        error_ice("Unhandled CST node kind in formatter expression rendering: "
+                  "%u",
+                  node->kind);
         break;
     }
 
@@ -645,7 +648,8 @@ bool format_file(cstr input_path, cstr output_path)
     if (!file) {
         arena_done(&arena);
         filemap_unload(&map);
-        kill("Failed to open file for writing: %s", output_path);
+        return error_runtime("Failed to open file for writing: %s",
+                             output_path);
     }
 
     usize written = fwrite(rendered.data, 1, rendered.count, file);
@@ -653,7 +657,7 @@ bool format_file(cstr input_path, cstr output_path)
     if (written != rendered.count) {
         arena_done(&arena);
         filemap_unload(&map);
-        kill("Failed to write formatted file: %s", output_path);
+        return error_runtime("Failed to write formatted file: %s", output_path);
     }
 
     arena_done(&arena);

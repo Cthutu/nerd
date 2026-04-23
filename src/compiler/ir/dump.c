@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/ir/ir.h>
+#include <compiler/error/error.h>
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
@@ -294,7 +295,7 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
 //------------------------------------------------------------------------------
 // Save rendered IR to a file.
 
-void ir_save(const Ir* ir, const Lexer* lexer, cstr path)
+bool ir_save(const Ir* ir, const Lexer* lexer, cstr path)
 {
     Arena arena = {0};
     arena_init(&arena);
@@ -303,7 +304,7 @@ void ir_save(const Ir* ir, const Lexer* lexer, cstr path)
     FILE* file      = fopen(path, "wb");
     if (!file) {
         arena_done(&arena);
-        kill("Failed to open file for writing: %s", path);
+        return error_runtime("Failed to open file for writing: %s", path);
     }
 
     usize written = fwrite(rendered.data, 1, rendered.count, file);
@@ -311,8 +312,9 @@ void ir_save(const Ir* ir, const Lexer* lexer, cstr path)
     arena_done(&arena);
 
     if (written != rendered.count) {
-        kill("Failed to write IR file: %s", path);
+        return error_runtime("Failed to write IR file: %s", path);
     }
+    return true;
 }
 
 //------------------------------------------------------------------------------

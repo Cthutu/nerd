@@ -488,12 +488,16 @@ needed earlier.
   - Add at least one unit test for every reachable public error category.
   - Cover meaningful distinct occurrences of reused categories when the source
     span, related information, or help text can differ.
-  - Current known gaps include hard-to-trigger or currently untested categories
-    such as `0101`, `0102`, `0104`, `0105`, `0200`, and `0205`.
+  - Reachable coverage added for `0101`, `0104`, and `0205`.
+  - Remaining known gaps are hard-limit diagnostics that need synthetic harness
+    support or intentionally enormous inputs: `0102`, `0105`, and `0200`.
   - Extend LSP diagnostic transcript coverage for semantic errors that editor
     users are likely to hit, rather than only relying on JSON error tests.
   - Keep error tests under `tests/errors` as the primary structured diagnostic
     coverage.
+  - Treat OS, filesystem, shell, and toolchain failures as `runtime-error`
+    reports, not user-source diagnostics or ICEs.
+  - Treat IR generation and C generation invariant failures as ICEs.
 
 - [ ] 44. Introduce lexical variable scopes in semantic analysis.
   - Replace the current function-wide local lookup with explicit scope rows.

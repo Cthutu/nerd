@@ -62,6 +62,15 @@ void            error_system_reset(void);
 bool error_ice(const char* format, ...);
 
 //------------------------------------------------------------------------------
+// Runtime/compiler-environment errors.
+//
+// These are failures outside the user's source program and outside compiler
+// invariants: missing OS permissions, failed writes, toolchain failures, etc.
+// They are reported separately from language diagnostics and ICEs.
+
+bool error_runtime(const char* format, ...);
+
+//------------------------------------------------------------------------------
 // Lexer errors
 
 typedef struct {
@@ -173,6 +182,7 @@ typedef enum {
     ERROR_KIND_WARNING,
     ERROR_KIND_ERROR,
     ERROR_KIND_INTERNAL,
+    ERROR_KIND_RUNTIME,
 } ErrorKind;
 
 typedef struct {

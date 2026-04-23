@@ -27,6 +27,8 @@ internal u32 error_lsp_severity(ErrorKind kind)
         return 2;
     case ERROR_KIND_INTERNAL:
         return 1;
+    case ERROR_KIND_RUNTIME:
+        return 1;
     default:
         return 1;
     }
@@ -41,6 +43,8 @@ internal cstr error_kind_label(ErrorKind kind)
         return "error";
     case ERROR_KIND_INTERNAL:
         return "internal";
+    case ERROR_KIND_RUNTIME:
+        return "runtime-error";
     default:
         return "error";
     }
@@ -57,6 +61,8 @@ internal cstr error_reference_colour(const ErrorInfo* error_info,
             return ANSI_BOLD_RED;
         case ERROR_KIND_INTERNAL:
             return ANSI_BOLD_BLUE;
+        case ERROR_KIND_RUNTIME:
+            return ANSI_BOLD_RED;
         default:
             return ANSI_BOLD_RED;
         }
@@ -276,6 +282,9 @@ internal void error_normal_render(const ErrorInfo* error_info)
     case ERROR_KIND_INTERNAL:
         primary_colour = ANSI_BOLD_BLUE;
         break;
+    case ERROR_KIND_RUNTIME:
+        primary_colour = ANSI_BOLD_RED;
+        break;
     default:
         primary_colour = ANSI_BOLD_RED;
         break;
@@ -285,41 +294,53 @@ internal void error_normal_render(const ErrorInfo* error_info)
     // Output the main error message and code
     //
 
-    eprn("%s%s[%04u]:%s " STRINGP,
-         primary_colour,
-         error_kind_label(error_info->kind),
-         error_info->code,
-         ANSI_RESET,
-         STRINGV(error_info->error_message));
+    if (error_info->kind == ERROR_KIND_RUNTIME) {
+        eprn("%s%s:%s " STRINGP,
+             primary_colour,
+             error_kind_label(error_info->kind),
+             ANSI_RESET,
+             STRINGV(error_info->error_message));
+    } else {
+        eprn("%s%s[%04u]:%s " STRINGP,
+             primary_colour,
+             error_kind_label(error_info->kind),
+             error_info->code,
+             ANSI_RESET,
+             STRINGV(error_info->error_message));
+    }
 
+    bool has_source =
+        error_info->source.source.count > 0 ||
+        error_info->source.source_path.count > 0;
     //
     // Determine the line and column number
     //
 
-    u32  line;
-    u32  column;
-    bool got_line_and_column = lex_offset_to_line_col(
-        error_info->source, error_info->span.start, &line, &column);
+    if (has_source) {
+        u32  line;
+        u32  column;
+        bool got_line_and_column = lex_offset_to_line_col(
+            error_info->source, error_info->span.start, &line, &column);
 
-    if (got_line_and_column) {
-        eprn(" --> " STRINGP ":%u:%u",
-             STRINGV(error_info->source.source_path.count > 0
-                         ? error_info->source.source_path
-                         : s("<input>")),
-             line + 1,
-             column + 1);
-    } else {
-        eprn(" --> " STRINGP ":<unknown-position>",
-             STRINGV(error_info->source.source_path.count > 0
-                         ? error_info->source.source_path
-                         : s("<input>")));
+        if (got_line_and_column) {
+            eprn(" --> " STRINGP ":%u:%u",
+                 STRINGV(error_info->source.source_path.count > 0
+                             ? error_info->source.source_path
+                             : s("<input>")),
+                 line + 1,
+                 column + 1);
+        } else {
+            eprn(" --> " STRINGP ":<unknown-position>",
+                 STRINGV(error_info->source.source_path.count > 0
+                             ? error_info->source.source_path
+                             : s("<input>")));
+        }
+
+        //
+        // Output the code snippet
+        //
+        error_print_snippet(error_info);
     }
-
-    //
-    // Output the code snippet
-    //
-
-    error_print_snippet(error_info);
 
     //
     // Output notes

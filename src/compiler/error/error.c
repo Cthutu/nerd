@@ -14,6 +14,13 @@ global_variable Arena           g_error_arena          = {0};
 global_variable Arena           g_error_rendered_arena = {0};
 global_variable string          g_error_last_rendered  = {0};
 
+internal ErrorInfo error_info_init(ErrorKind  kind,
+                                   u16        code,
+                                   NerdSource source,
+                                   ErrorSpan  span,
+                                   cstr       error_format,
+                                   va_list    args);
+
 void error_system_init(ErrorRenderMode mode)
 {
     arena_init(&g_error_arena);
@@ -73,6 +80,17 @@ bool error_ice(const char* format, ...)
     eprn("");
     va_end(args);
     exit(1);
+}
+
+bool error_runtime(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    ErrorInfo error_info = error_info_init(
+        ERROR_KIND_RUNTIME, 0, (NerdSource){0}, (ErrorSpan){0}, format, args);
+    va_end(args);
+    error_render(&error_info);
+    return false;
 }
 
 void error_system_reset(void) { arena_reset(&g_error_arena); }

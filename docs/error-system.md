@@ -44,6 +44,17 @@ Use diagnostics for anything a user can reasonably fix in their source. Use
 `error_ice(...)` only for states that should be impossible after earlier
 compiler phases have done their job.
 
+Failures outside the source program are runtime errors. Use
+`error_runtime(...)` for OS, filesystem, shell, and toolchain failures such as
+being unable to write generated files or compile the generated C. These are not
+language diagnostics, and they are not ICEs unless they expose a compiler
+invariant violation.
+
+IR generation and C generation should not invent user-facing language errors.
+If those phases see an invalid AST, invalid IR operation, invalid IR value, or
+unsupported internal type state, report an ICE. Earlier phases are responsible
+for rejecting invalid source programs.
+
 `help` and `note` messages have different roles:
 
 - `help` is contextual fix guidance. It should point at what the user can change
@@ -58,6 +69,10 @@ The project keeps phase-specific ranges:
 - `0100` to `0199` for lexer errors
 - `0200` to `0299` for parser and AST errors
 - `0300` to `0399` for semantic-analysis errors
+
+Runtime errors are intentionally reported by category name (`runtime-error`)
+rather than by a language diagnostic code, because they describe the compiler's
+execution environment instead of user source.
 
 That convention matters for readability, tests, and future coverage.
 

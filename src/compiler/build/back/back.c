@@ -11,6 +11,7 @@
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
+#include <compiler/error/error.h>
 
 //------------------------------------------------------------------------------
 
@@ -66,10 +67,7 @@ internal bool back_end_save_c(BackEndContext* ctx)
         return true;
     }
 
-    // TODO: cgen_save should return true/false if it was successful writing a
-    // file
-    cgen_save(&ctx->results.cgen, ctx->artifacts->c_path);
-    return true;
+    return cgen_save(&ctx->results.cgen, ctx->artifacts->c_path);
 }
 
 internal bool back_end_compile_c(BackEndContext* ctx)
@@ -89,12 +87,12 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
-        kill("Failed to compile generated C file (exit code %d)",
-             compile_result);
+        return error_runtime("Failed to compile generated C file (exit code %d)",
+                             compile_result);
     }
     if (chmod(exe_path, 0755) != 0) {
         arena_done(&arena);
-        kill("Failed to make %s executable", exe_path);
+        return error_runtime("Failed to make %s executable", exe_path);
     }
 #elif OS_WINDOWS
     string command =
@@ -102,8 +100,8 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
-        kill("Failed to compile generated C file (exit code %d)",
-             compile_result);
+        return error_runtime("Failed to compile generated C file (exit code %d)",
+                             compile_result);
     }
 #endif
 
@@ -127,9 +125,11 @@ bool back_end(const FrontEndState*      front_end_results,
     }
 
     if (artifacts->emit_ir_file) {
-        ir_save(&front_end_results->ir,
-                &front_end_results->lexer,
-                artifacts->ir_path);
+        if (!ir_save(&front_end_results->ir,
+                     &front_end_results->lexer,
+                     artifacts->ir_path)) {
+            return false;
+        }
     }
 
     BackEndContext ctx = {.front_end_results = front_end_results,

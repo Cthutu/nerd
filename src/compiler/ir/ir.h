@@ -98,7 +98,7 @@ typedef struct {
 Ir     ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema);
 void   ir_done(Ir* ir);
 string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena);
-void   ir_save(const Ir* ir, const Lexer* lexer, cstr path);
+bool   ir_save(const Ir* ir, const Lexer* lexer, cstr path);
 void   ir_dump(const Ir* ir, const Lexer* lexer);
 
 //------------------------------------------------------------------------------

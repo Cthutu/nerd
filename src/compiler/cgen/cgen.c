@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/cgen/cgen.h>
+#include <compiler/error/error.h>
 
 static const char g_cgen_prelude[] = {
 #embed "../../../data/prelude.c"
@@ -355,8 +356,7 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
                      cgen->ir->strings[(u32)value->value.integer].count);
         break;
     default:
-        kill("Unknown IR value kind: %u", value->kind);
-        break;
+        error_ice("Unknown IR value kind: %u", value->kind);
     }
 }
 
@@ -441,7 +441,10 @@ void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
 {
     u32  type_index = instr->rvalue[0].type;
     cstr suffix     = cgen_string_helper_suffix(cgen, type_index);
-    ASSERT(suffix != NULL, "Expected interpolatable type suffix");
+    if (suffix == NULL) {
+        error_ice("Expected interpolatable type suffix for type index %u",
+                  type_index);
+    }
 
     cgen_start_line(cgen);
     cgen_add(cgen, "string_builder_append_string(to_string$");
@@ -629,9 +632,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             cgen_add_return(cgen, instr);
             break;
         default:
-            eprn("Unknown IR operation: %u", instr->op);
-            abort();
-            break;
+            error_ice("Unknown IR operation: %u", instr->op);
         }
     }
 }

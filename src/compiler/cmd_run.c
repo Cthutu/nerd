@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/cmd_internal.h>
+#include <compiler/error/error.h>
 
 //------------------------------------------------------------------------------
 // Build one artifact set for the `run` command.
@@ -61,17 +62,24 @@ internal cstr compiler_cmd_absolute_path(Arena* arena, cstr path)
 
 #if OS_WINDOWS
     DWORD required = GetFullPathNameA(path, 0, NULL, NULL);
-    ASSERT(required > 0, "Failed to resolve absolute path for `%s`", path);
+    if (required == 0) {
+        error_runtime("Failed to resolve absolute path for `%s`", path);
+        return NULL;
+    }
 
     char* buffer  = (char*)arena_alloc(arena, required);
     DWORD written = GetFullPathNameA(path, required, buffer, NULL);
-    ASSERT(written > 0 && written < required,
-           "Failed to resolve absolute path for `%s`",
-           path);
+    if (written == 0 || written >= required) {
+        error_runtime("Failed to resolve absolute path for `%s`", path);
+        return NULL;
+    }
     return buffer;
 #elif OS_POSIX
     char* cwd = getcwd(NULL, 0);
-    ASSERT(cwd != NULL, "Failed to resolve current working directory");
+    if (cwd == NULL) {
+        error_runtime("Failed to resolve current working directory");
+        return NULL;
+    }
 
     // `run hello.n` emits `hello`; execute it by absolute path so POSIX shells
     // do not search PATH and miss binaries in the current directory.
@@ -103,10 +111,18 @@ int compiler_cmd_run(const NerdRunConfig* config)
 #if OS_POSIX
     cstr executable_path =
         compiler_cmd_absolute_path(&arena, artifacts.binary_path);
+    if (executable_path == NULL) {
+        arena_done(&arena);
+        return 1;
+    }
     string command = string_format(&arena, "\"%s\"", executable_path);
 #elif OS_WINDOWS
     cstr executable_path =
         compiler_cmd_absolute_path(&arena, artifacts.binary_path);
+    if (executable_path == NULL) {
+        arena_done(&arena);
+        return 1;
+    }
     string command = string_format(&arena, "\"%s\"", executable_path);
 #endif
 

@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/cgen/cgen.h>
+#include <compiler/error/error.h>
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
@@ -38,19 +39,20 @@ string cgen_render_generated(const CGen* cgen, Arena* arena)
     return result;
 }
 
-void cgen_save(const CGen* cgen, const char* path)
+bool cgen_save(const CGen* cgen, const char* path)
 {
     FILE* file = fopen(path, "wb");
     if (!file) {
-        kill("Failed to open file for writing: %s", path);
+        return error_runtime("Failed to open file for writing: %s", path);
     }
 
     usize len     = cgen->arena.cursor;
     usize written = fwrite(cgen->arena.data, 1, len, file);
     if (written != len) {
         fclose(file);
-        kill("Failed to write generated C file: %s", path);
+        return error_runtime("Failed to write generated C file: %s", path);
     }
 
     fclose(file);
+    return true;
 }
