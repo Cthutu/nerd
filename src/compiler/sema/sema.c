@@ -1103,7 +1103,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             continue;
         }
         if (node->kind == AK_For) {
-            i = ast->nodes[node->a].b;
+            i = ast->nodes[node->b].b;
             continue;
         }
         if (node->kind != AK_Bind) {
@@ -1190,8 +1190,19 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         }
 
         if (node->kind == AK_For) {
-            const AstNode* body = &ast->nodes[node->a];
+            const AstNode* body = &ast->nodes[node->b];
             ASSERT(body->kind == AK_Block, "Expected for body block");
+            if (node->a != U32_MAX &&
+                !sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        sema_no_scope(),
+                                        scope_index,
+                                        node->a,
+                                        sema)) {
+                return false;
+            }
             u32 child_scope =
                 sema_add_scope(sema, owner_decl_index, scope_index);
             if (!sema_collect_block_statements(lexer,
@@ -1622,6 +1633,17 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                             scope_index,
                                             node->a,
                                             sema);
+    case AK_For:
+        return node->a == U32_MAX
+                   ? true
+                   : sema_resolve_node_refs(lexer,
+                                            ast,
+                                            owner_decl_index,
+                                            current_function_symbol,
+                                            capture_scope_index,
+                                            scope_index,
+                                            node->a,
+                                            sema);
     case AK_SymbolRef:
         if (sema->node_is_type_expr[node_index]) {
             return true;
@@ -1799,7 +1821,11 @@ internal void sema_collect_node_deps(const Ast*  ast,
         }
         return;
     case AK_For:
-        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        if (node->a != U32_MAX) {
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, node->a, out_sema);
+        }
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         return;
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
@@ -1807,7 +1833,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
         return;
@@ -1862,7 +1888,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
                     if (ast->nodes[i].kind == AK_Block) {
                         i = ast->nodes[i].b - 1;
                     } else if (ast->nodes[i].kind == AK_For) {
-                        i = ast->nodes[ast->nodes[i].a].b - 1;
+                        i = ast->nodes[ast->nodes[i].b].b - 1;
                     }
                 }
             }
@@ -2352,8 +2378,19 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
         }
 
         if (stmt->kind == AK_For) {
-            const AstNode* body = &ast->nodes[stmt->a];
+            const AstNode* body = &ast->nodes[stmt->b];
             ASSERT(body->kind == AK_Block, "Expected for body block");
+            if (stmt->a != U32_MAX) {
+                u32 condition_type = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          stmt->a,
+                                          sema_builtin_type(sema, STK_Bool),
+                                          &condition_type)) {
+                    return false;
+                }
+            }
             bool loop_has_return = false;
             if (!sema_infer_block_statements(lexer,
                                              ast,
@@ -2365,7 +2402,7 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                 return false;
             }
             sema->node_type_indices[i] = sema_builtin_type(sema, STK_Void);
-            if (loop_has_return) {
+            if (stmt->a == U32_MAX && loop_has_return) {
                 *out_has_return = true;
                 return true;
             }
@@ -2515,7 +2552,9 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_AnnotatedValue:
         return sema_node_contains_interpolation(ast, node->b);
     case AK_For:
-        return sema_node_contains_interpolation(ast, node->a);
+        return (node->a != U32_MAX &&
+                sema_node_contains_interpolation(ast, node->a)) ||
+               sema_node_contains_interpolation(ast, node->b);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
             if (sema_node_contains_interpolation(ast, i)) {
@@ -2524,7 +2563,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
         return false;
@@ -2540,7 +2579,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
                 if (ast->nodes[i].kind == AK_Block) {
                     i = ast->nodes[i].b - 1;
                 } else if (ast->nodes[i].kind == AK_For) {
-                    i = ast->nodes[ast->nodes[i].a].b - 1;
+                    i = ast->nodes[ast->nodes[i].b].b - 1;
                 }
             }
             return false;
@@ -2652,12 +2691,18 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
         return sema_no_decl();
     case AK_For:
-        return sema_find_interpolated_string_node(ast, node->a);
+        if (node->a != U32_MAX) {
+            u32 found = sema_find_interpolated_string_node(ast, node->a);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+        }
+        return sema_find_interpolated_string_node(ast, node->b);
     default:
         return sema_no_decl();
     }
@@ -2764,12 +2809,15 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
         return true;
     case AK_For:
-        return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
+        return (node->a == U32_MAX ||
+                sema_validate_interpolated_strings(
+                    lexer, ast, sema, node->a)) &&
+               sema_validate_interpolated_strings(lexer, ast, sema, node->b);
     default:
         return true;
     }
@@ -2887,8 +2935,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_For:
         {
-            const AstNode* body = &ast->nodes[node->a];
+            const AstNode* body = &ast->nodes[node->b];
             ASSERT(body->kind == AK_Block, "Expected for body block");
+            if (node->a != U32_MAX) {
+                u32 condition_type = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          sema_builtin_type(sema, STK_Bool),
+                                          &condition_type)) {
+                    return false;
+                }
+            }
             u32  ignored_type = sema_no_type();
             bool has_return   = false;
             if (!sema_infer_block_statements(lexer,

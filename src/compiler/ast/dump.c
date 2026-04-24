@@ -258,7 +258,12 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_For:
             row[3] = table_cell_string(
-                string_format(&temp_arena, "body=%u", node->a));
+                node->a == U32_MAX
+                    ? string_format(&temp_arena, "condition=<none> body=%u", node->b)
+                    : string_format(&temp_arena,
+                                    "condition=%u body=%u",
+                                    node->a,
+                                    node->b));
             break;
         case AK_Bind:
             row[3] = table_cell_string(

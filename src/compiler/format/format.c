@@ -794,7 +794,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
                    ? node->token_index
                    : format_node_end_token_index(cst, lexer, node->a);
     case CK_For:
-        return format_node_end_token_index(cst, lexer, node->a);
+        return format_node_end_token_index(cst, lexer, node->b);
     case CK_IntegerPlus:
     case CK_IntegerMinus:
     case CK_IntegerMultiply:
@@ -1273,7 +1273,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
         if (cst->nodes[i].kind == CK_Block) {
             i = cst->nodes[i].b - 1;
         } else if (cst->nodes[i].kind == CK_For) {
-            i = cst->nodes[cst->nodes[i].a].b - 1;
+            i = cst->nodes[cst->nodes[i].b].b - 1;
         }
     }
 
@@ -1327,7 +1327,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             if (cst->nodes[i].kind == CK_Block) {
                 i = cst->nodes[i].b - 1;
             } else if (cst->nodes[i].kind == CK_For) {
-                i = cst->nodes[cst->nodes[i].a].b - 1;
+                i = cst->nodes[cst->nodes[i].b].b - 1;
             }
         }
         format_emit_indent(sb, indent_level);
@@ -1336,9 +1336,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_For) {
-        const CstNode* body = &cst->nodes[stmt->a];
+        const CstNode* body = &cst->nodes[stmt->b];
         ASSERT(body->kind == CK_Block, "Expected for body block");
-        sb_append_cstr(sb, "for {\n");
+        sb_append_cstr(sb, "for");
+        if (stmt->a != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        }
+        sb_append_cstr(sb, " {\n");
         for (u32 i = body->a; i < body->b; ++i) {
             if (!format_is_block_statement(&cst->nodes[i])) {
                 continue;
@@ -1347,7 +1352,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             if (cst->nodes[i].kind == CK_Block) {
                 i = cst->nodes[i].b - 1;
             } else if (cst->nodes[i].kind == CK_For) {
-                i = cst->nodes[cst->nodes[i].a].b - 1;
+                i = cst->nodes[cst->nodes[i].b].b - 1;
             }
         }
         format_emit_indent(sb, indent_level);

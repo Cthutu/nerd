@@ -52,7 +52,7 @@
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_Block           | First stmt index      | End-exclusive index   |
-// | CK_For             | Body block node       | 0                     |
+// | CK_For             | Condition node/U32_MAX | Body block node      |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |

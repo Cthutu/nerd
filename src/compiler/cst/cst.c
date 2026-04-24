@@ -1193,21 +1193,28 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_for) {
-        u32 for_node = 0;
-        u32 body     = 0;
+        u32 for_node  = 0;
+        u32 condition = U32_MAX;
+        u32 body      = 0;
         if (!cst_emit_node(state,
                            (CstNode){
                                .kind        = CK_For,
                                .token_index = token_index,
+                               .a           = U32_MAX,
                            },
                            &for_node)) {
             return false;
         }
         cst_advance(state);
+        if (cst_current_token(state).kind != TK_LBrace &&
+            !cst_parse_expr_bp(state, 0, &condition)) {
+            return false;
+        }
         if (!cst_parse_nested_block(state, &body)) {
             return false;
         }
-        state->cst.nodes[for_node].a = body;
+        state->cst.nodes[for_node].a = condition;
+        state->cst.nodes[for_node].b = body;
         return true;
     }
 

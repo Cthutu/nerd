@@ -1,10 +1,12 @@
 main :: fn () {
-    for 1
+    for 1 {
+        prn("bad")
+    }
 }
 ¬
 {
-    "code": "0203",
-    "message": "Expected LeftBrace `{`",
+    "code": "0304",
+    "message": "Type mismatch: expected `bool`, found `untyped integer`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 2,
@@ -16,11 +18,11 @@ main :: fn () {
             "line": 2,
             "column": 9,
             "length": 1,
-            "message": "Found Integer here"
+            "message": "This expression has type `untyped integer`"
         }
     ],
     "notes": [],
     "help": [
-        "Check for a missing closing delimiter or misplaced operator"
+        "Change the expression or annotation so both sides use the same type."
     ]
 }

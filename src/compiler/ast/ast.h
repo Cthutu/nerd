@@ -52,7 +52,7 @@
 // | AK_Return          | Ast index of expr | 0                               |
 // | AK_ReturnExpr      | Ast index of expr or U32_MAX | 0                    |
 // | AK_Block           | First stmt index  | End-exclusive stmt index        |
-// | AK_For             | Body block index  | 0                               |
+// | AK_For             | Condition expr or U32_MAX | Body block index           |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_Variable        | Symbol            | Ast index of type/value/zero    |
 // | AK_Assign          | Symbol            | Ast index of value              |

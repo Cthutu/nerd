@@ -631,7 +631,9 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
             return false;
         }
     case AK_For:
-        return ir_node_contains_interpolation(ast, node->a);
+        return (node->a != U32_MAX &&
+                ir_node_contains_interpolation(ast, node->a)) ||
+               ir_node_contains_interpolation(ast, node->b);
     default:
         return false;
     }
@@ -1465,7 +1467,7 @@ internal bool ir_generate_statement(const Lexer* lex,
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
         ir_add_block_end(ir);
@@ -1479,22 +1481,36 @@ internal bool ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_For) {
-        const AstNode* body = &ast->nodes[node->a];
+        const AstNode* body = &ast->nodes[node->b];
         ASSERT(body->kind == AK_Block, "Expected for body block");
         i64 start_label = (i64)(*next_value_index)++;
+        i64 end_label   = node->a == U32_MAX ? -1 : (i64)(*next_value_index)++;
         ir_add_label(ir, start_label);
+        if (node->a != U32_MAX) {
+            IrValue condition = ir_lower_node(
+                lex, ast, sema, node->a, node_values, next_value_index, ir);
+            ir_add_branch_false(ir,
+                                condition,
+                                ir_node_type_index(ast, sema, node->a),
+                                end_label);
+        }
         bool body_returned = ir_generate_statement(lex,
                                                    ast,
                                                    sema,
                                                    function_index,
-                                                   node->a,
+                                                   node->b,
                                                    node_values,
                                                    next_value_index,
                                                    ir);
-        if (body_returned) {
+        if (node->a == U32_MAX && body_returned) {
             return true;
         }
-        ir_add_jump(ir, start_label);
+        if (!body_returned) {
+            ir_add_jump(ir, start_label);
+        }
+        if (node->a != U32_MAX) {
+            ir_add_label(ir, end_label);
+        }
         return false;
     }
 
@@ -1700,7 +1716,7 @@ internal void ir_generate_function_body(const Lexer* lex,
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
             } else if (ast->nodes[i].kind == AK_For) {
-                i = ast->nodes[ast->nodes[i].a].b - 1;
+                i = ast->nodes[ast->nodes[i].b].b - 1;
             }
         }
 
@@ -1756,7 +1772,7 @@ internal void ir_generate_nested_functions_in_range(const Lexer* lex,
             continue;
         }
         if (node->kind == AK_For) {
-            const AstNode* body = &ast->nodes[node->a];
+            const AstNode* body = &ast->nodes[node->b];
             ASSERT(body->kind == AK_Block, "Expected for body block");
             ir_generate_nested_functions_in_range(
                 lex, ast, sema, body->a, body->b, ir);

@@ -709,7 +709,7 @@ needed earlier.
 - [ ] 57. Add statement-oriented loop forms.
   - [x] Support infinite loops:
     - `for { ... }`
-  - [ ] Support while-style loops:
+  - [x] Support while-style loops:
     - `for condition { ... }`
   - [ ] Support C-style loops:
     - `for init; condition; update { ... }`

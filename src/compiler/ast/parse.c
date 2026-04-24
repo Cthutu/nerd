@@ -441,11 +441,13 @@ internal bool ast_parse_block_statement(AstParseState* state)
     if (state->token.kind == TK_for) {
         u32 for_token_index = state->token.token_index;
         u32 for_node        = 0;
+        u32 condition_node  = U32_MAX;
         u32 body_node       = 0;
         if (!ast_emit_node(state,
                            (AstNode){
                                .kind        = AK_For,
                                .token_index = for_token_index,
+                               .a           = U32_MAX,
                            },
                            &for_node)) {
             return false;
@@ -458,16 +460,31 @@ internal bool ast_parse_block_statement(AstParseState* state)
                 TK_EOF);
         }
         if (state->token.kind != TK_LBrace) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_LBrace,
-                state->token.kind);
+            bool previous_boundary          = state->allow_statement_boundary;
+            state->allow_statement_boundary = true;
+            if (!ast_parse_expr(state, &condition_node)) {
+                state->allow_statement_boundary = previous_boundary;
+                return false;
+            }
+            state->allow_statement_boundary = previous_boundary;
+
+            if (state->token.kind != TK_LBrace) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_LBrace,
+                    state->token.kind);
+            }
+            if (state->token_index == state->token.token_index &&
+                !ast_next_token(state)) {
+                return false;
+            }
         }
         if (!ast_parse_nested_block(state, &body_node)) {
             return false;
         }
-        state->nodes[for_node].a = body_node;
+        state->nodes[for_node].a = condition_node;
+        state->nodes[for_node].b = body_node;
         return true;
     }
 
