@@ -578,7 +578,7 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_RangeExclusive:
     case CK_RangeInclusive:
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(sb, node->kind == CK_RangeExclusive ? "..<" : "..=");
+        sb_append_cstr(sb, node->kind == CK_RangeExclusive ? ".." : "..=");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         break;
     case CK_On:

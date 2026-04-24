@@ -70,8 +70,6 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Dollar `$`");
     case TK_Range:
         return string_from_cstr("Range `..`");
-    case TK_RangeExclusive:
-        return string_from_cstr("RangeExclusive `..<`");
     case TK_RangeInclusive:
         return string_from_cstr("RangeInclusive `..=`");
     case TK_Colon:

@@ -616,7 +616,7 @@ internal bool ast_parse_on_branch_pattern(AstParseState* state, u32* out_node)
     }
 
     AstKind range_kind = AK_IntegerPlus;
-    if (state->token.kind == TK_RangeExclusive) {
+    if (state->token.kind == TK_Range) {
         range_kind = AK_RangeExclusive;
     } else if (state->token.kind == TK_RangeInclusive) {
         range_kind = AK_RangeInclusive;

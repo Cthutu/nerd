@@ -599,7 +599,7 @@ bool error_0324_invalid_on_range_bounds(NerdSource source,
                        ? "Use a lower bound that is less than or equal to the "
                          "upper bound for `..=` ranges."
                        : "Use a lower bound that is strictly less than the "
-                         "upper bound for `..<` ranges.");
+                         "upper bound for `..` ranges.");
     error_render(&error);
     return false;
 }

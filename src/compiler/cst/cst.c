@@ -1207,7 +1207,7 @@ internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node)
     }
 
     CstKind range_kind = CK_IntegerPlus;
-    if (cst_current_token(state).kind == TK_RangeExclusive) {
+    if (cst_current_token(state).kind == TK_Range) {
         range_kind = CK_RangeExclusive;
     } else if (cst_current_token(state).kind == TK_RangeInclusive) {
         range_kind = CK_RangeInclusive;

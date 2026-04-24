@@ -1,6 +1,6 @@
 value: i32 = 2
 main :: fn () => on value {
-    2..<2 => 10
+    2..2 => 10
     else => 20
 }
 ¬
@@ -17,20 +17,20 @@ main :: fn () => on value {
             "kind": "primary",
             "line": 3,
             "column": 6,
-            "length": 3,
+            "length": 2,
             "message": "This range cannot match any values"
         }
     ],
     "notes": [],
     "help": [
-        "Use a lower bound that is strictly less than the upper bound for `..<` ranges."
+        "Use a lower bound that is strictly less than the upper bound for `..` ranges."
     ]
 }
 ¬
 value: i32 = 2
 limit: i32 = 2
 main :: fn () => on value {
-    0..<limit => 10
+    0..limit => 10
     else => 20
 }
 ¬
@@ -47,7 +47,7 @@ main :: fn () => on value {
             "kind": "primary",
             "line": 4,
             "column": 6,
-            "length": 3,
+            "length": 2,
             "message": "This pattern is not constant"
         }
     ],

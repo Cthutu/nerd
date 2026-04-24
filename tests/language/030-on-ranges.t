@@ -1,7 +1,7 @@
 -- Matches exclusive and inclusive integer ranges in block-form `on` branches.
 test_branch :: fn (size: u32) -> i32 {
     return on size {
-        0..<2 => 10
+        0..2 => 10
         2..=4 => 20
         else => 30
     }

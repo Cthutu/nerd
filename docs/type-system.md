@@ -111,7 +111,7 @@ Block-form `on` currently supports:
 
 - constant value patterns
 - comma-separated constant alternatives
-- integer ranges through `..<` and `..=`
+- integer ranges through `..` and `..=`
 
 Range endpoints are checked semantically against the scrutinee type and must be
 compile-time constants. Empty integer ranges are rejected with a dedicated

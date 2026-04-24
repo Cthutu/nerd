@@ -665,7 +665,7 @@ needed earlier.
     - comma-separated value alternatives in one branch are supported
     - exclusive and inclusive integer range branches are supported
   - Support comma-separated alternative values in one branch.
-  - Support exclusive and inclusive integer ranges through `..<` and `..=`.
+  - Support exclusive and inclusive integer ranges through `..` and `..=`.
   - Keep exact type matching throughout; do not add implicit casts.
 
 - [X] 54. Add branch-local pattern binders.
@@ -888,8 +888,8 @@ needed earlier.
     representation lands.
   - Covered in language, error, formatter, LSP, and type-system docs.
 
-- [ ] 75.1. Align exclusive range syntax with slice syntax.
-  - Replace exclusive `on` range spelling `..<` with `..`.
+- [X] 75.1. Align exclusive range syntax with slice syntax.
+  - Replace exclusive `on` range spelling with `..`.
   - Keep inclusive ranges spelled `..=`.
   - Update lexer token naming, parser/CST handling, formatter snapshots,
     language/error/LSP tests, and documentation together.

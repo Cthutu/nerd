@@ -4680,7 +4680,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 return error_0326_invalid_binary_operands(
                                     lexer->source,
                                     sema_node_span(lexer, pattern),
-                                    s("..<"),
+                                    s(".."),
                                     s("integer range bounds"),
                                     actual,
                                     actual);
