@@ -529,15 +529,6 @@ cli_parse_error(const CliParser* parser, Arena* arena, cstr format, ...)
     return result;
 }
 
-internal void cli_require_no_extra_positionals(const CliCommand* command,
-                                               usize positional_index)
-{
-    usize positional_count = cli_count_positionals(command);
-    if (positional_index > positional_count) {
-        UNUSED(command);
-    }
-}
-
 void cli_init(CliParser* parser, const JsonValue* schema)
 {
     ASSERT(parser != NULL, "CliParser cannot be NULL");
@@ -660,9 +651,14 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             }
             if (root_param) {
                 if (!option_value) {
-                    ASSERT(i + 1 < argc,
-                           "Missing value for option '--%s'",
-                           option);
+                    if (i + 1 >= argc) {
+                        json_done(result);
+                        return cli_parse_error(
+                            parser,
+                            arena,
+                            "Missing value for option '--" STRINGP "'.",
+                            STRINGV(option_name));
+                    }
                     option_value = argv[++i];
                 }
                 cli_set_json_string(
@@ -670,9 +666,14 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
                 continue;
             }
 
-            ASSERT(current_command != NULL,
-                   "Unknown option '--%s'. Use --help to list options.",
-                   option);
+            if (!current_command) {
+                json_done(result);
+                return cli_parse_error(parser,
+                                       arena,
+                                       "Unknown option '--" STRINGP
+                                       "'. Use --help to list options.",
+                                       STRINGV(option_name));
+            }
 
             CliFlag* command_flag = NULL;
             for (usize flag_index = 0;
@@ -706,9 +707,14 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             }
             if (command_param) {
                 if (!option_value) {
-                    ASSERT(i + 1 < argc,
-                           "Missing value for option '--%s'",
-                           option);
+                    if (i + 1 >= argc) {
+                        json_done(result);
+                        return cli_parse_error(
+                            parser,
+                            arena,
+                            "Missing value for option '--" STRINGP "'.",
+                            STRINGV(option_name));
+                    }
                     option_value = argv[++i];
                 }
                 cli_set_json_string(
@@ -741,15 +747,27 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             CliParam* root_param =
                 cli_find_short_param(parser->root_params, option);
             if (root_param) {
-                ASSERT(i + 1 < argc, "Missing value for option '-%c'", option);
+                if (i + 1 >= argc) {
+                    json_done(result);
+                    return cli_parse_error(
+                        parser,
+                        arena,
+                        "Missing value for option '-%c'.",
+                        option);
+                }
                 cli_set_json_string(
                     global_params, arena, root_param->name, s(argv[++i]));
                 continue;
             }
 
-            ASSERT(current_command != NULL,
-                   "Unknown option '-%c'. Use --help to list options.",
-                   option);
+            if (!current_command) {
+                json_done(result);
+                return cli_parse_error(
+                    parser,
+                    arena,
+                    "Unknown option '-%c'. Use --help to list options.",
+                    option);
+            }
 
             CliFlag* command_flag =
                 cli_find_short_flag(current_command->flags, option);
@@ -764,7 +782,14 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             CliParam* command_param =
                 cli_find_short_param(current_command->params, option);
             if (command_param) {
-                ASSERT(i + 1 < argc, "Missing value for option '-%c'", option);
+                if (i + 1 >= argc) {
+                    json_done(result);
+                    return cli_parse_error(
+                        parser,
+                        arena,
+                        "Missing value for option '-%c'.",
+                        option);
+                }
                 cli_set_json_string(
                     json_object_get_cstr(command_result, "params"),
                     arena,
@@ -849,8 +874,6 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
         return cli_parse_error(
             parser, arena, "Missing command. Use --help to list commands.");
     }
-
-    cli_require_no_extra_positionals(current_command, positional_index);
 
     for (usize i = 0; i < array_count(current_command->params); i++) {
         CliParam*  param = &current_command->params[i];
