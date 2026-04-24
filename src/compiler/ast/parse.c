@@ -338,7 +338,7 @@ ParsingQuery ast_parsing_query_for_token(TokenKind kind)
     }
 
     if (ast_token_starts_expression(kind)) {
-        return PQ_Expresssion;
+        return PQ_Expression;
     }
 
     return PQ_Invalid;
@@ -872,7 +872,8 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
     u32 fn_end_index;
     u32 fn_def_index;
 
-    EMIT_NODE(AK_FnStart, 0, signature_index, 0, fn_start_index);
+    EMIT_NODE(
+        AK_FnStart, fn_token.token_index, signature_index, 0, fn_start_index);
     u32 fn_kind = AFK_Expr;
 
     if (state->token.kind == TK_FatArrow) {
@@ -897,7 +898,7 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
                                          state->token.kind);
     }
 
-    EMIT_NODE(AK_FnEnd, 0, 0, fn_start_index, fn_end_index);
+    EMIT_NODE(AK_FnEnd, fn_token.token_index, 0, fn_start_index, fn_end_index);
     state->nodes[fn_start_index].b = fn_end_index;
 
     EMIT_NODE(

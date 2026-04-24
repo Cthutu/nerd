@@ -12,7 +12,7 @@
 // Public utility function index:
 //   ast_token_span     Return the source span covered by an AST token.
 //   ast_emit_node      Append an AST node and compute its relative expression
-//                      ref. 
+//                      ref.
 //   ast_expect_token   Consume the next token and require a specific token
 //                      kind.
 //  ast_peek_token      Read the current token without advancing parser
@@ -152,7 +152,7 @@ bool ast_next_token(AstParseState* state)
         return false;
     }
 
-    // Advance any indicies
+    // Advance any indices.
     state->token_index++;
     switch (state->token.kind) {
     case TK_Integer:

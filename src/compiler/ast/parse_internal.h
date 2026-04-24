@@ -112,7 +112,7 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node);
 
 typedef enum {
     PQ_Invalid,
-    PQ_Expresssion,
+    PQ_Expression,
     PQ_Declaration,
 } ParsingQuery;
 

@@ -26,13 +26,13 @@ dead code.
 
 ## Compiler AST
 
-- [ ] `src/compiler/ast/ast.h`
-- [ ] `src/compiler/ast/dump.c`
-- [ ] `src/compiler/ast/expr.c`
-- [ ] `src/compiler/ast/parse.c`
-- [ ] `src/compiler/ast/parse_internal.h`
-- [ ] `src/compiler/ast/query.c`
-- [ ] `src/compiler/ast/utils.c`
+- [x] `src/compiler/ast/ast.h`
+- [x] `src/compiler/ast/dump.c`
+- [x] `src/compiler/ast/expr.c`
+- [x] `src/compiler/ast/parse.c`
+- [x] `src/compiler/ast/parse_internal.h`
+- [x] `src/compiler/ast/query.c`
+- [x] `src/compiler/ast/utils.c`
 
 ## Compiler Build
 
