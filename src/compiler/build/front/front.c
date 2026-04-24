@@ -121,6 +121,8 @@ bool front_end(NerdSource     source,
 
     if (out_results != NULL) {
         *out_results = ctx.results;
+    } else {
+        front_end_results_done(&ctx.results);
     }
     return result;
 }

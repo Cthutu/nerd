@@ -36,11 +36,11 @@ dead code.
 
 ## Compiler Build
 
-- [ ] `src/compiler/build/build.h`
-- [ ] `src/compiler/build/back/back.c`
-- [ ] `src/compiler/build/back/back.h`
-- [ ] `src/compiler/build/front/front.c`
-- [ ] `src/compiler/build/front/front.h`
+- [x] `src/compiler/build/build.h`
+- [x] `src/compiler/build/back/back.c`
+- [x] `src/compiler/build/back/back.h`
+- [x] `src/compiler/build/front/front.c`
+- [x] `src/compiler/build/front/front.h`
 
 ## Compiler C Generation
 

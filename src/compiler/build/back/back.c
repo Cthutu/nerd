@@ -174,6 +174,8 @@ bool back_end(const FrontEndState*      front_end_results,
 
     if (out_results != NULL) {
         *out_results = ctx.results;
+    } else {
+        back_end_results_done(&ctx.results);
     }
 
     return result;
