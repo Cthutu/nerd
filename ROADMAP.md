@@ -808,6 +808,8 @@ needed earlier.
 - [x] 66. Cover tuple values horizontally.
   - Add language, error, formatter, and LSP tests.
   - Add documentation for tuple literals, tuple types, and tuple field access.
+  - Support interpolating tuple values as `(x1, x2, ...)` strings when every
+    element type is interpolatable.
   - Defer tuple destructuring and tuple patterns to the pattern milestones.
 
 ## Milestone 13: Fixed Arrays And Indexing

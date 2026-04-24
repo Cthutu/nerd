@@ -2526,6 +2526,18 @@ internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
     case STK_F32:
     case STK_F64:
         return true;
+    case STK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[type_index];
+            for (u32 i = 0; i < tuple->param_count; ++i) {
+                if (!sema_type_is_interpolatable(
+                        sema,
+                        sema->type_param_types[tuple->first_param_type + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     default:
         return sema_type_is_integer(sema, type_index);
     }

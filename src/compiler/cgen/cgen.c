@@ -579,10 +579,58 @@ void cgen_add_string_start(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "");
 }
 
-void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
+internal void cgen_add_string_append_literal(CGen* cgen, string text)
 {
-    u32  type_index = instr->rvalue[0].type;
-    cstr suffix     = cgen_string_helper_suffix(cgen, type_index);
+    cgen_start_line(cgen);
+    cgen_add(cgen, "string_builder_append_string((string){.data = (u8*)");
+    cgen_add_c_string_literal(cgen, text);
+    arena_format(&cgen->arena, ", .count = %zu});", text.count);
+    cgen_addn(cgen, "");
+}
+
+internal void cgen_add_value_field_path(CGen*          cgen,
+                                        const IrValue* value,
+                                        const u32*     fields,
+                                        u32            field_count)
+{
+    cgen_add_value(cgen, value);
+    for (u32 i = 0; i < field_count; ++i) {
+        arena_format(&cgen->arena, "._%u", fields[i]);
+    }
+}
+
+internal void cgen_add_string_append_value(CGen*          cgen,
+                                           const IrValue* value,
+                                           u32            type_index,
+                                           u32*           fields,
+                                           u32            field_count)
+{
+    type_index = cgen_materialise_type(cgen, type_index);
+    if (type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Tuple) {
+        const SemaType* tuple = &cgen->ir->types[type_index];
+        cgen_add_string_append_literal(cgen, s("("));
+        for (u32 i = 0; i < tuple->param_count; ++i) {
+            if (i > 0) {
+                cgen_add_string_append_literal(cgen, s(", "));
+            }
+            ASSERT(field_count < 32, "Tuple interpolation field path overflow");
+            fields[field_count] = i;
+            cgen_add_string_append_value(
+                cgen,
+                value,
+                cgen->ir->type_param_types[tuple->first_param_type + i],
+                fields,
+                field_count + 1);
+        }
+        if (tuple->param_count == 1) {
+            cgen_add_string_append_literal(cgen, s(","));
+        }
+        cgen_add_string_append_literal(cgen, s(")"));
+        return;
+    }
+
+    cstr suffix = cgen_string_helper_suffix(cgen, type_index);
     if (suffix == NULL) {
         error_ice("Expected interpolatable type suffix for type index %u",
                   type_index);
@@ -592,9 +640,16 @@ void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, "string_builder_append_string(to_string$");
     cgen_add(cgen, suffix);
     cgen_add(cgen, "(");
-    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add_value_field_path(cgen, value, fields, field_count);
     cgen_add(cgen, "));");
     cgen_addn(cgen, "");
+}
+
+void cgen_add_string_append(CGen* cgen, const IrInstruction* instr)
+{
+    u32 fields[32] = {0};
+    cgen_add_string_append_value(
+        cgen, &instr->rvalue[0], instr->rvalue[0].type, fields, 0);
 }
 
 void cgen_add_string_finish(CGen* cgen, const IrInstruction* instr)

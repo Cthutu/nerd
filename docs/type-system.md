@@ -280,9 +280,14 @@ Today sema accepts interpolation of:
 - `f32`
 - `f64`
 - `untyped integer`, which materialises to `i32` for runtime conversion
+- tuples whose elements are all interpolatable
 
 Unsupported segment types, such as function values, produce a dedicated
 semantic error.
+
+Tuple interpolation renders the value in tuple literal shape, such as
+`(1, "one")` or `(1,)` for a one-element tuple. Nested tuples use the same rule
+recursively.
 
 The current runtime model also treats interpolated strings as temporary
 statement-local values. Sema rejects uses that would let them escape, such as
