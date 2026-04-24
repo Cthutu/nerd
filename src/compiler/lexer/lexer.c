@@ -383,8 +383,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             {"break", 5, TK_break},
             {"continue", 8, TK_continue},
             {"return", 6, TK_return},
-            {"yes", 3, TK_true},
-            {"no", 2, TK_false},
+            {"yes", 3, TK_yes},
+            {"no", 2, TK_no},
             {NULL, 0, 0},
         };
 
@@ -799,13 +799,13 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         return token->offset + 2;
     case TK_for:
         return token->offset + 3;
-    case TK_true:
+    case TK_yes:
         return token->offset + 3;
     case TK_else:
         return token->offset + 4;
     case TK_break:
         return token->offset + 5;
-    case TK_false:
+    case TK_no:
         return token->offset + 2;
     case TK_return:
         return token->offset + 6;

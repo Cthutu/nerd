@@ -80,8 +80,8 @@ typedef enum {
     TK_break,
     TK_continue,
     TK_return,
-    TK_true,
-    TK_false,
+    TK_yes,
+    TK_no,
 } TokenKind;
 
 typedef struct {

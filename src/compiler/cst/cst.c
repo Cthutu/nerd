@@ -165,8 +165,8 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_Float:
     case TK_String:
     case TK_InterpolatedStringStart:
-    case TK_true:
-    case TK_false:
+    case TK_yes:
+    case TK_no:
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
@@ -712,14 +712,14 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  out_node);
         }
 
-    case TK_true:
-    case TK_false:
+    case TK_yes:
+    case TK_no:
         cst_advance(state);
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = CK_BoolLiteral,
                                  .token_index = state->token_index - 1,
-                                 .a           = token.kind == TK_true ? 1u : 0u,
+                                 .a           = token.kind == TK_yes ? 1u : 0u,
                              },
                              out_node);
 
