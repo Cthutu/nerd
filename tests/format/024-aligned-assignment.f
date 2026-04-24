@@ -4,15 +4,23 @@
 test :: fn () {
     one_var:=1
 
+    single_const::1
+
     after_blank: i32 = 2
 }
 
 main :: fn () {
+    answer::3.14
     ratio: f64 = 3.14 + 2.0 * 3.0
     s :string = "hello"
     flags: u32 = 7 | 2 ^ 1 & 3
     same := ratio >= 7.5 && flags != 0
     return on same => "ok" else "bad"
+}
+
+bind_values :: fn () {
+    first::1
+    longer::2
 }
 
 long_values :: fn () {
@@ -26,16 +34,24 @@ long_values :: fn () {
 test :: fn () {
     one_var := 1
 
+    single_const :: 1
+
     after_blank : i32 = 2
 }
 
 main :: fn () {
-    ratio : f64    = 3.14 + 2.0 * 3.0
-    s     : string = "hello"
-    flags : u32    = 7 | 2 ^ 1 & 3
-    same  :        = ratio >= 7.5 && flags != 0
+    answer ::         3.14
+    ratio  : f64    = 3.14 + 2.0 * 3.0
+    s      : string = "hello"
+    flags  : u32    = 7 | 2 ^ 1 & 3
+    same   :        = ratio >= 7.5 && flags != 0
 
     return on same => "ok" else "bad"
+}
+
+bind_values :: fn () {
+    first  :: 1
+    longer :: 2
 }
 
 long_values :: fn () {

@@ -538,6 +538,7 @@ typedef struct {
     string symbol;
     string type;
     string value;
+    bool   is_bind;
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
 
@@ -737,6 +738,39 @@ internal bool format_has_blank_line_between_statements(const Cst*   cst,
     return current_start_line > previous_end_line + 1;
 }
 
+internal bool format_statement_is_single_line(const Cst*   cst,
+                                              const Lexer* lexer,
+                                              u32          node_index)
+{
+    const CstNode* node       = &cst->nodes[node_index];
+    u32            start_line = 0;
+    u32            start_col  = 0;
+    u32            end_line   = 0;
+    u32            end_col    = 0;
+    u32   end_token_index = format_node_end_token_index(cst, lexer, node_index);
+    usize end_offset =
+        lex_token_end_offset(lexer, &lexer->tokens[end_token_index]);
+    if (end_offset > 0) {
+        end_offset--;
+    }
+
+    if (!lex_offset_to_line_col(lexer->source,
+                                lexer->tokens[node->token_index].offset,
+                                &start_line,
+                                &start_col)) {
+        return false;
+    }
+
+    if (!lex_offset_to_line_col(
+            lexer->source, end_offset, &end_line, &end_col)) {
+        return false;
+    }
+
+    UNUSED(start_col);
+    UNUSED(end_col);
+    return start_line == end_line;
+}
+
 internal string format_render_expr_to_string(Arena*       arena,
                                              const Cst*   cst,
                                              const Lexer* lexer,
@@ -784,10 +818,30 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol = lex_symbol(lexer, cst_get_symbol(node)),
-            .type   = type,
-            .value  = value,
+            .symbol  = lex_symbol(lexer, cst_get_symbol(node)),
+            .type    = type,
+            .value   = value,
+            .is_bind = false,
             .uses_standard_single_line = !typed,
+        };
+        return true;
+    }
+
+    if (node->kind == CK_Bind) {
+        if (!format_statement_is_single_line(cst, lexer, node_index)) {
+            return false;
+        }
+        if (cst->nodes[node->b].kind == CK_FnExpr ||
+            cst->nodes[node->b].kind == CK_FnBlock) {
+            return false;
+        }
+
+        *out_stmt = (FormatAlignedStatement){
+            .symbol = lex_symbol(lexer, cst_get_symbol(node)),
+            .type   = {0},
+            .value  = format_render_value_to_string(arena, cst, lexer, node->b),
+            .is_bind                   = true,
+            .uses_standard_single_line = true,
         };
         return true;
     }
@@ -814,11 +868,15 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
 {
     usize max_symbol_width = 0;
     usize max_type_width   = 0;
+    bool  has_variables    = false;
     for (u32 i = 0; i < stmt_count; ++i) {
         if (stmts[i].symbol.count > max_symbol_width) {
             max_symbol_width = stmts[i].symbol.count;
         }
-        if (stmts[i].type.count > max_type_width) {
+        if (!stmts[i].is_bind) {
+            has_variables = true;
+        }
+        if (!stmts[i].is_bind && stmts[i].type.count > max_type_width) {
             max_type_width = stmts[i].type.count;
         }
     }
@@ -830,22 +888,55 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             sb_append_char(sb, ' ');
         }
 
-        sb_append_cstr(sb, " : ");
-        sb_append_string(sb, stmts[i].type);
-        for (usize pad = stmts[i].type.count; pad <= max_type_width; ++pad) {
-            sb_append_char(sb, ' ');
-        }
-
-        usize prefix_width =
-            (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
-        if (prefix_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
-            sb_append_cstr(sb, "= ");
-            sb_append_string(sb, stmts[i].value);
+        if (stmts[i].is_bind) {
+            if (has_variables) {
+                usize value_start_width = (usize)indent_level * 4 +
+                                          max_symbol_width + max_type_width + 6;
+                if (value_start_width + stmts[i].value.count <=
+                    FORMAT_WRAP_WIDTH) {
+                    sb_append_cstr(sb, " ::");
+                    for (usize pad = 0; pad < max_type_width + 3; ++pad) {
+                        sb_append_char(sb, ' ');
+                    }
+                    sb_append_string(sb, stmts[i].value);
+                } else {
+                    sb_append_cstr(sb, " ::");
+                    sb_append_char(sb, '\n');
+                    format_emit_indent(sb, indent_level + 1);
+                    sb_append_string(sb, stmts[i].value);
+                }
+            } else {
+                usize value_start_width =
+                    (usize)indent_level * 4 + max_symbol_width + 4;
+                if (value_start_width + stmts[i].value.count <=
+                    FORMAT_WRAP_WIDTH) {
+                    sb_append_cstr(sb, " :: ");
+                    sb_append_string(sb, stmts[i].value);
+                } else {
+                    sb_append_cstr(sb, " ::");
+                    sb_append_char(sb, '\n');
+                    format_emit_indent(sb, indent_level + 1);
+                    sb_append_string(sb, stmts[i].value);
+                }
+            }
         } else {
-            sb_append_char(sb, '=');
-            sb_append_char(sb, '\n');
-            format_emit_indent(sb, indent_level + 1);
-            sb_append_string(sb, stmts[i].value);
+            sb_append_cstr(sb, " : ");
+            sb_append_string(sb, stmts[i].type);
+            for (usize pad = stmts[i].type.count; pad <= max_type_width;
+                 ++pad) {
+                sb_append_char(sb, ' ');
+            }
+            usize value_start_width =
+                (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
+            if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
+                sb_append_cstr(sb, "= ");
+                sb_append_string(sb, stmts[i].value);
+            } else {
+                sb_append_char(sb, '=');
+                sb_append_char(sb, '\n');
+                format_emit_indent(sb, indent_level + 1);
+                sb_append_string(sb, stmts[i].value);
+            }
         }
         sb_append_char(sb, '\n');
     }
