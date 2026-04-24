@@ -11,6 +11,7 @@ The `install-nvim` recipe copies them into a Linux Neovim configuration:
 The LazyVim plugin config:
 
 - registers the `nerd` LSP for `.n` files
-- configures `conform.nvim` to run `nerd format --stdout`
+- configures `conform.nvim` to run `nerd format` against Conform's temporary
+  file
 
 Tree-sitter support is intentionally deferred until a later editor milestone.

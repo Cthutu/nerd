@@ -24,7 +24,7 @@ The current LazyVim integration:
 
 - registers `.n` files as Nerd source
 - configures `nvim-lspconfig` to launch the Nerd LSP
-- configures `conform.nvim` to format with `nerd format --stdout`
+- configures `conform.nvim` to format a temporary file with `nerd format`
 
 Tree-sitter highlighting and indentation support are intentionally deferred
 until a later editor milestone.

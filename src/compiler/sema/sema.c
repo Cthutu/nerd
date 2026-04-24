@@ -2892,12 +2892,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer, &ast->nodes[node->a]),
                         sema_type_name(sema, &temp_arena, scrutinee_type));
                 }
-            } else if (!(scrutinee_type == bool_type ||
-                         sema_type_is_concrete_integer(sema, scrutinee_type))) {
-                return error_0321_invalid_on_match_type(
-                    lexer->source,
-                    sema_node_span(lexer, &ast->nodes[node->a]),
-                    sema_type_name(sema, &temp_arena, scrutinee_type));
+            } else {
+                if (sema->types[scrutinee_type].kind == STK_UntypedInteger) {
+                    scrutinee_type =
+                        sema_materialise_type(sema, scrutinee_type);
+                    sema->node_type_indices[node->a] = scrutinee_type;
+                }
+                if (!(scrutinee_type == bool_type ||
+                      sema_type_is_concrete_integer(sema, scrutinee_type))) {
+                    return error_0321_invalid_on_match_type(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[node->a]),
+                        sema_type_name(sema, &temp_arena, scrutinee_type));
+                }
             }
 
             u32 branch_type      = sema_no_type();
