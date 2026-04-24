@@ -85,3 +85,30 @@ main :: fn () {
         "Move `continue` into a `for` loop body."
     ]
 }
+¬
+main :: fn () {
+    break
+}
+¬
+{
+    "code": "0328",
+    "message": "`break` can only be used inside a loop or expression block",
+    "source_file": "tests/errors/021-expression-blocks.e",
+    "primary_location": {
+        "line": 2,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 5,
+            "length": 5,
+            "message": "This `break` is not inside a `for` loop or expression block"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Move `break` into a `for` loop or expression block."
+    ]
+}

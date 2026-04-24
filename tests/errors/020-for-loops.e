@@ -62,7 +62,7 @@ main :: fn () {
 ¬
 {
     "code": "0328",
-    "message": "`break` can only be used inside a loop",
+    "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 2,
@@ -74,12 +74,12 @@ main :: fn () {
             "line": 2,
             "column": 5,
             "length": 5,
-            "message": "This `break` is not inside a `for` loop"
+            "message": "This `break` is not inside a `for` loop or expression block"
         }
     ],
     "notes": [],
     "help": [
-        "Move `break` into a `for` loop body."
+        "Move `break` into a `for` loop or expression block."
     ]
 }
 ¬
@@ -92,7 +92,7 @@ main :: fn () {
 ¬
 {
     "code": "0328",
-    "message": "`break` can only be used inside a loop",
+    "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 3,
@@ -104,12 +104,12 @@ main :: fn () {
             "line": 3,
             "column": 24,
             "length": 5,
-            "message": "This `break` is not inside a `for` loop"
+            "message": "This `break` is not inside a `for` loop or expression block"
         }
     ],
     "notes": [],
     "help": [
-        "Move `break` into a `for` loop body."
+        "Move `break` into a `for` loop or expression block."
     ]
 }
 ¬
@@ -147,7 +147,7 @@ main :: fn () {
 ¬
 {
     "code": "0328",
-    "message": "`break` can only be used inside a loop",
+    "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 2,
@@ -159,11 +159,11 @@ main :: fn () {
             "line": 2,
             "column": 20,
             "length": 5,
-            "message": "This `break` is not inside a `for` loop"
+            "message": "This `break` is not inside a `for` loop or expression block"
         }
     ],
     "notes": [],
     "help": [
-        "Move `break` into a `for` loop body."
+        "Move `break` into a `for` loop or expression block."
     ]
 }

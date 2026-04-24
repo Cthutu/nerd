@@ -688,24 +688,36 @@ bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
-// Report `break` or `continue` used outside a loop body.
+// Report `break` or `continue` used outside a valid control-flow target.
 
 bool error_0328_loop_control_outside_loop(NerdSource source,
                                           ErrorSpan  span,
                                           string     keyword)
 {
-    ErrorInfo error = error_init(328,
-                                 source,
-                                 span,
-                                 "`" STRINGP "` can only be used inside a loop",
-                                 STRINGV(keyword));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This `" STRINGP "` is not inside a `for` loop",
-                        STRINGV(keyword));
-    error_add_help(
-        &error, "Move `" STRINGP "` into a `for` loop body.", STRINGV(keyword));
+    bool      is_break = string_eq(keyword, s("break"));
+    ErrorInfo error =
+        error_init(328,
+                   source,
+                   span,
+                   is_break ? "`break` can only be used inside a "
+                              "loop or expression block"
+                            : "`continue` can only be used inside "
+                              "a loop");
+    if (is_break) {
+        error_add_reference(
+            &error,
+            ERROR_REF_PRIMARY,
+            span,
+            "This `break` is not inside a `for` loop or expression block");
+        error_add_help(&error,
+                       "Move `break` into a `for` loop or expression block.");
+    } else {
+        error_add_reference(&error,
+                            ERROR_REF_PRIMARY,
+                            span,
+                            "This `continue` is not inside a `for` loop");
+        error_add_help(&error, "Move `continue` into a `for` loop body.");
+    }
     error_render(&error);
     return false;
 }
