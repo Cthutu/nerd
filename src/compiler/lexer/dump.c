@@ -116,6 +116,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `on`");
     case TK_else:
         return string_from_cstr("Keyword `else`");
+    case TK_break:
+        return string_from_cstr("Keyword `break`");
+    case TK_continue:
+        return string_from_cstr("Keyword `continue`");
     case TK_return:
         return string_from_cstr("Keyword `return`");
     case TK_true:

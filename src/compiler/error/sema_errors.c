@@ -689,3 +689,27 @@ bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report `break` or `continue` used outside a loop body.
+
+bool error_0328_loop_control_outside_loop(NerdSource source,
+                                          ErrorSpan  span,
+                                          string     keyword)
+{
+    ErrorInfo error = error_init(328,
+                                 source,
+                                 span,
+                                 "`" STRINGP "` can only be used inside a loop",
+                                 STRINGV(keyword));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `" STRINGP "` is not inside a `for` loop",
+                        STRINGV(keyword));
+    error_add_help(&error,
+                   "Move `" STRINGP "` into a `for` loop body.",
+                   STRINGV(keyword));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

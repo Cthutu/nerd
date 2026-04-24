@@ -21,22 +21,23 @@ local total = i32:0
 local i = i32:0
 local step = i32:1
 label L0
-$2 = i32:i < i32:5
-branch.false bool:$2, L1
+$3 = i32:i < i32:5
+branch.false bool:$3, L2
 block
-$3 = string.start
+$4 = string.start
 string.append string:"C "
 string.append i32:i
-$4 = string.finish $3
-call fn(string)->void:prn, string:$4
+$5 = string.finish $4
+call fn(string)->void:prn, string:$5
 string.reset
 end
-$5 = i32:total + i32:step
-total = i32:$5
-$6 = i32:i + i32:1
-i = i32:$6
-jump L0
 label L1
+$6 = i32:total + i32:step
+total = i32:$6
+$7 = i32:i + i32:1
+i = i32:$7
+jump L0
+label L2
 return i32:total
 end
 ¬
@@ -47,21 +48,22 @@ int $main() {
     int $i = 0;
     int $step = 1;
     L0: ;
-    bool $2 = $i < 5;
-    if (!$2) goto L1;
+    bool $3 = $i < 5;
+    if (!$3) goto L2;
     {
-        size_t $3 = string_builder_mark();
+        size_t $4 = string_builder_mark();
         string_builder_append_string(to_string$string((string){.data = (u8*)"C ", .count = 2}));
         string_builder_append_string(to_string$i32($i));
-        string $4 = string_builder_finish($3);
-        prn($4);
+        string $5 = string_builder_finish($4);
+        prn($5);
         string_builder_reset();
     }
-    int $5 = $total + $step;
-    $total = $5;
-    int $6 = $i + 1;
-    $i = $6;
-    goto L0;
     L1: ;
+    int $6 = $total + $step;
+    $total = $6;
+    int $7 = $i + 1;
+    $i = $7;
+    goto L0;
+    L2: ;
     return $total;
 }

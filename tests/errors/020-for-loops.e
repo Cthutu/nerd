@@ -55,3 +55,57 @@ main :: fn () {
         "Add a binding for `i` or fix the spelling."
     ]
 }
+¬
+main :: fn () {
+    break
+}
+¬
+{
+    "code": "0328",
+    "message": "`break` can only be used inside a loop",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 2,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 5,
+            "length": 5,
+            "message": "This `break` is not inside a `for` loop"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Move `break` into a `for` loop body."
+    ]
+}
+¬
+main :: fn () {
+    continue
+}
+¬
+{
+    "code": "0328",
+    "message": "`continue` can only be used inside a loop",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 2,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 5,
+            "length": 8,
+            "message": "This `continue` is not inside a `for` loop"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Move `continue` into a `for` loop body."
+    ]
+}

@@ -706,7 +706,7 @@ needed earlier.
 
 ## Milestone 10: Basic `for` Loops
 
-- [ ] 57. Add statement-oriented loop forms.
+- [X] 57. Add statement-oriented loop forms.
   - [x] Support infinite loops:
     - `for { ... }`
   - [x] Support while-style loops:
@@ -716,19 +716,19 @@ needed earlier.
   - Defer iterable/range iteration syntax if it materially slows the first loop
     milestone.
 
-- [ ] 58. Add loop control flow.
-  - Support `break` and `continue`.
-  - `continue` in C-style loops must still run the update expression before the
+- [X] 58. Add loop control flow.
+  - [x] Support `break` and `continue`.
+  - [x] `continue` in C-style loops must still run the update expression before the
     next condition check.
-  - Add semantic validation for invalid `break` and `continue` usage.
-  - Treat statement loops as `void` in the initial implementation.
+  - [x] Add semantic validation for invalid `break` and `continue` usage.
+  - [x] Treat statement loops as `void` in the initial implementation.
 
-- [ ] 59. Keep the first loop milestone horizontal.
-  - Add language tests, error tests, formatter snapshots, and LSP support for
+- [X] 59. Keep the first loop milestone horizontal.
+  - [x] Add language tests, error tests, formatter snapshots, and LSP support for
     the loop forms that land.
-  - Keep generated IR explicit about loop structure rather than hiding control
+  - [x] Keep generated IR explicit about loop structure rather than hiding control
     flow in C generation.
-  - Defer value-producing loop expressions and labelled blocks to the next
+  - [x] Defer value-producing loop expressions and labelled blocks to the next
     milestone.
 
 ## Milestone 11: Labelled Blocks, Expression Blocks, And Loop Expressions

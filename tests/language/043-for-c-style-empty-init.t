@@ -16,20 +16,21 @@ fn main
 string.reset
 local i = i32:0
 label L0
-$2 = i32:i < i32:3
-branch.false bool:$2, L1
+$3 = i32:i < i32:3
+branch.false bool:$3, L2
 block
-$3 = string.start
+$4 = string.start
 string.append string:"N "
 string.append i32:i
-$4 = string.finish $3
-call fn(string)->void:prn, string:$4
+$5 = string.finish $4
+call fn(string)->void:prn, string:$5
 string.reset
 end
-$5 = i32:i + i32:1
-i = i32:$5
-jump L0
 label L1
+$6 = i32:i + i32:1
+i = i32:$6
+jump L0
+label L2
 return i32:0
 end
 ¬
@@ -38,19 +39,20 @@ int $main() {
     string_builder_reset();
     int $i = 0;
     L0: ;
-    bool $2 = $i < 3;
-    if (!$2) goto L1;
+    bool $3 = $i < 3;
+    if (!$3) goto L2;
     {
-        size_t $3 = string_builder_mark();
+        size_t $4 = string_builder_mark();
         string_builder_append_string(to_string$string((string){.data = (u8*)"N ", .count = 2}));
         string_builder_append_string(to_string$i32($i));
-        string $4 = string_builder_finish($3);
-        prn($4);
+        string $5 = string_builder_finish($4);
+        prn($5);
         string_builder_reset();
     }
-    int $5 = $i + 1;
-    $i = $5;
-    goto L0;
     L1: ;
+    int $6 = $i + 1;
+    $i = $6;
+    goto L0;
+    L2: ;
     return 0;
 }

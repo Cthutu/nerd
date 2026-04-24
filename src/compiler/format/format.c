@@ -326,6 +326,12 @@ internal void format_emit_expr(StringBuilder* sb,
             format_emit_expr(sb, cst, lexer, node->a, 0);
         }
         break;
+    case CK_BreakExpr:
+        sb_append_cstr(sb, "break");
+        break;
+    case CK_ContinueExpr:
+        sb_append_cstr(sb, "continue");
+        break;
     case CK_IntegerPlus:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " + ");
@@ -441,11 +447,14 @@ internal void format_emit_expr(StringBuilder* sb,
             if (on->kind == COK_Bool) {
                 const CstOnBranch* true_branch =
                     &cst->on_branches[on->first_branch];
-                const CstOnBranch* else_branch =
-                    &cst->on_branches[on->first_branch + 1];
                 sb_append_cstr(sb, " => ");
                 format_emit_expr(
                     sb, cst, lexer, true_branch->expr_node_index, 0);
+                if (on->branch_count == 1) {
+                    break;
+                }
+                const CstOnBranch* else_branch =
+                    &cst->on_branches[on->first_branch + 1];
                 sb_append_cstr(sb, " else ");
                 format_emit_expr(
                     sb, cst, lexer, else_branch->expr_node_index, 0);
@@ -650,7 +659,8 @@ internal bool format_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
-           node->kind == CK_For || node->kind == CK_Variable ||
+           node->kind == CK_For || node->kind == CK_Break ||
+           node->kind == CK_Continue || node->kind == CK_Variable ||
            node->kind == CK_Assign;
 }
 
@@ -790,6 +800,10 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_Return:
     case CK_ReturnExpr:
+    case CK_Break:
+    case CK_Continue:
+    case CK_BreakExpr:
+    case CK_ContinueExpr:
         return node->a == U32_MAX
                    ? node->token_index
                    : format_node_end_token_index(cst, lexer, node->a);
@@ -1440,6 +1454,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_char(sb, ' ');
             format_emit_expr(sb, cst, lexer, stmt->a, 0);
         }
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Break || stmt->kind == CK_Continue) {
+        sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "continue");
         sb_append_char(sb, '\n');
         return;
     }

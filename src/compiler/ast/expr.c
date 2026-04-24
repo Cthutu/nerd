@@ -286,6 +286,19 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
                              out_node);
     }
 
+    if (state->token.kind == TK_break || state->token.kind == TK_continue) {
+        AstKind kind =
+            state->token.kind == TK_break ? AK_BreakExpr : AK_ContinueExpr;
+        u32     token_index = state->token.token_index;
+        return ast_emit_node(
+            state,
+            (AstNode){
+                .kind        = kind,
+                .token_index = token_index,
+            },
+            out_node);
+    }
+
     return ast_parse_expr_bp(state, 0, out_node);
 }
 

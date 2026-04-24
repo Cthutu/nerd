@@ -528,6 +528,17 @@ internal bool ast_parse_for_item_list(AstParseState* state,
 
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    if (state->token.kind == TK_break || state->token.kind == TK_continue) {
+        AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
+        u32     token_index = state->token.token_index;
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = kind,
+                                 .token_index = token_index,
+                             },
+                             NULL);
+    }
+
     if (state->token.kind == TK_return) {
         u32 return_token_index   = state->token.token_index;
         u32 statement_expr_index = 0;

@@ -84,10 +84,18 @@ string ast_kind_to_string(AstKind kind)
         return s("Return");
     case AK_ReturnExpr:
         return s("ReturnExpr");
+    case AK_BreakExpr:
+        return s("BreakExpr");
+    case AK_ContinueExpr:
+        return s("ContinueExpr");
     case AK_Block:
         return s("Block");
     case AK_For:
         return s("For");
+    case AK_Break:
+        return s("Break");
+    case AK_Continue:
+        return s("Continue");
     case AK_Bind:
         return s("Bind");
     case AK_Variable:
