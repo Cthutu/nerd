@@ -20,6 +20,7 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
         .emit_ir_file   = false,
         .emit_c_file    = false,
         .compile_binary = true,
+        .release        = false,
     };
 }
 

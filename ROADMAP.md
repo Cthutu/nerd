@@ -707,11 +707,11 @@ needed earlier.
 ## Milestone 10: Basic `for` Loops
 
 - [ ] 57. Add statement-oriented loop forms.
-  - Support infinite loops:
+  - [x] Support infinite loops:
     - `for { ... }`
-  - Support while-style loops:
+  - [ ] Support while-style loops:
     - `for condition { ... }`
-  - Support C-style loops:
+  - [ ] Support C-style loops:
     - `for init; condition; update { ... }`
   - Defer iterable/range iteration syntax if it materially slows the first loop
     milestone.

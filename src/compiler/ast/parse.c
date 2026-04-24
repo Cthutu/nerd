@@ -17,8 +17,64 @@ TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead)
 
 internal bool ast_symbol_starts_assignment(const AstParseState* state)
 {
-    return state->token.kind == TK_Symbol &&
-           ast_peek_kind_at(state, 0) == TK_Equal;
+    if (state->token.kind != TK_Symbol) {
+        return false;
+    }
+
+    switch (ast_peek_kind_at(state, 0)) {
+    case TK_Equal:
+    case TK_PlusEqual:
+    case TK_MinusEqual:
+    case TK_StarEqual:
+    case TK_SlashEqual:
+    case TK_PercentEqual:
+    case TK_AmpEqual:
+    case TK_CaretEqual:
+    case TK_PipeEqual:
+    case TK_AmpAmpEqual:
+    case TK_PipePipeEqual:
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
+{
+    switch (op) {
+    case TK_PlusEqual:
+        *out = AK_IntegerPlus;
+        return true;
+    case TK_MinusEqual:
+        *out = AK_IntegerMinus;
+        return true;
+    case TK_StarEqual:
+        *out = AK_IntegerMultiply;
+        return true;
+    case TK_SlashEqual:
+        *out = AK_IntegerDivide;
+        return true;
+    case TK_PercentEqual:
+        *out = AK_IntegerModulo;
+        return true;
+    case TK_AmpEqual:
+        *out = AK_BitwiseAnd;
+        return true;
+    case TK_CaretEqual:
+        *out = AK_BitwiseXor;
+        return true;
+    case TK_PipeEqual:
+        *out = AK_BitwiseOr;
+        return true;
+    case TK_AmpAmpEqual:
+        *out = AK_LogicalAnd;
+        return true;
+    case TK_PipePipeEqual:
+        *out = AK_LogicalOr;
+        return true;
+    default:
+        return false;
+    }
 }
 
 internal bool ast_symbol_starts_variable(const AstParseState* state)
@@ -380,6 +436,39 @@ internal bool ast_parse_block_statement(AstParseState* state)
 
     if (state->token.kind == TK_LBrace) {
         return ast_parse_nested_block(state, NULL);
+    }
+
+    if (state->token.kind == TK_for) {
+        u32 for_token_index = state->token.token_index;
+        u32 for_node        = 0;
+        u32 body_node       = 0;
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_For,
+                               .token_index = for_token_index,
+                           },
+                           &for_node)) {
+            return false;
+        }
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                TK_EOF);
+        }
+        if (state->token.kind != TK_LBrace) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                state->token.kind);
+        }
+        if (!ast_parse_nested_block(state, &body_node)) {
+            return false;
+        }
+        state->nodes[for_node].a = body_node;
+        return true;
     }
 
     if (ast_symbol_starts_bind(state)) {
@@ -745,8 +834,19 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
            "Expected symbol token for assignment");
     AstToken symbol_token = state->token;
 
-    if (!ast_expect_token(state, TK_Equal)) {
+    if (!ast_next_token(state)) {
         return false;
+    }
+    AstToken assign_token = state->token;
+    if (assign_token.kind != TK_Equal) {
+        AstKind ignored = AK_IntegerPlus;
+        if (!ast_compound_assignment_binary_kind(assign_token.kind, &ignored)) {
+            return error_0203_expected_token(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_Equal,
+                state->token.kind);
+        }
     }
     if (!ast_next_token(state)) {
         return error_0205_expected_declaration_or_expression(
@@ -763,6 +863,30 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
     state->allow_statement_boundary = previous_boundary;
     if (!ok) {
         return false;
+    }
+
+    AstKind binary_kind = AK_IntegerPlus;
+    if (ast_compound_assignment_binary_kind(assign_token.kind, &binary_kind)) {
+        u32 symbol_ref = 0;
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_SymbolRef,
+                               .token_index = symbol_token.token_index,
+                               .a           = symbol_token.value.symbol_handle,
+                           },
+                           &symbol_ref)) {
+            return false;
+        }
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = binary_kind,
+                               .token_index = assign_token.token_index,
+                               .a           = symbol_ref,
+                               .b           = value_node,
+                           },
+                           &value_node)) {
+            return false;
+        }
     }
 
     return ast_emit_node(state,

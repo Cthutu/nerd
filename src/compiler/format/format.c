@@ -319,6 +319,13 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, '!');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
+    case CK_ReturnExpr:
+        sb_append_cstr(sb, "return");
+        if (node->a != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(sb, cst, lexer, node->a, 0);
+        }
+        break;
     case CK_IntegerPlus:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " + ");
@@ -643,7 +650,8 @@ internal bool format_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
-           node->kind == CK_Variable || node->kind == CK_Assign;
+           node->kind == CK_For || node->kind == CK_Variable ||
+           node->kind == CK_Assign;
 }
 
 internal bool format_node_is_function_value(const Cst* cst, u32 node_index)
@@ -653,6 +661,40 @@ internal bool format_node_is_function_value(const Cst* cst, u32 node_index)
         node = &cst->nodes[node->b];
     }
     return node->kind == CK_FnExpr || node->kind == CK_FnBlock;
+}
+
+internal string format_assignment_operator(const Lexer*   lexer,
+                                           const CstNode* stmt)
+{
+    u32 op_index = stmt->token_index + 1;
+    if (op_index >= array_count(lexer->tokens)) {
+        return s("=");
+    }
+
+    switch (lexer->tokens[op_index].kind) {
+    case TK_PlusEqual:
+        return s("+=");
+    case TK_MinusEqual:
+        return s("-=");
+    case TK_StarEqual:
+        return s("*=");
+    case TK_SlashEqual:
+        return s("/=");
+    case TK_PercentEqual:
+        return s("%=");
+    case TK_AmpEqual:
+        return s("&=");
+    case TK_CaretEqual:
+        return s("^=");
+    case TK_PipeEqual:
+        return s("|=");
+    case TK_AmpAmpEqual:
+        return s("&&=");
+    case TK_PipePipeEqual:
+        return s("||=");
+    default:
+        return s("=");
+    }
 }
 
 internal bool format_statement_is_function_binding(const Cst* cst,
@@ -745,7 +787,13 @@ internal u32 format_node_end_token_index(const Cst*   cst,
             lexer, node->token_index, TK_LParen, TK_RParen);
     case CK_IntegerNegate:
     case CK_Statement:
+        return format_node_end_token_index(cst, lexer, node->a);
     case CK_Return:
+    case CK_ReturnExpr:
+        return node->a == U32_MAX
+                   ? node->token_index
+                   : format_node_end_token_index(cst, lexer, node->a);
+    case CK_For:
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_IntegerPlus:
     case CK_IntegerMinus:
@@ -1224,6 +1272,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
         previous_statement_index = i;
         if (cst->nodes[i].kind == CK_Block) {
             i = cst->nodes[i].b - 1;
+        } else if (cst->nodes[i].kind == CK_For) {
+            i = cst->nodes[cst->nodes[i].a].b - 1;
         }
     }
 
@@ -1276,6 +1326,28 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
             if (cst->nodes[i].kind == CK_Block) {
                 i = cst->nodes[i].b - 1;
+            } else if (cst->nodes[i].kind == CK_For) {
+                i = cst->nodes[cst->nodes[i].a].b - 1;
+            }
+        }
+        format_emit_indent(sb, indent_level);
+        sb_append_cstr(sb, "}\n");
+        return;
+    }
+
+    if (stmt->kind == CK_For) {
+        const CstNode* body = &cst->nodes[stmt->a];
+        ASSERT(body->kind == CK_Block, "Expected for body block");
+        sb_append_cstr(sb, "for {\n");
+        for (u32 i = body->a; i < body->b; ++i) {
+            if (!format_is_block_statement(&cst->nodes[i])) {
+                continue;
+            }
+            format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
+            if (cst->nodes[i].kind == CK_Block) {
+                i = cst->nodes[i].b - 1;
+            } else if (cst->nodes[i].kind == CK_For) {
+                i = cst->nodes[cst->nodes[i].a].b - 1;
             }
         }
         format_emit_indent(sb, indent_level);
@@ -1284,8 +1356,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Return) {
-        sb_append_cstr(sb, "return ");
-        format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        sb_append_cstr(sb, "return");
+        if (stmt->a != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        }
         sb_append_char(sb, '\n');
         return;
     }
@@ -1315,7 +1390,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Assign) {
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
-        sb_append_cstr(sb, " = ");
+        sb_append_char(sb, ' ');
+        sb_append_string(sb, format_assignment_operator(lexer, stmt));
+        sb_append_char(sb, ' ');
         format_emit_expr(sb, cst, lexer, stmt->b, 0);
         sb_append_char(sb, '\n');
         return;

@@ -50,7 +50,9 @@
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
+// | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_Block           | First stmt index      | End-exclusive index   |
+// | CK_For             | Body block node       | 0                     |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
@@ -95,7 +97,9 @@ typedef enum {
     CK_FnBlock,
     CK_Statement,
     CK_Return,
+    CK_ReturnExpr,
     CK_Block,
+    CK_For,
     CK_AnnotatedValue,
     CK_ZeroInit,
     CK_Bind,

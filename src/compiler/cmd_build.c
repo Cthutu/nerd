@@ -30,6 +30,7 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
     artifacts.c_path       = path_replace_extension(arena, output_root, ".c");
     artifacts.emit_ir_file = config->emit_ir;
     artifacts.emit_c_file  = config->emit_c;
+    artifacts.release      = config->release;
 
     return artifacts;
 }

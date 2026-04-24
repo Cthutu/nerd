@@ -572,10 +572,13 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_InterpPartExpr:
     case AK_Expression:
     case AK_Statement:
-    case AK_Return:
     case AK_IntegerNegate:
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
+    case AK_Return:
+    case AK_ReturnExpr:
+        return node->a != U32_MAX &&
+               ir_node_contains_interpolation(ast, node->a);
     case AK_StringConcat:
     case AK_On:
     case AK_IntegerPlus:
@@ -627,6 +630,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
             }
             return false;
         }
+    case AK_For:
+        return ir_node_contains_interpolation(ast, node->a);
     default:
         return false;
     }
@@ -639,6 +644,13 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                Array(IrValue) node_values,
                                u64* next_value_index,
                                Ir*  ir);
+internal void    ir_generate_return_statement(const Lexer*   lex,
+                                              const Ast*     ast,
+                                              const Sema*    sema,
+                                              const AstNode* return_node,
+                                              Array(IrValue) node_values,
+                                              u64* next_value_index,
+                                              Ir*  ir);
 
 internal void ir_append_string_node(const Lexer* lex,
                                     const Ast*   ast,
@@ -1138,20 +1150,33 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     ir_add_label(ir, match_label);
                 }
 
-                IrValue branch_value = ir_lower_node(lex,
-                                                     ast,
-                                                     sema,
-                                                     branch->expr_node_index,
-                                                     node_values,
-                                                     next_value_index,
-                                                     ir);
-                if (produces_value) {
-                    ir_add_assign(
-                        ir,
-                        result,
-                        result_type,
-                        branch_value,
-                        ir_node_type_index(ast, sema, branch->expr_node_index));
+                if (ast->nodes[branch->expr_node_index].kind == AK_Return ||
+                    ast->nodes[branch->expr_node_index].kind == AK_ReturnExpr) {
+                    ir_generate_return_statement(
+                        lex,
+                        ast,
+                        sema,
+                        &ast->nodes[branch->expr_node_index],
+                        node_values,
+                        next_value_index,
+                        ir);
+                } else {
+                    IrValue branch_value =
+                        ir_lower_node(lex,
+                                      ast,
+                                      sema,
+                                      branch->expr_node_index,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+                    if (produces_value) {
+                        ir_add_assign(ir,
+                                      result,
+                                      result_type,
+                                      branch_value,
+                                      ir_node_type_index(
+                                          ast, sema, branch->expr_node_index));
+                    }
                 }
                 if (i + 1 < on->branch_count) {
                     ir_add_jump(ir, end_label);
@@ -1395,7 +1420,17 @@ internal void ir_generate_return_statement(const Lexer*   lex,
                                            u64* next_value_index,
                                            Ir*  ir)
 {
-    ASSERT(return_node->kind == AK_Return, "Expected return node");
+    ASSERT(return_node->kind == AK_Return || return_node->kind == AK_ReturnExpr,
+           "Expected return node");
+
+    if (return_node->a == U32_MAX) {
+        ir_add_return(ir,
+                      (IrValue){.kind          = IR_VALUE_INTEGER,
+                                .type          = ir_builtin_type(sema, STK_I32),
+                                .value.integer = 0},
+                      ir_builtin_type(sema, STK_I32));
+        return;
+    }
 
     IrValue value = ir_lower_node(
         lex, ast, sema, return_node->a, node_values, next_value_index, ir);
@@ -1429,6 +1464,8 @@ internal bool ir_generate_statement(const Lexer* lex,
             }
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
+            } else if (ast->nodes[i].kind == AK_For) {
+                i = ast->nodes[ast->nodes[i].a].b - 1;
             }
         }
         ir_add_block_end(ir);
@@ -1439,6 +1476,26 @@ internal bool ir_generate_statement(const Lexer* lex,
         ir_generate_return_statement(
             lex, ast, sema, node, node_values, next_value_index, ir);
         return true;
+    }
+
+    if (node->kind == AK_For) {
+        const AstNode* body = &ast->nodes[node->a];
+        ASSERT(body->kind == AK_Block, "Expected for body block");
+        i64 start_label = (i64)(*next_value_index)++;
+        ir_add_label(ir, start_label);
+        bool body_returned = ir_generate_statement(lex,
+                                                   ast,
+                                                   sema,
+                                                   function_index,
+                                                   node->a,
+                                                   node_values,
+                                                   next_value_index,
+                                                   ir);
+        if (body_returned) {
+            return true;
+        }
+        ir_add_jump(ir, start_label);
+        return false;
     }
 
     if (node->kind == AK_Bind) {
@@ -1642,6 +1699,8 @@ internal void ir_generate_function_body(const Lexer* lex,
             }
             if (ast->nodes[i].kind == AK_Block) {
                 i = ast->nodes[i].b - 1;
+            } else if (ast->nodes[i].kind == AK_For) {
+                i = ast->nodes[ast->nodes[i].a].b - 1;
             }
         }
 
@@ -1694,6 +1753,14 @@ internal void ir_generate_nested_functions_in_range(const Lexer* lex,
             ir_generate_nested_functions_in_range(
                 lex, ast, sema, node->a, node->b, ir);
             i = node->b - 1;
+            continue;
+        }
+        if (node->kind == AK_For) {
+            const AstNode* body = &ast->nodes[node->a];
+            ASSERT(body->kind == AK_Block, "Expected for body block");
+            ir_generate_nested_functions_in_range(
+                lex, ast, sema, body->a, body->b, ir);
+            i = body->b - 1;
             continue;
         }
         if (node->kind == AK_FnDef &&

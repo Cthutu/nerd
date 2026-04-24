@@ -377,6 +377,7 @@ internal bool lexer_lex_one_token(NerdSource source,
             TokenKind kind;
         } keywords[] = {
             {"fn", 2, TK_fn},
+            {"for", 3, TK_for},
             {"on", 2, TK_on},
             {"else", 4, TK_else},
             {"return", 6, TK_return},
@@ -419,6 +420,19 @@ internal bool lexer_lex_one_token(NerdSource source,
         return true;
     }
 
+    if (c == '+') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_PlusEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Plus, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
     if (c == '=') {
         if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
             array_push(lexer->tokens,
@@ -455,9 +469,53 @@ internal bool lexer_lex_one_token(NerdSource source,
             array_push(lexer->tokens,
                        (Token){.kind = TK_ThinArrow, .offset = (u32)i});
             *io_index = i + 2;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_MinusEqual, .offset = (u32)i});
+            *io_index = i + 2;
         } else {
             array_push(lexer->tokens,
                        (Token){.kind = TK_Minus, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '*') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_StarEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Star, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '/') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_SlashEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Slash, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '%') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_PercentEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Percent, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -484,9 +542,20 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '&') {
-        if (i + 1 < source_code.count && source_code.data[i + 1] == '&') {
+        if (i + 2 < source_code.count && source_code.data[i + 1] == '&' &&
+            source_code.data[i + 2] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_AmpAmpEqual, .offset = (u32)i});
+            *io_index = i + 3;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '&') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_AmpAmp, .offset = (u32)i});
+            *io_index = i + 2;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_AmpEqual, .offset = (u32)i});
             *io_index = i + 2;
         } else {
             array_push(lexer->tokens,
@@ -497,13 +566,37 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '|') {
-        if (i + 1 < source_code.count && source_code.data[i + 1] == '|') {
+        if (i + 2 < source_code.count && source_code.data[i + 1] == '|' &&
+            source_code.data[i + 2] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_PipePipeEqual, .offset = (u32)i});
+            *io_index = i + 3;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '|') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_PipePipe, .offset = (u32)i});
+            *io_index = i + 2;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_PipeEqual, .offset = (u32)i});
             *io_index = i + 2;
         } else {
             array_push(lexer->tokens,
                        (Token){.kind = TK_Pipe, .offset = (u32)i});
+            *io_index = i + 1;
+        }
+        return true;
+    }
+
+    if (c == '^') {
+        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_CaretEqual, .offset = (u32)i});
+            *io_index = i + 2;
+        } else {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Caret, .offset = (u32)i});
             *io_index = i + 1;
         }
         return true;
@@ -678,17 +771,30 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_ThinArrow:
     case TK_EqualEqual:
     case TK_BangEqual:
+    case TK_PlusEqual:
+    case TK_MinusEqual:
+    case TK_StarEqual:
+    case TK_SlashEqual:
+    case TK_PercentEqual:
+    case TK_AmpEqual:
+    case TK_PipeEqual:
+    case TK_CaretEqual:
     case TK_AmpAmp:
     case TK_PipePipe:
     case TK_LessEqual:
     case TK_GreaterEqual:
         return token->offset + 2;
+    case TK_AmpAmpEqual:
+    case TK_PipePipeEqual:
+        return token->offset + 3;
     case TK_RangeExclusive:
     case TK_RangeInclusive:
         return token->offset + 3;
     case TK_fn:
     case TK_on:
         return token->offset + 2;
+    case TK_for:
+        return token->offset + 3;
     case TK_else:
     case TK_true:
         return token->offset + 4;

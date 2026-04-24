@@ -116,6 +116,7 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
         return true;
 
     case TK_fn:
+    case TK_for:
     case TK_on:
     case TK_else:
     case TK_return:
@@ -134,10 +135,20 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
         return true;
 
     case TK_Plus:
+    case TK_PlusEqual:
     case TK_Minus:
+    case TK_MinusEqual:
     case TK_Star:
+    case TK_StarEqual:
     case TK_Slash:
+    case TK_SlashEqual:
     case TK_Percent:
+    case TK_PercentEqual:
+    case TK_AmpEqual:
+    case TK_AmpAmpEqual:
+    case TK_PipeEqual:
+    case TK_PipePipeEqual:
+    case TK_CaretEqual:
     case TK_Dot:
     case TK_At:
     case TK_Colon:

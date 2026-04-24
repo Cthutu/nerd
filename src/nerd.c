@@ -130,6 +130,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             build_flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(build_flags,
+                        nerd_cli_make_flag(
+                            arena, "release", "r", "Build release binary"));
         json_array_push(build_params,
                         nerd_cli_make_param(arena,
                                             "output",
@@ -163,6 +166,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             run_flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
+        json_array_push(run_flags,
+                        nerd_cli_make_flag(
+                            arena, "release", "r", "Build release binary"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(arena,
@@ -324,6 +330,8 @@ nerd_build_config_from_json(const JsonValue* cli_result)
             cli_result, "command.params.output", (string){0}),
         .emit_ir = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .release =
+            nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };
@@ -362,6 +370,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
         .emit_c  = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .keep_binary =
             nerd_cli_flag_bool(cli_result, "command.flags.keep", false),
+        .release =
+            nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };

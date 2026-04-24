@@ -21,6 +21,7 @@ typedef struct {
     string     output_path;
     bool       emit_ir;
     bool       emit_c;
+    bool       release;
     bool       verbose;
 } NerdBuildConfig;
 
@@ -40,6 +41,7 @@ typedef struct {
     bool       emit_ir;
     bool       emit_c;
     bool       keep_binary;
+    bool       release;
     bool       verbose;
 } NerdRunConfig;
 
@@ -50,6 +52,7 @@ typedef struct {
     bool emit_ir_file;
     bool emit_c_file;
     bool compile_binary;
+    bool release;
 } NerdArtifactConfig;
 
 //------------------------------------------------------------------------------

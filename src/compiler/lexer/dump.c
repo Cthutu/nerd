@@ -28,14 +28,24 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Symbol");
     case TK_Plus:
         return string_from_cstr("Plus `+`");
+    case TK_PlusEqual:
+        return string_from_cstr("PlusEqual `+=`");
     case TK_Minus:
         return string_from_cstr("Minus `-`");
+    case TK_MinusEqual:
+        return string_from_cstr("MinusEqual `-=`");
     case TK_Star:
         return string_from_cstr("Star `*`");
+    case TK_StarEqual:
+        return string_from_cstr("StarEqual `*=`");
     case TK_Slash:
         return string_from_cstr("Slash `/`");
+    case TK_SlashEqual:
+        return string_from_cstr("SlashEqual `/=`");
     case TK_Percent:
         return string_from_cstr("Percent `%`");
+    case TK_PercentEqual:
+        return string_from_cstr("PercentEqual `%=`");
     case TK_LParen:
         return string_from_cstr("LeftParen `(`");
     case TK_RParen:
@@ -66,14 +76,24 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("BangEqual `!=`");
     case TK_Amp:
         return string_from_cstr("Amp `&`");
+    case TK_AmpEqual:
+        return string_from_cstr("AmpEqual `&=`");
     case TK_AmpAmp:
         return string_from_cstr("AmpAmp `&&`");
+    case TK_AmpAmpEqual:
+        return string_from_cstr("AmpAmpEqual `&&=`");
     case TK_Pipe:
         return string_from_cstr("Pipe `|`");
+    case TK_PipeEqual:
+        return string_from_cstr("PipeEqual `|=`");
     case TK_PipePipe:
         return string_from_cstr("PipePipe `||`");
+    case TK_PipePipeEqual:
+        return string_from_cstr("PipePipeEqual `||=`");
     case TK_Caret:
         return string_from_cstr("Caret `^`");
+    case TK_CaretEqual:
+        return string_from_cstr("CaretEqual `^=`");
     case TK_Less:
         return string_from_cstr("Less `<`");
     case TK_LessEqual:
@@ -88,6 +108,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("ThinArrow `->`");
     case TK_fn:
         return string_from_cstr("Keyword `fn`");
+    case TK_for:
+        return string_from_cstr("Keyword `for`");
     case TK_on:
         return string_from_cstr("Keyword `on`");
     case TK_else:
