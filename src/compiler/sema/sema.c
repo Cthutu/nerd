@@ -4086,25 +4086,30 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
             if (target_type == sema_no_type() ||
-                sema->types[target_type].kind != STK_Slice) {
+                (sema->types[target_type].kind != STK_Slice &&
+                 sema->types[target_type].kind != STK_String)) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    s("slice"),
+                    s("slice or string"),
                     sema_type_name(sema, &temp_arena, target_type));
             }
             string field = lex_symbol(lexer, node->b);
             if (string_eq(field, s("data"))) {
-                type_index = sema_add_pointer_type(
-                    sema, sema->types[target_type].first_param_type);
+                u32 item_type = sema->types[target_type].kind == STK_String
+                                    ? sema_builtin_type(sema, STK_U8)
+                                    : sema->types[target_type].first_param_type;
+                type_index    = sema_add_pointer_type(sema, item_type);
             } else if (string_eq(field, s("count"))) {
                 type_index = sema_builtin_type(sema, STK_Usize);
             } else {
-                return error_0304_type_mismatch(
-                    lexer->source,
-                    sema_node_span(lexer, node),
-                    s("slice field `.data` or `.count`"),
-                    field);
+                string expected = sema->types[target_type].kind == STK_String
+                                      ? s("string field `.data` or `.count`")
+                                      : s("slice field `.data` or `.count`");
+                return error_0304_type_mismatch(lexer->source,
+                                                sema_node_span(lexer, node),
+                                                expected,
+                                                field);
             }
         }
         break;
@@ -4180,11 +4185,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             if (target_type == sema_no_type() ||
                 (sema->types[target_type].kind != STK_Array &&
-                 sema->types[target_type].kind != STK_Slice)) {
+                 sema->types[target_type].kind != STK_Slice &&
+                 sema->types[target_type].kind != STK_String)) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    s("array or slice"),
+                    s("array, slice, or string"),
                     sema_type_name(sema, &temp_arena, target_type));
             }
             if (slice->start_node_index != U32_MAX) {
@@ -4227,8 +4233,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_type_name(sema, &temp_arena, end_type));
                 }
             }
-            type_index = sema_add_slice_type(
-                sema, sema->types[target_type].first_param_type);
+            type_index =
+                sema->types[target_type].kind == STK_String
+                    ? sema_builtin_type(sema, STK_String)
+                    : sema_add_slice_type(
+                          sema, sema->types[target_type].first_param_type);
         }
         break;
 

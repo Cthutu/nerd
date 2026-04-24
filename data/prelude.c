@@ -26,6 +26,26 @@ static bool string_eq(string lhs, string rhs)
     return memcmp(lhs.data, rhs.data, lhs.count) == 0;
 }
 
+static bool string_is_utf8_boundary(string value, size_t index)
+{
+    if (index > value.count) {
+        return false;
+    }
+    return index == value.count || (value.data[index] & 0xC0) != 0x80;
+}
+
+static string string_slice(string value, size_t start, size_t end)
+{
+    if (start > end || end > value.count ||
+        !string_is_utf8_boundary(value, start) ||
+        !string_is_utf8_boundary(value, end)) {
+        fprintf(stderr, "fatal: string slice out of bounds\n");
+        abort();
+    }
+
+    return (string){.data = value.data + start, .count = end - start};
+}
+
 void pr(string str) { fwrite(str.data, 1, str.count, stdout); }
 
 void prn(string str)

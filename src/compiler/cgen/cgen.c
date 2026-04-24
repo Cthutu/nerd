@@ -612,9 +612,29 @@ void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
     const SemaType* target_type = &cgen->ir->types[slice->target_type];
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    if (target_type->kind == STK_String) {
+        cgen_add(cgen, " = string_slice(");
+        cgen_add_value(cgen, &slice->target);
+        cgen_add(cgen, ", ");
+        if (slice->start.kind != IR_VALUE_NONE) {
+            cgen_add_value(cgen, &slice->start);
+        } else {
+            cgen_add(cgen, "0");
+        }
+        cgen_add(cgen, ", ");
+        if (slice->end.kind != IR_VALUE_NONE) {
+            cgen_add_value(cgen, &slice->end);
+        } else {
+            cgen_add_value(cgen, &slice->target);
+            cgen_add(cgen, ".count");
+        }
+        cgen_addn(cgen, ");");
+        return;
+    }
     cgen_add(cgen, " = (");
     cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-    cgen_add(cgen, "){.data = ");
+    cgen_add(cgen, ")");
+    cgen_add(cgen, "{.data = ");
     if (target_type->kind == STK_Array) {
         cgen_add_value(cgen, &slice->target);
         cgen_add(cgen, ".items");

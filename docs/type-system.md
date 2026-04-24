@@ -67,6 +67,10 @@ Slice types are written `[]T`. A slice is a fat pointer containing a data
 pointer and a count. The element type is part of the canonical type, so `[]i32`
 and `[]u8` are distinct types.
 
+The built-in `string` type uses the same data/count representation as `[]u8`,
+but it is intentionally a distinct type. A `string` carries the extra invariant
+that its contents are valid UTF-8.
+
 Pointer types are written `^T`. The pointee type is part of the canonical type,
 so `^i32` and `^[3]i32` are distinct types.
 
@@ -281,6 +285,19 @@ Slices are indexed with the same square-bracket syntax as fixed arrays:
 The index expression must be an integer type. In debug builds, generated C emits
 a bounds check before each slice index and aborts with a fatal message if the
 index is outside `slice.count`. Release builds may omit those checks.
+
+Strings share the same field and slicing surface where it preserves the string
+type:
+
+- `text.count`
+- `text.data`
+- `text[1..4]`
+- `text[..]`
+
+String slicing returns `string`, not `[]u8`. Generated C checks that string slice
+bounds are within range and on UTF-8 codepoint boundaries before producing the
+result. Byte-oriented access remains explicit through `.data`, whose type is
+`^u8`.
 
 ## Pointers
 

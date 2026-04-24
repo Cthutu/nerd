@@ -5,7 +5,7 @@ main :: fn () {
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `array or slice`, found `untyped integer`",
+    "message": "Type mismatch: expected `array, slice, or string`, found `untyped integer`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
         "line": 3,

@@ -872,18 +872,29 @@ needed earlier.
 
 ## Milestone 16: String And Byte Slice Interop
 
-- [ ] 74. Keep `string` distinct from `[]u8`.
+- [X] 74. Keep `string` distinct from `[]u8`.
   - `string` should be representation-compatible with `[]u8`, but not an alias.
   - Preserve the invariant that `string` contains valid UTF-8.
   - Share implementation paths for `.data`, `.count`, comparison, and slicing
     where practical.
+  - String `.data` returns `^u8`, `.count` returns `usize`, and string slicing
+    returns `string` after runtime UTF-8 boundary validation.
 
-- [ ] 75. Add explicit string/slice operations.
+- [X] 75. Add explicit string/slice operations.
   - Decide and document whether string slicing returns `string` only after
     UTF-8 boundary validation, or returns `[]u8`.
   - Keep byte-oriented access available through explicit `[]u8` operations.
   - Extend string comparison and pattern support as needed after the slice
     representation lands.
+  - Covered in language, error, formatter, LSP, and type-system docs.
+
+- [ ] 75.1. Align exclusive range syntax with slice syntax.
+  - Replace exclusive `on` range spelling `..<` with `..`.
+  - Keep inclusive ranges spelled `..=`.
+  - Update lexer token naming, parser/CST handling, formatter snapshots,
+    language/error/LSP tests, and documentation together.
+  - Treat this as a source-breaking cleanup before the language grows more
+    range-like syntax.
 
 ## Milestone 17: Plex Types
 
