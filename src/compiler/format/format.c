@@ -262,6 +262,11 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                          u32            block_node_index,
                                          u32            indent_level);
 internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal void format_emit_type_plex_multiline(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              u32            indent_level);
 
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
@@ -1180,6 +1185,29 @@ internal string format_render_value_to_string(Arena*       arena,
     return sb_to_string(&sb);
 }
 
+internal void format_emit_type_plex_multiline(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    ASSERT(node->kind == CK_TypePlex, "Expected plex type node");
+
+    const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
+    sb_append_cstr(sb, "plex {\n");
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
+        format_emit_indent(sb, indent_level + 1);
+        sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+        sb_append_char(sb, ' ');
+        format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+        sb_append_char(sb, '\n');
+    }
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
+}
+
 internal bool format_collect_aligned_statement(Arena*       arena,
                                                const Cst*   cst,
                                                const Lexer* lexer,
@@ -1237,7 +1265,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
-            payload->kind == CK_For || payload->kind == CK_ExprBlock) {
+            payload->kind == CK_For || payload->kind == CK_ExprBlock ||
+            payload->kind == CK_TypePlex) {
             return false;
         }
 
@@ -1653,7 +1682,11 @@ internal void format_emit_for_header_item(StringBuilder* sb,
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
         sb_append_cstr(
             sb, cst->nodes[item->b].kind == CK_AnnotatedValue ? " : " : " :: ");
-        format_emit_value(sb, cst, lexer, item->b);
+        if (cst->nodes[item->b].kind == CK_TypePlex) {
+            format_emit_type_plex_multiline(sb, cst, lexer, item->b, 0);
+        } else {
+            format_emit_value(sb, cst, lexer, item->b);
+        }
         return;
     }
     if (item->kind == CK_Assign) {
@@ -1794,7 +1827,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
         sb_append_cstr(
             sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
-        format_emit_value(sb, cst, lexer, stmt->b);
+        if (cst->nodes[stmt->b].kind == CK_TypePlex) {
+            format_emit_type_plex_multiline(
+                sb, cst, lexer, stmt->b, indent_level);
+        } else {
+            format_emit_value(sb, cst, lexer, stmt->b);
+        }
         sb_append_char(sb, '\n');
         return;
     }
@@ -1969,7 +2007,11 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             sb_append_cstr(
                 sb,
                 cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
-            format_emit_value(sb, &cst, &lexer, node->b);
+            if (cst.nodes[node->b].kind == CK_TypePlex) {
+                format_emit_type_plex_multiline(sb, &cst, &lexer, node->b, 0);
+            } else {
+                format_emit_value(sb, &cst, &lexer, node->b);
+            }
         } else {
             if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
                 cst.nodes[node->b].kind == CK_ZeroInit) {
