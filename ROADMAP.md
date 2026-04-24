@@ -736,14 +736,14 @@ needed earlier.
 
 ## Milestone 11: Labelled Blocks, Expression Blocks, And Loop Expressions
 
-- [ ] 60. Add labelled block syntax.
+- [X] 60. Add labelled block syntax.
   - Use `$` for labels rather than `@`.
   - Labelled blocks are expression blocks, written `$label { ... }`.
   - Plain `{ ... }` remains statement/block-body syntax.
   - This label model should apply cleanly to loop bodies once loops become
     value-producing expressions.
 
-- [ ] 61. Add expression blocks.
+- [X] 61. Add expression blocks.
   - Add expression-block syntax as:
     - `${ ... }` for an unlabelled expression block
     - `$label { ... }` for a labelled expression block
@@ -755,19 +755,31 @@ needed earlier.
   - Expression blocks allow structured value flow without overloading ordinary
     statement blocks.
   - Keep the semantics compatible with future VM execution and explicit IR.
+  - Current implementation status:
+    - unlabelled and labelled expression blocks are parsed, formatted, typed,
+      lowered through IR/C, and covered by language, error, formatter, and LSP
+      tests
+    - expression-block results can be assigned to constants and variables
+    - labelled `break $label <expr>` can target an outer expression block,
+      including across nested expression blocks
+    - expression-block path analysis is intentionally shallow for now; nested
+      exits to an outer block still need an explicit fallback `break` in the
+      target block to prove the result type
 
 - [ ] 62. Add labelled `break`/`continue` and loop expressions.
-  - Support `break $label <expr>` and `continue $label`.
-  - Plain `break <expr>` targets the nearest surrounding expression block or
+  - [x] Support `break $label <expr>` for expression-block labels.
+  - [ ] Support labelled loops.
+  - [ ] Support `continue $label`.
+  - [ ] Plain `break <expr>` targets the nearest surrounding expression block or
     value-producing loop.
-  - Labelled `break $label <expr>` targets the referenced expression block or
+  - [ ] Labelled `break $label <expr>` targets the referenced expression block or
     labelled loop.
-  - Labelled `continue $label` targets labelled loops only; continuing to a
+  - [ ] Labelled `continue $label` targets labelled loops only; continuing to a
     non-loop expression block is invalid.
-  - Add value-producing loop expressions with `break <expr>`.
-  - Add `else` branches for loops only when the associated loop has reachable
-    value-producing `break` paths.
-  - Keep loop-expression typing exact and explicit.
+  - [ ] Add value-producing loop expressions with `break <expr>`.
+  - [ ] Add `else` branches for loops only when the associated loop has
+    reachable value-producing `break` paths.
+  - [ ] Keep loop-expression typing exact and explicit.
 
 - [ ] 63. Extend typed control-flow merging beyond `on`.
   - Reuse or extend the branch-merge IR model for expression blocks and loop
