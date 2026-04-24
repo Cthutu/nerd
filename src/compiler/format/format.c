@@ -828,20 +828,35 @@ internal bool format_collect_aligned_statement(Arena*       arena,
     }
 
     if (node->kind == CK_Bind) {
+        const CstNode* payload = &cst->nodes[node->b];
+        string         type    = {0};
+        string         value   = {0};
+        bool           typed   = false;
+
         if (!format_statement_is_single_line(cst, lexer, node_index)) {
             return false;
         }
-        if (cst->nodes[node->b].kind == CK_FnExpr ||
-            cst->nodes[node->b].kind == CK_FnBlock) {
+
+        if (payload->kind == CK_AnnotatedValue) {
+            typed = true;
+            type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
+            value =
+                format_render_value_to_string(arena, cst, lexer, payload->b);
+            payload = &cst->nodes[payload->b];
+        } else {
+            value = format_render_value_to_string(arena, cst, lexer, node->b);
+        }
+
+        if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock) {
             return false;
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol = lex_symbol(lexer, cst_get_symbol(node)),
-            .type   = {0},
-            .value  = format_render_value_to_string(arena, cst, lexer, node->b),
-            .is_bind                   = true,
-            .uses_standard_single_line = true,
+            .symbol  = lex_symbol(lexer, cst_get_symbol(node)),
+            .type    = type,
+            .value   = value,
+            .is_bind = true,
+            .uses_standard_single_line = !typed,
         };
         return true;
     }
@@ -876,10 +891,11 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
         if (!stmts[i].is_bind) {
             has_variables = true;
         }
-        if (!stmts[i].is_bind && stmts[i].type.count > max_type_width) {
+        if (stmts[i].type.count > max_type_width) {
             max_type_width = stmts[i].type.count;
         }
     }
+    bool has_type_column = has_variables || max_type_width > 0;
 
     for (u32 i = 0; i < stmt_count; ++i) {
         format_emit_indent(sb, indent_level);
@@ -888,38 +904,7 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             sb_append_char(sb, ' ');
         }
 
-        if (stmts[i].is_bind) {
-            if (has_variables) {
-                usize value_start_width = (usize)indent_level * 4 +
-                                          max_symbol_width + max_type_width + 6;
-                if (value_start_width + stmts[i].value.count <=
-                    FORMAT_WRAP_WIDTH) {
-                    sb_append_cstr(sb, " ::");
-                    for (usize pad = 0; pad < max_type_width + 3; ++pad) {
-                        sb_append_char(sb, ' ');
-                    }
-                    sb_append_string(sb, stmts[i].value);
-                } else {
-                    sb_append_cstr(sb, " ::");
-                    sb_append_char(sb, '\n');
-                    format_emit_indent(sb, indent_level + 1);
-                    sb_append_string(sb, stmts[i].value);
-                }
-            } else {
-                usize value_start_width =
-                    (usize)indent_level * 4 + max_symbol_width + 4;
-                if (value_start_width + stmts[i].value.count <=
-                    FORMAT_WRAP_WIDTH) {
-                    sb_append_cstr(sb, " :: ");
-                    sb_append_string(sb, stmts[i].value);
-                } else {
-                    sb_append_cstr(sb, " ::");
-                    sb_append_char(sb, '\n');
-                    format_emit_indent(sb, indent_level + 1);
-                    sb_append_string(sb, stmts[i].value);
-                }
-            }
-        } else {
+        if (!stmts[i].is_bind || has_type_column) {
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
             for (usize pad = stmts[i].type.count; pad <= max_type_width;
@@ -929,10 +914,23 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             usize value_start_width =
                 (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
             if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
-                sb_append_cstr(sb, "= ");
+                sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
+                sb_append_char(sb, ' ');
                 sb_append_string(sb, stmts[i].value);
             } else {
-                sb_append_char(sb, '=');
+                sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
+                sb_append_char(sb, '\n');
+                format_emit_indent(sb, indent_level + 1);
+                sb_append_string(sb, stmts[i].value);
+            }
+        } else {
+            usize value_start_width =
+                (usize)indent_level * 4 + max_symbol_width + 4;
+            if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
+                sb_append_cstr(sb, " :: ");
+                sb_append_string(sb, stmts[i].value);
+            } else {
+                sb_append_cstr(sb, " ::");
                 sb_append_char(sb, '\n');
                 format_emit_indent(sb, indent_level + 1);
                 sb_append_string(sb, stmts[i].value);
@@ -1112,7 +1110,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Bind) {
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
-        sb_append_cstr(sb, " :: ");
+        sb_append_cstr(
+            sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
         format_emit_value(sb, cst, lexer, stmt->b);
         sb_append_char(sb, '\n');
         return;

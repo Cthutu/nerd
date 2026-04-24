@@ -11,6 +11,7 @@ test :: fn () {
 
 main :: fn () {
     answer::3.14
+    typed:f64:2.0
     ratio: f64 = 3.14 + 2.0 * 3.0
     s :string = "hello"
     flags: u32 = 7 | 2 ^ 1 & 3
@@ -21,6 +22,7 @@ main :: fn () {
 bind_values :: fn () {
     first::1
     longer::2
+    typed:i32:3
 }
 
 long_values :: fn () {
@@ -40,7 +42,8 @@ test :: fn () {
 }
 
 main :: fn () {
-    answer ::         3.14
+    answer :        : 3.14
+    typed  : f64    : 2.0
     ratio  : f64    = 3.14 + 2.0 * 3.0
     s      : string = "hello"
     flags  : u32    = 7 | 2 ^ 1 & 3
@@ -50,8 +53,9 @@ main :: fn () {
 }
 
 bind_values :: fn () {
-    first  :: 1
-    longer :: 2
+    first  :     : 1
+    longer :     : 2
+    typed  : i32 : 3
 }
 
 long_values :: fn () {
