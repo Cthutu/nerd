@@ -793,19 +793,19 @@ needed earlier.
 
 ## Milestone 12: Tuple Values
 
-- [ ] 64. Add tuple syntax and types.
+- [x] 64. Add tuple syntax and types.
   - Support tuple type syntax `(T1, T2, ...)`.
   - Support one-element tuple type syntax `(T,)`.
   - Keep `(T)` as ordinary grouped type syntax rather than a tuple.
 
-- [ ] 65. Add tuple literals and tuple field access.
+- [x] 65. Add tuple literals and tuple field access.
   - Support tuple literals `(a, b, ...)`.
   - Support one-element tuple literals `(a,)`.
   - Keep `(a)` as ordinary grouped expression syntax.
   - Support tuple field access with zero-based dot indices such as `value.0`.
   - Lower tuple values through explicit IR/C storage.
 
-- [ ] 66. Cover tuple values horizontally.
+- [x] 66. Cover tuple values horizontally.
   - Add language, error, formatter, and LSP tests.
   - Add documentation for tuple literals, tuple types, and tuple field access.
   - Defer tuple destructuring and tuple patterns to the pattern milestones.

@@ -37,6 +37,7 @@ The current `SemaTypeKind` set includes:
 - integer primitives such as `i32`, `u16`, `isize`, and `usize`
 - floating-point primitives `f32` and `f64`
 - function types
+- tuple types
 
 Function types store their parameter list in the flattened
 `Sema.type_param_types` side table and keep the return type in
@@ -47,6 +48,12 @@ Function values currently reuse the same canonical signature rows. Named
 functions therefore have a semantic function type such as `fn (i32, i32) ->
 i32`, and when they are used as runtime values the back end lowers them through
 function-pointer-compatible storage in generated C.
+
+Tuple types also use the flattened `Sema.type_param_types` side table. The
+tuple row stores its element count in `param_count` and the first element type in
+`first_param_type`; `return_type` is unused. Tuple syntax is `(T1, T2, ...)`,
+with `(T,)` for a one-element tuple and `(T)` remaining ordinary grouped type
+syntax.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -173,9 +180,27 @@ Current storage-eligible types are:
 - `string`
 - `f32`
 - `f64`
+- tuples whose elements are all storage-eligible
 
 Zero-initialised declarations such as `count: i32` and `name: string` are
 checked in sema and then lowered using type-aware zero values.
+
+## Tuples
+
+Tuple literals use the same comma rule as tuple types:
+
+- `(1, "one")` has type `(i32, string)` once stored
+- `(value,)` is a one-element tuple
+- `(value)` is just a grouped expression
+
+Tuple fields are accessed with zero-based dot indices:
+
+- `pair.0`
+- `pair.1`
+
+The semantic pass checks that field access is applied to a tuple and that the
+index is within range. Tuple values currently lower to generated C structs with
+numbered fields such as `_0` and `_1`.
 
 Local variables are resolved through semantic scope rows, not through AST node
 payloads. A function body creates a root scope, and each nested block statement
@@ -281,6 +306,7 @@ Today the semantic type system is focused on:
 - function signatures
 - alias resolution
 - variable storage eligibility
+- tuple literals, tuple types, and tuple field access
 - untyped integer materialisation
 - exact-match type checks for the implemented arithmetic surface
 - explicit cast validation

@@ -43,10 +43,13 @@
 // | AK_LogicalOr       | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
 // | AK_Cast            | Ast index value   | Ast index of target type        |
+// | AK_Tuple           | First item index  | Item count                      |
+// | AK_TupleField      | Ast index value   | Zero-based field index          |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
+// | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -98,10 +101,13 @@ typedef enum {
     AK_LogicalOr,
     AK_Call,
     AK_Cast,
+    AK_Tuple,
+    AK_TupleField,
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
     AK_TypeFn,
+    AK_TypeTuple,
     AK_Expression,
     AK_Statement,
     AK_Return,
@@ -199,6 +205,7 @@ typedef struct {
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(u32) call_args;
+    Array(u32) tuple_items;
     Array(AstCallInfo) calls;
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;

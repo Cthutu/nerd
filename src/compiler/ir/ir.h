@@ -24,6 +24,8 @@ typedef enum : u8 {
     IR_OP_ASSIGN,
     IR_OP_CALL,
     IR_OP_CAST,
+    IR_OP_TUPLE,
+    IR_OP_TUPLE_FIELD,
     IR_OP_STRING_RESET,
     IR_OP_STRING_START,
     IR_OP_STRING_APPEND,
@@ -112,12 +114,24 @@ typedef struct {
 } IrCallInfo;
 
 typedef struct {
+    IrValue value;
+    u32     type;
+} IrTupleItem;
+
+typedef struct {
+    u32 first_item;
+    u32 item_count;
+} IrTupleInfo;
+
+typedef struct {
     Array(IrInstruction) instructions;
     Array(IrGlobal) globals;
     Array(IrFunction) functions;
     Array(IrLocal) locals;
     Array(IrCallArg) call_args;
     Array(IrCallInfo) calls;
+    Array(IrTupleItem) tuple_items;
+    Array(IrTupleInfo) tuples;
     Array(string) strings;
     Array(SemaType) types;
     Array(u32) type_param_types;

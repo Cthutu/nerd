@@ -192,6 +192,14 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     }
 
     switch (ir->types[type_index].kind) {
+    case STK_Tuple:
+        {
+            static char names[8][32];
+            static u32  next = 0;
+            char*       name = names[next++ % 8];
+            snprintf(name, 32, "tuple%u", type_index);
+            return name;
+        }
     case STK_String:
         return "string";
     case STK_Bool:
@@ -341,6 +349,11 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
     }
 
     switch (cgen->ir->types[type_index].kind) {
+    case STK_Tuple:
+        cgen_add(cgen, "(");
+        cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+        cgen_add(cgen, "){0}");
+        break;
     case STK_String:
         cgen_add(cgen, "(string){0}");
         break;
@@ -520,6 +533,36 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+void cgen_add_tuple(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, "){");
+    const IrTupleInfo* tuple =
+        &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
+    for (u32 i = 0; i < tuple->item_count; ++i) {
+        if (i > 0) {
+            cgen_add(cgen, ", ");
+        }
+        arena_format(&cgen->arena, "._%u = ", i);
+        const IrTupleItem* item = &cgen->ir->tuple_items[tuple->first_item + i];
+        cgen_add_typed_value(cgen, &item->value, item->type);
+    }
+    cgen_addn(cgen, "};");
+}
+
+void cgen_add_tuple_field(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    arena_format(&cgen->arena, "._%u;", (u32)instr->rvalue[1].value.integer);
+    cgen_addn(cgen, "");
+}
+
 void cgen_add_string_reset(CGen* cgen)
 {
     cgen_add_line(cgen, "string_builder_reset();");
@@ -638,6 +681,35 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+internal void cgen_add_tuple_type_decls(CGen* cgen)
+{
+    for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
+        const SemaType* type = &cgen->ir->types[i];
+        if (type->kind != STK_Tuple) {
+            continue;
+        }
+        cgen_start_line(cgen);
+        arena_format(
+            &cgen->arena, "typedef struct %s {", cgen_c_type(cgen->ir, i));
+        cgen_addn(cgen, "");
+        cgen_indent(cgen);
+        for (u32 field = 0; field < type->param_count; ++field) {
+            cgen_start_line(cgen);
+            cgen_add(
+                cgen,
+                cgen_c_type(cgen->ir,
+                            cgen->ir->type_param_types[type->first_param_type +
+                                                       field]));
+            arena_format(&cgen->arena, " _%u;", field);
+            cgen_addn(cgen, "");
+        }
+        cgen_dedent(cgen);
+        cgen_start_line(cgen);
+        arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+        cgen_addn(cgen, "");
+    }
+}
+
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL ||
@@ -692,6 +764,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
     if (!has_init_section) {
         cgen_add_line(cgen, "void init() {}");
     }
+
+    cgen_add_tuple_type_decls(cgen);
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];
@@ -765,6 +839,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_CAST:
             cgen_add_cast(cgen, instr);
+            break;
+        case IR_OP_TUPLE:
+            cgen_add_tuple(cgen, instr);
+            break;
+        case IR_OP_TUPLE_FIELD:
+            cgen_add_tuple_field(cgen, instr);
             break;
         case IR_OP_STRING_RESET:
             cgen_add_string_reset(cgen);

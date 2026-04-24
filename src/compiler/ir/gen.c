@@ -232,6 +232,56 @@ void ir_add_cast(
                });
 }
 
+void ir_add_tuple(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
+{
+    u32             first_item = (u32)array_count(ir->tuple_items);
+    const SemaType* tuple      = &ir->types[lvalue_type];
+    for (u32 i = 0; i < array_count(items); ++i) {
+        IrValue item = items[i];
+        item.type    = ir->type_param_types[tuple->first_param_type + i];
+        array_push(ir->tuple_items,
+                   (IrTupleItem){
+                       .value = item,
+                       .type  = item.type,
+                   });
+    }
+
+    u32 tuple_index = (u32)array_count(ir->tuples);
+    array_push(ir->tuples,
+               (IrTupleInfo){
+                   .first_item = first_item,
+                   .item_count = (u32)array_count(items),
+               });
+    lvalue.type = lvalue_type;
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_TUPLE,
+            .lvalue = lvalue,
+            .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = tuple_index},
+                       {0}},
+        });
+}
+
+void ir_add_tuple_field(Ir*     ir,
+                        IrValue lvalue,
+                        u32     lvalue_type,
+                        IrValue tuple,
+                        u32     tuple_type,
+                        u32     field_index)
+{
+    lvalue.type = lvalue_type;
+    tuple.type  = tuple_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_TUPLE_FIELD,
+                   .lvalue = lvalue,
+                   .rvalue = {tuple,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = field_index}},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append explicit string-builder instructions to the IR stream.
 
@@ -658,6 +708,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
                ir_node_contains_interpolation(ast, node->a);
     case AK_StringConcat:
     case AK_On:
+    case AK_Tuple:
+    case AK_TupleField:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -1170,6 +1222,57 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         sema->node_type_indices[node_index],
                         source,
                         ir_node_type_index(ast, sema, node->a));
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Tuple:
+        {
+            Array(IrValue) items = NULL;
+            for (u32 i = 0; i < node->b; ++i) {
+                array_push(items,
+                           ir_lower_node(lex,
+                                         ast,
+                                         sema,
+                                         ast->tuple_items[node->a + i],
+                                         loop,
+                                         node_values,
+                                         next_value_index,
+                                         ir));
+            }
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_tuple(
+                ir, value, ir_node_type_index(ast, sema, node_index), items);
+            array_free(items);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_TupleField:
+        {
+            IrValue tuple = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_tuple_field(ir,
+                               value,
+                               ir_node_type_index(ast, sema, node_index),
+                               tuple,
+                               ir_node_type_index(ast, sema, node->a),
+                               node->b);
             node_values[node_index] = value;
             return value;
         }
@@ -2319,6 +2422,8 @@ void ir_done(Ir* ir)
     array_free(ir->locals);
     array_free(ir->call_args);
     array_free(ir->calls);
+    array_free(ir->tuple_items);
+    array_free(ir->tuples);
     array_free(ir->strings);
     array_free(ir->types);
     array_free(ir->type_param_types);

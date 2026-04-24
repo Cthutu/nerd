@@ -720,16 +720,88 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             return ast_emit_node(state, node, out_node);
         }
     case TK_LParen:
-        if (!ast_next_token(state)) {
-            return error_0201_missing_value(
-                state->token.source,
-                ast_token_span(state, &state->token),
-                state->token.kind);
+        {
+            if (!ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind);
+            }
+
+            u32 first_item = (u32)array_count(state->tuple_items);
+            u32 item_count = 0;
+            u32 item       = 0;
+            if (!ast_parse_expr_bp(state, 0, &item)) {
+                return false;
+            }
+            array_push(state->tuple_items, item);
+            item_count++;
+
+            bool is_tuple = false;
+            for (;;) {
+                if (state->token.kind == TK_Comma) {
+                    is_tuple = true;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    if (ast_peek_kind_at(state, 0) == TK_RParen) {
+                        if (!ast_expect_token(state, TK_RParen)) {
+                            return false;
+                        }
+                        break;
+                    }
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                } else if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                    is_tuple = true;
+                    if (!ast_expect_token(state, TK_Comma)) {
+                        return false;
+                    }
+                    if (ast_peek_kind_at(state, 0) == TK_RParen) {
+                        if (!ast_expect_token(state, TK_RParen)) {
+                            return false;
+                        }
+                        break;
+                    }
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                } else {
+                    break;
+                }
+
+                u32 next_item = 0;
+                if (!ast_parse_expr_bp(state, 0, &next_item)) {
+                    return false;
+                }
+                array_push(state->tuple_items, next_item);
+                item_count++;
+            }
+
+            if (!is_tuple) {
+                *out_node = item;
+                return ast_expect_token(state, TK_RParen);
+            }
+            if (state->token.kind == TK_RParen &&
+                state->token_index == state->token.token_index) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+            } else if (state->token.kind != TK_RParen) {
+                if (!ast_expect_token(state, TK_RParen)) {
+                    return false;
+                }
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_Tuple,
+                                     .token_index = token.token_index,
+                                     .a           = first_item,
+                                     .b           = item_count,
+                                 },
+                                 out_node);
         }
-        if (!ast_parse_expr_bp(state, 0, out_node)) {
-            return false;
-        }
-        return ast_expect_token(state, TK_RParen);
     case TK_fn:
         return ast_parse_declaration(state, out_node);
     case TK_on:
@@ -874,6 +946,27 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              ast_token_span(state, &op),
                                              TK_Symbol,
                                              TK_EOF);
+        }
+        if (state->token.kind == TK_Integer) {
+            u64 field_index = ast_get_integer(
+                state->lexer,
+                &(AstNode){.kind        = AK_IntegerLiteral,
+                           .token_index = state->token.token_index,
+                           .a           = state->token.value.integer_index});
+            if (field_index > UINT32_MAX) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Integer,
+                    TK_Integer);
+            }
+            AstNode node = {
+                .kind        = AK_TupleField,
+                .token_index = state->token.token_index,
+                .a           = left_node,
+                .b           = (u32)field_index,
+            };
+            return ast_emit_node(state, node, out_node);
         }
         if (state->token.kind != TK_Symbol ||
             !string_eq(

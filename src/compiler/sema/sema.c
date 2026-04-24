@@ -92,6 +92,42 @@ internal u32 sema_add_function_type(Sema* sema,
                          });
 }
 
+internal u32 sema_add_tuple_type(Sema* sema, Array(u32) item_types)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        const SemaType* existing = &sema->types[i];
+        if (existing->kind != STK_Tuple ||
+            existing->param_count != array_count(item_types)) {
+            continue;
+        }
+
+        bool matches = true;
+        for (u32 j = 0; j < existing->param_count; ++j) {
+            if (sema->type_param_types[existing->first_param_type + j] !=
+                item_types[j]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) {
+            return i;
+        }
+    }
+
+    u32 first_item = (u32)array_count(sema->type_param_types);
+    for (u32 i = 0; i < array_count(item_types); ++i) {
+        array_push(sema->type_param_types, item_types[i]);
+    }
+
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Tuple,
+                             .param_count      = (u16)array_count(item_types),
+                             .first_param_type = first_item,
+                             .return_type      = sema_no_type(),
+                         });
+}
+
 //------------------------------------------------------------------------------
 // Return the canonical type index for one built-in type.
 
@@ -216,7 +252,21 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         }
     }
 
-    return type_index;
+    if (sema->types[type_index].kind != STK_Tuple) {
+        return type_index;
+    }
+
+    Array(u32) items      = NULL;
+    const SemaType* tuple = &sema->types[type_index];
+    for (u32 i = 0; i < tuple->param_count; ++i) {
+        array_push(
+            items,
+            sema_materialise_type(
+                sema, sema->type_param_types[tuple->first_param_type + i]));
+    }
+    u32 materialised = sema_add_tuple_type((Sema*)sema, items);
+    array_free(items);
+    return materialised;
 }
 
 //------------------------------------------------------------------------------
@@ -283,6 +333,28 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_append_cstr(&sb, ") -> ");
             sb_append_string(&sb,
                              sema_type_name(sema, arena, type->return_type));
+            return sb_to_string(&sb);
+        }
+    case STK_Tuple:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_append_cstr(&sb, "(");
+            for (u32 i = 0; i < type->param_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(&sb, ", ");
+                }
+                sb_append_string(
+                    &sb,
+                    sema_type_name(
+                        sema,
+                        arena,
+                        sema->type_param_types[type->first_param_type + i]));
+            }
+            if (type->param_count == 1) {
+                sb_append_cstr(&sb, ",");
+            }
+            sb_append_cstr(&sb, ")");
             return sb_to_string(&sb);
         }
     default:
@@ -733,6 +805,39 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeTuple:
+        {
+            Array(u32) item_types = NULL;
+            for (u32 i = 0; i < node->b; ++i) {
+                bool item_is_type = false;
+                u32  item_type    = sema_no_type();
+                if (!sema_try_classify_type_node(lexer,
+                                                 ast,
+                                                 sema,
+                                                 owner_decl_index,
+                                                 ast->tuple_items[node->a + i],
+                                                 alias_states,
+                                                 &item_is_type,
+                                                 &item_type)) {
+                    array_free(item_types);
+                    return false;
+                }
+                if (!item_is_type) {
+                    array_free(item_types);
+                    *out_is_type    = false;
+                    *out_type_index = sema_no_type();
+                    return true;
+                }
+                array_push(item_types, item_type);
+            }
+
+            u32 type_index = sema_add_tuple_type(sema, item_types);
+            array_free(item_types);
+            *out_is_type    = true;
+            *out_type_index = type_index;
+            return true;
+        }
+
     default:
         *out_is_type    = false;
         *out_type_index = sema_no_type();
@@ -923,6 +1028,11 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
                 sema_mark_type_expr_nodes(
                     ast, sema, signature->return_type_node_index);
             }
+        }
+        break;
+    case AK_TypeTuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            sema_mark_type_expr_nodes(ast, sema, ast->tuple_items[node->a + i]);
         }
         break;
     default:
@@ -1662,6 +1772,29 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             }
             return true;
         }
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        capture_scope_index,
+                                        scope_index,
+                                        ast->tuple_items[node->a + i],
+                                        sema)) {
+                return false;
+            }
+        }
+        return true;
+    case AK_TupleField:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema);
     case AK_IntegerNegate:
     case AK_LogicalNot:
     case AK_Cast:
@@ -1861,6 +1994,18 @@ internal void sema_collect_node_deps(const Ast*  ast,
                                        out_sema);
             }
         }
+        return;
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            sema_collect_node_deps(ast,
+                                   sema,
+                                   owner_decl_index,
+                                   ast->tuple_items[node->a + i],
+                                   out_sema);
+        }
+        return;
+    case AK_TupleField:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         return;
     case AK_SymbolRef:
         {
@@ -2260,6 +2405,29 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeTuple:
+        {
+            Array(u32) item_types = NULL;
+            for (u32 i = 0; i < node->b; ++i) {
+                u32 item_type = sema_no_type();
+                if (!sema_resolve_type_node(lexer,
+                                            ast,
+                                            sema,
+                                            ast->tuple_items[node->a + i],
+                                            &item_type)) {
+                    array_free(item_types);
+                    return false;
+                }
+                array_push(item_types, item_type);
+            }
+
+            u32 type_index = sema_add_tuple_type(sema, item_types);
+            array_free(item_types);
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
     default:
         return error_0303_unknown_type(
             lexer->source, sema_node_span(lexer, node), s("<expression>"));
@@ -2329,6 +2497,18 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     case STK_F64:
     case STK_Function:
         return true;
+    case STK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[type_index];
+            for (u32 i = 0; i < tuple->param_count; ++i) {
+                if (!sema_type_is_variable_storage(
+                        sema,
+                        sema->type_param_types[tuple->first_param_type + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     default:
         return sema_type_is_concrete_integer(sema, type_index);
     }
@@ -2955,6 +3135,16 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
             }
             return false;
         }
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (sema_node_contains_interpolation(
+                    ast, ast->tuple_items[node->a + i])) {
+                return true;
+            }
+        }
+        return false;
+    case AK_TupleField:
+        return sema_node_contains_interpolation(ast, node->a);
     case AK_Variable:
     case AK_Assign:
     case AK_AnnotatedValue:
@@ -3109,6 +3299,17 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
             }
             return sema_no_decl();
         }
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            u32 found = sema_find_interpolated_string_node(
+                ast, ast->tuple_items[node->a + i]);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+        }
+        return sema_no_decl();
+    case AK_TupleField:
+        return sema_find_interpolated_string_node(ast, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
             u32 found = sema_find_interpolated_string_node(ast, i);
@@ -3252,6 +3453,16 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             }
             return true;
         }
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (!sema_validate_interpolated_strings(
+                    lexer, ast, sema, ast->tuple_items[node->a + i])) {
+                return false;
+            }
+        }
+        return true;
+    case AK_TupleField:
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
             if (!sema_validate_interpolated_strings(lexer, ast, sema, i)) {
@@ -3371,6 +3582,78 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
         }
         type_index = sema_builtin_type(sema, STK_String);
+        break;
+
+    case AK_Tuple:
+        {
+            Array(u32) item_types = NULL;
+            const SemaType* expected_tuple =
+                expected_type != sema_no_type() &&
+                        sema->types[expected_type].kind == STK_Tuple
+                    ? &sema->types[expected_type]
+                    : NULL;
+            if (expected_tuple != NULL &&
+                expected_tuple->param_count != node->b) {
+                array_free(item_types);
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    sema_type_name(sema, &temp_arena, expected_type),
+                    s("tuple with different arity"));
+            }
+            for (u32 i = 0; i < node->b; ++i) {
+                u32 item_node = ast->tuple_items[node->a + i];
+                u32 expected_item =
+                    expected_tuple == NULL
+                        ? sema_no_type()
+                        : sema->type_param_types
+                              [expected_tuple->first_param_type + i];
+                u32 item_type = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          item_node,
+                                          expected_item,
+                                          &item_type)) {
+                    array_free(item_types);
+                    return false;
+                }
+                item_type = expected_item != sema_no_type()
+                                ? expected_item
+                                : sema_materialise_type(sema, item_type);
+                array_push(item_types, item_type);
+            }
+            type_index = sema_add_tuple_type(sema, item_types);
+            array_free(item_types);
+        }
+        break;
+
+    case AK_TupleField:
+        {
+            u32 tuple_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &tuple_type)) {
+                return false;
+            }
+            if (tuple_type == sema_no_type() ||
+                sema->types[tuple_type].kind != STK_Tuple) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("tuple"),
+                    sema_type_name(sema, &temp_arena, tuple_type));
+            }
+            const SemaType* tuple = &sema->types[tuple_type];
+            if (node->b >= tuple->param_count) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("valid tuple field"),
+                    sema_type_name(sema, &temp_arena, tuple_type));
+            }
+            type_index =
+                sema->type_param_types[tuple->first_param_type + node->b];
+        }
         break;
 
     case AK_Expression:
@@ -5088,6 +5371,27 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             }
             return true;
         }
+    case AK_Tuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (!sema_validate_loop_control(lexer,
+                                            ast,
+                                            ast->tuple_items[node->a + i],
+                                            loop_depth,
+                                            expr_block_depth,
+                                            expr_labels,
+                                            expr_label_count)) {
+                return false;
+            }
+        }
+        return true;
+    case AK_TupleField:
+        return sema_validate_loop_control(lexer,
+                                          ast,
+                                          node->a,
+                                          loop_depth,
+                                          expr_block_depth,
+                                          expr_labels,
+                                          expr_label_count);
     case AK_InterpolatedString:
         for (u32 i = node->a; i < node->b; ++i) {
             if (!sema_validate_loop_control(lexer,

@@ -42,10 +42,13 @@
 // | CK_LogicalOr       | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
 // | CK_Cast            | Value node index      | Target type node      |
+// | CK_Tuple           | First item index      | Item count            |
+// | CK_TupleField      | Value node index      | Zero-based field      |
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
+// | CK_TypeTuple       | First item index      | Item count            |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
@@ -94,10 +97,13 @@ typedef enum {
     CK_LogicalOr,
     CK_Call,
     CK_Cast,
+    CK_Tuple,
+    CK_TupleField,
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
     CK_TypeFn,
+    CK_TypeTuple,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,
@@ -184,6 +190,7 @@ typedef struct {
     Array(CstParam) params;
     Array(CstFnSignature) fn_signatures;
     Array(u32) call_args;
+    Array(u32) tuple_items;
     Array(CstCallInfo) calls;
     Array(u32) on_pattern_nodes;
     Array(CstOnBranch) on_branches;

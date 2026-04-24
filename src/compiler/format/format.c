@@ -183,6 +183,8 @@ internal int format_expr_precedence(const CstNode* node)
         return 80;
     case CK_Cast:
         return 80;
+    case CK_TupleField:
+        return 80;
     case CK_StringConcat:
         return 85;
     case CK_InterpolatedString:
@@ -315,6 +317,19 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Group:
         sb_append_char(sb, '(');
         format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_char(sb, ')');
+        break;
+    case CK_Tuple:
+        sb_append_char(sb, '(');
+        for (u32 i = 0; i < node->b; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            format_emit_expr(sb, cst, lexer, cst->tuple_items[node->a + i], 0);
+        }
+        if (node->b == 1) {
+            sb_append_char(sb, ',');
+        }
         sb_append_char(sb, ')');
         break;
     case CK_IntegerNegate:
@@ -511,6 +526,10 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
         break;
+    case CK_TupleField:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_format(sb, ".%u", node->b);
+        break;
     case CK_RangeExclusive:
     case CK_RangeInclusive:
         format_emit_expr(sb, cst, lexer, node->a, 0);
@@ -576,6 +595,19 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
+        break;
+    case CK_TypeTuple:
+        sb_append_char(sb, '(');
+        for (u32 i = 0; i < node->b; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            format_emit_expr(sb, cst, lexer, cst->tuple_items[node->a + i], 0);
+        }
+        if (node->b == 1) {
+            sb_append_char(sb, ',');
+        }
+        sb_append_char(sb, ')');
         break;
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
@@ -862,8 +894,12 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_find_interpolated_string_end_token_index(
             lexer, node->token_index);
     case CK_Group:
+    case CK_Tuple:
+    case CK_TypeTuple:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LParen, TK_RParen);
+    case CK_TupleField:
+        return node->token_index;
     case CK_IntegerNegate:
     case CK_Statement:
         return format_node_end_token_index(cst, lexer, node->a);

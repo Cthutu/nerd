@@ -108,6 +108,28 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return true;
     }
+    if (kind == TK_LParen) {
+        (*io_index)++;
+        if (!ast_skip_type_tokens(state, io_index)) {
+            return false;
+        }
+        if (ast_kind_at_stream_index(state, *io_index) == TK_Comma) {
+            while (ast_kind_at_stream_index(state, *io_index) == TK_Comma) {
+                (*io_index)++;
+                if (ast_kind_at_stream_index(state, *io_index) == TK_RParen) {
+                    break;
+                }
+                if (!ast_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+            }
+        }
+        if (ast_kind_at_stream_index(state, *io_index) != TK_RParen) {
+            return false;
+        }
+        (*io_index)++;
+        return true;
+    }
     if (kind != TK_fn) {
         return false;
     }
@@ -302,6 +324,58 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             .a           = state->token.value.symbol_handle,
         };
         return ast_emit_node(state, node, out_node);
+    }
+
+    if (state->token.kind == TK_LParen) {
+        AstToken lparen = state->token;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+
+        u32 first_item = (u32)array_count(state->tuple_items);
+        u32 item_count = 0;
+        u32 first_type = 0;
+        if (!ast_parse_type(state, &first_type)) {
+            return false;
+        }
+        array_push(state->tuple_items, first_type);
+        item_count++;
+
+        bool is_tuple = false;
+        while (ast_peek_kind_at(state, 0) == TK_Comma) {
+            is_tuple = true;
+            if (!ast_expect_token(state, TK_Comma)) {
+                return false;
+            }
+            if (ast_peek_kind_at(state, 0) == TK_RParen) {
+                break;
+            }
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            u32 item = 0;
+            if (!ast_parse_type(state, &item)) {
+                return false;
+            }
+            array_push(state->tuple_items, item);
+            item_count++;
+        }
+
+        if (!ast_expect_token(state, TK_RParen)) {
+            return false;
+        }
+        if (!is_tuple) {
+            *out_node = first_type;
+            return true;
+        }
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypeTuple,
+                                 .token_index = lparen.token_index,
+                                 .a           = first_item,
+                                 .b           = item_count,
+                             },
+                             out_node);
     }
 
     if (state->token.kind != TK_fn) {
@@ -1377,6 +1451,7 @@ Ast ast_parse(Lexer* lexer)
         .params           = state.params,
         .fn_signatures    = state.fn_signatures,
         .call_args        = state.call_args,
+        .tuple_items      = state.tuple_items,
         .calls            = state.calls,
         .on_pattern_nodes = state.on_pattern_nodes,
         .on_branches      = state.on_branches,
@@ -1390,6 +1465,7 @@ error:
                     .params           = state.params,
                     .fn_signatures    = state.fn_signatures,
                     .call_args        = state.call_args,
+                    .tuple_items      = state.tuple_items,
                     .calls            = state.calls,
                     .on_pattern_nodes = state.on_pattern_nodes,
                     .on_branches      = state.on_branches,
@@ -1408,6 +1484,7 @@ void ast_done(Ast* ast)
     array_free(ast->params);
     array_free(ast->fn_signatures);
     array_free(ast->call_args);
+    array_free(ast->tuple_items);
     array_free(ast->calls);
     array_free(ast->on_pattern_nodes);
     array_free(ast->on_branches);
