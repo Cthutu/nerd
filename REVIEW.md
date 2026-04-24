@@ -51,8 +51,8 @@ dead code.
 
 ## Compiler CST
 
-- [ ] `src/compiler/cst/cst.c`
-- [ ] `src/compiler/cst/cst.h`
+- [x] `src/compiler/cst/cst.c`
+- [x] `src/compiler/cst/cst.h`
 
 ## Compiler Errors
 
