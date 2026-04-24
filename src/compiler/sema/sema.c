@@ -3874,11 +3874,14 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
     Sema sema = {0};
 
     // Seed commonly-used built-in types so later materialisation can always
-    // canonicalise untyped integers to i32.
+    // canonicalise untyped numeric literals to runtime storage types.
     sema_builtin_type(&sema, STK_Void);
     sema_builtin_type(&sema, STK_UntypedInteger);
+    sema_builtin_type(&sema, STK_UntypedFloat);
     sema_builtin_type(&sema, STK_String);
+    sema_builtin_type(&sema, STK_Bool);
     sema_builtin_type(&sema, STK_I32);
+    sema_builtin_type(&sema, STK_F64);
 
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         array_push(sema.node_decl_indices, sema_no_decl());

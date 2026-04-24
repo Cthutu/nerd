@@ -386,7 +386,11 @@ internal bool ast_parse_block_statement(AstParseState* state)
         if (ast_symbol_starts_variable(state)) {
             return ast_parse_variable(state, NULL);
         }
-        return ast_parse_bind(state, NULL);
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_bind(state, NULL);
+        state->allow_statement_boundary = previous_boundary;
+        return ok;
     }
 
     if (ast_symbol_starts_variable(state)) {
