@@ -241,8 +241,9 @@ void ir_add_tuple(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
         item.type    = ir->type_param_types[tuple->first_param_type + i];
         array_push(ir->tuple_items,
                    (IrTupleItem){
-                       .value = item,
-                       .type  = item.type,
+                       .value  = item,
+                       .type   = item.type,
+                       .symbol = U32_MAX,
                    });
     }
 
@@ -259,6 +260,53 @@ void ir_add_tuple(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
             .op     = IR_OP_TUPLE,
             .lvalue = lvalue,
             .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = tuple_index},
+                       {0}},
+        });
+}
+
+void ir_add_plex(Ir*                       ir,
+                 IrValue                   lvalue,
+                 u32                       lvalue_type,
+                 const Ast*                ast,
+                 const AstPlexLiteralInfo* literal,
+                 Array(IrValue) values)
+{
+    u32             first_item = (u32)array_count(ir->tuple_items);
+    const SemaType* plex       = &ir->types[lvalue_type];
+    for (u32 i = 0; i < array_count(values); ++i) {
+        const AstPlexLiteralField* field =
+            &ast->plex_literal_fields[literal->first_field + i];
+        u32 field_type = sema_no_type();
+        for (u32 j = 0; j < plex->param_count; ++j) {
+            if (ir->type_param_symbols[plex->first_param_type + j] ==
+                field->symbol_handle) {
+                field_type = ir->type_param_types[plex->first_param_type + j];
+                break;
+            }
+        }
+        IrValue item = values[i];
+        item.type    = field_type;
+        array_push(ir->tuple_items,
+                   (IrTupleItem){
+                       .value  = item,
+                       .type   = item.type,
+                       .symbol = field->symbol_handle,
+                   });
+    }
+
+    u32 plex_index = (u32)array_count(ir->tuples);
+    array_push(ir->tuples,
+               (IrTupleInfo){
+                   .first_item = first_item,
+                   .item_count = (u32)array_count(values),
+               });
+    lvalue.type = lvalue_type;
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_PLEX,
+            .lvalue = lvalue,
+            .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = plex_index},
                        {0}},
         });
 }
@@ -291,8 +339,9 @@ void ir_add_array(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
         item.type    = array->first_param_type;
         array_push(ir->tuple_items,
                    (IrTupleItem){
-                       .value = item,
-                       .type  = item.type,
+                       .value  = item,
+                       .type   = item.type,
+                       .symbol = U32_MAX,
                    });
     }
 
@@ -1479,6 +1528,40 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                tuple,
                                ir_node_type_index(ast, sema, node->a),
                                node->b);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Plex:
+        {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            Array(IrValue) values             = NULL;
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                array_push(
+                    values,
+                    ir_lower_node(
+                        lex,
+                        ast,
+                        sema,
+                        ast->plex_literal_fields[literal->first_field + i]
+                            .value_node_index,
+                        loop,
+                        node_values,
+                        next_value_index,
+                        ir));
+            }
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_plex(ir,
+                        value,
+                        ir_node_type_index(ast, sema, node_index),
+                        ast,
+                        literal,
+                        values);
+            array_free(values);
             node_values[node_index] = value;
             return value;
         }
@@ -2707,6 +2790,9 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(sema->type_param_types); ++i) {
         array_push(ir.type_param_types, sema->type_param_types[i]);
     }
+    for (u32 i = 0; i < array_count(sema->type_param_symbols); ++i) {
+        array_push(ir.type_param_symbols, sema->type_param_symbols[i]);
+    }
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
@@ -2776,6 +2862,7 @@ void ir_done(Ir* ir)
     array_free(ir->strings);
     array_free(ir->types);
     array_free(ir->type_param_types);
+    array_free(ir->type_param_symbols);
     if (ir->arena.data != NULL) {
         arena_done(&ir->arena);
     }

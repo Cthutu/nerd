@@ -898,18 +898,21 @@ needed earlier.
 
 ## Milestone 17: Plex Types
 
-- [ ] 76. Add basic plex definitions.
+- [X] 76. Add basic plex definitions.
   - Support `plex { field Type ... }` type syntax.
   - Support named plex aliases.
   - Initially use source-order C-compatible layout for predictable lowering and
     debugging.
   - Keep compiler-reordered layout as a later extension.
 
-- [ ] 77. Add plex construction and field access.
+- [X] 77. Add plex construction and field access.
   - Support instance literals such as `Point { x: 1, y: 2 }`.
   - Support field access such as `point.x`.
   - Lower plex values through explicit IR/C storage.
   - Add language, error, formatter, LSP, and documentation coverage.
+  - MS17 coverage includes named aliases, named literals, direct field access,
+    parser disambiguation from block-form `on`, formatter snapshots, and editor
+    keyword highlighting for VS Code and Neovim.
 
 ## Milestone 18: Plex Ergonomics And Layout Controls
 

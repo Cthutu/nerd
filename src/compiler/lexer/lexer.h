@@ -82,6 +82,7 @@ typedef enum {
     TK_break,
     TK_continue,
     TK_return,
+    TK_plex,
     TK_yes,
     TK_no,
 } TokenKind;

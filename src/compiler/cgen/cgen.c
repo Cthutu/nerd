@@ -195,6 +195,7 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     case STK_Tuple:
     case STK_Array:
     case STK_Slice:
+    case STK_Plex:
         {
             static char names[8][32];
             static u32  next = 0;
@@ -203,7 +204,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                      32,
                      ir->types[type_index].kind == STK_Tuple   ? "tuple%u"
                      : ir->types[type_index].kind == STK_Array ? "array%u"
-                                                               : "slice%u",
+                     : ir->types[type_index].kind == STK_Slice ? "slice%u"
+                                                               : "plex%u",
                      type_index);
             return name;
         }
@@ -605,6 +607,28 @@ void cgen_add_array(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "}};");
 }
 
+void cgen_add_plex(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, "){");
+    const IrTupleInfo* plex =
+        &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
+    for (u32 i = 0; i < plex->item_count; ++i) {
+        if (i > 0) {
+            cgen_add(cgen, ", ");
+        }
+        const IrTupleItem* item = &cgen->ir->tuple_items[plex->first_item + i];
+        cgen_add(cgen, ".");
+        cgen_add_symbol_name(cgen, item->symbol);
+        cgen_add(cgen, " = ");
+        cgen_add_typed_value(cgen, &item->value, item->type);
+    }
+    cgen_addn(cgen, "};");
+}
+
 void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
 {
     const IrSliceInfo* slice =
@@ -679,8 +703,12 @@ void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, ".");
-    string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
-    cgen_add_bytes(cgen, (const char*)field.data, field.count);
+    if (cgen->ir->types[instr->rvalue[0].type].kind == STK_Plex) {
+        cgen_add_symbol_name(cgen, (u32)instr->rvalue[1].value.integer);
+    } else {
+        string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
+        cgen_add_bytes(cgen, (const char*)field.data, field.count);
+    }
     cgen_addn(cgen, ";");
 }
 
@@ -986,7 +1014,7 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
         const SemaType* type = &cgen->ir->types[i];
         if (type->kind != STK_Tuple && type->kind != STK_Array &&
-            type->kind != STK_Slice) {
+            type->kind != STK_Slice && type->kind != STK_Plex) {
             continue;
         }
         cgen_start_line(cgen);
@@ -1004,6 +1032,21 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                                                         field]));
                 arena_format(&cgen->arena, " _%u;", field);
                 cgen_addn(cgen, "");
+            }
+        } else if (type->kind == STK_Plex) {
+            for (u32 field = 0; field < type->param_count; ++field) {
+                cgen_start_line(cgen);
+                cgen_add(cgen,
+                         cgen_c_type(
+                             cgen->ir,
+                             cgen->ir->type_param_types[type->first_param_type +
+                                                        field]));
+                cgen_add(cgen, " ");
+                cgen_add_symbol_name(
+                    cgen,
+                    cgen->ir
+                        ->type_param_symbols[type->first_param_type + field]);
+                cgen_addn(cgen, ";");
             }
         } else if (type->kind == STK_Array) {
             cgen_start_line(cgen);
@@ -1156,6 +1199,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_TUPLE:
             cgen_add_tuple(cgen, instr);
+            break;
+        case IR_OP_PLEX:
+            cgen_add_plex(cgen, instr);
             break;
         case IR_OP_TUPLE_FIELD:
             cgen_add_tuple_field(cgen, instr);

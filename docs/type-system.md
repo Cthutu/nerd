@@ -41,6 +41,7 @@ The current `SemaTypeKind` set includes:
 - fixed array types
 - slice types
 - pointer types
+- plex types
 
 Function types store their parameter list in the flattened
 `Sema.type_param_types` side table and keep the return type in
@@ -73,6 +74,11 @@ that its contents are valid UTF-8.
 
 Pointer types are written `^T`. The pointee type is part of the canonical type,
 so `^i32` and `^[3]i32` are distinct types.
+
+Plex types are written `plex { field Type ... }`. A plex row stores its named
+field types in source order, with field symbols carried alongside field types in
+semantic side tables. The current layout is source-order and C-compatible for
+predictable lowering and debugging; compiler-reordered layouts are deferred.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -203,6 +209,7 @@ Current storage-eligible types are:
 - fixed arrays whose element type is storage-eligible
 - slices whose element type is storage-eligible
 - pointers
+- plexes whose fields are all storage-eligible
 
 Zero-initialised declarations such as `count: i32` and `name: string` are
 checked in sema and then lowered using type-aware zero values.
@@ -223,6 +230,31 @@ Tuple fields are accessed with zero-based dot indices:
 The semantic pass checks that field access is applied to a tuple and that the
 index is within range. Tuple values currently lower to generated C structs with
 numbered fields such as `_0` and `_1`.
+
+## Plexes
+
+Plex declarations are ordinary type aliases whose right-hand side resolves to a
+plex type:
+
+- `Point :: plex { x i32 y i32 }`
+- `Person :: plex { name string age u32 }`
+
+Plex values are constructed with a named instance literal:
+
+- `point := Point { x: 3, y: 4 }`
+
+Every field must be supplied exactly once. Unknown fields, duplicate fields,
+missing fields, and field value type mismatches are rejected during semantic
+analysis. Literal field order does not have to match declaration order because
+lowering uses named C designators.
+
+Plex fields are accessed with dot syntax:
+
+- `point.x`
+- `person.name`
+
+The current milestone supports direct field access on plex values. Pointer field
+ergonomics such as automatic dereference for `^Point` are deferred.
 
 ## Fixed Arrays
 
@@ -442,6 +474,7 @@ Today the semantic type system is focused on:
 - fixed array literals, fixed array types, and fixed array indexing
 - slice types, explicit slicing, slice fields, and slice indexing
 - pointer types, address-of, and pointer indexing
+- plex type aliases, named construction, and direct field access
 - untyped integer materialisation
 - exact-match type checks for the implemented arithmetic surface
 - explicit cast validation

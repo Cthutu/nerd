@@ -49,6 +49,7 @@
 // | CK_Index           | Value node index      | Index expr node       |
 // | CK_Slice           | Slice-info index      | 0                     |
 // | CK_Field           | Value node index      | Symbol handle         |
+// | CK_Plex            | Plex-literal index    | 0                     |
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
@@ -57,6 +58,7 @@
 // | CK_TypeArray       | Length node index     | Element type node     |
 // | CK_TypeSlice       | Element type node     | 0                     |
 // | CK_TypePointer     | Pointee type node     | 0                     |
+// | CK_TypePlex        | Plex-type index       | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
@@ -112,6 +114,7 @@ typedef enum {
     CK_Index,
     CK_Slice,
     CK_Field,
+    CK_Plex,
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
@@ -120,6 +123,7 @@ typedef enum {
     CK_TypeArray,
     CK_TypeSlice,
     CK_TypePointer,
+    CK_TypePlex,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,
@@ -170,6 +174,29 @@ typedef struct {
 } CstSliceInfo;
 
 typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 type_node_index;
+} CstPlexField;
+
+typedef struct {
+    u32 first_field;
+    u32 field_count;
+} CstPlexTypeInfo;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 value_node_index;
+} CstPlexLiteralField;
+
+typedef struct {
+    u32 target_node_index;
+    u32 first_field;
+    u32 field_count;
+} CstPlexLiteralInfo;
+
+typedef struct {
     u32 pattern_node_index;
     u32 expr_node_index;
     u32 pattern_count;
@@ -215,6 +242,10 @@ typedef struct {
     Array(u32) tuple_items;
     Array(CstCallInfo) calls;
     Array(CstSliceInfo) slices;
+    Array(CstPlexField) plex_fields;
+    Array(CstPlexTypeInfo) plex_types;
+    Array(CstPlexLiteralField) plex_literal_fields;
+    Array(CstPlexLiteralInfo) plex_literals;
     Array(u32) on_pattern_nodes;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;

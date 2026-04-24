@@ -25,6 +25,7 @@ typedef enum : u8 {
     IR_OP_CALL,
     IR_OP_CAST,
     IR_OP_TUPLE,
+    IR_OP_PLEX,
     IR_OP_TUPLE_FIELD,
     IR_OP_ARRAY,
     IR_OP_SLICE,
@@ -122,6 +123,7 @@ typedef struct {
 typedef struct {
     IrValue value;
     u32     type;
+    u32     symbol;
 } IrTupleItem;
 
 typedef struct {
@@ -151,6 +153,7 @@ typedef struct {
     Array(string) strings;
     Array(SemaType) types;
     Array(u32) type_param_types;
+    Array(u32) type_param_symbols;
     Arena arena;
 } Ir;
 

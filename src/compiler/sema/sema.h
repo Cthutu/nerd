@@ -41,6 +41,7 @@ typedef enum : u8 {
     STK_Array,
     STK_Slice,
     STK_Pointer,
+    STK_Plex,
 } SemaTypeKind;
 
 //------------------------------------------------------------------------------
@@ -111,6 +112,7 @@ typedef struct {
 typedef struct {
     Array(SemaType) types;
     Array(u32) type_param_types;
+    Array(u32) type_param_symbols;
     Array(SemaDecl) decls;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;

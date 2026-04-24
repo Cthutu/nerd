@@ -58,6 +58,10 @@ typedef struct {
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
     Array(AstSliceInfo) slices;
+    Array(AstPlexField) plex_fields;
+    Array(AstPlexTypeInfo) plex_types;
+    Array(AstPlexLiteralField) plex_literal_fields;
+    Array(AstPlexLiteralInfo) plex_literals;
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;

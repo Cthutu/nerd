@@ -203,6 +203,25 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
         (*io_index)++;
         return cst_skip_type_tokens(state, io_index);
     }
+    if (kind == TK_plex) {
+        (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_LBrace) {
+            return false;
+        }
+        (*io_index)++;
+        while (cst_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (cst_kind_at_stream_index(state, *io_index) == TK_EOF ||
+                cst_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+            if (!cst_skip_type_tokens(state, io_index)) {
+                return false;
+            }
+        }
+        (*io_index)++;
+        return true;
+    }
     if (kind == TK_LBracket) {
         (*io_index)++;
         if (cst_kind_at_stream_index(state, *io_index) == TK_Integer) {
@@ -330,6 +349,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     switch (kind) {
     case TK_LParen:
     case TK_LBracket:
+    case TK_LBrace:
         *out_left_bp  = CST_BP_PREFIX + 10;
         *out_right_bp = CST_BP_PREFIX + 10;
         return true;
@@ -609,6 +629,51 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                                  .kind        = CK_TypePointer,
                                  .token_index = token_index,
                                  .a           = pointee_type,
+                             },
+                             out_node);
+    }
+
+    if (token.kind == TK_plex) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        if (!cst_consume(state, TK_LBrace)) {
+            return false;
+        }
+        u32 first_field = (u32)array_count(state->cst.plex_fields);
+        u32 field_count = 0;
+        while (cst_current_token(state).kind != TK_RBrace) {
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+            u32 field_token  = state->token_index;
+            u32 field_symbol = cst_current_symbol_handle(state);
+            cst_advance(state);
+            u32 type_node = 0;
+            if (!cst_parse_type(state, &type_node)) {
+                return false;
+            }
+            array_push(state->cst.plex_fields,
+                       (CstPlexField){
+                           .token_index     = field_token,
+                           .symbol_handle   = field_symbol,
+                           .type_node_index = type_node,
+                       });
+            field_count++;
+        }
+        if (!cst_consume(state, TK_RBrace)) {
+            return false;
+        }
+        u32 plex_type_index = (u32)array_count(state->cst.plex_types);
+        array_push(state->cst.plex_types,
+                   (CstPlexTypeInfo){
+                       .first_field = first_field,
+                       .field_count = field_count,
+                   });
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypePlex,
+                                 .token_index = token_index,
+                                 .a           = plex_type_index,
                              },
                              out_node);
     }
@@ -1248,6 +1313,16 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         u8    left_bp;
         u8    right_bp;
 
+        if (token.kind == TK_LBrace) {
+            bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&
+                               (cst_peek_kind_at(state, 1) == TK_RBrace ||
+                                (cst_peek_kind_at(state, 1) == TK_Symbol &&
+                                 cst_peek_kind_at(state, 2) == TK_Colon));
+            if (!starts_plex) {
+                break;
+            }
+        }
+
         if (!cst_infix_binding_power(token.kind, &left_bp, &right_bp) ||
             left_bp < min_bp) {
             if ((token.kind == TK_String ||
@@ -1370,6 +1445,56 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                                    .token_index = token_index,
                                    .a           = left,
                                    .b           = start,
+                               },
+                               &left)) {
+                return false;
+            }
+            continue;
+        }
+        if (token.kind == TK_LBrace) {
+            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
+            u32 field_count = 0;
+            while (cst_current_token(state).kind != TK_RBrace) {
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                u32 field_token  = state->token_index;
+                u32 field_symbol = cst_current_symbol_handle(state);
+                cst_advance(state);
+                if (!cst_consume(state, TK_Colon)) {
+                    return false;
+                }
+                if (!cst_parse_expr_bp(state, 0, &right)) {
+                    return false;
+                }
+                array_push(state->cst.plex_literal_fields,
+                           (CstPlexLiteralField){
+                               .token_index      = field_token,
+                               .symbol_handle    = field_symbol,
+                               .value_node_index = right,
+                           });
+                field_count++;
+                if (cst_current_token(state).kind == TK_Comma) {
+                    cst_advance(state);
+                    continue;
+                }
+                break;
+            }
+            if (!cst_consume(state, TK_RBrace)) {
+                return false;
+            }
+            u32 literal_index = (u32)array_count(state->cst.plex_literals);
+            array_push(state->cst.plex_literals,
+                       (CstPlexLiteralInfo){
+                           .target_node_index = left,
+                           .first_field       = first_field,
+                           .field_count       = field_count,
+                       });
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Plex,
+                                   .token_index = token_index,
+                                   .a           = literal_index,
                                },
                                &left)) {
                 return false;
@@ -2299,6 +2424,10 @@ void cst_done(Cst* cst)
     array_free(cst->tuple_items);
     array_free(cst->calls);
     array_free(cst->slices);
+    array_free(cst->plex_fields);
+    array_free(cst->plex_types);
+    array_free(cst->plex_literal_fields);
+    array_free(cst->plex_literals);
     array_free(cst->on_pattern_nodes);
     array_free(cst->on_branches);
     array_free(cst->ons);

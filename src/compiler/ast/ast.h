@@ -50,6 +50,7 @@
 // | AK_Index           | Ast index value   | Ast index of index expression   |
 // | AK_Slice           | Ast slice-info index | 0                            |
 // | AK_Field           | Ast index value   | Symbol handle                   |
+// | AK_Plex            | Ast plex-literal index | 0                         |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
@@ -58,6 +59,7 @@
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
 // | AK_TypeSlice       | Ast index element type | 0                           |
 // | AK_TypePointer     | Ast index pointee type | 0                           |
+// | AK_TypePlex        | Ast plex-type index | 0                            |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -116,6 +118,7 @@ typedef enum {
     AK_Index,
     AK_Slice,
     AK_Field,
+    AK_Plex,
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
@@ -124,6 +127,7 @@ typedef enum {
     AK_TypeArray,
     AK_TypeSlice,
     AK_TypePointer,
+    AK_TypePlex,
     AK_Expression,
     AK_Statement,
     AK_Return,
@@ -188,6 +192,29 @@ typedef struct {
 } AstSliceInfo;
 
 typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 type_node_index;
+} AstPlexField;
+
+typedef struct {
+    u32 first_field;
+    u32 field_count;
+} AstPlexTypeInfo;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 value_node_index;
+} AstPlexLiteralField;
+
+typedef struct {
+    u32 target_node_index;
+    u32 first_field;
+    u32 field_count;
+} AstPlexLiteralInfo;
+
+typedef struct {
     u32 pattern_node_index;
     u32 expr_node_index;
     u32 pattern_count;
@@ -230,6 +257,10 @@ typedef struct {
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
     Array(AstSliceInfo) slices;
+    Array(AstPlexField) plex_fields;
+    Array(AstPlexTypeInfo) plex_types;
+    Array(AstPlexLiteralField) plex_literal_fields;
+    Array(AstPlexLiteralInfo) plex_literals;
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;

@@ -81,6 +81,7 @@ internal u32 sema_add_function_type(Sema* sema,
     u32 first_param = (u32)array_count(sema->type_param_types);
     for (u32 i = 0; i < array_count(param_types); ++i) {
         array_push(sema->type_param_types, param_types[i]);
+        array_push(sema->type_param_symbols, U32_MAX);
     }
 
     return sema_add_type(sema,
@@ -117,6 +118,7 @@ internal u32 sema_add_tuple_type(Sema* sema, Array(u32) item_types)
     u32 first_item = (u32)array_count(sema->type_param_types);
     for (u32 i = 0; i < array_count(item_types); ++i) {
         array_push(sema->type_param_types, item_types[i]);
+        array_push(sema->type_param_symbols, U32_MAX);
     }
 
     return sema_add_type(sema,
@@ -159,6 +161,61 @@ internal u32 sema_add_pointer_type(Sema* sema, u32 pointee_type)
                              .first_param_type = pointee_type,
                              .return_type      = sema_no_type(),
                          });
+}
+
+internal u32 sema_add_plex_type_raw(Sema*      sema,
+                                    const u32* field_symbols,
+                                    const u32* field_types,
+                                    u32        field_count)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        const SemaType* existing = &sema->types[i];
+        if (existing->kind != STK_Plex ||
+            existing->param_count != field_count) {
+            continue;
+        }
+        bool matches = true;
+        for (u32 j = 0; j < field_count; ++j) {
+            if (sema->type_param_symbols[existing->first_param_type + j] !=
+                    field_symbols[j] ||
+                sema->type_param_types[existing->first_param_type + j] !=
+                    field_types[j]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) {
+            return i;
+        }
+    }
+
+    u32 first_field = (u32)array_count(sema->type_param_types);
+    for (u32 i = 0; i < field_count; ++i) {
+        array_push(sema->type_param_types, field_types[i]);
+        array_push(sema->type_param_symbols, field_symbols[i]);
+    }
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Plex,
+                             .param_count      = (u16)field_count,
+                             .first_param_type = first_field,
+                             .return_type      = sema_no_type(),
+                         });
+}
+
+internal u32 sema_add_plex_type(Sema*               sema,
+                                const AstPlexField* fields,
+                                Array(u32) field_types,
+                                u32 field_count)
+{
+    Array(u32) field_symbols = NULL;
+    for (u32 i = 0; i < field_count; ++i) {
+        array_push(field_symbols, fields[i].symbol_handle);
+    }
+    u32 type_index =
+        sema_add_plex_type_raw(sema, field_symbols, field_types, field_count);
+    array_free(field_symbols);
+    return type_index;
 }
 
 //------------------------------------------------------------------------------
@@ -306,6 +363,25 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
             sema_materialise_type(sema, pointer->first_param_type));
     }
 
+    if (sema->types[type_index].kind == STK_Plex) {
+        Array(u32) field_types   = NULL;
+        Array(u32) field_symbols = NULL;
+        const SemaType* plex     = &sema->types[type_index];
+        for (u32 i = 0; i < plex->param_count; ++i) {
+            array_push(
+                field_types,
+                sema_materialise_type(
+                    sema, sema->type_param_types[plex->first_param_type + i]));
+            array_push(field_symbols,
+                       sema->type_param_symbols[plex->first_param_type + i]);
+        }
+        u32 materialised = sema_add_plex_type_raw(
+            (Sema*)sema, field_symbols, field_types, plex->param_count);
+        array_free(field_types);
+        array_free(field_symbols);
+        return materialised;
+    }
+
     if (sema->types[type_index].kind != STK_Tuple) {
         return type_index;
     }
@@ -436,6 +512,29 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_append_char(&sb, '^');
             sb_append_string(
                 &sb, sema_type_name(sema, arena, type->first_param_type));
+            return sb_to_string(&sb);
+        }
+    case STK_Plex:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_append_cstr(&sb, "plex { ");
+            for (u32 i = 0; i < type->param_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(&sb, ", ");
+                }
+                sb_append_string(
+                    &sb,
+                    sema_type_name(
+                        sema,
+                        arena,
+                        sema->type_param_types[type->first_param_type + i]));
+                sb_append_char(&sb, ' ');
+                sb_format(&sb,
+                          "#%u",
+                          sema->type_param_symbols[type->first_param_type + i]);
+            }
+            sb_append_cstr(&sb, " }");
             return sb_to_string(&sb);
         }
     default:
@@ -1002,6 +1101,43 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypePlex:
+        {
+            const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
+            Array(u32) field_types      = NULL;
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                bool field_is_type = false;
+                u32  field_type    = sema_no_type();
+                if (!sema_try_classify_type_node(
+                        lexer,
+                        ast,
+                        sema,
+                        owner_decl_index,
+                        ast->plex_fields[plex->first_field + i].type_node_index,
+                        alias_states,
+                        &field_is_type,
+                        &field_type)) {
+                    array_free(field_types);
+                    return false;
+                }
+                if (!field_is_type) {
+                    array_free(field_types);
+                    *out_is_type    = false;
+                    *out_type_index = sema_no_type();
+                    return true;
+                }
+                array_push(field_types, field_type);
+            }
+            *out_is_type = true;
+            *out_type_index =
+                sema_add_plex_type(sema,
+                                   &ast->plex_fields[plex->first_field],
+                                   field_types,
+                                   plex->field_count);
+            array_free(field_types);
+            return true;
+        }
+
     default:
         *out_is_type    = false;
         *out_type_index = sema_no_type();
@@ -1208,6 +1344,17 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
         break;
     case AK_TypePointer:
         sema_mark_type_expr_nodes(ast, sema, node->a);
+        break;
+    case AK_TypePlex:
+        {
+            const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                sema_mark_type_expr_nodes(
+                    ast,
+                    sema,
+                    ast->plex_fields[plex->first_field + i].type_node_index);
+            }
+        }
         break;
     default:
         break;
@@ -1996,6 +2143,26 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             }
         }
         return true;
+    case AK_Plex:
+        {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            sema_mark_type_expr_nodes(ast, sema, literal->target_node_index);
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                if (!sema_resolve_node_refs(
+                        lexer,
+                        ast,
+                        owner_decl_index,
+                        current_function_symbol,
+                        capture_scope_index,
+                        scope_index,
+                        ast->plex_literal_fields[literal->first_field + i]
+                            .value_node_index,
+                        sema)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     case AK_TupleField:
         return sema_resolve_node_refs(lexer,
                                       ast,
@@ -2745,6 +2912,34 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypePlex:
+        {
+            const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
+            Array(u32) field_types      = NULL;
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                u32 field_type = sema_no_type();
+                if (!sema_resolve_type_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->plex_fields[plex->first_field + i].type_node_index,
+                        &field_type)) {
+                    array_free(field_types);
+                    return false;
+                }
+                array_push(field_types, field_type);
+            }
+            u32 type_index =
+                sema_add_plex_type(sema,
+                                   &ast->plex_fields[plex->first_field],
+                                   field_types,
+                                   plex->field_count);
+            array_free(field_types);
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
     default:
         return error_0303_unknown_type(
             lexer->source, sema_node_span(lexer, node), s("<expression>"));
@@ -2816,6 +3011,18 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     case STK_Slice:
     case STK_Pointer:
         return true;
+    case STK_Plex:
+        {
+            const SemaType* plex = &sema->types[type_index];
+            for (u32 i = 0; i < plex->param_count; ++i) {
+                if (!sema_type_is_variable_storage(
+                        sema,
+                        sema->type_param_types[plex->first_param_type + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     case STK_Tuple:
         {
             const SemaType* tuple = &sema->types[type_index];
@@ -4078,6 +4285,88 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         }
         break;
 
+    case AK_Plex:
+        {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            u32                       target_type = sema_no_type();
+            if (!sema_resolve_type_node(lexer,
+                                        ast,
+                                        sema,
+                                        literal->target_node_index,
+                                        &target_type)) {
+                return false;
+            }
+            if (target_type == sema_no_type() ||
+                sema->types[target_type].kind != STK_Plex) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("plex type"),
+                    sema_type_name(sema, &temp_arena, target_type));
+            }
+            const SemaType* plex = &sema->types[target_type];
+            if (literal->field_count != plex->param_count) {
+                return error_0304_type_mismatch(lexer->source,
+                                                sema_node_span(lexer, node),
+                                                s("all plex fields"),
+                                                s("different field count"));
+            }
+            bool* seen =
+                arena_alloc(&temp_arena, sizeof(bool) * plex->param_count);
+            memset(seen, 0, sizeof(bool) * plex->param_count);
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                const AstPlexLiteralField* field =
+                    &ast->plex_literal_fields[literal->first_field + i];
+                u32 field_index = U32_MAX;
+                for (u32 j = 0; j < plex->param_count; ++j) {
+                    if (sema->type_param_symbols[plex->first_param_type + j] ==
+                        field->symbol_handle) {
+                        field_index = j;
+                        break;
+                    }
+                }
+                if (field_index == U32_MAX) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer,
+                                       &ast->nodes[field->value_node_index]),
+                        s("known plex field"),
+                        lex_symbol(lexer, field->symbol_handle));
+                }
+                if (seen[field_index]) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer,
+                                       &ast->nodes[field->value_node_index]),
+                        s("unique plex field"),
+                        lex_symbol(lexer, field->symbol_handle));
+                }
+                seen[field_index] = true;
+                u32 expected_field =
+                    sema->type_param_types[plex->first_param_type +
+                                           field_index];
+                u32 actual_field = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          field->value_node_index,
+                                          expected_field,
+                                          &actual_field)) {
+                    return false;
+                }
+            }
+            for (u32 i = 0; i < plex->param_count; ++i) {
+                if (!seen[i]) {
+                    return error_0304_type_mismatch(lexer->source,
+                                                    sema_node_span(lexer, node),
+                                                    s("all plex fields"),
+                                                    s("missing field"));
+                }
+            }
+            type_index = target_type;
+        }
+        break;
+
     case AK_Field:
         {
             u32 target_type = sema_no_type();
@@ -4085,13 +4374,32 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer, ast, sema, node->a, sema_no_type(), &target_type)) {
                 return false;
             }
+            if (target_type != sema_no_type() &&
+                sema->types[target_type].kind == STK_Plex) {
+                const SemaType* plex = &sema->types[target_type];
+                for (u32 i = 0; i < plex->param_count; ++i) {
+                    if (sema->type_param_symbols[plex->first_param_type + i] ==
+                        node->b) {
+                        type_index =
+                            sema->type_param_types[plex->first_param_type + i];
+                        break;
+                    }
+                }
+                if (type_index == sema_no_type()) {
+                    return error_0304_type_mismatch(lexer->source,
+                                                    sema_node_span(lexer, node),
+                                                    s("known plex field"),
+                                                    lex_symbol(lexer, node->b));
+                }
+                break;
+            }
             if (target_type == sema_no_type() ||
                 (sema->types[target_type].kind != STK_Slice &&
                  sema->types[target_type].kind != STK_String)) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    s("slice or string"),
+                    s("slice, string, or plex"),
                     sema_type_name(sema, &temp_arena, target_type));
             }
             string field = lex_symbol(lexer, node->b);
@@ -6216,6 +6524,7 @@ void sema_done(Sema* sema)
 {
     array_free(sema->types);
     array_free(sema->type_param_types);
+    array_free(sema->type_param_symbols);
     array_free(sema->decls);
     array_free(sema->locals);
     array_free(sema->scopes);

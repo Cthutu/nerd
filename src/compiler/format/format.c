@@ -188,6 +188,7 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_Index:
     case CK_Slice:
     case CK_Field:
+    case CK_Plex:
         return 80;
     case CK_StringConcat:
         return 85;
@@ -345,6 +346,24 @@ internal void format_emit_expr(StringBuilder* sb,
             format_emit_expr(sb, cst, lexer, cst->tuple_items[node->a + i], 0);
         }
         sb_append_char(sb, ']');
+        break;
+    case CK_Plex:
+        {
+            const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
+            format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+            sb_append_cstr(sb, " { ");
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                const CstPlexLiteralField* field =
+                    &cst->plex_literal_fields[plex->first_field + i];
+                sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+                sb_append_cstr(sb, ": ");
+                format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
+            }
+            sb_append_cstr(sb, " }");
+        }
         break;
     case CK_IntegerNegate:
         sb_append_char(sb, '-');
@@ -668,6 +687,21 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, '^');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
+    case CK_TypePlex:
+        {
+            const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
+            sb_append_cstr(sb, "plex {");
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                const CstPlexField* field =
+                    &cst->plex_fields[plex->first_field + i];
+                sb_append_char(sb, ' ');
+                sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+                sb_append_char(sb, ' ');
+                format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+            }
+            sb_append_cstr(sb, " }");
+        }
+        break;
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
         sb_append_cstr(sb, " => ");
@@ -957,6 +991,10 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_TypeTuple:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LParen, TK_RParen);
+    case CK_Plex:
+    case CK_TypePlex:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_TupleField:
     case CK_Field:
         return node->token_index;

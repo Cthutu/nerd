@@ -94,8 +94,10 @@ internal void ir_render_value(StringBuilder* sb,
     }
 }
 
-internal void
-ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
+internal void ir_render_type_name(StringBuilder* sb,
+                                  const Ir*      ir,
+                                  const Lexer*   lexer,
+                                  u32            type_index)
 {
     if (type_index == U32_MAX || type_index >= array_count(ir->types)) {
         sb_append_cstr(sb, "<unknown>");
@@ -162,10 +164,13 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
                 sb_append_cstr(sb, ",");
             }
             ir_render_type_name(
-                sb, ir, ir->type_param_types[type->first_param_type + i]);
+                sb,
+                ir,
+                lexer,
+                ir->type_param_types[type->first_param_type + i]);
         }
         sb_append_cstr(sb, ")->");
-        ir_render_type_name(sb, ir, type->return_type);
+        ir_render_type_name(sb, ir, lexer, type->return_type);
         break;
     case STK_Tuple:
         sb_append_cstr(sb, "(");
@@ -174,7 +179,10 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
                 sb_append_cstr(sb, ",");
             }
             ir_render_type_name(
-                sb, ir, ir->type_param_types[type->first_param_type + i]);
+                sb,
+                ir,
+                lexer,
+                ir->type_param_types[type->first_param_type + i]);
         }
         if (type->param_count == 1) {
             sb_append_cstr(sb, ",");
@@ -183,15 +191,34 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         break;
     case STK_Array:
         sb_format(sb, "[%u]", type->return_type);
-        ir_render_type_name(sb, ir, type->first_param_type);
+        ir_render_type_name(sb, ir, lexer, type->first_param_type);
         break;
     case STK_Slice:
         sb_append_cstr(sb, "[]");
-        ir_render_type_name(sb, ir, type->first_param_type);
+        ir_render_type_name(sb, ir, lexer, type->first_param_type);
         break;
     case STK_Pointer:
         sb_append_char(sb, '^');
-        ir_render_type_name(sb, ir, type->first_param_type);
+        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        break;
+    case STK_Plex:
+        sb_append_cstr(sb, "plex{");
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ",");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(lexer,
+                           ir->type_param_symbols[type->first_param_type + i]));
+            sb_append_char(sb, ':');
+            ir_render_type_name(
+                sb,
+                ir,
+                lexer,
+                ir->type_param_types[type->first_param_type + i]);
+        }
+        sb_append_cstr(sb, "}");
         break;
     default:
         sb_append_cstr(sb, "<unknown>");
@@ -205,7 +232,7 @@ internal void ir_render_typed_value(StringBuilder* sb,
                                     const IrValue* value,
                                     u32            type_index)
 {
-    ir_render_type_name(sb, ir, type_index);
+    ir_render_type_name(sb, ir, lexer, type_index);
     sb_append_char(sb, ':');
     if (type_index != U32_MAX && value->kind == IR_VALUE_INTEGER &&
         ir->types[type_index].kind == STK_Bool) {
@@ -315,6 +342,27 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                     IrValue value =
                         ir->tuple_items[tuple->first_item + item].value;
                     value.type = ir->tuple_items[tuple->first_item + item].type;
+                    ir_render_maybe_typed_value(&sb, ir, lexer, &value);
+                }
+            }
+            sb_append_cstr(&sb, ")");
+            break;
+        case IR_OP_PLEX:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = plex(");
+            {
+                const IrTupleInfo* plex =
+                    &ir->tuples[(u32)instr->rvalue[0].value.integer];
+                for (u32 item = 0; item < plex->item_count; ++item) {
+                    if (item > 0) {
+                        sb_append_cstr(&sb, ", ");
+                    }
+                    const IrTupleItem* plex_item =
+                        &ir->tuple_items[plex->first_item + item];
+                    sb_append_string(&sb, lex_symbol(lexer, plex_item->symbol));
+                    sb_append_cstr(&sb, ": ");
+                    IrValue value = plex_item->value;
+                    value.type    = plex_item->type;
                     ir_render_maybe_typed_value(&sb, ir, lexer, &value);
                 }
             }

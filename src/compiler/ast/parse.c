@@ -112,6 +112,25 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return ast_skip_type_tokens(state, io_index);
     }
+    if (kind == TK_plex) {
+        (*io_index)++;
+        if (ast_kind_at_stream_index(state, *io_index) != TK_LBrace) {
+            return false;
+        }
+        (*io_index)++;
+        while (ast_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (ast_kind_at_stream_index(state, *io_index) == TK_EOF ||
+                ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+            if (!ast_skip_type_tokens(state, io_index)) {
+                return false;
+            }
+        }
+        (*io_index)++;
+        return true;
+    }
     if (kind == TK_LBracket) {
         (*io_index)++;
         if (ast_kind_at_stream_index(state, *io_index) == TK_Integer) {
@@ -459,6 +478,62 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  .kind        = AK_TypePointer,
                                  .token_index = caret.token_index,
                                  .a           = pointee_type,
+                             },
+                             out_node);
+    }
+
+    if (state->token.kind == TK_plex) {
+        AstToken plex = state->token;
+        if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &plex),
+                                             TK_LBrace,
+                                             state->token.kind);
+        }
+        if (!ast_next_token(state)) {
+            return false;
+        }
+
+        u32 first_field = (u32)array_count(state->plex_fields);
+        u32 field_count = 0;
+        while (state->token.kind != TK_RBrace) {
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            AstToken field = state->token;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            u32 type_node = 0;
+            if (!ast_parse_type(state, &type_node)) {
+                return false;
+            }
+            array_push(state->plex_fields,
+                       (AstPlexField){
+                           .token_index     = field.token_index,
+                           .symbol_handle   = field.value.symbol_handle,
+                           .type_node_index = type_node,
+                       });
+            field_count++;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        }
+        u32 plex_type_index = (u32)array_count(state->plex_types);
+        array_push(state->plex_types,
+                   (AstPlexTypeInfo){
+                       .first_field = first_field,
+                       .field_count = field_count,
+                   });
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypePlex,
+                                 .token_index = plex.token_index,
+                                 .a           = plex_type_index,
                              },
                              out_node);
     }
@@ -1532,33 +1607,41 @@ Ast ast_parse(Lexer* lexer)
     }
 
     return (Ast){
-        .nodes            = state.nodes,
-        .params           = state.params,
-        .fn_signatures    = state.fn_signatures,
-        .call_args        = state.call_args,
-        .tuple_items      = state.tuple_items,
-        .calls            = state.calls,
-        .slices           = state.slices,
-        .on_pattern_nodes = state.on_pattern_nodes,
-        .on_branches      = state.on_branches,
-        .ons              = state.ons,
-        .for_items        = state.for_items,
-        .fors             = state.fors,
+        .nodes               = state.nodes,
+        .params              = state.params,
+        .fn_signatures       = state.fn_signatures,
+        .call_args           = state.call_args,
+        .tuple_items         = state.tuple_items,
+        .calls               = state.calls,
+        .slices              = state.slices,
+        .plex_fields         = state.plex_fields,
+        .plex_types          = state.plex_types,
+        .plex_literal_fields = state.plex_literal_fields,
+        .plex_literals       = state.plex_literals,
+        .on_pattern_nodes    = state.on_pattern_nodes,
+        .on_branches         = state.on_branches,
+        .ons                 = state.ons,
+        .for_items           = state.for_items,
+        .fors                = state.fors,
     };
 
 error:
-    ast_done(&(Ast){.nodes            = state.nodes,
-                    .params           = state.params,
-                    .fn_signatures    = state.fn_signatures,
-                    .call_args        = state.call_args,
-                    .tuple_items      = state.tuple_items,
-                    .calls            = state.calls,
-                    .slices           = state.slices,
-                    .on_pattern_nodes = state.on_pattern_nodes,
-                    .on_branches      = state.on_branches,
-                    .ons              = state.ons,
-                    .for_items        = state.for_items,
-                    .fors             = state.fors});
+    ast_done(&(Ast){.nodes               = state.nodes,
+                    .params              = state.params,
+                    .fn_signatures       = state.fn_signatures,
+                    .call_args           = state.call_args,
+                    .tuple_items         = state.tuple_items,
+                    .calls               = state.calls,
+                    .slices              = state.slices,
+                    .plex_fields         = state.plex_fields,
+                    .plex_types          = state.plex_types,
+                    .plex_literal_fields = state.plex_literal_fields,
+                    .plex_literals       = state.plex_literals,
+                    .on_pattern_nodes    = state.on_pattern_nodes,
+                    .on_branches         = state.on_branches,
+                    .ons                 = state.ons,
+                    .for_items           = state.for_items,
+                    .fors                = state.fors});
     return (Ast){0};
 }
 
@@ -1574,6 +1657,10 @@ void ast_done(Ast* ast)
     array_free(ast->tuple_items);
     array_free(ast->calls);
     array_free(ast->slices);
+    array_free(ast->plex_fields);
+    array_free(ast->plex_types);
+    array_free(ast->plex_literal_fields);
+    array_free(ast->plex_literals);
     array_free(ast->on_pattern_nodes);
     array_free(ast->on_branches);
     array_free(ast->ons);
