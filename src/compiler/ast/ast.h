@@ -214,6 +214,8 @@ u64    ast_get_integer(const Lexer* lexer, const AstNode* node);
 f64    ast_get_float(const Lexer* lexer, const AstNode* node);
 string ast_get_string(const Lexer* lexer, const AstNode* node);
 u32    ast_get_symbol(const AstNode* node);
+bool   ast_node_is_block_statement(const AstNode* node);
+u32    ast_block_statement_end_exclusive(const Ast* ast, u32 node_index);
 
 //------------------------------------------------------------------------------
 // AST node flag helpers

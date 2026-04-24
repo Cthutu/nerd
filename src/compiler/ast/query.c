@@ -67,3 +67,24 @@ u32 ast_get_symbol(const AstNode* node)
     }
     return node->a;
 }
+
+bool ast_node_is_block_statement(const AstNode* node)
+{
+    return node->kind == AK_Block || node->kind == AK_For ||
+           node->kind == AK_Break || node->kind == AK_Continue ||
+           node->kind == AK_Return || node->kind == AK_Statement ||
+           node->kind == AK_Bind || node->kind == AK_Variable ||
+           node->kind == AK_Assign;
+}
+
+u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_Block) {
+        return node->b;
+    }
+    if (node->kind == AK_For) {
+        return ast->nodes[node->b].b;
+    }
+    return node_index + 1;
+}

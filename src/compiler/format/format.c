@@ -655,15 +655,6 @@ typedef struct {
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
 
-internal bool format_is_block_statement(const CstNode* node)
-{
-    return node->kind == CK_Block || node->kind == CK_Statement ||
-           node->kind == CK_Return || node->kind == CK_Bind ||
-           node->kind == CK_For || node->kind == CK_Break ||
-           node->kind == CK_Continue || node->kind == CK_Variable ||
-           node->kind == CK_Assign;
-}
-
 internal bool format_node_is_function_value(const Cst* cst, u32 node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
@@ -1045,7 +1036,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
 internal u32 format_next_block_statement(const Cst* cst, u32 start, u32 end)
 {
     for (u32 i = start; i < end; ++i) {
-        if (format_is_block_statement(&cst->nodes[i])) {
+        if (cst_node_is_block_statement(&cst->nodes[i])) {
             return i;
         }
     }
@@ -1170,7 +1161,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
     arena_init(&align_arena);
 
     for (u32 i = block->a; i < block->b; ++i) {
-        if (!format_is_block_statement(&cst->nodes[i])) {
+        if (!cst_node_is_block_statement(&cst->nodes[i])) {
             continue;
         }
 
@@ -1284,11 +1275,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
             }
         }
         previous_statement_index = i;
-        if (cst->nodes[i].kind == CK_Block) {
-            i = cst->nodes[i].b - 1;
-        } else if (cst->nodes[i].kind == CK_For) {
-            i = cst->nodes[cst->nodes[i].b].b - 1;
-        }
+        i = cst_block_statement_end_exclusive(cst, i) - 1;
     }
 
     arena_done(&align_arena);
@@ -1386,15 +1373,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_Block) {
         sb_append_cstr(sb, "{\n");
         for (u32 i = stmt->a; i < stmt->b; ++i) {
-            if (!format_is_block_statement(&cst->nodes[i])) {
+            if (!cst_node_is_block_statement(&cst->nodes[i])) {
                 continue;
             }
             format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
-            if (cst->nodes[i].kind == CK_Block) {
-                i = cst->nodes[i].b - 1;
-            } else if (cst->nodes[i].kind == CK_For) {
-                i = cst->nodes[cst->nodes[i].b].b - 1;
-            }
+            i = cst_block_statement_end_exclusive(cst, i) - 1;
         }
         format_emit_indent(sb, indent_level);
         sb_append_cstr(sb, "}\n");
@@ -1433,15 +1416,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
         }
         sb_append_cstr(sb, " {\n");
         for (u32 i = body->a; i < body->b; ++i) {
-            if (!format_is_block_statement(&cst->nodes[i])) {
+            if (!cst_node_is_block_statement(&cst->nodes[i])) {
                 continue;
             }
             format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
-            if (cst->nodes[i].kind == CK_Block) {
-                i = cst->nodes[i].b - 1;
-            } else if (cst->nodes[i].kind == CK_For) {
-                i = cst->nodes[cst->nodes[i].b].b - 1;
-            }
+            i = cst_block_statement_end_exclusive(cst, i) - 1;
         }
         format_emit_indent(sb, indent_level);
         sb_append_cstr(sb, "}\n");

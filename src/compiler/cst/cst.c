@@ -1904,4 +1904,25 @@ u32 cst_get_symbol(const CstNode* node)
     return node->a;
 }
 
+bool cst_node_is_block_statement(const CstNode* node)
+{
+    return node->kind == CK_Block || node->kind == CK_Statement ||
+           node->kind == CK_Return || node->kind == CK_Bind ||
+           node->kind == CK_For || node->kind == CK_Break ||
+           node->kind == CK_Continue || node->kind == CK_Variable ||
+           node->kind == CK_Assign;
+}
+
+u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_Block) {
+        return node->b;
+    }
+    if (node->kind == CK_For) {
+        return cst->nodes[node->b].b;
+    }
+    return node_index + 1;
+}
+
 //------------------------------------------------------------------------------

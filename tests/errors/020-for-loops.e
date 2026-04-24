@@ -84,6 +84,36 @@ main :: fn () {
 }
 ¬
 main :: fn () {
+    for {
+        for on true => break {
+        }
+    }
+}
+¬
+{
+    "code": "0328",
+    "message": "`break` can only be used inside a loop",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 3,
+        "column": 24
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 24,
+            "length": 5,
+            "message": "This `break` is not inside a `for` loop"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Move `break` into a `for` loop body."
+    ]
+}
+¬
+main :: fn () {
     continue
 }
 ¬
@@ -107,5 +137,33 @@ main :: fn () {
     "notes": [],
     "help": [
         "Move `continue` into a `for` loop body."
+    ]
+}
+¬
+main :: fn () {
+    for on true => break {
+    }
+}
+¬
+{
+    "code": "0328",
+    "message": "`break` can only be used inside a loop",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 2,
+        "column": 20
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 20,
+            "length": 5,
+            "message": "This `break` is not inside a `for` loop"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Move `break` into a `for` loop body."
     ]
 }

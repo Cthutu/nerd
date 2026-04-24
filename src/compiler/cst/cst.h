@@ -191,8 +191,10 @@ typedef struct {
 bool cst_parse(const Lexer* lexer, Cst* out_cst);
 void cst_done(Cst* cst);
 
-u64 cst_get_integer(const Cst* cst, const CstNode* node);
-f64 cst_get_float(const Cst* cst, const CstNode* node);
-u32 cst_get_symbol(const CstNode* node);
+u64  cst_get_integer(const Cst* cst, const CstNode* node);
+f64  cst_get_float(const Cst* cst, const CstNode* node);
+u32  cst_get_symbol(const CstNode* node);
+bool cst_node_is_block_statement(const CstNode* node);
+u32  cst_block_statement_end_exclusive(const Cst* cst, u32 node_index);
 
 //------------------------------------------------------------------------------
