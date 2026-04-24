@@ -248,6 +248,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                          const Lexer*   lexer,
                                          u32            block_node_index,
                                          u32            indent_level);
+internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
 
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
@@ -505,6 +506,90 @@ internal void format_emit_expr(StringBuilder* sb,
     }
 }
 
+internal string format_render_on_branch_head(Arena*             arena,
+                                             const Cst*         cst,
+                                             const Lexer*       lexer,
+                                             const CstOnBranch* branch)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    if (branch->binder_symbol_handle != U32_MAX) {
+        sb_append_string(&sb, lex_symbol(lexer, branch->binder_symbol_handle));
+        sb_append_cstr(&sb, " @ ");
+    }
+
+    if (branch->flags & COBF_Else) {
+        sb_append_cstr(&sb, "else");
+    } else {
+        for (u32 pattern = 0; pattern < branch->pattern_count; ++pattern) {
+            if (pattern > 0) {
+                sb_append_cstr(&sb, ", ");
+            }
+            format_emit_expr(
+                &sb,
+                cst,
+                lexer,
+                cst->on_pattern_nodes[branch->pattern_node_index + pattern],
+                0);
+        }
+    }
+
+    return sb_to_string(&sb);
+}
+
+internal void format_emit_on_block_multiline(StringBuilder* sb,
+                                             const Cst*     cst,
+                                             const Lexer*   lexer,
+                                             u32            node_index,
+                                             u32            indent_level)
+{
+    const CstNode*   node = &cst->nodes[node_index];
+    const CstOnInfo* on   = &cst->ons[node->b];
+    ASSERT(node->kind == CK_On && on->kind == COK_Value,
+           "Expected block-form on expression");
+
+    Arena branch_arena = {0};
+    arena_init(&branch_arena);
+    Array(string) heads  = NULL;
+    usize max_head_width = 0;
+    bool  has_binder     = false;
+    for (u32 i = 0; i < on->branch_count; ++i) {
+        const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
+        if (branch->binder_symbol_handle != U32_MAX) {
+            has_binder = true;
+        }
+        string head =
+            format_render_on_branch_head(&branch_arena, cst, lexer, branch);
+        array_push(heads, head);
+        if (head.count > max_head_width) {
+            max_head_width = head.count;
+        }
+    }
+
+    sb_append_cstr(sb, "on ");
+    format_emit_expr(sb, cst, lexer, node->a, 0);
+    sb_append_cstr(sb, " {\n");
+    for (u32 i = 0; i < on->branch_count; ++i) {
+        const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
+        format_emit_indent(sb, indent_level + 1);
+        sb_append_string(sb, heads[i]);
+        if (has_binder) {
+            for (usize pad = heads[i].count; pad < max_head_width; ++pad) {
+                sb_append_char(sb, ' ');
+            }
+        }
+        sb_append_cstr(sb, " => ");
+        format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+        sb_append_char(sb, '\n');
+    }
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
+
+    array_free(heads);
+    arena_done(&branch_arena);
+}
+
 internal void format_emit_variable_payload(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
@@ -544,6 +629,7 @@ typedef struct {
     string type;
     string value;
     bool   is_bind;
+    bool   has_value;
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
 
@@ -552,6 +638,22 @@ internal bool format_is_block_statement(const CstNode* node)
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_Variable || node->kind == CK_Assign;
+}
+
+internal bool format_node_is_function_value(const Cst* cst, u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_AnnotatedValue) {
+        node = &cst->nodes[node->b];
+    }
+    return node->kind == CK_FnExpr || node->kind == CK_FnBlock;
+}
+
+internal bool format_statement_is_function_binding(const Cst* cst,
+                                                   u32        node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    return node->kind == CK_Bind && format_node_is_function_value(cst, node->b);
 }
 
 internal u32 format_find_matching_close_token_index(const Lexer* lexer,
@@ -817,16 +919,18 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
         } else if (payload->kind == CK_ZeroInit) {
-            return false;
+            typed = true;
+            type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
         } else {
             value = format_render_expr_to_string(arena, cst, lexer, node->b);
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol  = lex_symbol(lexer, cst_get_symbol(node)),
-            .type    = type,
-            .value   = value,
-            .is_bind = false,
+            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
+            .type      = type,
+            .value     = value,
+            .is_bind   = false,
+            .has_value = payload->kind != CK_ZeroInit,
             .uses_standard_single_line = !typed,
         };
         return true;
@@ -857,10 +961,11 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol  = lex_symbol(lexer, cst_get_symbol(node)),
-            .type    = type,
-            .value   = value,
-            .is_bind = true,
+            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
+            .type      = type,
+            .value     = value,
+            .is_bind   = true,
+            .has_value = true,
             .uses_standard_single_line = !typed,
         };
         return true;
@@ -918,6 +1023,10 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
         if (!stmts[i].is_bind || has_type_column) {
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
+            if (!stmts[i].has_value) {
+                sb_append_char(sb, '\n');
+                continue;
+            }
             for (usize pad = stmts[i].type.count; pad <= max_type_width;
                  ++pad) {
                 sb_append_char(sb, ' ');
@@ -1002,6 +1111,12 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 cst, lexer, previous_statement_index, i)) {
             sb_append_char(sb, '\n');
         }
+        if (previous_statement_index != U32_MAX &&
+            format_statement_is_function_binding(cst, i) &&
+            !format_has_blank_line_between_statements(
+                cst, lexer, previous_statement_index, i)) {
+            sb_append_char(sb, '\n');
+        }
 
         FormatAlignedStatement first_aligned = {0};
         if (format_collect_aligned_statement(
@@ -1071,6 +1186,15 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
 
         format_emit_block_statement(sb, cst, lexer, i, indent_level);
+        if (format_statement_is_function_binding(cst, i)) {
+            u32 next_statement =
+                format_next_block_statement(cst, i + 1, block->b);
+            if (next_statement != U32_MAX &&
+                !format_has_blank_line_between_statements(
+                    cst, lexer, i, next_statement)) {
+                sb_append_char(sb, '\n');
+            }
+        }
         FormatAlignedStatement current_aligned = {0};
         if (format_collect_aligned_statement(
                 &align_arena, cst, lexer, i, &current_aligned)) {
@@ -1194,8 +1318,15 @@ internal void format_emit_value(StringBuilder* sb,
     switch (node->kind) {
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
-        sb_append_cstr(sb, " => ");
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        if (cst->nodes[node->b].kind == CK_On &&
+            cst->ons[cst->nodes[node->b].b].kind == COK_Value) {
+            sb_append_cstr(sb, " =>\n");
+            format_emit_indent(sb, 1);
+            format_emit_on_block_multiline(sb, cst, lexer, node->b, 1);
+        } else {
+            sb_append_cstr(sb, " => ");
+            format_emit_expr(sb, cst, lexer, node->b, 0);
+        }
         break;
     case CK_FnBlock:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
@@ -1249,12 +1380,61 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         return false;
     }
 
+    Arena align_arena = {0};
+    arena_init(&align_arena);
+
     bool first_binding = true;
     for (u32 i = 0; i < array_count(cst.bindings); ++i) {
-        const CstNode* node = &cst.nodes[cst.bindings[i]];
+        u32            node_index = cst.bindings[i];
+        const CstNode* node       = &cst.nodes[node_index];
 
         if (!first_binding) {
             sb_append_char(sb, '\n');
+        }
+
+        FormatAlignedStatement first_aligned = {0};
+        if (format_collect_aligned_statement(
+                &align_arena, &cst, &lexer, node_index, &first_aligned)) {
+            Array(FormatAlignedStatement) aligned = NULL;
+            array_push(aligned, first_aligned);
+
+            u32 last_aligned_binding = i;
+            for (u32 cursor = i + 1; cursor < array_count(cst.bindings);
+                 ++cursor) {
+                u32 next_index = cst.bindings[cursor];
+                if (format_has_blank_line_between_statements(
+                        &cst,
+                        &lexer,
+                        cst.bindings[last_aligned_binding],
+                        next_index)) {
+                    break;
+                }
+
+                FormatAlignedStatement next_aligned = {0};
+                if (!format_collect_aligned_statement(&align_arena,
+                                                      &cst,
+                                                      &lexer,
+                                                      next_index,
+                                                      &next_aligned) ||
+                    !format_aligned_statements_same_family(first_aligned,
+                                                           next_aligned)) {
+                    break;
+                }
+
+                array_push(aligned, next_aligned);
+                last_aligned_binding = cursor;
+            }
+
+            if (array_count(aligned) > 1 && !aligned[0].is_bind) {
+                format_emit_aligned_statement_group(
+                    sb, aligned, (u32)array_count(aligned), 0);
+                i             = last_aligned_binding;
+                first_binding = false;
+                array_free(aligned);
+                continue;
+            }
+
+            array_free(aligned);
         }
 
         sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
@@ -1277,6 +1457,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         first_binding = false;
     }
 
+    arena_done(&align_arena);
     cst_done(&cst);
     lex_done(&lexer);
     return true;
