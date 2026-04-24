@@ -7,8 +7,8 @@ prn($"{p.name} {p.x} {p.y}")
 }
 ¬
 Point :: plex {
-    x i32
-    y i32
+    x    i32
+    y    i32
     name string
 }
 

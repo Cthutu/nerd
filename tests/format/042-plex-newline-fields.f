@@ -11,7 +11,7 @@ main :: fn () {
 ¬
 Person :: plex {
     name string
-    age u8
+    age  u8
 }
 
 matt :: Person { name: "Matt", age: 53 }

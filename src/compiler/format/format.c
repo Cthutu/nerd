@@ -1194,13 +1194,25 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
     const CstNode* node = &cst->nodes[node_index];
     ASSERT(node->kind == CK_TypePlex, "Expected plex type node");
 
-    const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
+    const CstPlexTypeInfo* plex            = &cst->plex_types[node->a];
+    usize                  max_field_width = 0;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
+        usize field_width = lex_symbol(lexer, field->symbol_handle).count;
+        if (field_width > max_field_width) {
+            max_field_width = field_width;
+        }
+    }
+
     sb_append_cstr(sb, "plex {\n");
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
+        string field_name         = lex_symbol(lexer, field->symbol_handle);
         format_emit_indent(sb, indent_level + 1);
-        sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
-        sb_append_char(sb, ' ');
+        sb_append_string(sb, field_name);
+        for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
         format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
         sb_append_char(sb, '\n');
     }
