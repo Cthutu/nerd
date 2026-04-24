@@ -875,6 +875,12 @@ internal u32 format_next_block_statement(const Cst* cst, u32 start, u32 end)
     return U32_MAX;
 }
 
+internal bool format_aligned_statements_same_family(FormatAlignedStatement a,
+                                                    FormatAlignedStatement b)
+{
+    return a.is_bind == b.is_bind;
+}
+
 internal void
 format_emit_aligned_statement_group(StringBuilder*                sb,
                                     const FormatAlignedStatement* stmts,
@@ -1017,6 +1023,10 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                       &next_aligned)) {
                     break;
                 }
+                if (!format_aligned_statements_same_family(first_aligned,
+                                                           next_aligned)) {
+                    break;
+                }
 
                 array_push(aligned, next_aligned);
                 last_aligned_index = next_statement;
@@ -1042,6 +1052,9 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                           next_statement,
                                                           &ignored)) {
                         sb_append_char(sb, '\n');
+                    } else if (!format_aligned_statements_same_family(
+                                   first_aligned, ignored)) {
+                        sb_append_char(sb, '\n');
                     }
                 }
 
@@ -1053,6 +1066,26 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
 
         format_emit_block_statement(sb, cst, lexer, i, indent_level);
+        FormatAlignedStatement current_aligned = {0};
+        if (format_collect_aligned_statement(
+                &align_arena, cst, lexer, i, &current_aligned)) {
+            u32 next_statement =
+                format_next_block_statement(cst, i + 1, block->b);
+            if (next_statement != U32_MAX &&
+                !format_has_blank_line_between_statements(
+                    cst, lexer, i, next_statement)) {
+                FormatAlignedStatement next_aligned = {0};
+                if (format_collect_aligned_statement(&align_arena,
+                                                     cst,
+                                                     lexer,
+                                                     next_statement,
+                                                     &next_aligned) &&
+                    !format_aligned_statements_same_family(current_aligned,
+                                                           next_aligned)) {
+                    sb_append_char(sb, '\n');
+                }
+            }
+        }
         previous_statement_index = i;
         if (cst->nodes[i].kind == CK_Block) {
             i = cst->nodes[i].b - 1;
