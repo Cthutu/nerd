@@ -8,7 +8,7 @@ test :: fn () {
 }
 
 main :: fn () {
-    ratio: f64 = 1.5 + 2.0 * 3.0
+    ratio: f64 = 3.14 + 2.0 * 3.0
     s :string = "hello"
     flags: u32 = 7 | 2 ^ 1 & 3
     same := ratio >= 7.5 && flags != 0
@@ -30,7 +30,7 @@ test :: fn () {
 }
 
 main :: fn () {
-    ratio : f64    = 1.5 + 2.0 * 3.0
+    ratio : f64    = 3.14 + 2.0 * 3.0
     s     : string = "hello"
     flags : u32    = 7 | 2 ^ 1 & 3
     same  :        = ratio >= 7.5 && flags != 0

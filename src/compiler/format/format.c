@@ -215,21 +215,23 @@ internal void format_emit_string_text(StringBuilder* sb, string text)
     }
 }
 
-internal void format_emit_float_literal(StringBuilder* sb, f64 value)
+internal void format_emit_float_literal(StringBuilder* sb,
+                                        const Lexer*   lexer,
+                                        u32            token_index)
 {
-    usize start = sb->size;
-    sb_format(sb, "%.17g", value);
-    bool has_decimal = false;
-    for (usize i = start; i < sb->size; ++i) {
-        if (sb->data[i] == '.' || sb->data[i] == 'e' || sb->data[i] == 'E') {
-            has_decimal = true;
-            break;
-        }
+    ASSERT(token_index < array_count(lexer->tokens),
+           "Float literal token index out of bounds");
+    const Token* token = &lexer->tokens[token_index];
+    ASSERT(token->kind == TK_Float, "Expected float token");
+
+    usize start = token->offset;
+    usize end   = lex_token_end_offset(lexer, token);
+    if (end > lexer->source.source.count) {
+        end = lexer->source.source.count;
     }
 
-    if (!has_decimal) {
-        sb_append_cstr(sb, ".0");
-    }
+    sb_append_string(
+        sb, string_from(lexer->source.source.data + start, end - start));
 }
 
 internal void format_emit_fn_signature(StringBuilder* sb,
@@ -266,7 +268,7 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_format(sb, "%u", (u32)cst_get_integer(cst, node));
         break;
     case CK_FloatLiteral:
-        format_emit_float_literal(sb, cst_get_float(cst, node));
+        format_emit_float_literal(sb, lexer, node->token_index);
         break;
     case CK_BoolLiteral:
         sb_append_cstr(sb, node->a != 0 ? "true" : "false");
@@ -616,6 +618,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
 
     switch (node->kind) {
     case CK_IntegerLiteral:
+    case CK_FloatLiteral:
     case CK_StringLiteral:
     case CK_BoolLiteral:
     case CK_SymbolRef:
