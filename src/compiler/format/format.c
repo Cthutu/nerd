@@ -1397,11 +1397,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
         if (is_c_style) {
             sb_append_char(sb, ' ');
             if (for_info->init_count > 0) {
-                format_emit_for_header_items(sb,
-                                             cst,
-                                             lexer,
-                                             for_info->first_init,
-                                             for_info->init_count);
+                format_emit_for_header_items(
+                    sb, cst, lexer, for_info->first_init, for_info->init_count);
             }
             sb_append_cstr(sb, "; ");
             if (for_info->condition_node_index != U32_MAX) {
@@ -1418,8 +1415,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             }
         } else if (for_info->condition_node_index != U32_MAX) {
             sb_append_char(sb, ' ');
-            format_emit_expr(
-                sb, cst, lexer, for_info->condition_node_index, 0);
+            format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
         }
         sb_append_cstr(sb, " {\n");
         for (u32 i = body->a; i < body->b; ++i) {

@@ -1216,9 +1216,8 @@ internal bool cst_parse_for_clause_item(CstParseState* state,
     return cst_parse_expr_bp(state, 0, out_node);
 }
 
-internal bool cst_wrap_for_expr_item(CstParseState* state,
-                                     u32            token_index,
-                                     u32*           in_out_node)
+internal bool
+cst_wrap_for_expr_item(CstParseState* state, u32 token_index, u32* in_out_node)
 {
     return cst_emit_node(state,
                          (CstNode){
@@ -1253,10 +1252,8 @@ internal bool cst_parse_for_item_list(CstParseState* state,
         u32  next_item        = 0;
         bool next_is_raw_expr = false;
         u32  next_token_index = state->token_index;
-        if (!cst_parse_for_clause_item(state,
-                                       allow_declaration,
-                                       &next_item,
-                                       &next_is_raw_expr)) {
+        if (!cst_parse_for_clause_item(
+                state, allow_declaration, &next_item, &next_is_raw_expr)) {
             return false;
         }
         if (next_is_raw_expr &&
@@ -1300,8 +1297,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_for) {
-        u32 for_node = 0;
-        u32 body     = 0;
+        u32        for_node = 0;
+        u32        body     = 0;
         CstForInfo for_info = {
             .first_init           = U32_MAX,
             .init_count           = 0,
@@ -1336,10 +1333,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
                     u32  update_node        = 0;
                     bool update_raw_expr    = false;
                     u32  update_token_index = state->token_index;
-                    if (!cst_parse_for_clause_item(state,
-                                                   false,
-                                                   &update_node,
-                                                   &update_raw_expr) ||
+                    if (!cst_parse_for_clause_item(
+                            state, false, &update_node, &update_raw_expr) ||
                         !cst_parse_for_item_list(state,
                                                  false,
                                                  TK_LBrace,
@@ -1355,10 +1350,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
                 u32  first_node        = 0;
                 bool first_raw_expr    = false;
                 u32  first_token_index = state->token_index;
-                if (!cst_parse_for_clause_item(state,
-                                               true,
-                                               &first_node,
-                                               &first_raw_expr)) {
+                if (!cst_parse_for_clause_item(
+                        state, true, &first_node, &first_raw_expr)) {
                     return false;
                 }
 
@@ -1411,10 +1404,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
                         u32  update_node        = 0;
                         bool update_raw_expr    = false;
                         u32  update_token_index = state->token_index;
-                        if (!cst_parse_for_clause_item(state,
-                                                       false,
-                                                       &update_node,
-                                                       &update_raw_expr) ||
+                        if (!cst_parse_for_clause_item(
+                                state, false, &update_node, &update_raw_expr) ||
                             !cst_parse_for_item_list(state,
                                                      false,
                                                      TK_LBrace,

@@ -457,9 +457,8 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
     return true;
 }
 
-internal bool ast_wrap_for_expr_item(AstParseState* state,
-                                     u32            token_index,
-                                     u32*           in_out_node)
+internal bool
+ast_wrap_for_expr_item(AstParseState* state, u32 token_index, u32* in_out_node)
 {
     return ast_emit_node(state,
                          (AstNode){
@@ -491,18 +490,17 @@ internal bool ast_parse_for_item_list(AstParseState* state,
 
     while (state->token.kind == TK_Comma) {
         if (!ast_next_token(state) || !ast_next_token(state)) {
-            return error_0201_missing_value(state->token.source,
-                                            ast_token_span(state, &state->token),
-                                            state->token.kind);
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
         }
 
         u32  next_item        = 0;
         bool next_is_raw_expr = false;
         u32  next_token_index = state->token.token_index;
-        if (!ast_parse_for_clause_item(state,
-                                       allow_declaration,
-                                       &next_item,
-                                       &next_is_raw_expr)) {
+        if (!ast_parse_for_clause_item(
+                state, allow_declaration, &next_item, &next_is_raw_expr)) {
             return false;
         }
         if (next_is_raw_expr &&
@@ -561,16 +559,16 @@ internal bool ast_parse_block_statement(AstParseState* state)
     }
 
     if (state->token.kind == TK_for) {
-        u32 for_token_index = state->token.token_index;
-        u32 for_node        = 0;
-        AstForInfo for_info = {
-            .first_init           = U32_MAX,
-            .init_count           = 0,
-            .condition_node_index = U32_MAX,
-            .first_update         = U32_MAX,
-            .update_count         = 0,
+        u32        for_token_index = state->token.token_index;
+        u32        for_node        = 0;
+        AstForInfo for_info        = {
+                   .first_init           = U32_MAX,
+                   .init_count           = 0,
+                   .condition_node_index = U32_MAX,
+                   .first_update         = U32_MAX,
+                   .update_count         = 0,
         };
-        u32 body_node       = 0;
+        u32 body_node = 0;
         if (!ast_emit_node(state,
                            (AstNode){
                                .kind        = AK_For,
@@ -592,11 +590,10 @@ internal bool ast_parse_block_statement(AstParseState* state)
                     if (!ast_next_token(state)) {
                         return false;
                     }
-                    bool previous_boundary          =
-                        state->allow_statement_boundary;
+                    bool previous_boundary = state->allow_statement_boundary;
                     state->allow_statement_boundary = true;
-                    if (!ast_parse_expr(
-                            state, &for_info.condition_node_index)) {
+                    if (!ast_parse_expr(state,
+                                        &for_info.condition_node_index)) {
                         state->allow_statement_boundary = previous_boundary;
                         return false;
                     }
@@ -623,10 +620,8 @@ internal bool ast_parse_block_statement(AstParseState* state)
                     u32  update_node        = 0;
                     bool update_raw_expr    = false;
                     u32  update_token_index = state->token.token_index;
-                    if (!ast_parse_for_clause_item(state,
-                                                   false,
-                                                   &update_node,
-                                                   &update_raw_expr) ||
+                    if (!ast_parse_for_clause_item(
+                            state, false, &update_node, &update_raw_expr) ||
                         !ast_parse_for_item_list(state,
                                                  false,
                                                  TK_LBrace,
@@ -644,10 +639,8 @@ internal bool ast_parse_block_statement(AstParseState* state)
                 u32  first_node        = 0;
                 bool first_raw_expr    = false;
                 u32  first_token_index = state->token.token_index;
-                if (!ast_parse_for_clause_item(state,
-                                               true,
-                                               &first_node,
-                                               &first_raw_expr)) {
+                if (!ast_parse_for_clause_item(
+                        state, true, &first_node, &first_raw_expr)) {
                     return false;
                 }
 
@@ -697,10 +690,9 @@ internal bool ast_parse_block_statement(AstParseState* state)
                         bool previous_boundary =
                             state->allow_statement_boundary;
                         state->allow_statement_boundary = true;
-                        if (!ast_parse_expr(
-                                state, &for_info.condition_node_index)) {
-                            state->allow_statement_boundary =
-                                previous_boundary;
+                        if (!ast_parse_expr(state,
+                                            &for_info.condition_node_index)) {
+                            state->allow_statement_boundary = previous_boundary;
                             return false;
                         }
                         state->allow_statement_boundary = previous_boundary;
@@ -726,10 +718,8 @@ internal bool ast_parse_block_statement(AstParseState* state)
                         u32  update_node        = 0;
                         bool update_raw_expr    = false;
                         u32  update_token_index = state->token.token_index;
-                        if (!ast_parse_for_clause_item(state,
-                                                       false,
-                                                       &update_node,
-                                                       &update_raw_expr)) {
+                        if (!ast_parse_for_clause_item(
+                                state, false, &update_node, &update_raw_expr)) {
                             return false;
                         }
                         if (!ast_parse_for_item_list(state,

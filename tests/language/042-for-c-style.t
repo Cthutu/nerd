@@ -3,9 +3,10 @@ main :: fn () {
     for i := 0, step := 1; i < 5; total += step, i += 1 {
         prn($"C {i}")
     }
+    return total
 }
 ¬
-0
+5
 ¬
 C 0
 C 1
@@ -36,7 +37,7 @@ $6 = i32:i + i32:1
 i = i32:$6
 jump L0
 label L1
-return i32:0
+return i32:total
 end
 ¬
 void init() {}
@@ -62,5 +63,5 @@ int $main() {
     $i = $6;
     goto L0;
     L1: ;
-    return 0;
+    return $total;
 }

@@ -1637,15 +1637,15 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_For:
         return ast->fors[node->a].condition_node_index == U32_MAX
                    ? true
-                   : sema_resolve_node_refs(lexer,
-                                            ast,
-                                            owner_decl_index,
-                                            current_function_symbol,
-                                            capture_scope_index,
-                                            scope_index,
-                                            ast->fors[node->a]
-                                                .condition_node_index,
-                                            sema);
+                   : sema_resolve_node_refs(
+                         lexer,
+                         ast,
+                         owner_decl_index,
+                         current_function_symbol,
+                         capture_scope_index,
+                         scope_index,
+                         ast->fors[node->a].condition_node_index,
+                         sema);
     case AK_SymbolRef:
         if (sema->node_is_type_expr[node_index]) {
             return true;
@@ -1826,12 +1826,11 @@ internal void sema_collect_node_deps(const Ast*  ast,
         {
             const AstForInfo* for_info = &ast->fors[node->a];
             for (u32 i = 0; i < for_info->init_count; ++i) {
-                sema_collect_node_deps(
-                    ast,
-                    sema,
-                    owner_decl_index,
-                    ast->for_items[for_info->first_init + i],
-                    out_sema);
+                sema_collect_node_deps(ast,
+                                       sema,
+                                       owner_decl_index,
+                                       ast->for_items[for_info->first_init + i],
+                                       out_sema);
             }
             if (for_info->condition_node_index != U32_MAX) {
                 sema_collect_node_deps(ast,

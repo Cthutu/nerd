@@ -83,15 +83,16 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     cstr c_path   = ctx->artifacts->c_path;
     cstr exe_path = ctx->artifacts->binary_path;
 #if OS_POSIX
-    string command = ctx->artifacts->release
-                         ? string_format(&arena,
-                                         "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
-                                         exe_path,
-                                         c_path)
-                         : string_format(&arena,
-                                         "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
-                                         exe_path,
-                                         c_path);
+    string command =
+        ctx->artifacts->release
+            ? string_format(&arena,
+                            "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
+                            exe_path,
+                            c_path)
+            : string_format(&arena,
+                            "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
+                            exe_path,
+                            c_path);
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
@@ -104,15 +105,16 @@ internal bool back_end_compile_c(BackEndContext* ctx)
         return error_runtime("Failed to make %s executable", exe_path);
     }
 #elif OS_WINDOWS
-    string command = ctx->artifacts->release
-                         ? string_format(&arena,
-                                         "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
-                                         exe_path,
-                                         c_path)
-                         : string_format(&arena,
-                                         "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
-                                         exe_path,
-                                         c_path);
+    string command =
+        ctx->artifacts->release
+            ? string_format(&arena,
+                            "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
+                            exe_path,
+                            c_path)
+            : string_format(&arena,
+                            "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
+                            exe_path,
+                            c_path);
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);

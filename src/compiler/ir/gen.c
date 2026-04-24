@@ -1499,8 +1499,7 @@ internal bool ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_For) {
-        const AstNode* body = &ast->nodes[node->b];
-        ASSERT(body->kind == AK_Block, "Expected for body block");
+        ASSERT(ast->nodes[node->b].kind == AK_Block, "Expected for body block");
         const AstForInfo* for_info = &ast->fors[node->a];
         for (u32 item = 0; item < for_info->init_count; ++item) {
             ir_generate_statement(lex,
@@ -1518,19 +1517,18 @@ internal bool ir_generate_statement(const Lexer* lex,
                               : (i64)(*next_value_index)++;
         ir_add_label(ir, start_label);
         if (for_info->condition_node_index != U32_MAX) {
-            IrValue condition =
-                ir_lower_node(lex,
-                              ast,
-                              sema,
-                              for_info->condition_node_index,
-                              node_values,
-                              next_value_index,
-                              ir);
-            ir_add_branch_false(ir,
-                                condition,
-                                ir_node_type_index(
-                                    ast, sema, for_info->condition_node_index),
-                                end_label);
+            IrValue condition = ir_lower_node(lex,
+                                              ast,
+                                              sema,
+                                              for_info->condition_node_index,
+                                              node_values,
+                                              next_value_index,
+                                              ir);
+            ir_add_branch_false(
+                ir,
+                condition,
+                ir_node_type_index(ast, sema, for_info->condition_node_index),
+                end_label);
         }
         bool body_returned = ir_generate_statement(lex,
                                                    ast,
