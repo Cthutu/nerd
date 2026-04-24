@@ -749,11 +749,10 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             if (root_param) {
                 if (i + 1 >= argc) {
                     json_done(result);
-                    return cli_parse_error(
-                        parser,
-                        arena,
-                        "Missing value for option '-%c'.",
-                        option);
+                    return cli_parse_error(parser,
+                                           arena,
+                                           "Missing value for option '-%c'.",
+                                           option);
                 }
                 cli_set_json_string(
                     global_params, arena, root_param->name, s(argv[++i]));
@@ -784,11 +783,10 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             if (command_param) {
                 if (i + 1 >= argc) {
                     json_done(result);
-                    return cli_parse_error(
-                        parser,
-                        arena,
-                        "Missing value for option '-%c'.",
-                        option);
+                    return cli_parse_error(parser,
+                                           arena,
+                                           "Missing value for option '-%c'.",
+                                           option);
                 }
                 cli_set_json_string(
                     json_object_get_cstr(command_result, "params"),

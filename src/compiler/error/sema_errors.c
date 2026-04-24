@@ -406,10 +406,9 @@ bool error_0316_invalid_entry_point(NerdSource source,
         ERROR_REF_PRIMARY,
         span,
         "`main` must be a zero-parameter function returning `i32` or no value");
-    error_add_help(
-        &error,
-        "Change `main` so it takes no parameters and returns `i32` "
-        "or no type at all.");
+    error_add_help(&error,
+                   "Change `main` so it takes no parameters and returns `i32` "
+                   "or no type at all.");
     error_render(&error);
     return false;
 }

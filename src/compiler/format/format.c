@@ -829,7 +829,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         {
             const CstOnInfo* on = &cst->ons[node->b];
             if (on->kind == COK_Bool) {
-                u32 branch_offset = on->branch_count > 1 ? 1 : 0;
+                u32                branch_offset = on->branch_count > 1 ? 1 : 0;
                 const CstOnBranch* last_branch =
                     &cst->on_branches[on->first_branch + branch_offset];
                 return format_node_end_token_index(
@@ -1381,8 +1381,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_For) {
+#if CONFIG_DEBUG
         const CstNode* body = &cst->nodes[stmt->b];
         ASSERT(body->kind == CK_Block, "Expected for body block");
+#endif
         const CstForInfo* for_info = &cst->fors[stmt->a];
         sb_append_cstr(sb, "for");
         bool is_c_style =
@@ -1858,8 +1860,8 @@ bool format_file(cstr input_path, cstr output_path)
                              output_path);
     }
 
-    usize written = fwrite(rendered.data, 1, rendered.count, file);
-    bool close_failed = fclose(file) != 0;
+    usize written      = fwrite(rendered.data, 1, rendered.count, file);
+    bool  close_failed = fclose(file) != 0;
     if (written != rendered.count || close_failed) {
         arena_done(&arena);
         return error_runtime("Failed to write formatted file: %s", output_path);
