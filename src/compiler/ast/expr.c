@@ -297,7 +297,6 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 TK_else);
         }
 
-        bool saw_else = false;
         while (state->token.kind != TK_RBrace) {
             if (state->token.kind == TK_EOF) {
                 return error_0203_expected_token(
@@ -332,7 +331,6 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             }
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
-                saw_else     = true;
                 if (!ast_next_token(state) ||
                     state->token.kind != TK_FatArrow ||
                     !ast_next_token(state)) {
@@ -395,13 +393,6 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             }
         }
 
-        if (!saw_else) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_else,
-                state->token.kind);
-        }
         if (state->token.kind != TK_RBrace) {
             return error_0203_expected_token(
                 state->lexer->source,

@@ -213,6 +213,7 @@ bool error_0326_invalid_binary_operands(NerdSource source,
                                         string     expected_rule,
                                         string     left_type,
                                         string     right_type);
+bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

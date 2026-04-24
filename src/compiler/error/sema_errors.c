@@ -670,3 +670,22 @@ bool error_0326_invalid_binary_operands(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a value-producing block-form `on` that is not exhaustive.
+
+bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error = error_init(
+        327,
+        source,
+        span,
+        "Value-producing block-form `on` expressions must be exhaustive");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This `on` can miss a value");
+    error_add_help(&error,
+                   "Add an `else` branch, or use this `on` as a statement "
+                   "when missing cases should be a no-op.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

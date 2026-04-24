@@ -647,6 +647,8 @@ needed earlier.
     - block-form currently accepts `bool` and concrete integer scrutinees only
     - untyped integer scrutinees materialise to `i32`
     - branch patterns currently must be compile-time constants
+    - statement-position block-form `on` may omit `else`; missing cases are a
+      no-op
   - Support the block form:
     - `on size { ... }`
   - Prefer syntax that does not require branch separators when the parser can
@@ -678,7 +680,7 @@ needed earlier.
     - compiler, formatter, LSP, VS Code syntax, Neovim syntax, and regression
       tests are updated together
 
-- [ ] 55. Define `on` typing and exhaustiveness rules.
+- [X] 55. Define `on` typing and exhaustiveness rules.
   - Treat `on` as an expression form.
   - When used in a statement position, `on` has type `void`.
   - Non-void `on` expressions must be exhaustive.
@@ -686,14 +688,20 @@ needed earlier.
     trivially prove exhaustiveness.
   - Void `on` expressions may omit branches because missing cases are a no-op.
   - All value-producing branches must converge to exactly the same type.
+  - Current implementation status:
+    - statement-position block-form `on` is typed as `void` and may omit `else`
+    - value-producing block-form `on` requires `else`
+    - all value-producing branches must converge to one semantic type
+    - missing `else` on value-producing block-form `on` reports diagnostic 0327
 
-- [ ] 56. Add IR merge support for value-producing branches.
+- [X] 56. Add IR merge support for value-producing branches.
   - Introduce phi nodes or equivalent explicit typed merge instructions in IR.
   - Keep the IR self-contained so a future VM can execute the same control-flow
     model without semantic side tables.
   - Current implementation status:
-    - short-form `on` lowers to explicit branch labels, jumps, and a typed
-      temporary merge slot in IR
+    - short-form and block-form value-producing `on` lower to explicit branch
+      labels, jumps, and a typed temporary merge slot in IR
+    - statement-position block-form `on` lowers without allocating a merge slot
   - Extend C generation, formatter, LSP, and tests together as `on` lands.
 
 ## Milestone 10: Basic `for` Loops

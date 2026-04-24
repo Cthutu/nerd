@@ -2741,11 +2741,33 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_Expression:
-    case AK_Statement:
     case AK_Return:
         if (!sema_infer_node_type(
                 lexer, ast, sema, node->a, expected_type, &type_index)) {
             return false;
+        }
+        break;
+
+    case AK_Statement:
+        {
+            u32            statement_expected = expected_type;
+            const AstNode* expr               = &ast->nodes[node->a];
+            u32            expr_root_index    = node->a;
+            if (expr->kind == AK_Expression) {
+                expr_root_index = expr->a;
+                expr            = &ast->nodes[expr_root_index];
+            }
+            if (expr->kind == AK_On) {
+                statement_expected = sema_builtin_type(sema, STK_Void);
+            }
+            if (!sema_infer_node_type(lexer,
+                                      ast,
+                                      sema,
+                                      node->a,
+                                      statement_expected,
+                                      &type_index)) {
+                return false;
+            }
         }
         break;
 
@@ -2876,6 +2898,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         {
             const AstOnInfo* on             = &ast->ons[node->b];
             u32              bool_type      = sema_builtin_type(sema, STK_Bool);
+            u32              void_type      = sema_builtin_type(sema, STK_Void);
+            bool             statement_form = expected_type == void_type;
+            bool             has_else       = false;
             u32              scrutinee_type = sema_no_type();
             if (!sema_infer_node_type(lexer,
                                       ast,
@@ -2912,6 +2937,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
+                if (branch->flags & AOBF_Else) {
+                    has_else = true;
+                }
                 u32 branch_local_index =
                     sema->on_branch_local_indices[on->first_branch + i];
                 if (branch_local_index != sema_no_local()) {
@@ -2994,6 +3022,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
 
+                if (statement_form) {
+                    u32 ignored = sema_no_type();
+                    if (!sema_infer_node_type(lexer,
+                                              ast,
+                                              sema,
+                                              branch->expr_node_index,
+                                              sema_no_type(),
+                                              &ignored)) {
+                        return false;
+                    }
+                    continue;
+                }
+
                 u32 current_expected = expected_type;
                 if (current_expected == sema_no_type() &&
                     branch_type != sema_no_type() &&
@@ -3053,7 +3094,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            type_index = branch_type;
+            if (statement_form) {
+                type_index = void_type;
+            } else {
+                if (on->kind == AOK_Value && !has_else) {
+                    return error_0327_non_exhaustive_on(
+                        lexer->source, sema_node_span(lexer, node));
+                }
+                type_index = branch_type;
+            }
         }
         break;
 

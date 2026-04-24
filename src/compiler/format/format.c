@@ -1322,8 +1322,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Statement) {
-        if (!format_emit_call_with_block_on_arg(
-                sb, cst, lexer, stmt->a, indent_level)) {
+        if (format_node_is_block_form_on(cst, stmt->a)) {
+            format_emit_on_block_multiline(
+                sb, cst, lexer, stmt->a, indent_level);
+        } else if (!format_emit_call_with_block_on_arg(
+                       sb, cst, lexer, stmt->a, indent_level)) {
             format_emit_expr(sb, cst, lexer, stmt->a, 0);
         }
         sb_append_char(sb, '\n');

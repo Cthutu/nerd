@@ -1,0 +1,27 @@
+value: i32 = 2
+main :: fn () => on value {
+    1 => "one"
+}
+¬
+{
+    "code": "0327",
+    "message": "Value-producing block-form `on` expressions must be exhaustive",
+    "source_file": "tests/errors/019-on-exhaustiveness.e",
+    "primary_location": {
+        "line": 2,
+        "column": 18
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 18,
+            "length": 2,
+            "message": "This `on` can miss a value"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Add an `else` branch, or use this `on` as a statement when missing cases should be a no-op."
+    ]
+}

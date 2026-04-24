@@ -700,8 +700,6 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
 
     if (cst_current_token(state).kind == TK_LBrace) {
         cst_advance(state);
-        bool saw_else = false;
-
         while (cst_current_token(state).kind != TK_RBrace) {
             if (cst_current_token(state).kind == TK_EOF) {
                 return false;
@@ -721,7 +719,6 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
             }
             if (cst_current_token(state).kind == TK_else) {
                 branch.flags = COBF_Else;
-                saw_else     = true;
                 cst_advance(state);
                 if (!cst_consume(state, TK_FatArrow)) {
                     return false;
@@ -757,7 +754,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
             }
         }
 
-        if (!saw_else || !cst_consume(state, TK_RBrace)) {
+        if (!cst_consume(state, TK_RBrace)) {
             return false;
         }
 
