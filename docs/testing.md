@@ -89,3 +89,5 @@ When adding a language feature, update tests horizontally:
 - semantic or parser errors
 - formatter snapshots if syntax changes
 - LSP behaviour when names, types, or diagnostics are affected
+- VS Code and Neovim/LazyVim integration when filetypes, syntax highlighting,
+  LSP launch/configuration, formatting, or install behaviour changes

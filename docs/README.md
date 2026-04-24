@@ -12,7 +12,8 @@ If you are new to the codebase, read these first:
 4. [type-system.md](/home/matt/nerd/docs/type-system.md)
 5. [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
 6. [lsp.md](/home/matt/nerd/docs/lsp.md)
-7. [testing.md](/home/matt/nerd/docs/testing.md)
+7. [editor-support.md](/home/matt/nerd/docs/editor-support.md)
+8. [testing.md](/home/matt/nerd/docs/testing.md)
 
 ## Overviews
 
@@ -37,6 +38,8 @@ If you are new to the codebase, read these first:
   Interpolated-string lowering, IR string ops, and runtime helper model.
 - [lsp.md](/home/matt/nerd/docs/lsp.md)
   Document lifecycle, analysis flow, and editor-facing features.
+- [editor-support.md](/home/matt/nerd/docs/editor-support.md)
+  VS Code and Neovim/LazyVim integration ownership and verification checklist.
 - [testing.md](/home/matt/nerd/docs/testing.md)
   Test file formats, runner behaviour, and practical workflow.
 

@@ -297,6 +297,10 @@ needed earlier.
   - Add or extend LSP tests when the server gains enough test surface.
   - Keep LSP work horizontally synchronised with compiler, formatter, and test
     support for each feature.
+  - Treat VS Code and Neovim/LazyVim as paired editor surfaces. When a change
+    affects file detection, syntax highlighting, LSP launch/configuration,
+    formatting, or install packaging, update both editor integrations in the
+    same commit unless one is explicitly out of scope.
 
 - [ ] 22a. Add first-class Neovim/LazyVim support.
   - Add `nerd format --stdout <file>` so editor integrations can format through
@@ -308,6 +312,8 @@ needed earlier.
     directories.
   - Use the existing LazyVim `conform.nvim` setup for format-on-save.
   - Configure the Nerd LSP for `.n` files through `nvim-lspconfig`.
+  - Keep `syntax/nerd-vscode` and `syntax/nerd-nvim` behaviour synchronised for
+    editor-facing changes.
   - Defer Tree-sitter highlighting and indentation support to a later editor
     milestone, after the language grammar has settled further.
 
