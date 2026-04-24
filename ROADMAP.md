@@ -791,6 +791,214 @@ needed earlier.
   - Finite loop expressions now require `else { break <expr> }` so normal
     loop exhaustion has an explicit result value.
 
+## Milestone 12: Tuple Values
+
+- [ ] 64. Add tuple syntax and types.
+  - Support tuple type syntax `(T1, T2, ...)`.
+  - Support one-element tuple type syntax `(T,)`.
+  - Keep `(T)` as ordinary grouped type syntax rather than a tuple.
+
+- [ ] 65. Add tuple literals and tuple field access.
+  - Support tuple literals `(a, b, ...)`.
+  - Support one-element tuple literals `(a,)`.
+  - Keep `(a)` as ordinary grouped expression syntax.
+  - Support tuple field access with zero-based dot indices such as `value.0`.
+  - Lower tuple values through explicit IR/C storage.
+
+- [ ] 66. Cover tuple values horizontally.
+  - Add language, error, formatter, and LSP tests.
+  - Add documentation for tuple literals, tuple types, and tuple field access.
+  - Defer tuple destructuring and tuple patterns to the pattern milestones.
+
+## Milestone 13: Fixed Arrays And Indexing
+
+- [ ] 67. Add fixed-size array types and literals.
+  - Support fixed array type syntax `[N]T`.
+  - Support array literals such as `[1, 2, 3]`.
+  - Infer array literal element type from the literal contents or expected type.
+  - Keep array length as part of the type.
+
+- [ ] 68. Add array indexing.
+  - Support `array[index]` for fixed arrays.
+  - Debug builds should include bounds checks.
+  - Release builds may omit bounds checks.
+  - Add tests for valid indexing, invalid index types, and debug bounds
+    diagnostics or traps.
+
+## Milestone 14: Pointer Basics
+
+- [ ] 69. Add pointer types and address-of.
+  - Support pointer type syntax `^T`.
+  - Support address-of for addressable values such as `^x` and `^array[0]`.
+  - Keep `^[1, 2, 3]` as pointer-to-array-literal construction, returning a
+    single pointer rather than a slice.
+
+- [ ] 70. Add pointer indexing.
+  - Support `pointer[index]` where the pointer element type is known.
+  - Apply the same debug/release bounds policy only where a bound is known.
+  - Document that raw pointer indexing is inherently lower-level than slices.
+
+## Milestone 15: Slices
+
+- [ ] 71. Add slice types and representation.
+  - Support slice type syntax `[]T`.
+  - Represent slices as fat pointers containing `.data` and `.count`.
+  - Support `.data` and `.count` field-style access.
+
+- [ ] 72. Add explicit slice construction.
+  - Support slicing syntax that constructs slices, including `s[a..b]`,
+    `s[..b]`, `s[a..]`, and `s[..]`.
+  - Support slicing fixed arrays and existing slices.
+  - Keep fixed array to slice conversion explicit; `[N]T` should not implicitly
+    coerce to `[]T`.
+  - Support `[1, 2, 3][..]` as array-literal-to-slice construction.
+
+- [ ] 73. Add slice indexing and bounds behaviour.
+  - Support `slice[index]`.
+  - Debug builds should include bounds checks.
+  - Release builds may omit bounds checks.
+  - Cover slice creation, indexing, slicing, `.data`, and `.count` in language,
+    error, formatter, and LSP tests.
+
+## Milestone 16: String And Byte Slice Interop
+
+- [ ] 74. Keep `string` distinct from `[]u8`.
+  - `string` should be representation-compatible with `[]u8`, but not an alias.
+  - Preserve the invariant that `string` contains valid UTF-8.
+  - Share implementation paths for `.data`, `.count`, comparison, and slicing
+    where practical.
+
+- [ ] 75. Add explicit string/slice operations.
+  - Decide and document whether string slicing returns `string` only after
+    UTF-8 boundary validation, or returns `[]u8`.
+  - Keep byte-oriented access available through explicit `[]u8` operations.
+  - Extend string comparison and pattern support as needed after the slice
+    representation lands.
+
+## Milestone 17: Plex Types
+
+- [ ] 76. Add basic plex definitions.
+  - Support `plex { field Type ... }` type syntax.
+  - Support named plex aliases.
+  - Initially use source-order C-compatible layout for predictable lowering and
+    debugging.
+  - Keep compiler-reordered layout as a later extension.
+
+- [ ] 77. Add plex construction and field access.
+  - Support instance literals such as `Point { x: 1, y: 2 }`.
+  - Support field access such as `point.x`.
+  - Lower plex values through explicit IR/C storage.
+  - Add language, error, formatter, LSP, and documentation coverage.
+
+## Milestone 18: Plex Ergonomics And Layout Controls
+
+- [ ] 78. Add plex update syntax.
+  - Support `existing with { field: value }`.
+  - Require updated fields to exist and values to match their declared types.
+
+- [ ] 79. Add pointer field ergonomics.
+  - Support automatic dereference for field access on `^Plex`.
+  - Keep the generated IR explicit about the dereference.
+
+- [ ] 80. Add plex layout annotations.
+  - Support `#c` for explicit source-order C-compatible layout.
+  - Support `#packed` for packed layout; packed implies `#c`.
+  - Defer compiler-reordered layout until there is a concrete optimisation need.
+
+## Milestone 19: Shared Pattern Infrastructure
+
+- [ ] 81. Generalise pattern representation.
+  - Introduce a shared pattern AST/CST/sema model used by `on` and destructuring.
+  - Support `_` ignore patterns.
+  - Support binder patterns consistently.
+  - Keep exhaustiveness and binder scoping explicit in semantic analysis.
+
+- [ ] 82. Add destructuring bindings.
+  - Support tuple destructuring in `::`, `:`, and `:=` forms.
+  - Support plex destructuring with field names and shorthand field binders.
+  - Support `_` in destructuring assignments.
+  - Add formatter, LSP, and error coverage before extending `on`.
+
+- [ ] 83. Add pattern guards.
+  - Support `pattern on condition => expr`.
+  - Ensure guard binders are in scope for the guard condition.
+  - A guarded branch should not count as exhaustive unless the guard is known
+    true.
+
+## Milestone 20: Tuple And Plex Patterns In `on`
+
+- [ ] 84. Add tuple patterns.
+  - Support tuple value patterns in `on`.
+  - Support tuple binders and `_` ignores.
+  - Keep tuple dot indexing out of patterns; use destructuring instead.
+
+- [ ] 85. Add plex patterns.
+  - Support plex field patterns in `on`.
+  - Support shorthand field binders such as `{ x, y }`.
+  - Support ignored fields and partial field matching if the semantics are made
+    explicit.
+  - Extend exhaustiveness checks where feasible.
+
+## Milestone 21: Raw Unions For FFI
+
+- [ ] 86. Add raw union types.
+  - Support `union { field Type ... }`.
+  - Keep raw unions out of pattern matching.
+  - Define construction and field access rules with FFI use in mind.
+  - Document the safety rule: the programmer is responsible for knowing which
+    field is valid.
+
+- [ ] 87. Prepare FFI-facing layout guarantees.
+  - Align raw union layout with C ABI expectations.
+  - Ensure `plex #c`, `plex #packed`, and `union` can be used together for later
+    FFI declarations.
+
+## Milestone 22: Enum Unit Variants
+
+- [ ] 88. Add enum type declarations.
+  - Support `enum { Variant ... }` for unit variants.
+  - Lower enum values as a tag plus storage compatible with future payloads.
+  - Choose the smallest practical unsigned tag type.
+
+- [ ] 89. Add enum construction and matching.
+  - Support constructing variants with expected-type shorthand such as `.Red`.
+  - Support matching unit variants in `on`.
+  - Add exhaustiveness checks over enum variants.
+
+## Milestone 23: Enum Payloads
+
+- [ ] 90. Add tuple-like enum payloads.
+  - Support variants such as `Point(f32, f32)`.
+  - Lower payload storage through the enum's internal union representation.
+  - Support payload access through pattern matching.
+
+- [ ] 91. Extend enum pattern matching.
+  - Support enum variant binders in `on`.
+  - Support `_` ignores inside enum payload patterns.
+  - Extend formatter, LSP, error, and documentation coverage.
+
+## Milestone 24: Generalised `on` Syntax
+
+- [ ] 92. Add condition-chain `on`.
+  - Support `on { condition => expr ... }`.
+  - Treat it as ordered boolean branching with no scrutinee.
+  - Keep exhaustiveness rules explicit, requiring an `else` or a provably
+    exhaustive final branch.
+
+- [ ] 93. Add explicit pattern operators.
+  - Support operators before value patterns, such as `== 1`, `> 2`, and `< 3`.
+  - Preserve the current implicit `==` behaviour for plain value patterns.
+  - Define which operators participate in exhaustiveness analysis.
+
+## Later Milestones
+
+- [ ] Add FFI declarations and calls.
+  - Build on raw unions, `plex #c`, `plex #packed`, pointers, arrays, and slices.
+  - Keep ABI rules documented and covered by generated C tests.
+
+- [ ] Retire `TODO.md` once its ideas have been integrated into the numbered
+  roadmap or deliberately deferred.
+
 ## Future Ideas
 
 These items are worth keeping visible, but they are not assigned to a numbered
@@ -843,4 +1051,3 @@ compatible with later VM-style processing.
 - [x] dependency ordering exists for forward-referenced top-level bindings
 - [x] IR and C generation support functions and top-level declarations
 - [x] touched compiler files have improved comments and British spelling
-
