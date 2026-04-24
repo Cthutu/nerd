@@ -415,11 +415,11 @@ bool ir_save(const Ir* ir, const Lexer* lexer, cstr path)
         return error_runtime("Failed to open file for writing: %s", path);
     }
 
-    usize written = fwrite(rendered.data, 1, rendered.count, file);
-    fclose(file);
+    usize written      = fwrite(rendered.data, 1, rendered.count, file);
+    bool  close_failed = fclose(file) != 0;
     arena_done(&arena);
 
-    if (written != rendered.count) {
+    if (written != rendered.count || close_failed) {
         return error_runtime("Failed to write IR file: %s", path);
     }
     return true;

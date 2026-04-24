@@ -70,9 +70,9 @@ dead code.
 
 ## Compiler IR
 
-- [ ] `src/compiler/ir/dump.c`
-- [ ] `src/compiler/ir/gen.c`
-- [ ] `src/compiler/ir/ir.h`
+- [x] `src/compiler/ir/dump.c`
+- [x] `src/compiler/ir/gen.c`
+- [x] `src/compiler/ir/ir.h`
 
 ## Compiler Lexer
 
