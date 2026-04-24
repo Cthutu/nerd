@@ -1,4 +1,4 @@
-enabled: bool = true
+enabled: bool = yes
 main :: fn () => on enabled => 42 else 7
 ¬
 [
@@ -75,7 +75,7 @@ main :: fn () => on enabled => 42 else 7
                 0,
                 0,
                 7,
-                4,
+                3,
                 2,
                 0,
                 1,

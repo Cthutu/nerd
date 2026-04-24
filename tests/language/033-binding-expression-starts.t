@@ -1,8 +1,8 @@
 -- Accepts every expression-start token handled by binding classification.
 floaty :: 3.14
 negative :: -1
-truth :: true
-inverted :: !false
+truth :: yes
+inverted :: !no
 
 main :: fn () => 0
 ¬
@@ -16,7 +16,7 @@ return i32:0
 end
 init
 floaty = untyped-float:3.1400000000000001
-$0 = !bool:false
+$0 = !bool:no
 inverted = bool:$0
 end
 ¬

@@ -11,16 +11,16 @@ main :: fn () {
     bits ^= 7
     bits |= 8
 
-    flag := true
-    flag &&= false
-    flag ||= true
+    flag := yes
+    flag &&= no
+    flag ||= yes
 
     prn($"{n} {bits} {flag}")
 }
 ¬
 0
 ¬
-1 13 true
+1 13 yes
 
 ¬
 fn main
@@ -43,26 +43,26 @@ $6 = i32:bits ^ i32:7
 bits = i32:$6
 $7 = i32:bits | i32:8
 bits = i32:$7
-local flag = bool:true
-local $8 = bool:false
+local flag = bool:yes
+local $8 = bool:no
 branch.false bool:flag, L9
-branch.false bool:false, L9
-$8 = bool:true
+branch.false bool:no, L9
+$8 = bool:yes
 jump L10
 label L9
-$8 = bool:false
+$8 = bool:no
 label L10
 flag = bool:$8
-local $11 = bool:false
+local $11 = bool:no
 branch.false bool:flag, L12
-$11 = bool:true
+$11 = bool:yes
 jump L14
 label L12
-branch.false bool:true, L13
-$11 = bool:true
+branch.false bool:yes, L13
+$11 = bool:yes
 jump L14
 label L13
-$11 = bool:false
+$11 = bool:no
 label L14
 flag = bool:$11
 $15 = string.start

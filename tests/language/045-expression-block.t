@@ -9,7 +9,7 @@ main :: fn () {
         break "done"
     }
     flag :: ${
-        break true
+        break yes
     }
 
     pr("first = ")
@@ -25,7 +25,7 @@ main :: fn () {
 first = 7
 second = 12
 word = done
-flag = true
+flag = yes
 
 ¬
 fn main
@@ -69,9 +69,9 @@ call fn(string)->void:prn, string:$10
 string.reset
 $13 = string.start
 string.append string:"flag = "
-local $15 = bool:false
+local $15 = bool:no
 block
-$15 = bool:true
+$15 = bool:yes
 jump L16
 end
 label L16

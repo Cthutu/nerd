@@ -176,7 +176,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             row[3] = table_cell_string(ast_get_string(lexer, node));
             break;
         case AK_BoolLiteral:
-            row[3] = table_cell_string(node->a != 0 ? s("true") : s("false"));
+            row[3] = table_cell_string(node->a != 0 ? s("yes") : s("no"));
             break;
         case AK_StringConcat:
             row[3] = table_cell_string(

@@ -6,7 +6,7 @@ main :: fn () {
     pair :: (7, "seven")
     single :: (pair.0 + 1,)
     from_fn :: make_pair(3, "three")
-    nested :: (pair, single, true)
+    nested :: (pair, single, yes)
 
     prn($"pair = {pair.0}, {pair.1}")
     prn($"pair tuple = {pair}")
@@ -25,7 +25,7 @@ pair tuple = (7, seven)
 single = 8
 single tuple = (8,)
 from_fn = 3, three
-nested tuple = ((7, seven), (8,), true)
+nested tuple = ((7, seven), (8,), yes)
 
 ¬
 fn make_pair
@@ -82,7 +82,7 @@ call fn(string)->void:prn, string:$16
 string.reset
 $20 = string.start
 string.append string:"nested tuple = "
-$22 = tuple((i32,string):$2, (i32,):$11, bool:true)
+$22 = tuple((i32,string):$2, (i32,):$11, bool:yes)
 string.append ((i32,string),(i32,),bool):$22
 $21 = string.finish $20
 call fn(string)->void:prn, string:$21

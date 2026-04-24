@@ -1,6 +1,6 @@
 -- Declares primitive variables with explicit types and casts.
 greeting: string = "Hello"
-enabled: bool = true
+enabled: bool = yes
 ratio: f32 = 42.cast(f32)
 weight: f64
 
@@ -20,7 +20,7 @@ return i32:$0
 end
 init
 greeting = string:"Hello"
-enabled = bool:true
+enabled = bool:yes
 $0 = cast i32:42
 ratio = f32:$0
 weight = f64:0

@@ -1,5 +1,5 @@
 ratio: f64 = 1.5
-main :: fn () => on (ratio >= 1.0 && !false) => 1 else 0
+main :: fn () => on (ratio >= 1.0 && !no) => 1 else 0
 ¬
 [
     {
@@ -120,11 +120,11 @@ main :: fn () => on (ratio >= 1.0 && !false) => 1 else 0
                 0,
                 0,
                 8,
-                5,
+                2,
                 2,
                 0,
                 0,
-                7,
+                4,
                 2,
                 4,
                 0,

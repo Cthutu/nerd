@@ -100,8 +100,8 @@ semantic error.
 
 Source-level boolean values are also available as literal keywords:
 
-- `true`
-- `false`
+- `yes`
+- `no`
 
 ## Canonicalisation
 

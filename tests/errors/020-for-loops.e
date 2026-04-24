@@ -85,7 +85,7 @@ main :: fn () {
 ¬
 main :: fn () {
     for {
-        for on true => break {
+        for on yes => break {
         }
     }
 }
@@ -96,13 +96,13 @@ main :: fn () {
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 3,
-        "column": 24
+        "column": 23
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 24,
+            "column": 23,
             "length": 5,
             "message": "This `break` is not inside a `for` loop or expression block"
         }
@@ -201,7 +201,7 @@ main :: fn () {
 }
 ¬
 main :: fn () {
-    for on true => break {
+    for on yes => break {
     }
 }
 ¬
@@ -211,13 +211,13 @@ main :: fn () {
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 2,
-        "column": 20
+        "column": 19
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 20,
+            "column": 19,
             "length": 5,
             "message": "This `break` is not inside a `for` loop or expression block"
         }

@@ -16,7 +16,7 @@
 // | CK_IntegerLiteral  | Integer index         | 0                     |
 // | CK_FloatLiteral    | Float index           | 0                     |
 // | CK_StringLiteral   | Lexer string index    | 0                     |
-// | CK_BoolLiteral     | 0 false, 1 true       | 0                     |
+// | CK_BoolLiteral     | 0 no, 1 yes           | 0                     |
 // | CK_StringConcat    | Left node index       | Right node index      |
 // | CK_InterpPartExpr  | Expr node index       | 0                     |
 // | CK_InterpolatedString | First part index    | End-exclusive index   |

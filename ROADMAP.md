@@ -644,7 +644,7 @@ needed earlier.
     - `on (x > 0) => "positive" else "non-positive"`
   - Current implementation status:
     - short-form boolean `on <bool-expr> => <expr> else <expr>` is supported
-    - source-level boolean literals `true` and `false` are supported
+    - source-level boolean literals `yes` and `no` are supported
     - block-form `on value { ... }` with simple constant-value branches and
       `else => ...` is supported
     - block-form currently accepts `bool` and concrete integer scrutinees only
@@ -925,7 +925,7 @@ needed earlier.
   - Support `pattern on condition => expr`.
   - Ensure guard binders are in scope for the guard condition.
   - A guarded branch should not count as exhaustive unless the guard is known
-    true.
+    to be unconditional.
 
 ## Milestone 20: Tuple And Plex Patterns In `on`
 

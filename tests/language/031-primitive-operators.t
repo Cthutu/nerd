@@ -5,10 +5,10 @@ limit: f64 = 2.0
 main :: fn () {
     mask: u32 = 14
     ordered := 3 < 4 && 4 <= 4 && 5 > 4 && 5 >= 5
-    prn(on (1.5 < limit && !false) => "float" else "bad")
+    prn(on (1.5 < limit && !no) => "float" else "bad")
     prn(on ordered => "cmp" else "bad")
     prn(on (5 % 2 == 1) => "mod" else "bad")
-    prn(on (((mask & 11) ^ 3) == 9 || false) => "bits" else "bad")
+    prn(on (((mask & 11) ^ 3) == 9 || no) => "bits" else "bad")
     return on (half <= 0.5 && 3 != 4) => 1 else 0
 }
 ¬
@@ -24,44 +24,44 @@ global half
 global limit
 fn main
 local mask = u32:14
-local $0 = bool:false
-local $3 = bool:false
-local $6 = bool:false
+local $0 = bool:no
+local $3 = bool:no
+local $6 = bool:no
 $9 = i32:3 < i32:4
 branch.false bool:$9, L7
 $10 = i32:4 <= i32:4
 branch.false bool:$10, L7
-$6 = bool:true
+$6 = bool:yes
 jump L8
 label L7
-$6 = bool:false
+$6 = bool:no
 label L8
 branch.false bool:$6, L4
 $11 = i32:4 < i32:5
 branch.false bool:$11, L4
-$3 = bool:true
+$3 = bool:yes
 jump L5
 label L4
-$3 = bool:false
+$3 = bool:no
 label L5
 branch.false bool:$3, L1
 $12 = i32:5 <= i32:5
 branch.false bool:$12, L1
-$0 = bool:true
+$0 = bool:yes
 jump L2
 label L1
-$0 = bool:false
+$0 = bool:no
 label L2
 local ordered = bool:$0
-local $13 = bool:false
+local $13 = bool:no
 $16 = f64:1.5 < f64:limit
 branch.false bool:$16, L14
-$17 = !bool:false
+$17 = !bool:no
 branch.false bool:$17, L14
-$13 = bool:true
+$13 = bool:yes
 jump L15
 label L14
-$13 = bool:false
+$13 = bool:no
 label L15
 local $18 = string:0
 branch.false bool:$13, L20
@@ -88,19 +88,19 @@ label L27
 $25 = string:"bad"
 label L26
 call fn(string)->void:prn, string:$25
-local $28 = bool:false
+local $28 = bool:no
 $32 = u32:mask & u32:11
 $33 = u32:$32 ^ u32:3
 $34 = u32:$33 == u32:9
 branch.false bool:$34, L29
-$28 = bool:true
+$28 = bool:yes
 jump L31
 label L29
-branch.false bool:false, L30
-$28 = bool:true
+branch.false bool:no, L30
+$28 = bool:yes
 jump L31
 label L30
-$28 = bool:false
+$28 = bool:no
 label L31
 local $35 = string:0
 branch.false bool:$28, L37
@@ -110,15 +110,15 @@ label L37
 $35 = string:"bad"
 label L36
 call fn(string)->void:prn, string:$35
-local $38 = bool:false
+local $38 = bool:no
 $41 = f32:half <= f32:0.5
 branch.false bool:$41, L39
 $42 = i32:3 != i32:4
 branch.false bool:$42, L39
-$38 = bool:true
+$38 = bool:yes
 jump L40
 label L39
-$38 = bool:false
+$38 = bool:no
 label L40
 local $43 = i32:0
 branch.false bool:$38, L45

@@ -280,7 +280,7 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_float_literal(sb, lexer, node->token_index);
         break;
     case CK_BoolLiteral:
-        sb_append_cstr(sb, node->a != 0 ? "true" : "false");
+        sb_append_cstr(sb, node->a != 0 ? "yes" : "no");
         break;
     case CK_StringLiteral:
         sb_append_char(sb, '"');

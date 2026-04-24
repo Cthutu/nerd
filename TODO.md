@@ -381,7 +381,7 @@ on {
 
 In this syntax, there is no value to match against. Instead, each `condition` is
 a boolean expression that is evaluated in order, and the first condition that
-evaluates to true will determine which expression is executed. This allows you
+evaluates to `yes` will determine which expression is executed. This allows you
 to write a series of conditional checks without needing to match against a
 specific value.
 

@@ -66,8 +66,8 @@ string to_string$string(string value) { return value; }
 
 string to_string$bool(bool value)
 {
-    return value ? (string){.data = (u8*)"true", .count = 4}
-                 : (string){.data = (u8*)"false", .count = 5};
+    return value ? (string){.data = (u8*)"yes", .count = 3}
+                 : (string){.data = (u8*)"no", .count = 2};
 }
 
 #define DEF_TO_STRING_INT(name, type, format, cast_type)                       \

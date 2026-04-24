@@ -63,7 +63,7 @@
                 },
                 {
                     "name": "constant.language.boolean.nerd",
-                    "match": "\\b(true|false)\\b"
+                    "match": "\\b(yes|no)\\b"
                 }
             ]
         },

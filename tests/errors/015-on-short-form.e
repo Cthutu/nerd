@@ -23,7 +23,7 @@ main :: fn () => on 1.cast(i32) => 42 else 7
     ]
 }
 ¬
-enabled: bool = true
+enabled: bool = yes
 main :: fn () => on enabled => 42 else "no"
 ¬
 {
