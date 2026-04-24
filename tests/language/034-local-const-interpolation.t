@@ -1,10 +1,9 @@
--- Interpolates block-local constant bindings, including an unannotated float.
 main :: fn () {
-    i :: 2
-    f :: 3.14
-    s :: "Hello, world!"
+  i :: 2
+  f :: 3.14
+  s :: "Hello, world!"
 
-    prn($"{s}  i = {i} and f = {f}!")
+  prn($"{s}  i = {i} and f = {f}!")
 }
 ¬
 0
