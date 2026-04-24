@@ -163,6 +163,7 @@ internal cstr cgen_c_integer_type(const Ir* ir, u32 type_index)
         return "int8_t";
     case STK_I16:
         return "int16_t";
+    case STK_UntypedInteger:
     case STK_I32:
         return "int";
     case STK_I64:
@@ -195,6 +196,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
         return "string";
     case STK_Bool:
         return "bool";
+    case STK_UntypedFloat:
+        return "double";
     case STK_F32:
         return "float";
     case STK_F64:

@@ -269,20 +269,15 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
-    switch (kind) {
-    case TK_Symbol:
-    case TK_Integer:
-    case TK_String:
-    case TK_LParen:
-    case TK_on:
-        return PQ_Expresssion;
-
-    case TK_fn:
+    if (kind == TK_fn) {
         return PQ_Declaration;
-
-    default:
-        return PQ_Invalid;
     }
+
+    if (ast_token_starts_expression(kind)) {
+        return PQ_Expresssion;
+    }
+
+    return PQ_Invalid;
 }
 
 #define EMIT_NODE(_kind, _token_index, _a, _b, _out_index)                     \
