@@ -401,6 +401,13 @@ internal void format_emit_expr(StringBuilder* sb,
             format_emit_block_contents(sb, cst, lexer, node->b, 2);
             format_emit_indent(sb, 1);
             sb_append_char(sb, '}');
+            if (for_info->else_block_index != U32_MAX) {
+                sb_append_cstr(sb, " else {\n");
+                format_emit_block_contents(
+                    sb, cst, lexer, for_info->else_block_index, 2);
+                format_emit_indent(sb, 1);
+                sb_append_char(sb, '}');
+            }
         }
         break;
     case CK_IntegerPlus:
@@ -1117,8 +1124,30 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
     if (cst->nodes[node_index].kind == CK_Block) {
         for (u32 owner_index = 0; owner_index < end; ++owner_index) {
             const CstNode* owner = &cst->nodes[owner_index];
-            if ((owner->kind == CK_For || owner->kind == CK_ExprBlock) &&
-                owner->b == node_index) {
+            if (owner->kind == CK_For &&
+                (owner->b == node_index ||
+                 cst->fors[owner->a].else_block_index == node_index)) {
+                return true;
+            }
+            if (owner->kind == CK_ExprBlock && owner->b == node_index) {
+                return true;
+            }
+        }
+    }
+
+    for (u32 owner_index = 0; owner_index < end; ++owner_index) {
+        const CstNode* owner = &cst->nodes[owner_index];
+        if (owner->kind != CK_For) {
+            continue;
+        }
+        const CstForInfo* for_info = &cst->fors[owner->a];
+        for (u32 item = 0; item < for_info->init_count; ++item) {
+            if (cst->for_items[for_info->first_init + item] == node_index) {
+                return true;
+            }
+        }
+        for (u32 item = 0; item < for_info->update_count; ++item) {
+            if (cst->for_items[for_info->first_update + item] == node_index) {
                 return true;
             }
         }
@@ -1132,8 +1161,24 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
         }
         for (u32 owner_index = 0; owner_index < end; ++owner_index) {
             const CstNode* owner = &cst->nodes[owner_index];
-            if ((owner->kind == CK_For || owner->kind == CK_ExprBlock) &&
-                owner->b == i) {
+            if (owner->kind == CK_For &&
+                (owner->b == i || cst->fors[owner->a].else_block_index == i)) {
+                return true;
+            }
+            if (owner->kind == CK_For) {
+                const CstForInfo* for_info = &cst->fors[owner->a];
+                for (u32 item = 0; item < for_info->init_count; ++item) {
+                    if (cst->for_items[for_info->first_init + item] == i) {
+                        return true;
+                    }
+                }
+                for (u32 item = 0; item < for_info->update_count; ++item) {
+                    if (cst->for_items[for_info->first_update + item] == i) {
+                        return true;
+                    }
+                }
+            }
+            if (owner->kind == CK_ExprBlock && owner->b == i) {
                 return true;
             }
         }
@@ -1557,6 +1602,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
         format_emit_block_contents(sb, cst, lexer, stmt->b, indent_level + 1);
         format_emit_indent(sb, indent_level);
         sb_append_cstr(sb, "}\n");
+        if (for_info->else_block_index != U32_MAX) {
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "else {\n");
+            format_emit_block_contents(
+                sb, cst, lexer, for_info->else_block_index, indent_level + 1);
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "}\n");
+        }
         return;
     }
 

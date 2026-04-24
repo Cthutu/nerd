@@ -84,7 +84,10 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
         return node->b;
     }
     if (node->kind == AK_For) {
-        return ast->nodes[node->b].b;
+        const AstForInfo* for_info = &ast->fors[node->a];
+        return for_info->else_block_index == U32_MAX
+                   ? ast->nodes[node->b].b
+                   : ast->nodes[for_info->else_block_index].b;
     }
     if (node->kind == AK_Bind || node->kind == AK_Variable ||
         node->kind == AK_Statement) {

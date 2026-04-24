@@ -727,7 +727,10 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
                     return true;
                 }
             }
-            return ir_node_contains_interpolation(ast, node->b);
+            return ir_node_contains_interpolation(ast, node->b) ||
+                   (for_info->else_block_index != U32_MAX &&
+                    ir_node_contains_interpolation(ast,
+                                                   for_info->else_block_index));
         }
     default:
         return false;
@@ -1843,6 +1846,9 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                  ? (i64)(*next_value_index)++
                                  : start_label;
         i64 end_label      = (i64)(*next_value_index)++;
+        i64 else_label     = for_info->else_block_index != U32_MAX
+                                 ? (i64)(*next_value_index)++
+                                 : end_label;
         ir_add_label(ir, start_label);
         if (for_info->condition_node_index != U32_MAX) {
             IrValue condition = ir_lower_node(lex,
@@ -1857,7 +1863,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 ir,
                 condition,
                 ir_node_type_index(ast, sema, for_info->condition_node_index),
-                end_label);
+                else_label);
         }
         IrLoopLabels inner_loop   = loop;
         inner_loop.break_label    = end_label;
@@ -1911,6 +1917,22 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                     ir);
             }
             ir_add_jump(ir, start_label);
+        }
+        if (for_info->else_block_index != U32_MAX) {
+            ir_add_label(ir, else_label);
+            IrStatementResult else_result =
+                ir_generate_statement(lex,
+                                      ast,
+                                      sema,
+                                      function_index,
+                                      for_info->else_block_index,
+                                      inner_loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+            if (else_result == IR_STMT_RETURN) {
+                return IR_STMT_RETURN;
+            }
         }
         ir_add_label(ir, end_label);
         node_values[node_index] = result;

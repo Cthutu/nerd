@@ -1385,6 +1385,7 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
            .first_update         = U32_MAX,
            .update_count         = 0,
            .label_symbol         = U32_MAX,
+           .else_block_index     = U32_MAX,
     };
     if (!cst_emit_node(state,
                        (CstNode){
@@ -1505,6 +1506,12 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
     }
     if (!cst_parse_for_body(state, &for_info, &body)) {
         return false;
+    }
+    if (cst_current_token(state).kind == TK_else) {
+        cst_advance(state);
+        if (!cst_parse_nested_block(state, &for_info.else_block_index)) {
+            return false;
+        }
     }
     u32 for_info_index = (u32)array_count(state->cst.fors);
     array_push(state->cst.fors, for_info);
@@ -2034,7 +2041,10 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         return node->b;
     }
     if (node->kind == CK_For) {
-        return cst->nodes[node->b].b;
+        const CstForInfo* for_info = &cst->fors[node->a];
+        return for_info->else_block_index == U32_MAX
+                   ? cst->nodes[node->b].b
+                   : cst->nodes[for_info->else_block_index].b;
     }
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
         node->kind == CK_Statement) {

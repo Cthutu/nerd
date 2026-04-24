@@ -582,6 +582,7 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                .first_update         = U32_MAX,
                .update_count         = 0,
                .label_symbol         = U32_MAX,
+               .else_block_index     = U32_MAX,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -761,6 +762,25 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     }
     if (!ast_parse_for_body(state, &for_info, &body_node)) {
         return false;
+    }
+    if (ast_cursor_kind(state) == TK_else) {
+        if (!ast_next_token(state) || !ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                state->token.kind);
+        }
+        if (state->token.kind != TK_LBrace) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                state->token.kind);
+        }
+        if (!ast_parse_nested_block(state, &for_info.else_block_index)) {
+            return false;
+        }
     }
     u32 for_info_index = (u32)array_count(state->fors);
     array_push(state->fors, for_info);

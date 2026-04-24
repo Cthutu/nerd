@@ -226,6 +226,10 @@ bool error_0330_unknown_control_label(NerdSource source,
 bool error_0331_continue_to_non_loop_label(NerdSource source,
                                            ErrorSpan  span,
                                            string     label);
+bool error_0332_missing_loop_else(NerdSource source,
+                                  ErrorSpan  span,
+                                  string     type_name);
+bool error_0333_invalid_loop_else(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

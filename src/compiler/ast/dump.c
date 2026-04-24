@@ -271,14 +271,14 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 const AstForInfo* for_info = &ast->fors[node->a];
                 row[3]                     = table_cell_string(string_format(
                     &temp_arena,
-                    "init=%u..%u condition=%u update=%u..%u "
-                                        "body=%u",
+                    "init=%u..%u condition=%u update=%u..%u body=%u else=%u",
                     for_info->first_init,
                     for_info->first_init + for_info->init_count,
                     for_info->condition_node_index,
                     for_info->first_update,
                     for_info->first_update + for_info->update_count,
-                    node->b));
+                    node->b,
+                    for_info->else_block_index));
             }
             break;
         case AK_Bind:

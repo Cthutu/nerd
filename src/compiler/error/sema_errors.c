@@ -802,3 +802,55 @@ bool error_0331_continue_to_non_loop_label(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a finite value-producing loop expression without an exhaustion value.
+
+bool error_0332_missing_loop_else(NerdSource source,
+                                  ErrorSpan  span,
+                                  string     type_name)
+{
+    ErrorInfo error =
+        error_init(332,
+                   source,
+                   span,
+                   "Missing `else` for loop expression returning `" STRINGP "`",
+                   STRINGV(type_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This loop can finish normally without breaking with a "
+                        "`" STRINGP "` value",
+                        STRINGV(type_name));
+    error_add_note(&error,
+                   "Finite value-producing loop expressions must make normal "
+                   "loop exhaustion explicit with `else { break <expr> }`.");
+    error_add_help(
+        &error,
+        "Add an `else` block that breaks with the loop result, or "
+        "make the loop infinite if normal exhaustion is impossible.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report an `else` block on a loop that has no value-producing breaks.
+
+bool error_0333_invalid_loop_else(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(333,
+                   source,
+                   span,
+                   "Loop `else` requires a value-producing loop expression");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `else` block has no matching value-producing "
+                        "`break` in the loop");
+    error_add_help(&error,
+                   "Use `else` only on loops that return a value with "
+                   "`break <expr>`, or remove the `else` block.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

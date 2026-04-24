@@ -173,6 +173,7 @@ typedef struct {
     u32 first_update;
     u32 update_count;
     u32 label_symbol;
+    u32 else_block_index;
 } CstForInfo;
 
 typedef struct {

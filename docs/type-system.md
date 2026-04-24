@@ -68,6 +68,19 @@ Short-form `on` expressions also participate in semantic typing:
 - both branches must produce exactly the same type
 - no implicit casts are inserted between branches
 
+Expression blocks and value-producing loops use the same explicit control-flow
+value model:
+
+- a `break <expr>` targeting the block or loop supplies the result value
+- all value-producing breaks for the same target must merge to one type
+- a finite value-producing loop must include `else { break <expr> }` for the
+  normal loop-exhaustion path
+- loop `else` is only valid when the loop body has a reachable value-producing
+  `break`
+
+Infinite loop expressions do not need an `else` because they cannot exhaust
+normally.
+
 Block-form `on` currently supports:
 
 - constant value patterns

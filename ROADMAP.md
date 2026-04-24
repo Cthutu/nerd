@@ -780,14 +780,16 @@ needed earlier.
   - [x] Keep loop-expression typing exact and explicit.
   - Covered by language, error, formatter, and LSP regression tests.
 
-- [ ] 63. Extend typed control-flow merging beyond `on`.
-  - Reuse or extend the branch-merge IR model for expression blocks and loop
+- [x] 63. Extend typed control-flow merging beyond `on`.
+  - [x] Reuse or extend the branch-merge IR model for expression blocks and loop
     expressions.
-  - Keep control-flow value merges explicit in IR rather than hidden in later
+  - [x] Keep control-flow value merges explicit in IR rather than hidden in later
     code generation.
-  - Add `else` branches for loops only when the associated loop has reachable
+  - [x] Add `else` branches for loops only when the associated loop has reachable
     value-producing `break` paths.
-  - Extend tests, formatter support, LSP coverage, and documentation together.
+  - [x] Extend tests, formatter support, LSP coverage, and documentation together.
+  - Finite loop expressions now require `else { break <expr> }` so normal
+    loop exhaustion has an explicit result value.
 
 ## Future Ideas
 
