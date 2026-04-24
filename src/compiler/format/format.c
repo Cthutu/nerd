@@ -363,11 +363,6 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_For:
         {
             const CstForInfo* for_info = &cst->fors[node->a];
-            if (for_info->label_symbol != U32_MAX) {
-                sb_append_char(sb, '$');
-                sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
-                sb_append_char(sb, ' ');
-            }
             sb_append_cstr(sb, "for");
             bool is_c_style =
                 for_info->init_count > 0 || for_info->update_count > 0;
@@ -397,6 +392,10 @@ internal void format_emit_expr(StringBuilder* sb,
                 sb_append_char(sb, ' ');
                 format_emit_expr(
                     sb, cst, lexer, for_info->condition_node_index, 0);
+            }
+            if (for_info->label_symbol != U32_MAX) {
+                sb_append_cstr(sb, " $");
+                sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
             }
             sb_append_cstr(sb, " {\n");
             format_emit_block_contents(sb, cst, lexer, node->b, 2);
@@ -1524,11 +1523,6 @@ internal void format_emit_block_statement(StringBuilder* sb,
         ASSERT(body->kind == CK_Block, "Expected for body block");
 #endif
         const CstForInfo* for_info = &cst->fors[stmt->a];
-        if (for_info->label_symbol != U32_MAX) {
-            sb_append_char(sb, '$');
-            sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
-            sb_append_char(sb, ' ');
-        }
         sb_append_cstr(sb, "for");
         bool is_c_style =
             for_info->init_count > 0 || for_info->update_count > 0;
@@ -1554,6 +1548,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
         } else if (for_info->condition_node_index != U32_MAX) {
             sb_append_char(sb, ' ');
             format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
+        }
+        if (for_info->label_symbol != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
         }
         sb_append_cstr(sb, " {\n");
         format_emit_block_contents(sb, cst, lexer, stmt->b, indent_level + 1);

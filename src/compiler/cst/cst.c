@@ -35,8 +35,7 @@ internal bool cst_parse_variable(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
-internal bool
-cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node);
+internal bool cst_parse_for(CstParseState* state, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
@@ -727,7 +726,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
     case TK_on:
         return cst_parse_on_expr(state, out_node);
     case TK_for:
-        return cst_parse_for(state, U32_MAX, out_node);
+        return cst_parse_for(state, out_node);
     case TK_Dollar:
         {
             u32 token_index = state->token_index;
@@ -737,9 +736,6 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
             if (cst_current_token(state).kind == TK_Symbol) {
                 label = cst_current_symbol_handle(state);
                 cst_advance(state);
-            }
-            if (cst_current_token(state).kind == TK_for) {
-                return cst_parse_for(state, label, out_node);
             }
             if (cst_current_token(state).kind != TK_LBrace ||
                 !cst_parse_nested_block(state, &block)) {
@@ -1345,7 +1341,9 @@ internal bool cst_parse_for_item_list(CstParseState* state,
         item_count++;
     }
 
-    if (cst_current_token(state).kind != terminator) {
+    if (cst_current_token(state).kind != terminator &&
+        !(terminator == TK_LBrace &&
+          cst_current_token(state).kind == TK_Dollar)) {
         return false;
     }
 
@@ -1354,8 +1352,28 @@ internal bool cst_parse_for_item_list(CstParseState* state,
     return true;
 }
 
+internal bool cst_token_is_for_body_start(TokenKind kind)
+{
+    return kind == TK_LBrace || kind == TK_Dollar;
+}
+
 internal bool
-cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
+cst_parse_for_body(CstParseState* state, CstForInfo* for_info, u32* out_body)
+{
+    if (cst_current_token(state).kind == TK_Dollar) {
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+        for_info->label_symbol = cst_current_symbol_handle(state);
+        cst_advance(state);
+    }
+
+    return cst_current_token(state).kind == TK_LBrace &&
+           cst_parse_nested_block(state, out_body);
+}
+
+internal bool cst_parse_for(CstParseState* state, u32* out_node)
 {
     u32        token_index = state->token_index;
     u32        for_node    = 0;
@@ -1366,7 +1384,7 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
            .condition_node_index = U32_MAX,
            .first_update         = U32_MAX,
            .update_count         = 0,
-           .label_symbol         = label_symbol,
+           .label_symbol         = U32_MAX,
     };
     if (!cst_emit_node(state,
                        (CstNode){
@@ -1377,7 +1395,7 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
         return false;
     }
     cst_advance(state);
-    if (cst_current_token(state).kind != TK_LBrace) {
+    if (!cst_token_is_for_body_start(cst_current_token(state).kind)) {
         if (cst_current_token(state).kind == TK_Semicolon) {
             if (!cst_consume(state, TK_Semicolon)) {
                 return false;
@@ -1391,7 +1409,7 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
             if (!cst_consume(state, TK_Semicolon)) {
                 return false;
             }
-            if (cst_current_token(state).kind != TK_LBrace) {
+            if (!cst_token_is_for_body_start(cst_current_token(state).kind)) {
                 u32  update_node        = 0;
                 bool update_raw_expr    = false;
                 u32  update_token_index = state->token_index;
@@ -1417,7 +1435,7 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
                 return false;
             }
 
-            if (cst_current_token(state).kind == TK_LBrace) {
+            if (cst_token_is_for_body_start(cst_current_token(state).kind)) {
                 if (!first_raw_expr) {
                     return false;
                 }
@@ -1462,7 +1480,8 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
                     return false;
                 }
 
-                if (cst_current_token(state).kind != TK_LBrace) {
+                if (!cst_token_is_for_body_start(
+                        cst_current_token(state).kind)) {
                     u32  update_node        = 0;
                     bool update_raw_expr    = false;
                     u32  update_token_index = state->token_index;
@@ -1484,7 +1503,7 @@ cst_parse_for(CstParseState* state, u32 label_symbol, u32* out_node)
             }
         }
     }
-    if (!cst_parse_nested_block(state, &body)) {
+    if (!cst_parse_for_body(state, &for_info, &body)) {
         return false;
     }
     u32 for_info_index = (u32)array_count(state->cst.fors);
@@ -1551,17 +1570,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
         return cst_parse_nested_block(state, NULL);
     }
 
-    if (cst_current_token(state).kind == TK_Dollar &&
-        cst_kind_at_stream_index(state, state->token_index + 1) == TK_Symbol &&
-        cst_kind_at_stream_index(state, state->token_index + 2) == TK_for) {
-        cst_advance(state);
-        u32 label = cst_current_symbol_handle(state);
-        cst_advance(state);
-        return cst_parse_for(state, label, NULL);
-    }
-
     if (cst_current_token(state).kind == TK_for) {
-        return cst_parse_for(state, U32_MAX, NULL);
+        return cst_parse_for(state, NULL);
     }
 
     if (cst_starts_binding(state)) {

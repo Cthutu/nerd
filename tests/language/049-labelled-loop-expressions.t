@@ -1,21 +1,21 @@
 main :: fn () {
     total := 0
-    $outer for i := 0; i < 5; i += 1 {
-        $inner for j := 0; j < 5; j += 1 {
+    for i := 0; i < 5; i += 1 $outer {
+        for j := 0; j < 5; j += 1 $inner {
             on j == 1 => continue $outer
             total += 100
         }
         total += i
     }
 
-    $done for {
+    for $done {
         break $done
     }
 
     value :: for {
         break 7
     }
-    labelled_value :: $value_loop for {
+    labelled_value :: for $value_loop {
         break $value_loop 11
     }
 

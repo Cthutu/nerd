@@ -735,7 +735,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
     case TK_on:
         return ast_parse_on_expr(state, token, out_node);
     case TK_for:
-        return ast_parse_for(state, U32_MAX, out_node);
+        return ast_parse_for(state, out_node);
     case TK_Dollar:
         {
             u32 label = U32_MAX;
@@ -754,9 +754,6 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                         TK_LBrace,
                         state->token.kind);
                 }
-            }
-            if (state->token.kind == TK_for) {
-                return ast_parse_for(state, label, out_node);
             }
             if (state->token.kind != TK_LBrace) {
                 return error_0203_expected_token(state->lexer->source,

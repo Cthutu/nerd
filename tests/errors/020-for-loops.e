@@ -165,7 +165,7 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Use the label from an enclosing `$label { ... }` block or `$label for ... { ... }` loop."
+        "Use the label from an enclosing `$label { ... }` block or `for ... $label { ... }` loop."
     ]
 }
 ¬
@@ -196,7 +196,7 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Use `break $block` for an expression block, or `continue` to a `$label for ... { ... }` loop."
+        "Use `break $block` for an expression block, or `continue` to a `for ... $label { ... }` loop."
     ]
 }
 ¬

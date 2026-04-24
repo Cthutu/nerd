@@ -769,7 +769,7 @@ bool error_0330_unknown_control_label(NerdSource source,
                         "No enclosing expression block or loop has this label");
     error_add_help(&error,
                    "Use the label from an enclosing `$label { ... }` block "
-                   "or `$label for ... { ... }` loop.");
+                   "or `for ... $label { ... }` loop.");
     error_render(&error);
     return false;
 }
@@ -795,7 +795,7 @@ bool error_0331_continue_to_non_loop_label(NerdSource source,
         "This label names an expression block, not a `for` loop");
     error_add_help(&error,
                    "Use `break $" STRINGP "` for an expression block, or "
-                   "`continue` to a `$label for ... { ... }` loop.",
+                   "`continue` to a `for ... $label { ... }` loop.",
                    STRINGV(label));
     error_render(&error);
     return false;

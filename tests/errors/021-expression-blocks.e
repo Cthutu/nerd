@@ -139,6 +139,6 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Use the label from an enclosing `$label { ... }` block or `$label for ... { ... }` loop."
+        "Use the label from an enclosing `$label { ... }` block or `for ... $label { ... }` loop."
     ]
 }

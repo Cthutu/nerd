@@ -1,15 +1,15 @@
 main :: fn () {
-$outer for i := 0; i < 5; i += 1 { on i == 2 => continue $outer
+for i := 0; i < 5; i += 1 $outer { on i == 2 => continue $outer
 on i == 4 => break $outer }
-value :: $value for { break $value 7 }
+value :: for $value { break $value 7 }
 }
 ¬
 main :: fn () {
-    $outer for i := 0; i < 5; i += 1 {
+    for i := 0; i < 5; i += 1 $outer {
         on i == 2 => continue $outer
         on i == 4 => break $outer
     }
-    value :: $value for {
+    value :: for $value {
         break $value 7
     }
 }

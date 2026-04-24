@@ -511,7 +511,8 @@ internal bool ast_parse_for_item_list(AstParseState* state,
         item_count++;
     }
 
-    if (state->token.kind != terminator) {
+    if (state->token.kind != terminator &&
+        !(terminator == TK_LBrace && state->token.kind == TK_Dollar)) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
                                          terminator,
@@ -526,7 +527,51 @@ internal bool ast_parse_for_item_list(AstParseState* state,
 //------------------------------------------------------------------------------
 // Parse a `for` loop statement or expression. The current token must be `for`.
 
-bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
+internal bool ast_for_token_is_body_start(TokenKind kind)
+{
+    return kind == TK_LBrace || kind == TK_Dollar;
+}
+
+internal bool ast_parse_for_body(AstParseState* state,
+                                 AstForInfo*    for_info,
+                                 u32*           out_body_node)
+{
+    if (!ast_for_token_is_body_start(state->token.kind) &&
+        ast_for_token_is_body_start(ast_cursor_kind(state))) {
+        if (!ast_next_token(state)) {
+            return false;
+        }
+    }
+
+    if (state->token.kind == TK_Dollar) {
+        if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+        for_info->label_symbol = state->token.value.symbol_handle;
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                state->token.kind);
+        }
+    }
+
+    if (state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+
+    return ast_parse_nested_block(state, out_body_node);
+}
+
+bool ast_parse_for(AstParseState* state, u32* out_node)
 {
     u32        for_token_index = state->token.token_index;
     u32        for_node        = 0;
@@ -536,7 +581,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
                .condition_node_index = U32_MAX,
                .first_update         = U32_MAX,
                .update_count         = 0,
-               .label_symbol         = label_symbol,
+               .label_symbol         = U32_MAX,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -553,7 +598,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
                                          TK_LBrace,
                                          TK_EOF);
     }
-    if (state->token.kind != TK_LBrace) {
+    if (!ast_for_token_is_body_start(state->token.kind)) {
         if (state->token.kind == TK_Semicolon) {
             if (ast_cursor_kind(state) != TK_Semicolon) {
                 if (!ast_next_token(state)) {
@@ -581,7 +626,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
                 return false;
             }
 
-            if (ast_cursor_kind(state) != TK_LBrace) {
+            if (!ast_for_token_is_body_start(ast_cursor_kind(state))) {
                 if (!ast_next_token(state)) {
                     return false;
                 }
@@ -612,7 +657,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
                 return false;
             }
 
-            if (state->token.kind == TK_LBrace) {
+            if (ast_for_token_is_body_start(state->token.kind)) {
                 if (!first_raw_expr) {
                     return error_0203_expected_token(
                         state->lexer->source,
@@ -677,7 +722,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
                     return false;
                 }
 
-                if (ast_cursor_kind(state) != TK_LBrace) {
+                if (!ast_for_token_is_body_start(ast_cursor_kind(state))) {
                     if (!ast_next_token(state)) {
                         return false;
                     }
@@ -714,7 +759,7 @@ bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
             return false;
         }
     }
-    if (!ast_parse_nested_block(state, &body_node)) {
+    if (!ast_parse_for_body(state, &for_info, &body_node)) {
         return false;
     }
     u32 for_info_index = (u32)array_count(state->fors);
@@ -801,20 +846,8 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_nested_block(state, NULL);
     }
 
-    if (state->token.kind == TK_Dollar && ast_cursor_kind(state) == TK_Symbol &&
-        ast_peek_kind_at(state, 1) == TK_for) {
-        if (!ast_next_token(state)) {
-            return false;
-        }
-        u32 label = state->token.value.symbol_handle;
-        if (!ast_next_token(state)) {
-            return false;
-        }
-        return ast_parse_for(state, label, NULL);
-    }
-
     if (state->token.kind == TK_for) {
-        return ast_parse_for(state, U32_MAX, NULL);
+        return ast_parse_for(state, NULL);
     }
 
     if (ast_symbol_starts_bind(state)) {
