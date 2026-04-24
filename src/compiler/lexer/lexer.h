@@ -42,6 +42,7 @@ typedef enum {
     TK_LParen,
     TK_RParen,
     TK_Comma,
+    TK_Semicolon,
     TK_LBrace,
     TK_RBrace,
     TK_Dot,

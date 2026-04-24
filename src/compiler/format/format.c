@@ -1308,6 +1308,58 @@ internal bool format_emit_call_with_block_on_arg(StringBuilder* sb,
     return true;
 }
 
+internal void format_emit_for_header_item(StringBuilder* sb,
+                                          const Cst*     cst,
+                                          const Lexer*   lexer,
+                                          u32            node_index)
+{
+    const CstNode* item = &cst->nodes[node_index];
+    if (item->kind == CK_Variable) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
+        if (cst->nodes[item->b].kind == CK_AnnotatedValue ||
+            cst->nodes[item->b].kind == CK_ZeroInit) {
+            sb_append_cstr(sb, ": ");
+            format_emit_variable_payload(sb, cst, lexer, item->b);
+        } else {
+            sb_append_cstr(sb, " := ");
+            format_emit_expr(sb, cst, lexer, item->b, 0);
+        }
+        return;
+    }
+    if (item->kind == CK_Bind) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
+        sb_append_cstr(
+            sb, cst->nodes[item->b].kind == CK_AnnotatedValue ? " : " : " :: ");
+        format_emit_value(sb, cst, lexer, item->b);
+        return;
+    }
+    if (item->kind == CK_Assign) {
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
+        sb_append_char(sb, ' ');
+        sb_append_string(sb, format_assignment_operator(lexer, item));
+        sb_append_char(sb, ' ');
+        format_emit_expr(sb, cst, lexer, item->b, 0);
+        return;
+    }
+    ASSERT(item->kind == CK_Statement, "Expected for header statement item");
+    format_emit_expr(sb, cst, lexer, item->a, 0);
+}
+
+internal void format_emit_for_header_items(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            first_item,
+                                           u32            item_count)
+{
+    for (u32 i = 0; i < item_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        format_emit_for_header_item(
+            sb, cst, lexer, cst->for_items[first_item + i]);
+    }
+}
+
 internal void format_emit_block_statement(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
@@ -1338,10 +1390,36 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_For) {
         const CstNode* body = &cst->nodes[stmt->b];
         ASSERT(body->kind == CK_Block, "Expected for body block");
+        const CstForInfo* for_info = &cst->fors[stmt->a];
         sb_append_cstr(sb, "for");
-        if (stmt->a != U32_MAX) {
+        bool is_c_style =
+            for_info->init_count > 0 || for_info->update_count > 0;
+        if (is_c_style) {
             sb_append_char(sb, ' ');
-            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+            if (for_info->init_count > 0) {
+                format_emit_for_header_items(sb,
+                                             cst,
+                                             lexer,
+                                             for_info->first_init,
+                                             for_info->init_count);
+            }
+            sb_append_cstr(sb, "; ");
+            if (for_info->condition_node_index != U32_MAX) {
+                format_emit_expr(
+                    sb, cst, lexer, for_info->condition_node_index, 0);
+            }
+            sb_append_cstr(sb, "; ");
+            if (for_info->update_count > 0) {
+                format_emit_for_header_items(sb,
+                                             cst,
+                                             lexer,
+                                             for_info->first_update,
+                                             for_info->update_count);
+            }
+        } else if (for_info->condition_node_index != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(
+                sb, cst, lexer, for_info->condition_node_index, 0);
         }
         sb_append_cstr(sb, " {\n");
         for (u32 i = body->a; i < body->b; ++i) {

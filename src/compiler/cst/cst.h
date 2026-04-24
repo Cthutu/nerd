@@ -52,7 +52,7 @@
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_Block           | First stmt index      | End-exclusive index   |
-// | CK_For             | Condition node/U32_MAX | Body block node      |
+// | CK_For             | CST for-info index   | Body block node      |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
@@ -157,6 +157,14 @@ typedef struct {
 } CstOnInfo;
 
 typedef struct {
+    u32 first_init;
+    u32 init_count;
+    u32 condition_node_index;
+    u32 first_update;
+    u32 update_count;
+} CstForInfo;
+
+typedef struct {
     Array(CstNode) nodes;
     Array(u64) integers;
     Array(f64) floats;
@@ -168,6 +176,8 @@ typedef struct {
     Array(u32) on_pattern_nodes;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
+    Array(u32) for_items;
+    Array(CstForInfo) fors;
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);

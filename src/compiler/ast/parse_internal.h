@@ -59,6 +59,8 @@ typedef struct {
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
+    Array(u32) for_items;
+    Array(AstForInfo) fors;
 
     // Current top-level expression start
     // u32 expr_start_node_index;

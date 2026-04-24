@@ -631,9 +631,27 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
             return false;
         }
     case AK_For:
-        return (node->a != U32_MAX &&
-                ir_node_contains_interpolation(ast, node->a)) ||
-               ir_node_contains_interpolation(ast, node->b);
+        {
+            const AstForInfo* for_info = &ast->fors[node->a];
+            for (u32 i = 0; i < for_info->init_count; ++i) {
+                if (ir_node_contains_interpolation(
+                        ast, ast->for_items[for_info->first_init + i])) {
+                    return true;
+                }
+            }
+            if (for_info->condition_node_index != U32_MAX &&
+                ir_node_contains_interpolation(
+                    ast, for_info->condition_node_index)) {
+                return true;
+            }
+            for (u32 i = 0; i < for_info->update_count; ++i) {
+                if (ir_node_contains_interpolation(
+                        ast, ast->for_items[for_info->first_update + i])) {
+                    return true;
+                }
+            }
+            return ir_node_contains_interpolation(ast, node->b);
+        }
     default:
         return false;
     }
@@ -1483,15 +1501,35 @@ internal bool ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_For) {
         const AstNode* body = &ast->nodes[node->b];
         ASSERT(body->kind == AK_Block, "Expected for body block");
+        const AstForInfo* for_info = &ast->fors[node->a];
+        for (u32 item = 0; item < for_info->init_count; ++item) {
+            ir_generate_statement(lex,
+                                  ast,
+                                  sema,
+                                  function_index,
+                                  ast->for_items[for_info->first_init + item],
+                                  node_values,
+                                  next_value_index,
+                                  ir);
+        }
         i64 start_label = (i64)(*next_value_index)++;
-        i64 end_label   = node->a == U32_MAX ? -1 : (i64)(*next_value_index)++;
+        i64 end_label   = for_info->condition_node_index == U32_MAX
+                              ? -1
+                              : (i64)(*next_value_index)++;
         ir_add_label(ir, start_label);
-        if (node->a != U32_MAX) {
-            IrValue condition = ir_lower_node(
-                lex, ast, sema, node->a, node_values, next_value_index, ir);
+        if (for_info->condition_node_index != U32_MAX) {
+            IrValue condition =
+                ir_lower_node(lex,
+                              ast,
+                              sema,
+                              for_info->condition_node_index,
+                              node_values,
+                              next_value_index,
+                              ir);
             ir_add_branch_false(ir,
                                 condition,
-                                ir_node_type_index(ast, sema, node->a),
+                                ir_node_type_index(
+                                    ast, sema, for_info->condition_node_index),
                                 end_label);
         }
         bool body_returned = ir_generate_statement(lex,
@@ -1502,13 +1540,24 @@ internal bool ir_generate_statement(const Lexer* lex,
                                                    node_values,
                                                    next_value_index,
                                                    ir);
-        if (node->a == U32_MAX && body_returned) {
+        if (for_info->condition_node_index == U32_MAX && body_returned) {
             return true;
         }
         if (!body_returned) {
+            for (u32 item = 0; item < for_info->update_count; ++item) {
+                ir_generate_statement(
+                    lex,
+                    ast,
+                    sema,
+                    function_index,
+                    ast->for_items[for_info->first_update + item],
+                    node_values,
+                    next_value_index,
+                    ir);
+            }
             ir_add_jump(ir, start_label);
         }
-        if (node->a != U32_MAX) {
+        if (for_info->condition_node_index != U32_MAX) {
             ir_add_label(ir, end_label);
         }
         return false;

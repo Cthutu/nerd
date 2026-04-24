@@ -711,7 +711,7 @@ needed earlier.
     - `for { ... }`
   - [x] Support while-style loops:
     - `for condition { ... }`
-  - [ ] Support C-style loops:
+  - [x] Support C-style loops:
     - `for init; condition; update { ... }`
   - Defer iterable/range iteration syntax if it materially slows the first loop
     milestone.

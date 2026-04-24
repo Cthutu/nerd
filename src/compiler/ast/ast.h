@@ -52,7 +52,7 @@
 // | AK_Return          | Ast index of expr | 0                               |
 // | AK_ReturnExpr      | Ast index of expr or U32_MAX | 0                    |
 // | AK_Block           | First stmt index  | End-exclusive stmt index        |
-// | AK_For             | Condition expr or U32_MAX | Body block index           |
+// | AK_For             | Ast for-info index | Body block index             |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_Variable        | Symbol            | Ast index of type/value/zero    |
 // | AK_Assign          | Symbol            | Ast index of value              |
@@ -175,6 +175,14 @@ typedef struct {
 } AstOnInfo;
 
 typedef struct {
+    u32 first_init;
+    u32 init_count;
+    u32 condition_node_index;
+    u32 first_update;
+    u32 update_count;
+} AstForInfo;
+
+typedef struct {
     Array(AstNode) nodes;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
@@ -183,6 +191,8 @@ typedef struct {
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
+    Array(u32) for_items;
+    Array(AstForInfo) fors;
 } Ast;
 
 Ast  ast_parse(Lexer* lexer);

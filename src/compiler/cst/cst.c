@@ -31,6 +31,7 @@ typedef struct {
 } CstParseState;
 
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
+internal bool cst_parse_variable(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node);
 
@@ -1169,6 +1170,112 @@ internal bool cst_parse_nested_block(CstParseState* state, u32* out_node)
     return true;
 }
 
+internal bool cst_parse_for_clause_item(CstParseState* state,
+                                        bool           allow_declaration,
+                                        u32*           out_node,
+                                        bool*          out_raw_expr)
+{
+    u32 token_index = state->token_index;
+
+    if (allow_declaration && cst_starts_binding(state)) {
+        *out_raw_expr = false;
+        if (cst_starts_variable(state) && !cst_starts_annotated_bind(state)) {
+            return cst_parse_variable(state, out_node);
+        }
+        return cst_parse_bind(state, out_node);
+    }
+
+    if (allow_declaration && cst_starts_variable(state)) {
+        *out_raw_expr = false;
+        return cst_parse_variable(state, out_node);
+    }
+
+    if (cst_starts_assignment(state)) {
+        u32 symbol_handle = cst_current_symbol_handle(state);
+        u32 value         = 0;
+        if (symbol_handle == CST_NO_VALUE) {
+            return false;
+        }
+        cst_advance(state);
+        cst_advance(state);
+        if (!cst_parse_expr_bp(state, 0, &value)) {
+            return false;
+        }
+        *out_raw_expr = false;
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_Assign,
+                                 .token_index = token_index,
+                                 .a           = symbol_handle,
+                                 .b           = value,
+                             },
+                             out_node);
+    }
+
+    *out_raw_expr = true;
+    return cst_parse_expr_bp(state, 0, out_node);
+}
+
+internal bool cst_wrap_for_expr_item(CstParseState* state,
+                                     u32            token_index,
+                                     u32*           in_out_node)
+{
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_Statement,
+                             .token_index = token_index,
+                             .a           = *in_out_node,
+                         },
+                         in_out_node);
+}
+
+internal bool cst_parse_for_item_list(CstParseState* state,
+                                      bool           allow_declaration,
+                                      TokenKind      terminator,
+                                      u32            first_node,
+                                      bool           first_raw_expr,
+                                      u32            first_token_index,
+                                      u32*           out_first_item,
+                                      u32*           out_item_count)
+{
+    u32 first_item = (u32)array_count(state->cst.for_items);
+    u32 item_count = 0;
+    u32 item       = first_node;
+    if (first_raw_expr &&
+        !cst_wrap_for_expr_item(state, first_token_index, &item)) {
+        return false;
+    }
+    array_push(state->cst.for_items, item);
+    item_count++;
+
+    while (cst_current_token(state).kind == TK_Comma) {
+        cst_advance(state);
+        u32  next_item        = 0;
+        bool next_is_raw_expr = false;
+        u32  next_token_index = state->token_index;
+        if (!cst_parse_for_clause_item(state,
+                                       allow_declaration,
+                                       &next_item,
+                                       &next_is_raw_expr)) {
+            return false;
+        }
+        if (next_is_raw_expr &&
+            !cst_wrap_for_expr_item(state, next_token_index, &next_item)) {
+            return false;
+        }
+        array_push(state->cst.for_items, next_item);
+        item_count++;
+    }
+
+    if (cst_current_token(state).kind != terminator) {
+        return false;
+    }
+
+    *out_first_item = first_item;
+    *out_item_count = item_count;
+    return true;
+}
+
 internal bool cst_parse_block_statement(CstParseState* state)
 {
     u32 token_index = state->token_index;
@@ -1193,27 +1300,143 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_for) {
-        u32 for_node  = 0;
-        u32 condition = U32_MAX;
-        u32 body      = 0;
+        u32 for_node = 0;
+        u32 body     = 0;
+        CstForInfo for_info = {
+            .first_init           = U32_MAX,
+            .init_count           = 0,
+            .condition_node_index = U32_MAX,
+            .first_update         = U32_MAX,
+            .update_count         = 0,
+        };
         if (!cst_emit_node(state,
                            (CstNode){
                                .kind        = CK_For,
                                .token_index = token_index,
-                               .a           = U32_MAX,
                            },
                            &for_node)) {
             return false;
         }
         cst_advance(state);
-        if (cst_current_token(state).kind != TK_LBrace &&
-            !cst_parse_expr_bp(state, 0, &condition)) {
-            return false;
+        if (cst_current_token(state).kind != TK_LBrace) {
+            if (cst_current_token(state).kind == TK_Semicolon) {
+                if (!cst_consume(state, TK_Semicolon)) {
+                    return false;
+                }
+                if (cst_current_token(state).kind != TK_Semicolon) {
+                    if (!cst_parse_expr_bp(
+                            state, 0, &for_info.condition_node_index)) {
+                        return false;
+                    }
+                }
+                if (!cst_consume(state, TK_Semicolon)) {
+                    return false;
+                }
+                if (cst_current_token(state).kind != TK_LBrace) {
+                    u32  update_node        = 0;
+                    bool update_raw_expr    = false;
+                    u32  update_token_index = state->token_index;
+                    if (!cst_parse_for_clause_item(state,
+                                                   false,
+                                                   &update_node,
+                                                   &update_raw_expr) ||
+                        !cst_parse_for_item_list(state,
+                                                 false,
+                                                 TK_LBrace,
+                                                 update_node,
+                                                 update_raw_expr,
+                                                 update_token_index,
+                                                 &for_info.first_update,
+                                                 &for_info.update_count)) {
+                        return false;
+                    }
+                }
+            } else {
+                u32  first_node        = 0;
+                bool first_raw_expr    = false;
+                u32  first_token_index = state->token_index;
+                if (!cst_parse_for_clause_item(state,
+                                               true,
+                                               &first_node,
+                                               &first_raw_expr)) {
+                    return false;
+                }
+
+                if (cst_current_token(state).kind == TK_LBrace) {
+                    if (!first_raw_expr) {
+                        return false;
+                    }
+                    for_info.condition_node_index = first_node;
+                } else if (cst_current_token(state).kind == TK_Comma ||
+                           cst_current_token(state).kind == TK_Semicolon) {
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        if (!cst_parse_for_item_list(state,
+                                                     true,
+                                                     TK_Semicolon,
+                                                     first_node,
+                                                     first_raw_expr,
+                                                     first_token_index,
+                                                     &for_info.first_init,
+                                                     &for_info.init_count)) {
+                            return false;
+                        }
+                    } else {
+                        u32 init_item = first_node;
+                        if (first_raw_expr &&
+                            !cst_wrap_for_expr_item(
+                                state, first_token_index, &init_item)) {
+                            return false;
+                        }
+                        for_info.first_init =
+                            (u32)array_count(state->cst.for_items);
+                        for_info.init_count = 1;
+                        array_push(state->cst.for_items, init_item);
+                    }
+
+                    if (!cst_consume(state, TK_Semicolon)) {
+                        return false;
+                    }
+
+                    if (cst_current_token(state).kind != TK_Semicolon) {
+                        if (!cst_parse_expr_bp(
+                                state, 0, &for_info.condition_node_index)) {
+                            return false;
+                        }
+                    }
+                    if (!cst_consume(state, TK_Semicolon)) {
+                        return false;
+                    }
+
+                    if (cst_current_token(state).kind != TK_LBrace) {
+                        u32  update_node        = 0;
+                        bool update_raw_expr    = false;
+                        u32  update_token_index = state->token_index;
+                        if (!cst_parse_for_clause_item(state,
+                                                       false,
+                                                       &update_node,
+                                                       &update_raw_expr) ||
+                            !cst_parse_for_item_list(state,
+                                                     false,
+                                                     TK_LBrace,
+                                                     update_node,
+                                                     update_raw_expr,
+                                                     update_token_index,
+                                                     &for_info.first_update,
+                                                     &for_info.update_count)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    return false;
+                }
+            }
         }
         if (!cst_parse_nested_block(state, &body)) {
             return false;
         }
-        state->cst.nodes[for_node].a = condition;
+        u32 for_info_index = (u32)array_count(state->cst.fors);
+        array_push(state->cst.fors, for_info);
+        state->cst.nodes[for_node].a = for_info_index;
         state->cst.nodes[for_node].b = body;
         return true;
     }
@@ -1628,6 +1851,8 @@ void cst_done(Cst* cst)
     array_free(cst->on_pattern_nodes);
     array_free(cst->on_branches);
     array_free(cst->ons);
+    array_free(cst->for_items);
+    array_free(cst->fors);
     *cst = (Cst){0};
 }
 

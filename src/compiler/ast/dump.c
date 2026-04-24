@@ -257,13 +257,20 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "stmts=%u..%u", node->a, node->b));
             break;
         case AK_For:
-            row[3] = table_cell_string(
-                node->a == U32_MAX
-                    ? string_format(&temp_arena, "condition=<none> body=%u", node->b)
-                    : string_format(&temp_arena,
-                                    "condition=%u body=%u",
-                                    node->a,
-                                    node->b));
+            {
+                const AstForInfo* for_info = &ast->fors[node->a];
+                row[3] = table_cell_string(
+                    string_format(&temp_arena,
+                                  "init=%u..%u condition=%u update=%u..%u "
+                                  "body=%u",
+                                  for_info->first_init,
+                                  for_info->first_init + for_info->init_count,
+                                  for_info->condition_node_index,
+                                  for_info->first_update,
+                                  for_info->first_update +
+                                      for_info->update_count,
+                                  node->b));
+            }
             break;
         case AK_Bind:
             row[3] = table_cell_string(

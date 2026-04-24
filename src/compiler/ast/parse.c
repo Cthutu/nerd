@@ -39,6 +39,14 @@ internal bool ast_symbol_starts_assignment(const AstParseState* state)
     }
 }
 
+internal TokenKind ast_cursor_kind(const AstParseState* state)
+{
+    if (state->token_index >= array_count(state->lexer->tokens)) {
+        return TK_EOF;
+    }
+    return state->lexer->tokens[state->token_index].kind;
+}
+
 internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
 {
     switch (op) {
@@ -404,6 +412,120 @@ internal bool ast_parse_nested_block(AstParseState* state, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
+// Parse one comma-separated item in a C-style for clause.
+
+internal bool ast_parse_for_clause_item(AstParseState* state,
+                                        bool           allow_declaration,
+                                        u32*           out_node,
+                                        bool*          out_raw_expr)
+{
+    if (allow_declaration && ast_symbol_starts_bind(state)) {
+        if (ast_symbol_starts_variable(state)) {
+            *out_raw_expr = false;
+            return ast_parse_variable(state, out_node);
+        }
+
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_bind(state, out_node);
+        state->allow_statement_boundary = previous_boundary;
+        *out_raw_expr                   = false;
+        return ok;
+    }
+
+    if (allow_declaration && ast_symbol_starts_variable(state)) {
+        *out_raw_expr = false;
+        return ast_parse_variable(state, out_node);
+    }
+
+    if (ast_symbol_starts_assignment(state)) {
+        *out_raw_expr = false;
+        return ast_parse_assignment(state, out_node);
+    }
+
+    u32  expr_node                  = 0;
+    bool previous_boundary          = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool ok                         = ast_parse_expr(state, &expr_node);
+    state->allow_statement_boundary = previous_boundary;
+    if (!ok) {
+        return false;
+    }
+
+    *out_node     = expr_node;
+    *out_raw_expr = true;
+    return true;
+}
+
+internal bool ast_wrap_for_expr_item(AstParseState* state,
+                                     u32            token_index,
+                                     u32*           in_out_node)
+{
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Statement,
+                             .token_index = token_index,
+                             .a           = *in_out_node,
+                         },
+                         in_out_node);
+}
+
+internal bool ast_parse_for_item_list(AstParseState* state,
+                                      bool           allow_declaration,
+                                      TokenKind      terminator,
+                                      u32            first_node,
+                                      bool           first_raw_expr,
+                                      u32            first_token_index,
+                                      u32*           out_first_item,
+                                      u32*           out_item_count)
+{
+    u32 first_item = (u32)array_count(state->for_items);
+    u32 item_count = 0;
+    u32 item       = first_node;
+    if (first_raw_expr &&
+        !ast_wrap_for_expr_item(state, first_token_index, &item)) {
+        return false;
+    }
+    array_push(state->for_items, item);
+    item_count++;
+
+    while (state->token.kind == TK_Comma) {
+        if (!ast_next_token(state) || !ast_next_token(state)) {
+            return error_0201_missing_value(state->token.source,
+                                            ast_token_span(state, &state->token),
+                                            state->token.kind);
+        }
+
+        u32  next_item        = 0;
+        bool next_is_raw_expr = false;
+        u32  next_token_index = state->token.token_index;
+        if (!ast_parse_for_clause_item(state,
+                                       allow_declaration,
+                                       &next_item,
+                                       &next_is_raw_expr)) {
+            return false;
+        }
+        if (next_is_raw_expr &&
+            !ast_wrap_for_expr_item(state, next_token_index, &next_item)) {
+            return false;
+        }
+        array_push(state->for_items, next_item);
+        item_count++;
+    }
+
+    if (state->token.kind != terminator) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         terminator,
+                                         state->token.kind);
+    }
+
+    *out_first_item = first_item;
+    *out_item_count = item_count;
+    return true;
+}
+
+//------------------------------------------------------------------------------
 // Parse one statement inside a function or nested block.
 
 internal bool ast_parse_block_statement(AstParseState* state)
@@ -441,13 +563,18 @@ internal bool ast_parse_block_statement(AstParseState* state)
     if (state->token.kind == TK_for) {
         u32 for_token_index = state->token.token_index;
         u32 for_node        = 0;
-        u32 condition_node  = U32_MAX;
+        AstForInfo for_info = {
+            .first_init           = U32_MAX,
+            .init_count           = 0,
+            .condition_node_index = U32_MAX,
+            .first_update         = U32_MAX,
+            .update_count         = 0,
+        };
         u32 body_node       = 0;
         if (!ast_emit_node(state,
                            (AstNode){
                                .kind        = AK_For,
                                .token_index = for_token_index,
-                               .a           = U32_MAX,
                            },
                            &for_node)) {
             return false;
@@ -460,20 +587,171 @@ internal bool ast_parse_block_statement(AstParseState* state)
                 TK_EOF);
         }
         if (state->token.kind != TK_LBrace) {
-            bool previous_boundary          = state->allow_statement_boundary;
-            state->allow_statement_boundary = true;
-            if (!ast_parse_expr(state, &condition_node)) {
-                state->allow_statement_boundary = previous_boundary;
-                return false;
-            }
-            state->allow_statement_boundary = previous_boundary;
+            if (state->token.kind == TK_Semicolon) {
+                if (ast_cursor_kind(state) != TK_Semicolon) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    bool previous_boundary          =
+                        state->allow_statement_boundary;
+                    state->allow_statement_boundary = true;
+                    if (!ast_parse_expr(
+                            state, &for_info.condition_node_index)) {
+                        state->allow_statement_boundary = previous_boundary;
+                        return false;
+                    }
+                    state->allow_statement_boundary = previous_boundary;
+                } else if (!ast_next_token(state)) {
+                    return false;
+                }
 
-            if (state->token.kind != TK_LBrace) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_LBrace,
-                    state->token.kind);
+                if (state->token.kind != TK_Semicolon) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_Semicolon,
+                        state->token.kind);
+                }
+                if (!ast_expect_token(state, TK_Semicolon)) {
+                    return false;
+                }
+
+                if (ast_cursor_kind(state) != TK_LBrace) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    u32  update_node        = 0;
+                    bool update_raw_expr    = false;
+                    u32  update_token_index = state->token.token_index;
+                    if (!ast_parse_for_clause_item(state,
+                                                   false,
+                                                   &update_node,
+                                                   &update_raw_expr) ||
+                        !ast_parse_for_item_list(state,
+                                                 false,
+                                                 TK_LBrace,
+                                                 update_node,
+                                                 update_raw_expr,
+                                                 update_token_index,
+                                                 &for_info.first_update,
+                                                 &for_info.update_count)) {
+                        return false;
+                    }
+                } else if (!ast_next_token(state)) {
+                    return false;
+                }
+            } else {
+                u32  first_node        = 0;
+                bool first_raw_expr    = false;
+                u32  first_token_index = state->token.token_index;
+                if (!ast_parse_for_clause_item(state,
+                                               true,
+                                               &first_node,
+                                               &first_raw_expr)) {
+                    return false;
+                }
+
+                if (state->token.kind == TK_LBrace) {
+                    if (!first_raw_expr) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Semicolon,
+                            state->token.kind);
+                    }
+                    for_info.condition_node_index = first_node;
+                } else if (state->token.kind == TK_Comma ||
+                           state->token.kind == TK_Semicolon) {
+                    if (state->token.kind == TK_Comma) {
+                        if (!ast_parse_for_item_list(state,
+                                                     true,
+                                                     TK_Semicolon,
+                                                     first_node,
+                                                     first_raw_expr,
+                                                     first_token_index,
+                                                     &for_info.first_init,
+                                                     &for_info.init_count)) {
+                            return false;
+                        }
+                    } else {
+                        u32 init_item = first_node;
+                        if (first_raw_expr &&
+                            !ast_wrap_for_expr_item(
+                                state, first_token_index, &init_item)) {
+                            return false;
+                        }
+                        for_info.first_init =
+                            (u32)array_count(state->for_items);
+                        for_info.init_count = 1;
+                        array_push(state->for_items, init_item);
+                    }
+
+                    if (!ast_expect_token(state, TK_Semicolon)) {
+                        return false;
+                    }
+
+                    if (ast_cursor_kind(state) != TK_Semicolon) {
+                        if (!ast_next_token(state)) {
+                            return false;
+                        }
+                        bool previous_boundary =
+                            state->allow_statement_boundary;
+                        state->allow_statement_boundary = true;
+                        if (!ast_parse_expr(
+                                state, &for_info.condition_node_index)) {
+                            state->allow_statement_boundary =
+                                previous_boundary;
+                            return false;
+                        }
+                        state->allow_statement_boundary = previous_boundary;
+                    } else if (!ast_next_token(state)) {
+                        return false;
+                    }
+
+                    if (state->token.kind != TK_Semicolon) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Semicolon,
+                            state->token.kind);
+                    }
+                    if (!ast_expect_token(state, TK_Semicolon)) {
+                        return false;
+                    }
+
+                    if (ast_cursor_kind(state) != TK_LBrace) {
+                        if (!ast_next_token(state)) {
+                            return false;
+                        }
+                        u32  update_node        = 0;
+                        bool update_raw_expr    = false;
+                        u32  update_token_index = state->token.token_index;
+                        if (!ast_parse_for_clause_item(state,
+                                                       false,
+                                                       &update_node,
+                                                       &update_raw_expr)) {
+                            return false;
+                        }
+                        if (!ast_parse_for_item_list(state,
+                                                     false,
+                                                     TK_LBrace,
+                                                     update_node,
+                                                     update_raw_expr,
+                                                     update_token_index,
+                                                     &for_info.first_update,
+                                                     &for_info.update_count)) {
+                            return false;
+                        }
+                    } else if (!ast_next_token(state)) {
+                        return false;
+                    }
+                } else {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_LBrace,
+                        state->token.kind);
+                }
             }
             if (state->token_index == state->token.token_index &&
                 !ast_next_token(state)) {
@@ -483,7 +761,9 @@ internal bool ast_parse_block_statement(AstParseState* state)
         if (!ast_parse_nested_block(state, &body_node)) {
             return false;
         }
-        state->nodes[for_node].a = condition_node;
+        u32 for_info_index = (u32)array_count(state->fors);
+        array_push(state->fors, for_info);
+        state->nodes[for_node].a = for_info_index;
         state->nodes[for_node].b = body_node;
         return true;
     }
@@ -998,6 +1278,8 @@ Ast ast_parse(Lexer* lexer)
         .on_pattern_nodes = state.on_pattern_nodes,
         .on_branches      = state.on_branches,
         .ons              = state.ons,
+        .for_items        = state.for_items,
+        .fors             = state.fors,
     };
 
 error:
@@ -1008,7 +1290,9 @@ error:
                     .calls            = state.calls,
                     .on_pattern_nodes = state.on_pattern_nodes,
                     .on_branches      = state.on_branches,
-                    .ons              = state.ons});
+                    .ons              = state.ons,
+                    .for_items        = state.for_items,
+                    .fors             = state.fors});
     return (Ast){0};
 }
 
@@ -1025,6 +1309,8 @@ void ast_done(Ast* ast)
     array_free(ast->on_pattern_nodes);
     array_free(ast->on_branches);
     array_free(ast->ons);
+    array_free(ast->for_items);
+    array_free(ast->fors);
     *ast = (Ast){0};
 }
 
