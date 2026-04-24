@@ -843,3 +843,4 @@ compatible with later VM-style processing.
 - [x] dependency ordering exists for forward-referenced top-level bindings
 - [x] IR and C generation support functions and top-level declarations
 - [x] touched compiler files have improved comments and British spelling
+
