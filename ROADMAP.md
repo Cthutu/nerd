@@ -24,6 +24,11 @@ From the current codebase and test suite:
   tests under `tests/format`.
 - The LSP supports hover, definition, document symbols, semantic tokens, and
   diagnostics, with transcript tests under `tests/lsp`.
+- Neovim/LazyVim support is installed from repo-owned runtime files, including
+  filetype detection, syntax highlighting, LSP launch, and Conform
+  format-on-save integration.
+- The `on` branching surface supports short boolean branches, block-form value
+  branches, integer ranges, `else`, and branch-local pattern binders.
 - `just test` runs language, error, formatter, and LSP suites.
 
 ## Guiding Rules
@@ -302,7 +307,7 @@ needed earlier.
     formatting, or install packaging, update both editor integrations in the
     same commit unless one is explicitly out of scope.
 
-- [ ] 22a. Add first-class Neovim/LazyVim support.
+- [X] 22a. Add first-class Neovim/LazyVim support.
   - Add `nerd format --stdout <file>` so editor integrations can format through
     stdout without mutating source files directly.
   - Keep Neovim runtime files in `syntax/nerd-nvim` and install them by copying,
@@ -316,6 +321,12 @@ needed earlier.
     editor-facing changes.
   - Defer Tree-sitter highlighting and indentation support to a later editor
     milestone, after the language grammar has settled further.
+  - Current implementation status:
+    - repo-owned Neovim runtime files are copied by `just install-nvim`
+    - LazyVim launches `nerd lsp` through `nvim-lspconfig`
+    - Conform formats Nerd buffers via a temporary file and `nerd format`
+    - syntax and filetype runtime files are installed alongside the plugin
+      configuration
 
 - [X] 23. Keep `just test` as the single full-project test entry point.
   - Language, error, and formatter tests should all pass through it.
@@ -624,7 +635,7 @@ needed earlier.
 
 ## Milestone 9: `on` Branching And Pattern Matching Foundations
 
-- [ ] 52. Add `on` as the branching construct.
+- [X] 52. Add `on` as the branching construct.
   - `on` replaces ad hoc `if`-style branching for the language surface.
   - Support the short boolean form:
     - `on (x > 0) => "positive" else "non-positive"`
@@ -634,6 +645,7 @@ needed earlier.
     - block-form `on value { ... }` with simple constant-value branches and
       `else => ...` is supported
     - block-form currently accepts `bool` and concrete integer scrutinees only
+    - untyped integer scrutinees materialise to `i32`
     - branch patterns currently must be compile-time constants
   - Support the block form:
     - `on size { ... }`
