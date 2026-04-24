@@ -59,7 +59,11 @@
             "patterns": [
                 {
                     "name": "keyword.control.function.nerd",
-                    "match": "\\b(fn|return)\\b"
+                    "match": "\\b(fn|return|on|else)\\b"
+                },
+                {
+                    "name": "constant.language.boolean.nerd",
+                    "match": "\\b(true|false)\\b"
                 }
             ]
         },
@@ -73,6 +77,10 @@
         },
         "numbers": {
             "patterns": [
+                {
+                    "name": "constant.numeric.float.decimal.nerd",
+                    "match": "\\b\\d+\\.\\d+\\b"
+                },
                 {
                     "name": "constant.numeric.integer.decimal.nerd",
                     "match": "\\b\\d+\\b"
@@ -92,6 +100,30 @@
                 {
                     "name": "keyword.operator.arrow.nerd",
                     "match": "=>|->"
+                },
+                {
+                    "name": "keyword.operator.binding.nerd",
+                    "match": "::|:=|:"
+                },
+                {
+                    "name": "keyword.operator.pattern.nerd",
+                    "match": "@"
+                },
+                {
+                    "name": "keyword.operator.range.nerd",
+                    "match": "\\.\\.<|\\.\\.="
+                },
+                {
+                    "name": "keyword.operator.comparison.nerd",
+                    "match": "==|!=|<=|>=|<|>"
+                },
+                {
+                    "name": "keyword.operator.logical.nerd",
+                    "match": "&&|\\|\\||!"
+                },
+                {
+                    "name": "keyword.operator.bitwise.nerd",
+                    "match": "&|\\||\\^"
                 },
                 {
                     "name": "keyword.operator.arithmetic.nerd",

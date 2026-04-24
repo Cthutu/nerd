@@ -914,6 +914,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                           node_values,
                                           next_value_index,
                                           ir);
+                } else if (local->kind == SLK_Binder) {
+                    value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          local->value_node_index,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
                 } else if (local->kind == SLK_Function) {
                     value = (IrValue){
                         .kind          = IR_VALUE_SYMBOL,

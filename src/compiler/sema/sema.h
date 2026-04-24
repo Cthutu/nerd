@@ -65,6 +65,7 @@ typedef struct {
 typedef enum : u8 {
     SLK_Param,
     SLK_Variable,
+    SLK_Binder,
     SLK_Constant,
     SLK_Function,
     SLK_TypeAlias,
@@ -78,6 +79,7 @@ typedef struct {
     u32           owner_decl_index;
     u32           scope_index;
     u32           decl_node_index;
+    u32           decl_token_index;
     u32           type_node_index;
     u32           value_node_index;
     u32           type_index;
@@ -115,6 +117,7 @@ typedef struct {
     Array(u32) node_scope_indices;
     Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
+    Array(u32) on_branch_local_indices;
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
     Array(i64) node_const_values;

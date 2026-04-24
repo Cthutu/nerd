@@ -40,6 +40,7 @@ typedef enum {
     TK_LBrace,
     TK_RBrace,
     TK_Dot,
+    TK_At,
     TK_RangeExclusive,
     TK_RangeInclusive,
     TK_Colon,

@@ -48,6 +48,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("RightBrace `}`");
     case TK_Dot:
         return string_from_cstr("Dot `.`");
+    case TK_At:
+        return string_from_cstr("At `@`");
     case TK_RangeExclusive:
         return string_from_cstr("RangeExclusive `..<`");
     case TK_RangeInclusive:

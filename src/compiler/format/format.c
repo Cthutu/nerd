@@ -451,6 +451,11 @@ internal void format_emit_expr(StringBuilder* sb,
                 }
                 const CstOnBranch* branch =
                     &cst->on_branches[on->first_branch + i];
+                if (branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_string(
+                        sb, lex_symbol(lexer, branch->binder_symbol_handle));
+                    sb_append_cstr(sb, " @ ");
+                }
                 if (branch->flags & COBF_Else) {
                     sb_append_cstr(sb, "else");
                 } else {

@@ -49,6 +49,8 @@ main :: fn () {
 - comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=`
 - bitwise operators `&`, `^`, `|`
 - logical operators `&&`, `||`
+- block-form `on` branch binders with `<name> @ <pattern>` and
+  `<name> @ else`
 - calls with zero or more arguments
 
 ## Current Grammar Sketch

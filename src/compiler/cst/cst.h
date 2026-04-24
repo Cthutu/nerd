@@ -132,6 +132,8 @@ typedef struct {
     u32 expr_node_index;
     u32 pattern_count;
     u32 flags;
+    u32 binder_symbol_handle;
+    u32 binder_token_index;
 } CstOnBranch;
 
 typedef enum : u32 {

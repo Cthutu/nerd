@@ -540,13 +540,13 @@ internal bool lexer_lex_one_token(NerdSource source,
 #    pragma GCC diagnostic ignored "-Winitializer-overrides"
 #endif
     static TokenKind token_lookup[128] = {
-        [0 ... 127] = TK_EOF, ['+'] = TK_Plus,    ['-'] = TK_Minus,
-        ['*'] = TK_Star,      ['/'] = TK_Slash,   ['%'] = TK_Percent,
-        ['('] = TK_LParen,    [')'] = TK_RParen,  [','] = TK_Comma,
-        ['{'] = TK_LBrace,    ['}'] = TK_RBrace,  ['.'] = TK_Dot,
-        [':'] = TK_Colon,     ['='] = TK_Equal,   ['!'] = TK_Bang,
-        ['&'] = TK_Amp,       ['|'] = TK_Pipe,    ['^'] = TK_Caret,
-        ['<'] = TK_Less,      ['>'] = TK_Greater,
+        [0 ... 127] = TK_EOF, ['+'] = TK_Plus,   ['-'] = TK_Minus,
+        ['*'] = TK_Star,      ['/'] = TK_Slash,  ['%'] = TK_Percent,
+        ['('] = TK_LParen,    [')'] = TK_RParen, [','] = TK_Comma,
+        ['{'] = TK_LBrace,    ['}'] = TK_RBrace, ['.'] = TK_Dot,
+        ['@'] = TK_At,        [':'] = TK_Colon,  ['='] = TK_Equal,
+        ['!'] = TK_Bang,      ['&'] = TK_Amp,    ['|'] = TK_Pipe,
+        ['^'] = TK_Caret,     ['<'] = TK_Less,   ['>'] = TK_Greater,
     };
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic pop

@@ -543,6 +543,13 @@ internal ErrorSpan sema_local_span(const Lexer*     lexer,
                                    const Ast*       ast,
                                    const SemaLocal* local)
 {
+    if (local->decl_token_index != U32_MAX) {
+        const Token* token = &lexer->tokens[local->decl_token_index];
+        return (ErrorSpan){
+            .start = token->offset,
+            .end   = lex_token_end_offset(lexer, token),
+        };
+    }
     if (local->decl_node_index == sema_no_decl()) {
         return sema_node_span(lexer, &ast->nodes[local->type_node_index]);
     }
@@ -1001,7 +1008,8 @@ internal u32 sema_lookup_decl_local(const Sema* sema,
 
 internal bool sema_local_is_runtime_value(const SemaLocal* local)
 {
-    return local->kind == SLK_Param || local->kind == SLK_Variable;
+    return local->kind == SLK_Param || local->kind == SLK_Variable ||
+           local->kind == SLK_Binder;
 }
 
 internal bool sema_local_is_decl_binding(const SemaLocal* local)
@@ -1135,6 +1143,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                        .owner_decl_index      = owner_decl_index,
                        .scope_index           = scope_index,
                        .decl_node_index       = i,
+                       .decl_token_index      = U32_MAX,
                        .type_node_index       = type_node_index,
                        .value_node_index      = value_node_index,
                        .type_index            = sema_no_type(),
@@ -1237,6 +1246,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                            .owner_decl_index      = owner_decl_index,
                            .scope_index           = scope_index,
                            .decl_node_index       = i,
+                           .decl_token_index      = U32_MAX,
                            .type_node_index       = type_node_index,
                            .value_node_index      = value_node_index,
                            .type_index            = sema_no_type(),
@@ -1251,7 +1261,8 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         if (node->kind == AK_Assign) {
             u32 local_index = sema_lookup_local(sema, scope_index, node->a);
             if (local_index != sema_no_local()) {
-                if (!sema_local_is_runtime_value(&sema->locals[local_index])) {
+                if (sema->locals[local_index].kind == SLK_Binder ||
+                    !sema_local_is_runtime_value(&sema->locals[local_index])) {
                     return error_0305_invalid_assignment_target(
                         lexer->source,
                         sema_node_span(lexer, node),
@@ -1351,6 +1362,7 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                        .owner_decl_index      = owner_decl_index,
                        .scope_index           = scope_index,
                        .decl_node_index       = sema_no_decl(),
+                       .decl_token_index      = U32_MAX,
                        .type_node_index       = param->type_node_index,
                        .value_node_index      = sema_no_decl(),
                        .type_index            = param_type,
@@ -1462,6 +1474,29 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
+                u32 branch_scope = scope_index;
+                if (branch->binder_symbol_handle != U32_MAX) {
+                    branch_scope =
+                        sema_add_scope(sema, owner_decl_index, scope_index);
+                    array_push(
+                        sema->locals,
+                        (SemaLocal){
+                            .kind             = SLK_Binder,
+                            .symbol_handle    = branch->binder_symbol_handle,
+                            .owner_decl_index = owner_decl_index,
+                            .scope_index      = branch_scope,
+                            .decl_node_index  = sema_no_decl(),
+                            .decl_token_index = branch->binder_token_index,
+                            .type_node_index  = sema_no_type(),
+                            .value_node_index = node->a,
+                            .type_index       = sema_no_type(),
+                            .lowered_symbol_handle =
+                                branch->binder_symbol_handle,
+                        });
+                    sema->on_branch_local_indices[on->first_branch + i] =
+                        (u32)array_count(sema->locals) - 1;
+                    sema->scopes[branch_scope].local_count++;
+                }
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
@@ -1484,7 +1519,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                             owner_decl_index,
                                             current_function_symbol,
                                             capture_scope_index,
-                                            scope_index,
+                                            branch_scope,
                                             branch->expr_node_index,
                                             sema)) {
                     return false;
@@ -2870,6 +2905,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
+                u32 branch_local_index =
+                    sema->on_branch_local_indices[on->first_branch + i];
+                if (branch_local_index != sema_no_local()) {
+                    sema->locals[branch_local_index].type_index =
+                        scrutinee_type;
+                }
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
@@ -3893,6 +3934,9 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
         array_push(sema.node_const_known, false);
         array_push(sema.node_const_values, 0);
     }
+    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+        array_push(sema.on_branch_local_indices, sema_no_local());
+    }
 
     sema_add_builtin_decls(lexer, &sema);
 
@@ -3968,6 +4012,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_scope_indices);
     array_free(sema->node_lowered_symbol_handles);
     array_free(sema->node_type_indices);
+    array_free(sema->on_branch_local_indices);
     array_free(sema->node_is_type_expr);
     array_free(sema->node_const_known);
     array_free(sema->node_const_values);

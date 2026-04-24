@@ -651,7 +651,7 @@ needed earlier.
   - Support exclusive and inclusive integer ranges through `..<` and `..=`.
   - Keep exact type matching throughout; do not add implicit casts.
 
-- [ ] 54. Add branch-local pattern binders.
+- [X] 54. Add branch-local pattern binders.
   - Use `<name> @ <pattern>` to bind the matched value for one branch.
   - Allow binders on `else` branches as well, for example:
     - `other @ else => ...`
@@ -660,6 +660,11 @@ needed earlier.
     scopes are separate.
   - Keep binders immutable unless a later milestone explicitly adds mutable
     pattern bindings.
+  - Current implementation status:
+    - value, range, and `else` branches can bind the matched scrutinee through
+      `<name> @ <pattern>` or `<name> @ else`
+    - compiler, formatter, LSP, VS Code syntax, Neovim syntax, and regression
+      tests are updated together
 
 - [ ] 55. Define `on` typing and exhaustiveness rules.
   - Treat `on` as an expression form.

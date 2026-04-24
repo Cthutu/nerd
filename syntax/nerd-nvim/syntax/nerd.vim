@@ -9,7 +9,7 @@ syn keyword nerdKeyword fn return on else true false
 syn keyword nerdType i32 u32 f64 bool string void
 syn match nerdComment "--.*$"
 syn match nerdNumber "\v<\d+(\.\d+)?>"
-syn match nerdOperator "::\|:=\|=>\|->\|\.\.<\|\.\.=\|==\|!=\|<=\|>=\|&&\|[|][|]\|[+*/%<>=:|&^-]"
+syn match nerdOperator "::\|:=\|=>\|->\|\.\.<\|\.\.=\|==\|!=\|<=\|>=\|&&\|[|][|]\|[+*/%<>=:|&^@-]"
 syn region nerdString start=+"+ skip=+\\\\\|\\"+ end=+"+
 
 hi def link nerdKeyword Keyword

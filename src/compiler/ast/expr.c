@@ -315,7 +315,21 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                     TK_RBrace);
             }
 
-            AstOnBranch branch = {0};
+            AstOnBranch branch          = {0};
+            branch.binder_symbol_handle = U32_MAX;
+            branch.binder_token_index   = U32_MAX;
+            if (state->token.kind == TK_Symbol &&
+                ast_peek_kind_at(state, 0) == TK_At) {
+                branch.binder_symbol_handle = state->token.value.symbol_handle;
+                branch.binder_token_index   = state->token.token_index;
+                if (!ast_next_token(state) || state->token.kind != TK_At ||
+                    !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+            }
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
                 saw_else     = true;
@@ -464,14 +478,18 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     }
     array_push(state->on_branches,
                (AstOnBranch){
-                   .pattern_node_index = true_pattern,
-                   .expr_node_index    = true_expr_node,
-                   .flags              = AOBF_None,
+                   .pattern_node_index   = true_pattern,
+                   .expr_node_index      = true_expr_node,
+                   .flags                = AOBF_None,
+                   .binder_symbol_handle = U32_MAX,
+                   .binder_token_index   = U32_MAX,
                });
     array_push(state->on_branches,
                (AstOnBranch){
-                   .expr_node_index = false_expr_node,
-                   .flags           = AOBF_Else,
+                   .expr_node_index      = false_expr_node,
+                   .flags                = AOBF_Else,
+                   .binder_symbol_handle = U32_MAX,
+                   .binder_token_index   = U32_MAX,
                });
 
     u32 on_index = (u32)array_count(state->ons);

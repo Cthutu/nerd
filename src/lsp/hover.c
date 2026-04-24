@@ -141,6 +141,16 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
 internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
                                             u32                token_index)
 {
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+        const AstOnBranch* branch = &ast->on_branches[i];
+        if (branch->binder_token_index == token_index &&
+            i < array_count(sema->on_branch_local_indices)) {
+            return sema->on_branch_local_indices[i];
+        }
+    }
+
     u32 bind_node_index =
         lsp_find_bind_node_at_token(&doc->front_end.ast, token_index);
     if (bind_node_index != U32_MAX &&
@@ -441,12 +451,15 @@ internal string lsp_local_hover_text(const LspDocument* doc,
     string name = lex_symbol(&doc->front_end.lexer, local->symbol_handle);
     string type =
         sema_type_name(&doc->front_end.sema, arena, local->type_index);
+    string kind =
+        local->kind == SLK_Binder ? s("pattern binder") : s("local variable");
 
     return string_format(
         arena,
-        STRINGP "\n\n- Kind: local variable\n- Type: `" STRINGP "`",
+        STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`",
         STRINGV(lsp_markdown_code_block(
             arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(kind),
         STRINGV(type));
 }
 
@@ -484,11 +497,20 @@ internal JsonValue* lsp_local_location(const LspDocument* doc,
                                        u32                local_index)
 {
     const SemaLocal* local = &doc->front_end.sema.locals[local_index];
-    const AstNode*   bind  = &doc->front_end.ast.nodes[local->decl_node_index];
     usize            start_offset;
     usize            end_offset;
-    lsp_token_offsets(
-        &doc->front_end.lexer, bind->token_index, &start_offset, &end_offset);
+    if (local->decl_token_index != U32_MAX) {
+        lsp_token_offsets(&doc->front_end.lexer,
+                          local->decl_token_index,
+                          &start_offset,
+                          &end_offset);
+    } else {
+        const AstNode* bind = &doc->front_end.ast.nodes[local->decl_node_index];
+        lsp_token_offsets(&doc->front_end.lexer,
+                          bind->token_index,
+                          &start_offset,
+                          &end_offset);
+    }
 
     JsonValue* location = json_new_object(arena);
     json_object_set_string(location, arena, "uri", uri);
