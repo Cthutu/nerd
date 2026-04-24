@@ -1178,6 +1178,13 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 }
                 continue;
             }
+            if (state->token.kind == TK_Symbol &&
+                ast_peek_kind_at(state, 0) == TK_Colon) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
         }
         if (state->token.kind == TK_RBrace &&
             state->token_index == state->token.token_index) {

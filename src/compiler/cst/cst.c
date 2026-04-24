@@ -1478,6 +1478,10 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     cst_advance(state);
                     continue;
                 }
+                if (cst_current_token(state).kind == TK_Symbol &&
+                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                    continue;
+                }
                 break;
             }
             if (!cst_consume(state, TK_RBrace)) {
