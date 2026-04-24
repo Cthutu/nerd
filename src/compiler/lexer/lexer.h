@@ -41,6 +41,8 @@ typedef enum {
     TK_PercentEqual,
     TK_LParen,
     TK_RParen,
+    TK_LBracket,
+    TK_RBracket,
     TK_Comma,
     TK_Semicolon,
     TK_LBrace,

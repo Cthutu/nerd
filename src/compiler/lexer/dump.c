@@ -50,6 +50,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("LeftParen `(`");
     case TK_RParen:
         return string_from_cstr("RightParen `)`");
+    case TK_LBracket:
+        return string_from_cstr("LeftBracket `[`");
+    case TK_RBracket:
+        return string_from_cstr("RightBracket `]`");
     case TK_Comma:
         return string_from_cstr("Comma `,`");
     case TK_Semicolon:

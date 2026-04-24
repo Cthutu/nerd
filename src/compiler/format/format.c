@@ -184,6 +184,7 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_Cast:
         return 80;
     case CK_TupleField:
+    case CK_Index:
         return 80;
     case CK_StringConcat:
         return 85;
@@ -331,6 +332,16 @@ internal void format_emit_expr(StringBuilder* sb,
             sb_append_char(sb, ',');
         }
         sb_append_char(sb, ')');
+        break;
+    case CK_Array:
+        sb_append_char(sb, '[');
+        for (u32 i = 0; i < node->b; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            format_emit_expr(sb, cst, lexer, cst->tuple_items[node->a + i], 0);
+        }
+        sb_append_char(sb, ']');
         break;
     case CK_IntegerNegate:
         sb_append_char(sb, '-');
@@ -530,6 +541,12 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_format(sb, ".%u", node->b);
         break;
+    case CK_Index:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_char(sb, '[');
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        sb_append_char(sb, ']');
+        break;
     case CK_RangeExclusive:
     case CK_RangeInclusive:
         format_emit_expr(sb, cst, lexer, node->a, 0);
@@ -608,6 +625,12 @@ internal void format_emit_expr(StringBuilder* sb,
             sb_append_char(sb, ',');
         }
         sb_append_char(sb, ')');
+        break;
+    case CK_TypeArray:
+        sb_append_char(sb, '[');
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_char(sb, ']');
+        format_emit_expr(sb, cst, lexer, node->b, 0);
         break;
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);

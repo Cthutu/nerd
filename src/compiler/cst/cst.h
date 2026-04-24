@@ -44,11 +44,14 @@
 // | CK_Cast            | Value node index      | Target type node      |
 // | CK_Tuple           | First item index      | Item count            |
 // | CK_TupleField      | Value node index      | Zero-based field      |
+// | CK_Array           | First item index      | Item count            |
+// | CK_Index           | Value node index      | Index expr node       |
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
+// | CK_TypeArray       | Length node index     | Element type node     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
@@ -99,11 +102,14 @@ typedef enum {
     CK_Cast,
     CK_Tuple,
     CK_TupleField,
+    CK_Array,
+    CK_Index,
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
     CK_TypeFn,
     CK_TypeTuple,
+    CK_TypeArray,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,

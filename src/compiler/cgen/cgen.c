@@ -193,11 +193,16 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
 
     switch (ir->types[type_index].kind) {
     case STK_Tuple:
+    case STK_Array:
         {
             static char names[8][32];
             static u32  next = 0;
             char*       name = names[next++ % 8];
-            snprintf(name, 32, "tuple%u", type_index);
+            snprintf(name,
+                     32,
+                     ir->types[type_index].kind == STK_Tuple ? "tuple%u"
+                                                             : "array%u",
+                     type_index);
             return name;
         }
     case STK_String:
@@ -350,6 +355,7 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
 
     switch (cgen->ir->types[type_index].kind) {
     case STK_Tuple:
+    case STK_Array:
         cgen_add(cgen, "(");
         cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
         cgen_add(cgen, "){0}");
@@ -563,6 +569,54 @@ void cgen_add_tuple_field(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "");
 }
 
+void cgen_add_array(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, "){.items = {");
+    const IrTupleInfo* array =
+        &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
+    for (u32 i = 0; i < array->item_count; ++i) {
+        if (i > 0) {
+            cgen_add(cgen, ", ");
+        }
+        const IrTupleItem* item = &cgen->ir->tuple_items[array->first_item + i];
+        cgen_add_typed_value(cgen, &item->value, item->type);
+    }
+    cgen_addn(cgen, "}};");
+}
+
+void cgen_add_index(CGen* cgen, const IrInstruction* instr)
+{
+    const SemaType* array_type = &cgen->ir->types[instr->rvalue[0].type];
+    cgen_start_line(cgen);
+    cgen_add(cgen, "#ifndef NDEBUG");
+    cgen_addn(cgen, "");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "if ((long long)");
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_add(cgen, " < 0 || (size_t)");
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    arena_format(&cgen->arena,
+                 " >= %u) { fprintf(stderr, \"fatal: array index out of "
+                 "bounds\\n\"); abort(); }",
+                 array_type->return_type);
+    cgen_addn(cgen, "");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "#endif");
+    cgen_addn(cgen, "");
+
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, ".items[");
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_addn(cgen, "];");
+}
+
 void cgen_add_string_reset(CGen* cgen)
 {
     cgen_add_line(cgen, "string_builder_reset();");
@@ -740,7 +794,7 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
 {
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
         const SemaType* type = &cgen->ir->types[i];
-        if (type->kind != STK_Tuple) {
+        if (type->kind != STK_Tuple && type->kind != STK_Array) {
             continue;
         }
         cgen_start_line(cgen);
@@ -748,14 +802,21 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             &cgen->arena, "typedef struct %s {", cgen_c_type(cgen->ir, i));
         cgen_addn(cgen, "");
         cgen_indent(cgen);
-        for (u32 field = 0; field < type->param_count; ++field) {
+        if (type->kind == STK_Tuple) {
+            for (u32 field = 0; field < type->param_count; ++field) {
+                cgen_start_line(cgen);
+                cgen_add(cgen,
+                         cgen_c_type(
+                             cgen->ir,
+                             cgen->ir->type_param_types[type->first_param_type +
+                                                        field]));
+                arena_format(&cgen->arena, " _%u;", field);
+                cgen_addn(cgen, "");
+            }
+        } else {
             cgen_start_line(cgen);
-            cgen_add(
-                cgen,
-                cgen_c_type(cgen->ir,
-                            cgen->ir->type_param_types[type->first_param_type +
-                                                       field]));
-            arena_format(&cgen->arena, " _%u;", field);
+            cgen_add(cgen, cgen_c_type(cgen->ir, type->first_param_type));
+            arena_format(&cgen->arena, " items[%u];", type->return_type);
             cgen_addn(cgen, "");
         }
         cgen_dedent(cgen);
@@ -900,6 +961,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_TUPLE_FIELD:
             cgen_add_tuple_field(cgen, instr);
+            break;
+        case IR_OP_ARRAY:
+            cgen_add_array(cgen, instr);
+            break;
+        case IR_OP_INDEX:
+            cgen_add_index(cgen, instr);
             break;
         case IR_OP_STRING_RESET:
             cgen_add_string_reset(cgen);

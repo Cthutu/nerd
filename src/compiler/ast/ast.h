@@ -45,11 +45,14 @@
 // | AK_Cast            | Ast index value   | Ast index of target type        |
 // | AK_Tuple           | First item index  | Item count                      |
 // | AK_TupleField      | Ast index value   | Zero-based field index          |
+// | AK_Array           | First item index  | Item count                      |
+// | AK_Index           | Ast index value   | Ast index of index expression   |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_TypeTuple       | First item index  | Item count                      |
+// | AK_TypeArray       | Ast index length  | Ast index element type          |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -103,11 +106,14 @@ typedef enum {
     AK_Cast,
     AK_Tuple,
     AK_TupleField,
+    AK_Array,
+    AK_Index,
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
     AK_TypeFn,
     AK_TypeTuple,
+    AK_TypeArray,
     AK_Expression,
     AK_Statement,
     AK_Return,

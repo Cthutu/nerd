@@ -167,6 +167,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
+    case TK_LBracket:
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
@@ -196,6 +197,18 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     if (kind == TK_Symbol) {
         (*io_index)++;
         return true;
+    }
+    if (kind == TK_LBracket) {
+        (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_Integer) {
+            return false;
+        }
+        (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+            return false;
+        }
+        (*io_index)++;
+        return cst_skip_type_tokens(state, io_index);
     }
     if (kind == TK_LParen) {
         (*io_index)++;
@@ -312,6 +325,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
     case TK_LParen:
+    case TK_LBracket:
         *out_left_bp  = CST_BP_PREFIX + 10;
         *out_right_bp = CST_BP_PREFIX + 10;
         return true;
@@ -527,6 +541,40 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                                  .token_index = token_index,
                                  .a           = first_item,
                                  .b           = item_count,
+                             },
+                             out_node);
+    }
+
+    if (token.kind == TK_LBracket) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Integer) {
+            return false;
+        }
+        u32 length = 0;
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_IntegerLiteral,
+                               .token_index = state->token_index,
+                               .a           = cst_current_integer_index(state),
+                           },
+                           &length)) {
+            return false;
+        }
+        cst_advance(state);
+        if (!cst_consume(state, TK_RBracket)) {
+            return false;
+        }
+        u32 element_type = 0;
+        if (!cst_parse_type(state, &element_type)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypeArray,
+                                 .token_index = token_index,
+                                 .a           = length,
+                                 .b           = element_type,
                              },
                              out_node);
     }
@@ -810,6 +858,43 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                      .kind        = CK_Group,
                                      .token_index = token_index,
                                      .a           = inner,
+                                 },
+                                 out_node);
+        }
+
+    case TK_LBracket:
+        {
+            u32 token_index = state->token_index;
+            cst_advance(state);
+            u32 first_item = (u32)array_count(state->cst.tuple_items);
+            u32 item_count = 0;
+            if (cst_current_token(state).kind != TK_RBracket) {
+                for (;;) {
+                    u32 item = 0;
+                    if (!cst_parse_expr_bp(state, 0, &item)) {
+                        return false;
+                    }
+                    array_push(state->cst.tuple_items, item);
+                    ++item_count;
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                        if (cst_current_token(state).kind == TK_RBracket) {
+                            break;
+                        }
+                        continue;
+                    }
+                    break;
+                }
+            }
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_Array,
+                                     .token_index = token_index,
+                                     .a           = first_item,
+                                     .b           = item_count,
                                  },
                                  out_node);
         }
@@ -1189,6 +1274,23 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                                    .token_index = token_index,
                                    .a           = left,
                                    .b           = call_index,
+                               },
+                               &left)) {
+                return false;
+            }
+            continue;
+        }
+        if (token.kind == TK_LBracket) {
+            if (!cst_parse_expr_bp(state, 0, &right) ||
+                !cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_Index,
+                                   .token_index = token_index,
+                                   .a           = left,
+                                   .b           = right,
                                },
                                &left)) {
                 return false;

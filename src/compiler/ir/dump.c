@@ -181,6 +181,10 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         }
         sb_append_cstr(sb, ")");
         break;
+    case STK_Array:
+        sb_format(sb, "[%u]", type->return_type);
+        ir_render_type_name(sb, ir, type->first_param_type);
+        break;
     default:
         sb_append_cstr(sb, "<unknown>");
         break;
@@ -313,6 +317,32 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_cstr(&sb, " = ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             sb_format(&sb, ".%u", (u32)instr->rvalue[1].value.integer);
+            break;
+        case IR_OP_ARRAY:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = array[");
+            {
+                const IrTupleInfo* array =
+                    &ir->tuples[(u32)instr->rvalue[0].value.integer];
+                for (u32 item = 0; item < array->item_count; ++item) {
+                    if (item > 0) {
+                        sb_append_cstr(&sb, ", ");
+                    }
+                    IrValue value =
+                        ir->tuple_items[array->first_item + item].value;
+                    value.type = ir->tuple_items[array->first_item + item].type;
+                    ir_render_maybe_typed_value(&sb, ir, lexer, &value);
+                }
+            }
+            sb_append_cstr(&sb, "]");
+            break;
+        case IR_OP_INDEX:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_append_char(&sb, '[');
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            sb_append_char(&sb, ']');
             break;
         case IR_OP_STRING_RESET:
             sb_append_cstr(&sb, "string.reset");

@@ -153,6 +153,8 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_PipePipeEqual:
     case TK_CaretEqual:
     case TK_Dot:
+    case TK_LBracket:
+    case TK_RBracket:
     case TK_At:
     case TK_Dollar:
     case TK_Colon:

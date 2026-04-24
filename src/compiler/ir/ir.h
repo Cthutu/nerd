@@ -26,6 +26,8 @@ typedef enum : u8 {
     IR_OP_CAST,
     IR_OP_TUPLE,
     IR_OP_TUPLE_FIELD,
+    IR_OP_ARRAY,
+    IR_OP_INDEX,
     IR_OP_STRING_RESET,
     IR_OP_STRING_START,
     IR_OP_STRING_APPEND,

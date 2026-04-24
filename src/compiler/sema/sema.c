@@ -128,6 +128,17 @@ internal u32 sema_add_tuple_type(Sema* sema, Array(u32) item_types)
                          });
 }
 
+internal u32 sema_add_array_type(Sema* sema, u32 item_type, u32 item_count)
+{
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Array,
+                             .param_count      = 0,
+                             .first_param_type = item_type,
+                             .return_type      = item_count,
+                         });
+}
+
 //------------------------------------------------------------------------------
 // Return the canonical type index for one built-in type.
 
@@ -252,6 +263,14 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         }
     }
 
+    if (sema->types[type_index].kind == STK_Array) {
+        const SemaType* array = &sema->types[type_index];
+        return sema_add_array_type(
+            (Sema*)sema,
+            sema_materialise_type(sema, array->first_param_type),
+            array->return_type);
+    }
+
     if (sema->types[type_index].kind != STK_Tuple) {
         return type_index;
     }
@@ -355,6 +374,15 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_append_cstr(&sb, ",");
             }
             sb_append_cstr(&sb, ")");
+            return sb_to_string(&sb);
+        }
+    case STK_Array:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_format(&sb, "[%u]", type->return_type);
+            sb_append_string(
+                &sb, sema_type_name(sema, arena, type->first_param_type));
             return sb_to_string(&sb);
         }
     default:
@@ -838,6 +866,41 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeArray:
+        {
+            i64 item_count = 0;
+            if (!sema_try_eval_integer_constant(
+                    lexer, ast, sema, node->a, &item_count) ||
+                item_count < 0 || item_count > UINT32_MAX) {
+                *out_is_type    = false;
+                *out_type_index = sema_no_type();
+                return true;
+            }
+
+            bool item_is_type = false;
+            u32  item_type    = sema_no_type();
+            if (!sema_try_classify_type_node(lexer,
+                                             ast,
+                                             sema,
+                                             owner_decl_index,
+                                             node->b,
+                                             alias_states,
+                                             &item_is_type,
+                                             &item_type)) {
+                return false;
+            }
+            if (!item_is_type) {
+                *out_is_type    = false;
+                *out_type_index = sema_no_type();
+                return true;
+            }
+
+            *out_is_type = true;
+            *out_type_index =
+                sema_add_array_type(sema, item_type, (u32)item_count);
+            return true;
+        }
+
     default:
         *out_is_type    = false;
         *out_type_index = sema_no_type();
@@ -1034,6 +1097,10 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
         for (u32 i = 0; i < node->b; ++i) {
             sema_mark_type_expr_nodes(ast, sema, ast->tuple_items[node->a + i]);
         }
+        break;
+    case AK_TypeArray:
+        sema_mark_type_expr_nodes(ast, sema, node->a);
+        sema_mark_type_expr_nodes(ast, sema, node->b);
         break;
     default:
         break;
@@ -1773,6 +1840,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             return true;
         }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (!sema_resolve_node_refs(lexer,
                                         ast,
@@ -1794,6 +1862,24 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       capture_scope_index,
                                       scope_index,
                                       node->a,
+                                      sema);
+    case AK_Index:
+    case AK_TypeArray:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema) &&
+               sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->b,
                                       sema);
     case AK_IntegerNegate:
     case AK_LogicalNot:
@@ -1996,6 +2082,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
         }
         return;
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             sema_collect_node_deps(ast,
                                    sema,
@@ -2005,7 +2092,12 @@ internal void sema_collect_node_deps(const Ast*  ast,
         }
         return;
     case AK_TupleField:
+    case AK_Index:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        if (node->kind == AK_Index) {
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, node->b, out_sema);
+        }
         return;
     case AK_SymbolRef:
         {
@@ -2428,6 +2520,29 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeArray:
+        {
+            i64 item_count = 0;
+            if (!sema_try_eval_integer_constant(
+                    lexer, ast, sema, node->a, &item_count) ||
+                item_count < 0 || item_count > UINT32_MAX) {
+                return error_0303_unknown_type(
+                    lexer->source, sema_node_span(lexer, node), s("<array>"));
+            }
+
+            u32 item_type = sema_no_type();
+            if (!sema_resolve_type_node(
+                    lexer, ast, sema, node->b, &item_type)) {
+                return false;
+            }
+
+            u32 type_index =
+                sema_add_array_type(sema, item_type, (u32)item_count);
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
     default:
         return error_0303_unknown_type(
             lexer->source, sema_node_span(lexer, node), s("<expression>"));
@@ -2509,6 +2624,9 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
             }
             return true;
         }
+    case STK_Array:
+        return sema_type_is_variable_storage(
+            sema, sema->types[type_index].first_param_type);
     default:
         return sema_type_is_concrete_integer(sema, type_index);
     }
@@ -3148,6 +3266,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
             return false;
         }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (sema_node_contains_interpolation(
                     ast, ast->tuple_items[node->a + i])) {
@@ -3156,6 +3275,11 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
         }
         return false;
     case AK_TupleField:
+    case AK_Index:
+        if (node->kind == AK_Index &&
+            sema_node_contains_interpolation(ast, node->b)) {
+            return true;
+        }
         return sema_node_contains_interpolation(ast, node->a);
     case AK_Variable:
     case AK_Assign:
@@ -3312,6 +3436,7 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
             return sema_no_decl();
         }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             u32 found = sema_find_interpolated_string_node(
                 ast, ast->tuple_items[node->a + i]);
@@ -3321,6 +3446,13 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
         }
         return sema_no_decl();
     case AK_TupleField:
+    case AK_Index:
+        if (node->kind == AK_Index) {
+            u32 found = sema_find_interpolated_string_node(ast, node->b);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+        }
         return sema_find_interpolated_string_node(ast, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
@@ -3466,6 +3598,7 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             return true;
         }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (!sema_validate_interpolated_strings(
                     lexer, ast, sema, ast->tuple_items[node->a + i])) {
@@ -3474,6 +3607,11 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
         }
         return true;
     case AK_TupleField:
+    case AK_Index:
+        if (node->kind == AK_Index &&
+            !sema_validate_interpolated_strings(lexer, ast, sema, node->b)) {
+            return false;
+        }
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
@@ -3665,6 +3803,97 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             type_index =
                 sema->type_param_types[tuple->first_param_type + node->b];
+        }
+        break;
+
+    case AK_Array:
+        {
+            const SemaType* expected_array =
+                expected_type != sema_no_type() &&
+                        sema->types[expected_type].kind == STK_Array
+                    ? &sema->types[expected_type]
+                    : NULL;
+            if (expected_array != NULL &&
+                expected_array->return_type != node->b) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    sema_type_name(sema, &temp_arena, expected_type),
+                    s("array with different length"));
+            }
+
+            u32 item_type = expected_array != NULL
+                                ? expected_array->first_param_type
+                                : sema_no_type();
+            if (node->b == 0 && item_type == sema_no_type()) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("array with known element type"),
+                    s("empty array literal"));
+            }
+
+            for (u32 i = 0; i < node->b; ++i) {
+                u32 item_node     = ast->tuple_items[node->a + i];
+                u32 expected_item = item_type;
+                u32 actual_item   = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          item_node,
+                                          expected_item,
+                                          &actual_item)) {
+                    return false;
+                }
+                actual_item = expected_item != sema_no_type()
+                                  ? expected_item
+                                  : sema_materialise_type(sema, actual_item);
+                if (item_type == sema_no_type()) {
+                    item_type = actual_item;
+                } else if (item_type != actual_item) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[item_node]),
+                        sema_type_name(sema, &temp_arena, item_type),
+                        sema_type_name(sema, &temp_arena, actual_item));
+                }
+            }
+
+            type_index = sema_add_array_type(sema, item_type, node->b);
+        }
+        break;
+
+    case AK_Index:
+        {
+            u32 array_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &array_type)) {
+                return false;
+            }
+            if (array_type == sema_no_type() ||
+                sema->types[array_type].kind != STK_Array) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("array"),
+                    sema_type_name(sema, &temp_arena, array_type));
+            }
+
+            u32 index_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->b, sema_no_type(), &index_type)) {
+                return false;
+            }
+            index_type = sema_materialise_type(sema, index_type);
+            if (!sema_type_is_integer(sema, index_type)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->b]),
+                    s("integer index"),
+                    sema_type_name(sema, &temp_arena, index_type));
+            }
+
+            type_index = sema->types[array_type].first_param_type;
         }
         break;
 
@@ -5384,6 +5613,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             return true;
         }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (!sema_validate_loop_control(lexer,
                                             ast,
@@ -5397,6 +5627,17 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
         }
         return true;
     case AK_TupleField:
+    case AK_Index:
+        if (node->kind == AK_Index &&
+            !sema_validate_loop_control(lexer,
+                                        ast,
+                                        node->b,
+                                        loop_depth,
+                                        expr_block_depth,
+                                        expr_labels,
+                                        expr_label_count)) {
+            return false;
+        }
         return sema_validate_loop_control(lexer,
                                           ast,
                                           node->a,

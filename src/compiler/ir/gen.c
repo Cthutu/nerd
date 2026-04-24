@@ -282,6 +282,56 @@ void ir_add_tuple_field(Ir*     ir,
                });
 }
 
+void ir_add_array(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
+{
+    u32             first_item = (u32)array_count(ir->tuple_items);
+    const SemaType* array      = &ir->types[lvalue_type];
+    for (u32 i = 0; i < array_count(items); ++i) {
+        IrValue item = items[i];
+        item.type    = array->first_param_type;
+        array_push(ir->tuple_items,
+                   (IrTupleItem){
+                       .value = item,
+                       .type  = item.type,
+                   });
+    }
+
+    u32 array_index = (u32)array_count(ir->tuples);
+    array_push(ir->tuples,
+               (IrTupleInfo){
+                   .first_item = first_item,
+                   .item_count = (u32)array_count(items),
+               });
+    lvalue.type = lvalue_type;
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_ARRAY,
+            .lvalue = lvalue,
+            .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = array_index},
+                       {0}},
+        });
+}
+
+void ir_add_index(Ir*     ir,
+                  IrValue lvalue,
+                  u32     lvalue_type,
+                  IrValue array,
+                  u32     array_type,
+                  IrValue index,
+                  u32     index_type)
+{
+    lvalue.type = lvalue_type;
+    array.type  = array_type;
+    index.type  = index_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_INDEX,
+                   .lvalue = lvalue,
+                   .rvalue = {array, index},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append explicit string-builder instructions to the IR stream.
 
@@ -710,6 +760,7 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_On:
     case AK_Tuple:
     case AK_TupleField:
+    case AK_Index:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -745,6 +796,14 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
         }
         return ir_node_contains_interpolation(ast, node->a) ||
                ir_node_contains_interpolation(ast, node->b);
+    case AK_Array:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (ir_node_contains_interpolation(ast,
+                                               ast->tuple_items[node->a + i])) {
+                return true;
+            }
+        }
+        return false;
     case AK_Call:
         if (ir_node_contains_interpolation(ast, node->a)) {
             return true;
@@ -1273,6 +1332,66 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                tuple,
                                ir_node_type_index(ast, sema, node->a),
                                node->b);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Array:
+        {
+            Array(IrValue) items = NULL;
+            for (u32 i = 0; i < node->b; ++i) {
+                array_push(items,
+                           ir_lower_node(lex,
+                                         ast,
+                                         sema,
+                                         ast->tuple_items[node->a + i],
+                                         loop,
+                                         node_values,
+                                         next_value_index,
+                                         ir));
+            }
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_array(
+                ir, value, ir_node_type_index(ast, sema, node_index), items);
+            array_free(items);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Index:
+        {
+            IrValue array = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            IrValue index = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->b,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_index(ir,
+                         value,
+                         ir_node_type_index(ast, sema, node_index),
+                         array,
+                         ir_node_type_index(ast, sema, node->a),
+                         index,
+                         ir_node_type_index(ast, sema, node->b));
             node_values[node_index] = value;
             return value;
         }

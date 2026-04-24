@@ -108,6 +108,18 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return true;
     }
+    if (kind == TK_LBracket) {
+        (*io_index)++;
+        if (ast_kind_at_stream_index(state, *io_index) != TK_Integer) {
+            return false;
+        }
+        (*io_index)++;
+        if (ast_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+            return false;
+        }
+        (*io_index)++;
+        return ast_skip_type_tokens(state, io_index);
+    }
     if (kind == TK_LParen) {
         (*io_index)++;
         if (!ast_skip_type_tokens(state, io_index)) {
@@ -374,6 +386,42 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  .token_index = lparen.token_index,
                                  .a           = first_item,
                                  .b           = item_count,
+                             },
+                             out_node);
+    }
+
+    if (state->token.kind == TK_LBracket) {
+        AstToken lbracket = state->token;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        if (state->token.kind != TK_Integer) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Integer,
+                state->token.kind);
+        }
+        AstNode length_node = {
+            .kind        = AK_IntegerLiteral,
+            .token_index = state->token.token_index,
+            .a           = state->token.value.integer_index,
+        };
+        u32 length_index = 0;
+        if (!ast_emit_node(state, length_node, &length_index) ||
+            !ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
+            return false;
+        }
+        u32 element_type = 0;
+        if (!ast_parse_type(state, &element_type)) {
+            return false;
+        }
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypeArray,
+                                 .token_index = lbracket.token_index,
+                                 .a           = length_index,
+                                 .b           = element_type,
                              },
                              out_node);
     }

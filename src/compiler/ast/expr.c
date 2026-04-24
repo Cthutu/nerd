@@ -62,6 +62,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
+    case TK_LBracket:
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
@@ -91,6 +92,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
     case TK_LParen:
+    case TK_LBracket:
         *out_left_bp  = AST_BP_POSTFIX;
         *out_right_bp = AST_BP_POSTFIX;
         return true;
@@ -802,6 +804,81 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                                  },
                                  out_node);
         }
+    case TK_LBracket:
+        {
+            if (!ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    TK_RBracket);
+            }
+
+            u32 first_item = (u32)array_count(state->tuple_items);
+            u32 item_count = 0;
+            if (state->token.kind != TK_RBracket) {
+                for (;;) {
+                    u32 item = 0;
+                    if (!ast_parse_expr_bp(state, 0, &item)) {
+                        return false;
+                    }
+                    array_push(state->tuple_items, item);
+                    item_count++;
+
+                    if (state->token.kind == TK_Comma) {
+                        if (!ast_next_token(state)) {
+                            return false;
+                        }
+                        if (ast_peek_kind_at(state, 0) == TK_RBracket) {
+                            if (!ast_expect_token(state, TK_RBracket)) {
+                                return false;
+                            }
+                            break;
+                        }
+                        if (!ast_next_token(state)) {
+                            return false;
+                        }
+                        continue;
+                    }
+                    if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                        if (!ast_expect_token(state, TK_Comma)) {
+                            return false;
+                        }
+                        if (ast_peek_kind_at(state, 0) == TK_RBracket) {
+                            if (!ast_expect_token(state, TK_RBracket)) {
+                                return false;
+                            }
+                            goto emit_array_literal;
+                        }
+                        if (!ast_next_token(state)) {
+                            return false;
+                        }
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            if (state->token.kind == TK_RBracket &&
+                state->token_index == state->token.token_index) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+            } else if (state->token.kind != TK_RBracket) {
+                if (!ast_expect_token(state, TK_RBracket)) {
+                    return false;
+                }
+            }
+
+        emit_array_literal:
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_Array,
+                                     .token_index = token.token_index,
+                                     .a           = first_item,
+                                     .b           = item_count,
+                                 },
+                                 out_node);
+        }
     case TK_fn:
         return ast_parse_declaration(state, out_node);
     case TK_on:
@@ -936,6 +1013,27 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             .token_index = op.token_index,
             .a           = left_node,
             .b           = call_index,
+        };
+        return ast_emit_node(state, node, out_node);
+    }
+
+    if (op.kind == TK_LBracket) {
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source, ast_token_span(state, &op), TK_RBracket);
+        }
+        u32 index_node = 0;
+        if (!ast_parse_expr_bp(state, 0, &index_node)) {
+            return false;
+        }
+        if (!ast_expect_token(state, TK_RBracket)) {
+            return false;
+        }
+        AstNode node = {
+            .kind        = AK_Index,
+            .token_index = op.token_index,
+            .a           = left_node,
+            .b           = index_node,
         };
         return ast_emit_node(state, node, out_node);
     }

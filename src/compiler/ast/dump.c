@@ -72,6 +72,10 @@ string ast_kind_to_string(AstKind kind)
         return s("Tuple");
     case AK_TupleField:
         return s("TupleField");
+    case AK_Array:
+        return s("Array");
+    case AK_Index:
+        return s("Index");
     case AK_RangeExclusive:
         return s("RangeExclusive");
     case AK_RangeInclusive:
@@ -82,6 +86,8 @@ string ast_kind_to_string(AstKind kind)
         return s("TypeFn");
     case AK_TypeTuple:
         return s("TypeTuple");
+    case AK_TypeArray:
+        return s("TypeArray");
     case AK_Expression:
         return s("Expression");
     case AK_Statement:
@@ -240,6 +246,18 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_TupleField:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "value=%u field=%u", node->a, node->b));
+            break;
+        case AK_Array:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "items=%u..%u", node->a, node->a + node->b));
+            break;
+        case AK_Index:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "value=%u index=%u", node->a, node->b));
+            break;
+        case AK_TypeArray:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "length=%u type=%u", node->a, node->b));
             break;
         case AK_RangeExclusive:
         case AK_RangeInclusive:

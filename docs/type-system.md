@@ -38,6 +38,7 @@ The current `SemaTypeKind` set includes:
 - floating-point primitives `f32` and `f64`
 - function types
 - tuple types
+- fixed array types
 
 Function types store their parameter list in the flattened
 `Sema.type_param_types` side table and keep the return type in
@@ -54,6 +55,11 @@ tuple row stores its element count in `param_count` and the first element type i
 `first_param_type`; `return_type` is unused. Tuple syntax is `(T1, T2, ...)`,
 with `(T,)` for a one-element tuple and `(T)` remaining ordinary grouped type
 syntax.
+
+Fixed array types are written `[N]T`, where `N` is a compile-time integer
+length and `T` is the element type. The current implementation stores the
+element type and length in the canonical semantic type row so `[2]i32` and
+`[3]i32` are distinct types.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -181,6 +187,7 @@ Current storage-eligible types are:
 - `f32`
 - `f64`
 - tuples whose elements are all storage-eligible
+- fixed arrays whose element type is storage-eligible
 
 Zero-initialised declarations such as `count: i32` and `name: string` are
 checked in sema and then lowered using type-aware zero values.
@@ -201,6 +208,32 @@ Tuple fields are accessed with zero-based dot indices:
 The semantic pass checks that field access is applied to a tuple and that the
 index is within range. Tuple values currently lower to generated C structs with
 numbered fields such as `_0` and `_1`.
+
+## Fixed Arrays
+
+Fixed array literals use square brackets:
+
+- `[1, 2, 3]`
+- `["red", "green"]`
+
+If there is no expected type, sema infers the element type from the first item
+and checks the remaining items against it. Untyped numeric elements materialise
+as needed when an expected array type is present:
+
+- `values: [3]i32 = [1, 2, 3]`
+
+The array length is part of the type, so `[2]i32` and `[3]i32` do not match.
+Empty array literals currently require an expected fixed-array type because
+there is no element from which to infer a type.
+
+Fixed arrays are indexed with square brackets:
+
+- `values[0]`
+- `values[i]`
+
+The index expression must be an integer type. In debug builds, generated C emits
+a bounds check before each fixed-array index and aborts with a fatal message if
+the index is outside the fixed length. Release builds may omit those checks.
 
 Local variables are resolved through semantic scope rows, not through AST node
 payloads. A function body creates a root scope, and each nested block statement
@@ -312,6 +345,7 @@ Today the semantic type system is focused on:
 - alias resolution
 - variable storage eligibility
 - tuple literals, tuple types, and tuple field access
+- fixed array literals, fixed array types, and fixed array indexing
 - untyped integer materialisation
 - exact-match type checks for the implemented arithmetic surface
 - explicit cast validation

@@ -814,18 +814,20 @@ needed earlier.
 
 ## Milestone 13: Fixed Arrays And Indexing
 
-- [ ] 67. Add fixed-size array types and literals.
+- [X] 67. Add fixed-size array types and literals.
   - Support fixed array type syntax `[N]T`.
   - Support array literals such as `[1, 2, 3]`.
   - Infer array literal element type from the literal contents or expected type.
   - Keep array length as part of the type.
+  - Covered in language, error, formatter, LSP, and type-system docs.
 
-- [ ] 68. Add array indexing.
+- [X] 68. Add array indexing.
   - Support `array[index]` for fixed arrays.
   - Debug builds should include bounds checks.
   - Release builds may omit bounds checks.
   - Add tests for valid indexing, invalid index types, and debug bounds
     diagnostics or traps.
+  - Debug C generation emits fixed-length bounds traps before indexing.
 
 ## Milestone 14: Pointer Basics
 
