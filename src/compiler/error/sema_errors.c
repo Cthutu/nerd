@@ -533,7 +533,7 @@ bool error_0321_invalid_on_match_type(NerdSource source,
                         "This matched value type is unsupported");
     error_add_help(&error,
                    "For this milestone, block-form `on` supports `bool` and "
-                   "concrete integer scrutinees.");
+                   "`string` scrutinees, plus concrete integer scrutinees.");
     error_render(&error);
     return false;
 }
@@ -717,13 +717,12 @@ bool error_0329_missing_expression_block_break(NerdSource source,
                                                ErrorSpan  span,
                                                string     type_name)
 {
-    ErrorInfo error =
-        error_init(329,
-                   source,
-                   span,
-                   "Missing `break` for expression block returning `" STRINGP
-                   "`",
-                   STRINGV(type_name));
+    ErrorInfo error = error_init(
+        329,
+        source,
+        span,
+        "Missing `break` for expression block returning `" STRINGP "`",
+        STRINGV(type_name));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,

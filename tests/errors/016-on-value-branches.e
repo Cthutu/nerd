@@ -1,11 +1,11 @@
-message :: "hello"
+message :: 3.14
 main :: fn () => on message {
     else => 1
 }
 ¬
 {
     "code": "0321",
-    "message": "Block-form `on` does not support values of type `string`",
+    "message": "Block-form `on` does not support values of type `untyped float`",
     "source_file": "tests/errors/016-on-value-branches.e",
     "primary_location": {
         "line": 2,
@@ -22,7 +22,7 @@ main :: fn () => on message {
     ],
     "notes": [],
     "help": [
-        "For this milestone, block-form `on` supports `bool` and concrete integer scrutinees."
+        "For this milestone, block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
     ]
 }
 ¬

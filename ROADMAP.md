@@ -62,6 +62,9 @@ From the current codebase and test suite:
 - As new language features are added, update all relevant surfaces together:
   language tests, error tests, LSP support, formatter support, and `just test`
   coverage.
+- Prefer dense language regression tests that exercise several related runtime
+  cases in one file. Use `pr` and `prn` built-ins to make those cases visible in
+  the expected program output, rather than adding one tiny test per happy path.
 - Deliver new language features horizontally across the toolchain.
   - A feature is not complete until the compiler, formatter, LSP, and testing
     surfaces all support it to the agreed milestone depth.

@@ -326,6 +326,13 @@ internal bool cgen_type_is_integer(const CGen* cgen, u32 type_index)
     }
 }
 
+internal bool cgen_type_is_string(const CGen* cgen, u32 type_index)
+{
+    type_index = cgen_materialise_type(cgen, type_index);
+    return type_index != sema_no_type() &&
+           cgen->ir->types[type_index].kind == STK_String;
+}
+
 internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -599,6 +606,21 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         cgen_add_value(cgen, &instr->lvalue);
     }
     cgen_add(cgen, " = ");
+    bool string_equality =
+        (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL) &&
+        cgen_type_is_string(cgen, instr->rvalue[0].type) &&
+        cgen_type_is_string(cgen, instr->rvalue[1].type);
+    if (string_equality) {
+        if (instr->op == IR_OP_NOT_EQUAL) {
+            cgen_add(cgen, "!");
+        }
+        cgen_add(cgen, "string_eq(");
+        cgen_add_value(cgen, &instr->rvalue[0]);
+        cgen_add(cgen, ", ");
+        cgen_add_value(cgen, &instr->rvalue[1]);
+        cgen_addn(cgen, ");");
+        return;
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[1]);

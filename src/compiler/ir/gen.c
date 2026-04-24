@@ -8,6 +8,20 @@
 #include <compiler/error/error.h>
 
 //------------------------------------------------------------------------------
+// AST ownership helpers.
+
+internal bool ir_block_is_expr_block_body(const Ast* ast, u32 block_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_ExprBlock && node->a == block_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Append a global declaration marker to the IR stream.
 
 void ir_add_global(Ir* ir, u32 symbol_handle, u32 type_index)
@@ -313,11 +327,11 @@ typedef enum : u8 {
 } IrStatementResult;
 
 typedef struct {
-    i64 break_label;
-    i64 continue_label;
-    i64 expr_break_label;
+    i64     break_label;
+    i64     continue_label;
+    i64     expr_break_label;
     IrValue expr_result;
-    u32 expr_result_type;
+    u32     expr_result_type;
 } IrLoopLabels;
 
 internal IrLoopLabels ir_no_control_labels(void)
@@ -681,22 +695,22 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     }
 }
 
-internal IrValue ir_lower_node(const Lexer* lex,
-                               const Ast*   ast,
-                               const Sema*  sema,
-                               u32          node_index,
-                               IrLoopLabels loop,
-                               Array(IrValue) node_values,
-                               u64* next_value_index,
-                               Ir*  ir);
-internal void    ir_generate_return_statement(const Lexer*   lex,
-                                              const Ast*     ast,
-                                              const Sema*    sema,
-                                              const AstNode* return_node,
-                                              IrLoopLabels   loop,
-                                              Array(IrValue) node_values,
-                                              u64* next_value_index,
-                                              Ir*  ir);
+internal IrValue           ir_lower_node(const Lexer* lex,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index,
+                                         IrLoopLabels loop,
+                                         Array(IrValue) node_values,
+                                         u64* next_value_index,
+                                         Ir*  ir);
+internal void              ir_generate_return_statement(const Lexer*   lex,
+                                                        const Ast*     ast,
+                                                        const Sema*    sema,
+                                                        const AstNode* return_node,
+                                                        IrLoopLabels   loop,
+                                                        Array(IrValue) node_values,
+                                                        u64* next_value_index,
+                                                        Ir*  ir);
 internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  const Ast*   ast,
                                                  const Sema*  sema,
@@ -1342,8 +1356,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 ir_add_temp_local(ir, result, result_type);
             }
 
-            i64 end_label = (i64)(*next_value_index)++;
-            IrLoopLabels block_control = loop;
+            i64          end_label         = (i64)(*next_value_index)++;
+            IrLoopLabels block_control     = loop;
             block_control.expr_break_label = end_label;
             block_control.expr_result      = result;
             block_control.expr_result_type = result_type;
@@ -1649,6 +1663,11 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_Block) {
         ir_add_block_start(ir);
         for (u32 i = node->a; i < node->b; ++i) {
+            if (ast->nodes[i].kind == AK_Block &&
+                ir_block_is_expr_block_body(ast, i)) {
+                i = ast->nodes[i].b - 1;
+                continue;
+            }
             if (!ast_node_is_block_statement(&ast->nodes[i])) {
                 continue;
             }
@@ -1743,10 +1762,10 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 ir_node_type_index(ast, sema, for_info->condition_node_index),
                 end_label);
         }
-        IrLoopLabels inner_loop     = loop;
-        inner_loop.break_label      = end_label;
-        inner_loop.continue_label   = continue_label;
-        inner_loop.expr_break_label = loop.expr_break_label;
+        IrLoopLabels inner_loop       = loop;
+        inner_loop.break_label        = end_label;
+        inner_loop.continue_label     = continue_label;
+        inner_loop.expr_break_label   = loop.expr_break_label;
         IrStatementResult body_result = ir_generate_statement(lex,
                                                               ast,
                                                               sema,
@@ -1881,15 +1900,14 @@ internal void ir_generate_global_init(const Lexer*    lex,
     IrValue result             = {
                     .kind = IR_VALUE_INTEGER, .type = decl->type_index, .value.integer = 0};
     if (decl->value_node_index != sema_no_decl()) {
-        result = ir_lower_node(
-            lex,
-            ast,
-            sema,
-            decl->value_node_index,
-            ir_no_control_labels(),
-            node_values,
-            next_value_index,
-            ir);
+        result = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               decl->value_node_index,
+                               ir_no_control_labels(),
+                               node_values,
+                               next_value_index,
+                               ir);
     }
     ir_add_assign(ir,
                   (IrValue){.kind          = IR_VALUE_SYMBOL,
@@ -1972,34 +1990,38 @@ internal void ir_generate_function_body(const Lexer* lex,
     if (fn_def_node->b == AFK_Expr) {
         ASSERT(ast->nodes[fn_start_node->b - 1].kind == AK_Expression,
                "Expected expression node before function end");
-        IrValue result = ir_lower_node(
-            lex,
-            ast,
-            sema,
-            fn_start_node->b - 1,
-            ir_no_control_labels(),
-            node_values,
-            &next_value_index,
-            ir);
+        IrValue result = ir_lower_node(lex,
+                                       ast,
+                                       sema,
+                                       fn_start_node->b - 1,
+                                       ir_no_control_labels(),
+                                       node_values,
+                                       &next_value_index,
+                                       ir);
         ir_add_return(
             ir, result, ir_node_type_index(ast, sema, fn_start_node->b - 1));
     } else {
         bool has_explicit_return = false;
 
         for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
+            if (ast->nodes[i].kind == AK_Block &&
+                ir_block_is_expr_block_body(ast, i)) {
+                i = ast->nodes[i].b - 1;
+                continue;
+            }
             if (!ast_node_is_block_statement(&ast->nodes[i])) {
                 continue;
             }
-            IrStatementResult result = ir_generate_statement(
-                lex,
-                ast,
-                sema,
-                function_index,
-                i,
-                ir_no_control_labels(),
-                node_values,
-                &next_value_index,
-                ir);
+            IrStatementResult result =
+                ir_generate_statement(lex,
+                                      ast,
+                                      sema,
+                                      function_index,
+                                      i,
+                                      ir_no_control_labels(),
+                                      node_values,
+                                      &next_value_index,
+                                      ir);
             if (result == IR_STMT_RETURN) {
                 has_explicit_return = true;
                 break;

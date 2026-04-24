@@ -15,6 +15,17 @@ typedef uint8_t u8;
 
 DEF_SLICE(u8) string;
 
+static bool string_eq(string lhs, string rhs)
+{
+    if (lhs.count != rhs.count) {
+        return false;
+    }
+    if (lhs.count == 0) {
+        return true;
+    }
+    return memcmp(lhs.data, rhs.data, lhs.count) == 0;
+}
+
 void pr(string str) { fwrite(str.data, 1, str.count, stdout); }
 
 void prn(string str)

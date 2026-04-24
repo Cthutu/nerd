@@ -81,11 +81,11 @@ main :: fn () => left && right
 ¬
 left: string = "a"
 right: string = "b"
-main :: fn () => left == right
+main :: fn () => left < right
 ¬
 {
     "code": "0326",
-    "message": "Operator `==` requires matching numeric or bool operands, found `string` and `string`",
+    "message": "Operator `<` requires matching numeric operands, found `string` and `string`",
     "source_file": "tests/errors/018-primitive-operators.e",
     "primary_location": {
         "line": 3,
@@ -96,12 +96,12 @@ main :: fn () => left == right
             "kind": "primary",
             "line": 3,
             "column": 23,
-            "length": 2,
+            "length": 1,
             "message": "These operands have types `string` and `string`"
         }
     ],
     "notes": [],
     "help": [
-        "Use `==` only with matching numeric or bool operands."
+        "Use `<` only with matching numeric operands."
     ]
 }
