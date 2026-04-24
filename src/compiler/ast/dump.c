@@ -78,6 +78,10 @@ string ast_kind_to_string(AstKind kind)
         return s("Array");
     case AK_Index:
         return s("Index");
+    case AK_Slice:
+        return s("Slice");
+    case AK_Field:
+        return s("Field");
     case AK_RangeExclusive:
         return s("RangeExclusive");
     case AK_RangeInclusive:
@@ -90,6 +94,8 @@ string ast_kind_to_string(AstKind kind)
         return s("TypeTuple");
     case AK_TypeArray:
         return s("TypeArray");
+    case AK_TypeSlice:
+        return s("TypeSlice");
     case AK_TypePointer:
         return s("TypePointer");
     case AK_Expression:
@@ -264,9 +270,21 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             row[3] = table_cell_string(string_format(
                 &temp_arena, "value=%u index=%u", node->a, node->b));
             break;
+        case AK_Slice:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "slice=%u", node->a));
+            break;
+        case AK_Field:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "value=%u symbol=%u", node->a, node->b));
+            break;
         case AK_TypeArray:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "length=%u type=%u", node->a, node->b));
+            break;
+        case AK_TypeSlice:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "type=%u", node->a));
             break;
         case AK_RangeExclusive:
         case AK_RangeInclusive:

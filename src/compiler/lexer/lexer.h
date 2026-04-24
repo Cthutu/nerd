@@ -50,6 +50,7 @@ typedef enum {
     TK_Dot,
     TK_At,
     TK_Dollar,
+    TK_Range,
     TK_RangeExclusive,
     TK_RangeInclusive,
     TK_Colon,

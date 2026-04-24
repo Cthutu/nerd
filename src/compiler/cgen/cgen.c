@@ -194,14 +194,16 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     switch (ir->types[type_index].kind) {
     case STK_Tuple:
     case STK_Array:
+    case STK_Slice:
         {
             static char names[8][32];
             static u32  next = 0;
             char*       name = names[next++ % 8];
             snprintf(name,
                      32,
-                     ir->types[type_index].kind == STK_Tuple ? "tuple%u"
-                                                             : "array%u",
+                     ir->types[type_index].kind == STK_Tuple   ? "tuple%u"
+                     : ir->types[type_index].kind == STK_Array ? "array%u"
+                                                               : "slice%u",
                      type_index);
             return name;
         }
@@ -367,6 +369,7 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
     switch (cgen->ir->types[type_index].kind) {
     case STK_Tuple:
     case STK_Array:
+    case STK_Slice:
         cgen_add(cgen, "(");
         cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
         cgen_add(cgen, "){0}");
@@ -602,10 +605,69 @@ void cgen_add_array(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "}};");
 }
 
+void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
+{
+    const IrSliceInfo* slice =
+        &cgen->ir->slices[(u32)instr->rvalue[0].value.integer];
+    const SemaType* target_type = &cgen->ir->types[slice->target_type];
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, "){.data = ");
+    if (target_type->kind == STK_Array) {
+        cgen_add_value(cgen, &slice->target);
+        cgen_add(cgen, ".items");
+    } else {
+        cgen_add_value(cgen, &slice->target);
+        cgen_add(cgen, ".data");
+    }
+    if (slice->start.kind != IR_VALUE_NONE) {
+        cgen_add(cgen, " + ");
+        cgen_add_value(cgen, &slice->start);
+    }
+    cgen_add(cgen, ", .count = ");
+    if (slice->end.kind != IR_VALUE_NONE) {
+        cgen_add(cgen, "(");
+        cgen_add_value(cgen, &slice->end);
+        cgen_add(cgen, ") - (");
+        if (slice->start.kind != IR_VALUE_NONE) {
+            cgen_add_value(cgen, &slice->start);
+        } else {
+            cgen_add(cgen, "0");
+        }
+        cgen_add(cgen, ")");
+    } else {
+        if (target_type->kind == STK_Array) {
+            arena_format(&cgen->arena, "%u", target_type->return_type);
+        } else {
+            cgen_add_value(cgen, &slice->target);
+            cgen_add(cgen, ".count");
+        }
+        if (slice->start.kind != IR_VALUE_NONE) {
+            cgen_add(cgen, " - ");
+            cgen_add_value(cgen, &slice->start);
+        }
+    }
+    cgen_addn(cgen, "};");
+}
+
+void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, ".");
+    string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
+    cgen_add_bytes(cgen, (const char*)field.data, field.count);
+    cgen_addn(cgen, ";");
+}
+
 void cgen_add_index(CGen* cgen, const IrInstruction* instr)
 {
     const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
-    if (target_type->kind == STK_Array) {
+    if (target_type->kind == STK_Array || target_type->kind == STK_Slice) {
         cgen_start_line(cgen);
         cgen_add(cgen, "#ifndef NDEBUG");
         cgen_addn(cgen, "");
@@ -614,10 +676,19 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
         cgen_add_value(cgen, &instr->rvalue[1]);
         cgen_add(cgen, " < 0 || (size_t)");
         cgen_add_value(cgen, &instr->rvalue[1]);
-        arena_format(&cgen->arena,
-                     " >= %u) { fprintf(stderr, \"fatal: array index out of "
-                     "bounds\\n\"); abort(); }",
-                     target_type->return_type);
+        if (target_type->kind == STK_Array) {
+            arena_format(
+                &cgen->arena,
+                " >= %u) { fprintf(stderr, \"fatal: array index out of "
+                "bounds\\n\"); abort(); }",
+                target_type->return_type);
+        } else {
+            cgen_add(cgen, " >= ");
+            cgen_add_value(cgen, &instr->rvalue[0]);
+            cgen_add(cgen,
+                     ".count) { fprintf(stderr, \"fatal: slice index out of "
+                     "bounds\\n\"); abort(); }");
+        }
         cgen_addn(cgen, "");
         cgen_start_line(cgen);
         cgen_add(cgen, "#endif");
@@ -628,7 +699,10 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
-    cgen_add(cgen, target_type->kind == STK_Array ? ".items[" : "[");
+    cgen_add(cgen,
+             target_type->kind == STK_Array
+                 ? ".items["
+                 : (target_type->kind == STK_Slice ? ".data[" : "["));
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
 }
@@ -738,6 +812,45 @@ internal void cgen_add_string_append_value(CGen*          cgen,
             cgen_add_string_append_value(
                 cgen, value, array->first_param_type, fields, field_count + 1);
         }
+        cgen_add_string_append_literal(cgen, s("]"));
+        return;
+    }
+    if (type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Slice) {
+        const SemaType* slice = &cgen->ir->types[type_index];
+        cstr suffix = cgen_string_helper_suffix(cgen, slice->first_param_type);
+        if (suffix == NULL) {
+            error_ice(
+                "Expected interpolatable slice item type for type index %u",
+                slice->first_param_type);
+        }
+        static u32 next_slice_string_index = 0;
+        u32        loop_index              = next_slice_string_index++;
+        cgen_add_string_append_literal(cgen, s("["));
+        cgen_start_line(cgen);
+        arena_format(&cgen->arena,
+                     "for (uintptr_t $slice_i%u = 0; $slice_i%u < ",
+                     loop_index,
+                     loop_index);
+        cgen_add_value_field_path(cgen, value, fields, field_count);
+        arena_format(&cgen->arena, ".count; ++$slice_i%u) {", loop_index);
+        cgen_addn(cgen, "");
+        cgen_indent(cgen);
+        cgen_start_line(cgen);
+        arena_format(&cgen->arena,
+                     "if ($slice_i%u > 0) string_builder_append_string((string)"
+                     "{.data = (u8*)\", \", .count = 2});",
+                     loop_index);
+        cgen_addn(cgen, "");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "string_builder_append_string(to_string$");
+        cgen_add(cgen, suffix);
+        cgen_add(cgen, "(");
+        cgen_add_value_field_path(cgen, value, fields, field_count);
+        arena_format(&cgen->arena, ".data[$slice_i%u]));", loop_index);
+        cgen_addn(cgen, "");
+        cgen_dedent(cgen);
+        cgen_add_line(cgen, "}");
         cgen_add_string_append_literal(cgen, s("]"));
         return;
     }
@@ -852,7 +965,8 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
 {
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
         const SemaType* type = &cgen->ir->types[i];
-        if (type->kind != STK_Tuple && type->kind != STK_Array) {
+        if (type->kind != STK_Tuple && type->kind != STK_Array &&
+            type->kind != STK_Slice) {
             continue;
         }
         cgen_start_line(cgen);
@@ -871,11 +985,17 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                 arena_format(&cgen->arena, " _%u;", field);
                 cgen_addn(cgen, "");
             }
-        } else {
+        } else if (type->kind == STK_Array) {
             cgen_start_line(cgen);
             cgen_add(cgen, cgen_c_type(cgen->ir, type->first_param_type));
             arena_format(&cgen->arena, " items[%u];", type->return_type);
             cgen_addn(cgen, "");
+        } else {
+            cgen_start_line(cgen);
+            cgen_add(cgen, cgen_c_type(cgen->ir, type->first_param_type));
+            cgen_addn(cgen, "* data;");
+            cgen_start_line(cgen);
+            cgen_addn(cgen, "uintptr_t count;");
         }
         cgen_dedent(cgen);
         cgen_start_line(cgen);
@@ -1022,6 +1142,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_ARRAY:
             cgen_add_array(cgen, instr);
+            break;
+        case IR_OP_SLICE:
+            cgen_add_slice(cgen, instr);
+            break;
+        case IR_OP_FIELD:
+            cgen_add_field(cgen, cgen->lexer, instr);
             break;
         case IR_OP_INDEX:
             cgen_add_index(cgen, instr);

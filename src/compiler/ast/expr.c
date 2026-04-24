@@ -180,6 +180,18 @@ internal bool ast_node_is_stringish(const AstParseState* state, u32 node_index)
 
 internal bool ast_parse_on_branch_pattern(AstParseState* state, u32* out_node);
 
+internal u32 ast_integer_value_index_for_token(const AstParseState* state,
+                                               u32                  token_index)
+{
+    u32 integer_index = 0;
+    for (u32 i = 0; i < token_index; ++i) {
+        if (state->lexer->tokens[i].kind == TK_Integer) {
+            integer_index++;
+        }
+    }
+    return integer_index;
+}
+
 internal bool ast_parse_interpolated_string(AstParseState* state,
                                             AstToken       start_token,
                                             u32*           out_node)
@@ -1025,10 +1037,81 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             return error_0201_missing_value(
                 state->token.source, ast_token_span(state, &op), TK_RBracket);
         }
-        u32 index_node = 0;
-        if (!ast_parse_expr_bp(state, 0, &index_node)) {
-            return false;
+        u32  start_node = U32_MAX;
+        u32  end_node   = U32_MAX;
+        bool is_slice   = false;
+        if (state->token.kind == TK_Range) {
+            is_slice = true;
+        } else {
+            if (!ast_parse_expr_bp(state, 0, &start_node)) {
+                return false;
+            }
+            if (state->token.kind == TK_Range) {
+                is_slice = true;
+            }
         }
+
+        if (is_slice) {
+            if (state->token.kind != TK_Range) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &op),
+                                                 TK_Range,
+                                                 state->token.kind);
+            }
+            u32 range_token_index = state->token.token_index;
+            do {
+                if (!ast_next_token(state)) {
+                    return error_0201_missing_value(state->token.source,
+                                                    ast_token_span(state, &op),
+                                                    TK_RBracket);
+                }
+            } while (state->token.token_index <= range_token_index);
+            if (range_token_index + 2 < array_count(state->lexer->tokens) &&
+                state->lexer->tokens[range_token_index + 1].kind ==
+                    TK_Integer &&
+                state->lexer->tokens[range_token_index + 2].kind ==
+                    TK_RBracket) {
+                AstNode end = {
+                    .kind        = AK_IntegerLiteral,
+                    .token_index = range_token_index + 1,
+                    .a           = ast_integer_value_index_for_token(
+                        state, range_token_index + 1),
+                };
+                if (!ast_emit_node(state, end, &end_node)) {
+                    return false;
+                }
+                state->token = (AstToken){
+                    .kind   = TK_RBracket,
+                    .source = state->lexer->source,
+                    .offset =
+                        state->lexer->tokens[range_token_index + 2].offset,
+                    .token_index = range_token_index + 2,
+                };
+                state->token_index = range_token_index + 3;
+            } else if (ast_token_starts_expression(state->token.kind)) {
+                if (!ast_parse_expr_bp(state, 0, &end_node)) {
+                    return false;
+                }
+            }
+            if (state->token.kind != TK_RBracket &&
+                !ast_expect_token(state, TK_RBracket)) {
+                return false;
+            }
+            u32 slice_index = (u32)array_count(state->slices);
+            array_push(state->slices,
+                       (AstSliceInfo){
+                           .target_node_index = left_node,
+                           .start_node_index  = start_node,
+                           .end_node_index    = end_node,
+                       });
+            AstNode node = {
+                .kind        = AK_Slice,
+                .token_index = op.token_index,
+                .a           = slice_index,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
+
         if (!ast_expect_token(state, TK_RBracket)) {
             return false;
         }
@@ -1036,7 +1119,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             .kind        = AK_Index,
             .token_index = op.token_index,
             .a           = left_node,
-            .b           = index_node,
+            .b           = start_node,
         };
         return ast_emit_node(state, node, out_node);
     }
@@ -1069,15 +1152,23 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             };
             return ast_emit_node(state, node, out_node);
         }
-        if (state->token.kind != TK_Symbol ||
-            !string_eq(
-                lex_symbol(state->lexer, state->token.value.symbol_handle),
-                s("cast"))) {
+        if (state->token.kind != TK_Symbol) {
             return error_0203_expected_token(
                 state->token.source,
                 ast_token_span(state, &state->token),
                 TK_Symbol,
                 state->token.kind);
+        }
+        if (!string_eq(
+                lex_symbol(state->lexer, state->token.value.symbol_handle),
+                s("cast"))) {
+            AstNode node = {
+                .kind        = AK_Field,
+                .token_index = state->token.token_index,
+                .a           = left_node,
+                .b           = state->token.value.symbol_handle,
+            };
+            return ast_emit_node(state, node, out_node);
         }
         if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
             return false;

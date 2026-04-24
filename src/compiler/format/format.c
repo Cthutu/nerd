@@ -186,6 +186,8 @@ internal int format_expr_precedence(const CstNode* node)
         return 80;
     case CK_TupleField:
     case CK_Index:
+    case CK_Slice:
+    case CK_Field:
         return 80;
     case CK_StringConcat:
         return 85;
@@ -546,11 +548,32 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_format(sb, ".%u", node->b);
         break;
+    case CK_Field:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_char(sb, '.');
+        sb_append_string(sb, lex_symbol(lexer, node->b));
+        break;
     case CK_Index:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '[');
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ']');
+        break;
+    case CK_Slice:
+        {
+            const CstSliceInfo* slice = &cst->slices[node->a];
+            format_emit_expr(
+                sb, cst, lexer, slice->target_node_index, node_precedence);
+            sb_append_char(sb, '[');
+            if (slice->start_node_index != U32_MAX) {
+                format_emit_expr(sb, cst, lexer, slice->start_node_index, 0);
+            }
+            sb_append_cstr(sb, "..");
+            if (slice->end_node_index != U32_MAX) {
+                format_emit_expr(sb, cst, lexer, slice->end_node_index, 0);
+            }
+            sb_append_char(sb, ']');
+        }
         break;
     case CK_RangeExclusive:
     case CK_RangeInclusive:
@@ -636,6 +659,10 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, 0);
         sb_append_char(sb, ']');
         format_emit_expr(sb, cst, lexer, node->b, 0);
+        break;
+    case CK_TypeSlice:
+        sb_append_cstr(sb, "[]");
+        format_emit_expr(sb, cst, lexer, node->a, 0);
         break;
     case CK_TypePointer:
         sb_append_char(sb, '^');
@@ -931,6 +958,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LParen, TK_RParen);
     case CK_TupleField:
+    case CK_Field:
         return node->token_index;
     case CK_IntegerNegate:
     case CK_Statement:
@@ -961,8 +989,13 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Assign:
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_Call:
+    case CK_Slice:
+    case CK_Index:
         return format_find_matching_close_token_index(
-            lexer, node->token_index, TK_LParen, TK_RParen);
+            lexer,
+            node->token_index,
+            node->kind == CK_Call ? TK_LParen : TK_LBracket,
+            node->kind == CK_Call ? TK_RParen : TK_RBracket);
     case CK_Cast:
         for (u32 i = node->token_index + 1; i < array_count(lexer->tokens);
              ++i) {

@@ -847,25 +847,28 @@ needed earlier.
 
 ## Milestone 15: Slices
 
-- [ ] 71. Add slice types and representation.
+- [X] 71. Add slice types and representation.
   - Support slice type syntax `[]T`.
   - Represent slices as fat pointers containing `.data` and `.count`.
   - Support `.data` and `.count` field-style access.
+  - Covered in language, error, formatter, LSP, and type-system docs.
 
-- [ ] 72. Add explicit slice construction.
+- [X] 72. Add explicit slice construction.
   - Support slicing syntax that constructs slices, including `s[a..b]`,
     `s[..b]`, `s[a..]`, and `s[..]`.
   - Support slicing fixed arrays and existing slices.
   - Keep fixed array to slice conversion explicit; `[N]T` should not implicitly
     coerce to `[]T`.
   - Support `[1, 2, 3][..]` as array-literal-to-slice construction.
+  - Covered by runtime output and formatter snapshots for each slice form.
 
-- [ ] 73. Add slice indexing and bounds behaviour.
+- [X] 73. Add slice indexing and bounds behaviour.
   - Support `slice[index]`.
   - Debug builds should include bounds checks.
   - Release builds may omit bounds checks.
   - Cover slice creation, indexing, slicing, `.data`, and `.count` in language,
     error, formatter, and LSP tests.
+  - Slice interpolation renders visible contents as `[x1, x2, x3, ...]`.
 
 ## Milestone 16: String And Byte Slice Interop
 

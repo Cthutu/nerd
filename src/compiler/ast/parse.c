@@ -114,10 +114,9 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     }
     if (kind == TK_LBracket) {
         (*io_index)++;
-        if (ast_kind_at_stream_index(state, *io_index) != TK_Integer) {
-            return false;
+        if (ast_kind_at_stream_index(state, *io_index) == TK_Integer) {
+            (*io_index)++;
         }
-        (*io_index)++;
         if (ast_kind_at_stream_index(state, *io_index) != TK_RBracket) {
             return false;
         }
@@ -398,6 +397,22 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         AstToken lbracket = state->token;
         if (!ast_next_token(state)) {
             return false;
+        }
+        if (state->token.kind == TK_RBracket) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            u32 element_type = 0;
+            if (!ast_parse_type(state, &element_type)) {
+                return false;
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_TypeSlice,
+                                     .token_index = lbracket.token_index,
+                                     .a           = element_type,
+                                 },
+                                 out_node);
         }
         if (state->token.kind != TK_Integer) {
             return error_0203_expected_token(
@@ -1523,6 +1538,7 @@ Ast ast_parse(Lexer* lexer)
         .call_args        = state.call_args,
         .tuple_items      = state.tuple_items,
         .calls            = state.calls,
+        .slices           = state.slices,
         .on_pattern_nodes = state.on_pattern_nodes,
         .on_branches      = state.on_branches,
         .ons              = state.ons,
@@ -1537,6 +1553,7 @@ error:
                     .call_args        = state.call_args,
                     .tuple_items      = state.tuple_items,
                     .calls            = state.calls,
+                    .slices           = state.slices,
                     .on_pattern_nodes = state.on_pattern_nodes,
                     .on_branches      = state.on_branches,
                     .ons              = state.ons,
@@ -1556,6 +1573,7 @@ void ast_done(Ast* ast)
     array_free(ast->call_args);
     array_free(ast->tuple_items);
     array_free(ast->calls);
+    array_free(ast->slices);
     array_free(ast->on_pattern_nodes);
     array_free(ast->on_branches);
     array_free(ast->ons);

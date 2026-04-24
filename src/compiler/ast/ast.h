@@ -48,12 +48,15 @@
 // | AK_TupleField      | Ast index value   | Zero-based field index          |
 // | AK_Array           | First item index  | Item count                      |
 // | AK_Index           | Ast index value   | Ast index of index expression   |
+// | AK_Slice           | Ast slice-info index | 0                            |
+// | AK_Field           | Ast index value   | Symbol handle                   |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
+// | AK_TypeSlice       | Ast index element type | 0                           |
 // | AK_TypePointer     | Ast index pointee type | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
@@ -111,12 +114,15 @@ typedef enum {
     AK_TupleField,
     AK_Array,
     AK_Index,
+    AK_Slice,
+    AK_Field,
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
     AK_TypeFn,
     AK_TypeTuple,
     AK_TypeArray,
+    AK_TypeSlice,
     AK_TypePointer,
     AK_Expression,
     AK_Statement,
@@ -176,6 +182,12 @@ typedef struct {
 } AstCallInfo;
 
 typedef struct {
+    u32 target_node_index;
+    u32 start_node_index;
+    u32 end_node_index;
+} AstSliceInfo;
+
+typedef struct {
     u32 pattern_node_index;
     u32 expr_node_index;
     u32 pattern_count;
@@ -217,6 +229,7 @@ typedef struct {
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
+    Array(AstSliceInfo) slices;
     Array(u32) on_pattern_nodes;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;

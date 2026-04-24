@@ -535,6 +535,11 @@ internal bool lexer_lex_one_token(NerdSource source,
             array_push(lexer->tokens,
                        (Token){.kind = TK_RangeInclusive, .offset = (u32)i});
             *io_index = i + 3;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '.') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_Range, .offset = (u32)i});
+            *io_index = i + 2;
         } else {
             array_push(lexer->tokens,
                        (Token){.kind = TK_Dot, .offset = (u32)i});
@@ -788,6 +793,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_PipePipe:
     case TK_LessEqual:
     case TK_GreaterEqual:
+    case TK_Range:
         return token->offset + 2;
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:

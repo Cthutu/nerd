@@ -39,6 +39,7 @@ The current `SemaTypeKind` set includes:
 - function types
 - tuple types
 - fixed array types
+- slice types
 - pointer types
 
 Function types store their parameter list in the flattened
@@ -61,6 +62,10 @@ Fixed array types are written `[N]T`, where `N` is a compile-time integer
 length and `T` is the element type. The current implementation stores the
 element type and length in the canonical semantic type row so `[2]i32` and
 `[3]i32` are distinct types.
+
+Slice types are written `[]T`. A slice is a fat pointer containing a data
+pointer and a count. The element type is part of the canonical type, so `[]i32`
+and `[]u8` are distinct types.
 
 Pointer types are written `^T`. The pointee type is part of the canonical type,
 so `^i32` and `^[3]i32` are distinct types.
@@ -192,6 +197,7 @@ Current storage-eligible types are:
 - `f64`
 - tuples whose elements are all storage-eligible
 - fixed arrays whose element type is storage-eligible
+- slices whose element type is storage-eligible
 - pointers
 
 Zero-initialised declarations such as `count: i32` and `name: string` are
@@ -239,6 +245,42 @@ Fixed arrays are indexed with square brackets:
 The index expression must be an integer type. In debug builds, generated C emits
 a bounds check before each fixed-array index and aborts with a fatal message if
 the index is outside the fixed length. Release builds may omit those checks.
+
+Fixed arrays do not implicitly coerce to slices. Use slicing syntax when a slice
+view is required:
+
+- `all: []i32 = values[..]`
+- `literal: []i32 = [1, 2, 3][..]`
+
+## Slices
+
+Slice values are written with `[]T` types and are constructed explicitly from
+fixed arrays or other slices:
+
+- `values[..]`
+- `values[1..4]`
+- `values[..3]`
+- `values[2..]`
+
+The result is a view over the original storage. The generated representation is
+a struct with:
+
+- `.data`, a pointer to the first element in the slice
+- `.count`, the number of elements in the slice
+
+Those fields are available from source when lower-level interop is needed:
+
+- `slice.count`
+- `slice.data[0]`
+
+Slices are indexed with the same square-bracket syntax as fixed arrays:
+
+- `slice[0]`
+- `slice[i]`
+
+The index expression must be an integer type. In debug builds, generated C emits
+a bounds check before each slice index and aborts with a fatal message if the
+index is outside `slice.count`. Release builds may omit those checks.
 
 ## Pointers
 
@@ -341,6 +383,7 @@ Today sema accepts interpolation of:
 - `untyped integer`, which materialises to `i32` for runtime conversion
 - tuples whose elements are all interpolatable
 - fixed arrays whose element type is interpolatable
+- slices whose element type is interpolatable
 
 Unsupported segment types, such as function values, produce a dedicated
 semantic error.
@@ -352,6 +395,9 @@ recursively.
 Fixed array interpolation renders the value in array literal shape, such as
 `[1, 2, 3]`. Nested arrays and tuples use their own literal-shaped rendering
 recursively.
+
+Slice interpolation renders the visible slice contents in the same bracketed
+shape, such as `[1, 2, 3]`.
 
 The current runtime model also treats interpolated strings as temporary
 statement-local values. Sema rejects uses that would let them escape, such as
@@ -377,6 +423,7 @@ Today the semantic type system is focused on:
 - variable storage eligibility
 - tuple literals, tuple types, and tuple field access
 - fixed array literals, fixed array types, and fixed array indexing
+- slice types, explicit slicing, slice fields, and slice indexing
 - pointer types, address-of, and pointer indexing
 - untyped integer materialisation
 - exact-match type checks for the implemented arithmetic surface

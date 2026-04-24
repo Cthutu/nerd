@@ -185,6 +185,10 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         sb_format(sb, "[%u]", type->return_type);
         ir_render_type_name(sb, ir, type->first_param_type);
         break;
+    case STK_Slice:
+        sb_append_cstr(sb, "[]");
+        ir_render_type_name(sb, ir, type->first_param_type);
+        break;
     case STK_Pointer:
         sb_append_char(sb, '^');
         ir_render_type_name(sb, ir, type->first_param_type);
@@ -339,6 +343,38 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                 }
             }
             sb_append_cstr(&sb, "]");
+            break;
+        case IR_OP_SLICE:
+            {
+                const IrSliceInfo* slice =
+                    &ir->slices[(u32)instr->rvalue[0].value.integer];
+                ir_render_value(&sb, ir, lexer, &instr->lvalue);
+                sb_append_cstr(&sb, " = ");
+                IrValue target = slice->target;
+                target.type    = slice->target_type;
+                ir_render_maybe_typed_value(&sb, ir, lexer, &target);
+                sb_append_char(&sb, '[');
+                if (slice->start.kind != IR_VALUE_NONE) {
+                    IrValue start = slice->start;
+                    start.type    = slice->start_type;
+                    ir_render_maybe_typed_value(&sb, ir, lexer, &start);
+                }
+                sb_append_cstr(&sb, "..");
+                if (slice->end.kind != IR_VALUE_NONE) {
+                    IrValue end = slice->end;
+                    end.type    = slice->end_type;
+                    ir_render_maybe_typed_value(&sb, ir, lexer, &end);
+                }
+                sb_append_char(&sb, ']');
+            }
+            break;
+        case IR_OP_FIELD:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_append_char(&sb, '.');
+            sb_append_string(
+                &sb, lex_symbol(lexer, (u32)instr->rvalue[1].value.integer));
             break;
         case IR_OP_INDEX:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

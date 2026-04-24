@@ -47,12 +47,15 @@
 // | CK_TupleField      | Value node index      | Zero-based field      |
 // | CK_Array           | First item index      | Item count            |
 // | CK_Index           | Value node index      | Index expr node       |
+// | CK_Slice           | Slice-info index      | 0                     |
+// | CK_Field           | Value node index      | Symbol handle         |
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
+// | CK_TypeSlice       | Element type node     | 0                     |
 // | CK_TypePointer     | Pointee type node     | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
@@ -107,12 +110,15 @@ typedef enum {
     CK_TupleField,
     CK_Array,
     CK_Index,
+    CK_Slice,
+    CK_Field,
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
     CK_TypeFn,
     CK_TypeTuple,
     CK_TypeArray,
+    CK_TypeSlice,
     CK_TypePointer,
     CK_FnExpr,
     CK_FnBlock,
@@ -156,6 +162,12 @@ typedef struct {
     u32 first_arg;
     u32 arg_count;
 } CstCallInfo;
+
+typedef struct {
+    u32 target_node_index;
+    u32 start_node_index;
+    u32 end_node_index;
+} CstSliceInfo;
 
 typedef struct {
     u32 pattern_node_index;
@@ -202,6 +214,7 @@ typedef struct {
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(CstCallInfo) calls;
+    Array(CstSliceInfo) slices;
     Array(u32) on_pattern_nodes;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;

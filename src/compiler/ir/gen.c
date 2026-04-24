@@ -313,6 +313,59 @@ void ir_add_array(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
         });
 }
 
+void ir_add_slice(Ir*     ir,
+                  IrValue lvalue,
+                  u32     lvalue_type,
+                  IrValue target,
+                  u32     target_type,
+                  IrValue start,
+                  u32     start_type,
+                  IrValue end,
+                  u32     end_type)
+{
+    lvalue.type     = lvalue_type;
+    target.type     = target_type;
+    start.type      = start_type;
+    end.type        = end_type;
+    u32 slice_index = (u32)array_count(ir->slices);
+    array_push(ir->slices,
+               (IrSliceInfo){
+                   .target      = target,
+                   .target_type = target_type,
+                   .start       = start,
+                   .start_type  = start_type,
+                   .end         = end,
+                   .end_type    = end_type,
+               });
+    array_push(
+        ir->instructions,
+        (IrInstruction){
+            .op     = IR_OP_SLICE,
+            .lvalue = lvalue,
+            .rvalue = {{.kind = IR_VALUE_INTEGER, .value.integer = slice_index},
+                       {0}},
+        });
+}
+
+void ir_add_field(Ir*     ir,
+                  IrValue lvalue,
+                  u32     lvalue_type,
+                  IrValue target,
+                  u32     target_type,
+                  u32     field_symbol)
+{
+    lvalue.type = lvalue_type;
+    target.type = target_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_FIELD,
+                   .lvalue = lvalue,
+                   .rvalue = {target,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = field_symbol}},
+               });
+}
+
 void ir_add_index(Ir*     ir,
                   IrValue lvalue,
                   u32     lvalue_type,
@@ -781,8 +834,20 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_AddressOf:
+    case AK_Field:
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
+    case AK_Slice:
+        {
+            const AstSliceInfo* slice = &ast->slices[node->a];
+            return ir_node_contains_interpolation(ast,
+                                                  slice->target_node_index) ||
+                   (slice->start_node_index != U32_MAX &&
+                    ir_node_contains_interpolation(ast,
+                                                   slice->start_node_index)) ||
+                   (slice->end_node_index != U32_MAX &&
+                    ir_node_contains_interpolation(ast, slice->end_node_index));
+        }
     case AK_Return:
     case AK_ReturnExpr:
         return node->a != U32_MAX &&
@@ -1418,6 +1483,31 @@ internal IrValue ir_lower_node(const Lexer* lex,
             return value;
         }
 
+    case AK_Field:
+        {
+            IrValue target = ir_lower_node(lex,
+                                           ast,
+                                           sema,
+                                           node->a,
+                                           loop,
+                                           node_values,
+                                           next_value_index,
+                                           ir);
+            IrValue value  = {
+                 .kind          = IR_VALUE_VARIABLE,
+                 .type          = ir_node_type_index(ast, sema, node_index),
+                 .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_field(ir,
+                         value,
+                         ir_node_type_index(ast, sema, node_index),
+                         target,
+                         ir_node_type_index(ast, sema, node->a),
+                         node->b);
+            node_values[node_index] = value;
+            return value;
+        }
+
     case AK_Array:
         {
             Array(IrValue) items = NULL;
@@ -1440,6 +1530,63 @@ internal IrValue ir_lower_node(const Lexer* lex,
             ir_add_array(
                 ir, value, ir_node_type_index(ast, sema, node_index), items);
             array_free(items);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Slice:
+        {
+            const AstSliceInfo* slice      = &ast->slices[node->a];
+            IrValue             target     = ir_lower_node(lex,
+                                           ast,
+                                           sema,
+                                           slice->target_node_index,
+                                           loop,
+                                           node_values,
+                                           next_value_index,
+                                           ir);
+            IrValue             start      = {0};
+            u32                 start_type = sema_no_type();
+            if (slice->start_node_index != U32_MAX) {
+                start = ir_lower_node(lex,
+                                      ast,
+                                      sema,
+                                      slice->start_node_index,
+                                      loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+                start_type =
+                    ir_node_type_index(ast, sema, slice->start_node_index);
+            }
+            IrValue end      = {0};
+            u32     end_type = sema_no_type();
+            if (slice->end_node_index != U32_MAX) {
+                end      = ir_lower_node(lex,
+                                    ast,
+                                    sema,
+                                    slice->end_node_index,
+                                    loop,
+                                    node_values,
+                                    next_value_index,
+                                    ir);
+                end_type = ir_node_type_index(ast, sema, slice->end_node_index);
+            }
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_slice(
+                ir,
+                value,
+                ir_node_type_index(ast, sema, node_index),
+                target,
+                ir_node_type_index(ast, sema, slice->target_node_index),
+                start,
+                start_type,
+                end,
+                end_type);
             node_values[node_index] = value;
             return value;
         }
@@ -2625,6 +2772,7 @@ void ir_done(Ir* ir)
     array_free(ir->calls);
     array_free(ir->tuple_items);
     array_free(ir->tuples);
+    array_free(ir->slices);
     array_free(ir->strings);
     array_free(ir->types);
     array_free(ir->type_param_types);
