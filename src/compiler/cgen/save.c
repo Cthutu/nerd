@@ -53,6 +53,8 @@ bool cgen_save(const CGen* cgen, const char* path)
         return error_runtime("Failed to write generated C file: %s", path);
     }
 
-    fclose(file);
+    if (fclose(file) != 0) {
+        return error_runtime("Failed to close generated C file: %s", path);
+    }
     return true;
 }

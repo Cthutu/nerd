@@ -44,10 +44,10 @@ dead code.
 
 ## Compiler C Generation
 
-- [ ] `src/compiler/cgen/cgen.c`
-- [ ] `src/compiler/cgen/cgen.h`
-- [ ] `src/compiler/cgen/dump.c`
-- [ ] `src/compiler/cgen/save.c`
+- [x] `src/compiler/cgen/cgen.c`
+- [x] `src/compiler/cgen/cgen.h`
+- [x] `src/compiler/cgen/dump.c`
+- [x] `src/compiler/cgen/save.c`
 
 ## Compiler CST
 
