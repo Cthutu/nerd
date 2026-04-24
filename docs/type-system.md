@@ -314,12 +314,17 @@ Today sema accepts interpolation of:
 - `f64`
 - `untyped integer`, which materialises to `i32` for runtime conversion
 - tuples whose elements are all interpolatable
+- fixed arrays whose element type is interpolatable
 
 Unsupported segment types, such as function values, produce a dedicated
 semantic error.
 
 Tuple interpolation renders the value in tuple literal shape, such as
 `(1, "one")` or `(1,)` for a one-element tuple. Nested tuples use the same rule
+recursively.
+
+Fixed array interpolation renders the value in array literal shape, such as
+`[1, 2, 3]`. Nested arrays and tuples use their own literal-shaped rendering
 recursively.
 
 The current runtime model also treats interpolated strings as temporary

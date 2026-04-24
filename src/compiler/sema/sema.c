@@ -2656,6 +2656,9 @@ internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
             }
             return true;
         }
+    case STK_Array:
+        return sema_type_is_interpolatable(
+            sema, sema->types[type_index].first_param_type);
     default:
         return sema_type_is_integer(sema, type_index);
     }

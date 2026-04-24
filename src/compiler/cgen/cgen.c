@@ -649,7 +649,11 @@ internal void cgen_add_value_field_path(CGen*          cgen,
 {
     cgen_add_value(cgen, value);
     for (u32 i = 0; i < field_count; ++i) {
-        arena_format(&cgen->arena, "._%u", fields[i]);
+        if ((fields[i] & (1u << 31)) != 0) {
+            arena_format(&cgen->arena, ".items[%u]", fields[i] & ~(1u << 31));
+        } else {
+            arena_format(&cgen->arena, "._%u", fields[i]);
+        }
     }
 }
 
@@ -681,6 +685,23 @@ internal void cgen_add_string_append_value(CGen*          cgen,
             cgen_add_string_append_literal(cgen, s(","));
         }
         cgen_add_string_append_literal(cgen, s(")"));
+        return;
+    }
+    if (type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Array) {
+        const SemaType* array = &cgen->ir->types[type_index];
+        cgen_add_string_append_literal(cgen, s("["));
+        for (u32 i = 0; i < array->return_type; ++i) {
+            if (i > 0) {
+                cgen_add_string_append_literal(cgen, s(", "));
+            }
+            ASSERT(field_count < 32,
+                   "Interpolated aggregate field path overflow");
+            fields[field_count] = (1u << 31) | i;
+            cgen_add_string_append_value(
+                cgen, value, array->first_param_type, fields, field_count + 1);
+        }
+        cgen_add_string_append_literal(cgen, s("]"));
         return;
     }
 
