@@ -62,9 +62,13 @@ void lsp_send_response(Arena* arena, JsonValue* response)
 {
     string output = json_stringify(arena, response, .pretty = false);
     lsp_log("Sending message:\n" STRINGP, STRINGV(output));
-    fprintf(stdout, "Content-Length: %zu\r\n\r\n", output.count);
-    fwrite(output.data, 1, output.count, stdout);
-    fflush(stdout);
+    bool header_ok =
+        fprintf(stdout, "Content-Length: %zu\r\n\r\n", output.count) >= 0;
+    usize written  = fwrite(output.data, 1, output.count, stdout);
+    bool  flush_ok = fflush(stdout) == 0;
+    if (!header_ok || written != output.count || !flush_ok) {
+        lsp_log("Failed to write LSP response");
+    }
     json_done(response);
 }
 

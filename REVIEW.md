@@ -83,71 +83,71 @@ dead code.
 
 ## Compiler Semantic Analysis
 
-- [ ] `src/compiler/sema/sema.c`
-- [ ] `src/compiler/sema/sema.h`
+- [x] `src/compiler/sema/sema.c`
+- [x] `src/compiler/sema/sema.h`
 
 ## Core
 
-- [ ] `src/core/arena.c`
-- [ ] `src/core/array.c`
-- [ ] `src/core/core.h`
-- [ ] `src/core/dir.c`
-- [ ] `src/core/filemap.c`
-- [ ] `src/core/hash.c`
-- [ ] `src/core/main.c`
-- [ ] `src/core/map.c`
-- [ ] `src/core/memory.c`
-- [ ] `src/core/mutex.c`
-- [ ] `src/core/output.c`
-- [ ] `src/core/path.c`
-- [ ] `src/core/random.c`
-- [ ] `src/core/shell.c`
-- [ ] `src/core/string.c`
-- [ ] `src/core/time.c`
+- [x] `src/core/arena.c`
+- [x] `src/core/array.c`
+- [x] `src/core/core.h`
+- [x] `src/core/dir.c`
+- [x] `src/core/filemap.c`
+- [x] `src/core/hash.c`
+- [x] `src/core/main.c`
+- [x] `src/core/map.c`
+- [x] `src/core/memory.c`
+- [x] `src/core/mutex.c`
+- [x] `src/core/output.c`
+- [x] `src/core/path.c`
+- [x] `src/core/random.c`
+- [x] `src/core/shell.c`
+- [x] `src/core/string.c`
+- [x] `src/core/time.c`
 
 ## ELF
 
-- [ ] `src/elf/elf.h`
-- [ ] `src/elf/load.c`
+- [x] `src/elf/elf.h`
+- [x] `src/elf/load.c`
 
 ## Interning
 
-- [ ] `src/intern/intern.c`
-- [ ] `src/intern/intern.h`
+- [x] `src/intern/intern.c`
+- [x] `src/intern/intern.h`
 
 ## LSP
 
-- [ ] `src/lsp/document.c`
-- [ ] `src/lsp/hover.c`
-- [ ] `src/lsp/lsp.c`
-- [ ] `src/lsp/lsp.h`
-- [ ] `src/lsp/semantic_tokens.c`
-- [ ] `src/lsp/utils.c`
+- [x] `src/lsp/document.c`
+- [x] `src/lsp/hover.c`
+- [x] `src/lsp/lsp.c`
+- [x] `src/lsp/lsp.h`
+- [x] `src/lsp/semantic_tokens.c`
+- [x] `src/lsp/utils.c`
 
 ## Object
 
-- [ ] `src/object/object.c`
-- [ ] `src/object/object.h`
+- [x] `src/object/object.c`
+- [x] `src/object/object.h`
 
 ## Table
 
-- [ ] `src/table/info.c`
-- [ ] `src/table/table.c`
-- [ ] `src/table/table.h`
+- [x] `src/table/info.c`
+- [x] `src/table/table.c`
+- [x] `src/table/table.h`
 
 ## Testing
 
-- [ ] `src/testing/diff.c`
-- [ ] `src/testing/diff.h`
-- [ ] `src/testing/testing.c`
-- [ ] `src/testing/testing.h`
+- [x] `src/testing/diff.c`
+- [x] `src/testing/diff.h`
+- [x] `src/testing/testing.c`
+- [x] `src/testing/testing.h`
 
 ## Timing
 
-- [ ] `src/timing/timing.c`
-- [ ] `src/timing/timing.h`
+- [x] `src/timing/timing.c`
+- [x] `src/timing/timing.h`
 
 ## Unicode
 
-- [ ] `src/unicode/unicode.c`
-- [ ] `src/unicode/unicode.h`
+- [x] `src/unicode/unicode.c`
+- [x] `src/unicode/unicode.h`

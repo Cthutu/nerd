@@ -90,6 +90,24 @@ internal cstr testing_copy_cstr(Arena* arena, cstr text)
     return copy;
 }
 
+internal bool testing_write_file(cstr path, string text)
+{
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        eprn("Failed to open file for writing: %s", path);
+        return false;
+    }
+
+    usize written      = fwrite(text.data, 1, text.count, file);
+    bool  close_failed = fclose(file) != 0;
+    if (written != text.count || close_failed) {
+        eprn("Failed to write file: %s", path);
+        return false;
+    }
+
+    return true;
+}
+
 internal string testing_trim_ascii_whitespace(string text)
 {
     usize start = 0;
@@ -1094,17 +1112,7 @@ internal bool testing_run_lsp_test(const LspTest* test)
         return false;
     }
 
-    FILE* input_file = fopen(input_path, "wb");
-    if (!input_file) {
-        eprn("Failed to open LSP input file: %s", input_path);
-        arena_done(&artifact_arena);
-        return false;
-    }
-
-    usize written = fwrite(input_text.data, 1, input_text.count, input_file);
-    fclose(input_file);
-    if (written != input_text.count) {
-        eprn("Failed to write LSP input file: %s", input_path);
+    if (!testing_write_file(input_path, input_text)) {
         arena_done(&artifact_arena);
         return false;
     }
@@ -1121,21 +1129,7 @@ internal bool testing_run_lsp_test(const LspTest* test)
     ShellResult run_result =
         shell_capture((cstr)run_command.data, &output_arena);
 
-    FILE* output_file = fopen(output_path, "wb");
-    if (!output_file) {
-        eprn("Failed to open LSP output file: %s", output_path);
-        arena_done(&output_arena);
-        arena_done(&artifact_arena);
-        return false;
-    }
-
-    written = fwrite(run_result.stdout_text.data,
-                     1,
-                     run_result.stdout_text.count,
-                     output_file);
-    fclose(output_file);
-    if (written != run_result.stdout_text.count) {
-        eprn("Failed to write LSP output file: %s", output_path);
+    if (!testing_write_file(output_path, run_result.stdout_text)) {
         arena_done(&output_arena);
         arena_done(&artifact_arena);
         return false;
@@ -1486,18 +1480,8 @@ internal bool testing_run_format_test(const FormatTest* test)
     cstr output_path =
         path_replace_extension(&artifact_arena, input_path, ".format");
 
-    FILE* file = fopen(input_path, "wb");
-    if (!file) {
+    if (!testing_write_file(input_path, test->source)) {
         arena_done(&artifact_arena);
-        eprn("Failed to open formatter input file: %s", input_path);
-        return false;
-    }
-
-    usize written = fwrite(test->source.data, 1, test->source.count, file);
-    fclose(file);
-    if (written != test->source.count) {
-        arena_done(&artifact_arena);
-        eprn("Failed to write formatter input file: %s", input_path);
         return false;
     }
 
@@ -1674,17 +1658,7 @@ internal bool testing_run_command_test(const CommandTest* test)
     path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
 #endif
 
-    FILE* file = fopen(input_path, "wb");
-    if (!file) {
-        eprn("Failed to open command input file: %s", input_path);
-        arena_done(&artifact_arena);
-        return false;
-    }
-
-    usize written = fwrite(test->source.data, 1, test->source.count, file);
-    fclose(file);
-    if (written != test->source.count) {
-        eprn("Failed to write command input file: %s", input_path);
+    if (!testing_write_file(input_path, test->source)) {
         arena_done(&artifact_arena);
         return false;
     }

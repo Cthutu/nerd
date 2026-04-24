@@ -128,6 +128,7 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
         return true;
 
     case TK_Integer:
+    case TK_Float:
         *out_type = LSP_SEMANTIC_NUMBER;
         return true;
     case TK_String:
