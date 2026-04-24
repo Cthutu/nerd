@@ -624,6 +624,12 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
     }
 }
 
+internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    return node->kind == CK_On && cst->ons[node->b].kind == COK_Value;
+}
+
 typedef struct {
     string symbol;
     string type;
@@ -1224,6 +1230,34 @@ internal void format_emit_block_contents(StringBuilder* sb,
     arena_done(&align_arena);
 }
 
+internal bool format_emit_call_with_block_on_arg(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index,
+                                                 u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind != CK_Call) {
+        return false;
+    }
+
+    const CstCallInfo* call = &cst->calls[node->b];
+    if (call->arg_count != 1) {
+        return false;
+    }
+
+    u32 arg_node = cst->call_args[call->first_arg];
+    if (!format_node_is_block_form_on(cst, arg_node)) {
+        return false;
+    }
+
+    format_emit_expr(sb, cst, lexer, node->a, 0);
+    sb_append_char(sb, '(');
+    format_emit_on_block_multiline(sb, cst, lexer, arg_node, indent_level);
+    sb_append_char(sb, ')');
+    return true;
+}
+
 internal void format_emit_block_statement(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
@@ -1288,7 +1322,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Statement) {
-        format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        if (!format_emit_call_with_block_on_arg(
+                sb, cst, lexer, stmt->a, indent_level)) {
+            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        }
         sb_append_char(sb, '\n');
     }
 }
@@ -1318,8 +1355,7 @@ internal void format_emit_value(StringBuilder* sb,
     switch (node->kind) {
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
-        if (cst->nodes[node->b].kind == CK_On &&
-            cst->ons[cst->nodes[node->b].b].kind == COK_Value) {
+        if (format_node_is_block_form_on(cst, node->b)) {
             sb_append_cstr(sb, " =>\n");
             format_emit_indent(sb, 1);
             format_emit_on_block_multiline(sb, cst, lexer, node->b, 1);
