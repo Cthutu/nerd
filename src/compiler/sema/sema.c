@@ -4450,9 +4450,9 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_ReturnExpr:
     case AK_IntegerNegate:
     case AK_LogicalNot:
-        return node->a == U32_MAX
-                   ? true
-                   : sema_validate_loop_control(lexer, ast, node->a, loop_depth);
+        return node->a == U32_MAX ? true
+                                  : sema_validate_loop_control(
+                                        lexer, ast, node->a, loop_depth);
     case AK_StringConcat:
     case AK_IntegerPlus:
     case AK_IntegerMinus:

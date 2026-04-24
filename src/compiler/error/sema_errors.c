@@ -705,9 +705,8 @@ bool error_0328_loop_control_outside_loop(NerdSource source,
                         span,
                         "This `" STRINGP "` is not inside a `for` loop",
                         STRINGV(keyword));
-    error_add_help(&error,
-                   "Move `" STRINGP "` into a `for` loop body.",
-                   STRINGV(keyword));
+    error_add_help(
+        &error, "Move `" STRINGP "` into a `for` loop body.", STRINGV(keyword));
     error_render(&error);
     return false;
 }

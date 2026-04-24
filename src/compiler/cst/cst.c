@@ -908,9 +908,9 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
     if (cst_current_token(state).kind == TK_break ||
         cst_current_token(state).kind == TK_continue) {
         u32     token_index = state->token_index;
-        CstKind kind = cst_current_token(state).kind == TK_break
-                           ? CK_BreakExpr
-                           : CK_ContinueExpr;
+        CstKind kind        = cst_current_token(state).kind == TK_break
+                                  ? CK_BreakExpr
+                                  : CK_ContinueExpr;
         cst_advance(state);
         return cst_emit_node(state,
                              (CstNode){

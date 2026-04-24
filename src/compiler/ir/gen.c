@@ -1495,12 +1495,12 @@ internal void ir_generate_return_statement(const Lexer*   lex,
     ir_add_return(ir, value, ir_node_type_index(ast, sema, return_node->a));
 }
 
-internal IrStatementResult ir_generate_statement(const Lexer*  lex,
-                                                 const Ast*    ast,
-                                                 const Sema*   sema,
-                                                 u32           function_index,
-                                                 u32           node_index,
-                                                 IrLoopLabels  loop,
+internal IrStatementResult ir_generate_statement(const Lexer* lex,
+                                                 const Ast*   ast,
+                                                 const Sema*  sema,
+                                                 u32          function_index,
+                                                 u32          node_index,
+                                                 IrLoopLabels loop,
                                                  Array(IrValue) node_values,
                                                  u64* next_value_index,
                                                  Ir*  ir)
@@ -1588,21 +1588,20 @@ internal IrStatementResult ir_generate_statement(const Lexer*  lex,
                 ir_node_type_index(ast, sema, for_info->condition_node_index),
                 end_label);
         }
-        IrLoopLabels inner_loop = {.break_label    = end_label,
-                                   .continue_label = continue_label};
-        IrLoopLabels previous_loop = g_ir_current_loop;
-        g_ir_current_loop          = inner_loop;
-        IrStatementResult body_result =
-            ir_generate_statement(lex,
-                                  ast,
-                                  sema,
-                                  function_index,
-                                  node->b,
-                                  inner_loop,
-                                  node_values,
-                                  next_value_index,
-                                  ir);
-        g_ir_current_loop = previous_loop;
+        IrLoopLabels inner_loop       = {.break_label    = end_label,
+                                         .continue_label = continue_label};
+        IrLoopLabels previous_loop    = g_ir_current_loop;
+        g_ir_current_loop             = inner_loop;
+        IrStatementResult body_result = ir_generate_statement(lex,
+                                                              ast,
+                                                              sema,
+                                                              function_index,
+                                                              node->b,
+                                                              inner_loop,
+                                                              node_values,
+                                                              next_value_index,
+                                                              ir);
+        g_ir_current_loop             = previous_loop;
         if (for_info->condition_node_index == U32_MAX &&
             body_result == IR_STMT_RETURN) {
             return IR_STMT_RETURN;
@@ -1820,17 +1819,16 @@ internal void ir_generate_function_body(const Lexer* lex,
             if (!ir_node_is_block_statement(&ast->nodes[i])) {
                 continue;
             }
-            IrStatementResult result =
-                ir_generate_statement(lex,
-                                      ast,
-                                      sema,
-                                      function_index,
-                                      i,
-                                      (IrLoopLabels){.break_label = -1,
-                                                     .continue_label = -1},
-                                      node_values,
-                                      &next_value_index,
-                                      ir);
+            IrStatementResult result = ir_generate_statement(
+                lex,
+                ast,
+                sema,
+                function_index,
+                i,
+                (IrLoopLabels){.break_label = -1, .continue_label = -1},
+                node_values,
+                &next_value_index,
+                ir);
             if (result == IR_STMT_RETURN) {
                 has_explicit_return = true;
                 break;

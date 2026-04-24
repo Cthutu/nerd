@@ -119,6 +119,8 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_for:
     case TK_on:
     case TK_else:
+    case TK_break:
+    case TK_continue:
     case TK_return:
     case TK_true:
     case TK_false:
