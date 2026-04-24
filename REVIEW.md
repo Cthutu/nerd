@@ -76,10 +76,10 @@ dead code.
 
 ## Compiler Lexer
 
-- [ ] `src/compiler/lexer/dump.c`
-- [ ] `src/compiler/lexer/interner.c`
-- [ ] `src/compiler/lexer/lexer.c`
-- [ ] `src/compiler/lexer/lexer.h`
+- [x] `src/compiler/lexer/dump.c`
+- [x] `src/compiler/lexer/interner.c`
+- [x] `src/compiler/lexer/lexer.c`
+- [x] `src/compiler/lexer/lexer.h`
 
 ## Compiler Semantic Analysis
 

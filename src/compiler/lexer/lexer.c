@@ -672,6 +672,7 @@ bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 
     for (usize i = 0; i < source_code.count;) {
         if (!lexer_lex_one_token(source, source_code, &i, lexer, true)) {
+            lex_done(lexer);
             return false;
         }
     }
