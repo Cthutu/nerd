@@ -362,7 +362,7 @@ internal bool ast_parse_block_statement(AstParseState* state);
 //------------------------------------------------------------------------------
 // Parse one standalone block statement.
 
-internal bool ast_parse_nested_block(AstParseState* state, u32* out_node)
+bool ast_parse_nested_block(AstParseState* state, u32* out_node)
 {
     ASSERT(state->token.kind == TK_LBrace, "Expected '{' token for block");
 
@@ -531,10 +531,25 @@ internal bool ast_parse_block_statement(AstParseState* state)
     if (state->token.kind == TK_break || state->token.kind == TK_continue) {
         AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
         u32     token_index = state->token.token_index;
+        u32     payload     = U32_MAX;
+        if (kind == AK_Break &&
+            ast_token_starts_expression(ast_cursor_kind(state))) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            bool previous_boundary          = state->allow_statement_boundary;
+            state->allow_statement_boundary = true;
+            if (!ast_parse_expr(state, &payload)) {
+                state->allow_statement_boundary = previous_boundary;
+                return false;
+            }
+            state->allow_statement_boundary = previous_boundary;
+        }
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
+                                 .a           = payload,
                              },
                              NULL);
     }

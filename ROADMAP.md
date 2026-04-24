@@ -735,19 +735,32 @@ needed earlier.
 
 - [ ] 60. Add labelled block syntax.
   - Use `$` for labels rather than `@`.
-  - General block syntax becomes `[$label] { ... }`.
-  - This label model should apply cleanly to loop bodies as they are block
-    forms.
+  - Labelled blocks are expression blocks, written `$label { ... }`.
+  - Plain `{ ... }` remains statement/block-body syntax.
+  - This label model should apply cleanly to loop bodies once loops become
+    value-producing expressions.
 
 - [ ] 61. Add expression blocks.
   - Add expression-block syntax as:
-    - `$ [$label] { ... }`
-  - Expression blocks should later allow structured value flow out of the block
-    without overloading ordinary statement blocks.
+    - `${ ... }` for an unlabelled expression block
+    - `$label { ... }` for a labelled expression block
+  - Non-void expression blocks must return a value on every reachable path via
+    `break <expr>`.
+  - All value-producing `break` statements targeting the same expression block
+    must produce the same exact type.
+  - Void expression blocks may fall through and may use `break` without a value.
+  - Expression blocks allow structured value flow without overloading ordinary
+    statement blocks.
   - Keep the semantics compatible with future VM execution and explicit IR.
 
 - [ ] 62. Add labelled `break`/`continue` and loop expressions.
   - Support `break $label <expr>` and `continue $label`.
+  - Plain `break <expr>` targets the nearest surrounding expression block or
+    value-producing loop.
+  - Labelled `break $label <expr>` targets the referenced expression block or
+    labelled loop.
+  - Labelled `continue $label` targets labelled loops only; continuing to a
+    non-loop expression block is invalid.
   - Add value-producing loop expressions with `break <expr>`.
   - Add `else` branches for loops only when the associated loop has reachable
     value-producing `break` paths.

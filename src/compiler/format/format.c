@@ -328,9 +328,19 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_BreakExpr:
         sb_append_cstr(sb, "break");
+        if (node->a != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(sb, cst, lexer, node->a, 0);
+        }
         break;
     case CK_ContinueExpr:
         sb_append_cstr(sb, "continue");
+        break;
+    case CK_ExprBlock:
+        sb_append_cstr(sb, "$");
+        sb_append_cstr(sb, "{\n");
+        format_emit_block_contents(sb, cst, lexer, node->a, 1);
+        sb_append_char(sb, '}');
         break;
     case CK_IntegerPlus:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
@@ -792,8 +802,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Return:
     case CK_ReturnExpr:
     case CK_Break:
-    case CK_Continue:
     case CK_BreakExpr:
+    case CK_Continue:
     case CK_ContinueExpr:
         return node->a == U32_MAX
                    ? node->token_index
@@ -858,6 +868,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_FnBlock:
         return format_node_end_token_index(cst, lexer, node->b);
+    case CK_ExprBlock:
+        return format_node_end_token_index(cst, lexer, node->a);
     case CK_Block:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
@@ -1431,6 +1443,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Break || stmt->kind == CK_Continue) {
         sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "continue");
+        if (stmt->a != U32_MAX) {
+            sb_append_char(sb, ' ');
+            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+        }
         sb_append_char(sb, '\n');
         return;
     }

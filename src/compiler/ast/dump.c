@@ -88,6 +88,8 @@ string ast_kind_to_string(AstKind kind)
         return s("BreakExpr");
     case AK_ContinueExpr:
         return s("ContinueExpr");
+    case AK_ExprBlock:
+        return s("ExprBlock");
     case AK_Block:
         return s("Block");
     case AK_For:

@@ -51,11 +51,12 @@
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
-// | CK_BreakExpr       | 0                     | 0                     |
+// | CK_BreakExpr       | Expr node or U32_MAX  | 0                     |
 // | CK_ContinueExpr    | 0                     | 0                     |
+// | CK_ExprBlock       | Block node index      | 0                     |
 // | CK_Block           | First stmt index      | End-exclusive index   |
 // | CK_For             | CST for-info index   | Body block node      |
-// | CK_Break           | 0                     | 0                     |
+// | CK_Break           | Expr node or U32_MAX  | 0                     |
 // | CK_Continue        | 0                     | 0                     |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
@@ -104,6 +105,7 @@ typedef enum {
     CK_ReturnExpr,
     CK_BreakExpr,
     CK_ContinueExpr,
+    CK_ExprBlock,
     CK_Block,
     CK_For,
     CK_Break,

@@ -1449,12 +1449,43 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_StringLiteral:
     case AK_BoolLiteral:
     case AK_ZeroInit:
-    case AK_Break:
     case AK_Continue:
-    case AK_BreakExpr:
     case AK_ContinueExpr:
     case AK_Block:
         return true;
+    case AK_Break:
+    case AK_BreakExpr:
+        return node->a == U32_MAX ||
+               sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema);
+    case AK_ExprBlock:
+        {
+            const AstNode* block = &ast->nodes[node->a];
+            ASSERT(block->kind == AK_Block, "Expected expression block body");
+            for (u32 i = block->a; i < block->b; ++i) {
+                if (!ast_node_is_block_statement(&ast->nodes[i])) {
+                    continue;
+                }
+                if (!sema_resolve_node_refs(lexer,
+                                            ast,
+                                            owner_decl_index,
+                                            current_function_symbol,
+                                            capture_scope_index,
+                                            scope_index,
+                                            i,
+                                            sema)) {
+                    return false;
+                }
+                i = ast_block_statement_end_exclusive(ast, i) - 1;
+            }
+            return true;
+        }
     case AK_InterpPartExpr:
         return sema_resolve_node_refs(lexer,
                                       ast,
@@ -2485,7 +2516,17 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
         }
 
         if (stmt->kind == AK_Break || stmt->kind == AK_Continue) {
-            sema->node_type_indices[i] = sema_builtin_type(sema, STK_Void);
+            if (stmt->kind == AK_Break && stmt->a != U32_MAX) {
+                u32 ignored = sema_no_type();
+                if (!sema_infer_node_type(
+                        lexer, ast, sema, stmt->a, sema_no_type(), &ignored)) {
+                    return false;
+                }
+                sema->node_type_indices[i] = ignored;
+            } else {
+                sema->node_type_indices[i] =
+                    sema_builtin_type(sema, STK_Void);
+            }
             continue;
         }
 
@@ -2521,6 +2562,108 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
         return true;
     }
 
+    return true;
+}
+
+internal bool sema_infer_expr_block_type(const Lexer* lexer,
+                                         const Ast*   ast,
+                                         Sema*        sema,
+                                         u32          node_index,
+                                         u32          expected_type,
+                                         u32*         out_type_index)
+{
+    const AstNode* node  = &ast->nodes[node_index];
+    const AstNode* block = &ast->nodes[node->a];
+    ASSERT(node->kind == AK_ExprBlock, "Expected expression block");
+    ASSERT(block->kind == AK_Block, "Expected expression block body");
+
+    u32  result_type          = expected_type;
+    u32  result_type_node     = node_index;
+    bool has_value_break      = false;
+    bool definitely_exits     = false;
+    u32  void_type            = sema_builtin_type(sema, STK_Void);
+    Arena temp_arena          = {0};
+    arena_init(&temp_arena);
+
+    for (u32 i = block->a; i < block->b; ++i) {
+        const AstNode* stmt = &ast->nodes[i];
+        if (!ast_node_is_block_statement(stmt)) {
+            continue;
+        }
+
+        if (stmt->kind == AK_Break) {
+            if (stmt->a == U32_MAX) {
+                sema->node_type_indices[i] = void_type;
+                result_type                = result_type == sema_no_type()
+                                                 ? void_type
+                                                 : result_type;
+            } else {
+                u32 break_expected =
+                    result_type == sema_no_type() ? expected_type : result_type;
+                u32 break_type = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          stmt->a,
+                                          break_expected,
+                                          &break_type)) {
+                    arena_done(&temp_arena);
+                    return false;
+                }
+
+                if (result_type == sema_no_type()) {
+                    result_type      = break_type;
+                    result_type_node = stmt->a;
+                } else if (sema_type_is_concrete_integer(sema, result_type) &&
+                           sema->types[break_type].kind ==
+                               STK_UntypedInteger) {
+                    break_type = result_type;
+                } else if (sema_type_is_concrete_float(sema, result_type) &&
+                           sema->types[break_type].kind == STK_UntypedFloat) {
+                    break_type = result_type;
+                } else if (result_type != break_type) {
+                    bool ok = error_0320_on_branch_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[result_type_node]),
+                        sema_type_name(sema, &temp_arena, result_type),
+                        sema_node_span(lexer, &ast->nodes[stmt->a]),
+                        sema_type_name(sema, &temp_arena, break_type));
+                    arena_done(&temp_arena);
+                    return ok;
+                }
+
+                sema->node_type_indices[i] = break_type;
+                has_value_break            = true;
+            }
+
+            definitely_exits = true;
+            break;
+        }
+
+        u32 ignored = sema_no_type();
+        if (!sema_infer_node_type(
+                lexer, ast, sema, i, sema_no_type(), &ignored)) {
+            arena_done(&temp_arena);
+            return false;
+        }
+        i = ast_block_statement_end_exclusive(ast, i) - 1;
+    }
+
+    if (!has_value_break) {
+        result_type = result_type == sema_no_type() ? void_type : result_type;
+    }
+
+    if (result_type != void_type && !definitely_exits) {
+        bool ok = error_0329_missing_expression_block_break(
+            lexer->source,
+            sema_node_span(lexer, node),
+            sema_type_name(sema, &temp_arena, result_type));
+        arena_done(&temp_arena);
+        return ok;
+    }
+
+    arena_done(&temp_arena);
+    *out_type_index = result_type;
     return true;
 }
 
@@ -2608,6 +2751,12 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Assign:
     case AK_AnnotatedValue:
         return sema_node_contains_interpolation(ast, node->b);
+    case AK_Break:
+    case AK_BreakExpr:
+        return node->a != U32_MAX &&
+               sema_node_contains_interpolation(ast, node->a);
+    case AK_ExprBlock:
+        return sema_node_contains_interpolation(ast, node->a);
     case AK_For:
         {
             const AstForInfo* for_info = &ast->fors[node->a];
@@ -2890,6 +3039,12 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             i = ast_block_statement_end_exclusive(ast, i) - 1;
         }
         return true;
+    case AK_ExprBlock:
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
+    case AK_Break:
+    case AK_BreakExpr:
+        return node->a == U32_MAX ||
+               sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_For:
         {
             const AstForInfo* for_info = &ast->fors[node->a];
@@ -3012,10 +3167,25 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_Break:
-    case AK_Continue:
     case AK_BreakExpr:
+        if (node->a == U32_MAX) {
+            type_index = sema_builtin_type(sema, STK_Void);
+        } else if (!sema_infer_node_type(
+                       lexer, ast, sema, node->a, expected_type, &type_index)) {
+            return false;
+        }
+        break;
+
+    case AK_Continue:
     case AK_ContinueExpr:
         type_index = sema_builtin_type(sema, STK_Void);
+        break;
+
+    case AK_ExprBlock:
+        if (!sema_infer_expr_block_type(
+                lexer, ast, sema, node_index, expected_type, &type_index)) {
+            return false;
+        }
         break;
 
     case AK_Statement:
@@ -4310,22 +4480,32 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
 internal bool sema_validate_loop_control(const Lexer* lexer,
                                          const Ast*   ast,
                                          u32          node_index,
-                                         u32          loop_depth)
+                                         u32          loop_depth,
+                                         u32          expr_block_depth)
 {
     const AstNode* node = &ast->nodes[node_index];
 
     switch (node->kind) {
     case AK_Break:
-    case AK_Continue:
     case AK_BreakExpr:
+        if (loop_depth == 0 && expr_block_depth == 0) {
+            return error_0328_loop_control_outside_loop(
+                lexer->source,
+                sema_node_span(lexer, node),
+                s("break"));
+        }
+        if (node->a != U32_MAX) {
+            return sema_validate_loop_control(
+                lexer, ast, node->a, loop_depth, expr_block_depth);
+        }
+        return true;
+    case AK_Continue:
     case AK_ContinueExpr:
         if (loop_depth == 0) {
             return error_0328_loop_control_outside_loop(
                 lexer->source,
                 sema_node_span(lexer, node),
-                (node->kind == AK_Break || node->kind == AK_BreakExpr)
-                    ? s("break")
-                    : s("continue"));
+                s("continue"));
         }
         return true;
     case AK_Block:
@@ -4333,12 +4513,16 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             if (!ast_node_is_block_statement(&ast->nodes[i])) {
                 continue;
             }
-            if (!sema_validate_loop_control(lexer, ast, i, loop_depth)) {
+            if (!sema_validate_loop_control(
+                    lexer, ast, i, loop_depth, expr_block_depth)) {
                 return false;
             }
             i = ast_block_statement_end_exclusive(ast, i) - 1;
         }
         return true;
+    case AK_ExprBlock:
+        return sema_validate_loop_control(
+            lexer, ast, node->a, loop_depth, expr_block_depth + 1);
     case AK_For:
         {
             const AstForInfo* for_info = &ast->fors[node->a];
@@ -4347,13 +4531,17 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                         lexer,
                         ast,
                         ast->for_items[for_info->first_init + i],
-                        0)) {
+                        0,
+                        expr_block_depth)) {
                     return false;
                 }
             }
             if (for_info->condition_node_index != U32_MAX &&
-                !sema_validate_loop_control(
-                    lexer, ast, for_info->condition_node_index, 0)) {
+                !sema_validate_loop_control(lexer,
+                                            ast,
+                                            for_info->condition_node_index,
+                                            0,
+                                            expr_block_depth)) {
                 return false;
             }
             for (u32 i = 0; i < for_info->update_count; ++i) {
@@ -4361,12 +4549,13 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                         lexer,
                         ast,
                         ast->for_items[for_info->first_update + i],
-                        0)) {
+                        0,
+                        expr_block_depth)) {
                     return false;
                 }
             }
             return sema_validate_loop_control(
-                lexer, ast, node->b, loop_depth + 1);
+                lexer, ast, node->b, loop_depth + 1, expr_block_depth);
         }
     case AK_FnDef:
         {
@@ -4376,26 +4565,31 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                     if (!ast_node_is_block_statement(&ast->nodes[i])) {
                         continue;
                     }
-                    if (!sema_validate_loop_control(lexer, ast, i, 0)) {
+                    if (!sema_validate_loop_control(lexer, ast, i, 0, 0)) {
                         return false;
                     }
                     i = ast_block_statement_end_exclusive(ast, i) - 1;
                 }
                 return true;
             }
-            return sema_validate_loop_control(lexer, ast, fn_start->b - 1, 0);
+            return sema_validate_loop_control(
+                lexer, ast, fn_start->b - 1, 0, 0);
         }
     case AK_On:
         {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (!sema_validate_loop_control(lexer, ast, node->a, loop_depth)) {
+            if (!sema_validate_loop_control(
+                    lexer, ast, node->a, loop_depth, expr_block_depth)) {
                 return false;
             }
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                if (!sema_validate_loop_control(
-                        lexer, ast, branch->expr_node_index, loop_depth)) {
+                if (!sema_validate_loop_control(lexer,
+                                                ast,
+                                                branch->expr_node_index,
+                                                loop_depth,
+                                                expr_block_depth)) {
                     return false;
                 }
             }
@@ -4403,7 +4597,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
         }
     case AK_Call:
         {
-            if (!sema_validate_loop_control(lexer, ast, node->a, loop_depth)) {
+            if (!sema_validate_loop_control(
+                    lexer, ast, node->a, loop_depth, expr_block_depth)) {
                 return false;
             }
             const AstCallInfo* call = &ast->calls[node->b];
@@ -4412,7 +4607,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                         lexer,
                         ast,
                         ast->call_args[call->first_arg + i],
-                        loop_depth)) {
+                        loop_depth,
+                        expr_block_depth)) {
                     return false;
                 }
             }
@@ -4420,7 +4616,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
         }
     case AK_InterpolatedString:
         for (u32 i = node->a; i < node->b; ++i) {
-            if (!sema_validate_loop_control(lexer, ast, i, loop_depth)) {
+            if (!sema_validate_loop_control(
+                    lexer, ast, i, loop_depth, expr_block_depth)) {
                 return false;
             }
         }
@@ -4433,8 +4630,11 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_IntegerNegate:
     case AK_LogicalNot:
         return node->a == U32_MAX ? true
-                                  : sema_validate_loop_control(
-                                        lexer, ast, node->a, loop_depth);
+                                  : sema_validate_loop_control(lexer,
+                                                               ast,
+                                                               node->a,
+                                                               loop_depth,
+                                                               expr_block_depth);
     case AK_StringConcat:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -4456,12 +4656,15 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_RangeExclusive:
     case AK_RangeInclusive:
     case AK_AnnotatedValue:
-        return sema_validate_loop_control(lexer, ast, node->a, loop_depth) &&
-               sema_validate_loop_control(lexer, ast, node->b, loop_depth);
+        return sema_validate_loop_control(
+                   lexer, ast, node->a, loop_depth, expr_block_depth) &&
+               sema_validate_loop_control(
+                   lexer, ast, node->b, loop_depth, expr_block_depth);
     case AK_Bind:
     case AK_Variable:
     case AK_Assign:
-        return sema_validate_loop_control(lexer, ast, node->b, loop_depth);
+        return sema_validate_loop_control(
+            lexer, ast, node->b, loop_depth, expr_block_depth);
     default:
         return true;
     }
@@ -4471,7 +4674,7 @@ internal bool sema_validate_all_loop_control(const Lexer* lexer, const Ast* ast)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         if (ast->nodes[i].kind == AK_FnDef &&
-            !sema_validate_loop_control(lexer, ast, i, 0)) {
+            !sema_validate_loop_control(lexer, ast, i, 0, 0)) {
             return false;
         }
     }

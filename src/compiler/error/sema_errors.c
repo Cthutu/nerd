@@ -711,3 +711,33 @@ bool error_0328_loop_control_outside_loop(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a value-producing expression block that can fall through.
+
+bool error_0329_missing_expression_block_break(NerdSource source,
+                                               ErrorSpan  span,
+                                               string     type_name)
+{
+    ErrorInfo error =
+        error_init(329,
+                   source,
+                   span,
+                   "Missing `break` for expression block returning `" STRINGP
+                   "`",
+                   STRINGV(type_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression block can reach the end without "
+                        "breaking with a `" STRINGP "` value",
+                        STRINGV(type_name));
+    error_add_note(&error,
+                   "Value-producing expression blocks must exit every "
+                   "reachable path with `break <expr>`.");
+    error_add_help(&error,
+                   "Add `break <expr>` before the block ends or use a void "
+                   "context if the block should not produce a value.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

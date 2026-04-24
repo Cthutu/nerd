@@ -68,6 +68,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_LParen:
     case TK_fn:
     case TK_on:
+    case TK_Dollar:
         return true;
     default:
         return false;
@@ -294,6 +295,7 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
                              (AstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
+                                 .a           = U32_MAX,
                              },
                              out_node);
     }
@@ -710,6 +712,26 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         return ast_parse_declaration(state, out_node);
     case TK_on:
         return ast_parse_on_expr(state, token, out_node);
+    case TK_Dollar:
+        {
+            if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &token),
+                                                 TK_LBrace,
+                                                 state->token.kind);
+            }
+            u32 block_node = 0;
+            if (!ast_parse_nested_block(state, &block_node)) {
+                return false;
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_ExprBlock,
+                                     .token_index = token.token_index,
+                                     .a           = block_node,
+                                 },
+                                 out_node);
+        }
     default:
         return error_0201_missing_value(
             token.source, ast_token_span(state, &token), token.kind);

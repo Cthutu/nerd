@@ -217,6 +217,9 @@ bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span);
 bool error_0328_loop_control_outside_loop(NerdSource source,
                                           ErrorSpan  span,
                                           string     keyword);
+bool error_0329_missing_expression_block_break(NerdSource source,
+                                               ErrorSpan  span,
+                                               string     type_name);
 
 //------------------------------------------------------------------------------
 // Low-level error system

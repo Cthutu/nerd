@@ -639,10 +639,10 @@ internal bool lexer_lex_one_token(NerdSource source,
         ['*'] = TK_Star,      ['/'] = TK_Slash,  ['%'] = TK_Percent,
         ['('] = TK_LParen,    [')'] = TK_RParen, [','] = TK_Comma,
         [';'] = TK_Semicolon, ['{'] = TK_LBrace, ['}'] = TK_RBrace,
-        ['.'] = TK_Dot,       ['@'] = TK_At,     [':'] = TK_Colon,
-        ['='] = TK_Equal,     ['!'] = TK_Bang,   ['&'] = TK_Amp,
-        ['|'] = TK_Pipe,      ['^'] = TK_Caret,  ['<'] = TK_Less,
-        ['>'] = TK_Greater,
+        ['.'] = TK_Dot,       ['@'] = TK_At,     ['$'] = TK_Dollar,
+        [':'] = TK_Colon,     ['='] = TK_Equal,  ['!'] = TK_Bang,
+        ['&'] = TK_Amp,       ['|'] = TK_Pipe,   ['^'] = TK_Caret,
+        ['<'] = TK_Less,      ['>'] = TK_Greater,
     };
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic pop

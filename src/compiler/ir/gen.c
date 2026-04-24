@@ -315,7 +315,19 @@ typedef enum : u8 {
 typedef struct {
     i64 break_label;
     i64 continue_label;
+    i64 expr_break_label;
+    IrValue expr_result;
+    u32 expr_result_type;
 } IrLoopLabels;
+
+internal IrLoopLabels ir_no_control_labels(void)
+{
+    return (IrLoopLabels){
+        .break_label      = -1,
+        .continue_label   = -1,
+        .expr_break_label = -1,
+    };
+}
 
 void ir_add_equal(Ir*     ir,
                   IrValue lvalue,
@@ -685,6 +697,15 @@ internal void    ir_generate_return_statement(const Lexer*   lex,
                                               Array(IrValue) node_values,
                                               u64* next_value_index,
                                               Ir*  ir);
+internal IrStatementResult ir_generate_statement(const Lexer* lex,
+                                                 const Ast*   ast,
+                                                 const Sema*  sema,
+                                                 u32          function_index,
+                                                 u32          node_index,
+                                                 IrLoopLabels loop,
+                                                 Array(IrValue) node_values,
+                                                 u64* next_value_index,
+                                                 Ir*  ir);
 
 internal void ir_append_string_node(const Lexer* lex,
                                     const Ast*   ast,
@@ -1308,6 +1329,39 @@ internal IrValue ir_lower_node(const Lexer* lex,
             return result;
         }
 
+    case AK_ExprBlock:
+        {
+            u32     result_type = ir_node_type_index(ast, sema, node_index);
+            IrValue result      = ir_unset_value();
+            if (result_type != ir_builtin_type(sema, STK_Void)) {
+                result = (IrValue){
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = result_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_temp_local(ir, result, result_type);
+            }
+
+            i64 end_label = (i64)(*next_value_index)++;
+            IrLoopLabels block_control = loop;
+            block_control.expr_break_label = end_label;
+            block_control.expr_result      = result;
+            block_control.expr_result_type = result_type;
+
+            (void)ir_generate_statement(lex,
+                                        ast,
+                                        sema,
+                                        U32_MAX,
+                                        node->a,
+                                        block_control,
+                                        node_values,
+                                        next_value_index,
+                                        ir);
+            ir_add_label(ir, end_label);
+            node_values[node_index] = result;
+            return result;
+        }
+
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -1624,8 +1678,27 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_Break) {
-        ASSERT(loop.break_label >= 0, "Expected loop break label");
-        ir_add_jump(ir, loop.break_label);
+        if (node->a != U32_MAX) {
+            ASSERT(loop.expr_break_label >= 0,
+                   "Expected expression block break label");
+            IrValue value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            ir_add_assign(ir,
+                          loop.expr_result,
+                          loop.expr_result_type,
+                          value,
+                          ir_node_type_index(ast, sema, node->a));
+            ir_add_jump(ir, loop.expr_break_label);
+        } else {
+            ASSERT(loop.break_label >= 0, "Expected loop break label");
+            ir_add_jump(ir, loop.break_label);
+        }
         return IR_STMT_BREAK;
     }
 
@@ -1670,8 +1743,10 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 ir_node_type_index(ast, sema, for_info->condition_node_index),
                 end_label);
         }
-        IrLoopLabels      inner_loop  = {.break_label    = end_label,
-                                         .continue_label = continue_label};
+        IrLoopLabels inner_loop     = loop;
+        inner_loop.break_label      = end_label;
+        inner_loop.continue_label   = continue_label;
+        inner_loop.expr_break_label = loop.expr_break_label;
         IrStatementResult body_result = ir_generate_statement(lex,
                                                               ast,
                                                               sema,
@@ -1811,7 +1886,7 @@ internal void ir_generate_global_init(const Lexer*    lex,
             ast,
             sema,
             decl->value_node_index,
-            (IrLoopLabels){.break_label = -1, .continue_label = -1},
+            ir_no_control_labels(),
             node_values,
             next_value_index,
             ir);
@@ -1902,7 +1977,7 @@ internal void ir_generate_function_body(const Lexer* lex,
             ast,
             sema,
             fn_start_node->b - 1,
-            (IrLoopLabels){.break_label = -1, .continue_label = -1},
+            ir_no_control_labels(),
             node_values,
             &next_value_index,
             ir);
@@ -1921,7 +1996,7 @@ internal void ir_generate_function_body(const Lexer* lex,
                 sema,
                 function_index,
                 i,
-                (IrLoopLabels){.break_label = -1, .continue_label = -1},
+                ir_no_control_labels(),
                 node_values,
                 &next_value_index,
                 ir);

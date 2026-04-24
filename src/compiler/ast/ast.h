@@ -51,11 +51,12 @@
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
 // | AK_ReturnExpr      | Ast index of expr or U32_MAX | 0                    |
-// | AK_BreakExpr       | 0                 | 0                               |
+// | AK_BreakExpr       | Ast index of expr or U32_MAX | 0                    |
 // | AK_ContinueExpr    | 0                 | 0                               |
+// | AK_ExprBlock       | Ast index of block | 0                              |
 // | AK_Block           | First stmt index  | End-exclusive stmt index        |
 // | AK_For             | Ast for-info index | Body block index             |
-// | AK_Break           | 0                 | 0                               |
+// | AK_Break           | Ast index of expr or U32_MAX | 0                    |
 // | AK_Continue        | 0                 | 0                               |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_Variable        | Symbol            | Ast index of type/value/zero    |
@@ -107,6 +108,7 @@ typedef enum {
     AK_ReturnExpr,
     AK_BreakExpr,
     AK_ContinueExpr,
+    AK_ExprBlock,
     AK_Block,
     AK_For,
     AK_Break,

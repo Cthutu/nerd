@@ -34,6 +34,7 @@ internal bool cst_parse_bind(CstParseState* state, u32* out_node);
 internal bool cst_parse_variable(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node);
+internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
@@ -154,6 +155,28 @@ internal bool cst_starts_variable(const CstParseState* state)
     return cst_current_token(state).kind == TK_Symbol &&
            cst_peek_kind_at(state, 1) == TK_Colon &&
            cst_peek_kind_at(state, 2) != TK_Colon;
+}
+
+internal bool cst_token_starts_expression(TokenKind kind)
+{
+    switch (kind) {
+    case TK_Integer:
+    case TK_Float:
+    case TK_String:
+    case TK_InterpolatedStringStart:
+    case TK_true:
+    case TK_false:
+    case TK_Symbol:
+    case TK_Bang:
+    case TK_Minus:
+    case TK_LParen:
+    case TK_fn:
+    case TK_on:
+    case TK_Dollar:
+        return true;
+    default:
+        return false;
+    }
 }
 
 internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
@@ -700,6 +723,24 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
         return cst_parse_fn_expr(state, out_node);
     case TK_on:
         return cst_parse_on_expr(state, out_node);
+    case TK_Dollar:
+        {
+            u32 token_index = state->token_index;
+            u32 block       = 0;
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_LBrace ||
+                !cst_parse_nested_block(state, &block)) {
+                return false;
+            }
+
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_ExprBlock,
+                                     .token_index = token_index,
+                                     .a           = block,
+                                 },
+                                 out_node);
+        }
 
     default:
         return false;
@@ -916,6 +957,7 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
                              (CstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
+                                 .a           = U32_MAX,
                              },
                              out_node);
     }
@@ -1297,10 +1339,18 @@ internal bool cst_parse_block_statement(CstParseState* state)
         CstKind kind =
             cst_current_token(state).kind == TK_break ? CK_Break : CK_Continue;
         cst_advance(state);
+        u32 payload = U32_MAX;
+        if (kind == CK_Break &&
+            cst_token_starts_expression(cst_current_token(state).kind)) {
+            if (!cst_parse_expr_bp(state, 0, &payload)) {
+                return false;
+            }
+        }
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
+                                 .a           = payload,
                              },
                              NULL);
     }

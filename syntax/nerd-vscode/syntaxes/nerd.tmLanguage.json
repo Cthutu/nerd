@@ -107,7 +107,7 @@
                 },
                 {
                     "name": "keyword.operator.pattern.nerd",
-                    "match": "@"
+                    "match": "[@$]"
                 },
                 {
                     "name": "keyword.operator.range.nerd",
