@@ -1444,9 +1444,9 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
 }
 
 //------------------------------------------------------------------------------
-// Format one source file and save the result to the given output path.
+// Format one source file into an arena-owned string.
 
-bool format_file(cstr input_path, cstr output_path)
+bool format_file_to_string(cstr input_path, Arena* arena, string* out_text)
 {
     FileMap map  = {0};
     string  text = filemap_load(input_path, &map);
@@ -1454,27 +1454,36 @@ bool format_file(cstr input_path, cstr output_path)
         return false;
     }
 
+    bool ok = format_source(
+        (NerdSource){
+            .source      = text,
+            .source_path = s(input_path),
+        },
+        arena,
+        out_text);
+
+    filemap_unload(&map);
+    return ok;
+}
+
+//------------------------------------------------------------------------------
+// Format one source file and save the result to the given output path.
+
+bool format_file(cstr input_path, cstr output_path)
+{
     Arena arena = {0};
     arena_init(&arena);
 
     string rendered = {0};
-    bool   ok       = format_source(
-        (NerdSource){
-                    .source      = text,
-                    .source_path = s(input_path),
-        },
-        &arena,
-        &rendered);
+    bool   ok       = format_file_to_string(input_path, &arena, &rendered);
     if (!ok) {
         arena_done(&arena);
-        filemap_unload(&map);
         return false;
     }
 
     FILE* file = fopen(output_path, "wb");
     if (!file) {
         arena_done(&arena);
-        filemap_unload(&map);
         return error_runtime("Failed to open file for writing: %s",
                              output_path);
     }
@@ -1483,12 +1492,10 @@ bool format_file(cstr input_path, cstr output_path)
     fclose(file);
     if (written != rendered.count) {
         arena_done(&arena);
-        filemap_unload(&map);
         return error_runtime("Failed to write formatted file: %s", output_path);
     }
 
     arena_done(&arena);
-    filemap_unload(&map);
     return true;
 }
 

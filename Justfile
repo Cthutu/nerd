@@ -54,6 +54,11 @@ vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
 user_bin_dir := "~/.local/bin"
 user_bin_nerd := user_bin_dir + "/nerd"
+nvim_src_dir := "syntax/nerd-nvim"
+nvim_config_dir := "~/.config/nvim"
+nvim_plugin_dir := nvim_config_dir + "/lua/plugins"
+nvim_ftdetect_dir := nvim_config_dir + "/ftdetect"
+nvim_syntax_dir := nvim_config_dir + "/syntax"
 
 npm-install:
     cd {{src_dir}} && npm install --omit=optional --no-fund --no-audit
@@ -64,11 +69,18 @@ package: npm-install
 uninstall:
     -code --uninstall-extension {{ext_id}}
 
+install-nvim:
+    mkdir -p {{nvim_plugin_dir}} {{nvim_ftdetect_dir}} {{nvim_syntax_dir}}
+    cp {{nvim_src_dir}}/lua/plugins/nerd.lua {{nvim_plugin_dir}}/nerd.lua
+    cp {{nvim_src_dir}}/ftdetect/nerd.vim {{nvim_ftdetect_dir}}/nerd.vim
+    cp {{nvim_src_dir}}/syntax/nerd.vim {{nvim_syntax_dir}}/nerd.vim
+
 install:
     just format
     just build-release nerd
     mkdir -p {{user_bin_dir}}
     cp _bin/nerd {{user_bin_nerd}}
+    just install-nvim
     just uninstall
     just package
     code --install-extension {{src_dir}}/{{vsix}} --force

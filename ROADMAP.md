@@ -298,6 +298,19 @@ needed earlier.
   - Keep LSP work horizontally synchronised with compiler, formatter, and test
     support for each feature.
 
+- [ ] 22a. Add first-class Neovim/LazyVim support.
+  - Add `nerd format --stdout <file>` so editor integrations can format through
+    stdout without mutating source files directly.
+  - Keep Neovim runtime files in `syntax/nerd-nvim` and install them by copying,
+    not symlinking, into the local Linux Neovim configuration.
+  - Install LazyVim plugin configuration under `~/.config/nvim/lua/plugins`.
+  - Install filetype and syntax files under the matching Neovim runtime
+    directories.
+  - Use the existing LazyVim `conform.nvim` setup for format-on-save.
+  - Configure the Nerd LSP for `.n` files through `nvim-lspconfig`.
+  - Defer Tree-sitter highlighting and indentation support to a later editor
+    milestone, after the language grammar has settled further.
+
 - [X] 23. Keep `just test` as the single full-project test entry point.
   - Language, error, and formatter tests should all pass through it.
   - LSP transcript tests should also pass through it.

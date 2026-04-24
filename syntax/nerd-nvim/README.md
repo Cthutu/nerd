@@ -1,0 +1,16 @@
+# Nerd Neovim Support
+
+This directory contains the repo-owned Neovim runtime files for Nerd.
+
+The `install-nvim` recipe copies them into a Linux Neovim configuration:
+
+- `lua/plugins/nerd.lua` -> `~/.config/nvim/lua/plugins/nerd.lua`
+- `ftdetect/nerd.vim` -> `~/.config/nvim/ftdetect/nerd.vim`
+- `syntax/nerd.vim` -> `~/.config/nvim/syntax/nerd.vim`
+
+The LazyVim plugin config:
+
+- registers the `nerd` LSP for `.n` files
+- configures `conform.nvim` to run `nerd format --stdout`
+
+Tree-sitter support is intentionally deferred until a later editor milestone.

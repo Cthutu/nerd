@@ -189,7 +189,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         nerd_cli_make_command(
             arena, "test", "Run the compiler test command", NULL, NULL));
     {
+        JsonValue* flags  = json_new_array(arena);
         JsonValue* params = json_new_array(arena);
+        json_array_push(
+            flags,
+            nerd_cli_make_flag(
+                arena, "stdout", NULL, "Write formatted output to stdout"));
         json_array_push(params,
                         nerd_cli_make_param(arena,
                                             "input",
@@ -209,7 +214,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(
             commands,
             nerd_cli_make_command(
-                arena, "format", "Format one source file", NULL, params));
+                arena, "format", "Format one source file", flags, params));
     }
     json_array_push(
         commands,
@@ -338,6 +343,8 @@ nerd_format_config_from_json(const JsonValue* cli_result)
             cli_result, "command.params.input", (string){0}),
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
+        .write_stdout =
+            nerd_cli_flag_bool(cli_result, "command.flags.stdout", false),
     };
 }
 
