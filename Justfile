@@ -86,3 +86,10 @@ install:
     code --install-extension {{src_dir}}/{{vsix}} --force
 
 alias i := install
+
+do:
+    just clean
+    just test
+    just test-release
+    just install
+
