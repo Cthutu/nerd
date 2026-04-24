@@ -831,16 +831,19 @@ needed earlier.
 
 ## Milestone 14: Pointer Basics
 
-- [ ] 69. Add pointer types and address-of.
+- [X] 69. Add pointer types and address-of.
   - Support pointer type syntax `^T`.
   - Support address-of for addressable values such as `^x` and `^array[0]`.
   - Keep `^[1, 2, 3]` as pointer-to-array-literal construction, returning a
     single pointer rather than a slice.
+  - Covered in language, error, formatter, LSP, and type-system docs.
 
-- [ ] 70. Add pointer indexing.
+- [X] 70. Add pointer indexing.
   - Support `pointer[index]` where the pointer element type is known.
   - Apply the same debug/release bounds policy only where a bound is known.
   - Document that raw pointer indexing is inherently lower-level than slices.
+  - Pointer indexing requires an integer index and intentionally has no bounds
+    check when no bound is known.
 
 ## Milestone 15: Slices
 

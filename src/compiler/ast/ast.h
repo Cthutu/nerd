@@ -25,6 +25,7 @@
 // | AK_SymbolRef       | Symbol handle     | 0                               |
 // | AK_LogicalNot      | Ast index of rhs  | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
+// | AK_AddressOf       | Ast index of value | 0                              |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
 // | AK_IntegerMinus    | Ast index of left | Ast index of right              |
 // | AK_IntegerMultiply | Ast index of left | Ast index of right              |
@@ -53,6 +54,7 @@
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
+// | AK_TypePointer     | Ast index pointee type | 0                           |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -86,6 +88,7 @@ typedef enum {
     AK_SymbolRef,
     AK_LogicalNot,
     AK_IntegerNegate,
+    AK_AddressOf,
     AK_IntegerPlus,
     AK_IntegerMinus,
     AK_IntegerMultiply,
@@ -114,6 +117,7 @@ typedef enum {
     AK_TypeFn,
     AK_TypeTuple,
     AK_TypeArray,
+    AK_TypePointer,
     AK_Expression,
     AK_Statement,
     AK_Return,

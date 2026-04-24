@@ -171,6 +171,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
+    case TK_Caret:
     case TK_LParen:
     case TK_fn:
     case TK_on:
@@ -197,6 +198,10 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     if (kind == TK_Symbol) {
         (*io_index)++;
         return true;
+    }
+    if (kind == TK_Caret) {
+        (*io_index)++;
+        return cst_skip_type_tokens(state, io_index);
     }
     if (kind == TK_LBracket) {
         (*io_index)++;
@@ -579,6 +584,22 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                              out_node);
     }
 
+    if (token.kind == TK_Caret) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        u32 pointee_type = 0;
+        if (!cst_parse_type(state, &pointee_type)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypePointer,
+                                 .token_index = token_index,
+                                 .a           = pointee_type,
+                             },
+                             out_node);
+    }
+
     if (token.kind != TK_fn) {
         return false;
     }
@@ -793,6 +814,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
     case TK_Minus:
     case TK_Bang:
+    case TK_Caret:
         {
             u32 token_index = state->token_index;
             u32 operand     = 0;
@@ -801,15 +823,16 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                 return false;
             }
 
-            return cst_emit_node(state,
-                                 (CstNode){
-                                     .kind        = token.kind == TK_Bang
-                                                        ? CK_LogicalNot
-                                                        : CK_IntegerNegate,
-                                     .token_index = token_index,
-                                     .a           = operand,
-                                 },
-                                 out_node);
+            return cst_emit_node(
+                state,
+                (CstNode){
+                    .kind        = token.kind == TK_Bang    ? CK_LogicalNot
+                                   : token.kind == TK_Caret ? CK_AddressOf
+                                                            : CK_IntegerNegate,
+                    .token_index = token_index,
+                    .a           = operand,
+                },
+                out_node);
         }
 
     case TK_LParen:

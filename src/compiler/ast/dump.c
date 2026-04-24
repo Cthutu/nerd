@@ -32,6 +32,8 @@ string ast_kind_to_string(AstKind kind)
         return s("LogicalNot");
     case AK_IntegerNegate:
         return s("IntegerNegate");
+    case AK_AddressOf:
+        return s("AddressOf");
     case AK_IntegerPlus:
         return s("IntegerPlus");
     case AK_IntegerMinus:
@@ -88,6 +90,8 @@ string ast_kind_to_string(AstKind kind)
         return s("TypeTuple");
     case AK_TypeArray:
         return s("TypeArray");
+    case AK_TypePointer:
+        return s("TypePointer");
     case AK_Expression:
         return s("Expression");
     case AK_Statement:
@@ -237,6 +241,11 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Cast:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "value=%u type=%u", node->a, node->b));
+            break;
+        case AK_AddressOf:
+        case AK_TypePointer:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "value=%u", node->a));
             break;
         case AK_Tuple:
         case AK_TypeTuple:

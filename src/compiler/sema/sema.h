@@ -39,6 +39,7 @@ typedef enum : u8 {
     STK_Function,
     STK_Tuple,
     STK_Array,
+    STK_Pointer,
 } SemaTypeKind;
 
 //------------------------------------------------------------------------------

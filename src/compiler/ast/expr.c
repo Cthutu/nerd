@@ -66,6 +66,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
+    case TK_Caret:
     case TK_LParen:
     case TK_fn:
     case TK_on:
@@ -701,6 +702,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         }
     case TK_Minus:
     case TK_Bang:
+    case TK_Caret:
         {
             u32 rhs;
             if (!ast_next_token(state)) {
@@ -714,8 +716,9 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             }
 
             AstNode node = {
-                .kind =
-                    token.kind == TK_Bang ? AK_LogicalNot : AK_IntegerNegate,
+                .kind        = token.kind == TK_Bang    ? AK_LogicalNot
+                               : token.kind == TK_Caret ? AK_AddressOf
+                                                        : AK_IntegerNegate,
                 .token_index = token.token_index,
                 .a           = rhs,
             };

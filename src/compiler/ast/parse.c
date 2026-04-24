@@ -108,6 +108,10 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return true;
     }
+    if (kind == TK_Caret) {
+        (*io_index)++;
+        return ast_skip_type_tokens(state, io_index);
+    }
     if (kind == TK_LBracket) {
         (*io_index)++;
         if (ast_kind_at_stream_index(state, *io_index) != TK_Integer) {
@@ -422,6 +426,24 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  .token_index = lbracket.token_index,
                                  .a           = length_index,
                                  .b           = element_type,
+                             },
+                             out_node);
+    }
+
+    if (state->token.kind == TK_Caret) {
+        AstToken caret = state->token;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        u32 pointee_type = 0;
+        if (!ast_parse_type(state, &pointee_type)) {
+            return false;
+        }
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypePointer,
+                                 .token_index = caret.token_index,
+                                 .a           = pointee_type,
                              },
                              out_node);
     }

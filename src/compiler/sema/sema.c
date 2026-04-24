@@ -139,6 +139,17 @@ internal u32 sema_add_array_type(Sema* sema, u32 item_type, u32 item_count)
                          });
 }
 
+internal u32 sema_add_pointer_type(Sema* sema, u32 pointee_type)
+{
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Pointer,
+                             .param_count      = 0,
+                             .first_param_type = pointee_type,
+                             .return_type      = sema_no_type(),
+                         });
+}
+
 //------------------------------------------------------------------------------
 // Return the canonical type index for one built-in type.
 
@@ -271,6 +282,13 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
             array->return_type);
     }
 
+    if (sema->types[type_index].kind == STK_Pointer) {
+        const SemaType* pointer = &sema->types[type_index];
+        return sema_add_pointer_type(
+            (Sema*)sema,
+            sema_materialise_type(sema, pointer->first_param_type));
+    }
+
     if (sema->types[type_index].kind != STK_Tuple) {
         return type_index;
     }
@@ -381,6 +399,15 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_format(&sb, "[%u]", type->return_type);
+            sb_append_string(
+                &sb, sema_type_name(sema, arena, type->first_param_type));
+            return sb_to_string(&sb);
+        }
+    case STK_Pointer:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_append_char(&sb, '^');
             sb_append_string(
                 &sb, sema_type_name(sema, arena, type->first_param_type));
             return sb_to_string(&sb);
@@ -901,6 +928,30 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypePointer:
+        {
+            bool pointee_is_type = false;
+            u32  pointee_type    = sema_no_type();
+            if (!sema_try_classify_type_node(lexer,
+                                             ast,
+                                             sema,
+                                             owner_decl_index,
+                                             node->a,
+                                             alias_states,
+                                             &pointee_is_type,
+                                             &pointee_type)) {
+                return false;
+            }
+            if (!pointee_is_type) {
+                *out_is_type    = false;
+                *out_type_index = sema_no_type();
+                return true;
+            }
+            *out_is_type    = true;
+            *out_type_index = sema_add_pointer_type(sema, pointee_type);
+            return true;
+        }
+
     default:
         *out_is_type    = false;
         *out_type_index = sema_no_type();
@@ -1101,6 +1152,9 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
     case AK_TypeArray:
         sema_mark_type_expr_nodes(ast, sema, node->a);
         sema_mark_type_expr_nodes(ast, sema, node->b);
+        break;
+    case AK_TypePointer:
+        sema_mark_type_expr_nodes(ast, sema, node->a);
         break;
     default:
         break;
@@ -1883,9 +1937,11 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       sema);
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_AddressOf:
     case AK_Cast:
     case AK_Expression:
     case AK_Statement:
+    case AK_TypePointer:
         return sema_resolve_node_refs(lexer,
                                       ast,
                                       owner_decl_index,
@@ -2098,6 +2154,10 @@ internal void sema_collect_node_deps(const Ast*  ast,
             sema_collect_node_deps(
                 ast, sema, owner_decl_index, node->b, out_sema);
         }
+        return;
+    case AK_AddressOf:
+    case AK_TypePointer:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         return;
     case AK_SymbolRef:
         {
@@ -2543,6 +2603,20 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypePointer:
+        {
+            u32 pointee_type = sema_no_type();
+            if (!sema_resolve_type_node(
+                    lexer, ast, sema, node->a, &pointee_type)) {
+                return false;
+            }
+
+            u32 type_index = sema_add_pointer_type(sema, pointee_type);
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
     default:
         return error_0303_unknown_type(
             lexer->source, sema_node_span(lexer, node), s("<expression>"));
@@ -2611,6 +2685,7 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     case STK_F32:
     case STK_F64:
     case STK_Function:
+    case STK_Pointer:
         return true;
     case STK_Tuple:
         {
@@ -2710,6 +2785,41 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
                                             Sema*        sema,
                                             u32          local_index,
                                             u32*         out_type_index);
+
+internal bool
+sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_SymbolRef:
+        if (sema->node_local_indices[node_index] != sema_no_local()) {
+            const SemaLocal* local =
+                &sema->locals[sema->node_local_indices[node_index]];
+            return local->kind == SLK_Param || local->kind == SLK_Variable ||
+                   local->kind == SLK_Binder;
+        }
+        if (sema->node_decl_indices[node_index] != U32_MAX) {
+            const SemaDecl* decl =
+                &sema->decls[sema->node_decl_indices[node_index]];
+            return decl->kind == SK_Constant || decl->kind == SK_Variable ||
+                   decl->kind == SK_Function;
+        }
+        return false;
+    case AK_Array:
+        return true;
+    case AK_Index:
+        {
+            u32 target_type = sema->node_type_indices[node->a];
+            if (target_type == sema_no_type()) {
+                return false;
+            }
+            return sema->types[target_type].kind == STK_Array ||
+                   sema->types[target_type].kind == STK_Pointer;
+        }
+    default:
+        return false;
+    }
+}
 
 internal bool sema_merge_control_break_type(const Lexer* lexer,
                                             const Ast*   ast,
@@ -3284,6 +3394,9 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
             return true;
         }
         return sema_node_contains_interpolation(ast, node->a);
+    case AK_AddressOf:
+    case AK_TypePointer:
+        return sema_node_contains_interpolation(ast, node->a);
     case AK_Variable:
     case AK_Assign:
     case AK_AnnotatedValue:
@@ -3457,6 +3570,9 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
             }
         }
         return sema_find_interpolated_string_node(ast, node->a);
+    case AK_AddressOf:
+    case AK_TypePointer:
+        return sema_find_interpolated_string_node(ast, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
             u32 found = sema_find_interpolated_string_node(ast, i);
@@ -3616,6 +3732,9 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
             return false;
         }
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
+    case AK_AddressOf:
+    case AK_TypePointer:
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
             if (!sema_validate_interpolated_strings(lexer, ast, sema, i)) {
@@ -3708,6 +3827,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         if (!sema_infer_node_type(
                 lexer, ast, sema, node->a, expected_type, &type_index)) {
             return false;
+        }
+        break;
+
+    case AK_AddressOf:
+        {
+            u32 pointee_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &pointee_type)) {
+                return false;
+            }
+            if (!sema_node_is_addressable(ast, sema, node->a)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->a]),
+                    s("addressable value"),
+                    sema_type_name(sema, &temp_arena, pointee_type));
+            }
+            type_index = sema_add_pointer_type(sema, pointee_type);
         }
         break;
 
@@ -3874,11 +4011,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
             if (array_type == sema_no_type() ||
-                sema->types[array_type].kind != STK_Array) {
+                (sema->types[array_type].kind != STK_Array &&
+                 sema->types[array_type].kind != STK_Pointer)) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    s("array"),
+                    s("array or pointer"),
                     sema_type_name(sema, &temp_arena, array_type));
             }
 
@@ -5666,6 +5804,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_Statement:
     case AK_Return:
     case AK_ReturnExpr:
+    case AK_AddressOf:
     case AK_IntegerNegate:
     case AK_LogicalNot:
         return node->a == U32_MAX

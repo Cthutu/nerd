@@ -185,6 +185,10 @@ ir_render_type_name(StringBuilder* sb, const Ir* ir, u32 type_index)
         sb_format(sb, "[%u]", type->return_type);
         ir_render_type_name(sb, ir, type->first_param_type);
         break;
+    case STK_Pointer:
+        sb_append_char(sb, '^');
+        ir_render_type_name(sb, ir, type->first_param_type);
+        break;
     default:
         sb_append_cstr(sb, "<unknown>");
         break;
@@ -339,6 +343,19 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_INDEX:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_append_char(&sb, '[');
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            sb_append_char(&sb, ']');
+            break;
+        case IR_OP_ADDRESS_OF:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ^");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            break;
+        case IR_OP_ADDRESS_OF_INDEX:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ^");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             sb_append_char(&sb, '[');
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);

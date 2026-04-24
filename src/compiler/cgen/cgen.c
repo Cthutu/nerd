@@ -205,6 +205,17 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                      type_index);
             return name;
         }
+    case STK_Pointer:
+        {
+            static char names[8][64];
+            static u32  next = 0;
+            char*       name = names[next++ % 8];
+            snprintf(name,
+                     64,
+                     "%s*",
+                     cgen_c_type(ir, ir->types[type_index].first_param_type));
+            return name;
+        }
     case STK_String:
         return "string";
     case STK_Bool:
@@ -359,6 +370,9 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
         cgen_add(cgen, "(");
         cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
         cgen_add(cgen, "){0}");
+        break;
+    case STK_Pointer:
+        cgen_add(cgen, "NULL");
         break;
     case STK_String:
         cgen_add(cgen, "(string){0}");
@@ -590,29 +604,52 @@ void cgen_add_array(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_index(CGen* cgen, const IrInstruction* instr)
 {
-    const SemaType* array_type = &cgen->ir->types[instr->rvalue[0].type];
-    cgen_start_line(cgen);
-    cgen_add(cgen, "#ifndef NDEBUG");
-    cgen_addn(cgen, "");
-    cgen_start_line(cgen);
-    cgen_add(cgen, "if ((long long)");
-    cgen_add_value(cgen, &instr->rvalue[1]);
-    cgen_add(cgen, " < 0 || (size_t)");
-    cgen_add_value(cgen, &instr->rvalue[1]);
-    arena_format(&cgen->arena,
-                 " >= %u) { fprintf(stderr, \"fatal: array index out of "
-                 "bounds\\n\"); abort(); }",
-                 array_type->return_type);
-    cgen_addn(cgen, "");
-    cgen_start_line(cgen);
-    cgen_add(cgen, "#endif");
-    cgen_addn(cgen, "");
+    const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
+    if (target_type->kind == STK_Array) {
+        cgen_start_line(cgen);
+        cgen_add(cgen, "#ifndef NDEBUG");
+        cgen_addn(cgen, "");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if ((long long)");
+        cgen_add_value(cgen, &instr->rvalue[1]);
+        cgen_add(cgen, " < 0 || (size_t)");
+        cgen_add_value(cgen, &instr->rvalue[1]);
+        arena_format(&cgen->arena,
+                     " >= %u) { fprintf(stderr, \"fatal: array index out of "
+                     "bounds\\n\"); abort(); }",
+                     target_type->return_type);
+        cgen_addn(cgen, "");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "#endif");
+        cgen_addn(cgen, "");
+    }
 
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
-    cgen_add(cgen, ".items[");
+    cgen_add(cgen, target_type->kind == STK_Array ? ".items[" : "[");
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_addn(cgen, "];");
+}
+
+void cgen_add_address_of(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = &");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_addn(cgen, ";");
+}
+
+void cgen_add_address_of_index(CGen* cgen, const IrInstruction* instr)
+{
+    const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = &");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, target_type->kind == STK_Array ? ".items[" : "[");
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
 }
@@ -988,6 +1025,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_INDEX:
             cgen_add_index(cgen, instr);
+            break;
+        case IR_OP_ADDRESS_OF:
+            cgen_add_address_of(cgen, instr);
+            break;
+        case IR_OP_ADDRESS_OF_INDEX:
+            cgen_add_address_of_index(cgen, instr);
             break;
         case IR_OP_STRING_RESET:
             cgen_add_string_reset(cgen);

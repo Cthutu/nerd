@@ -332,6 +332,36 @@ void ir_add_index(Ir*     ir,
                });
 }
 
+void ir_add_address_of(Ir* ir, IrValue lvalue, u32 lvalue_type, IrValue value)
+{
+    lvalue.type = lvalue_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ADDRESS_OF,
+                   .lvalue = lvalue,
+                   .rvalue = {value, {0}},
+               });
+}
+
+void ir_add_address_of_index(Ir*     ir,
+                             IrValue lvalue,
+                             u32     lvalue_type,
+                             IrValue target,
+                             u32     target_type,
+                             IrValue index,
+                             u32     index_type)
+{
+    lvalue.type = lvalue_type;
+    target.type = target_type;
+    index.type  = index_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ADDRESS_OF_INDEX,
+                   .lvalue = lvalue,
+                   .rvalue = {target, index},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append explicit string-builder instructions to the IR stream.
 
@@ -750,6 +780,7 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Expression:
     case AK_Statement:
     case AK_IntegerNegate:
+    case AK_AddressOf:
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
     case AK_Return:
@@ -1231,6 +1262,57 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                    .type = decl->type_index,
                                    .value.integer = decl->symbol_handle,
                 };
+            }
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_AddressOf:
+        {
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            const AstNode* target_node = &ast->nodes[node->a];
+            if (target_node->kind == AK_Index) {
+                IrValue target = ir_lower_node(lex,
+                                               ast,
+                                               sema,
+                                               target_node->a,
+                                               loop,
+                                               node_values,
+                                               next_value_index,
+                                               ir);
+                IrValue index  = ir_lower_node(lex,
+                                              ast,
+                                              sema,
+                                              target_node->b,
+                                              loop,
+                                              node_values,
+                                              next_value_index,
+                                              ir);
+                ir_add_address_of_index(
+                    ir,
+                    value,
+                    ir_node_type_index(ast, sema, node_index),
+                    target,
+                    ir_node_type_index(ast, sema, target_node->a),
+                    index,
+                    ir_node_type_index(ast, sema, target_node->b));
+            } else {
+                IrValue target = ir_lower_node(lex,
+                                               ast,
+                                               sema,
+                                               node->a,
+                                               loop,
+                                               node_values,
+                                               next_value_index,
+                                               ir);
+                ir_add_address_of(ir,
+                                  value,
+                                  ir_node_type_index(ast, sema, node_index),
+                                  target);
             }
             node_values[node_index] = value;
             return value;

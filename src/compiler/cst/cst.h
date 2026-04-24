@@ -24,6 +24,7 @@
 // | CK_Group           | Inner node index      | 0                     |
 // | CK_LogicalNot      | Operand node index    | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
+// | CK_AddressOf       | Operand node index    | 0                     |
 // | CK_IntegerPlus     | Left node index       | Right node index      |
 // | CK_IntegerMinus    | Left node index       | Right node index      |
 // | CK_IntegerMultiply | Left node index       | Right node index      |
@@ -52,6 +53,7 @@
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
+// | CK_TypePointer     | Pointee type node     | 0                     |
 // | CK_FnExpr          | Body node index       | 0                     |
 // | CK_FnBlock         | First stmt index      | End-exclusive index   |
 // | CK_Statement       | Expr node index       | 0                     |
@@ -82,6 +84,7 @@ typedef enum {
     CK_Group,
     CK_LogicalNot,
     CK_IntegerNegate,
+    CK_AddressOf,
     CK_IntegerPlus,
     CK_IntegerMinus,
     CK_IntegerMultiply,
@@ -110,6 +113,7 @@ typedef enum {
     CK_TypeFn,
     CK_TypeTuple,
     CK_TypeArray,
+    CK_TypePointer,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,

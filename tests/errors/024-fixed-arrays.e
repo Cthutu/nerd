@@ -5,7 +5,7 @@ main :: fn () {
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `array`, found `untyped integer`",
+    "message": "Type mismatch: expected `array or pointer`, found `untyped integer`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
         "line": 3,

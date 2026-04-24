@@ -178,6 +178,7 @@ internal int format_expr_precedence(const CstNode* node)
         return 60;
     case CK_LogicalNot:
     case CK_IntegerNegate:
+    case CK_AddressOf:
         return 70;
     case CK_Call:
         return 80;
@@ -349,6 +350,10 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_LogicalNot:
         sb_append_char(sb, '!');
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        break;
+    case CK_AddressOf:
+        sb_append_char(sb, '^');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
     case CK_ReturnExpr:
@@ -631,6 +636,10 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, 0);
         sb_append_char(sb, ']');
         format_emit_expr(sb, cst, lexer, node->b, 0);
+        break;
+    case CK_TypePointer:
+        sb_append_char(sb, '^');
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
