@@ -47,7 +47,7 @@ return {
       opts.formatters.nerd = {
         command = "nerd",
         args = { "format", "--stdout", "$FILENAME" },
-        stdin = false,
+        stdin = true,
       }
     end,
   },

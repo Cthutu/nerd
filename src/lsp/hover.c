@@ -283,6 +283,33 @@ internal string lsp_decl_signature(const LspDocument* doc,
                        : rendered;
         }
     }
+    string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
+    if (string_eq(name, s("main")) &&
+        decl->value_node_index != sema_no_decl()) {
+        const AstNode* fn_def =
+            &doc->front_end.ast.nodes[decl->value_node_index];
+        if (fn_def->kind == AK_FnDef && fn_def->b == AFK_Block) {
+            const AstNode* fn_start = &doc->front_end.ast.nodes[fn_def->a];
+            const AstFnSignature* signature =
+                &doc->front_end.ast.fn_signatures[fn_start->a];
+            bool has_explicit_return_type =
+                signature->return_type_node_index != U32_MAX;
+            bool has_return = false;
+            for (u32 i = fn_def->a + 1; i < fn_start->b; ++i) {
+                const AstNode* node = &doc->front_end.ast.nodes[i];
+                if (node->kind == AK_Return) {
+                    has_return = true;
+                    break;
+                }
+                if (node->kind == AK_FnStart || node->kind == AK_Block) {
+                    i = node->b - 1;
+                }
+            }
+            if (!has_explicit_return_type && !has_return) {
+                return s("fn () -> void");
+            }
+        }
+    }
     return sema_type_name(&doc->front_end.sema, arena, decl->type_index);
 }
 
