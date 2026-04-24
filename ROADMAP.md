@@ -287,6 +287,9 @@ needed earlier.
   - Add formatter regression tests at the same time as language/error tests.
   - Keep formatter work horizontally synchronised with compiler, LSP, and test
     support for each feature.
+  - Current formatter coverage includes primitive operators, float literal
+    spelling, local declaration alignment, and split const/variable alignment
+    sub-paragraphs.
 
 - [ ] 22. Extend the LSP as new language features land.
   - Keep editor-facing behaviour aligned with the compiler's supported syntax

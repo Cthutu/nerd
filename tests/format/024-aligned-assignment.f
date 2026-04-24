@@ -32,6 +32,8 @@ single_mixed :: fn () {
 }
 
 long_values :: fn () {
+    long_const: string: "this const string is deliberately long enough to wrap after the second colon"
+    short_const: string: "ok"
     long_name: string = "this string is deliberately long enough to wrap after the equals"
     short: string = "ok"
 }
@@ -73,6 +75,10 @@ single_mixed :: fn () {
 }
 
 long_values :: fn () {
+    long_const  : string :
+        "this const string is deliberately long enough to wrap after the second colon"
+    short_const : string : "ok"
+
     long_name : string =
         "this string is deliberately long enough to wrap after the equals"
     short     : string = "ok"

@@ -28,6 +28,21 @@ The formatter should be deterministic and idempotent.
 - Explicit grouping parentheses are preserved.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 
+## Alignment Rules
+
+- Consecutive one-line local variable declarations in the same source paragraph
+  align their symbol, type, and `=` columns.
+- Consecutive one-line local constant bindings in the same source paragraph
+  align their symbol, optional type, and second `:` columns.
+- A source paragraph that mixes local constant bindings and local variable
+  declarations is formatted as separate sub-paragraphs, split by a blank line.
+- Alignment does not cross blank lines.
+- Single-line paragraphs use the normal compact spacing unless the declaration
+  form needs explicit type spacing.
+- If an aligned right-hand value does not fit within the formatter width, the
+  operator stays on the declaration line and the value moves to the next line,
+  indented by one extra level.
+
 ## Current Scope
 
 The current formatter is intentionally narrow:
