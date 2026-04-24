@@ -427,6 +427,8 @@ on x {
 
 # Future ideas
 
-- FFI syntax
+- FFI syntax for external C functions
 - Modules and import/export
 - Traits and generics
+- CLI arguments - main :: fn (args: []string) -> int
+- 
