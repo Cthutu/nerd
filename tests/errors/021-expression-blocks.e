@@ -112,3 +112,33 @@ main :: fn () {
         "Move `break` into a `for` loop or expression block."
     ]
 }
+¬
+main :: fn () {
+    value :: $answer {
+        break $missing 7
+    }
+    return value
+}
+¬
+{
+    "code": "0330",
+    "message": "Unknown control label `$missing`",
+    "source_file": "tests/errors/021-expression-blocks.e",
+    "primary_location": {
+        "line": 3,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 9,
+            "length": 5,
+            "message": "No enclosing expression block has this label"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use the label from an enclosing `$label { ... }` block."
+    ]
+}

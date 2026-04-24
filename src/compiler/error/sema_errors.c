@@ -752,3 +752,25 @@ bool error_0329_missing_expression_block_break(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a labelled break that does not name an enclosing expression block.
+
+bool error_0330_unknown_control_label(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     label)
+{
+    ErrorInfo error = error_init(330,
+                                 source,
+                                 span,
+                                 "Unknown control label `$" STRINGP "`",
+                                 STRINGV(label));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "No enclosing expression block has this label");
+    error_add_help(&error,
+                   "Use the label from an enclosing `$label { ... }` block.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

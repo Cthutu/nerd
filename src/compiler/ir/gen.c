@@ -326,21 +326,40 @@ typedef enum : u8 {
     IR_STMT_CONTINUE,
 } IrStatementResult;
 
+#define IR_MAX_EXPR_BLOCK_TARGETS 64
+
 typedef struct {
+    u32     label_symbol;
     i64     break_label;
-    i64     continue_label;
-    i64     expr_break_label;
-    IrValue expr_result;
-    u32     expr_result_type;
+    IrValue result;
+    u32     result_type;
+} IrExprBlockTarget;
+
+typedef struct {
+    i64               break_label;
+    i64               continue_label;
+    u32               expr_target_count;
+    IrExprBlockTarget expr_targets[IR_MAX_EXPR_BLOCK_TARGETS];
 } IrLoopLabels;
 
 internal IrLoopLabels ir_no_control_labels(void)
 {
     return (IrLoopLabels){
-        .break_label      = -1,
-        .continue_label   = -1,
-        .expr_break_label = -1,
+        .break_label    = -1,
+        .continue_label = -1,
     };
+}
+
+internal const IrExprBlockTarget* ir_find_expr_block_target(IrLoopLabels loop,
+                                                            u32 label_symbol)
+{
+    for (u32 i = loop.expr_target_count; i > 0; --i) {
+        const IrExprBlockTarget* target = &loop.expr_targets[i - 1];
+        if (label_symbol == U32_MAX || target->label_symbol == label_symbol) {
+            return target;
+        }
+    }
+    return NULL;
 }
 
 void ir_add_equal(Ir*     ir,
@@ -1356,11 +1375,17 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 ir_add_temp_local(ir, result, result_type);
             }
 
-            i64          end_label         = (i64)(*next_value_index)++;
-            IrLoopLabels block_control     = loop;
-            block_control.expr_break_label = end_label;
-            block_control.expr_result      = result;
-            block_control.expr_result_type = result_type;
+            i64          end_label     = (i64)(*next_value_index)++;
+            IrLoopLabels block_control = loop;
+            ASSERT(block_control.expr_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
+                   "Too many nested expression block targets");
+            block_control.expr_targets[block_control.expr_target_count++] =
+                (IrExprBlockTarget){
+                    .label_symbol = node->b,
+                    .break_label  = end_label,
+                    .result       = result,
+                    .result_type  = result_type,
+                };
 
             (void)ir_generate_statement(lex,
                                         ast,
@@ -1697,23 +1722,28 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_Break) {
-        if (node->a != U32_MAX) {
-            ASSERT(loop.expr_break_label >= 0,
-                   "Expected expression block break label");
-            IrValue value = ir_lower_node(lex,
-                                          ast,
-                                          sema,
-                                          node->a,
-                                          loop,
-                                          node_values,
-                                          next_value_index,
-                                          ir);
-            ir_add_assign(ir,
-                          loop.expr_result,
-                          loop.expr_result_type,
-                          value,
-                          ir_node_type_index(ast, sema, node->a));
-            ir_add_jump(ir, loop.expr_break_label);
+        const IrExprBlockTarget* expr_target =
+            ir_find_expr_block_target(loop, node->b);
+        if (node->a != U32_MAX || node->b != U32_MAX ||
+            (loop.break_label < 0 && expr_target != NULL &&
+             expr_target->result_type == ir_builtin_type(sema, STK_Void))) {
+            ASSERT(expr_target != NULL, "Expected expression block target");
+            if (node->a != U32_MAX) {
+                IrValue value = ir_lower_node(lex,
+                                              ast,
+                                              sema,
+                                              node->a,
+                                              loop,
+                                              node_values,
+                                              next_value_index,
+                                              ir);
+                ir_add_assign(ir,
+                              expr_target->result,
+                              expr_target->result_type,
+                              value,
+                              ir_node_type_index(ast, sema, node->a));
+            }
+            ir_add_jump(ir, expr_target->break_label);
         } else {
             ASSERT(loop.break_label >= 0, "Expected loop break label");
             ir_add_jump(ir, loop.break_label);
@@ -1765,7 +1795,6 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
         IrLoopLabels inner_loop       = loop;
         inner_loop.break_label        = end_label;
         inner_loop.continue_label     = continue_label;
-        inner_loop.expr_break_label   = loop.expr_break_label;
         IrStatementResult body_result = ir_generate_statement(lex,
                                                               ast,
                                                               sema,

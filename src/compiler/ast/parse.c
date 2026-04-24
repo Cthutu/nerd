@@ -532,6 +532,18 @@ internal bool ast_parse_block_statement(AstParseState* state)
         AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
         u32     token_index = state->token.token_index;
         u32     payload     = U32_MAX;
+        u32     label       = U32_MAX;
+        if (kind == AK_Break && ast_cursor_kind(state) == TK_Dollar) {
+            if (!ast_next_token(state) || !ast_next_token(state) ||
+                state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            label = state->token.value.symbol_handle;
+        }
         if (kind == AK_Break &&
             ast_token_starts_expression(ast_cursor_kind(state))) {
             if (!ast_next_token(state)) {
@@ -550,6 +562,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
                                  .kind        = kind,
                                  .token_index = token_index,
                                  .a           = payload,
+                                 .b           = label,
                              },
                              NULL);
     }

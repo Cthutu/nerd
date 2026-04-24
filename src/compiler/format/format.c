@@ -328,6 +328,10 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_BreakExpr:
         sb_append_cstr(sb, "break");
+        if (node->b != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, node->b));
+        }
         if (node->a != U32_MAX) {
             sb_append_char(sb, ' ');
             format_emit_expr(sb, cst, lexer, node->a, 0);
@@ -338,6 +342,10 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_ExprBlock:
         sb_append_cstr(sb, "$");
+        if (node->b != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, node->b));
+            sb_append_char(sb, ' ');
+        }
         sb_append_cstr(sb, "{\n");
         format_emit_block_contents(sb, cst, lexer, node->a, 1);
         sb_append_char(sb, '}');
@@ -806,7 +814,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Continue:
     case CK_ContinueExpr:
         return node->a == U32_MAX
-                   ? node->token_index
+                   ? (node->b == U32_MAX ? node->token_index
+                                         : node->token_index + 2)
                    : format_node_end_token_index(cst, lexer, node->a);
     case CK_For:
         return format_node_end_token_index(cst, lexer, node->b);
@@ -1443,6 +1452,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Break || stmt->kind == CK_Continue) {
         sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "continue");
+        if (stmt->b != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, stmt->b));
+        }
         if (stmt->a != U32_MAX) {
             sb_append_char(sb, ' ');
             format_emit_expr(sb, cst, lexer, stmt->a, 0);

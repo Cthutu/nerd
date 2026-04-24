@@ -75,6 +75,14 @@ bool ast_token_starts_expression(TokenKind kind)
     }
 }
 
+internal TokenKind ast_expr_cursor_kind(const AstParseState* state)
+{
+    if (state->token_index >= array_count(state->lexer->tokens)) {
+        return TK_EOF;
+    }
+    return state->lexer->tokens[state->token_index].kind;
+}
+
 //------------------------------------------------------------------------------
 // Return Pratt binding powers for supported infix operators.
 
@@ -291,11 +299,24 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
         AstKind kind =
             state->token.kind == TK_break ? AK_BreakExpr : AK_ContinueExpr;
         u32 token_index = state->token.token_index;
+        u32 label       = U32_MAX;
+        if (kind == AK_BreakExpr && ast_expr_cursor_kind(state) == TK_Dollar) {
+            if (!ast_next_token(state) || !ast_next_token(state) ||
+                state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            label = state->token.value.symbol_handle;
+        }
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
                                  .a           = U32_MAX,
+                                 .b           = label,
                              },
                              out_node);
     }
@@ -714,7 +735,24 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         return ast_parse_on_expr(state, token, out_node);
     case TK_Dollar:
         {
-            if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+            u32 label = U32_MAX;
+            if (!ast_next_token(state)) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &token),
+                                                 TK_LBrace,
+                                                 state->token.kind);
+            }
+            if (state->token.kind == TK_Symbol) {
+                label = state->token.value.symbol_handle;
+                if (!ast_next_token(state)) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_LBrace,
+                        state->token.kind);
+                }
+            }
+            if (state->token.kind != TK_LBrace) {
                 return error_0203_expected_token(state->lexer->source,
                                                  ast_token_span(state, &token),
                                                  TK_LBrace,
@@ -729,6 +767,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                                      .kind        = AK_ExprBlock,
                                      .token_index = token.token_index,
                                      .a           = block_node,
+                                     .b           = label,
                                  },
                                  out_node);
         }
