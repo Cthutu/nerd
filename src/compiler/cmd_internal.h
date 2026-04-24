@@ -11,6 +11,7 @@
 //------------------------------------------------------------------------------
 
 NerdArtifactConfig compiler_cmd_default_artifacts(void);
+cstr               compiler_cmd_copy_path(Arena* arena, string path);
 bool               compile(NerdSource                source,
                            const NerdArtifactConfig* artifacts,
                            bool                      dump_compiler_state,

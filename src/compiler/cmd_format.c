@@ -4,21 +4,11 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/cmd_internal.h>
 #include <compiler/error/error.h>
 #include <compiler/format/format.h>
 
 #include <stdio.h>
-
-//------------------------------------------------------------------------------
-// Copy one Nerd string into a null-terminated path buffer.
-
-internal cstr compiler_cmd_format_copy_path(Arena* arena, string path)
-{
-    char* copy = (char*)arena_alloc(arena, path.count + 1);
-    memcpy(copy, path.data, path.count);
-    copy[path.count] = '\0';
-    return copy;
-}
 
 //------------------------------------------------------------------------------
 // Format a source file to stdout, in place, or to an explicit output path.
@@ -30,7 +20,7 @@ int compiler_cmd_format(const NerdFormatConfig* config)
 
     ASSERT(config->input_path.count > 0, "Expected format input path");
 
-    cstr input_path = compiler_cmd_format_copy_path(&arena, config->input_path);
+    cstr input_path = compiler_cmd_copy_path(&arena, config->input_path);
     if (config->write_stdout) {
         if (config->output_path.count > 0) {
             error_runtime("Cannot combine format --stdout with an output path");
@@ -49,8 +39,7 @@ int compiler_cmd_format(const NerdFormatConfig* config)
 
     cstr output_path = NULL;
     if (config->output_path.count > 0) {
-        output_path =
-            compiler_cmd_format_copy_path(&arena, config->output_path);
+        output_path = compiler_cmd_copy_path(&arena, config->output_path);
     } else {
         output_path = input_path;
     }

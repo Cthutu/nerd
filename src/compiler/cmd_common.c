@@ -24,6 +24,14 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
     };
 }
 
+cstr compiler_cmd_copy_path(Arena* arena, string path)
+{
+    char* copy = (char*)arena_alloc(arena, path.count + 1);
+    memcpy(copy, path.data, path.count);
+    copy[path.count] = '\0';
+    return copy;
+}
+
 bool compile(NerdSource                source,
              const NerdArtifactConfig* artifacts,
              bool                      dump_compiler_state,

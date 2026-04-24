@@ -17,12 +17,11 @@ compiler_cmd_run_artifacts(Arena* arena, const NerdRunConfig* config)
 
     cstr output_root             = NULL;
     if (config->output_path.count > 0) {
-        output_root =
-            (cstr)string_format(arena, STRINGP, STRINGV(config->output_path))
-                .data;
+        output_root = compiler_cmd_copy_path(arena, config->output_path);
     } else if (config->source.source_path.count > 0) {
-        output_root = path_replace_extension(
-            arena, (cstr)config->source.source_path.data, "");
+        cstr source_path =
+            compiler_cmd_copy_path(arena, config->source.source_path);
+        output_root = path_replace_extension(arena, source_path, "");
     } else {
         output_root = artifacts.binary_path;
     }

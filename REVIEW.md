@@ -15,14 +15,14 @@ dead code.
 
 ## Compiler
 
-- [ ] `src/compiler/compiler.h`
-- [ ] `src/compiler/internal.h`
-- [ ] `src/compiler/cmd_build.c`
-- [ ] `src/compiler/cmd_common.c`
-- [ ] `src/compiler/cmd_format.c`
-- [ ] `src/compiler/cmd_internal.h`
-- [ ] `src/compiler/cmd_run.c`
-- [ ] `src/compiler/cmd_test.c`
+- [x] `src/compiler/compiler.h`
+- [x] `src/compiler/internal.h`
+- [x] `src/compiler/cmd_build.c`
+- [x] `src/compiler/cmd_common.c`
+- [x] `src/compiler/cmd_format.c`
+- [x] `src/compiler/cmd_internal.h`
+- [x] `src/compiler/cmd_run.c`
+- [x] `src/compiler/cmd_test.c`
 
 ## Compiler AST
 
