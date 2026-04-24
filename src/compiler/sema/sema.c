@@ -3028,7 +3028,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         {
             u32 lhs_type = sema_no_type();
             u32 rhs_type = sema_no_type();
-            u32 binary_expected = sema_expected_numeric_type(sema, expected_type);
+            u32 binary_expected =
+                sema_expected_numeric_type(sema, expected_type);
 
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->a, binary_expected, &lhs_type)) {

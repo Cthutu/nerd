@@ -149,8 +149,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             row[3] = table_cell_u64(lexer->integers[node->a]);
             break;
         case AK_FloatLiteral:
-            row[3] = table_cell_string(
-                string_format(&temp_arena, "%.17g", ast_get_float(lexer, node)));
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "%.17g", ast_get_float(lexer, node)));
             break;
         case AK_StringLiteral:
             row[3] = table_cell_string(ast_get_string(lexer, node));

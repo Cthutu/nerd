@@ -1181,18 +1181,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     "Range patterns must only appear inside block-form `on`");
             }
             if (node->kind == AK_LogicalAnd || node->kind == AK_LogicalOr) {
-                u32 bool_type = ir_builtin_type(sema, STK_Bool);
-                IrValue result = {
-                    .kind          = IR_VALUE_VARIABLE,
-                    .type          = bool_type,
-                    .value.integer = (i64)(*next_value_index)++,
+                u32     bool_type = ir_builtin_type(sema, STK_Bool);
+                IrValue result    = {
+                       .kind          = IR_VALUE_VARIABLE,
+                       .type          = bool_type,
+                       .value.integer = (i64)(*next_value_index)++,
                 };
                 ir_add_temp_local(ir, result, bool_type);
 
                 if (node->kind == AK_LogicalAnd) {
-                    i64 false_label = (i64)(*next_value_index)++;
-                    i64 end_label   = (i64)(*next_value_index)++;
-                    IrValue lhs = ir_lower_node(lex,
+                    i64     false_label = (i64)(*next_value_index)++;
+                    i64     end_label   = (i64)(*next_value_index)++;
+                    IrValue lhs         = ir_lower_node(lex,
                                                 ast,
                                                 sema,
                                                 node->a,
@@ -1214,18 +1214,24 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                         rhs,
                                         ir_node_type_index(ast, sema, node->b),
                                         false_label);
-                    ir_add_assign(
-                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_assign(ir,
+                                  result,
+                                  bool_type,
+                                  ir_make_bool_literal(bool_type, true),
+                                  bool_type);
                     ir_add_jump(ir, end_label);
                     ir_add_label(ir, false_label);
-                    ir_add_assign(
-                        ir, result, bool_type, ir_make_bool_literal(bool_type, false), bool_type);
+                    ir_add_assign(ir,
+                                  result,
+                                  bool_type,
+                                  ir_make_bool_literal(bool_type, false),
+                                  bool_type);
                     ir_add_label(ir, end_label);
                 } else {
-                    i64 eval_rhs_label = (i64)(*next_value_index)++;
-                    i64 false_label    = (i64)(*next_value_index)++;
-                    i64 end_label      = (i64)(*next_value_index)++;
-                    IrValue lhs = ir_lower_node(lex,
+                    i64     eval_rhs_label = (i64)(*next_value_index)++;
+                    i64     false_label    = (i64)(*next_value_index)++;
+                    i64     end_label      = (i64)(*next_value_index)++;
+                    IrValue lhs            = ir_lower_node(lex,
                                                 ast,
                                                 sema,
                                                 node->a,
@@ -1236,8 +1242,11 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                         lhs,
                                         ir_node_type_index(ast, sema, node->a),
                                         eval_rhs_label);
-                    ir_add_assign(
-                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_assign(ir,
+                                  result,
+                                  bool_type,
+                                  ir_make_bool_literal(bool_type, true),
+                                  bool_type);
                     ir_add_jump(ir, end_label);
                     ir_add_label(ir, eval_rhs_label);
                     IrValue rhs = ir_lower_node(lex,
@@ -1251,12 +1260,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                         rhs,
                                         ir_node_type_index(ast, sema, node->b),
                                         false_label);
-                    ir_add_assign(
-                        ir, result, bool_type, ir_make_bool_literal(bool_type, true), bool_type);
+                    ir_add_assign(ir,
+                                  result,
+                                  bool_type,
+                                  ir_make_bool_literal(bool_type, true),
+                                  bool_type);
                     ir_add_jump(ir, end_label);
                     ir_add_label(ir, false_label);
-                    ir_add_assign(
-                        ir, result, bool_type, ir_make_bool_literal(bool_type, false), bool_type);
+                    ir_add_assign(ir,
+                                  result,
+                                  bool_type,
+                                  ir_make_bool_literal(bool_type, false),
+                                  bool_type);
                     ir_add_label(ir, end_label);
                 }
 
@@ -1316,13 +1331,13 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .kind          = IR_VALUE_VARIABLE,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            IrValue op_lhs = lhs;
-            IrValue op_rhs = rhs;
-            u32 lhs_type   = ir_node_type_index(ast, sema, node->a);
-            u32 rhs_type   = ir_node_type_index(ast, sema, node->b);
+            IrValue op_lhs   = lhs;
+            IrValue op_rhs   = rhs;
+            u32     lhs_type = ir_node_type_index(ast, sema, node->a);
+            u32     rhs_type = ir_node_type_index(ast, sema, node->b);
             if (node->kind == AK_Greater || node->kind == AK_GreaterEqual) {
-                op_lhs = rhs;
-                op_rhs = lhs;
+                op_lhs   = rhs;
+                op_rhs   = lhs;
                 lhs_type = ir_node_type_index(ast, sema, node->b);
                 rhs_type = ir_node_type_index(ast, sema, node->a);
             }

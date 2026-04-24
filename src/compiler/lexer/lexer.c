@@ -5,8 +5,8 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/error/error.h>
-#include <errno.h>
 #include <compiler/lexer/lexer.h>
+#include <errno.h>
 
 #define LEXER_ARRAY_INIT_CAPACITY 256
 
@@ -304,9 +304,9 @@ internal bool lexer_lex_one_token(NerdSource source,
             i++;
         }
 
-        bool is_float = i + 1 < source_code.count && source_code.data[i] == '.' &&
-                        source_code.data[i + 1] >= '0' &&
-                        source_code.data[i + 1] <= '9';
+        bool is_float =
+            i + 1 < source_code.count && source_code.data[i] == '.' &&
+            source_code.data[i + 1] >= '0' && source_code.data[i + 1] <= '9';
         if (is_float) {
             i += 2;
             while (i < source_code.count && source_code.data[i] >= '0' &&
@@ -324,8 +324,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             memcpy(buffer, source_code.data + start, literal_len);
             buffer[literal_len] = '\0';
 
-            errno     = 0;
-            f64 value = strtod(buffer, NULL);
+            errno               = 0;
+            f64 value           = strtod(buffer, NULL);
             if (errno == ERANGE) {
                 return error_0103_invalid_number_literal(
                     source,
@@ -424,7 +424,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             array_push(lexer->tokens,
                        (Token){.kind = TK_EqualEqual, .offset = (u32)i});
             *io_index = i + 2;
-        } else if (i + 1 < source_code.count && source_code.data[i + 1] == '>') {
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '>') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_FatArrow, .offset = (u32)i});
             *io_index = i + 2;
@@ -539,26 +540,13 @@ internal bool lexer_lex_one_token(NerdSource source,
 #    pragma GCC diagnostic ignored "-Winitializer-overrides"
 #endif
     static TokenKind token_lookup[128] = {
-        [0 ... 127] = TK_EOF,
-        ['+']       = TK_Plus,
-        ['-']       = TK_Minus,
-        ['*']       = TK_Star,
-        ['/']       = TK_Slash,
-        ['%']       = TK_Percent,
-        ['(']       = TK_LParen,
-        [')']       = TK_RParen,
-        [',']       = TK_Comma,
-        ['{']       = TK_LBrace,
-        ['}']       = TK_RBrace,
-        ['.']       = TK_Dot,
-        [':']       = TK_Colon,
-        ['=']       = TK_Equal,
-        ['!']       = TK_Bang,
-        ['&']       = TK_Amp,
-        ['|']       = TK_Pipe,
-        ['^']       = TK_Caret,
-        ['<']       = TK_Less,
-        ['>']       = TK_Greater,
+        [0 ... 127] = TK_EOF, ['+'] = TK_Plus,    ['-'] = TK_Minus,
+        ['*'] = TK_Star,      ['/'] = TK_Slash,   ['%'] = TK_Percent,
+        ['('] = TK_LParen,    [')'] = TK_RParen,  [','] = TK_Comma,
+        ['{'] = TK_LBrace,    ['}'] = TK_RBrace,  ['.'] = TK_Dot,
+        [':'] = TK_Colon,     ['='] = TK_Equal,   ['!'] = TK_Bang,
+        ['&'] = TK_Amp,       ['|'] = TK_Pipe,    ['^'] = TK_Caret,
+        ['<'] = TK_Less,      ['>'] = TK_Greater,
     };
 #if COMPILER_CLANG || COMPILER_GCC
 #    pragma GCC diagnostic pop

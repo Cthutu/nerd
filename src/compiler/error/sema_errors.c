@@ -614,14 +614,14 @@ bool error_0325_invalid_unary_operand(NerdSource source,
                                       string     expected_type,
                                       string     actual_type)
 {
-    ErrorInfo error = error_init(
-        325,
-        source,
-        span,
-        "Operator `" STRINGP "` requires `" STRINGP "`, found `" STRINGP "`",
-        STRINGV(operator_name),
-        STRINGV(expected_type),
-        STRINGV(actual_type));
+    ErrorInfo error = error_init(325,
+                                 source,
+                                 span,
+                                 "Operator `" STRINGP "` requires `" STRINGP
+                                 "`, found `" STRINGP "`",
+                                 STRINGV(operator_name),
+                                 STRINGV(expected_type),
+                                 STRINGV(actual_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -645,21 +645,20 @@ bool error_0326_invalid_binary_operands(NerdSource source,
                                         string     left_type,
                                         string     right_type)
 {
-    ErrorInfo error = error_init(
-        326,
-        source,
-        span,
-        "Operator `" STRINGP "` requires " STRINGP ", found `" STRINGP
-        "` and `" STRINGP "`",
-        STRINGV(operator_name),
-        STRINGV(expected_rule),
-        STRINGV(left_type),
-        STRINGV(right_type));
+    ErrorInfo error = error_init(326,
+                                 source,
+                                 span,
+                                 "Operator `" STRINGP "` requires " STRINGP
+                                 ", found `" STRINGP "` and `" STRINGP "`",
+                                 STRINGV(operator_name),
+                                 STRINGV(expected_rule),
+                                 STRINGV(left_type),
+                                 STRINGV(right_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
-                        "These operands have types `" STRINGP "` and `"
-                        STRINGP "`",
+                        "These operands have types `" STRINGP "` and `" STRINGP
+                        "`",
                         STRINGV(left_type),
                         STRINGV(right_type));
     error_add_help(&error,

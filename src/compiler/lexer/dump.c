@@ -134,8 +134,8 @@ void lex_dump(const Lexer* lexer)
                 break;
             }
         case TK_Float:
-            row[3] = table_cell_string(
-                string_format(&temp_arena, "%.17g", lexer->floats[float_index++]));
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "%.17g", lexer->floats[float_index++]));
             break;
         case TK_String:
             row[3] = table_cell_string(lexer->strings[string_index++]);

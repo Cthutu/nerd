@@ -378,7 +378,7 @@ internal void cgen_add_float_literal(CGen* cgen, f64 value, u32 type_index)
     int  len          = snprintf(rendered, sizeof(rendered), "%.17g", value);
     ASSERT(len > 0 && (usize)len < sizeof(rendered),
            "Float literal rendering overflow");
-    bool   needs_decimal = true;
+    bool needs_decimal = true;
     for (int i = 0; i < len; ++i) {
         if (rendered[i] == '.' || rendered[i] == 'e' || rendered[i] == 'E') {
             needs_decimal = false;

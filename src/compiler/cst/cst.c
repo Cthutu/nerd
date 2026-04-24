@@ -648,9 +648,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
             return cst_emit_node(state,
                                  (CstNode){
-                                     .kind = token.kind == TK_Bang
-                                                 ? CK_LogicalNot
-                                                 : CK_IntegerNegate,
+                                     .kind        = token.kind == TK_Bang
+                                                        ? CK_LogicalNot
+                                                        : CK_IntegerNegate,
                                      .token_index = token_index,
                                      .a           = operand,
                                  },

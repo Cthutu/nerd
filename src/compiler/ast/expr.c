@@ -611,8 +611,8 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             }
 
             AstNode node = {
-                .kind = token.kind == TK_Bang ? AK_LogicalNot
-                                              : AK_IntegerNegate,
+                .kind =
+                    token.kind == TK_Bang ? AK_LogicalNot : AK_IntegerNegate,
                 .token_index = token.token_index,
                 .a           = rhs,
             };
