@@ -829,10 +829,11 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         {
             const CstOnInfo* on = &cst->ons[node->b];
             if (on->kind == COK_Bool) {
-                const CstOnBranch* else_branch =
-                    &cst->on_branches[on->first_branch + 1];
+                u32 branch_offset = on->branch_count > 1 ? 1 : 0;
+                const CstOnBranch* last_branch =
+                    &cst->on_branches[on->first_branch + branch_offset];
                 return format_node_end_token_index(
-                    cst, lexer, else_branch->expr_node_index);
+                    cst, lexer, last_branch->expr_node_index);
             }
 
             u32 scrutinee_end =
@@ -1372,13 +1373,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Block) {
         sb_append_cstr(sb, "{\n");
-        for (u32 i = stmt->a; i < stmt->b; ++i) {
-            if (!cst_node_is_block_statement(&cst->nodes[i])) {
-                continue;
-            }
-            format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
-            i = cst_block_statement_end_exclusive(cst, i) - 1;
-        }
+        format_emit_block_contents(
+            sb, cst, lexer, node_index, indent_level + 1);
         format_emit_indent(sb, indent_level);
         sb_append_cstr(sb, "}\n");
         return;
@@ -1415,13 +1411,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
         }
         sb_append_cstr(sb, " {\n");
-        for (u32 i = body->a; i < body->b; ++i) {
-            if (!cst_node_is_block_statement(&cst->nodes[i])) {
-                continue;
-            }
-            format_emit_block_statement(sb, cst, lexer, i, indent_level + 1);
-            i = cst_block_statement_end_exclusive(cst, i) - 1;
-        }
+        format_emit_block_contents(sb, cst, lexer, stmt->b, indent_level + 1);
         format_emit_indent(sb, indent_level);
         sb_append_cstr(sb, "}\n");
         return;
@@ -1869,8 +1859,8 @@ bool format_file(cstr input_path, cstr output_path)
     }
 
     usize written = fwrite(rendered.data, 1, rendered.count, file);
-    fclose(file);
-    if (written != rendered.count) {
+    bool close_failed = fclose(file) != 0;
+    if (written != rendered.count || close_failed) {
         arena_done(&arena);
         return error_runtime("Failed to write formatted file: %s", output_path);
     }

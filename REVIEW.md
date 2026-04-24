@@ -65,8 +65,8 @@ dead code.
 
 ## Compiler Formatting
 
-- [ ] `src/compiler/format/format.c`
-- [ ] `src/compiler/format/format.h`
+- [x] `src/compiler/format/format.c`
+- [x] `src/compiler/format/format.h`
 
 ## Compiler IR
 
