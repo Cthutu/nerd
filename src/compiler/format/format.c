@@ -13,6 +13,12 @@
 
 #define FORMAT_WRAP_WIDTH 80
 
+internal void format_emit_for_header_items(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            first_item,
+                                           u32            item_count);
+
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
 
@@ -339,6 +345,10 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_ContinueExpr:
         sb_append_cstr(sb, "continue");
+        if (node->b != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, node->b));
+        }
         break;
     case CK_ExprBlock:
         sb_append_cstr(sb, "$");
@@ -349,6 +359,50 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "{\n");
         format_emit_block_contents(sb, cst, lexer, node->a, 1);
         sb_append_char(sb, '}');
+        break;
+    case CK_For:
+        {
+            const CstForInfo* for_info = &cst->fors[node->a];
+            if (for_info->label_symbol != U32_MAX) {
+                sb_append_char(sb, '$');
+                sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
+                sb_append_char(sb, ' ');
+            }
+            sb_append_cstr(sb, "for");
+            bool is_c_style =
+                for_info->init_count > 0 || for_info->update_count > 0;
+            if (is_c_style) {
+                sb_append_char(sb, ' ');
+                if (for_info->init_count > 0) {
+                    format_emit_for_header_items(sb,
+                                                 cst,
+                                                 lexer,
+                                                 for_info->first_init,
+                                                 for_info->init_count);
+                }
+                sb_append_cstr(sb, "; ");
+                if (for_info->condition_node_index != U32_MAX) {
+                    format_emit_expr(
+                        sb, cst, lexer, for_info->condition_node_index, 0);
+                }
+                sb_append_cstr(sb, "; ");
+                if (for_info->update_count > 0) {
+                    format_emit_for_header_items(sb,
+                                                 cst,
+                                                 lexer,
+                                                 for_info->first_update,
+                                                 for_info->update_count);
+                }
+            } else if (for_info->condition_node_index != U32_MAX) {
+                sb_append_char(sb, ' ');
+                format_emit_expr(
+                    sb, cst, lexer, for_info->condition_node_index, 0);
+            }
+            sb_append_cstr(sb, " {\n");
+            format_emit_block_contents(sb, cst, lexer, node->b, 2);
+            format_emit_indent(sb, 1);
+            sb_append_char(sb, '}');
+        }
         break;
     case CK_IntegerPlus:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
@@ -1037,7 +1091,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             value = format_render_value_to_string(arena, cst, lexer, node->b);
         }
 
-        if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock) {
+        if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
+            payload->kind == CK_For || payload->kind == CK_ExprBlock) {
             return false;
         }
 
@@ -1055,10 +1110,70 @@ internal bool format_collect_aligned_statement(Arena*       arena,
     return false;
 }
 
-internal u32 format_next_block_statement(const Cst* cst, u32 start, u32 end)
+internal bool format_node_is_owned_by_later_statement(const Cst* cst,
+                                                      u32        node_index,
+                                                      u32        end,
+                                                      u32        current_block)
+{
+    if (cst->nodes[node_index].kind == CK_Block) {
+        for (u32 owner_index = 0; owner_index < end; ++owner_index) {
+            const CstNode* owner = &cst->nodes[owner_index];
+            if ((owner->kind == CK_For || owner->kind == CK_ExprBlock) &&
+                owner->b == node_index) {
+                return true;
+            }
+        }
+    }
+
+    for (u32 i = 0; i < end; ++i) {
+        const CstNode* block = &cst->nodes[i];
+        if (i == current_block || block->kind != CK_Block ||
+            !(block->a <= node_index && node_index < block->b)) {
+            continue;
+        }
+        for (u32 owner_index = 0; owner_index < end; ++owner_index) {
+            const CstNode* owner = &cst->nodes[owner_index];
+            if ((owner->kind == CK_For || owner->kind == CK_ExprBlock) &&
+                owner->b == i) {
+                return true;
+            }
+        }
+    }
+
+    for (u32 i = node_index + 1; i < end; ++i) {
+        const CstNode* node = &cst->nodes[i];
+        if (node->kind == CK_Bind || node->kind == CK_Variable) {
+            const CstNode* payload = &cst->nodes[node->b];
+            if (node->b == node_index) {
+                return true;
+            }
+            if (payload->kind == CK_AnnotatedValue &&
+                payload->b == node_index) {
+                return true;
+            }
+            continue;
+        }
+        if ((node->kind == CK_For || node->kind == CK_ExprBlock) &&
+            node->b == node_index) {
+            return true;
+        }
+        if (node->kind == CK_Statement && node->a == node_index) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal u32 format_next_block_statement(const Cst* cst,
+                                         u32        start,
+                                         u32        end,
+                                         u32        current_block)
 {
     for (u32 i = start; i < end; ++i) {
-        if (cst_node_is_block_statement(&cst->nodes[i])) {
+        if (cst_node_is_block_statement(&cst->nodes[i]) &&
+            !format_node_is_owned_by_later_statement(
+                cst, i, end, current_block)) {
             return i;
         }
     }
@@ -1183,7 +1298,9 @@ internal void format_emit_block_contents(StringBuilder* sb,
     arena_init(&align_arena);
 
     for (u32 i = block->a; i < block->b; ++i) {
-        if (!cst_node_is_block_statement(&cst->nodes[i])) {
+        if (!cst_node_is_block_statement(&cst->nodes[i]) ||
+            format_node_is_owned_by_later_statement(
+                cst, i, block->b, block_node_index)) {
             continue;
         }
 
@@ -1208,8 +1325,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
             u32 last_aligned_index = i;
             u32 cursor             = i + 1;
             while (true) {
-                u32 next_statement =
-                    format_next_block_statement(cst, cursor, block->b);
+                u32 next_statement = format_next_block_statement(
+                    cst, cursor, block->b, block_node_index);
                 if (next_statement == U32_MAX ||
                     format_has_blank_line_between_statements(
                         cst, lexer, last_aligned_index, next_statement)) {
@@ -1241,8 +1358,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 previous_statement_index = last_aligned_index;
                 i                        = last_aligned_index;
 
-                u32 next_statement =
-                    format_next_block_statement(cst, i + 1, block->b);
+                u32 next_statement       = format_next_block_statement(
+                    cst, i + 1, block->b, block_node_index);
                 if (array_count(aligned) > 1 && next_statement != U32_MAX &&
                     !format_has_blank_line_between_statements(
                         cst, lexer, last_aligned_index, next_statement)) {
@@ -1268,8 +1385,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
 
         format_emit_block_statement(sb, cst, lexer, i, indent_level);
         if (format_statement_is_function_binding(cst, i)) {
-            u32 next_statement =
-                format_next_block_statement(cst, i + 1, block->b);
+            u32 next_statement = format_next_block_statement(
+                cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
                 !format_has_blank_line_between_statements(
                     cst, lexer, i, next_statement)) {
@@ -1279,8 +1396,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
         FormatAlignedStatement current_aligned = {0};
         if (format_collect_aligned_statement(
                 &align_arena, cst, lexer, i, &current_aligned)) {
-            u32 next_statement =
-                format_next_block_statement(cst, i + 1, block->b);
+            u32 next_statement = format_next_block_statement(
+                cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
                 !format_has_blank_line_between_statements(
                     cst, lexer, i, next_statement)) {
@@ -1407,6 +1524,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
         ASSERT(body->kind == CK_Block, "Expected for body block");
 #endif
         const CstForInfo* for_info = &cst->fors[stmt->a];
+        if (for_info->label_symbol != U32_MAX) {
+            sb_append_char(sb, '$');
+            sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
+            sb_append_char(sb, ' ');
+        }
         sb_append_cstr(sb, "for");
         bool is_c_style =
             for_info->init_count > 0 || for_info->update_count > 0;

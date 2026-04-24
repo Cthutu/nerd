@@ -336,10 +336,18 @@ typedef struct {
 } IrExprBlockTarget;
 
 typedef struct {
+    u32 label_symbol;
+    i64 break_label;
+    i64 continue_label;
+} IrLoopTarget;
+
+typedef struct {
     i64               break_label;
     i64               continue_label;
     u32               expr_target_count;
+    u32               loop_target_count;
     IrExprBlockTarget expr_targets[IR_MAX_EXPR_BLOCK_TARGETS];
+    IrLoopTarget      loop_targets[IR_MAX_EXPR_BLOCK_TARGETS];
 } IrLoopLabels;
 
 internal IrLoopLabels ir_no_control_labels(void)
@@ -355,6 +363,18 @@ internal const IrExprBlockTarget* ir_find_expr_block_target(IrLoopLabels loop,
 {
     for (u32 i = loop.expr_target_count; i > 0; --i) {
         const IrExprBlockTarget* target = &loop.expr_targets[i - 1];
+        if (label_symbol == U32_MAX || target->label_symbol == label_symbol) {
+            return target;
+        }
+    }
+    return NULL;
+}
+
+internal const IrLoopTarget* ir_find_loop_target(IrLoopLabels loop,
+                                                 u32          label_symbol)
+{
+    for (u32 i = loop.loop_target_count; i > 0; --i) {
+        const IrLoopTarget* target = &loop.loop_targets[i - 1];
         if (label_symbol == U32_MAX || target->label_symbol == label_symbol) {
             return target;
         }
@@ -1323,15 +1343,32 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                AK_Break ||
                            ast->nodes[branch->expr_node_index].kind ==
                                AK_BreakExpr) {
-                    ASSERT(loop.break_label >= 0, "Expected loop break label");
-                    ir_add_jump(ir, loop.break_label);
+                    const AstNode* branch_node =
+                        &ast->nodes[branch->expr_node_index];
+                    const IrLoopTarget* loop_target =
+                        ir_find_loop_target(loop, branch_node->b);
+                    if (loop_target != NULL) {
+                        ir_add_jump(ir, loop_target->break_label);
+                    } else {
+                        ASSERT(loop.break_label >= 0,
+                               "Expected loop break label");
+                        ir_add_jump(ir, loop.break_label);
+                    }
                 } else if (ast->nodes[branch->expr_node_index].kind ==
                                AK_Continue ||
                            ast->nodes[branch->expr_node_index].kind ==
                                AK_ContinueExpr) {
-                    ASSERT(loop.continue_label >= 0,
-                           "Expected loop continue label");
-                    ir_add_jump(ir, loop.continue_label);
+                    const AstNode* branch_node =
+                        &ast->nodes[branch->expr_node_index];
+                    const IrLoopTarget* loop_target =
+                        ir_find_loop_target(loop, branch_node->b);
+                    if (loop_target != NULL) {
+                        ir_add_jump(ir, loop_target->continue_label);
+                    } else {
+                        ASSERT(loop.continue_label >= 0,
+                               "Expected loop continue label");
+                        ir_add_jump(ir, loop.continue_label);
+                    }
                 } else {
                     IrValue branch_value =
                         ir_lower_node(lex,
@@ -1400,6 +1437,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
             node_values[node_index] = result;
             return result;
         }
+
+    case AK_For:
+        (void)ir_generate_statement(lex,
+                                    ast,
+                                    sema,
+                                    U32_MAX,
+                                    node_index,
+                                    loop,
+                                    node_values,
+                                    next_value_index,
+                                    ir);
+        return node_values[node_index];
 
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -1724,7 +1773,8 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_Break) {
         const IrExprBlockTarget* expr_target =
             ir_find_expr_block_target(loop, node->b);
-        if (node->a != U32_MAX || node->b != U32_MAX ||
+        const IrLoopTarget* loop_target = ir_find_loop_target(loop, node->b);
+        if (node->a != U32_MAX || (node->b != U32_MAX && loop_target == NULL) ||
             (loop.break_label < 0 && expr_target != NULL &&
              expr_target->result_type == ir_builtin_type(sema, STK_Void))) {
             ASSERT(expr_target != NULL, "Expected expression block target");
@@ -1744,6 +1794,8 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                               ir_node_type_index(ast, sema, node->a));
             }
             ir_add_jump(ir, expr_target->break_label);
+        } else if (loop_target != NULL) {
+            ir_add_jump(ir, loop_target->break_label);
         } else {
             ASSERT(loop.break_label >= 0, "Expected loop break label");
             ir_add_jump(ir, loop.break_label);
@@ -1752,14 +1804,29 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_Continue) {
-        ASSERT(loop.continue_label >= 0, "Expected loop continue label");
-        ir_add_jump(ir, loop.continue_label);
+        const IrLoopTarget* loop_target = ir_find_loop_target(loop, node->b);
+        if (loop_target != NULL) {
+            ir_add_jump(ir, loop_target->continue_label);
+        } else {
+            ASSERT(loop.continue_label >= 0, "Expected loop continue label");
+            ir_add_jump(ir, loop.continue_label);
+        }
         return IR_STMT_CONTINUE;
     }
 
     if (node->kind == AK_For) {
         ASSERT(ast->nodes[node->b].kind == AK_Block, "Expected for body block");
         const AstForInfo* for_info = &ast->fors[node->a];
+        u32     result_type        = ir_node_type_index(ast, sema, node_index);
+        IrValue result             = ir_unset_value();
+        if (result_type != ir_builtin_type(sema, STK_Void)) {
+            result = (IrValue){
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = result_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_temp_local(ir, result, result_type);
+        }
         for (u32 item = 0; item < for_info->init_count; ++item) {
             ir_generate_statement(lex,
                                   ast,
@@ -1792,9 +1859,28 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 ir_node_type_index(ast, sema, for_info->condition_node_index),
                 end_label);
         }
-        IrLoopLabels inner_loop       = loop;
-        inner_loop.break_label        = end_label;
-        inner_loop.continue_label     = continue_label;
+        IrLoopLabels inner_loop   = loop;
+        inner_loop.break_label    = end_label;
+        inner_loop.continue_label = continue_label;
+        ASSERT(inner_loop.loop_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
+               "Too many nested loop targets");
+        inner_loop.loop_targets[inner_loop.loop_target_count++] =
+            (IrLoopTarget){
+                .label_symbol   = for_info->label_symbol,
+                .break_label    = end_label,
+                .continue_label = continue_label,
+            };
+        if (result_type != ir_builtin_type(sema, STK_Void)) {
+            ASSERT(inner_loop.expr_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
+                   "Too many nested value targets");
+            inner_loop.expr_targets[inner_loop.expr_target_count++] =
+                (IrExprBlockTarget){
+                    .label_symbol = for_info->label_symbol,
+                    .break_label  = end_label,
+                    .result       = result,
+                    .result_type  = result_type,
+                };
+        }
         IrStatementResult body_result = ir_generate_statement(lex,
                                                               ast,
                                                               sema,
@@ -1827,6 +1913,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
             ir_add_jump(ir, start_label);
         }
         ir_add_label(ir, end_label);
+        node_values[node_index] = result;
         return IR_STMT_FALLTHROUGH;
     }
 

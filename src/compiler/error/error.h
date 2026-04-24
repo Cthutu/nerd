@@ -223,6 +223,9 @@ bool error_0329_missing_expression_block_break(NerdSource source,
 bool error_0330_unknown_control_label(NerdSource source,
                                       ErrorSpan  span,
                                       string     label);
+bool error_0331_continue_to_non_loop_label(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     label);
 
 //------------------------------------------------------------------------------
 // Low-level error system

@@ -141,6 +141,66 @@ main :: fn () {
 }
 ¬
 main :: fn () {
+    for {
+        continue $missing
+    }
+}
+¬
+{
+    "code": "0330",
+    "message": "Unknown control label `$missing`",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 3,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 9,
+            "length": 8,
+            "message": "No enclosing expression block or loop has this label"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use the label from an enclosing `$label { ... }` block or `$label for ... { ... }` loop."
+    ]
+}
+¬
+main :: fn () {
+    $block {
+        for {
+            continue $block
+        }
+    }
+}
+¬
+{
+    "code": "0331",
+    "message": "`continue` label `$block` does not name a loop",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 4,
+        "column": 13
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 13,
+            "length": 8,
+            "message": "This label names an expression block, not a `for` loop"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `break $block` for an expression block, or `continue` to a `$label for ... { ... }` loop."
+    ]
+}
+¬
+main :: fn () {
     for on true => break {
     }
 }

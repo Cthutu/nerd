@@ -86,5 +86,24 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
     if (node->kind == AK_For) {
         return ast->nodes[node->b].b;
     }
+    if (node->kind == AK_Bind || node->kind == AK_Variable ||
+        node->kind == AK_Statement) {
+        u32 child_index = node->kind == AK_Statement ? node->a : node->b;
+        if (child_index >= array_count(ast->nodes)) {
+            return node_index + 1;
+        }
+        const AstNode* child = &ast->nodes[child_index];
+        if (child->kind == AK_For || child->kind == AK_Block) {
+            u32 end = ast_block_statement_end_exclusive(ast, child_index);
+            return end > node_index + 1 ? end : node_index + 1;
+        }
+        if (child->kind == AK_Expression) {
+            const AstNode* root = &ast->nodes[child->a];
+            if (root->kind == AK_For || root->kind == AK_Block) {
+                u32 end = ast_block_statement_end_exclusive(ast, child->a);
+                return end > node_index + 1 ? end : node_index + 1;
+            }
+        }
+    }
     return node_index + 1;
 }

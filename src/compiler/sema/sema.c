@@ -3256,6 +3256,45 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                              &has_return)) {
                 return false;
             }
+            u32  loop_type       = sema_no_type();
+            bool has_value_break = false;
+            for (u32 i = body->a; i < body->b; ++i) {
+                const AstNode* stmt = &ast->nodes[i];
+                if (!ast_node_is_block_statement(stmt)) {
+                    continue;
+                }
+                if (stmt->kind == AK_Break && stmt->a != U32_MAX &&
+                    (stmt->b == U32_MAX || stmt->b == for_info->label_symbol)) {
+                    u32 break_expected =
+                        loop_type == sema_no_type() ? expected_type : loop_type;
+                    u32 break_type = sema_no_type();
+                    if (!sema_infer_node_type(lexer,
+                                              ast,
+                                              sema,
+                                              stmt->a,
+                                              break_expected,
+                                              &break_type)) {
+                        return false;
+                    }
+                    if (loop_type == sema_no_type()) {
+                        loop_type = break_type;
+                    } else if (loop_type != break_type) {
+                        Arena temp_arena = {0};
+                        arena_init(&temp_arena);
+                        bool ok = error_0320_on_branch_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, stmt),
+                            sema_type_name(sema, &temp_arena, loop_type),
+                            sema_node_span(lexer, &ast->nodes[stmt->a]),
+                            sema_type_name(sema, &temp_arena, break_type));
+                        arena_done(&temp_arena);
+                        return ok;
+                    }
+                    sema->node_type_indices[i] = break_type;
+                    has_value_break            = true;
+                }
+                i = ast_block_statement_end_exclusive(ast, i) - 1;
+            }
             for (u32 item = 0; item < for_info->update_count; ++item) {
                 u32 item_node = ast->for_items[for_info->first_update + item];
                 u32 ignored   = sema_no_type();
@@ -3268,7 +3307,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return false;
                 }
             }
-            type_index = sema_builtin_type(sema, STK_Void);
+            type_index =
+                has_value_break ? loop_type : sema_builtin_type(sema, STK_Void);
         }
         break;
 
@@ -4505,12 +4545,26 @@ internal bool sema_block_is_expr_block_body(const Ast* ast, u32 block_index)
 }
 
 #define SEMA_MAX_CONTROL_LABELS 64
+#define SEMA_LOOP_LABEL_FLAG 0x80000000u
 
 internal bool
 sema_control_label_is_visible(const u32* labels, u32 label_count, u32 label)
 {
     for (u32 i = label_count; i > 0; --i) {
-        if (labels[i - 1] == label) {
+        u32 visible_label = labels[i - 1] & ~SEMA_LOOP_LABEL_FLAG;
+        if (visible_label == label) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool
+sema_loop_label_is_visible(const u32* labels, u32 label_count, u32 label)
+{
+    for (u32 i = label_count; i > 0; --i) {
+        if ((labels[i - 1] & SEMA_LOOP_LABEL_FLAG) &&
+            (labels[i - 1] & ~SEMA_LOOP_LABEL_FLAG) == label) {
             return true;
         }
     }
@@ -4556,6 +4610,22 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             return error_0328_loop_control_outside_loop(
                 lexer->source, sema_node_span(lexer, node), s("continue"));
         }
+        if (node->b != U32_MAX) {
+            if (sema_loop_label_is_visible(
+                    expr_labels, expr_label_count, node->b)) {
+                return true;
+            }
+            if (sema_control_label_is_visible(
+                    expr_labels, expr_label_count, node->b)) {
+                return error_0331_continue_to_non_loop_label(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    lex_symbol(lexer, node->b));
+            }
+            return error_0330_unknown_control_label(lexer->source,
+                                                    sema_node_span(lexer, node),
+                                                    lex_symbol(lexer, node->b));
+        }
         return true;
     case AK_Block:
         for (u32 i = node->a; i < node->b; ++i) {
@@ -4598,6 +4668,13 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_For:
         {
             const AstForInfo* for_info = &ast->fors[node->a];
+            ASSERT(expr_label_count < SEMA_MAX_CONTROL_LABELS,
+                   "Too many nested control labels");
+            u32 next_label_count = expr_label_count;
+            if (for_info->label_symbol != U32_MAX) {
+                expr_labels[next_label_count++] =
+                    for_info->label_symbol | SEMA_LOOP_LABEL_FLAG;
+            }
             for (u32 i = 0; i < for_info->init_count; ++i) {
                 if (!sema_validate_loop_control(
                         lexer,
@@ -4606,7 +4683,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                         0,
                         expr_block_depth,
                         expr_labels,
-                        expr_label_count)) {
+                        next_label_count)) {
                     return false;
                 }
             }
@@ -4617,7 +4694,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                                             0,
                                             expr_block_depth,
                                             expr_labels,
-                                            expr_label_count)) {
+                                            next_label_count)) {
                 return false;
             }
             for (u32 i = 0; i < for_info->update_count; ++i) {
@@ -4628,7 +4705,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                         0,
                         expr_block_depth,
                         expr_labels,
-                        expr_label_count)) {
+                        next_label_count)) {
                     return false;
                 }
             }
@@ -4638,7 +4715,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                                               loop_depth + 1,
                                               expr_block_depth,
                                               expr_labels,
-                                              expr_label_count);
+                                              next_label_count);
         }
     case AK_FnDef:
         {

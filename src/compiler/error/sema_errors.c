@@ -752,7 +752,7 @@ bool error_0329_missing_expression_block_break(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report a labelled break that does not name an enclosing expression block.
+// Report a labelled break or continue that does not name an enclosing target.
 
 bool error_0330_unknown_control_label(NerdSource source,
                                       ErrorSpan  span,
@@ -766,9 +766,37 @@ bool error_0330_unknown_control_label(NerdSource source,
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
-                        "No enclosing expression block has this label");
+                        "No enclosing expression block or loop has this label");
     error_add_help(&error,
-                   "Use the label from an enclosing `$label { ... }` block.");
+                   "Use the label from an enclosing `$label { ... }` block "
+                   "or `$label for ... { ... }` loop.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a labelled continue that targets an expression block instead of a
+// loop.
+
+bool error_0331_continue_to_non_loop_label(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     label)
+{
+    ErrorInfo error =
+        error_init(331,
+                   source,
+                   span,
+                   "`continue` label `$" STRINGP "` does not name a loop",
+                   STRINGV(label));
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "This label names an expression block, not a `for` loop");
+    error_add_help(&error,
+                   "Use `break $" STRINGP "` for an expression block, or "
+                   "`continue` to a `$label for ... { ... }` loop.",
+                   STRINGV(label));
     error_render(&error);
     return false;
 }

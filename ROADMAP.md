@@ -766,26 +766,27 @@ needed earlier.
       exits to an outer block still need an explicit fallback `break` in the
       target block to prove the result type
 
-- [ ] 62. Add labelled `break`/`continue` and loop expressions.
+- [x] 62. Add labelled `break`/`continue` and loop expressions.
   - [x] Support `break $label <expr>` for expression-block labels.
-  - [ ] Support labelled loops.
-  - [ ] Support `continue $label`.
-  - [ ] Plain `break <expr>` targets the nearest surrounding expression block or
+  - [x] Support labelled loops.
+  - [x] Support `continue $label`.
+  - [x] Plain `break <expr>` targets the nearest surrounding expression block or
     value-producing loop.
-  - [ ] Labelled `break $label <expr>` targets the referenced expression block or
+  - [x] Labelled `break $label <expr>` targets the referenced expression block or
     labelled loop.
-  - [ ] Labelled `continue $label` targets labelled loops only; continuing to a
+  - [x] Labelled `continue $label` targets labelled loops only; continuing to a
     non-loop expression block is invalid.
-  - [ ] Add value-producing loop expressions with `break <expr>`.
-  - [ ] Add `else` branches for loops only when the associated loop has
-    reachable value-producing `break` paths.
-  - [ ] Keep loop-expression typing exact and explicit.
+  - [x] Add value-producing loop expressions with `break <expr>`.
+  - [x] Keep loop-expression typing exact and explicit.
+  - Covered by language, error, formatter, and LSP regression tests.
 
 - [ ] 63. Extend typed control-flow merging beyond `on`.
   - Reuse or extend the branch-merge IR model for expression blocks and loop
     expressions.
   - Keep control-flow value merges explicit in IR rather than hidden in later
     code generation.
+  - Add `else` branches for loops only when the associated loop has reachable
+    value-producing `break` paths.
   - Extend tests, formatter support, LSP coverage, and documentation together.
 
 ## Future Ideas

@@ -524,6 +524,210 @@ internal bool ast_parse_for_item_list(AstParseState* state,
 }
 
 //------------------------------------------------------------------------------
+// Parse a `for` loop statement or expression. The current token must be `for`.
+
+bool ast_parse_for(AstParseState* state, u32 label_symbol, u32* out_node)
+{
+    u32        for_token_index = state->token.token_index;
+    u32        for_node        = 0;
+    AstForInfo for_info        = {
+               .first_init           = U32_MAX,
+               .init_count           = 0,
+               .condition_node_index = U32_MAX,
+               .first_update         = U32_MAX,
+               .update_count         = 0,
+               .label_symbol         = label_symbol,
+    };
+    u32 body_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_For,
+                           .token_index = for_token_index,
+                       },
+                       &for_node)) {
+        return false;
+    }
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_LBrace) {
+        if (state->token.kind == TK_Semicolon) {
+            if (ast_cursor_kind(state) != TK_Semicolon) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                bool previous_boundary = state->allow_statement_boundary;
+                state->allow_statement_boundary = true;
+                if (!ast_parse_expr(state, &for_info.condition_node_index)) {
+                    state->allow_statement_boundary = previous_boundary;
+                    return false;
+                }
+                state->allow_statement_boundary = previous_boundary;
+            } else if (!ast_next_token(state)) {
+                return false;
+            }
+
+            if (state->token.kind != TK_Semicolon) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Semicolon,
+                    state->token.kind);
+            }
+            if (!ast_expect_token(state, TK_Semicolon)) {
+                return false;
+            }
+
+            if (ast_cursor_kind(state) != TK_LBrace) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                u32  update_node        = 0;
+                bool update_raw_expr    = false;
+                u32  update_token_index = state->token.token_index;
+                if (!ast_parse_for_clause_item(
+                        state, false, &update_node, &update_raw_expr) ||
+                    !ast_parse_for_item_list(state,
+                                             false,
+                                             TK_LBrace,
+                                             update_node,
+                                             update_raw_expr,
+                                             update_token_index,
+                                             &for_info.first_update,
+                                             &for_info.update_count)) {
+                    return false;
+                }
+            } else if (!ast_next_token(state)) {
+                return false;
+            }
+        } else {
+            u32  first_node        = 0;
+            bool first_raw_expr    = false;
+            u32  first_token_index = state->token.token_index;
+            if (!ast_parse_for_clause_item(
+                    state, true, &first_node, &first_raw_expr)) {
+                return false;
+            }
+
+            if (state->token.kind == TK_LBrace) {
+                if (!first_raw_expr) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_Semicolon,
+                        state->token.kind);
+                }
+                for_info.condition_node_index = first_node;
+            } else if (state->token.kind == TK_Comma ||
+                       state->token.kind == TK_Semicolon) {
+                if (state->token.kind == TK_Comma) {
+                    if (!ast_parse_for_item_list(state,
+                                                 true,
+                                                 TK_Semicolon,
+                                                 first_node,
+                                                 first_raw_expr,
+                                                 first_token_index,
+                                                 &for_info.first_init,
+                                                 &for_info.init_count)) {
+                        return false;
+                    }
+                } else {
+                    u32 init_item = first_node;
+                    if (first_raw_expr &&
+                        !ast_wrap_for_expr_item(
+                            state, first_token_index, &init_item)) {
+                        return false;
+                    }
+                    for_info.first_init = (u32)array_count(state->for_items);
+                    for_info.init_count = 1;
+                    array_push(state->for_items, init_item);
+                }
+
+                if (!ast_expect_token(state, TK_Semicolon)) {
+                    return false;
+                }
+
+                if (ast_cursor_kind(state) != TK_Semicolon) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    bool previous_boundary = state->allow_statement_boundary;
+                    state->allow_statement_boundary = true;
+                    if (!ast_parse_expr(state,
+                                        &for_info.condition_node_index)) {
+                        state->allow_statement_boundary = previous_boundary;
+                        return false;
+                    }
+                    state->allow_statement_boundary = previous_boundary;
+                } else if (!ast_next_token(state)) {
+                    return false;
+                }
+
+                if (state->token.kind != TK_Semicolon) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_Semicolon,
+                        state->token.kind);
+                }
+                if (!ast_expect_token(state, TK_Semicolon)) {
+                    return false;
+                }
+
+                if (ast_cursor_kind(state) != TK_LBrace) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    u32  update_node        = 0;
+                    bool update_raw_expr    = false;
+                    u32  update_token_index = state->token.token_index;
+                    if (!ast_parse_for_clause_item(
+                            state, false, &update_node, &update_raw_expr)) {
+                        return false;
+                    }
+                    if (!ast_parse_for_item_list(state,
+                                                 false,
+                                                 TK_LBrace,
+                                                 update_node,
+                                                 update_raw_expr,
+                                                 update_token_index,
+                                                 &for_info.first_update,
+                                                 &for_info.update_count)) {
+                        return false;
+                    }
+                } else if (!ast_next_token(state)) {
+                    return false;
+                }
+            } else {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_LBrace,
+                    state->token.kind);
+            }
+        }
+        if (state->token_index == state->token.token_index &&
+            !ast_next_token(state)) {
+            return false;
+        }
+    }
+    if (!ast_parse_nested_block(state, &body_node)) {
+        return false;
+    }
+    u32 for_info_index = (u32)array_count(state->fors);
+    array_push(state->fors, for_info);
+    state->nodes[for_node].a = for_info_index;
+    state->nodes[for_node].b = body_node;
+    if (out_node) {
+        *out_node = for_node;
+    }
+    return true;
+}
+
+//------------------------------------------------------------------------------
 // Parse one statement inside a function or nested block.
 
 internal bool ast_parse_block_statement(AstParseState* state)
@@ -533,7 +737,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
         u32     token_index = state->token.token_index;
         u32     payload     = U32_MAX;
         u32     label       = U32_MAX;
-        if (kind == AK_Break && ast_cursor_kind(state) == TK_Dollar) {
+        if (ast_cursor_kind(state) == TK_Dollar) {
             if (!ast_next_token(state) || !ast_next_token(state) ||
                 state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(
@@ -597,204 +801,20 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_nested_block(state, NULL);
     }
 
-    if (state->token.kind == TK_for) {
-        u32        for_token_index = state->token.token_index;
-        u32        for_node        = 0;
-        AstForInfo for_info        = {
-                   .first_init           = U32_MAX,
-                   .init_count           = 0,
-                   .condition_node_index = U32_MAX,
-                   .first_update         = U32_MAX,
-                   .update_count         = 0,
-        };
-        u32 body_node = 0;
-        if (!ast_emit_node(state,
-                           (AstNode){
-                               .kind        = AK_For,
-                               .token_index = for_token_index,
-                           },
-                           &for_node)) {
-            return false;
-        }
+    if (state->token.kind == TK_Dollar && ast_cursor_kind(state) == TK_Symbol &&
+        ast_peek_kind_at(state, 1) == TK_for) {
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_LBrace,
-                TK_EOF);
-        }
-        if (state->token.kind != TK_LBrace) {
-            if (state->token.kind == TK_Semicolon) {
-                if (ast_cursor_kind(state) != TK_Semicolon) {
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    bool previous_boundary = state->allow_statement_boundary;
-                    state->allow_statement_boundary = true;
-                    if (!ast_parse_expr(state,
-                                        &for_info.condition_node_index)) {
-                        state->allow_statement_boundary = previous_boundary;
-                        return false;
-                    }
-                    state->allow_statement_boundary = previous_boundary;
-                } else if (!ast_next_token(state)) {
-                    return false;
-                }
-
-                if (state->token.kind != TK_Semicolon) {
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_Semicolon,
-                        state->token.kind);
-                }
-                if (!ast_expect_token(state, TK_Semicolon)) {
-                    return false;
-                }
-
-                if (ast_cursor_kind(state) != TK_LBrace) {
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    u32  update_node        = 0;
-                    bool update_raw_expr    = false;
-                    u32  update_token_index = state->token.token_index;
-                    if (!ast_parse_for_clause_item(
-                            state, false, &update_node, &update_raw_expr) ||
-                        !ast_parse_for_item_list(state,
-                                                 false,
-                                                 TK_LBrace,
-                                                 update_node,
-                                                 update_raw_expr,
-                                                 update_token_index,
-                                                 &for_info.first_update,
-                                                 &for_info.update_count)) {
-                        return false;
-                    }
-                } else if (!ast_next_token(state)) {
-                    return false;
-                }
-            } else {
-                u32  first_node        = 0;
-                bool first_raw_expr    = false;
-                u32  first_token_index = state->token.token_index;
-                if (!ast_parse_for_clause_item(
-                        state, true, &first_node, &first_raw_expr)) {
-                    return false;
-                }
-
-                if (state->token.kind == TK_LBrace) {
-                    if (!first_raw_expr) {
-                        return error_0203_expected_token(
-                            state->lexer->source,
-                            ast_token_span(state, &state->token),
-                            TK_Semicolon,
-                            state->token.kind);
-                    }
-                    for_info.condition_node_index = first_node;
-                } else if (state->token.kind == TK_Comma ||
-                           state->token.kind == TK_Semicolon) {
-                    if (state->token.kind == TK_Comma) {
-                        if (!ast_parse_for_item_list(state,
-                                                     true,
-                                                     TK_Semicolon,
-                                                     first_node,
-                                                     first_raw_expr,
-                                                     first_token_index,
-                                                     &for_info.first_init,
-                                                     &for_info.init_count)) {
-                            return false;
-                        }
-                    } else {
-                        u32 init_item = first_node;
-                        if (first_raw_expr &&
-                            !ast_wrap_for_expr_item(
-                                state, first_token_index, &init_item)) {
-                            return false;
-                        }
-                        for_info.first_init =
-                            (u32)array_count(state->for_items);
-                        for_info.init_count = 1;
-                        array_push(state->for_items, init_item);
-                    }
-
-                    if (!ast_expect_token(state, TK_Semicolon)) {
-                        return false;
-                    }
-
-                    if (ast_cursor_kind(state) != TK_Semicolon) {
-                        if (!ast_next_token(state)) {
-                            return false;
-                        }
-                        bool previous_boundary =
-                            state->allow_statement_boundary;
-                        state->allow_statement_boundary = true;
-                        if (!ast_parse_expr(state,
-                                            &for_info.condition_node_index)) {
-                            state->allow_statement_boundary = previous_boundary;
-                            return false;
-                        }
-                        state->allow_statement_boundary = previous_boundary;
-                    } else if (!ast_next_token(state)) {
-                        return false;
-                    }
-
-                    if (state->token.kind != TK_Semicolon) {
-                        return error_0203_expected_token(
-                            state->lexer->source,
-                            ast_token_span(state, &state->token),
-                            TK_Semicolon,
-                            state->token.kind);
-                    }
-                    if (!ast_expect_token(state, TK_Semicolon)) {
-                        return false;
-                    }
-
-                    if (ast_cursor_kind(state) != TK_LBrace) {
-                        if (!ast_next_token(state)) {
-                            return false;
-                        }
-                        u32  update_node        = 0;
-                        bool update_raw_expr    = false;
-                        u32  update_token_index = state->token.token_index;
-                        if (!ast_parse_for_clause_item(
-                                state, false, &update_node, &update_raw_expr)) {
-                            return false;
-                        }
-                        if (!ast_parse_for_item_list(state,
-                                                     false,
-                                                     TK_LBrace,
-                                                     update_node,
-                                                     update_raw_expr,
-                                                     update_token_index,
-                                                     &for_info.first_update,
-                                                     &for_info.update_count)) {
-                            return false;
-                        }
-                    } else if (!ast_next_token(state)) {
-                        return false;
-                    }
-                } else {
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_LBrace,
-                        state->token.kind);
-                }
-            }
-            if (state->token_index == state->token.token_index &&
-                !ast_next_token(state)) {
-                return false;
-            }
-        }
-        if (!ast_parse_nested_block(state, &body_node)) {
             return false;
         }
-        u32 for_info_index = (u32)array_count(state->fors);
-        array_push(state->fors, for_info);
-        state->nodes[for_node].a = for_info_index;
-        state->nodes[for_node].b = body_node;
-        return true;
+        u32 label = state->token.value.symbol_handle;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        return ast_parse_for(state, label, NULL);
+    }
+
+    if (state->token.kind == TK_for) {
+        return ast_parse_for(state, U32_MAX, NULL);
     }
 
     if (ast_symbol_starts_bind(state)) {

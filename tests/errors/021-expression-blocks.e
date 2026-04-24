@@ -134,11 +134,11 @@ main :: fn () {
             "line": 3,
             "column": 9,
             "length": 5,
-            "message": "No enclosing expression block has this label"
+            "message": "No enclosing expression block or loop has this label"
         }
     ],
     "notes": [],
     "help": [
-        "Use the label from an enclosing `$label { ... }` block."
+        "Use the label from an enclosing `$label { ... }` block or `$label for ... { ... }` loop."
     ]
 }

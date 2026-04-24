@@ -52,12 +52,12 @@
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_BreakExpr       | Expr node or U32_MAX  | Symbol or U32_MAX    |
-// | CK_ContinueExpr    | 0                     | 0                     |
+// | CK_ContinueExpr    | 0                     | Symbol or U32_MAX    |
 // | CK_ExprBlock       | Block node index      | Symbol or U32_MAX    |
 // | CK_Block           | First stmt index      | End-exclusive index   |
-// | CK_For             | CST for-info index   | Body block node      |
+// | CK_For             | CST for-info index    | Body block node      |
 // | CK_Break           | Expr node or U32_MAX  | Symbol or U32_MAX    |
-// | CK_Continue        | 0                     | 0                     |
+// | CK_Continue        | 0                     | Symbol or U32_MAX    |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
@@ -172,6 +172,7 @@ typedef struct {
     u32 condition_node_index;
     u32 first_update;
     u32 update_count;
+    u32 label_symbol;
 } CstForInfo;
 
 typedef struct {
