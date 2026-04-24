@@ -56,12 +56,12 @@ dead code.
 
 ## Compiler Errors
 
-- [ ] `src/compiler/error/ast_errors.c`
-- [ ] `src/compiler/error/error.c`
-- [ ] `src/compiler/error/error.h`
-- [ ] `src/compiler/error/lex_errors.c`
-- [ ] `src/compiler/error/render.c`
-- [ ] `src/compiler/error/sema_errors.c`
+- [x] `src/compiler/error/ast_errors.c`
+- [x] `src/compiler/error/error.c`
+- [x] `src/compiler/error/error.h`
+- [x] `src/compiler/error/lex_errors.c`
+- [x] `src/compiler/error/render.c`
+- [x] `src/compiler/error/sema_errors.c`
 
 ## Compiler Formatting
 

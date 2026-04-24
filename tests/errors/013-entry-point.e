@@ -40,11 +40,11 @@ main :: 1
             "line": 1,
             "column": 1,
             "length": 4,
-            "message": "`main` must be a zero-parameter function returning an integer"
+            "message": "`main` must be a zero-parameter function returning `i32` or no value"
         }
     ],
     "notes": [],
     "help": [
-        "Change `main` so it takes no parameters and returns an integer type or no type at all."
+        "Change `main` so it takes no parameters and returns `i32` or no type at all."
     ]
 }

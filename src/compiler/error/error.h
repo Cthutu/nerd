@@ -116,7 +116,7 @@ bool error_0204_unexpected_token(NerdSource source,
                                  cstr       help_format,
                                  ...);
 
-// Expected decalaration or expression
+// Expected declaration or expression
 bool error_0205_expected_declaration_or_expression(NerdSource source,
                                                    ErrorSpan  span,
                                                    TokenKind  actual_kind,
