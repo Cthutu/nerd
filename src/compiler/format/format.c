@@ -650,6 +650,10 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, '.');
         sb_append_string(sb, lex_symbol(lexer, node->b));
         break;
+    case CK_EnumVariant:
+        sb_append_char(sb, '.');
+        sb_append_string(sb, lex_symbol(lexer, node->a));
+        break;
     case CK_Index:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '[');
@@ -735,6 +739,19 @@ internal void format_emit_expr(StringBuilder* sb,
                 }
                 sb_append_cstr(sb, " => ");
                 format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+            }
+            sb_append_cstr(sb, " }");
+        }
+        break;
+    case CK_TypeEnum:
+        {
+            const CstEnumTypeInfo* enum_type = &cst->enum_types[node->a];
+            sb_append_cstr(sb, "enum {");
+            for (u32 i = 0; i < enum_type->variant_count; ++i) {
+                const CstEnumVariant* variant =
+                    &cst->enum_variants[enum_type->first_variant + i];
+                sb_append_char(sb, ' ');
+                sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
             }
             sb_append_cstr(sb, " }");
         }
@@ -1088,6 +1105,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Plex:
     case CK_PlexUpdate:
     case CK_TypePlex:
+    case CK_TypeEnum:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_TupleField:

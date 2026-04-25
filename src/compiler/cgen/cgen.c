@@ -197,6 +197,7 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     case STK_Slice:
     case STK_Plex:
     case STK_Union:
+    case STK_Enum:
         {
             static char names[8][32];
             static u32  next = 0;
@@ -207,7 +208,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                      : ir->types[type_index].kind == STK_Array ? "array%u"
                      : ir->types[type_index].kind == STK_Slice ? "slice%u"
                      : ir->types[type_index].kind == STK_Plex  ? "plex%u"
-                                                               : "union%u",
+                     : ir->types[type_index].kind == STK_Union ? "union%u"
+                                                               : "enum%u",
                      type_index);
             return name;
         }
@@ -235,6 +237,17 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     default:
         return cgen_c_integer_type(ir, type_index);
     }
+}
+
+internal cstr cgen_enum_tag_type(const SemaType* type)
+{
+    if (type->param_count <= UINT8_MAX) {
+        return "uint8_t";
+    }
+    if (type->param_count <= UINT16_MAX) {
+        return "uint16_t";
+    }
+    return "uint32_t";
 }
 
 internal void
@@ -631,6 +644,17 @@ void cgen_add_plex(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "};");
 }
 
+void cgen_add_enum(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = (");
+    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    arena_format(
+        &cgen->arena, "){.tag = %lld};", instr->rvalue[0].value.integer);
+    cgen_addn(cgen, "");
+}
+
 void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
 {
     const IrSliceInfo* slice =
@@ -1000,6 +1024,17 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         cgen_addn(cgen, ");");
         return;
     }
+    bool enum_equality =
+        (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL) &&
+        cgen->ir->types[instr->rvalue[0].type].kind == STK_Enum;
+    if (enum_equality) {
+        cgen_add_value(cgen, &instr->rvalue[0]);
+        cgen_add(cgen, ".tag");
+        cgen_add(cgen, op);
+        cgen_add_value(cgen, &instr->rvalue[1]);
+        cgen_addn(cgen, ".tag;");
+        return;
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[1]);
@@ -1023,7 +1058,22 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
         const SemaType* type = &cgen->ir->types[i];
         if (type->kind != STK_Tuple && type->kind != STK_Array &&
             type->kind != STK_Slice && type->kind != STK_Plex &&
-            type->kind != STK_Union) {
+            type->kind != STK_Union && type->kind != STK_Enum) {
+            continue;
+        }
+        if (type->kind == STK_Enum) {
+            cgen_start_line(cgen);
+            arena_format(
+                &cgen->arena, "typedef struct %s {", cgen_c_type(cgen->ir, i));
+            cgen_addn(cgen, "");
+            cgen_indent(cgen);
+            cgen_start_line(cgen);
+            arena_format(&cgen->arena, "%s tag;\n", cgen_enum_tag_type(type));
+            cgen_add_line(cgen, "union { uint8_t unit; } data;");
+            cgen_dedent(cgen);
+            cgen_start_line(cgen);
+            arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+            cgen_addn(cgen, "");
             continue;
         }
         cgen_start_line(cgen);
@@ -1210,6 +1260,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_CAST:
             cgen_add_cast(cgen, instr);
+            break;
+        case IR_OP_ENUM:
+            cgen_add_enum(cgen, instr);
             break;
         case IR_OP_TUPLE:
             cgen_add_tuple(cgen, instr);

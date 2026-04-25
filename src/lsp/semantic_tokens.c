@@ -124,6 +124,7 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_return:
     case TK_plex:
     case TK_union:
+    case TK_enum:
     case TK_with:
     case TK_as:
     case TK_yes:

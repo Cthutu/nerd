@@ -213,6 +213,21 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return true;
     }
+    if (kind == TK_enum) {
+        (*io_index)++;
+        if (ast_kind_at_stream_index(state, *io_index) != TK_LBrace) {
+            return false;
+        }
+        (*io_index)++;
+        while (ast_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+        }
+        (*io_index)++;
+        return true;
+    }
     if (kind == TK_LBracket) {
         (*io_index)++;
         if (ast_kind_at_stream_index(state, *io_index) == TK_Integer) {
@@ -649,6 +664,53 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  .kind        = AK_TypePlex,
                                  .token_index = type_token.token_index,
                                  .a           = plex_type_index,
+                             },
+                             out_node);
+    }
+
+    if (state->token.kind == TK_enum) {
+        AstToken enum_token = state->token;
+        if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &enum_token),
+                                             TK_LBrace,
+                                             state->token.kind);
+        }
+        if (!ast_next_token(state)) {
+            return false;
+        }
+
+        u32 first_variant = (u32)array_count(state->enum_variants);
+        u32 variant_count = 0;
+        while (state->token.kind != TK_RBrace) {
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            array_push(state->enum_variants,
+                       (AstEnumVariant){
+                           .token_index   = state->token.token_index,
+                           .symbol_handle = state->token.value.symbol_handle,
+                       });
+            variant_count++;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        }
+        u32 enum_type_index = (u32)array_count(state->enum_types);
+        array_push(state->enum_types,
+                   (AstEnumTypeInfo){
+                       .first_variant = first_variant,
+                       .variant_count = variant_count,
+                   });
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypeEnum,
+                                 .token_index = enum_token.token_index,
+                                 .a           = enum_type_index,
                              },
                              out_node);
     }
@@ -2367,6 +2429,8 @@ Ast ast_parse(Lexer* lexer)
         .slices              = state.slices,
         .plex_fields         = state.plex_fields,
         .plex_types          = state.plex_types,
+        .enum_variants       = state.enum_variants,
+        .enum_types          = state.enum_types,
         .plex_literal_fields = state.plex_literal_fields,
         .plex_literals       = state.plex_literals,
         .patterns            = state.patterns,
@@ -2388,6 +2452,8 @@ error:
                     .slices              = state.slices,
                     .plex_fields         = state.plex_fields,
                     .plex_types          = state.plex_types,
+                    .enum_variants       = state.enum_variants,
+                    .enum_types          = state.enum_types,
                     .plex_literal_fields = state.plex_literal_fields,
                     .plex_literals       = state.plex_literals,
                     .patterns            = state.patterns,
@@ -2414,6 +2480,8 @@ void ast_done(Ast* ast)
     array_free(ast->slices);
     array_free(ast->plex_fields);
     array_free(ast->plex_types);
+    array_free(ast->enum_variants);
+    array_free(ast->enum_types);
     array_free(ast->plex_literal_fields);
     array_free(ast->plex_literals);
     array_free(ast->patterns);

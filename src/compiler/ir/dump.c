@@ -221,6 +221,19 @@ internal void ir_render_type_name(StringBuilder* sb,
         }
         sb_append_cstr(sb, "}");
         break;
+    case STK_Enum:
+        sb_append_cstr(sb, "enum{");
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ",");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(lexer,
+                           ir->type_param_symbols[type->first_param_type + i]));
+        }
+        sb_append_cstr(sb, "}");
+        break;
     default:
         sb_append_cstr(sb, "<unknown>");
         break;
@@ -419,6 +432,10 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                 }
                 sb_append_char(&sb, ']');
             }
+            break;
+        case IR_OP_ENUM:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_format(&sb, " = enum(%lld)", instr->rvalue[0].value.integer);
             break;
         case IR_OP_FIELD:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

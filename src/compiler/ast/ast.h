@@ -23,6 +23,7 @@
 // | AK_InterpPartExpr  | Ast index of expr | 0                               |
 // | AK_InterpolatedString | First part index | End-exclusive part index      |
 // | AK_SymbolRef       | Symbol handle     | 0                               |
+// | AK_EnumVariant     | Symbol handle     | 0                               |
 // | AK_LogicalNot      | Ast index of rhs  | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
 // | AK_AddressOf       | Ast index of value | 0                              |
@@ -64,6 +65,7 @@
 // | AK_TypeSlice       | Ast index element type | 0                           |
 // | AK_TypePointer     | Ast index pointee type | 0                           |
 // | AK_TypePlex        | Ast plex-type index | 0                            |
+// | AK_TypeEnum        | Ast enum-type index | 0                            |
 // | AK_Expression      | Ast index of root | 0                               |
 // | AK_Statement       | Ast index of expr | 0                               |
 // | AK_Return          | Ast index of expr | 0                               |
@@ -95,6 +97,7 @@ typedef enum {
     AK_InterpPartExpr,
     AK_InterpolatedString,
     AK_SymbolRef,
+    AK_EnumVariant,
     AK_LogicalNot,
     AK_IntegerNegate,
     AK_AddressOf,
@@ -136,6 +139,7 @@ typedef enum {
     AK_TypeSlice,
     AK_TypePointer,
     AK_TypePlex,
+    AK_TypeEnum,
     AK_Expression,
     AK_Statement,
     AK_Return,
@@ -210,6 +214,16 @@ typedef struct {
     u32 field_count;
     u32 flags;
 } AstPlexTypeInfo;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+} AstEnumVariant;
+
+typedef struct {
+    u32 first_variant;
+    u32 variant_count;
+} AstEnumTypeInfo;
 
 typedef enum : u32 {
     APTF_None   = 0,
@@ -299,6 +313,8 @@ typedef struct {
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;
+    Array(AstEnumVariant) enum_variants;
+    Array(AstEnumTypeInfo) enum_types;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
     Array(AstPattern) patterns;

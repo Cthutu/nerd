@@ -60,6 +60,8 @@ typedef struct {
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;
+    Array(AstEnumVariant) enum_variants;
+    Array(AstEnumTypeInfo) enum_types;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
     Array(AstPattern) patterns;

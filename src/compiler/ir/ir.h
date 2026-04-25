@@ -24,6 +24,7 @@ typedef enum : u8 {
     IR_OP_ASSIGN,
     IR_OP_CALL,
     IR_OP_CAST,
+    IR_OP_ENUM,
     IR_OP_TUPLE,
     IR_OP_PLEX,
     IR_OP_TUPLE_FIELD,

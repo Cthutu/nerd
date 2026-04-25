@@ -170,6 +170,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_no:
     case TK_LBracket:
     case TK_Symbol:
+    case TK_Dot:
     case TK_Bang:
     case TK_Minus:
     case TK_Caret:
@@ -252,6 +253,21 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
             if (!cst_skip_type_tokens(state, io_index)) {
                 return false;
             }
+        }
+        (*io_index)++;
+        return true;
+    }
+    if (kind == TK_enum) {
+        (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_LBrace) {
+            return false;
+        }
+        (*io_index)++;
+        while (cst_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (cst_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
         }
         (*io_index)++;
         return true;
@@ -464,7 +480,7 @@ internal bool cst_token_has_newline_before(const CstParseState* state,
 
 internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
-    return kind == TK_with || kind == TK_Dot;
+    return kind == TK_with;
 }
 
 //------------------------------------------------------------------------------
@@ -758,6 +774,44 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                              out_node);
     }
 
+    if (token.kind == TK_enum) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        if (!cst_consume(state, TK_LBrace)) {
+            return false;
+        }
+        u32 first_variant = (u32)array_count(state->cst.enum_variants);
+        u32 variant_count = 0;
+        while (cst_current_token(state).kind != TK_RBrace) {
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+            array_push(state->cst.enum_variants,
+                       (CstEnumVariant){
+                           .token_index   = state->token_index,
+                           .symbol_handle = cst_current_symbol_handle(state),
+                       });
+            variant_count++;
+            cst_advance(state);
+        }
+        if (!cst_consume(state, TK_RBrace)) {
+            return false;
+        }
+        u32 enum_type_index = (u32)array_count(state->cst.enum_types);
+        array_push(state->cst.enum_types,
+                   (CstEnumTypeInfo){
+                       .first_variant = first_variant,
+                       .variant_count = variant_count,
+                   });
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypeEnum,
+                                 .token_index = token_index,
+                                 .a           = enum_type_index,
+                             },
+                             out_node);
+    }
+
     if (token.kind != TK_fn) {
         return false;
     }
@@ -966,6 +1020,24 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                      .kind        = CK_SymbolRef,
                                      .token_index = state->token_index - 1,
                                      .a           = symbol_handle,
+                                 },
+                                 out_node);
+        }
+
+    case TK_Dot:
+        {
+            u32 token_index = state->token_index;
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+            u32 symbol = cst_current_symbol_handle(state);
+            cst_advance(state);
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_EnumVariant,
+                                     .token_index = token_index,
+                                     .a           = symbol,
                                  },
                                  out_node);
         }
@@ -2858,6 +2930,8 @@ void cst_done(Cst* cst)
     array_free(cst->slices);
     array_free(cst->plex_fields);
     array_free(cst->plex_types);
+    array_free(cst->enum_variants);
+    array_free(cst->enum_types);
     array_free(cst->plex_literal_fields);
     array_free(cst->plex_literals);
     array_free(cst->patterns);

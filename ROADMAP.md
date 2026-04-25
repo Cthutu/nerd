@@ -996,12 +996,12 @@ needed earlier.
 
 ## Milestone 22: Enum Unit Variants
 
-- [ ] 88. Add enum type declarations.
+- [X] 88. Add enum type declarations.
   - Support `enum { Variant ... }` for unit variants.
   - Lower enum values as a tag plus storage compatible with future payloads.
   - Choose the smallest practical unsigned tag type.
 
-- [ ] 89. Add enum construction and matching.
+- [X] 89. Add enum construction and matching.
   - Support constructing variants with expected-type shorthand such as `.Red`.
   - Support matching unit variants in `on`.
   - Add exhaustiveness checks over enum variants.

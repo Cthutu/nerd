@@ -256,6 +256,53 @@ internal u32 sema_add_union_type(Sema*               sema,
     return type_index;
 }
 
+internal u32 sema_add_enum_type_raw(Sema* sema, const u32* variants, u32 count)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        const SemaType* existing = &sema->types[i];
+        if (existing->kind != STK_Enum || existing->param_count != count) {
+            continue;
+        }
+        bool matches = true;
+        for (u32 j = 0; j < count; ++j) {
+            if (sema->type_param_symbols[existing->first_param_type + j] !=
+                variants[j]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) {
+            return i;
+        }
+    }
+
+    u32 first_variant = (u32)array_count(sema->type_param_symbols);
+    for (u32 i = 0; i < count; ++i) {
+        array_push(sema->type_param_symbols, variants[i]);
+        array_push(sema->type_param_types, sema_no_type());
+    }
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Enum,
+                             .param_count      = (u16)count,
+                             .first_param_type = first_variant,
+                             .return_type      = sema_no_type(),
+                         });
+}
+
+internal u32 sema_add_enum_type(Sema*                 sema,
+                                const AstEnumVariant* variants,
+                                u32                   count)
+{
+    Array(u32) symbols = NULL;
+    for (u32 i = 0; i < count; ++i) {
+        array_push(symbols, variants[i].symbol_handle);
+    }
+    u32 type_index = sema_add_enum_type_raw(sema, symbols, count);
+    array_free(symbols);
+    return type_index;
+}
+
 //------------------------------------------------------------------------------
 // Return the canonical type index for one built-in type.
 
@@ -430,6 +477,20 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         return materialised;
     }
 
+    if (sema->types[type_index].kind == STK_Enum) {
+        const SemaType* enum_type = &sema->types[type_index];
+        Array(u32) variants       = NULL;
+        for (u32 i = 0; i < enum_type->param_count; ++i) {
+            array_push(
+                variants,
+                sema->type_param_symbols[enum_type->first_param_type + i]);
+        }
+        u32 materialised = sema_add_enum_type_raw(
+            (Sema*)sema, variants, enum_type->param_count);
+        array_free(variants);
+        return materialised;
+    }
+
     if (sema->types[type_index].kind != STK_Tuple) {
         return type_index;
     }
@@ -587,6 +648,22 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_append_cstr(&sb, " }");
             return sb_to_string(&sb);
         }
+    case STK_Enum:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_append_cstr(&sb, "enum { ");
+            for (u32 i = 0; i < type->param_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(&sb, ", ");
+                }
+                sb_format(&sb,
+                          "#%u",
+                          sema->type_param_symbols[type->first_param_type + i]);
+            }
+            sb_append_cstr(&sb, " }");
+            return sb_to_string(&sb);
+        }
     default:
         return s("<unknown>");
     }
@@ -678,6 +755,7 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
     case AK_IntegerLiteral:
     case AK_StringLiteral:
     case AK_BoolLiteral:
+    case AK_EnumVariant:
         return true;
     case AK_StringConcat:
         return sema_expr_is_constantish(ast, sema, node->a) &&
@@ -1202,6 +1280,17 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeEnum:
+        {
+            const AstEnumTypeInfo* enum_type = &ast->enum_types[node->a];
+            *out_is_type                     = true;
+            *out_type_index                  = sema_add_enum_type(
+                sema,
+                &ast->enum_variants[enum_type->first_variant],
+                enum_type->variant_count);
+            return true;
+        }
+
     default:
         *out_is_type    = false;
         *out_type_index = sema_no_type();
@@ -1419,6 +1508,8 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
                     ast->plex_fields[plex->first_field + i].type_node_index);
             }
         }
+        break;
+    case AK_TypeEnum:
         break;
     default:
         break;
@@ -2398,6 +2489,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_FloatLiteral:
     case AK_StringLiteral:
     case AK_BoolLiteral:
+    case AK_EnumVariant:
     case AK_ZeroInit:
     case AK_Continue:
     case AK_ContinueExpr:
@@ -3625,6 +3717,24 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
            sema->types[actual_type].kind == STK_UntypedFloat;
 }
 
+internal u32 sema_enum_variant_index(const Sema* sema,
+                                     u32         enum_type,
+                                     u32         symbol_handle)
+{
+    if (enum_type == sema_no_type() ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
 internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -3667,6 +3777,7 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     case STK_Function:
     case STK_Slice:
     case STK_Pointer:
+    case STK_Enum:
         return true;
     case STK_Plex:
     case STK_Union:
@@ -3745,10 +3856,62 @@ internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
     switch (sema->types[type_index].kind) {
     case STK_String:
     case STK_Bool:
+    case STK_Enum:
         return true;
     default:
         return sema_type_is_numeric(sema, type_index);
     }
+}
+
+internal bool sema_on_covers_all_enum_variants(const Ast* ast,
+                                               Sema*      sema,
+                                               u32        on_index,
+                                               u32        enum_type)
+{
+    if (enum_type == sema_no_type() ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return false;
+    }
+    const AstOnInfo* on        = &ast->ons[on_index];
+    const SemaType*  enum_info = &sema->types[enum_type];
+    bool*            covered =
+        arena_alloc(&temp_arena, sizeof(bool) * enum_info->param_count);
+    memset(covered, 0, sizeof(bool) * enum_info->param_count);
+
+    for (u32 branch_index = 0; branch_index < on->branch_count;
+         ++branch_index) {
+        const AstOnBranch* branch =
+            &ast->on_branches[on->first_branch + branch_index];
+        if ((branch->flags & AOBF_Else) ||
+            branch->guard_node_index != U32_MAX) {
+            continue;
+        }
+        for (u32 pattern_index = 0; pattern_index < branch->pattern_count;
+             ++pattern_index) {
+            const AstPattern* pattern =
+                &ast->patterns[ast->pattern_items[branch->pattern_index +
+                                                  pattern_index]];
+            if (pattern->kind != APK_Value) {
+                continue;
+            }
+            const AstNode* pattern_node = &ast->nodes[pattern->a];
+            if (pattern_node->kind != AK_EnumVariant) {
+                continue;
+            }
+            u32 variant =
+                sema_enum_variant_index(sema, enum_type, pattern_node->a);
+            if (variant != U32_MAX) {
+                covered[variant] = true;
+            }
+        }
+    }
+
+    for (u32 i = 0; i < enum_info->param_count; ++i) {
+        if (!covered[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 internal u32 sema_expected_numeric_type(const Sema* sema, u32 expected_type)
@@ -5402,6 +5565,26 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         type_index = sema_builtin_type(sema, STK_String);
         break;
 
+    case AK_EnumVariant:
+        if (expected_type == sema_no_type() ||
+            sema->types[expected_type].kind != STK_Enum) {
+            return error_0304_type_mismatch(
+                lexer->source,
+                sema_node_span(lexer, node),
+                s("enum context"),
+                expected_type == sema_no_type()
+                    ? s("<unknown>")
+                    : sema_type_name(sema, &temp_arena, expected_type));
+        }
+        if (sema_enum_variant_index(sema, expected_type, node->a) == U32_MAX) {
+            return error_0304_type_mismatch(lexer->source,
+                                            sema_node_span(lexer, node),
+                                            s("known enum variant"),
+                                            lex_symbol(lexer, node->a));
+        }
+        type_index = expected_type;
+        break;
+
     case AK_InterpPartExpr:
         if (!sema_infer_node_type(
                 lexer, ast, sema, node->a, expected_type, &type_index)) {
@@ -6273,6 +6456,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                       sema->types[scrutinee_type].kind == STK_String ||
                       sema->types[scrutinee_type].kind == STK_Tuple ||
                       sema->types[scrutinee_type].kind == STK_Plex ||
+                      sema->types[scrutinee_type].kind == STK_Enum ||
                       sema_type_is_concrete_integer(sema, scrutinee_type))) {
                     return error_0321_invalid_on_match_type(
                         lexer->source,
@@ -6405,7 +6589,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (statement_form) {
                 type_index = void_type;
             } else {
-                if (on->kind == AOK_Value && !has_else) {
+                if (on->kind == AOK_Value && !has_else &&
+                    !sema_on_covers_all_enum_variants(
+                        ast, sema, node->b, scrutinee_type)) {
                     return error_0327_non_exhaustive_on(
                         lexer->source, sema_node_span(lexer, node));
                 }

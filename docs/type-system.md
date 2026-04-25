@@ -43,6 +43,7 @@ The current `SemaTypeKind` set includes:
 - pointer types
 - plex types
 - raw union types
+- enum types
 
 Function types store their parameter list in the flattened
 `Sema.type_param_types` side table and keep the return type in
@@ -89,6 +90,13 @@ currently valid. A union value is constructed with exactly one field, such as
 for low-level and FFI-facing code, so they are intentionally not supported in
 pattern matching.
 
+Enum types are written `enum { Variant ... }` for unit variants. A value is
+constructed with expected-type shorthand such as `.Red`, so enum literals need
+an annotation, parameter type, or other enum context. Unit variants lower as a
+tag plus reserved payload storage so later payload variants can share the same
+representation. The generated tag uses the smallest practical unsigned integer
+width for the number of variants.
+
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
 
@@ -127,10 +135,14 @@ Block-form `on` currently supports:
 - constant value patterns
 - comma-separated constant alternatives
 - integer ranges through `..` and `..=`
+- unit enum variants through expected-type shorthand such as `.Red`
 
 Range endpoints are checked semantically against the scrutinee type and must be
 compile-time constants. Empty integer ranges are rejected with a dedicated
 semantic error.
+
+For enum scrutinees, a value-producing block-form `on` can omit `else` only
+when unguarded branches cover every unit variant.
 
 Source-level boolean values are also available as literal keywords:
 
@@ -218,6 +230,7 @@ Current storage-eligible types are:
 - fixed arrays whose element type is storage-eligible
 - slices whose element type is storage-eligible
 - pointers
+- enum values
 - plexes whose fields are all storage-eligible
 - raw unions whose fields are all storage-eligible
 

@@ -350,6 +350,19 @@ void ir_add_tuple_field(Ir*     ir,
                });
 }
 
+void ir_add_enum(Ir* ir, IrValue lvalue, u32 lvalue_type, u32 variant_index)
+{
+    lvalue.type = lvalue_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ENUM,
+                   .lvalue = lvalue,
+                   .rvalue = {{.kind          = IR_VALUE_INTEGER,
+                               .value.integer = variant_index},
+                              {0}},
+               });
+}
+
 void ir_add_array(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
 {
     u32             first_item = (u32)array_count(ir->tuple_items);
@@ -749,6 +762,24 @@ internal IrValue ir_make_bool_literal(u32 bool_type, bool value)
 internal IrValue ir_unset_value(void)
 {
     return (IrValue){.kind = IR_VALUE_NONE};
+}
+
+internal u32 ir_enum_variant_index(const Sema* sema,
+                                   u32         enum_type,
+                                   u32         symbol_handle)
+{
+    if (enum_type == sema_no_type() ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
 }
 
 //------------------------------------------------------------------------------
@@ -1952,6 +1983,21 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         literal,
                         values);
             array_free(values);
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_EnumVariant:
+        {
+            u32 type_index = ir_node_type_index(ast, sema, node_index);
+            u32 variant    = ir_enum_variant_index(sema, type_index, node->a);
+            ASSERT(variant != U32_MAX, "Expected valid enum variant");
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = type_index,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_enum(ir, value, type_index, variant);
             node_values[node_index] = value;
             return value;
         }

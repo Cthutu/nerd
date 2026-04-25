@@ -90,6 +90,7 @@ typedef enum {
     CK_InterpPartExpr,
     CK_InterpolatedString,
     CK_SymbolRef,
+    CK_EnumVariant,
     CK_Group,
     CK_LogicalNot,
     CK_IntegerNegate,
@@ -132,6 +133,7 @@ typedef enum {
     CK_TypeSlice,
     CK_TypePointer,
     CK_TypePlex,
+    CK_TypeEnum,
     CK_FnExpr,
     CK_FnBlock,
     CK_Statement,
@@ -192,6 +194,16 @@ typedef struct {
     u32 field_count;
     u32 flags;
 } CstPlexTypeInfo;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+} CstEnumVariant;
+
+typedef struct {
+    u32 first_variant;
+    u32 variant_count;
+} CstEnumTypeInfo;
 
 typedef enum : u32 {
     CPTF_None   = 0,
@@ -284,6 +296,8 @@ typedef struct {
     Array(CstSliceInfo) slices;
     Array(CstPlexField) plex_fields;
     Array(CstPlexTypeInfo) plex_types;
+    Array(CstEnumVariant) enum_variants;
+    Array(CstEnumTypeInfo) enum_types;
     Array(CstPlexLiteralField) plex_literal_fields;
     Array(CstPlexLiteralInfo) plex_literals;
     Array(CstPattern) patterns;

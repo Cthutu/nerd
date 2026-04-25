@@ -134,6 +134,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `plex`");
     case TK_union:
         return string_from_cstr("Keyword `union`");
+    case TK_enum:
+        return string_from_cstr("Keyword `enum`");
     case TK_with:
         return string_from_cstr("Keyword `with`");
     case TK_as:

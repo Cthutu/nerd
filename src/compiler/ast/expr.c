@@ -64,6 +64,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_no:
     case TK_LBracket:
     case TK_Symbol:
+    case TK_Dot:
     case TK_Bang:
     case TK_Minus:
     case TK_Caret:
@@ -109,7 +110,7 @@ internal bool ast_token_has_newline_before(const AstParseState* state,
 
 internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
-    return kind == TK_with || kind == TK_Dot;
+    return kind == TK_with;
 }
 
 //------------------------------------------------------------------------------
@@ -818,6 +819,30 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .a           = token.value.symbol_handle,
             };
             return ast_emit_node(state, node, out_node);
+        }
+    case TK_Dot:
+        {
+            if (state->token_index == token.token_index &&
+                !ast_next_token(state)) {
+                return error_0203_expected_token(token.source,
+                                                 ast_token_span(state, &token),
+                                                 TK_Symbol,
+                                                 TK_EOF);
+            }
+            if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(token.source,
+                                                 ast_token_span(state, &token),
+                                                 TK_Symbol,
+                                                 state->token.kind);
+            }
+            AstToken variant = state->token;
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_EnumVariant,
+                                     .token_index = token.token_index,
+                                     .a           = variant.value.symbol_handle,
+                                 },
+                                 out_node);
         }
     case TK_Minus:
     case TK_Bang:
