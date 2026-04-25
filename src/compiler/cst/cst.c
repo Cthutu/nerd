@@ -618,11 +618,18 @@ internal bool cst_parse_callable_signature(CstParseState* state,
         return false;
     }
 
-    u32 first_param = (u32)array_count(state->cst.params);
-    u32 param_count = 0;
+    u32  first_param = (u32)array_count(state->cst.params);
+    u32  param_count = 0;
+    bool is_varargs  = false;
 
     if (cst_current_token(state).kind != TK_RParen) {
         for (;;) {
+            if (!allow_named_params && !require_return_type &&
+                cst_current_token(state).kind == TK_Ellipsis) {
+                is_varargs = true;
+                cst_advance(state);
+                break;
+            }
             if (allow_named_params) {
                 if (cst_current_token(state).kind != TK_Symbol) {
                     return false;
@@ -655,6 +662,12 @@ internal bool cst_parse_callable_signature(CstParseState* state,
             ++param_count;
             if (cst_current_token(state).kind == TK_Comma) {
                 cst_advance(state);
+                if (!allow_named_params && !require_return_type &&
+                    cst_current_token(state).kind == TK_Ellipsis) {
+                    is_varargs = true;
+                    cst_advance(state);
+                    break;
+                }
                 continue;
             }
             break;
@@ -681,6 +694,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                    .first_param            = first_param,
                    .param_count            = param_count,
                    .return_type_node_index = return_type,
+                   .is_varargs             = is_varargs,
                });
     *out_signature_index = signature_index;
     return true;

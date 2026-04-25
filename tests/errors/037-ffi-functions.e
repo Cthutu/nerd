@@ -51,3 +51,59 @@ main :: fn() {}
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+fcntl :: ffi "c" (i32, i32, ...) -> i32
+
+main :: fn() {
+    fcntl(0, 1, "bad")
+}
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `FFI-safe vararg type`, found `string`",
+    "source_file": "tests/errors/037-ffi-functions.e",
+    "primary_location": {
+        "line": 4,
+        "column": 17
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 17,
+            "length": 5,
+            "message": "This expression has type `string`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+bad :: fn (...) -> i32
+
+main :: fn() {}
+¬
+{
+    "code": "0203",
+    "message": "Expected Symbol",
+    "source_file": "tests/errors/037-ffi-functions.e",
+    "primary_location": {
+        "line": 1,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 12,
+            "length": 3,
+            "message": "Found Ellipsis `...` here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Check for a missing closing delimiter or misplaced operator"
+    ]
+}

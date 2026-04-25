@@ -471,8 +471,9 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
 {
     ASSERT(state->token.kind == TK_LParen, "Expected FFI parameter list");
 
-    u32 first_param = (u32)array_count(state->params);
-    u32 param_count = 0;
+    u32  first_param = (u32)array_count(state->params);
+    u32  param_count = 0;
+    bool is_varargs  = false;
 
     if (!ast_next_token(state)) {
         return error_0203_expected_token(state->lexer->source,
@@ -483,6 +484,11 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
 
     if (state->token.kind != TK_RParen) {
         for (;;) {
+            if (state->token.kind == TK_Ellipsis) {
+                is_varargs = true;
+                break;
+            }
+
             AstToken type_token = state->token;
             u32      type_node  = 0;
             if (!ast_parse_type(state, &type_node)) {
@@ -504,6 +510,10 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                         state->token.source,
                         ast_token_span(state, &state->token),
                         TK_RParen);
+                }
+                if (state->token.kind == TK_Ellipsis) {
+                    is_varargs = true;
+                    break;
                 }
                 continue;
             }
@@ -531,6 +541,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                    .first_param            = first_param,
                    .param_count            = param_count,
                    .return_type_node_index = return_type,
+                   .is_varargs             = is_varargs,
                });
     *out_signature_index = signature_index;
     return true;

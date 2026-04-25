@@ -61,9 +61,10 @@ typedef struct {
 } SemaType;
 
 typedef enum : u16 {
-    STF_None       = 0,
-    STF_PlexC      = 1 << 0,
-    STF_PlexPacked = 1 << 1,
+    STF_None            = 0,
+    STF_PlexC           = 1 << 0,
+    STF_PlexPacked      = 1 << 1,
+    STF_FunctionVarargs = 1 << 2,
 } SemaTypeFlag;
 
 //------------------------------------------------------------------------------

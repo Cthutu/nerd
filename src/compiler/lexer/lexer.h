@@ -51,6 +51,7 @@ typedef enum {
     TK_At,
     TK_Dollar,
     TK_Hash,
+    TK_Ellipsis,
     TK_Range,
     TK_RangeInclusive,
     TK_Colon,

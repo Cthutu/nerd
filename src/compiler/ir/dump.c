@@ -169,6 +169,12 @@ internal void ir_render_type_name(StringBuilder* sb,
                 lexer,
                 ir->type_param_types[type->first_param_type + i]);
         }
+        if (type->flags & STF_FunctionVarargs) {
+            if (type->param_count > 0) {
+                sb_append_cstr(sb, ",");
+            }
+            sb_append_cstr(sb, "...");
+        }
         sb_append_cstr(sb, ")->");
         ir_render_type_name(sb, ir, lexer, type->return_type);
         break;

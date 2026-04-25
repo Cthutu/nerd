@@ -54,15 +54,16 @@ internal u32 sema_add_type(Sema* sema, SemaType type)
     return index;
 }
 
-internal u32 sema_add_function_type(Sema* sema,
-                                    Array(u32) param_types,
-                                    u32 return_type)
+internal u32 sema_add_function_type_ex(Sema* sema,
+                                       Array(u32) param_types,
+                                       u32 return_type,
+                                       u16 flags)
 {
     for (u32 i = 0; i < array_count(sema->types); ++i) {
         const SemaType* existing = &sema->types[i];
         if (existing->kind != STK_Function ||
             existing->param_count != array_count(param_types) ||
-            existing->return_type != return_type) {
+            existing->return_type != return_type || existing->flags != flags) {
             continue;
         }
 
@@ -89,9 +90,17 @@ internal u32 sema_add_function_type(Sema* sema,
                          (SemaType){
                              .kind             = STK_Function,
                              .param_count      = (u16)array_count(param_types),
+                             .flags            = flags,
                              .first_param_type = first_param,
                              .return_type      = return_type,
                          });
+}
+
+internal u32 sema_add_function_type(Sema* sema,
+                                    Array(u32) param_types,
+                                    u32 return_type)
+{
+    return sema_add_function_type_ex(sema, param_types, return_type, STF_None);
 }
 
 internal u32 sema_add_module_type_raw(Sema*      sema,
@@ -629,6 +638,12 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                         sema,
                         arena,
                         sema->type_param_types[type->first_param_type + i]));
+            }
+            if (type->flags & STF_FunctionVarargs) {
+                if (type->param_count > 0) {
+                    sb_append_cstr(&sb, ", ");
+                }
+                sb_append_cstr(&sb, "...");
             }
             sb_append_cstr(&sb, ") -> ");
             sb_append_string(&sb,
@@ -7495,7 +7510,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             const SemaType* fn_type = &sema->types[callee_type];
-            if (fn_type->param_count != call->arg_count) {
+            bool is_varargs = (fn_type->flags & STF_FunctionVarargs) != 0;
+            if ((!is_varargs && fn_type->param_count != call->arg_count) ||
+                (is_varargs && call->arg_count < fn_type->param_count)) {
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -7506,11 +7523,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             for (u32 i = 0; i < call->arg_count; ++i) {
                 u32 arg_node = ast->call_args[call->first_arg + i];
                 u32 expected_arg =
-                    sema->type_param_types[fn_type->first_param_type + i];
+                    i < fn_type->param_count
+                        ? sema->type_param_types[fn_type->first_param_type + i]
+                        : sema_no_type();
                 u32 arg_type = sema_no_type();
                 if (!sema_infer_node_type(
                         lexer, ast, sema, arg_node, expected_arg, &arg_type)) {
                     return false;
+                }
+                if (i >= fn_type->param_count) {
+                    arg_type = sema_materialise_type(sema, arg_type);
+                    if (!sema_type_is_ffi_safe(sema, arg_type)) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, &ast->nodes[arg_node]),
+                            s("FFI-safe vararg type"),
+                            sema_type_name(sema, &temp_arena, arg_type));
+                    }
+                    continue;
                 }
                 if (!sema_type_matches(sema, expected_arg, arg_type)) {
                     return error_0304_type_mismatch(
@@ -7704,7 +7734,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
                 array_push(param_types, param_type);
             }
-            type_index = sema_add_function_type(sema, param_types, return_type);
+            type_index = sema_add_function_type_ex(
+                sema,
+                param_types,
+                return_type,
+                signature->is_varargs ? STF_FunctionVarargs : STF_None);
             array_free(param_types);
         }
         break;
@@ -7754,7 +7788,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
                 array_push(param_types, param_type);
             }
-            type_index = sema_add_function_type(sema, param_types, return_type);
+            type_index = sema_add_function_type_ex(
+                sema,
+                param_types,
+                return_type,
+                signature->is_varargs ? STF_FunctionVarargs : STF_None);
             array_free(param_types);
         }
         break;

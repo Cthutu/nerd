@@ -70,6 +70,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Dollar `$`");
     case TK_Hash:
         return string_from_cstr("Hash `#`");
+    case TK_Ellipsis:
+        return string_from_cstr("Ellipsis `...`");
     case TK_Range:
         return string_from_cstr("Range `..`");
     case TK_RangeInclusive:

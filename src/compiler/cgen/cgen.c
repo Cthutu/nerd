@@ -1218,7 +1218,14 @@ internal void cgen_add_extern_decls(CGen* cgen)
                          cgen->ir->type_param_types[fn_type->first_param_type +
                                                     param]));
         }
-        if (fn_type->param_count == 0) {
+        if (fn_type->flags & STF_FunctionVarargs) {
+            if (fn_type->param_count > 0) {
+                cgen_add(cgen, ", ");
+            }
+            cgen_add(cgen, "...");
+        }
+        if (fn_type->param_count == 0 &&
+            !(fn_type->flags & STF_FunctionVarargs)) {
             cgen_add(cgen, "void");
         }
         cgen_addn(cgen, ");");

@@ -1771,6 +1771,12 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         }
         format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
     }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
     sb_append_char(sb, ')');
 
     if (include_return_type && signature->return_type_node_index != U32_MAX) {
@@ -1796,6 +1802,12 @@ internal void format_emit_ffi_def(StringBuilder* sb,
         }
         const CstParam* param = &cst->params[signature->first_param + i];
         format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
     if (signature->return_type_node_index != U32_MAX) {

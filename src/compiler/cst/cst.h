@@ -171,9 +171,10 @@ typedef struct {
 } CstParam;
 
 typedef struct {
-    u32 first_param;
-    u32 param_count;
-    u32 return_type_node_index;
+    u32  first_param;
+    u32  param_count;
+    u32  return_type_node_index;
+    bool is_varargs;
 } CstFnSignature;
 
 typedef struct {
