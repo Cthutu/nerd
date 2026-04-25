@@ -101,6 +101,21 @@ internal u32 lsp_find_symbol_ref_node_at_token(const Ast* ast, u32 token_index)
 }
 
 //------------------------------------------------------------------------------
+// Return the AST field node that owns a given token index, if any.
+
+internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_Field && node->token_index == token_index) {
+            return i;
+        }
+    }
+
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
 // Return the semantic declaration index matching one symbol handle.
 
 internal u32 lsp_find_decl_index_by_symbol_handle(const Sema* sema,
@@ -133,6 +148,13 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
     if (ref_node_index != U32_MAX &&
         ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
         return doc->front_end.sema.node_decl_indices[ref_node_index];
+    }
+
+    u32 field_node_index =
+        lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
+    if (field_node_index != U32_MAX &&
+        field_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
+        return doc->front_end.sema.node_decl_indices[field_node_index];
     }
 
     return LSP_NO_DECL;
@@ -385,6 +407,10 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
     } else if (decl->kind == SK_Variable) {
         kind = s("variable");
+        inferred_type =
+            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+    } else if (decl->kind == SK_Module) {
+        kind = s("module");
         inferred_type =
             sema_type_name(&doc->front_end.sema, arena, decl->type_index);
     } else {

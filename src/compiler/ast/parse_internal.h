@@ -56,6 +56,8 @@ typedef struct {
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;
+    Array(AstModulePath) module_paths;
+    Array(u32) module_path_symbols;
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;

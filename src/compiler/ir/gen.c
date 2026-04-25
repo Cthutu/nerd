@@ -1154,6 +1154,10 @@ internal IrValue           ir_lower_node(const Lexer* lex,
                                          Array(IrValue) node_values,
                                          u64* next_value_index,
                                          Ir*  ir);
+internal bool              ir_try_lower_module_field(const Ast*  ast,
+                                                     const Sema* sema,
+                                                     u32         node_index,
+                                                     IrValue*    out_value);
 internal void              ir_generate_return_statement(const Lexer*   lex,
                                                         const Ast*     ast,
                                                         const Sema*    sema,
@@ -1658,6 +1662,36 @@ internal void ir_lower_on_pattern_binders(const Ast*  ast,
     }
 }
 
+internal bool ir_try_lower_module_field(const Ast*  ast,
+                                        const Sema* sema,
+                                        u32         node_index,
+                                        IrValue*    out_value)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_Field) {
+        return false;
+    }
+
+    u32 target_type = ir_node_type_index(ast, sema, node->a);
+    if (target_type == sema_no_type() ||
+        sema->types[target_type].kind != STK_Module) {
+        return false;
+    }
+
+    u32 decl_index = sema->node_decl_indices[node_index];
+    ASSERT(decl_index != sema_no_decl(), "Expected module export declaration");
+    const SemaDecl* decl = &sema->decls[decl_index];
+    ASSERT(decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction,
+           "Expected module export function");
+
+    *out_value = (IrValue){
+        .kind          = IR_VALUE_BUILTIN,
+        .type          = decl->type_index,
+        .value.integer = decl->symbol_handle,
+    };
+    return true;
+}
+
 internal IrValue ir_lower_call(const Lexer*   lex,
                                const Ast*     ast,
                                const Sema*    sema,
@@ -1669,8 +1703,17 @@ internal IrValue ir_lower_call(const Lexer*   lex,
 {
     ASSERT(call_node->kind == AK_Call, "Expected call node");
 
-    IrValue callee = ir_lower_node(
-        lex, ast, sema, call_node->a, loop, node_values, next_value_index, ir);
+    IrValue callee = ir_unset_value();
+    if (!ir_try_lower_module_field(ast, sema, call_node->a, &callee)) {
+        callee = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               call_node->a,
+                               loop,
+                               node_values,
+                               next_value_index,
+                               ir);
+    }
     const AstCallInfo* call = &ast->calls[call_node->b];
     Array(IrValue) args     = NULL;
     Array(u32) arg_types    = NULL;
@@ -2301,6 +2344,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 ir_add_enum(ir, value, type_index, variant, ir_unset_value());
                 node_values[node_index] = value;
                 return value;
+            }
+            IrValue module_field = ir_unset_value();
+            if (ir_try_lower_module_field(
+                    ast, sema, node_index, &module_field)) {
+                node_values[node_index] = module_field;
+                return module_field;
             }
             IrValue target = ir_lower_node(lex,
                                            ast,

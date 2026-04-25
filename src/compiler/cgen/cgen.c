@@ -228,6 +228,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
         }
     case STK_String:
         return "string";
+    case STK_Module:
+        return "void";
     case STK_Bool:
         return "bool";
     case STK_UntypedFloat:

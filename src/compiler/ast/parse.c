@@ -882,7 +882,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
-    if (kind == TK_fn || kind == TK_ffi) {
+    if (kind == TK_fn || kind == TK_ffi || kind == TK_mod) {
         return PQ_Declaration;
     }
 
@@ -2152,6 +2152,51 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 //
 bool ast_parse_declaration(AstParseState* state, u32* out_node)
 {
+    if (state->token.kind == TK_mod) {
+        AstToken mod_token    = state->token;
+        u32      first_symbol = (u32)array_count(state->module_path_symbols);
+        u32      symbol_count = 0;
+
+        if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+
+        for (;;) {
+            array_push(state->module_path_symbols,
+                       state->token.value.symbol_handle);
+            ++symbol_count;
+            if (ast_peek_kind_at(state, 0) != TK_Dot) {
+                break;
+            }
+            if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state) ||
+                state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+        }
+
+        u32 module_path_index = (u32)array_count(state->module_paths);
+        array_push(state->module_paths,
+                   (AstModulePath){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_ModRef,
+                                 .token_index = mod_token.token_index,
+                                 .a           = module_path_index,
+                             },
+                             out_node);
+    }
+
     if (state->token.kind == TK_ffi) {
         AstToken ffi_token = state->token;
         if (!ast_next_token(state) || state->token.kind != TK_String) {
@@ -2741,6 +2786,8 @@ Ast ast_parse(Lexer* lexer)
         .params              = state.params,
         .fn_signatures       = state.fn_signatures,
         .ffi_infos           = state.ffi_infos,
+        .module_paths        = state.module_paths,
+        .module_path_symbols = state.module_path_symbols,
         .call_args           = state.call_args,
         .tuple_items         = state.tuple_items,
         .calls               = state.calls,
@@ -2766,6 +2813,8 @@ error:
                     .params              = state.params,
                     .fn_signatures       = state.fn_signatures,
                     .ffi_infos           = state.ffi_infos,
+                    .module_paths        = state.module_paths,
+                    .module_path_symbols = state.module_path_symbols,
                     .call_args           = state.call_args,
                     .tuple_items         = state.tuple_items,
                     .calls               = state.calls,
@@ -2796,6 +2845,8 @@ void ast_done(Ast* ast)
     array_free(ast->params);
     array_free(ast->fn_signatures);
     array_free(ast->ffi_infos);
+    array_free(ast->module_paths);
+    array_free(ast->module_path_symbols);
     array_free(ast->call_args);
     array_free(ast->tuple_items);
     array_free(ast->calls);

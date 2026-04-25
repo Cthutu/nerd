@@ -86,6 +86,7 @@
 // | AK_FnStart         | Ast fn-signature index | AK_FnEnd index             |
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
 // | AK_FfiDef          | Ast ffi-info index | 0                              |
+// | AK_ModRef          | Ast module path index | 0                            |
 //
 // clang-format on
 
@@ -161,6 +162,7 @@ typedef enum {
     AK_FnStart,
     AK_FnEnd,
     AK_FfiDef,
+    AK_ModRef,
 } AstKind;
 
 typedef enum : u32 {
@@ -203,6 +205,11 @@ typedef struct {
     u32 library_string_index;
     u32 signature_index;
 } AstFfiInfo;
+
+typedef struct {
+    u32 first_symbol;
+    u32 symbol_count;
+} AstModulePath;
 
 typedef struct {
     u32 target_node_index;
@@ -331,6 +338,8 @@ typedef struct {
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;
+    Array(AstModulePath) module_paths;
+    Array(u32) module_path_symbols;
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;

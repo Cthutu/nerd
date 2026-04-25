@@ -1061,8 +1061,10 @@ needed earlier.
   - Store repo-owned standard modules under `mods/`.
   - Extend `just install` to copy `mods/` next to the installed `nerd`
     executable.
-  - Initial repo/install layout exists; compiler module-root discovery still
-    needs to be wired into semantic analysis.
+  - Repo/install layout exists: `mods/` is copied beside the installed
+    executable.
+  - Compiler module-root discovery still needs to be wired into semantic
+    analysis.
   - Resolve standard modules from `NERD_LIB_PATH` entries first, then from the
     `mods/` folder next to the running compiler executable.
   - Do not support source-relative module lookup; project-local modules should
@@ -1074,6 +1076,8 @@ needed earlier.
   - Support `<name> :: mod path.to.module`.
   - Allow `mod` bindings wherever normal bindings are allowed, including inside
     functions; the module name follows the usual binding scope rules.
+  - Initial parser/CST/formatter/sema/IR/LSP support exists for the bootstrap
+    `std.print` module path, including local function-scope imports.
   - Map dotted module paths to files such as `std/print.n` and module folders
     such as `std/print/mod.n` inside the configured module roots.
   - Treat the right-hand side as a module value whose exported declarations are
@@ -1097,6 +1101,9 @@ needed earlier.
   - Keep current compiler-known `pr` and `prn` only as a short bootstrap
     compatibility layer while existing tests are migrated to:
     `print :: mod std.print`.
+  - Bootstrap `print.pr` and `print.prn` currently resolve through the module
+    import syntax while still lowering to the existing compiler-known print
+    functions.
   - Remove `pr` and `prn` as prologue/compiler built-in functions once
     `std.print` is available and the tests have been migrated.
   - Add dense tests covering imported `print.pr`, `print.prn`, interpolation,

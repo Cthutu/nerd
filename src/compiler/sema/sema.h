@@ -16,6 +16,7 @@ typedef enum : u8 {
     SK_TypeAlias,
     SK_Function,
     SK_FfiFunction,
+    SK_Module,
     SK_BuiltinFunction,
 } SemaDeclKind;
 
@@ -38,6 +39,7 @@ typedef enum : u8 {
     STK_Isize,
     STK_Usize,
     STK_Function,
+    STK_Module,
     STK_Tuple,
     STK_Array,
     STK_Slice,

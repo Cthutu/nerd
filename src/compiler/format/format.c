@@ -264,6 +264,10 @@ internal void format_emit_ffi_def(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
                                   u32            ffi_info_index);
+internal void format_emit_mod_ref(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            module_path_index);
 internal void format_emit_value(StringBuilder* sb,
                                 const Cst*     cst,
                                 const Lexer*   lexer,
@@ -916,6 +920,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_FfiDef:
         format_emit_ffi_def(sb, cst, lexer, node->a);
         break;
+    case CK_ModRef:
+        format_emit_mod_ref(sb, cst, lexer, node->a);
+        break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
                   "%u",
@@ -1331,6 +1338,11 @@ internal u32 format_node_end_token_index(const Cst*   cst,
             lexer,
             node->token_index,
             cst->ffi_infos[node->a].signature_index);
+    case CK_ModRef:
+        {
+            const CstModulePath* path = &cst->module_paths[node->a];
+            return node->token_index + path->symbol_count * 2 - 1;
+        }
     case CK_ExprBlock:
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_Block:
@@ -1534,8 +1546,9 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
-            payload->kind == CK_FfiDef || payload->kind == CK_For ||
-            payload->kind == CK_ExprBlock || payload->kind == CK_TypePlex) {
+            payload->kind == CK_FfiDef || payload->kind == CK_ModRef ||
+            payload->kind == CK_For || payload->kind == CK_ExprBlock ||
+            payload->kind == CK_TypePlex) {
             return false;
         }
 
@@ -1788,6 +1801,24 @@ internal void format_emit_ffi_def(StringBuilder* sb,
     if (signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+}
+
+internal void format_emit_mod_ref(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            module_path_index)
+{
+    const CstModulePath* path = &cst->module_paths[module_path_index];
+    sb_append_cstr(sb, "mod ");
+    for (u32 i = 0; i < path->symbol_count; ++i) {
+        if (i > 0) {
+            sb_append_char(sb, '.');
+        }
+        sb_append_string(
+            sb,
+            lex_symbol(lexer,
+                       cst->module_path_symbols[path->first_symbol + i]));
     }
 }
 
@@ -2236,6 +2267,9 @@ internal void format_emit_value(StringBuilder* sb,
         break;
     case CK_FfiDef:
         format_emit_ffi_def(sb, cst, lexer, node->a);
+        break;
+    case CK_ModRef:
+        format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
     default:
         format_emit_expr(sb, cst, lexer, node_index, 0);

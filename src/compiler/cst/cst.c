@@ -571,6 +571,7 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
+internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
@@ -2910,7 +2911,54 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
         return cst_parse_ffi_def(state, out_node);
     }
 
+    if (cst_current_token(state).kind == TK_mod) {
+        return cst_parse_mod_ref(state, out_node);
+    }
+
     return cst_parse_expr_bp(state, 0, out_node);
+}
+
+internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node)
+{
+    u32 token_index  = state->token_index;
+    u32 first_symbol = (u32)array_count(state->cst.module_path_symbols);
+    u32 symbol_count = 0;
+    cst_advance(state);
+
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+
+    for (;;) {
+        u32 symbol_handle = cst_current_symbol_handle(state);
+        if (symbol_handle == CST_NO_VALUE) {
+            return false;
+        }
+        array_push(state->cst.module_path_symbols, symbol_handle);
+        ++symbol_count;
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Dot) {
+            break;
+        }
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+    }
+
+    u32 module_path_index = (u32)array_count(state->cst.module_paths);
+    array_push(state->cst.module_paths,
+               (CstModulePath){
+                   .first_symbol = first_symbol,
+                   .symbol_count = symbol_count,
+               });
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_ModRef,
+                             .token_index = token_index,
+                             .a           = module_path_index,
+                         },
+                         out_node);
 }
 
 internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
@@ -3264,6 +3312,8 @@ void cst_done(Cst* cst)
     array_free(cst->params);
     array_free(cst->fn_signatures);
     array_free(cst->ffi_infos);
+    array_free(cst->module_paths);
+    array_free(cst->module_path_symbols);
     array_free(cst->call_args);
     array_free(cst->tuple_items);
     array_free(cst->calls);

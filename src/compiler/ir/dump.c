@@ -172,6 +172,9 @@ internal void ir_render_type_name(StringBuilder* sb,
         sb_append_cstr(sb, ")->");
         ir_render_type_name(sb, ir, lexer, type->return_type);
         break;
+    case STK_Module:
+        sb_append_cstr(sb, "module");
+        break;
     case STK_Tuple:
         sb_append_cstr(sb, "(");
         for (u32 i = 0; i < type->param_count; ++i) {

@@ -53,6 +53,21 @@ internal u32 lsp_semantic_find_symbol_ref_node(const Ast* ast, u32 token_index)
 }
 
 //------------------------------------------------------------------------------
+// Return the AST field node that starts at a specific token index.
+
+internal u32 lsp_semantic_find_field_node(const Ast* ast, u32 token_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_Field && node->token_index == token_index) {
+            return i;
+        }
+    }
+
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
 // Return the declaration index associated with one binding symbol handle.
 
 internal u32 lsp_semantic_find_decl_index_by_symbol_handle(const Sema* sema,
@@ -92,6 +107,21 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
     if (ref_node_index != U32_MAX &&
         ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
         u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
+        if (decl_index != U32_MAX &&
+            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
+             doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
+             doc->front_end.sema.decls[decl_index].kind ==
+                 SK_BuiltinFunction)) {
+            return LSP_SEMANTIC_FUNCTION;
+        }
+    }
+
+    u32 field_node_index =
+        lsp_semantic_find_field_node(&doc->front_end.ast, token_index);
+    if (field_node_index != U32_MAX &&
+        field_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
+        u32 decl_index =
+            doc->front_end.sema.node_decl_indices[field_node_index];
         if (decl_index != U32_MAX &&
             (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
              doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
