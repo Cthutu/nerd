@@ -916,18 +916,21 @@ needed earlier.
 
 ## Milestone 18: Plex Ergonomics And Layout Controls
 
-- [ ] 78. Add plex update syntax.
+- [X] 78. Add plex update syntax.
   - Support `existing with { field: value }`.
   - Require updated fields to exist and values to match their declared types.
 
-- [ ] 79. Add pointer field ergonomics.
+- [X] 79. Add pointer field ergonomics.
   - Support automatic dereference for field access on `^Plex`.
   - Keep the generated IR explicit about the dereference.
 
-- [ ] 80. Add plex layout annotations.
+- [X] 80. Add plex layout annotations.
   - Support `#c` for explicit source-order C-compatible layout.
   - Support `#packed` for packed layout; packed implies `#c`.
   - Defer compiler-reordered layout until there is a concrete optimisation need.
+  - MS18 coverage includes update expressions, pointer field access, `#c` and
+    `#packed` formatting, generated packed C structs, semantic diagnostics,
+    editor keyword highlighting, LSP tokens, and documentation.
 
 ## Milestone 19: Shared Pattern Infrastructure
 

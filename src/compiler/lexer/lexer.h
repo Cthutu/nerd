@@ -50,6 +50,7 @@ typedef enum {
     TK_Dot,
     TK_At,
     TK_Dollar,
+    TK_Hash,
     TK_Range,
     TK_RangeInclusive,
     TK_Colon,
@@ -83,6 +84,7 @@ typedef enum {
     TK_continue,
     TK_return,
     TK_plex,
+    TK_with,
     TK_yes,
     TK_no,
 } TokenKind;

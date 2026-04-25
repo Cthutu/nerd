@@ -702,8 +702,12 @@ void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
-    cgen_add(cgen, ".");
-    if (cgen->ir->types[instr->rvalue[0].type].kind == STK_Plex) {
+    const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
+    bool            pointer_to_plex =
+        target_type->kind == STK_Pointer &&
+        cgen->ir->types[target_type->first_param_type].kind == STK_Plex;
+    cgen_add(cgen, pointer_to_plex ? "->" : ".");
+    if (target_type->kind == STK_Plex || pointer_to_plex) {
         cgen_add_symbol_name(cgen, (u32)instr->rvalue[1].value.integer);
     } else {
         string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
@@ -1018,8 +1022,12 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             continue;
         }
         cgen_start_line(cgen);
-        arena_format(
-            &cgen->arena, "typedef struct %s {", cgen_c_type(cgen->ir, i));
+        arena_format(&cgen->arena,
+                     "typedef struct%s %s {",
+                     type->kind == STK_Plex && (type->flags & STF_PlexPacked)
+                         ? " __attribute__((packed))"
+                         : "",
+                     cgen_c_type(cgen->ir, i));
         cgen_addn(cgen, "");
         cgen_indent(cgen);
         if (type->kind == STK_Tuple) {

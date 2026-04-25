@@ -68,6 +68,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("At `@`");
     case TK_Dollar:
         return string_from_cstr("Dollar `$`");
+    case TK_Hash:
+        return string_from_cstr("Hash `#`");
     case TK_Range:
         return string_from_cstr("Range `..`");
     case TK_RangeInclusive:
@@ -130,6 +132,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `return`");
     case TK_plex:
         return string_from_cstr("Keyword `plex`");
+    case TK_with:
+        return string_from_cstr("Keyword `with`");
     case TK_yes:
         return string_from_cstr("Keyword `yes`");
     case TK_no:

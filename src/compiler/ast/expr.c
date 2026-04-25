@@ -95,6 +95,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LParen:
     case TK_LBracket:
     case TK_LBrace:
+    case TK_with:
         *out_left_bp  = AST_BP_POSTFIX;
         *out_right_bp = AST_BP_POSTFIX;
         return true;
@@ -1205,6 +1206,96 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = AK_Plex,
+                                 .token_index = op.token_index,
+                                 .a           = literal_index,
+                             },
+                             out_node);
+    }
+
+    if (op.kind == TK_with) {
+        if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &op),
+                                             TK_LBrace,
+                                             state->token.kind);
+        }
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &op),
+                                             TK_RBrace,
+                                             TK_EOF);
+        }
+        u32 first_field = (u32)array_count(state->plex_literal_fields);
+        u32 field_count = 0;
+        while (state->token.kind != TK_RBrace) {
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            AstToken field = state->token;
+            if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
+                return false;
+            }
+            u32 value_node = 0;
+            if (!ast_parse_expr_bp(state, 0, &value_node)) {
+                return false;
+            }
+            array_push(state->plex_literal_fields,
+                       (AstPlexLiteralField){
+                           .token_index      = field.token_index,
+                           .symbol_handle    = field.value.symbol_handle,
+                           .value_node_index = value_node,
+                       });
+            field_count++;
+            if (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state) || !ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_RBrace) {
+                    break;
+                }
+                continue;
+            }
+            if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                if (!ast_expect_token(state, TK_Comma) ||
+                    !ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_RBrace) {
+                    break;
+                }
+                continue;
+            }
+            if (state->token.kind == TK_Symbol &&
+                ast_peek_kind_at(state, 0) == TK_Colon) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
+        }
+        if (state->token.kind == TK_RBrace &&
+            state->token_index == state->token.token_index) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        } else if (state->token.kind != TK_RBrace &&
+                   !ast_expect_token(state, TK_RBrace)) {
+            return false;
+        }
+        u32 literal_index = (u32)array_count(state->plex_literals);
+        array_push(state->plex_literals,
+                   (AstPlexLiteralInfo){
+                       .target_node_index = left_node,
+                       .first_field       = first_field,
+                       .field_count       = field_count,
+                   });
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_PlexUpdate,
                                  .token_index = op.token_index,
                                  .a           = literal_index,
                              },

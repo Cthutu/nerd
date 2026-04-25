@@ -248,13 +248,33 @@ missing fields, and field value type mismatches are rejected during semantic
 analysis. Literal field order does not have to match declaration order because
 lowering uses named C designators.
 
+Existing plex values can be copied with selected fields replaced:
+
+- `moved := point with { x: point.x + 1 }`
+
+The left-hand side of `with` must be a plex value. Updated fields must exist,
+must not be repeated, and their values must match the declared field type. Fields
+not mentioned in the update are copied from the source value.
+
 Plex fields are accessed with dot syntax:
 
 - `point.x`
 - `person.name`
+- `point_ptr.x`
 
-The current milestone supports direct field access on plex values. Pointer field
-ergonomics such as automatic dereference for `^Point` are deferred.
+Field access on `^Plex` automatically dereferences the pointer for the field
+lookup. Generated C lowers this through `->`, while direct plex values continue
+to lower through `.`.
+
+Plex layout annotations are written after `plex`:
+
+- `WirePoint :: plex #c { x i32 y i32 }`
+- `PackedHeader :: plex #packed { tag u8 length u32 }`
+
+`#c` requests explicit source-order C-compatible layout. `#packed` emits a
+packed generated C struct and implies `#c`. Unannotated plexes currently also
+use source-order layout for predictable lowering and debugging; compiler-driven
+field reordering is reserved for a future optimisation milestone.
 
 ## Fixed Arrays
 

@@ -114,6 +114,13 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     }
     if (kind == TK_plex) {
         (*io_index)++;
+        while (ast_kind_at_stream_index(state, *io_index) == TK_Hash) {
+            (*io_index)++;
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+        }
         if (ast_kind_at_stream_index(state, *io_index) != TK_LBrace) {
             return false;
         }
@@ -484,7 +491,37 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
     if (state->token.kind == TK_plex) {
         AstToken plex = state->token;
-        if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+        if (!ast_next_token(state)) {
+            return false;
+        }
+
+        u32 flags = APTF_None;
+        while (state->token.kind == TK_Hash) {
+            if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &plex),
+                                                 TK_Symbol,
+                                                 state->token.kind);
+            }
+            string annotation =
+                lex_symbol(state->lexer, state->token.value.symbol_handle);
+            if (string_eq(annotation, s("c"))) {
+                flags |= APTF_C;
+            } else if (string_eq(annotation, s("packed"))) {
+                flags |= APTF_C | APTF_Packed;
+            } else {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        }
+
+        if (state->token.kind != TK_LBrace) {
             return error_0203_expected_token(state->lexer->source,
                                              ast_token_span(state, &plex),
                                              TK_LBrace,
@@ -528,6 +565,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                    (AstPlexTypeInfo){
                        .first_field = first_field,
                        .field_count = field_count,
+                       .flags       = flags,
                    });
         return ast_emit_node(state,
                              (AstNode){

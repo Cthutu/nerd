@@ -50,10 +50,16 @@ typedef enum : u8 {
 typedef struct {
     SemaTypeKind kind;
     u16          param_count;
-    u16          _pad2;
+    u16          flags;
     u32          first_param_type;
     u32          return_type;
 } SemaType;
+
+typedef enum : u16 {
+    STF_None       = 0,
+    STF_PlexC      = 1 << 0,
+    STF_PlexPacked = 1 << 1,
+} SemaTypeFlag;
 
 //------------------------------------------------------------------------------
 // A top-level declaration collected from an AK_Bind node.

@@ -189,6 +189,7 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_Slice:
     case CK_Field:
     case CK_Plex:
+    case CK_PlexUpdate:
         return 80;
     case CK_StringConcat:
         return 85;
@@ -353,9 +354,13 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, ']');
         break;
     case CK_Plex:
+    case CK_PlexUpdate:
         {
             const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
             format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+            if (node->kind == CK_PlexUpdate) {
+                sb_append_cstr(sb, " with");
+            }
             sb_append_cstr(sb, " { ");
             for (u32 i = 0; i < plex->field_count; ++i) {
                 if (i > 0) {
@@ -695,7 +700,13 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypePlex:
         {
             const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
-            sb_append_cstr(sb, "plex {");
+            sb_append_cstr(sb, "plex");
+            if (plex->flags & CPTF_Packed) {
+                sb_append_cstr(sb, " #packed");
+            } else if (plex->flags & CPTF_C) {
+                sb_append_cstr(sb, " #c");
+            }
+            sb_append_cstr(sb, " {");
             for (u32 i = 0; i < plex->field_count; ++i) {
                 const CstPlexField* field =
                     &cst->plex_fields[plex->first_field + i];
@@ -918,12 +929,15 @@ internal u32 format_find_matching_close_token_index(const Lexer* lexer,
                                                     TokenKind    open_kind,
                                                     TokenKind    close_kind)
 {
-    u32 depth = 1;
-    for (u32 i = open_index + 1; i < array_count(lexer->tokens); ++i) {
+    u32 depth = 0;
+    for (u32 i = open_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
         if (kind == open_kind) {
             depth++;
         } else if (kind == close_kind) {
+            if (depth == 0) {
+                return i;
+            }
             depth--;
             if (depth == 0) {
                 return i;
@@ -997,6 +1011,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LParen, TK_RParen);
     case CK_Plex:
+    case CK_PlexUpdate:
     case CK_TypePlex:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
@@ -1204,7 +1219,13 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         }
     }
 
-    sb_append_cstr(sb, "plex {\n");
+    sb_append_cstr(sb, "plex");
+    if (plex->flags & CPTF_Packed) {
+        sb_append_cstr(sb, " #packed");
+    } else if (plex->flags & CPTF_C) {
+        sb_append_cstr(sb, " #c");
+    }
+    sb_append_cstr(sb, " {\n");
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
         string field_name         = lex_symbol(lexer, field->symbol_handle);

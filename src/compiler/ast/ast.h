@@ -51,6 +51,7 @@
 // | AK_Slice           | Ast slice-info index | 0                            |
 // | AK_Field           | Ast index value   | Symbol handle                   |
 // | AK_Plex            | Ast plex-literal index | 0                         |
+// | AK_PlexUpdate      | Ast plex-literal index | 0                         |
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
@@ -119,6 +120,7 @@ typedef enum {
     AK_Slice,
     AK_Field,
     AK_Plex,
+    AK_PlexUpdate,
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
@@ -200,7 +202,14 @@ typedef struct {
 typedef struct {
     u32 first_field;
     u32 field_count;
+    u32 flags;
 } AstPlexTypeInfo;
+
+typedef enum : u32 {
+    APTF_None   = 0,
+    APTF_C      = 1 << 0,
+    APTF_Packed = 1 << 1,
+} AstPlexTypeFlag;
 
 typedef struct {
     u32 token_index;

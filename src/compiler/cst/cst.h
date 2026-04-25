@@ -50,6 +50,7 @@
 // | CK_Slice           | Slice-info index      | 0                     |
 // | CK_Field           | Value node index      | Symbol handle         |
 // | CK_Plex            | Plex-literal index    | 0                     |
+// | CK_PlexUpdate      | Plex-literal index    | 0                     |
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
@@ -115,6 +116,7 @@ typedef enum {
     CK_Slice,
     CK_Field,
     CK_Plex,
+    CK_PlexUpdate,
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
@@ -182,7 +184,14 @@ typedef struct {
 typedef struct {
     u32 first_field;
     u32 field_count;
+    u32 flags;
 } CstPlexTypeInfo;
+
+typedef enum : u32 {
+    CPTF_None   = 0,
+    CPTF_C      = 1 << 0,
+    CPTF_Packed = 1 << 1,
+} CstPlexTypeFlag;
 
 typedef struct {
     u32 token_index;
