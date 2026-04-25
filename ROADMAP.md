@@ -1134,6 +1134,11 @@ needed earlier.
 - [ ] 98. Replace bootstrap module resolution with general module loading.
   - This is the first of the next design-work items and is the one whose
     direction has already been settled.
+  - Progress:
+    - rooted module-path resolution is now moving into shared compiler helpers
+      instead of living only in sema
+    - the old repo-root fallback and `mod.n` folder-module fallback should stay
+      removed so resolution matches the agreed design
   - Remove compiler-side special-casing for `std.print`.
   - Load module source from configured module roots through the same front-end
     pipeline as normal source files.

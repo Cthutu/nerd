@@ -110,6 +110,35 @@ cstr path_dirname(Arena* arena, cstr path)
     return result;
 }
 
+cstr path_canonical(Arena* arena, cstr path)
+{
+#if OS_WINDOWS
+    char  buffer[MAX_PATH] = {0};
+    DWORD written = GetFullPathNameA(path, sizeof(buffer), buffer, NULL);
+    if (written == 0 || written >= sizeof(buffer)) {
+        return NULL;
+    }
+
+    char* result = (char*)arena_alloc(arena, written + 1);
+    memcpy(result, buffer, written + 1);
+    return result;
+#elif OS_POSIX
+    char buffer[PATH_MAX] = {0};
+    if (realpath(path, buffer) == NULL) {
+        return NULL;
+    }
+
+    usize len    = strlen(buffer);
+    char* result = (char*)arena_alloc(arena, len + 1);
+    memcpy(result, buffer, len + 1);
+    return result;
+#else
+    (void)arena;
+    (void)path;
+    return NULL;
+#endif
+}
+
 cstr path_executable_dir(Arena* arena)
 {
 #if OS_WINDOWS

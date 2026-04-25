@@ -773,6 +773,7 @@ bool   path_has_extension(string path, cstr extension);
 string path_filename(string path);
 string path_stem(string path);
 cstr   path_dirname(Arena* arena, cstr path);
+cstr   path_canonical(Arena* arena, cstr path);
 cstr   path_executable_dir(Arena* arena);
 cstr   path_join(Arena* arena, cstr left, cstr right);
 cstr   path_replace_extension(Arena* arena, cstr path, cstr extension);
