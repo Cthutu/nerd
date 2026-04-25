@@ -84,6 +84,7 @@ typedef enum {
     TK_continue,
     TK_return,
     TK_plex,
+    TK_union,
     TK_with,
     TK_as,
     TK_yes,

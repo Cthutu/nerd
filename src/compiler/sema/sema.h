@@ -42,6 +42,7 @@ typedef enum : u8 {
     STK_Slice,
     STK_Pointer,
     STK_Plex,
+    STK_Union,
 } SemaTypeKind;
 
 //------------------------------------------------------------------------------

@@ -186,9 +186,10 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         (*io_index)++;
         return ast_skip_type_tokens(state, io_index);
     }
-    if (kind == TK_plex) {
+    if (kind == TK_plex || kind == TK_union) {
         (*io_index)++;
-        while (ast_kind_at_stream_index(state, *io_index) == TK_Hash) {
+        while (kind == TK_plex &&
+               ast_kind_at_stream_index(state, *io_index) == TK_Hash) {
             (*io_index)++;
             if (ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
                 return false;
@@ -563,19 +564,21 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                              out_node);
     }
 
-    if (state->token.kind == TK_plex) {
-        AstToken plex = state->token;
+    if (state->token.kind == TK_plex || state->token.kind == TK_union) {
+        AstToken type_token = state->token;
+        bool     is_union   = state->token.kind == TK_union;
         if (!ast_next_token(state)) {
             return false;
         }
 
-        u32 flags = APTF_None;
-        while (state->token.kind == TK_Hash) {
+        u32 flags = is_union ? APTF_Union : APTF_None;
+        while (!is_union && state->token.kind == TK_Hash) {
             if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(state->lexer->source,
-                                                 ast_token_span(state, &plex),
-                                                 TK_Symbol,
-                                                 state->token.kind);
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &type_token),
+                    TK_Symbol,
+                    state->token.kind);
             }
             string annotation =
                 lex_symbol(state->lexer, state->token.value.symbol_handle);
@@ -597,7 +600,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
         if (state->token.kind != TK_LBrace) {
             return error_0203_expected_token(state->lexer->source,
-                                             ast_token_span(state, &plex),
+                                             ast_token_span(state, &type_token),
                                              TK_LBrace,
                                              state->token.kind);
         }
@@ -644,7 +647,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = AK_TypePlex,
-                                 .token_index = plex.token_index,
+                                 .token_index = type_token.token_index,
                                  .a           = plex_type_index,
                              },
                              out_node);

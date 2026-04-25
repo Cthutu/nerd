@@ -202,7 +202,8 @@ internal void ir_render_type_name(StringBuilder* sb,
         ir_render_type_name(sb, ir, lexer, type->first_param_type);
         break;
     case STK_Plex:
-        sb_append_cstr(sb, "plex{");
+    case STK_Union:
+        sb_append_cstr(sb, type->kind == STK_Plex ? "plex{" : "union{");
         for (u32 i = 0; i < type->param_count; ++i) {
             if (i > 0) {
                 sb_append_cstr(sb, ",");
@@ -349,7 +350,10 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_PLEX:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
-            sb_append_cstr(&sb, " = plex(");
+            sb_append_cstr(&sb,
+                           ir->types[instr->lvalue.type].kind == STK_Union
+                               ? " = union("
+                               : " = plex(");
             {
                 const IrTupleInfo* plex =
                     &ir->tuples[(u32)instr->rvalue[0].value.integer];

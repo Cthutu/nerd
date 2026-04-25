@@ -771,11 +771,12 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_TypePlex:
         {
-            const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
-            sb_append_cstr(sb, "plex");
-            if (plex->flags & CPTF_Packed) {
+            const CstPlexTypeInfo* plex     = &cst->plex_types[node->a];
+            bool                   is_union = (plex->flags & CPTF_Union) != 0;
+            sb_append_cstr(sb, is_union ? "union" : "plex");
+            if (!is_union && (plex->flags & CPTF_Packed)) {
                 sb_append_cstr(sb, " #packed");
-            } else if (plex->flags & CPTF_C) {
+            } else if (!is_union && (plex->flags & CPTF_C)) {
                 sb_append_cstr(sb, " #c");
             }
             sb_append_cstr(sb, " {");
@@ -1296,10 +1297,11 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         }
     }
 
-    sb_append_cstr(sb, "plex");
-    if (plex->flags & CPTF_Packed) {
+    bool is_union = (plex->flags & CPTF_Union) != 0;
+    sb_append_cstr(sb, is_union ? "union" : "plex");
+    if (!is_union && (plex->flags & CPTF_Packed)) {
         sb_append_cstr(sb, " #packed");
-    } else if (plex->flags & CPTF_C) {
+    } else if (!is_union && (plex->flags & CPTF_C)) {
         sb_append_cstr(sb, " #c");
     }
     sb_append_cstr(sb, " {\n");

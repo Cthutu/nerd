@@ -982,14 +982,14 @@ needed earlier.
 
 ## Milestone 21: Raw Unions For FFI
 
-- [ ] 86. Add raw union types.
+- [X] 86. Add raw union types.
   - Support `union { field Type ... }`.
   - Keep raw unions out of pattern matching.
   - Define construction and field access rules with FFI use in mind.
   - Document the safety rule: the programmer is responsible for knowing which
     field is valid.
 
-- [ ] 87. Prepare FFI-facing layout guarantees.
+- [X] 87. Prepare FFI-facing layout guarantees.
   - Align raw union layout with C ABI expectations.
   - Ensure `plex #c`, `plex #packed`, and `union` can be used together for later
     FFI declarations.

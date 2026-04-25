@@ -229,9 +229,10 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
         (*io_index)++;
         return cst_skip_type_tokens(state, io_index);
     }
-    if (kind == TK_plex) {
+    if (kind == TK_plex || kind == TK_union) {
         (*io_index)++;
-        while (cst_kind_at_stream_index(state, *io_index) == TK_Hash) {
+        while (kind == TK_plex &&
+               cst_kind_at_stream_index(state, *io_index) == TK_Hash) {
             (*io_index)++;
             if (cst_kind_at_stream_index(state, *io_index) != TK_Symbol) {
                 return false;
@@ -693,11 +694,12 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                              out_node);
     }
 
-    if (token.kind == TK_plex) {
-        u32 token_index = state->token_index;
+    if (token.kind == TK_plex || token.kind == TK_union) {
+        u32  token_index = state->token_index;
+        bool is_union    = token.kind == TK_union;
         cst_advance(state);
-        u32 flags = CPTF_None;
-        while (cst_current_token(state).kind == TK_Hash) {
+        u32 flags = is_union ? CPTF_Union : CPTF_None;
+        while (!is_union && cst_current_token(state).kind == TK_Hash) {
             cst_advance(state);
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;

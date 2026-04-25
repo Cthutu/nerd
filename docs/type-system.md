@@ -42,6 +42,7 @@ The current `SemaTypeKind` set includes:
 - slice types
 - pointer types
 - plex types
+- raw union types
 
 Function types store their parameter list in the flattened
 `Sema.type_param_types` side table and keep the return type in
@@ -79,6 +80,14 @@ Plex types are written `plex { field Type ... }`. A plex row stores its named
 field types in source order, with field symbols carried alongside field types in
 semantic side tables. The current layout is source-order and C-compatible for
 predictable lowering and debugging; compiler-reordered layouts are deferred.
+
+Raw union types are written `union { field Type ... }`. They share the same
+named-field storage model as plexes, but generated C lowers them as C unions:
+all fields overlap and the programmer is responsible for knowing which field is
+currently valid. A union value is constructed with exactly one field, such as
+`Value { i: 42 }`, and fields are read with dot notation. Raw unions are meant
+for low-level and FFI-facing code, so they are intentionally not supported in
+pattern matching.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -210,6 +219,7 @@ Current storage-eligible types are:
 - slices whose element type is storage-eligible
 - pointers
 - plexes whose fields are all storage-eligible
+- raw unions whose fields are all storage-eligible
 
 Zero-initialised declarations such as `count: i32` and `name: string` are
 checked in sema and then lowered using type-aware zero values.

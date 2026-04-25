@@ -197,6 +197,7 @@ typedef enum : u32 {
     CPTF_None   = 0,
     CPTF_C      = 1 << 0,
     CPTF_Packed = 1 << 1,
+    CPTF_Union  = 1 << 2,
 } CstPlexTypeFlag;
 
 typedef struct {

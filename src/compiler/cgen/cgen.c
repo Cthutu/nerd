@@ -196,6 +196,7 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     case STK_Array:
     case STK_Slice:
     case STK_Plex:
+    case STK_Union:
         {
             static char names[8][32];
             static u32  next = 0;
@@ -205,7 +206,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                      ir->types[type_index].kind == STK_Tuple   ? "tuple%u"
                      : ir->types[type_index].kind == STK_Array ? "array%u"
                      : ir->types[type_index].kind == STK_Slice ? "slice%u"
-                                                               : "plex%u",
+                     : ir->types[type_index].kind == STK_Plex  ? "plex%u"
+                                                               : "union%u",
                      type_index);
             return name;
         }
@@ -703,11 +705,13 @@ void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
     cgen_add(cgen, " = ");
     cgen_add_value(cgen, &instr->rvalue[0]);
     const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
-    bool            pointer_to_plex =
+    bool            pointer_to_record =
         target_type->kind == STK_Pointer &&
-        cgen->ir->types[target_type->first_param_type].kind == STK_Plex;
-    cgen_add(cgen, pointer_to_plex ? "->" : ".");
-    if (target_type->kind == STK_Plex || pointer_to_plex) {
+        (cgen->ir->types[target_type->first_param_type].kind == STK_Plex ||
+         cgen->ir->types[target_type->first_param_type].kind == STK_Union);
+    cgen_add(cgen, pointer_to_record ? "->" : ".");
+    if (target_type->kind == STK_Plex || target_type->kind == STK_Union ||
+        pointer_to_record) {
         cgen_add_symbol_name(cgen, (u32)instr->rvalue[1].value.integer);
     } else {
         string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
@@ -1018,12 +1022,14 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
         const SemaType* type = &cgen->ir->types[i];
         if (type->kind != STK_Tuple && type->kind != STK_Array &&
-            type->kind != STK_Slice && type->kind != STK_Plex) {
+            type->kind != STK_Slice && type->kind != STK_Plex &&
+            type->kind != STK_Union) {
             continue;
         }
         cgen_start_line(cgen);
         arena_format(&cgen->arena,
-                     "typedef struct%s %s {",
+                     "typedef %s%s %s {",
+                     type->kind == STK_Union ? "union" : "struct",
                      type->kind == STK_Plex && (type->flags & STF_PlexPacked)
                          ? " __attribute__((packed))"
                          : "",
@@ -1041,7 +1047,7 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                 arena_format(&cgen->arena, " _%u;", field);
                 cgen_addn(cgen, "");
             }
-        } else if (type->kind == STK_Plex) {
+        } else if (type->kind == STK_Plex || type->kind == STK_Union) {
             for (u32 field = 0; field < type->param_count; ++field) {
                 cgen_start_line(cgen);
                 cgen_add(cgen,

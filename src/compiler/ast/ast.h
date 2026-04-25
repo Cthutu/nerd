@@ -215,6 +215,7 @@ typedef enum : u32 {
     APTF_None   = 0,
     APTF_C      = 1 << 0,
     APTF_Packed = 1 << 1,
+    APTF_Union  = 1 << 2,
 } AstPlexTypeFlag;
 
 typedef struct {
