@@ -1043,18 +1043,21 @@ needed earlier.
 
 ## Milestone 25: FFI Function Declarations
 
-- [ ] 94. Add FFI function declarations and calls.
+- [X] 94. Add FFI function declarations and calls.
   - Support declarations such as `fcntl :: ffi "c" (i32, i32, ...) -> i32`.
   - Allow an omitted return type to mean `void`.
-  - Link `ffi "name"` against `libname.a` on Linux and `name.lib` on Windows.
-  - Reserve `#` annotations for calling conventions such as `#stdcall` once
-    the default C calling convention is working.
+  - Link `ffi "name"` using the platform linker. On POSIX this emits
+    `-lname`, so the linker can resolve `libname.a` or `libname.so`; `ffi "c"`
+    is treated as the ambient C runtime and does not add an explicit link flag.
+  - Reserve `#` annotations for calling conventions such as `#stdcall`; this is
+    deferred until Windows FFI is exercised directly.
   - Start with ABI-safe primitive, pointer, `plex #c`, `plex #packed`, and
     `union` types; reject higher-level Nerd-only types unless explicitly
     lowered by a wrapper.
   - Fixed-arity and varargs FFI functions are implemented and covered by
-    language, formatter, LSP, generated C, and ABI rejection tests. Calling
-    convention annotations and Windows-specific link naming remain.
+    language, formatter, LSP, generated C, library-linking, and ABI rejection
+    tests. Calling convention annotations and Windows-specific link naming
+    remain deferred.
   - The `...` token is only valid inside FFI signatures.
   - Keep ABI rules documented and covered by generated C, language, formatter,
     LSP, and error tests.
