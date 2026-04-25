@@ -934,11 +934,14 @@ needed earlier.
 
 ## Milestone 19: Shared Pattern Infrastructure
 
-- [ ] 81. Generalise pattern representation.
+- [X] 81. Generalise pattern representation.
   - Introduce a shared pattern AST/CST/sema model used by `on` and destructuring.
   - Support `_` ignore patterns.
   - Support binder patterns consistently.
   - Keep exhaustiveness and binder scoping explicit in semantic analysis.
+  - Shared AST/CST pattern tables now back `on` branches and destructuring,
+    including `_`, binders, tuple/plex pattern storage, semantic binder
+    indices, formatter output, and IR lowering hooks.
 
 - [X] 82. Add destructuring bindings.
   - Support tuple destructuring in `::`, `:`, and `:=` forms.
@@ -949,11 +952,13 @@ needed earlier.
     assignment `=`, `_` ignores in assignment, plex shorthand destructuring,
     formatter, error diagnostics, and LSP hover/definition coverage.
 
-- [ ] 83. Add pattern guards.
+- [X] 83. Add pattern guards.
   - Support `pattern on condition => expr`.
   - Ensure guard binders are in scope for the guard condition.
   - A guarded branch should not count as exhaustive unless the guard is known
     to be unconditional.
+  - Guards are parsed, formatted, type-checked as `bool`, lowered before branch
+    bodies, and covered by language, error, format, and LSP tests.
 
 ## Milestone 20: Tuple And Plex Patterns In `on`
 

@@ -948,12 +948,16 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
         return ast_parse_plex_pattern(state, out_pattern);
     }
 
-    u32 start_node = 0;
+    bool saved_statement_boundary   = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    u32 start_node                  = 0;
     if (!ast_parse_expr_bp(state, 0, &start_node)) {
+        state->allow_statement_boundary = saved_statement_boundary;
         return false;
     }
+    state->allow_statement_boundary = saved_statement_boundary;
 
-    AstPatternKind range_kind = APK_Value;
+    AstPatternKind range_kind       = APK_Value;
     if (state->token.kind == TK_Range) {
         range_kind = APK_RangeExclusive;
     } else if (state->token.kind == TK_RangeInclusive) {
@@ -976,10 +980,14 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
                                         TK_Integer);
     }
 
-    u32 end_node = 0;
+    saved_statement_boundary        = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    u32 end_node                    = 0;
     if (!ast_parse_expr_bp(state, 0, &end_node)) {
+        state->allow_statement_boundary = saved_statement_boundary;
         return false;
     }
+    state->allow_statement_boundary = saved_statement_boundary;
     return ast_emit_pattern(state,
                             (AstPattern){
                                 .kind        = range_kind,

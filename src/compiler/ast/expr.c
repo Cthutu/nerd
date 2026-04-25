@@ -453,8 +453,19 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                     }
                 }
                 if (state->token.kind == TK_on) {
+                    AstToken guard_token = state->token;
+                    if (state->token.token_index == state->token_index &&
+                        !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &guard_token),
+                            TK_FatArrow);
+                    }
                     if (!ast_next_token(state)) {
-                        return false;
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &guard_token),
+                            TK_FatArrow);
                     }
                     u32 guard_node = U32_MAX;
                     if (!ast_parse_expr_bp(state, 0, &guard_node)) {
