@@ -57,6 +57,7 @@
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
 // | AK_DestructureBind | Ast pattern index | Ast index of value              |
 // | AK_DestructureVariable | Ast pattern index | Ast index of value          |
+// | AK_DestructureAssign | Ast pattern index | Ast index of value            |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
@@ -128,6 +129,7 @@ typedef enum {
     AK_On,
     AK_DestructureBind,
     AK_DestructureVariable,
+    AK_DestructureAssign,
     AK_TypeFn,
     AK_TypeTuple,
     AK_TypeArray,

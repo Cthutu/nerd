@@ -86,6 +86,32 @@ internal TokenKind ast_expr_cursor_kind(const AstParseState* state)
     return state->lexer->tokens[state->token_index].kind;
 }
 
+internal bool ast_token_has_newline_before(const AstParseState* state,
+                                           u32                  token_index)
+{
+    if (token_index == 0 || token_index >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+    usize previous_end = lex_token_end_offset(
+        state->lexer, &state->lexer->tokens[token_index - 1]);
+    usize  current_start = state->lexer->tokens[token_index].offset;
+    string source        = state->lexer->source.source;
+    if (previous_end > current_start) {
+        return false;
+    }
+    for (usize i = previous_end; i < current_start && i < source.count; ++i) {
+        if (source.data[i] == '\n') {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
+{
+    return kind == TK_with || kind == TK_Dot;
+}
+
 //------------------------------------------------------------------------------
 // Return Pratt binding powers for supported infix operators.
 
@@ -1466,6 +1492,13 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
                 return error_0202_missing_operator(
                     next.source, ast_token_span(state, &next), next.kind);
             }
+            break;
+        }
+
+        if (state->allow_statement_boundary &&
+            !ast_postfix_token_can_cross_statement_boundary(next.kind) &&
+            left_bp >= AST_BP_POSTFIX &&
+            ast_token_has_newline_before(state, next.token_index)) {
             break;
         }
 

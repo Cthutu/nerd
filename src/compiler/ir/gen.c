@@ -911,6 +911,7 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
         return ir_node_contains_interpolation(ast, node->a);
     case AK_DestructureBind:
     case AK_DestructureVariable:
+    case AK_DestructureAssign:
         return ir_node_contains_interpolation(ast, node->b);
     case AK_Slice:
         {
@@ -2560,6 +2561,109 @@ internal void ir_lower_destructure_pattern(const Ast*  ast,
     }
 }
 
+internal void ir_lower_destructure_assign_pattern(const Ast*  ast,
+                                                  const Sema* sema,
+                                                  u32         pattern_index,
+                                                  IrValue     source,
+                                                  u32         source_type,
+                                                  u64*        next_value_index,
+                                                  Ir*         ir)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    u32               symbol = ir_destructure_binder_symbol(ast, pattern_index);
+    if (symbol != U32_MAX) {
+        u32 local_index = sema->pattern_local_indices[pattern_index];
+        ASSERT(local_index != sema_no_local(),
+               "Expected destructuring assignment target");
+        u32     target_type = ir_value_type_for_local_index(sema, local_index);
+        IrValue target      = {
+                 .kind          = IR_VALUE_LOCAL,
+                 .type          = target_type,
+                 .value.integer = symbol,
+        };
+        ir_add_assign(ir, target, target_type, source, source_type);
+        if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
+            ir_lower_destructure_assign_pattern(ast,
+                                                sema,
+                                                pattern->b,
+                                                source,
+                                                source_type,
+                                                next_value_index,
+                                                ir);
+        }
+        return;
+    }
+
+    switch (pattern->kind) {
+    case APK_Ignore:
+        return;
+    case APK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(ir, item, item_type, source, source_type, i);
+                ir_lower_destructure_assign_pattern(
+                    ast,
+                    sema,
+                    ast->pattern_items[pattern->a + i],
+                    item,
+                    item_type,
+                    next_value_index,
+                    ir);
+            }
+            return;
+        }
+    case APK_Plex:
+        {
+            const SemaType* plex = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                const AstPlexPatternField* field =
+                    &ast->pattern_fields[pattern->a + i];
+                u32 field_type = sema_no_type();
+                for (u32 j = 0; j < plex->param_count; ++j) {
+                    if (sema->type_param_symbols[plex->first_param_type + j] ==
+                        field->symbol_handle) {
+                        field_type =
+                            sema->type_param_types[plex->first_param_type + j];
+                        break;
+                    }
+                }
+                ASSERT(field_type != sema_no_type(),
+                       "Expected resolved plex field");
+                IrValue field_value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = field_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_field(ir,
+                             field_value,
+                             field_type,
+                             source,
+                             source_type,
+                             field->symbol_handle);
+                ir_lower_destructure_assign_pattern(ast,
+                                                    sema,
+                                                    field->pattern_index,
+                                                    field_value,
+                                                    field_type,
+                                                    next_value_index,
+                                                    ir);
+            }
+            return;
+        }
+    default:
+        ASSERT(false, "Unsupported destructuring assignment pattern");
+        return;
+    }
+}
+
 internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  const Ast*   ast,
                                                  const Sema*  sema,
@@ -2808,7 +2912,8 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     }
 
     if (node->kind == AK_DestructureBind ||
-        node->kind == AK_DestructureVariable) {
+        node->kind == AK_DestructureVariable ||
+        node->kind == AK_DestructureAssign) {
         u32 value_node = node->b;
         if (ast->nodes[value_node].kind == AK_AnnotatedValue) {
             value_node = ast->nodes[value_node].b;
@@ -2821,14 +2926,26 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                       node_values,
                                       next_value_index,
                                       ir);
-        ir_lower_destructure_pattern(ast,
-                                     sema,
-                                     function_index,
-                                     node->a,
-                                     value,
-                                     ir_node_type_index(ast, sema, value_node),
-                                     next_value_index,
-                                     ir);
+        if (node->kind == AK_DestructureAssign) {
+            ir_lower_destructure_assign_pattern(
+                ast,
+                sema,
+                node->a,
+                value,
+                ir_node_type_index(ast, sema, value_node),
+                next_value_index,
+                ir);
+        } else {
+            ir_lower_destructure_pattern(
+                ast,
+                sema,
+                function_index,
+                node->a,
+                value,
+                ir_node_type_index(ast, sema, value_node),
+                next_value_index,
+                ir);
+        }
         return IR_STMT_FALLTHROUGH;
     }
 

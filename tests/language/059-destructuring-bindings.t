@@ -1,6 +1,8 @@
 main :: fn () -> i32 {
     (a, b) := (2, 3)
     prn($"{a} {b}")
+    (a, b) = (b, a)
+    prn($"{a} {b}")
     return 0
 }
 
@@ -8,6 +10,7 @@ main :: fn () -> i32 {
 0
 ¬
 2 3
+3 2
 
 ¬
 fn main
@@ -23,6 +26,18 @@ string.append string:" "
 string.append i32:b
 $4 = string.finish $3
 call fn(string)->void:prn, string:$4
+string.reset
+$5 = tuple(i32:b, i32:a)
+$6 = (i32,i32):$5.0
+a = i32:$6
+$7 = (i32,i32):$5.1
+b = i32:$7
+$8 = string.start
+string.append i32:a
+string.append string:" "
+string.append i32:b
+$9 = string.finish $8
+call fn(string)->void:prn, string:$9
 string.reset
 return i32:0
 end
@@ -45,6 +60,18 @@ int $main() {
     string_builder_append_string(to_string$i32($b));
     string $4 = string_builder_finish($3);
     prn($4);
+    string_builder_reset();
+    tuple8 $5 = (tuple8){._0 = $b, ._1 = $a};
+    int $6 = $5._0;
+    $a = $6;
+    int $7 = $5._1;
+    $b = $7;
+    size_t $8 = string_builder_mark();
+    string_builder_append_string(to_string$i32($a));
+    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
+    string_builder_append_string(to_string$i32($b));
+    string $9 = string_builder_finish($8);
+    prn($9);
     string_builder_reset();
     return 0;
 }

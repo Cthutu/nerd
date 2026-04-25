@@ -1121,6 +1121,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Variable:
     case CK_DestructureBind:
     case CK_DestructureVariable:
+    case CK_DestructureAssign:
     case CK_Assign:
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_Call:
@@ -1965,6 +1966,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, " := ");
             format_emit_expr(sb, cst, lexer, stmt->b, 0);
         }
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_DestructureAssign) {
+        format_emit_pattern(sb, cst, lexer, stmt->a);
+        sb_append_cstr(sb, " = ");
+        format_emit_expr(sb, cst, lexer, stmt->b, 0);
         sb_append_char(sb, '\n');
         return;
     }

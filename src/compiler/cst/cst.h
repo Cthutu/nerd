@@ -56,6 +56,7 @@
 // | CK_On              | Scrutinee node index  | On-info index         |
 // | CK_DestructureBind | Pattern index         | Value node index      |
 // | CK_DestructureVariable | Pattern index      | Value node index      |
+// | CK_DestructureAssign | Pattern index        | Value node index      |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
@@ -124,6 +125,7 @@ typedef enum {
     CK_On,
     CK_DestructureBind,
     CK_DestructureVariable,
+    CK_DestructureAssign,
     CK_TypeFn,
     CK_TypeTuple,
     CK_TypeArray,

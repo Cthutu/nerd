@@ -1697,7 +1697,8 @@ internal bool ast_parse_block_statement(AstParseState* state)
                 &cursor,
                 state->token.kind,
                 state->token.kind == TK_LParen ? TK_RParen : TK_RBrace) &&
-            ast_kind_at_stream_index(state, cursor) == TK_Colon) {
+            (ast_kind_at_stream_index(state, cursor) == TK_Colon ||
+             ast_kind_at_stream_index(state, cursor) == TK_Equal)) {
             return ast_parse_destructure(state, NULL);
         }
     }
@@ -2078,15 +2079,28 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node)
         return false;
     }
 
-    if (state->token.kind != TK_Colon) {
+    if (state->token.kind != TK_Colon && state->token.kind != TK_Equal) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
-                                         TK_Colon,
+                                         TK_Equal,
                                          state->token.kind);
     }
 
     AstKind node_kind  = AK_DestructureBind;
     u32     type_index = U32_MAX;
+    if (state->token.kind == TK_Equal) {
+        node_kind = AK_DestructureAssign;
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected destructuring assignment value, but found end of "
+                "file");
+        }
+        goto parse_value;
+    }
+
     if (!ast_next_token(state)) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,
@@ -2139,6 +2153,7 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node)
         }
     }
 
+parse_value:
     u32  value_node                 = 0;
     bool previous_boundary          = state->allow_statement_boundary;
     state->allow_statement_boundary = true;

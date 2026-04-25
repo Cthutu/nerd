@@ -440,6 +440,32 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     }
 }
 
+internal bool cst_token_has_newline_before(const CstParseState* state,
+                                           u32                  token_index)
+{
+    if (token_index == 0 || token_index >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+    usize previous_end = lex_token_end_offset(
+        state->lexer, &state->lexer->tokens[token_index - 1]);
+    usize  current_start = state->lexer->tokens[token_index].offset;
+    string source        = state->lexer->source.source;
+    if (previous_end > current_start) {
+        return false;
+    }
+    for (usize i = previous_end; i < current_start && i < source.count; ++i) {
+        if (source.data[i] == '\n') {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
+{
+    return kind == TK_with || kind == TK_Dot;
+}
+
 //------------------------------------------------------------------------------
 // Parse one expression using Pratt binding powers.
 
@@ -1574,7 +1600,10 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         }
 
         if (!cst_infix_binding_power(token.kind, &left_bp, &right_bp) ||
-            left_bp < min_bp) {
+            left_bp < min_bp ||
+            (!cst_postfix_token_can_cross_statement_boundary(token.kind) &&
+             left_bp >= CST_BP_PREFIX + 10 &&
+             cst_token_has_newline_before(state, state->token_index))) {
             if ((token.kind == TK_String ||
                  token.kind == TK_InterpolatedStringStart) &&
                 cst_node_is_stringish(&state->cst, left)) {
@@ -2327,7 +2356,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
                                      cst_current_token(state).kind == TK_LParen
                                          ? TK_RParen
                                          : TK_RBrace) &&
-            cst_kind_at_stream_index(state, cursor) == TK_Colon) {
+            (cst_kind_at_stream_index(state, cursor) == TK_Colon ||
+             cst_kind_at_stream_index(state, cursor) == TK_Equal)) {
             return cst_parse_destructure(state, NULL);
         }
     }
@@ -2634,11 +2664,16 @@ internal bool cst_parse_destructure(CstParseState* state, u32* out_node)
     u32     value       = 0;
     CstKind kind        = CK_DestructureBind;
 
-    if (!cst_parse_pattern(state, &pattern) || !cst_consume(state, TK_Colon)) {
+    if (!cst_parse_pattern(state, &pattern)) {
         return false;
     }
 
-    if (cst_current_token(state).kind == TK_Colon) {
+    if (cst_current_token(state).kind == TK_Equal) {
+        kind = CK_DestructureAssign;
+        cst_advance(state);
+    } else if (!cst_consume(state, TK_Colon)) {
+        return false;
+    } else if (cst_current_token(state).kind == TK_Colon) {
         cst_advance(state);
     } else if (cst_current_token(state).kind == TK_Equal) {
         kind = CK_DestructureVariable;
@@ -2858,7 +2893,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_For || node->kind == CK_Break ||
            node->kind == CK_Continue || node->kind == CK_Variable ||
            node->kind == CK_DestructureBind ||
-           node->kind == CK_DestructureVariable || node->kind == CK_Assign;
+           node->kind == CK_DestructureVariable ||
+           node->kind == CK_DestructureAssign || node->kind == CK_Assign;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -2875,7 +2911,8 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
     }
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
         node->kind == CK_DestructureBind ||
-        node->kind == CK_DestructureVariable || node->kind == CK_Statement) {
+        node->kind == CK_DestructureVariable ||
+        node->kind == CK_DestructureAssign || node->kind == CK_Statement) {
         u32 child_index = node->kind == CK_Statement ? node->a : node->b;
         if (child_index >= array_count(cst->nodes)) {
             return node_index + 1;
