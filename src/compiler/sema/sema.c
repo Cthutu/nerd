@@ -844,6 +844,38 @@ internal bool sema_resolve_bootstrap_module(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_type_is_ffi_safe(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    switch (type->kind) {
+    case STK_Void:
+    case STK_Bool:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_F32:
+    case STK_F64:
+    case STK_Isize:
+    case STK_Usize:
+    case STK_Pointer:
+    case STK_Union:
+        return true;
+    case STK_Plex:
+        return (type->flags & (STF_PlexC | STF_PlexPacked)) != 0;
+    default:
+        return false;
+    }
+}
+
 //------------------------------------------------------------------------------
 // Return whether one node already has a known folded constant result.
 
@@ -7691,18 +7723,34 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                         &return_type)) {
                 return false;
             }
+            if (!sema_type_is_ffi_safe(sema, return_type)) {
+                u32 span_node = signature->return_type_node_index != U32_MAX
+                                    ? signature->return_type_node_index
+                                    : node_index;
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[span_node]),
+                    s("FFI-safe return type"),
+                    sema_type_name(sema, &temp_arena, return_type));
+            }
 
             Array(u32) param_types = NULL;
             for (u32 i = 0; i < signature->param_count; ++i) {
+                u32 param_type_node =
+                    ast->params[signature->first_param + i].type_node_index;
                 u32 param_type = sema_no_type();
                 if (!sema_resolve_type_node(
-                        lexer,
-                        ast,
-                        sema,
-                        ast->params[signature->first_param + i].type_node_index,
-                        &param_type)) {
+                        lexer, ast, sema, param_type_node, &param_type)) {
                     array_free(param_types);
                     return false;
+                }
+                if (!sema_type_is_ffi_safe(sema, param_type)) {
+                    array_free(param_types);
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[param_type_node]),
+                        s("FFI-safe parameter type"),
+                        sema_type_name(sema, &temp_arena, param_type));
                 }
                 array_push(param_types, param_type);
             }

@@ -1052,6 +1052,9 @@ needed earlier.
   - Start with ABI-safe primitive, pointer, `plex #c`, `plex #packed`, and
     `union` types; reject higher-level Nerd-only types unless explicitly
     lowered by a wrapper.
+  - Fixed-arity FFI functions are implemented and covered by language,
+    formatter, LSP, generated C, and ABI rejection tests. Varargs, calling
+    convention annotations, and Windows-specific link naming remain.
   - Keep ABI rules documented and covered by generated C, language, formatter,
     LSP, and error tests.
 
