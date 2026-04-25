@@ -84,24 +84,27 @@ bool compile(NerdSource                source,
         .keywords            = artifacts->keywords,
     };
 
-    FrontEndState front_results = {0};
-    if (!front_end(
-            effective_source, &front_end_options, timing, &front_results)) {
-        front_end_results_done(&front_results);
+    ProgramInfo program = {0};
+    if (!front_end_program(
+            effective_source, &front_end_options, timing, &program)) {
+        program_info_done(&program);
         if (mapped_source) {
             filemap_unload(&source_map);
         }
         return false;
     }
 
+    FrontEndState* front_results =
+        &program.modules[program.root_module_index].front_end;
+
     BackEndState back_results = {0};
-    if (!back_end(&front_results,
+    if (!back_end(front_results,
                   artifacts,
                   dump_compiler_state,
                   timing,
                   &back_results)) {
         back_end_results_done(&back_results);
-        front_end_results_done(&front_results);
+        program_info_done(&program);
         if (mapped_source) {
             filemap_unload(&source_map);
         }
@@ -109,7 +112,7 @@ bool compile(NerdSource                source,
     }
 
     back_end_results_done(&back_results);
-    front_end_results_done(&front_results);
+    program_info_done(&program);
     if (mapped_source) {
         filemap_unload(&source_map);
     }

@@ -1142,6 +1142,8 @@ needed earlier.
     - a program-level front-end entry point and module record/cache scaffold are
       now in place so recursive loading can land without rewriting the
       single-file path first
+    - the real build/run compile path now goes through the program-level loader,
+      so imported modules are parsed and analysed during ordinary compilation
   - Remove compiler-side special-casing for `std.print`.
   - Load module source from configured module roots through the same front-end
     pipeline as normal source files.
