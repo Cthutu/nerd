@@ -229,6 +229,12 @@ typedef enum : u32 {
     CPK_Value,
     CPK_Ignore,
     CPK_Bind,
+    CPK_Equal,
+    CPK_NotEqual,
+    CPK_Less,
+    CPK_LessEqual,
+    CPK_Greater,
+    CPK_GreaterEqual,
     CPK_RangeExclusive,
     CPK_RangeInclusive,
     CPK_Tuple,
@@ -269,6 +275,7 @@ typedef struct {
 typedef enum : u32 {
     COK_Bool,
     COK_Value,
+    COK_Condition,
 } CstOnKind;
 
 typedef enum : u32 {

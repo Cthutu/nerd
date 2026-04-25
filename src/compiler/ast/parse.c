@@ -1140,8 +1140,56 @@ internal bool ast_parse_enum_variant_pattern(AstParseState* state,
                             out_pattern);
 }
 
+internal AstPatternKind ast_parse_comparison_pattern_kind(TokenKind kind)
+{
+    switch (kind) {
+    case TK_EqualEqual:
+        return APK_Equal;
+    case TK_BangEqual:
+        return APK_NotEqual;
+    case TK_Less:
+        return APK_Less;
+    case TK_LessEqual:
+        return APK_LessEqual;
+    case TK_Greater:
+        return APK_Greater;
+    case TK_GreaterEqual:
+        return APK_GreaterEqual;
+    default:
+        return APK_Value;
+    }
+}
+
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
 {
+    AstPatternKind comparison_kind =
+        ast_parse_comparison_pattern_kind(state->token.kind);
+    if (comparison_kind != APK_Value) {
+        AstToken comparison = state->token;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(state->token.source,
+                                            ast_token_span(state, &comparison),
+                                            TK_Integer);
+        }
+
+        bool saved_statement_boundary   = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        u32 value_node                  = 0;
+        if (!ast_parse_expr_bp(state, 0, &value_node)) {
+            state->allow_statement_boundary = saved_statement_boundary;
+            return false;
+        }
+        state->allow_statement_boundary = saved_statement_boundary;
+
+        return ast_emit_pattern(state,
+                                (AstPattern){
+                                    .kind        = comparison_kind,
+                                    .token_index = comparison.token_index,
+                                    .a           = value_node,
+                                },
+                                out_pattern);
+    }
+
     if (state->token.kind == TK_Symbol &&
         ast_symbol_is_underscore(state->lexer,
                                  state->token.value.symbol_handle)) {

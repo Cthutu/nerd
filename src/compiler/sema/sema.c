@@ -2003,6 +2003,12 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
             return true;
         }
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
     case APK_RangeExclusive:
     case APK_RangeInclusive:
     case APK_Ignore:
@@ -2502,6 +2508,12 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         return sema_resolve_node_refs(lexer,
                                       ast,
                                       owner_decl_index,
@@ -2759,7 +2771,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (!sema_resolve_node_refs(lexer,
+            if (node->a != U32_MAX &&
+                !sema_resolve_node_refs(lexer,
                                         ast,
                                         owner_decl_index,
                                         current_function_symbol,
@@ -3128,6 +3141,12 @@ internal void sema_collect_pattern_deps(const Ast*  ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         sema_collect_node_deps(
             ast, sema, owner_decl_index, pattern->a, out_sema);
         return;
@@ -3211,8 +3230,10 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_On:
         {
             const AstOnInfo* on = &ast->ons[node->b];
-            sema_collect_node_deps(
-                ast, sema, owner_decl_index, node->a, out_sema);
+            if (node->a != U32_MAX) {
+                sema_collect_node_deps(
+                    ast, sema, owner_decl_index, node->a, out_sema);
+            }
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
@@ -4190,6 +4211,12 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         {
             u32 pattern_type = sema_no_type();
             if (!sema_infer_node_type(
@@ -4200,6 +4227,31 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                 return error_0322_non_constant_on_pattern(
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[pattern->a]));
+            }
+            if (pattern->kind != APK_Value && pattern_type != value_type) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    sema_type_name(sema, &temp_arena, value_type),
+                    sema_type_name(sema, &temp_arena, pattern_type));
+            }
+            if ((pattern->kind == APK_Less || pattern->kind == APK_LessEqual ||
+                 pattern->kind == APK_Greater ||
+                 pattern->kind == APK_GreaterEqual) &&
+                !sema_type_is_numeric(sema, value_type)) {
+                string actual = sema_type_name(sema, &temp_arena, value_type);
+                return error_0326_invalid_binary_operands(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    pattern->kind == APK_Less
+                        ? s("<")
+                        : (pattern->kind == APK_LessEqual
+                               ? s("<=")
+                               : (pattern->kind == APK_Greater ? s(">")
+                                                               : s(">="))),
+                    s("matching numeric operands"),
+                    actual,
+                    actual);
             }
             return true;
         }
@@ -4951,7 +5003,8 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (sema_node_contains_interpolation(ast, node->a)) {
+            if (node->a != U32_MAX &&
+                sema_node_contains_interpolation(ast, node->a)) {
                 return true;
             }
             for (u32 i = 0; i < on->branch_count; ++i) {
@@ -5298,6 +5351,12 @@ internal bool sema_pattern_contains_interpolation(const Ast* ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         return sema_node_contains_interpolation(ast, pattern->a);
     case APK_RangeExclusive:
     case APK_RangeInclusive:
@@ -5347,6 +5406,12 @@ internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         return sema_find_interpolated_string_node(ast, pattern->a);
     case APK_RangeExclusive:
     case APK_RangeInclusive:
@@ -5600,6 +5665,12 @@ internal bool sema_validate_interpolated_string_pattern(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         return sema_validate_interpolated_strings(lexer, ast, sema, pattern->a);
     case APK_RangeExclusive:
     case APK_RangeInclusive:
@@ -6787,7 +6858,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             bool             statement_form = expected_type == void_type;
             bool             has_else       = false;
             u32              scrutinee_type = sema_no_type();
-            if (!sema_infer_node_type(lexer,
+            if (on->kind != AOK_Condition &&
+                !sema_infer_node_type(lexer,
                                       ast,
                                       sema,
                                       node->a,
@@ -6795,7 +6867,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                       &scrutinee_type)) {
                 return false;
             }
-            if (on->kind == AOK_Bool) {
+            if (on->kind == AOK_Condition) {
+                scrutinee_type = bool_type;
+            } else if (on->kind == AOK_Bool) {
                 if (scrutinee_type != bool_type) {
                     return error_0319_invalid_on_condition(
                         lexer->source,
@@ -6835,7 +6909,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema->locals[branch_local_index].type_index =
                         scrutinee_type;
                 }
-                if (!(branch->flags & AOBF_Else)) {
+                if (on->kind == AOK_Condition && !(branch->flags & AOBF_Else)) {
+                    u32 condition_type = sema_no_type();
+                    if (!sema_infer_node_type(lexer,
+                                              ast,
+                                              sema,
+                                              branch->guard_node_index,
+                                              bool_type,
+                                              &condition_type)) {
+                        return false;
+                    }
+                    if (condition_type != bool_type) {
+                        return error_0319_invalid_on_condition(
+                            lexer->source,
+                            sema_node_span(
+                                lexer, &ast->nodes[branch->guard_node_index]),
+                            sema_type_name(sema, &temp_arena, condition_type));
+                    }
+                } else if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
                         u32 pattern_index =
@@ -6851,7 +6942,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
 
-                if (branch->guard_node_index != U32_MAX) {
+                if (branch->guard_node_index != U32_MAX &&
+                    on->kind != AOK_Condition) {
                     u32 guard_type = sema_no_type();
                     if (!sema_infer_node_type(lexer,
                                               ast,
@@ -6945,9 +7037,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (statement_form) {
                 type_index = void_type;
             } else {
-                if (on->kind == AOK_Value && !has_else &&
-                    !sema_on_covers_all_enum_variants(
-                        ast, sema, node->b, scrutinee_type)) {
+                if (!has_else && (on->kind == AOK_Condition ||
+                                  !sema_on_covers_all_enum_variants(
+                                      ast, sema, node->b, scrutinee_type))) {
                     return error_0327_non_exhaustive_on(
                         lexer->source, sema_node_span(lexer, node));
                 }
@@ -8160,7 +8252,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_On:
         {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (!sema_validate_loop_control(lexer,
+            if (node->a != U32_MAX &&
+                !sema_validate_loop_control(lexer,
                                             ast,
                                             node->a,
                                             loop_depth,
@@ -8172,6 +8265,16 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
+                if (on->kind == AOK_Condition && !(branch->flags & AOBF_Else) &&
+                    !sema_validate_loop_control(lexer,
+                                                ast,
+                                                branch->guard_node_index,
+                                                loop_depth,
+                                                expr_block_depth,
+                                                expr_labels,
+                                                expr_label_count)) {
+                    return false;
+                }
                 if (!sema_validate_loop_control(lexer,
                                                 ast,
                                                 branch->expr_node_index,

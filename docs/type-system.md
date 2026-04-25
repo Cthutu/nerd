@@ -138,13 +138,20 @@ Block-form `on` currently supports:
 - constant value patterns
 - comma-separated constant alternatives
 - integer ranges through `..` and `..=`
+- explicit comparison patterns through `==`, `!=`, `<`, `<=`, `>`, and `>=`
 - unit enum variants through expected enum context, such as `Red` in
   `on colour { Red => ... }`
 - enum payload patterns, such as `Some(x)` and `Pair(left, _)`
 
-Range endpoints are checked semantically against the scrutinee type and must be
-compile-time constants. Empty integer ranges are rejected with a dedicated
-semantic error.
+Range endpoints and explicit comparison values are checked semantically against
+the scrutinee type and must be compile-time constants. Empty integer ranges are
+rejected with a dedicated semantic error. Relational comparison patterns require
+numeric scrutinees.
+
+Scrutinee-less condition-chain `on` is written `on { condition => expr ... }`.
+Each non-`else` branch condition must have type `bool`. Value-producing
+condition chains require an `else` branch because arbitrary conditions are not
+exhaustiveness-proven.
 
 For enum scrutinees, a value-producing block-form `on` can omit `else` only
 when unguarded branches cover every variant.

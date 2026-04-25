@@ -993,7 +993,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (ir_node_contains_interpolation(ast, node->a)) {
+            if (node->a != U32_MAX &&
+                ir_node_contains_interpolation(ast, node->a)) {
                 return true;
             }
             for (u32 i = 0; i < on->branch_count; ++i) {
@@ -1096,6 +1097,12 @@ internal bool ir_pattern_contains_interpolation(const Ast* ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         return ir_node_contains_interpolation(ast, pattern->a);
     case APK_RangeExclusive:
     case APK_RangeInclusive:
@@ -1238,6 +1245,12 @@ internal void ir_lower_on_pattern_match(const Lexer* lex,
     u32               bool_type = ir_builtin_type(sema, STK_Bool);
     switch (pattern->kind) {
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
         {
             IrValue pattern_value = ir_lower_node(lex,
                                                   ast,
@@ -1252,13 +1265,28 @@ internal void ir_lower_on_pattern_match(const Lexer* lex,
                       .type          = bool_type,
                       .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_equal(ir,
-                         matches,
-                         bool_type,
-                         source,
-                         source_type,
-                         pattern_value,
-                         ir_node_type_index(ast, sema, pattern->a));
+            IrOperation op     = IR_OP_EQUAL;
+            IrValue     lhs    = source;
+            IrValue     rhs    = pattern_value;
+            u32         lhs_ty = source_type;
+            u32         rhs_ty = ir_node_type_index(ast, sema, pattern->a);
+            if (pattern->kind == APK_NotEqual) {
+                op = IR_OP_NOT_EQUAL;
+            } else if (pattern->kind == APK_Less ||
+                       pattern->kind == APK_Greater) {
+                op = IR_OP_LESS;
+            } else if (pattern->kind == APK_LessEqual ||
+                       pattern->kind == APK_GreaterEqual) {
+                op = IR_OP_LESS_EQUAL;
+            }
+            if (pattern->kind == APK_Greater ||
+                pattern->kind == APK_GreaterEqual) {
+                lhs    = pattern_value;
+                rhs    = source;
+                lhs_ty = ir_node_type_index(ast, sema, pattern->a);
+                rhs_ty = source_type;
+            }
+            ir_add_binary(ir, op, matches, bool_type, lhs, lhs_ty, rhs, rhs_ty);
             ir_add_branch_false(ir, matches, bool_type, mismatch_label);
             return;
         }
@@ -1617,6 +1645,12 @@ internal void ir_lower_on_pattern_binders(const Ast*  ast,
         }
     case APK_Bind:
     case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
     case APK_RangeExclusive:
     case APK_RangeInclusive:
     case APK_Ignore:
@@ -2474,14 +2508,17 @@ internal IrValue ir_lower_node(const Lexer* lex,
     case AK_On:
         {
             const AstOnInfo* on        = &ast->ons[node->b];
-            IrValue          scrutinee = ir_lower_node(lex,
-                                              ast,
-                                              sema,
-                                              node->a,
-                                              loop,
-                                              node_values,
-                                              next_value_index,
-                                              ir);
+            IrValue          scrutinee = ir_unset_value();
+            if (on->kind != AOK_Condition) {
+                scrutinee = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            }
             u32  result_type = ir_node_type_index(ast, sema, node_index);
             bool produces_value =
                 result_type != ir_builtin_type(sema, STK_Void);
@@ -2504,7 +2541,25 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                      ? (i64)(*next_value_index)++
                                      : end_label;
 
-                if (on->kind == AOK_Bool) {
+                if (on->kind == AOK_Condition) {
+                    if (!(branch->flags & AOBF_Else)) {
+                        IrValue condition =
+                            ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          branch->guard_node_index,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+                        ir_add_branch_false(
+                            ir,
+                            condition,
+                            ir_node_type_index(
+                                ast, sema, branch->guard_node_index),
+                            next_label);
+                    }
+                } else if (on->kind == AOK_Bool) {
                     if (!(branch->flags & AOBF_Else)) {
                         ir_add_branch_false(
                             ir,
@@ -2553,7 +2608,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     ir_add_label(ir, match_label);
                 }
 
-                if (branch->guard_node_index != U32_MAX) {
+                if (branch->guard_node_index != U32_MAX &&
+                    on->kind != AOK_Condition) {
                     IrValue guard = ir_lower_node(lex,
                                                   ast,
                                                   sema,

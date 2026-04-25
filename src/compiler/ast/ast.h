@@ -249,6 +249,12 @@ typedef enum : u32 {
     APK_Value,
     APK_Ignore,
     APK_Bind,
+    APK_Equal,
+    APK_NotEqual,
+    APK_Less,
+    APK_LessEqual,
+    APK_Greater,
+    APK_GreaterEqual,
     APK_RangeExclusive,
     APK_RangeInclusive,
     APK_Tuple,
@@ -289,6 +295,7 @@ typedef struct {
 typedef enum : u32 {
     AOK_Bool,
     AOK_Value,
+    AOK_Condition,
 } AstOnKind;
 
 typedef enum : u32 {

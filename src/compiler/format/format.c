@@ -299,6 +299,21 @@ internal void format_emit_pattern(StringBuilder* sb,
     case CPK_Value:
         format_emit_expr(sb, cst, lexer, pattern->a, 0);
         break;
+    case CPK_Equal:
+    case CPK_NotEqual:
+    case CPK_Less:
+    case CPK_LessEqual:
+    case CPK_Greater:
+    case CPK_GreaterEqual:
+        sb_append_cstr(sb,
+                       pattern->kind == CPK_Equal       ? "== "
+                       : pattern->kind == CPK_NotEqual  ? "!= "
+                       : pattern->kind == CPK_Less      ? "< "
+                       : pattern->kind == CPK_LessEqual ? "<= "
+                       : pattern->kind == CPK_Greater   ? "> "
+                                                        : ">= ");
+        format_emit_expr(sb, cst, lexer, pattern->a, 0);
+        break;
     case CPK_Ignore:
         sb_append_char(sb, '_');
         break;
@@ -731,8 +746,11 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_On:
         {
             const CstOnInfo* on = &cst->ons[node->b];
-            sb_append_cstr(sb, "on ");
-            format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+            sb_append_cstr(sb, "on");
+            if (on->kind != COK_Condition) {
+                sb_append_char(sb, ' ');
+                format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+            }
             if (on->kind == COK_Bool) {
                 const CstOnBranch* true_branch =
                     &cst->on_branches[on->first_branch];
@@ -759,6 +777,9 @@ internal void format_emit_expr(StringBuilder* sb,
                     &cst->on_branches[on->first_branch + i];
                 if (branch->flags & COBF_Else) {
                     sb_append_cstr(sb, "else");
+                } else if (on->kind == COK_Condition) {
+                    format_emit_expr(
+                        sb, cst, lexer, branch->guard_node_index, 0);
                 } else {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
@@ -778,7 +799,8 @@ internal void format_emit_expr(StringBuilder* sb,
                     sb_append_string(
                         sb, lex_symbol(lexer, branch->binder_symbol_handle));
                 }
-                if (branch->guard_node_index != U32_MAX) {
+                if (branch->guard_node_index != U32_MAX &&
+                    on->kind != COK_Condition) {
                     sb_append_cstr(sb, " on ");
                     format_emit_expr(
                         sb, cst, lexer, branch->guard_node_index, 0);
@@ -954,7 +976,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
 {
     const CstNode*   node = &cst->nodes[node_index];
     const CstOnInfo* on   = &cst->ons[node->b];
-    ASSERT(node->kind == CK_On && on->kind == COK_Value,
+    ASSERT(node->kind == CK_On &&
+               (on->kind == COK_Value || on->kind == COK_Condition),
            "Expected block-form on expression");
 
     Arena branch_arena = {0};
@@ -975,13 +998,20 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
         }
     }
 
-    sb_append_cstr(sb, "on ");
-    format_emit_expr(sb, cst, lexer, node->a, 0);
+    sb_append_cstr(sb, "on");
+    if (on->kind == COK_Value) {
+        sb_append_char(sb, ' ');
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+    }
     sb_append_cstr(sb, " {\n");
     for (u32 i = 0; i < on->branch_count; ++i) {
         const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
         format_emit_indent(sb, indent_level + 1);
-        sb_append_string(sb, heads[i]);
+        if (on->kind == COK_Condition && !(branch->flags & COBF_Else)) {
+            format_emit_expr(sb, cst, lexer, branch->guard_node_index, 0);
+        } else {
+            sb_append_string(sb, heads[i]);
+        }
         if (has_binder) {
             for (usize pad = heads[i].count; pad < max_head_width; ++pad) {
                 sb_append_char(sb, ' ');
@@ -1035,7 +1065,7 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
 internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
-    return node->kind == CK_On && cst->ons[node->b].kind == COK_Value;
+    return node->kind == CK_On && cst->ons[node->b].kind != COK_Bool;
 }
 
 typedef struct {
@@ -1247,6 +1277,21 @@ internal u32 format_node_end_token_index(const Cst*   cst,
                 u32                branch_offset = on->branch_count > 1 ? 1 : 0;
                 const CstOnBranch* last_branch =
                     &cst->on_branches[on->first_branch + branch_offset];
+                return format_node_end_token_index(
+                    cst, lexer, last_branch->expr_node_index);
+            }
+
+            if (on->kind == COK_Condition) {
+                for (u32 i = node->token_index + 1;
+                     i < array_count(lexer->tokens);
+                     ++i) {
+                    if (lexer->tokens[i].kind == TK_LBrace) {
+                        return format_find_matching_close_token_index(
+                            lexer, i, TK_LBrace, TK_RBrace);
+                    }
+                }
+                const CstOnBranch* last_branch =
+                    &cst->on_branches[on->first_branch + on->branch_count - 1];
                 return format_node_end_token_index(
                     cst, lexer, last_branch->expr_node_index);
             }
@@ -1999,9 +2044,15 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_Return) {
         sb_append_cstr(sb, "return");
         if (stmt->a != U32_MAX) {
-            sb_append_char(sb, ' ');
-            format_emit_expr_with_indent(
-                sb, cst, lexer, stmt->a, 0, indent_level);
+            if (format_node_is_block_form_on(cst, stmt->a)) {
+                sb_append_char(sb, ' ');
+                format_emit_on_block_multiline(
+                    sb, cst, lexer, stmt->a, indent_level);
+            } else {
+                sb_append_char(sb, ' ');
+                format_emit_expr_with_indent(
+                    sb, cst, lexer, stmt->a, 0, indent_level);
+            }
         }
         sb_append_char(sb, '\n');
         return;

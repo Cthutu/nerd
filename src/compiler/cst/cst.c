@@ -38,6 +38,8 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
 internal bool cst_parse_for(CstParseState* state, u32* out_node);
+internal bool cst_token_has_newline_before(const CstParseState* state,
+                                           u32                  token_index);
 
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
@@ -196,6 +198,38 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
     Token token = cst_current_token(state);
     if (token.kind == TK_else) {
         return true;
+    }
+
+    if (token.kind == TK_EqualEqual || token.kind == TK_BangEqual ||
+        token.kind == TK_Less || token.kind == TK_LessEqual ||
+        token.kind == TK_Greater || token.kind == TK_GreaterEqual) {
+        if (cst_token_has_newline_before(state, state->token_index)) {
+            return true;
+        }
+
+        u32 depth = 0;
+        for (u32 i = state->token_index + 1;
+             i < array_count(state->lexer->tokens);
+             ++i) {
+            TokenKind kind = state->lexer->tokens[i].kind;
+            if (depth == 0 && kind == TK_FatArrow) {
+                return true;
+            }
+            if (depth == 0 &&
+                (kind == TK_Comma || kind == TK_RBrace || kind == TK_else)) {
+                return false;
+            }
+            if (kind == TK_LParen || kind == TK_LBrace || kind == TK_LBracket) {
+                depth++;
+            } else if (kind == TK_RParen || kind == TK_RBrace ||
+                       kind == TK_RBracket) {
+                if (depth == 0) {
+                    return false;
+                }
+                depth--;
+            }
+        }
+        return false;
     }
 
     if (token.kind == TK_Dot && cst_peek_kind_at(state, 1) == TK_Symbol) {
@@ -1261,12 +1295,68 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
+    u32 first_branch = (u32)array_count(state->cst.on_branches);
+    if (cst_current_token(state).kind == TK_LBrace) {
+        cst_advance(state);
+        while (cst_current_token(state).kind != TK_RBrace) {
+            if (cst_current_token(state).kind == TK_EOF) {
+                return false;
+            }
+
+            CstOnBranch branch          = {0};
+            branch.pattern_index        = U32_MAX;
+            branch.pattern_count        = 0;
+            branch.binder_symbol_handle = U32_MAX;
+            branch.binder_token_index   = U32_MAX;
+            branch.guard_node_index     = U32_MAX;
+            if (cst_current_token(state).kind == TK_else) {
+                branch.flags = COBF_Else;
+                cst_advance(state);
+            } else if (!cst_parse_expr_bp(state, 0, &branch.guard_node_index)) {
+                return false;
+            }
+
+            if (!cst_consume(state, TK_FatArrow)) {
+                return false;
+            }
+
+            if (!cst_parse_on_branch_expr(state, &branch.expr_node_index)) {
+                return false;
+            }
+            array_push(state->cst.on_branches, branch);
+
+            if (branch.flags & COBF_Else) {
+                break;
+            }
+        }
+
+        if (!cst_consume(state, TK_RBrace)) {
+            return false;
+        }
+
+        u32 on_index = (u32)array_count(state->cst.ons);
+        array_push(
+            state->cst.ons,
+            (CstOnInfo){
+                .kind         = COK_Condition,
+                .first_branch = first_branch,
+                .branch_count =
+                    (u32)array_count(state->cst.on_branches) - first_branch,
+            });
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_On,
+                                 .token_index = token_index,
+                                 .a           = U32_MAX,
+                                 .b           = on_index,
+                             },
+                             out_node);
+    }
+
     u32 scrutinee = 0;
     if (!cst_parse_expr_bp(state, 0, &scrutinee)) {
         return false;
     }
-
-    u32 first_branch = (u32)array_count(state->cst.on_branches);
 
     if (cst_current_token(state).kind == TK_LBrace) {
         cst_advance(state);
@@ -1740,8 +1830,46 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
                             out_pattern);
 }
 
+internal CstPatternKind cst_comparison_pattern_kind(TokenKind kind)
+{
+    switch (kind) {
+    case TK_EqualEqual:
+        return CPK_Equal;
+    case TK_BangEqual:
+        return CPK_NotEqual;
+    case TK_Less:
+        return CPK_Less;
+    case TK_LessEqual:
+        return CPK_LessEqual;
+    case TK_Greater:
+        return CPK_Greater;
+    case TK_GreaterEqual:
+        return CPK_GreaterEqual;
+    default:
+        return CPK_Value;
+    }
+}
+
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 {
+    CstPatternKind comparison_kind =
+        cst_comparison_pattern_kind(cst_current_token(state).kind);
+    if (comparison_kind != CPK_Value) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        u32 value_node = 0;
+        if (!cst_parse_expr_bp(state, 0, &value_node)) {
+            return false;
+        }
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = comparison_kind,
+                                    .token_index = token_index,
+                                    .a           = value_node,
+                                },
+                                out_pattern);
+    }
+
     if (cst_current_token(state).kind == TK_Symbol &&
         cst_symbol_is_underscore(state->lexer,
                                  cst_current_symbol_handle(state))) {

@@ -28,7 +28,8 @@ From the current codebase and test suite:
   filetype detection, syntax highlighting, LSP launch, and Conform
   format-on-save integration.
 - The `on` branching surface supports short boolean branches, block-form value
-  branches, integer ranges, `else`, and branch-local pattern binders.
+  branches, condition chains, integer ranges, explicit comparison patterns,
+  `else`, and branch-local pattern binders.
 - `just test` runs language, error, formatter, and LSP suites.
 
 ## Guiding Rules
@@ -1023,16 +1024,22 @@ needed earlier.
 
 ## Milestone 24: Generalised `on` Syntax
 
-- [ ] 92. Add condition-chain `on`.
+- [X] 92. Add condition-chain `on`.
   - Support `on { condition => expr ... }`.
   - Treat it as ordered boolean branching with no scrutinee.
   - Keep exhaustiveness rules explicit, requiring an `else` or a provably
     exhaustive final branch.
+  - Completed across AST/CST parsing, semantic typing, IR lowering, formatter,
+    LSP, language tests, and error tests. Value-producing condition chains
+    require `else`; statement-form condition chains may omit it.
 
-- [ ] 93. Add explicit pattern operators.
+- [X] 93. Add explicit pattern operators.
   - Support operators before value patterns, such as `== 1`, `> 2`, and `< 3`.
   - Preserve the current implicit `==` behaviour for plain value patterns.
   - Define which operators participate in exhaustiveness analysis.
+  - Completed for `==`, `!=`, `<`, `<=`, `>`, and `>=` patterns. Explicit
+    comparison values must be compile-time constants; relational operators are
+    numeric-only and do not contribute to exhaustiveness analysis.
 
 ## Later Milestones
 
