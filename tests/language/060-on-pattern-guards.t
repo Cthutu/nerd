@@ -1,9 +1,9 @@
 score :: fn (size: u32) -> u32 {
     return on size {
-        matched @ 0..3 on matched == 2 => matched + 20
+        0..3 as matched on matched == 2 => matched + 20
         0..3 => 10
-        exact @ _ on exact == 10 => exact * 10
-        other @ else => other + 100
+        10 as size on size == 10 => size * 10
+        else as size => size + 100
     }
 }
 
@@ -44,15 +44,17 @@ label L9
 $0 = u32:10
 jump L1
 label L8
-label L13
 $14 = u32:size == u32:10
 branch.false bool:$14, L12
-$15 = u32:size * u32:10
-$0 = u32:$15
+label L13
+$15 = u32:size == u32:10
+branch.false bool:$15, L12
+$16 = u32:size * u32:10
+$0 = u32:$16
 jump L1
 label L12
-$16 = u32:size + u32:100
-$0 = u32:$16
+$17 = u32:size + u32:100
+$0 = u32:$17
 label L1
 return u32:$0
 end
@@ -111,15 +113,17 @@ uint32_t $score(uint32_t $size) {
     $0 = 10;
     goto L1;
     L8: ;
-    L13: ;
     bool $14 = $size == 10;
     if (!$14) goto L12;
-    uint32_t $15 = $size * 10;
-    $0 = $15;
+    L13: ;
+    bool $15 = $size == 10;
+    if (!$15) goto L12;
+    uint32_t $16 = $size * 10;
+    $0 = $16;
     goto L1;
     L12: ;
-    uint32_t $16 = $size + 100;
-    $0 = $16;
+    uint32_t $17 = $size + 100;
+    $0 = $17;
     L1: ;
     return $0;
 }

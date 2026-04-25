@@ -410,23 +410,54 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
-            if (state->token.kind == TK_Symbol &&
-                ast_peek_kind_at(state, 0) == TK_At) {
-                branch.binder_symbol_handle = state->token.value.symbol_handle;
-                branch.binder_token_index   = state->token.token_index;
-                if (!ast_next_token(state) || state->token.kind != TK_At ||
+            if (state->token.kind == TK_else) {
+                branch.flags = AOBF_Else;
+                if (!ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+                if (state->token.kind == TK_as) {
+                    if (state->token.token_index == state->token_index &&
+                        !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol);
+                    }
+                    if (!ast_next_token(state) ||
+                        state->token.kind != TK_Symbol) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            state->token.kind);
+                    }
+                    branch.binder_symbol_handle =
+                        state->token.value.symbol_handle;
+                    branch.binder_token_index = state->token.token_index;
+                    if (!ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_FatArrow);
+                    }
+                }
+                if (state->token.kind != TK_FatArrow) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+                if (state->token.token_index == state->token_index &&
                     !ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
                         TK_RBrace);
                 }
-            }
-            if (state->token.kind == TK_else) {
-                branch.flags = AOBF_Else;
-                if (!ast_next_token(state) ||
-                    state->token.kind != TK_FatArrow ||
-                    !ast_next_token(state)) {
+                if (!ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -446,6 +477,32 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                         break;
                     }
                     if (!ast_next_token(state) || !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_FatArrow);
+                    }
+                }
+                if (state->token.kind == TK_as) {
+                    if (state->token.token_index == state->token_index &&
+                        !ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol);
+                    }
+                    if (!ast_next_token(state) ||
+                        state->token.kind != TK_Symbol) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            state->token.kind);
+                    }
+                    branch.binder_symbol_handle =
+                        state->token.value.symbol_handle;
+                    branch.binder_token_index = state->token.token_index;
+                    if (!ast_next_token(state)) {
                         return error_0201_missing_value(
                             state->token.source,
                             ast_token_span(state, &state->token),
@@ -480,9 +537,14 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                         TK_FatArrow,
                         state->token.kind);
                 }
-                if (!ast_next_token(state) ||
-                    state->token.kind != TK_FatArrow ||
+                if (state->token.token_index == state->token_index &&
                     !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RBrace);
+                }
+                if (!ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -543,7 +605,12 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                                          state->token.kind);
     }
 
-    if (!ast_next_token(state) || !ast_next_token(state)) {
+    if (state->token.token_index == state->token_index &&
+        !ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source, ast_token_span(state, &state->token), TK_else);
+    }
+    if (!ast_next_token(state)) {
         return error_0201_missing_value(
             state->token.source, ast_token_span(state, &state->token), TK_else);
     }
@@ -1361,6 +1428,27 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             };
             return ast_emit_node(state, node, out_node);
         }
+        if (state->token.kind == TK_as) {
+            if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
+                return false;
+            }
+
+            u32 type_node = 0;
+            if (!ast_parse_type(state, &type_node)) {
+                return false;
+            }
+            if (!ast_expect_token(state, TK_RParen)) {
+                return false;
+            }
+
+            AstNode node = {
+                .kind        = AK_Cast,
+                .token_index = op.token_index,
+                .a           = left_node,
+                .b           = type_node,
+            };
+            return ast_emit_node(state, node, out_node);
+        }
         if (state->token.kind != TK_Symbol) {
             return error_0203_expected_token(
                 state->token.source,
@@ -1368,34 +1456,12 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 TK_Symbol,
                 state->token.kind);
         }
-        if (!string_eq(
-                lex_symbol(state->lexer, state->token.value.symbol_handle),
-                s("cast"))) {
-            AstNode node = {
-                .kind        = AK_Field,
-                .token_index = state->token.token_index,
-                .a           = left_node,
-                .b           = state->token.value.symbol_handle,
-            };
-            return ast_emit_node(state, node, out_node);
-        }
-        if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
-            return false;
-        }
-
-        u32 type_node = 0;
-        if (!ast_parse_type(state, &type_node)) {
-            return false;
-        }
-        if (!ast_expect_token(state, TK_RParen)) {
-            return false;
-        }
 
         AstNode node = {
-            .kind        = AK_Cast,
-            .token_index = op.token_index,
+            .kind        = AK_Field,
+            .token_index = state->token.token_index,
             .a           = left_node,
-            .b           = type_node,
+            .b           = state->token.value.symbol_handle,
         };
         return ast_emit_node(state, node, out_node);
     }

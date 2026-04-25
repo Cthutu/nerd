@@ -4,7 +4,7 @@ main :: fn () {
 
     prn(on i {
         0 => "zero"
-        x @ else => $"non-zero: {x}"
+        else as x => $"non-zero: {x}"
     })
 }
 ¬

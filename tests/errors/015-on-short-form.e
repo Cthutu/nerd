@@ -1,4 +1,4 @@
-main :: fn () => on 1.cast(i32) => 42 else 7
+main :: fn () => on 1.as(i32) => 42 else 7
 ¬
 {
     "code": "0319",

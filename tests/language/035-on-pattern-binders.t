@@ -3,9 +3,9 @@ size :: 2
 
 test_branch :: fn (size: u32) -> u32 {
     return on size {
-        matched @ 0, 1 => matched + 10
-        ranged @ 2..=4 => ranged + 20
-        other @ else => other + 30
+        0, 1 as matched => matched + 10
+        2..=4 as ranged => ranged + 20
+        else as other => other + 30
     }
 }
 
@@ -14,7 +14,7 @@ main :: fn () {
     prn($"2: {test_branch(2)}")
     prn($"5: {test_branch(5)}")
 
-    return test_branch(size).cast(i32)
+    return test_branch(size).as(i32)
 }
 ¬
 22

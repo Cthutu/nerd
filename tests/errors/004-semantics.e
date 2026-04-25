@@ -191,7 +191,7 @@ main :: fn () => Price
     ]
 }
 ¬
-main :: fn () => "hi".cast(u8)
+main :: fn () => "hi".as(u8)
 ¬
 {
     "code": "0307",

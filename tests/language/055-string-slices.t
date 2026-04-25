@@ -17,7 +17,7 @@ main :: fn () -> i32 {
         else => 1
     }
 
-    return result + ell.data[1].cast(i32)
+    return result + ell.data[1].as(i32)
 }
 ¬
 115

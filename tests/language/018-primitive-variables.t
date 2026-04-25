@@ -1,10 +1,10 @@
 -- Declares primitive variables with explicit types and casts.
 greeting: string = "Hello"
 enabled: bool = yes
-ratio: f32 = 42.cast(f32)
+ratio: f32 = 42.as(f32)
 weight: f64
 
-main :: fn () => enabled.cast(i32)
+main :: fn () => enabled.as(i32)
 ¬
 1
 ¬

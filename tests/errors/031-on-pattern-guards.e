@@ -1,6 +1,6 @@
 value: i32 = 2
 main :: fn () => on value {
-    _ on value => 1
+    1 on value => 1
     else => 2
 }
 ¬
@@ -29,7 +29,7 @@ main :: fn () => on value {
 ¬
 value: i32 = 2
 main :: fn () => on value {
-    _ on no => 1
+    1 on no => 1
 }
 ¬
 {

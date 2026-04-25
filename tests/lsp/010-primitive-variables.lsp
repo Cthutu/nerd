@@ -1,7 +1,7 @@
 enabled: bool = yes
 greeting: string = "Hello"
-ratio: f32 = 42.cast(f32)
-main :: fn () => enabled.cast(i32)
+ratio: f32 = 42.as(f32)
+main :: fn () => enabled.as(i32)
 ¬
 [
     {

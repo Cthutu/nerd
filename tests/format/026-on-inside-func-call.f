@@ -5,7 +5,7 @@ main :: fn () {
 
     prn($"{s}  i = {i} and f = {ff}!")
 
-    prn(on i { 0 => "zero" x @ else => $"non-zero: {x}" })
+    prn(on i { 0 => "zero" else as x => $"non-zero: {x}" })
 }
 ¬
 main :: fn () {
@@ -16,7 +16,7 @@ main :: fn () {
     prn($"{s}  i = {i} and f = {ff}!")
 
     prn(on i {
-        0        => "zero"
-        x @ else => $"non-zero: {x}"
+        0         => "zero"
+        else as x => $"non-zero: {x}"
     })
 }

@@ -412,14 +412,14 @@ functions and function values.
 
 Explicit casts use postfix syntax:
 
-- `value.cast(u8)`
-- `128.cast(u8)`
+- `value.as(u8)`
+- `128.as(u8)`
 
 Cast validity is semantic and table-driven. The parser only records a cast node
 with a source expression and a target type expression.
 
 The current milestone allows explicit casts across compatible primitive
-numeric/bool types and rejects unsupported casts such as `string.cast(u8)` with
+numeric/bool types and rejects unsupported casts such as `string.as(u8)` with
 structured semantic diagnostics.
 
 ## Primitive Operators

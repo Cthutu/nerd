@@ -3,7 +3,7 @@ Price :: u16
 
 main :: fn () {
     amount: Price = 1000
-    narrowed := amount.cast(u8)
+    narrowed := amount.as(u8)
     return narrowed
 }
 ¬

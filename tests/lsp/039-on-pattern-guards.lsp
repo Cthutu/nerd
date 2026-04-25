@@ -1,7 +1,7 @@
 value: u32 = 2
 main :: fn () => on value {
-    matched @ 2 on matched == 2 => matched
-    other @ else => other
+    2 as matched on matched == 2 => matched
+    else as other => other
 }
 ¬
 [
@@ -92,11 +92,11 @@ main :: fn () => on value {
             "range": {
                 "start": {
                     "line": 2,
-                    "character": 4
+                    "character": 9
                 },
                 "end": {
                     "line": 2,
-                    "character": 11
+                    "character": 16
                 }
             }
         }

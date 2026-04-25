@@ -471,10 +471,10 @@ needed earlier.
     - arithmetic and comparisons use matching numeric operands
     - bitwise operators use matching integer operands
     - logical operators use `bool` operands
-  - Add explicit casts through a `.cast(<type>)` form.
+  - Add explicit casts through a `.as(<type>)` form.
   - Support casts on both named values and literals, for example:
-    - `my_byte := my_word.cast(u8)`
-    - `my_other_byte := 128.cast(u8)`
+    - `my_byte := my_word.as(u8)`
+    - `my_other_byte := 128.as(u8)`
   - If casting from one type to another is not defined by the current language
     rules, report a compiler error.
   - Keep cast validity semantic and table-driven rather than encoding it as
@@ -669,9 +669,9 @@ needed earlier.
   - Keep exact type matching throughout; do not add implicit casts.
 
 - [X] 54. Add branch-local pattern binders.
-  - Use `<name> @ <pattern>` to bind the matched value for one branch.
+  - Use `<pattern> as <name>` to bind the matched value for one branch.
   - Allow binders on `else` branches as well, for example:
-    - `other @ else => ...`
+    - `else as other => ...`
   - Binder scope is limited to that branch expression or block.
   - Reusing the same binder name in different branches is valid because branch
     scopes are separate.
@@ -679,7 +679,7 @@ needed earlier.
     pattern bindings.
   - Current implementation status:
     - value, range, and `else` branches can bind the matched scrutinee through
-      `<name> @ <pattern>` or `<name> @ else`
+      `<pattern> as <name>` or `else as <name>`
     - compiler, formatter, LSP, VS Code syntax, Neovim syntax, and regression
       tests are updated together
 

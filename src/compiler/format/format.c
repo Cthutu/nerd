@@ -288,11 +288,11 @@ internal void format_emit_pattern(StringBuilder* sb,
         sb_append_char(sb, '_');
         break;
     case CPK_Bind:
-        sb_append_string(sb, lex_symbol(lexer, pattern->a));
         if (pattern->b != U32_MAX) {
-            sb_append_cstr(sb, " @ ");
             format_emit_pattern(sb, cst, lexer, pattern->b);
+            sb_append_cstr(sb, " as ");
         }
+        sb_append_string(sb, lex_symbol(lexer, pattern->a));
         break;
     case CPK_RangeExclusive:
     case CPK_RangeInclusive:
@@ -637,7 +637,7 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_Cast:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
-        sb_append_cstr(sb, ".cast(");
+        sb_append_cstr(sb, ".as(");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         sb_append_char(sb, ')');
         break;
@@ -707,11 +707,6 @@ internal void format_emit_expr(StringBuilder* sb,
                 }
                 const CstOnBranch* branch =
                     &cst->on_branches[on->first_branch + i];
-                if (branch->binder_symbol_handle != U32_MAX) {
-                    sb_append_string(
-                        sb, lex_symbol(lexer, branch->binder_symbol_handle));
-                    sb_append_cstr(sb, " @ ");
-                }
                 if (branch->flags & COBF_Else) {
                     sb_append_cstr(sb, "else");
                 } else {
@@ -727,6 +722,11 @@ internal void format_emit_expr(StringBuilder* sb,
                             cst->pattern_items[branch->pattern_index +
                                                pattern]);
                     }
+                }
+                if (branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_cstr(sb, " as ");
+                    sb_append_string(
+                        sb, lex_symbol(lexer, branch->binder_symbol_handle));
                 }
                 if (branch->guard_node_index != U32_MAX) {
                     sb_append_cstr(sb, " on ");
@@ -821,11 +821,6 @@ internal string format_render_on_branch_head(Arena*             arena,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
 
-    if (branch->binder_symbol_handle != U32_MAX) {
-        sb_append_string(&sb, lex_symbol(lexer, branch->binder_symbol_handle));
-        sb_append_cstr(&sb, " @ ");
-    }
-
     if (branch->flags & COBF_Else) {
         sb_append_cstr(&sb, "else");
     } else {
@@ -839,10 +834,14 @@ internal string format_render_on_branch_head(Arena*             arena,
                 lexer,
                 cst->pattern_items[branch->pattern_index + pattern]);
         }
-        if (branch->guard_node_index != U32_MAX) {
-            sb_append_cstr(&sb, " on ");
-            format_emit_expr(&sb, cst, lexer, branch->guard_node_index, 0);
-        }
+    }
+    if (branch->binder_symbol_handle != U32_MAX) {
+        sb_append_cstr(&sb, " as ");
+        sb_append_string(&sb, lex_symbol(lexer, branch->binder_symbol_handle));
+    }
+    if (branch->guard_node_index != U32_MAX) {
+        sb_append_cstr(&sb, " on ");
+        format_emit_expr(&sb, cst, lexer, branch->guard_node_index, 0);
     }
 
     return sb_to_string(&sb);

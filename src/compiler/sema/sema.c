@@ -5892,8 +5892,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (branch->flags & AOBF_Else) {
                     has_else = true;
                 }
-                bool unguarded_branch = branch->guard_node_index == U32_MAX;
-                u32  branch_local_index =
+                u32 branch_local_index =
                     sema->on_branch_local_indices[on->first_branch + i];
                 if (branch_local_index != sema_no_local()) {
                     sema->locals[branch_local_index].type_index =
@@ -5968,11 +5967,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             }
                         } else {
                             if (pattern->kind == APK_Ignore) {
-                                if (unguarded_branch &&
-                                    branch->pattern_count == 1) {
-                                    has_else = true;
-                                }
-                                continue;
+                                return error_0322_non_constant_on_pattern(
+                                    lexer->source,
+                                    sema_pattern_span(lexer, pattern));
                             }
                             if (pattern->kind == APK_Bind &&
                                 pattern->b != U32_MAX) {

@@ -49,8 +49,8 @@ main :: fn () {
 - comparison operators `<`, `<=`, `>`, `>=`, `==`, `!=`
 - bitwise operators `&`, `^`, `|`
 - logical operators `&&`, `||`
-- block-form `on` branch binders with `<name> @ <pattern>` and
-  `<name> @ else`
+- block-form `on` branch binders with `<pattern> as <name>` and
+  `else as <name>`
 - block-form `on` pattern guards with `<pattern> on <bool-expr> => <expr>`
 - calls with zero or more arguments
 

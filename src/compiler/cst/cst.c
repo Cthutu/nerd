@@ -1137,18 +1137,19 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
-            if (cst_current_token(state).kind == TK_Symbol &&
-                cst_peek_kind_at(state, 1) == TK_At) {
-                branch.binder_symbol_handle = cst_current_symbol_handle(state);
-                branch.binder_token_index   = state->token_index;
-                cst_advance(state);
-                if (!cst_consume(state, TK_At)) {
-                    return false;
-                }
-            }
             if (cst_current_token(state).kind == TK_else) {
                 branch.flags = COBF_Else;
                 cst_advance(state);
+                if (cst_current_token(state).kind == TK_as) {
+                    cst_advance(state);
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    branch.binder_symbol_handle =
+                        cst_current_symbol_handle(state);
+                    branch.binder_token_index = state->token_index;
+                    cst_advance(state);
+                }
                 if (!cst_consume(state, TK_FatArrow)) {
                     return false;
                 }
@@ -1166,6 +1167,16 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;
                     }
+                    cst_advance(state);
+                }
+                if (cst_current_token(state).kind == TK_as) {
+                    cst_advance(state);
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    branch.binder_symbol_handle =
+                        cst_current_symbol_handle(state);
+                    branch.binder_token_index = state->token_index;
                     cst_advance(state);
                 }
                 if (cst_current_token(state).kind == TK_on) {
@@ -1494,28 +1505,6 @@ internal bool cst_parse_plex_pattern(CstParseState* state, u32* out_pattern)
 
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 {
-    if (cst_current_token(state).kind == TK_Symbol &&
-        cst_peek_kind_at(state, 1) == TK_At) {
-        u32 token_index = state->token_index;
-        u32 symbol      = cst_current_symbol_handle(state);
-        cst_advance(state);
-        if (!cst_consume(state, TK_At)) {
-            return false;
-        }
-        u32 child = U32_MAX;
-        if (!cst_parse_pattern(state, &child)) {
-            return false;
-        }
-        return cst_emit_pattern(state,
-                                (CstPattern){
-                                    .kind        = CPK_Bind,
-                                    .token_index = token_index,
-                                    .a           = symbol,
-                                    .b           = child,
-                                },
-                                out_pattern);
-    }
-
     if (cst_current_token(state).kind == TK_Symbol &&
         cst_symbol_is_underscore(state->lexer,
                                  cst_current_symbol_handle(state))) {
@@ -1864,37 +1853,36 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 }
                 continue;
             }
-            if (cst_current_token(state).kind != TK_Symbol) {
-                return false;
-            }
-            u32 symbol_handle = cst_current_symbol_handle(state);
-            if (!string_eq(lex_symbol(state->lexer, symbol_handle),
-                           s("cast"))) {
+            if (cst_current_token(state).kind == TK_as) {
                 cst_advance(state);
+                if (!cst_consume(state, TK_LParen) ||
+                    !cst_parse_type(state, &right) ||
+                    !cst_consume(state, TK_RParen)) {
+                    return false;
+                }
                 if (!cst_emit_node(state,
                                    (CstNode){
-                                       .kind        = CK_Field,
-                                       .token_index = token_index + 1,
+                                       .kind        = CK_Cast,
+                                       .token_index = token_index,
                                        .a           = left,
-                                       .b           = symbol_handle,
+                                       .b           = right,
                                    },
                                    &left)) {
                     return false;
                 }
                 continue;
             }
-            cst_advance(state);
-            if (!cst_consume(state, TK_LParen) ||
-                !cst_parse_type(state, &right) ||
-                !cst_consume(state, TK_RParen)) {
+            if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            cst_advance(state);
             if (!cst_emit_node(state,
                                (CstNode){
-                                   .kind        = CK_Cast,
-                                   .token_index = token_index,
+                                   .kind        = CK_Field,
+                                   .token_index = token_index + 1,
                                    .a           = left,
-                                   .b           = right,
+                                   .b           = symbol_handle,
                                },
                                &left)) {
                 return false;

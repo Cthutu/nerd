@@ -901,26 +901,6 @@ internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)
 
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
 {
-    if (state->token.kind == TK_Symbol && ast_peek_kind_at(state, 0) == TK_At) {
-        AstToken binder = state->token;
-        if (!ast_next_token(state) || state->token.kind != TK_At ||
-            !ast_next_token(state)) {
-            return false;
-        }
-        u32 child = U32_MAX;
-        if (!ast_parse_pattern(state, &child)) {
-            return false;
-        }
-        return ast_emit_pattern(state,
-                                (AstPattern){
-                                    .kind        = APK_Bind,
-                                    .token_index = binder.token_index,
-                                    .a           = binder.value.symbol_handle,
-                                    .b           = child,
-                                },
-                                out_pattern);
-    }
-
     if (state->token.kind == TK_Symbol &&
         ast_symbol_is_underscore(state->lexer,
                                  state->token.value.symbol_handle)) {
