@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     for 1 {
         prn("bad")
@@ -9,13 +11,13 @@ main :: fn () {
     "message": "Type mismatch: expected `bool`, found `untyped integer`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
-        "line": 2,
+        "line": 4,
         "column": 9
     },
     "references": [
         {
             "kind": "primary",
-            "line": 2,
+            "line": 4,
             "column": 9,
             "length": 1,
             "message": "This expression has type `untyped integer`"
@@ -27,6 +29,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 main :: fn () {
     for i := 0; i < 1; i += 1 {
     }
@@ -38,13 +42,13 @@ main :: fn () {
     "message": "Unknown symbol `i`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
-        "line": 4,
+        "line": 6,
         "column": 9
     },
     "references": [
         {
             "kind": "primary",
-            "line": 4,
+            "line": 6,
             "column": 9,
             "length": 1,
             "message": "This symbol is not defined"

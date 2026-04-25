@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     text :: "hello"
     prn($"{text.len}")
@@ -8,13 +10,13 @@ main :: fn () {
     "message": "Type mismatch: expected `string field `.data` or `.count``, found `len`",
     "source_file": "tests/errors/027-string-slices.e",
     "primary_location": {
-        "line": 3,
+        "line": 5,
         "column": 17
     },
     "references": [
         {
             "kind": "primary",
-            "line": 3,
+            "line": 5,
             "column": 17,
             "length": 3,
             "message": "This expression has type `len`"

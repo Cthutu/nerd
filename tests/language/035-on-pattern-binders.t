@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Binds the matched value inside each block-form `on` branch.
 size :: 2
 

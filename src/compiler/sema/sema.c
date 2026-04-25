@@ -761,45 +761,6 @@ sema_ast_signature(const Ast* ast, const AstNode* signature_owner)
     return &ast->fn_signatures[signature_owner->a];
 }
 
-//------------------------------------------------------------------------------
-// Predeclare the current built-in runtime functions.
-
-internal void sema_add_builtin_decls(const Lexer* lexer, Sema* sema)
-{
-    u32 pr_symbol     = sema_find_symbol_handle_by_name(lexer, s("pr"));
-    u32 prn_symbol    = sema_find_symbol_handle_by_name(lexer, s("prn"));
-    u32 string_type   = sema_builtin_type(sema, STK_String);
-    u32 void_type     = sema_builtin_type(sema, STK_Void);
-    Array(u32) params = NULL;
-    array_push(params, string_type);
-    u32 print_type = sema_add_function_type(sema, params, void_type);
-    array_free(params);
-
-    if (pr_symbol != sema_no_decl()) {
-        array_push(sema->decls,
-                   (SemaDecl){
-                       .kind             = SK_BuiltinFunction,
-                       .symbol_handle    = pr_symbol,
-                       .bind_node_index  = sema_no_decl(),
-                       .type_node_index  = sema_no_type(),
-                       .value_node_index = sema_no_decl(),
-                       .type_index       = print_type,
-                   });
-    }
-
-    if (prn_symbol != sema_no_decl()) {
-        array_push(sema->decls,
-                   (SemaDecl){
-                       .kind             = SK_BuiltinFunction,
-                       .symbol_handle    = prn_symbol,
-                       .bind_node_index  = sema_no_decl(),
-                       .type_node_index  = sema_no_type(),
-                       .value_node_index = sema_no_decl(),
-                       .type_index       = print_type,
-                   });
-    }
-}
-
 internal bool sema_module_path_is(const Lexer*         lexer,
                                   const Ast*           ast,
                                   const AstModulePath* path,
@@ -949,32 +910,56 @@ internal bool sema_resolve_bootstrap_module(const Lexer* lexer,
             lexer->source, span, s("known module"), s("module path"));
     }
 
-    u32 symbols[2]      = {0};
-    u32 types[2]        = {0};
-    u32 export_count    = 0;
-    u32 print_symbols[] = {
-        sema_find_symbol_handle_by_name(lexer, s("pr")),
-        sema_find_symbol_handle_by_name(lexer, s("prn")),
-    };
+    u32 pr_symbol     = sema_find_symbol_handle_by_name(lexer, s("pr"));
+    u32 prn_symbol    = sema_find_symbol_handle_by_name(lexer, s("prn"));
+    u32 string_type   = sema_builtin_type(sema, STK_String);
+    u32 void_type     = sema_builtin_type(sema, STK_Void);
+    Array(u32) params = NULL;
+    array_push(params, string_type);
+    u32 print_type = sema_add_function_type(sema, params, void_type);
+    array_free(params);
 
+    u32 symbols[2]   = {pr_symbol, prn_symbol};
+    u32 types[2]     = {print_type, print_type};
+    u32 export_count = 0;
     for (u32 i = 0; i < 2; ++i) {
-        if (print_symbols[i] == sema_no_decl()) {
-            continue;
+        if (symbols[i] != sema_no_decl()) {
+            symbols[export_count] = symbols[i];
+            types[export_count]   = print_type;
+            ++export_count;
         }
-
-        u32 decl = sema_find_decl(sema, print_symbols[i]);
-        if (decl == sema_no_decl()) {
-            continue;
-        }
-
-        symbols[export_count] = print_symbols[i];
-        types[export_count]   = sema->decls[decl].type_index;
-        ++export_count;
     }
 
     *out_type_index =
         sema_add_module_type_raw(sema, symbols, types, export_count);
     return true;
+}
+
+internal u32 sema_ensure_module_export_decl(Sema* sema,
+                                            u32   symbol_handle,
+                                            u32   type_index)
+{
+    u32 decl_index = sema_find_decl(sema, symbol_handle);
+    if (decl_index != sema_no_decl()) {
+        return decl_index;
+    }
+
+    SemaDeclKind kind = SK_Constant;
+    if (type_index != sema_no_type() &&
+        sema->types[type_index].kind == STK_Function) {
+        kind = SK_BuiltinFunction;
+    }
+
+    array_push(sema->decls,
+               (SemaDecl){
+                   .kind             = kind,
+                   .symbol_handle    = symbol_handle,
+                   .bind_node_index  = sema_no_decl(),
+                   .type_node_index  = sema_no_type(),
+                   .value_node_index = sema_no_decl(),
+                   .type_index       = type_index,
+               });
+    return (u32)array_count(sema->decls) - 1;
 }
 
 internal bool sema_import_module_exports_to_scope(const Lexer* lexer,
@@ -1051,21 +1036,7 @@ internal bool sema_import_module_exports_to_decls(const Lexer* lexer,
     for (u32 i = 0; i < module->param_count; ++i) {
         u32 symbol = sema->type_param_symbols[module->first_param_type + i];
         u32 type   = sema->type_param_types[module->first_param_type + i];
-        if (sema_find_decl(sema, symbol) != sema_no_decl()) {
-            continue;
-        }
-
-        array_push(sema->decls,
-                   (SemaDecl){
-                       .kind            = sema->types[type].kind == STK_Function
-                                              ? SK_BuiltinFunction
-                                              : SK_Constant,
-                       .symbol_handle   = symbol,
-                       .bind_node_index = sema_no_decl(),
-                       .type_node_index = sema_no_type(),
-                       .value_node_index = sema_no_decl(),
-                       .type_index       = type,
-                   });
+        sema_ensure_module_export_decl(sema, symbol, type);
     }
 
     return true;
@@ -1872,24 +1843,138 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
     return true;
 }
 
-internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
+internal bool sema_keyword_is_defined(const FrontEndOptions* options,
+                                      const Lexer*           lexer,
+                                      u32                    symbol_handle)
 {
+    string name = lex_symbol(lexer, symbol_handle);
+
+    if (!options->release && string_eq_cstr(name, "debug")) {
+        return true;
+    }
+#if OS_WINDOWS
+    if (string_eq_cstr(name, "windows")) {
+        return true;
+    }
+#endif
+#if OS_LINUX
+    if (string_eq_cstr(name, "linux")) {
+        return true;
+    }
+#endif
+#if OS_MACOS
+    if (string_eq_cstr(name, "macos")) {
+        return true;
+    }
+#endif
+#if OS_BSD
+    if (string_eq_cstr(name, "bsd")) {
+        return true;
+    }
+#endif
+#if OS_POSIX
+    if (string_eq_cstr(name, "posix")) {
+        return true;
+    }
+#endif
+
+    for (u32 i = 0; i < array_count(options->keywords); ++i) {
+        if (string_eq(name, options->keywords[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool sema_top_on_is_enabled(const FrontEndOptions* options,
+                                     const Lexer*           lexer,
+                                     const Ast*             ast,
+                                     const AstNode*         node)
+{
+    ASSERT(node->kind == AK_TopOn, "Expected top-level on node");
+    const AstTopOnInfo* info = &ast->top_ons[node->a];
+    bool enabled = sema_keyword_is_defined(options, lexer, info->symbol_handle);
+    return info->is_negated ? !enabled : enabled;
+}
+
+internal bool sema_node_is_inside_top_on_body(const Ast* ast,
+                                              u32        node_index,
+                                              u32 current_body_node_index)
+{
+    u32 innermost_body = U32_MAX;
+    u32 innermost_span = U32_MAX;
+
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* owner = &ast->nodes[i];
+        if (owner->kind != AK_TopOn) {
+            continue;
+        }
+
+        const AstTopOnInfo* info = &ast->top_ons[owner->a];
+        const AstNode*      body = &ast->nodes[info->body_node_index];
+        if (body->a <= node_index && node_index < body->b) {
+            u32 span = body->b - body->a;
+            if (innermost_body == U32_MAX || span < innermost_span) {
+                innermost_body = info->body_node_index;
+                innermost_span = span;
+            }
+        }
+    }
+
+    return innermost_body != U32_MAX &&
+           innermost_body != current_body_node_index;
+}
+
+internal bool sema_collect_decls_in_range(const Lexer*           lexer,
+                                          const Ast*             ast,
+                                          const FrontEndOptions* options,
+                                          u32                    first_node,
+                                          u32                    end_node,
+                                          u32   current_body_node_index,
+                                          Sema* sema)
+{
+    for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind != AK_Bind && node->kind != AK_Variable) {
+        if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
+            continue;
+        }
+        if (node->kind == AK_TopOn) {
+            if (sema_top_on_is_enabled(options, lexer, ast, node)) {
+                const AstTopOnInfo* info = &ast->top_ons[node->a];
+                const AstNode*      body = &ast->nodes[info->body_node_index];
+                ASSERT(body->kind == AK_Block, "Expected top-level on body");
+                if (!sema_collect_decls_in_range(lexer,
+                                                 ast,
+                                                 options,
+                                                 body->a,
+                                                 body->b,
+                                                 info->body_node_index,
+                                                 sema)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (node->kind != AK_Bind && node->kind != AK_Variable &&
+            node->kind != AK_FfiDef) {
             continue;
         }
         if (sema_node_is_inside_function_body(ast, i)) {
             continue;
         }
 
-        u32 existing_decl_index = sema_find_decl(sema, ast_get_symbol(node));
+        u32 symbol_handle       = node->kind == AK_FfiDef
+                                      ? ast->ffi_infos[node->a].symbol_handle
+                                      : ast_get_symbol(node);
+
+        u32 existing_decl_index = sema_find_decl(sema, symbol_handle);
         if (existing_decl_index != sema_no_decl()) {
             const SemaDecl* existing_decl = &sema->decls[existing_decl_index];
             return error_0301_duplicate_binding(
                 lexer->source,
                 sema_node_span(lexer, node),
-                lex_symbol(lexer, ast_get_symbol(node)),
+                lex_symbol(lexer, symbol_handle),
                 existing_decl->bind_node_index == sema_no_decl()
                     ? sema_node_span(lexer, node)
                     : sema_node_span(
@@ -1897,7 +1982,7 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
         }
 
         u32            type_node_index  = sema_no_type();
-        u32            value_node_index = node->b;
+        u32            value_node_index = node->kind == AK_FfiDef ? i : node->b;
         const AstNode* value            = &ast->nodes[value_node_index];
         if (value->kind == AK_AnnotatedValue) {
             type_node_index  = value->a;
@@ -1909,7 +1994,9 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
         }
 
         SemaDeclKind kind = SK_Constant;
-        if (node->kind == AK_Variable) {
+        if (node->kind == AK_FfiDef) {
+            kind = SK_FfiFunction;
+        } else if (node->kind == AK_Variable) {
             kind = SK_Variable;
         } else if (value->kind == AK_FnDef) {
             kind = SK_Function;
@@ -1922,15 +2009,23 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
         array_push(sema->decls,
                    (SemaDecl){
                        .kind             = kind,
-                       .symbol_handle    = ast_get_symbol(node),
+                       .symbol_handle    = symbol_handle,
                        .bind_node_index  = i,
                        .type_node_index  = type_node_index,
                        .value_node_index = value_node_index,
                        .type_index       = sema_no_type(),
                    });
     }
-
     return true;
+}
+
+internal bool sema_collect_decls(const Lexer*           lexer,
+                                 const Ast*             ast,
+                                 const FrontEndOptions* options,
+                                 Sema*                  sema)
+{
+    return sema_collect_decls_in_range(
+        lexer, ast, options, 0, (u32)array_count(ast->nodes), U32_MAX, sema);
 }
 
 internal bool
@@ -4114,10 +4209,38 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
 }
 
 internal bool
-sema_collect_top_level_uses(const Lexer* lexer, const Ast* ast, Sema* sema)
+sema_collect_top_level_uses_in_range(const Lexer*           lexer,
+                                     const Ast*             ast,
+                                     const FrontEndOptions* options,
+                                     u32                    first_node,
+                                     u32                    end_node,
+                                     u32   current_body_node_index,
+                                     Sema* sema)
 {
-    for (u32 i = 0; i < array_count(ast->nodes);) {
+    for (u32 i = first_node; i < end_node;) {
         const AstNode* node = &ast->nodes[i];
+        if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
+            i++;
+            continue;
+        }
+        if (node->kind == AK_TopOn) {
+            if (sema_top_on_is_enabled(options, lexer, ast, node)) {
+                const AstTopOnInfo* info = &ast->top_ons[node->a];
+                const AstNode*      body = &ast->nodes[info->body_node_index];
+                ASSERT(body->kind == AK_Block, "Expected top-level on body");
+                if (!sema_collect_top_level_uses_in_range(lexer,
+                                                          ast,
+                                                          options,
+                                                          body->a,
+                                                          body->b,
+                                                          info->body_node_index,
+                                                          sema)) {
+                    return false;
+                }
+            }
+            i++;
+            continue;
+        }
         if (node->kind == AK_FnStart) {
             i = node->b + 2;
             continue;
@@ -4150,6 +4273,15 @@ sema_collect_top_level_uses(const Lexer* lexer, const Ast* ast, Sema* sema)
         i++;
     }
     return true;
+}
+
+internal bool sema_collect_top_level_uses(const Lexer*           lexer,
+                                          const Ast*             ast,
+                                          const FrontEndOptions* options,
+                                          Sema*                  sema)
+{
+    return sema_collect_top_level_uses_in_range(
+        lexer, ast, options, 0, (u32)array_count(ast->nodes), U32_MAX, sema);
 }
 
 //------------------------------------------------------------------------------
@@ -6801,11 +6933,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         type_index =
                             sema->type_param_types[module->first_param_type +
                                                    i];
-                        u32 decl_index = sema_find_decl(sema, node->b);
-                        if (decl_index != sema_no_decl()) {
-                            sema->node_decl_indices[node - ast->nodes] =
-                                decl_index;
-                        }
+                        sema->node_decl_indices[node - ast->nodes] =
+                            sema_ensure_module_export_decl(
+                                sema, node->b, type_index);
                         break;
                     }
                 }
@@ -9137,9 +9267,14 @@ internal bool sema_validate_all_loop_control(const Lexer* lexer, const Ast* ast)
 //------------------------------------------------------------------------------
 // Analyse the AST into compact declaration and resolution tables.
 
-bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
+bool sema_analyse(const Lexer*           lexer,
+                  Ast*                   ast,
+                  const FrontEndOptions* options,
+                  Sema*                  out_sema)
 {
-    Sema sema = {0};
+    Sema            sema = {0};
+    FrontEndOptions effective_options =
+        options ? *options : (FrontEndOptions){0};
 
     // Seed commonly-used built-in types so later materialisation can always
     // canonicalise untyped numeric literals to runtime storage types.
@@ -9168,9 +9303,7 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
         array_push(sema.pattern_local_indices, sema_no_local());
     }
 
-    sema_add_builtin_decls(lexer, &sema);
-
-    if (!sema_collect_decls(lexer, ast, &sema)) {
+    if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
         sema_done(&sema);
         return false;
     }
@@ -9197,7 +9330,7 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
                 ast, &sema, sema.decls[i].type_node_index);
         }
     }
-    if (!sema_collect_top_level_uses(lexer, ast, &sema)) {
+    if (!sema_collect_top_level_uses(lexer, ast, &effective_options, &sema)) {
         sema_done(&sema);
         return false;
     }

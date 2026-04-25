@@ -26,6 +26,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 main :: fn () {
     values: [2]i32 = [1, 2]
     pointer: ^i32 = ^values[0]
@@ -37,13 +39,13 @@ main :: fn () {
     "message": "Type mismatch: expected `integer index`, found `string`",
     "source_file": "tests/errors/025-pointers.e",
     "primary_location": {
-        "line": 4,
+        "line": 6,
         "column": 20
     },
     "references": [
         {
             "kind": "primary",
-            "line": 4,
+            "line": 6,
             "column": 20,
             "length": 6,
             "message": "This expression has type `string`"

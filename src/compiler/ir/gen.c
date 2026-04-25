@@ -1727,6 +1727,18 @@ internal void ir_lower_on_pattern_binders(const Ast*  ast,
     }
 }
 
+internal u32 ir_decl_runtime_symbol(const Ast* ast, const SemaDecl* decl)
+{
+    if (decl->kind == SK_FfiFunction &&
+        decl->value_node_index != sema_no_decl()) {
+        const AstNode* ffi_node = &ast->nodes[decl->value_node_index];
+        if (ffi_node->kind == AK_FfiDef) {
+            return ast->ffi_infos[ffi_node->a].symbol_handle;
+        }
+    }
+    return decl->symbol_handle;
+}
+
 internal bool ir_try_lower_module_field(const Ast*  ast,
                                         const Sema* sema,
                                         u32         node_index,
@@ -1752,7 +1764,7 @@ internal bool ir_try_lower_module_field(const Ast*  ast,
     *out_value = (IrValue){
         .kind          = IR_VALUE_BUILTIN,
         .type          = decl->type_index,
-        .value.integer = decl->symbol_handle,
+        .value.integer = ir_decl_runtime_symbol(ast, decl),
     };
     return true;
 }
@@ -2119,7 +2131,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                                         ? IR_VALUE_BUILTIN
                                                         : IR_VALUE_SYMBOL,
                                    .type          = decl->type_index,
-                                   .value.integer = decl->symbol_handle,
+                                   .value.integer = ir_decl_runtime_symbol(ast, decl),
                 };
             }
             node_values[node_index] = value;
@@ -3944,7 +3956,7 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
             }
             array_push(ir.externs,
                        (IrExtern){
-                           .symbol  = decl->symbol_handle,
+                           .symbol  = ffi_info->symbol_handle,
                            .type    = decl->type_index,
                            .library = library,
                        });

@@ -1,3 +1,5 @@
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -72,9 +74,9 @@ branch.false bool:$12, L9
 $13 = (i32,i32):pair.1
 $14 = (i32,i32):pair.0
 $15 = (i32,i32):pair.1
-local score_pair$y$on42 = i32:$15
+local score_pair$y$on47 = i32:$15
 label L10
-$0 = i32:score_pair$y$on42
+$0 = i32:score_pair$y$on47
 jump L1
 label L9
 $18 = (i32,i32):pair.0
@@ -82,10 +84,10 @@ $19 = (i32,i32):pair.1
 $20 = i32:$19 == i32:9
 branch.false bool:$20, L16
 $21 = (i32,i32):pair.0
-local score_pair$x$on47 = i32:$21
+local score_pair$x$on52 = i32:$21
 $22 = (i32,i32):pair.1
 label L17
-$23 = i32:score_pair$x$on47 * i32:10
+$23 = i32:score_pair$x$on52 * i32:10
 $0 = i32:$23
 jump L1
 label L16
@@ -102,9 +104,9 @@ branch.false bool:$5, L2
 $6 = plex{x:i32,y:i32,name:string}:point.x
 $7 = plex{x:i32,y:i32,name:string}:point.name
 $8 = plex{x:i32,y:i32,name:string}:point.x
-local score_point$x$on81 = i32:$8
+local score_point$x$on86 = i32:$8
 label L3
-$0 = i32:score_point$x$on81
+$0 = i32:score_point$x$on86
 jump L1
 label L2
 $11 = plex{x:i32,y:i32,name:string}:point.x
@@ -113,9 +115,9 @@ branch.false bool:$12, L9
 $13 = plex{x:i32,y:i32,name:string}:point.y
 $14 = plex{x:i32,y:i32,name:string}:point.x
 $15 = plex{x:i32,y:i32,name:string}:point.y
-local score_point$y$on90 = i32:$15
+local score_point$y$on95 = i32:$15
 label L10
-$16 = i32:score_point$y$on90 * i32:10
+$16 = i32:score_point$y$on95 * i32:10
 $0 = i32:$16
 jump L1
 label L9
@@ -136,9 +138,9 @@ param plex{x:i32,y:i32,name:string}:point
 local $0 = string:0
 $4 = plex{x:i32,y:i32,name:string}:point.name
 $5 = plex{x:i32,y:i32,name:string}:point.name
-local name_of$name$on125 = string:$5
+local name_of$name$on130 = string:$5
 label L3
-$0 = string:name_of$name$on125
+$0 = string:name_of$name$on130
 jump L1
 label L2
 $0 = string:""
@@ -215,16 +217,16 @@ return i32:0
 end
 ¬
 void init() {}
-typedef struct plex8 {
+typedef struct plex7 {
     int $x;
     int $y;
     string $name;
-} plex8;
-typedef struct tuple9 {
+} plex7;
+typedef struct tuple10 {
     int _0;
     int _1;
-} tuple9;
-int $score_pair(tuple9 $pair) {
+} tuple10;
+int $score_pair(tuple10 $pair) {
     int $0 = 0;
     int $4 = $pair._0;
     bool $5 = $4 == 0;
@@ -242,9 +244,9 @@ int $score_pair(tuple9 $pair) {
     int $13 = $pair._1;
     int $14 = $pair._0;
     int $15 = $pair._1;
-    int $score_pair$y$on42 = $15;
+    int $score_pair$y$on47 = $15;
     L10: ;
-    $0 = $score_pair$y$on42;
+    $0 = $score_pair$y$on47;
     goto L1;
     L9: ;
     int $18 = $pair._0;
@@ -252,10 +254,10 @@ int $score_pair(tuple9 $pair) {
     bool $20 = $19 == 9;
     if (!$20) goto L16;
     int $21 = $pair._0;
-    int $score_pair$x$on47 = $21;
+    int $score_pair$x$on52 = $21;
     int $22 = $pair._1;
     L17: ;
-    int $23 = $score_pair$x$on47 * 10;
+    int $23 = $score_pair$x$on52 * 10;
     $0 = $23;
     goto L1;
     L16: ;
@@ -263,7 +265,7 @@ int $score_pair(tuple9 $pair) {
     L1: ;
     return $0;
 }
-int $score_point(plex8 $point) {
+int $score_point(plex7 $point) {
     int $0 = 0;
     string $4 = $point.$name;
     bool $5 = string_eq($4, (string){.data = (u8*)"origin", .count = 6});
@@ -271,9 +273,9 @@ int $score_point(plex8 $point) {
     int $6 = $point.$x;
     string $7 = $point.$name;
     int $8 = $point.$x;
-    int $score_point$x$on81 = $8;
+    int $score_point$x$on86 = $8;
     L3: ;
-    $0 = $score_point$x$on81;
+    $0 = $score_point$x$on86;
     goto L1;
     L2: ;
     int $11 = $point.$x;
@@ -282,9 +284,9 @@ int $score_point(plex8 $point) {
     int $13 = $point.$y;
     int $14 = $point.$x;
     int $15 = $point.$y;
-    int $score_point$y$on90 = $15;
+    int $score_point$y$on95 = $15;
     L10: ;
-    int $16 = $score_point$y$on90 * 10;
+    int $16 = $score_point$y$on95 * 10;
     $0 = $16;
     goto L1;
     L9: ;
@@ -300,13 +302,13 @@ int $score_point(plex8 $point) {
     L1: ;
     return $0;
 }
-string $name_of(plex8 $point) {
+string $name_of(plex7 $point) {
     string $0 = (string){0};
     string $4 = $point.$name;
     string $5 = $point.$name;
-    string $name_of$name$on125 = $5;
+    string $name_of$name$on130 = $5;
     L3: ;
-    $0 = $name_of$name$on125;
+    $0 = $name_of$name$on130;
     goto L1;
     L2: ;
     $0 = (string){.data = (u8*)"", .count = 0};
@@ -317,7 +319,7 @@ int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair zero ", .count = 10}));
-    tuple9 $2 = (tuple9){._0 = 0, ._1 = 7};
+    tuple10 $2 = (tuple10){._0 = 0, ._1 = 7};
     int $3 = $score_pair($2);
     string_builder_append_string(to_string$i32($3));
     string $1 = string_builder_finish($0);
@@ -325,7 +327,7 @@ int $main() {
     string_builder_reset();
     size_t $4 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair one ", .count = 9}));
-    tuple9 $6 = (tuple9){._0 = 1, ._1 = 8};
+    tuple10 $6 = (tuple10){._0 = 1, ._1 = 8};
     int $7 = $score_pair($6);
     string_builder_append_string(to_string$i32($7));
     string $5 = string_builder_finish($4);
@@ -333,7 +335,7 @@ int $main() {
     string_builder_reset();
     size_t $8 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair nine ", .count = 10}));
-    tuple9 $10 = (tuple9){._0 = 4, ._1 = 9};
+    tuple10 $10 = (tuple10){._0 = 4, ._1 = 9};
     int $11 = $score_pair($10);
     string_builder_append_string(to_string$i32($11));
     string $9 = string_builder_finish($8);
@@ -341,7 +343,7 @@ int $main() {
     string_builder_reset();
     size_t $12 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair else ", .count = 10}));
-    tuple9 $14 = (tuple9){._0 = 2, ._1 = 3};
+    tuple10 $14 = (tuple10){._0 = 2, ._1 = 3};
     int $15 = $score_pair($14);
     string_builder_append_string(to_string$i32($15));
     string $13 = string_builder_finish($12);
@@ -349,7 +351,7 @@ int $main() {
     string_builder_reset();
     size_t $16 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"point origin ", .count = 13}));
-    plex8 $18 = (plex8){.$x = 2, .$y = 3, .$name = (string){.data = (u8*)"origin", .count = 6}};
+    plex7 $18 = (plex7){.$x = 2, .$y = 3, .$name = (string){.data = (u8*)"origin", .count = 6}};
     int $19 = $score_point($18);
     string_builder_append_string(to_string$i32($19));
     string $17 = string_builder_finish($16);
@@ -357,7 +359,7 @@ int $main() {
     string_builder_reset();
     size_t $20 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"point x ", .count = 8}));
-    plex8 $22 = (plex8){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"other", .count = 5}};
+    plex7 $22 = (plex7){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"other", .count = 5}};
     int $23 = $score_point($22);
     string_builder_append_string(to_string$i32($23));
     string $21 = string_builder_finish($20);
@@ -365,7 +367,7 @@ int $main() {
     string_builder_reset();
     size_t $24 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"point fallback ", .count = 15}));
-    plex8 $26 = (plex8){.$x = 5, .$y = 6, .$name = (string){.data = (u8*)"fallback", .count = 8}};
+    plex7 $26 = (plex7){.$x = 5, .$y = 6, .$name = (string){.data = (u8*)"fallback", .count = 8}};
     int $27 = $score_point($26);
     string_builder_append_string(to_string$i32($27));
     string $25 = string_builder_finish($24);
@@ -373,7 +375,7 @@ int $main() {
     string_builder_reset();
     size_t $28 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"point name ", .count = 11}));
-    plex8 $30 = (plex8){.$x = 9, .$y = 10, .$name = (string){.data = (u8*)"named", .count = 5}};
+    plex7 $30 = (plex7){.$x = 9, .$y = 10, .$name = (string){.data = (u8*)"named", .count = 5}};
     string $31 = $name_of($30);
     string_builder_append_string(to_string$string($31));
     string $29 = string_builder_finish($28);

@@ -1,4 +1,4 @@
-bad :: ffi "c" (string)
+bad_param :: ffi "c" bad (string)
 
 main :: fn() {}
 ¬
@@ -8,13 +8,13 @@ main :: fn() {}
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 1,
-        "column": 17
+        "column": 27
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 17,
+            "column": 27,
             "length": 6,
             "message": "This expression has type `string`"
         }
@@ -25,7 +25,7 @@ main :: fn() {}
     ]
 }
 ¬
-bad :: ffi "c" () -> []u8
+bad_return :: ffi "c" bad () -> []u8
 
 main :: fn() {}
 ¬
@@ -35,13 +35,13 @@ main :: fn() {}
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 1,
-        "column": 22
+        "column": 33
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 22,
+            "column": 33,
             "length": 1,
             "message": "This expression has type `[]u8`"
         }
@@ -52,7 +52,7 @@ main :: fn() {}
     ]
 }
 ¬
-fcntl :: ffi "c" (i32, i32, ...) -> i32
+ffi "c" fcntl (i32, i32, ...) -> i32
 
 main :: fn() {
     fcntl(0, 1, "bad")
@@ -109,7 +109,7 @@ main :: fn() {}
 }
 ¬
 lib :: 1
-bad :: ffi lib () -> i32
+bad_lib_type :: ffi lib bad () -> i32
 
 main :: fn() {}
 ¬
@@ -119,13 +119,13 @@ main :: fn() {}
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 2,
-        "column": 12
+        "column": 21
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 12,
+            "column": 21,
             "length": 3,
             "message": "This expression has type `untyped integer`"
         }
@@ -137,7 +137,7 @@ main :: fn() {}
 }
 ¬
 lib : string
-bad :: ffi lib () -> i32
+bad_lib_runtime :: ffi lib bad () -> i32
 
 main :: fn() {}
 ¬
@@ -154,7 +154,7 @@ main :: fn() {}
             "kind": "primary",
             "line": 2,
             "column": 1,
-            "length": 3,
+            "length": 15,
             "message": "This expression has type `string`"
         }
     ],

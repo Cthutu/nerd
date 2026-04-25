@@ -7,6 +7,7 @@
 #pragma once
 
 #include <compiler/ast/ast.h>
+#include <compiler/compiler.h>
 
 //------------------------------------------------------------------------------
 
@@ -144,7 +145,10 @@ typedef struct {
 
 //------------------------------------------------------------------------------
 
-bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema);
+bool sema_analyse(const Lexer*           lexer,
+                  Ast*                   ast,
+                  const FrontEndOptions* options,
+                  Sema*                  out_sema);
 void sema_done(Sema* sema);
 
 u32    sema_no_decl(void);

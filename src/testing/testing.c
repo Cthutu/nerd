@@ -48,6 +48,7 @@ typedef struct {
 
 typedef struct {
     cstr   run_mode;
+    cstr   cli_args;
     cstr   path;
     string source;
     string expected_return_value;
@@ -346,11 +347,11 @@ internal bool testing_parse_command_test(Arena*       arena,
                                          string       file_text,
                                          CommandTest* out_test)
 {
-    string sections[4]   = {0};
+    string sections[5]   = {0};
     usize  cursor        = 0;
     usize  section_count = 0;
 
-    while (section_count < 4 &&
+    while (section_count < 5 &&
            testing_split_next_section(
                file_text, &cursor, &sections[section_count])) {
         section_count++;
@@ -359,14 +360,18 @@ internal bool testing_parse_command_test(Arena*       arena,
         }
     }
 
-    if ((section_count != 3 && section_count != 4) ||
+    if ((section_count != 3 && section_count != 4 && section_count != 5) ||
         cursor <= file_text.count) {
         eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
 
-    string run_mode = section_count == 4
-                          ? testing_trim_ascii_whitespace(sections[3])
+    string run_mode =
+        section_count == 4   ? testing_trim_ascii_whitespace(sections[3])
+        : section_count == 5 ? testing_trim_ascii_whitespace(sections[3])
+                             : (string){0};
+    string cli_args = section_count == 5
+                          ? testing_trim_ascii_whitespace(sections[4])
                           : (string){0};
 
     if (run_mode.count > 0 && !string_eq(run_mode, s("delete")) &&
@@ -377,13 +382,20 @@ internal bool testing_parse_command_test(Arena*       arena,
 
     *out_test = (CommandTest){
         .run_mode =
-            section_count == 4
+            section_count == 4 || section_count == 5
                 ? testing_copy_cstr(arena,
                                     run_mode.count > 0
                                         ? (cstr)string_format(
                                               arena, STRINGP, STRINGV(run_mode))
                                               .data
                                         : "")
+                : "",
+        .cli_args =
+            cli_args.count > 0
+                ? testing_copy_cstr(
+                      arena,
+                      (cstr)string_format(arena, STRINGP, STRINGV(cli_args))
+                          .data)
                 : "",
         .path                  = testing_copy_cstr(arena, path),
         .source                = testing_copy_string(arena,
@@ -1201,13 +1213,17 @@ internal bool testing_run_language_test(const LanguageTest* test)
         .compile_binary = true,
     };
 
-    FrontEndState front_results = {0};
+    FrontEndState   front_results = {0};
+    FrontEndOptions options       = {
+              .verbose = false,
+              .release = artifacts.release,
+    };
     if (!front_end(
             (NerdSource){
                 .source      = test->source,
                 .source_path = s(test->path),
             },
-            false,
+            &options,
             NULL,
             &front_results)) {
         front_end_results_done(&front_results);
@@ -1356,12 +1372,16 @@ internal bool testing_run_error_test(const ErrorTest* test)
     error_system_set_mode(ERROR_RENDER_TEST);
     error_system_set_emit_output(false);
 
+    FrontEndOptions options = {
+        .verbose = false,
+        .release = false,
+    };
     bool front_ok = front_end(
         (NerdSource){
             .source      = test->source,
             .source_path = s(test->path),
         },
-        false,
+        &options,
         NULL,
         &front_results);
     if (front_ok) {
@@ -1675,6 +1695,46 @@ internal bool testing_run_command_test(const CommandTest* test)
     if (!testing_set_current_directory(test_dir)) {
         eprn("Failed to change directory to command test dir: %s", test_dir);
         passed = false;
+    } else if (test->cli_args && test->cli_args[0] != '\0') {
+        Arena run_arena = {0};
+        arena_init(&run_arena);
+#if CONFIG_DEBUG
+        cstr nerd_binary_rel = "_bin/nerd-debug";
+#else
+        cstr nerd_binary_rel = "_bin/nerd";
+#endif
+        cstr nerd_binary = path_join(&run_arena, original_cwd, nerd_binary_rel);
+        string      command    = string_format(&run_arena,
+                                       "\"%s\" run %s \"%s\"",
+                                       nerd_binary,
+                                       test->cli_args,
+                                       input_arg);
+        ShellResult run_result = shell_capture((cstr)command.data, &run_arena);
+        if (!testing_compare_exit_code(test->expected_return_value,
+                                       run_result.exit_code)) {
+            passed = false;
+        }
+        if (test->expected_stdout.count > 0 &&
+            !testing_compare_text(
+                "stdout", test->expected_stdout, run_result.stdout_text)) {
+            passed = false;
+        }
+
+        if (!testing_set_current_directory(original_cwd)) {
+            eprn("Failed to restore test runner working directory: %s",
+                 original_cwd);
+            passed = false;
+        }
+
+        if (strcmp(test->run_mode, "delete") == 0 && path_exists(binary_path)) {
+            eprn("Expected run command to delete executable: %s", binary_path);
+            passed = false;
+        }
+        if (strcmp(test->run_mode, "keep") == 0 && !path_exists(binary_path)) {
+            eprn("Expected run command to keep executable: %s", binary_path);
+            passed = false;
+        }
+        arena_done(&run_arena);
     } else {
         NerdRunConfig config = {
             .source =

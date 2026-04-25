@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     total := 0
     for i := 0; i < 5; i += 1 $outer {

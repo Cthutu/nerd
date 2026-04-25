@@ -1,7 +1,9 @@
-abs :: ffi "c" (i32) -> i32
+use mod std.print
+
+abs_local :: ffi "c" abs (i32) -> i32
 
 main :: fn () {
-    value := abs(-7)
+    value := abs_local(-7)
     prn($"abs = {value}")
 }
 ¬
@@ -15,7 +17,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
+                "line": 2,
                 "character": 0
             }
         }
@@ -29,7 +31,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 3,
+                "line": 5,
                 "character": 13
             }
         }
@@ -81,7 +83,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nabs :: fn (i32) -> i32\n```\n\n- Kind: function"
+                "value": "```nerd\nabs_local :: fn (i32) -> i32\n```\n\n- Kind: function"
             }
         }
     },
@@ -92,12 +94,12 @@ main :: fn () {
             "uri": "file:///test.n",
             "range": {
                 "start": {
-                    "line": 0,
+                    "line": 2,
                     "character": 0
                 },
                 "end": {
-                    "line": 0,
-                    "character": 3
+                    "line": 2,
+                    "character": 9
                 }
             }
         }

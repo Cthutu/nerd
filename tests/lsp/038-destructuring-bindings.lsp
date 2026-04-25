@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     (left, right) := (1, "two")
     prn($"{left} {right}")
@@ -13,7 +15,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 12
             }
         }
@@ -27,7 +29,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 19
             }
         }
@@ -41,7 +43,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 12
             }
         }
@@ -114,11 +116,11 @@ main :: fn () {
             "uri": "file:///test.n",
             "range": {
                 "start": {
-                    "line": 1,
+                    "line": 3,
                     "character": 5
                 },
                 "end": {
-                    "line": 1,
+                    "line": 3,
                     "character": 9
                 }
             }

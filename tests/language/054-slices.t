@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () -> i32 {
     values: [5]i32 = [10, 20, 30, 40, 50]
     all: []i32 = values[..]
@@ -17,7 +19,6 @@ main :: fn () -> i32 {
 
     return middle[1] + from_start[2] + to_end[0] + literal[2]
 }
-
 ¬
 93
 ¬
@@ -100,35 +101,36 @@ $29 = i32:$27 + i32:$28
 $30 = []i32:literal[i32:2]
 $31 = i32:$29 + i32:$30
 return i32:$31
-end¬
+end
+¬
 void init() {}
-typedef struct array8 {
+typedef struct array9 {
     int items[5];
-} array8;
-typedef struct slice9 {
+} array9;
+typedef struct slice10 {
     int* data;
     uintptr_t count;
-} slice9;
-typedef struct array10 {
+} slice10;
+typedef struct array11 {
     int items[3];
-} array10;
+} array11;
 int $main() {
     string_builder_reset();
-    array8 $0 = (array8){.items = {10, 20, 30, 40, 50}};
-    array8 $values = $0;
-    slice9 $1 = (slice9){.data = $values.items, .count = 5};
-    slice9 $all = $1;
-    slice9 $2 = (slice9){.data = $values.items + 1, .count = (4) - (1)};
-    slice9 $middle = $2;
-    slice9 $3 = (slice9){.data = $values.items, .count = (3) - (0)};
-    slice9 $from_start = $3;
-    slice9 $4 = (slice9){.data = $values.items + 2, .count = 5 - 2};
-    slice9 $to_end = $4;
-    array10 $5 = (array10){.items = {1, 2, 3}};
-    slice9 $6 = (slice9){.data = $5.items, .count = 3};
-    slice9 $literal = $6;
-    slice9 $7 = (slice9){.data = $all.data + 1, .count = (3) - (1)};
-    slice9 $reslice = $7;
+    array9 $0 = (array9){.items = {10, 20, 30, 40, 50}};
+    array9 $values = $0;
+    slice10 $1 = (slice10){.data = $values.items, .count = 5};
+    slice10 $all = $1;
+    slice10 $2 = (slice10){.data = $values.items + 1, .count = (4) - (1)};
+    slice10 $middle = $2;
+    slice10 $3 = (slice10){.data = $values.items, .count = (3) - (0)};
+    slice10 $from_start = $3;
+    slice10 $4 = (slice10){.data = $values.items + 2, .count = 5 - 2};
+    slice10 $to_end = $4;
+    array11 $5 = (array11){.items = {1, 2, 3}};
+    slice10 $6 = (slice10){.data = $5.items, .count = 3};
+    slice10 $literal = $6;
+    slice10 $7 = (slice10){.data = $all.data + 1, .count = (3) - (1)};
+    slice10 $reslice = $7;
     size_t $8 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"all = ", .count = 6}));
     string_builder_append_string((string){.data = (u8*)"[", .count = 1});

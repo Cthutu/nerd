@@ -86,6 +86,9 @@ From the current codebase and test suite:
   - remove generated intermediate files for passing tests
   - keep generated intermediate files for failing tests, so failures can be
     analysed locally
+- When a feature changes CLI-visible compile-time behaviour, add at least one
+  regression that exercises the real `nerd` command path rather than only
+  internal compiler entry points.
 
 ## Immediate Architectural Direction
 
@@ -1044,7 +1047,9 @@ needed earlier.
 ## Milestone 25: FFI Function Declarations
 
 - [X] 94. Add FFI function declarations and calls.
-  - Support declarations such as `fcntl :: ffi "c" (i32, i32, ...) -> i32`.
+  - Support declarations such as `ffi "c" fcntl (i32, i32, ...) -> i32`
+    and renamed bindings such as
+    `set_flags :: ffi "c" fcntl (i32, i32, ...) -> i32`.
   - Allow an omitted return type to mean `void`.
   - Link `ffi "name"` using the platform linker. On POSIX this emits
     `-lname`, so the linker can resolve `libname.a` or `libname.so`; `ffi "c"`

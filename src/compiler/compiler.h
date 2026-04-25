@@ -17,12 +17,19 @@ typedef struct {
 } NerdSource;
 
 typedef struct {
+    bool verbose;
+    bool release;
+    Array(string) keywords;
+} FrontEndOptions;
+
+typedef struct {
     NerdSource source;
     string     output_path;
     bool       emit_ir;
     bool       emit_c;
     bool       release;
     bool       verbose;
+    Array(string) keywords;
 } NerdBuildConfig;
 
 typedef struct {
@@ -43,6 +50,7 @@ typedef struct {
     bool       keep_binary;
     bool       release;
     bool       verbose;
+    Array(string) keywords;
 } NerdRunConfig;
 
 typedef struct {
@@ -53,6 +61,7 @@ typedef struct {
     bool emit_c_file;
     bool compile_binary;
     bool release;
+    Array(string) keywords;
 } NerdArtifactConfig;
 
 //------------------------------------------------------------------------------

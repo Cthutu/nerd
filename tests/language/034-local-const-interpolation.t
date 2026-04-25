@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
   i :: 2
   f :: 3.14

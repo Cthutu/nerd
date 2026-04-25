@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () -> i32 {
     xs :: [1, 2, 3]
     ys: [2]i32 = [4, 5]
@@ -9,7 +11,6 @@ main :: fn () -> i32 {
 
     return xs[1] + ys[0] + ys[1]
 }
-
 ¬
 11
 ¬
@@ -62,19 +63,19 @@ return i32:$17
 end
 ¬
 void init() {}
-typedef struct array8 {
-    int items[2];
-} array8;
 typedef struct array9 {
-    int items[3];
+    int items[2];
 } array9;
+typedef struct array10 {
+    int items[3];
+} array10;
 int $main() {
     string_builder_reset();
-    array8 $0 = (array8){.items = {4, 5}};
-    array8 $ys = $0;
+    array9 $0 = (array9){.items = {4, 5}};
+    array9 $ys = $0;
     size_t $1 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"xs = ", .count = 5}));
-    array9 $3 = (array9){.items = {1, 2, 3}};
+    array10 $3 = (array10){.items = {1, 2, 3}};
     #ifndef NDEBUG
     if ((long long)0 < 0 || (size_t)0 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
     #endif

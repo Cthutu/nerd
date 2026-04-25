@@ -21,6 +21,7 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
         .emit_c_file    = false,
         .compile_binary = true,
         .release        = false,
+        .keywords       = NULL,
     };
 }
 
@@ -76,9 +77,15 @@ bool compile(NerdSource                source,
         mapped_source = true;
     }
 
+    FrontEndOptions front_end_options = {
+        .verbose  = dump_compiler_state,
+        .release  = artifacts->release,
+        .keywords = artifacts->keywords,
+    };
+
     FrontEndState front_results = {0};
     if (!front_end(
-            effective_source, dump_compiler_state, timing, &front_results)) {
+            effective_source, &front_end_options, timing, &front_results)) {
         front_end_results_done(&front_results);
         if (mapped_source) {
             filemap_unload(&source_map);

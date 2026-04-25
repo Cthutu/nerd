@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn(){
 values:[5]i32=[10,20,30,40,50]
 all:[]i32=values[..]
@@ -8,6 +10,8 @@ literal:[]i32=[1,2,3][..]
 prn($"{all} {middle.count} {middle.data[0]}")
 }
 ¬
+use mod std.print
+
 main :: fn () {
     values     : [5]i32 = [10, 20, 30, 40, 50]
     all        : []i32  = values[..]

@@ -32,6 +32,7 @@ compiler_cmd_run_artifacts(Arena* arena, const NerdRunConfig* config)
     artifacts.emit_ir_file = config->emit_ir;
     artifacts.emit_c_file  = config->emit_c;
     artifacts.release      = config->release;
+    artifacts.keywords     = config->keywords;
 
     return artifacts;
 }

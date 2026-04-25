@@ -19,6 +19,11 @@ internal void format_emit_for_header_items(StringBuilder* sb,
                                            u32            first_item,
                                            u32            item_count);
 internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal void format_emit_top_on(StringBuilder* sb,
+                                 const Cst*     cst,
+                                 const Lexer*   lexer,
+                                 u32            top_on_index,
+                                 u32            indent_level);
 internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index);
 internal void format_emit_on_block_multiline(StringBuilder* sb,
                                              const Cst*     cst,
@@ -1587,6 +1592,10 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             if (owner->kind == CK_ExprBlock && owner->b == node_index) {
                 return true;
             }
+            if (owner->kind == CK_TopOn &&
+                cst->top_ons[owner->a].body_node_index == node_index) {
+                return true;
+            }
         }
     }
 
@@ -1614,6 +1623,14 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             !(block->a <= node_index && node_index < block->b)) {
             continue;
         }
+        if (current_block < array_count(cst->nodes)) {
+            const CstNode* current = &cst->nodes[current_block];
+            if (current->kind == CK_Block && block->a <= current_block &&
+                current_block < block->b && current->a <= node_index &&
+                node_index < current->b) {
+                continue;
+            }
+        }
         for (u32 owner_index = 0; owner_index < end; ++owner_index) {
             const CstNode* owner = &cst->nodes[owner_index];
             if (owner->kind == CK_For &&
@@ -1636,6 +1653,10 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             if (owner->kind == CK_ExprBlock && owner->b == i) {
                 return true;
             }
+            if (owner->kind == CK_TopOn &&
+                cst->top_ons[owner->a].body_node_index == i) {
+                return true;
+            }
         }
     }
 
@@ -1654,6 +1675,10 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
         }
         if ((node->kind == CK_For || node->kind == CK_ExprBlock) &&
             node->b == node_index) {
+            return true;
+        }
+        if (node->kind == CK_TopOn &&
+            cst->top_ons[node->a].body_node_index == node_index) {
             return true;
         }
         if (node->kind == CK_Statement && node->a == node_index) {
@@ -1800,6 +1825,8 @@ internal void format_emit_ffi_def(StringBuilder* sb,
 
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
+    sb_append_char(sb, ' ');
+    sb_append_string(sb, lex_symbol(lexer, ffi->symbol_handle));
     sb_append_cstr(sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
@@ -1837,6 +1864,27 @@ internal void format_emit_mod_ref(StringBuilder* sb,
             lex_symbol(lexer,
                        cst->module_path_symbols[path->first_symbol + i]));
     }
+}
+
+internal void format_emit_top_on(StringBuilder* sb,
+                                 const Cst*     cst,
+                                 const Lexer*   lexer,
+                                 u32            top_on_index,
+                                 u32            indent_level)
+{
+    const CstTopOnInfo* top_on = &cst->top_ons[top_on_index];
+
+    format_emit_indent(sb, indent_level);
+    sb_append_cstr(sb, "on ");
+    if (top_on->is_negated) {
+        sb_append_char(sb, '!');
+    }
+    sb_append_string(sb, lex_symbol(lexer, top_on->symbol_handle));
+    sb_append_cstr(sb, " {\n");
+    format_emit_block_contents(
+        sb, cst, lexer, top_on->body_node_index, indent_level + 1);
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
 }
 
 internal void format_emit_block_contents(StringBuilder* sb,
@@ -2065,7 +2113,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
                                           u32            indent_level)
 {
     const CstNode* stmt = &cst->nodes[node_index];
-    format_emit_indent(sb, indent_level);
+    if (stmt->kind != CK_TopOn) {
+        format_emit_indent(sb, indent_level);
+    }
 
     if (stmt->kind == CK_Block) {
         sb_append_cstr(sb, "{\n");
@@ -2236,6 +2286,18 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_FfiDef) {
+        format_emit_ffi_def(sb, cst, lexer, stmt->a);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_TopOn) {
+        format_emit_top_on(sb, cst, lexer, stmt->a, indent_level);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_Statement) {
         if (format_node_is_block_form_on(cst, stmt->a)) {
             format_emit_on_block_multiline(
@@ -2356,6 +2418,20 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         if (node->kind == CK_Use) {
             sb_append_cstr(sb, "use ");
             format_emit_expr(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            first_binding = false;
+            continue;
+        }
+
+        if (node->kind == CK_FfiDef) {
+            format_emit_ffi_def(sb, &cst, &lexer, node->a);
+            sb_append_char(sb, '\n');
+            first_binding = false;
+            continue;
+        }
+
+        if (node->kind == CK_TopOn) {
+            format_emit_top_on(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
             first_binding = false;
             continue;

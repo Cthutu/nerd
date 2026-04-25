@@ -1,3 +1,5 @@
+use mod std.print
+
 Maybe :: enum { None Some(i32) }
 main :: fn () {
     value: Maybe = Some(1)
@@ -14,7 +16,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 4
             }
         }
@@ -66,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nvalue\n```\n\n- Kind: local variable\n- Type: `enum { #32, #64(i32) }`"
+                "value": "```nerd\nvalue\n```\n\n- Kind: local variable\n- Type: `enum { #96, #128(i32) }`"
             }
         }
     },

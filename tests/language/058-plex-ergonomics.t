@@ -1,3 +1,5 @@
+use mod std.print
+
 Point :: plex #c {
     x    i32
     y    i32
@@ -18,7 +20,6 @@ main :: fn () -> i32 {
     packed := Packed { a: 1, b: 2 }
     return q.x + q.y + packed.b
 }
-
 ¬
 10
 ¬
@@ -67,26 +68,27 @@ $17 = i32:$15 + i32:$16
 $18 = plex{a:u8,b:i32}:packed.b
 $19 = i32:$17 + i32:$18
 return i32:$19
-end¬
+end
+¬
 void init() {}
-typedef struct plex8 {
+typedef struct plex7 {
     int $x;
     int $y;
     string $name;
-} plex8;
-typedef struct __attribute__((packed)) plex10 {
+} plex7;
+typedef struct __attribute__((packed)) plex9 {
     uint8_t $a;
     int $b;
-} plex10;
+} plex9;
 int $main() {
     string_builder_reset();
-    plex8 $0 = (plex8){.$x = 1, .$y = 2, .$name = (string){.data = (u8*)"first", .count = 5}};
-    plex8 $p = $0;
+    plex7 $0 = (plex7){.$x = 1, .$y = 2, .$name = (string){.data = (u8*)"first", .count = 5}};
+    plex7 $p = $0;
     int $1 = $p.$x;
-    plex8 $2 = (plex8){.$x = $1, .$y = 7, .$name = (string){.data = (u8*)"second", .count = 6}};
-    plex8 $q = $2;
-    plex8* $3 = &$q;
-    plex8* $pp = $3;
+    plex7 $2 = (plex7){.$x = $1, .$y = 7, .$name = (string){.data = (u8*)"second", .count = 6}};
+    plex7 $q = $2;
+    plex7* $3 = &$q;
+    plex7* $pp = $3;
     size_t $4 = string_builder_mark();
     string $6 = $p.$name;
     string_builder_append_string(to_string$string($6));
@@ -111,8 +113,8 @@ int $main() {
     string $10 = string_builder_finish($9);
     prn($10);
     string_builder_reset();
-    plex10 $14 = (plex10){.$a = 1, .$b = 2};
-    plex10 $packed = $14;
+    plex9 $14 = (plex9){.$a = 1, .$b = 2};
+    plex9 $packed = $14;
     int $15 = $q.$x;
     int $16 = $q.$y;
     int $17 = $15 + $16;

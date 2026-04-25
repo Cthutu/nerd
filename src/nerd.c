@@ -292,7 +292,7 @@ nerd_cli_flag_bool(const JsonValue* cli_result, cstr path, bool fallback)
 }
 
 internal NerdBuildConfig
-nerd_build_config_from_json(const JsonValue* cli_result)
+nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 {
     Arena* source_arena = &temp_arena;
     string source_arg =
@@ -334,6 +334,7 @@ nerd_build_config_from_json(const JsonValue* cli_result)
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .keywords = keywords,
     };
 }
 
@@ -356,7 +357,8 @@ nerd_format_config_from_json(const JsonValue* cli_result)
     };
 }
 
-internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
+internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
+                                                 Array(string) keywords)
 {
     return (NerdRunConfig){
         .source =
@@ -374,7 +376,36 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result)
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .keywords = keywords,
     };
+}
+
+internal bool nerd_cli_extract_keywords(Arena*  arena,
+                                        int     argc,
+                                        char**  argv,
+                                        int*    out_argc,
+                                        char*** out_argv,
+                                        Array(string) * out_keywords)
+{
+    char** filtered =
+        (char**)arena_alloc(arena, (usize)argc * sizeof(filtered[0]));
+    int filtered_count = 0;
+
+    for (int i = 0; i < argc; ++i) {
+        if (i > 0 && strncmp(argv[i], "-k:", 3) == 0) {
+            if (argv[i][3] == '\0') {
+                eprn("Expected a keyword after -k:");
+                return false;
+            }
+            array_push(*out_keywords, string_format(arena, "%s", argv[i] + 3));
+            continue;
+        }
+        filtered[filtered_count++] = argv[i];
+    }
+
+    *out_argc = filtered_count;
+    *out_argv = filtered;
+    return true;
 }
 
 internal int nerd_run_with_cli(int argc, char** argv)
@@ -387,7 +418,19 @@ internal int nerd_run_with_cli(int argc, char** argv)
     CliParser  parser = {0};
     cli_init(&parser, schema);
 
-    JsonValue* cli_result = cli_parse(&parser, &arena, argc, argv);
+    int    cli_argc            = argc;
+    char** cli_argv            = argv;
+    Array(string) cli_keywords = NULL;
+    if (!nerd_cli_extract_keywords(
+            &arena, argc, argv, &cli_argc, &cli_argv, &cli_keywords)) {
+        cli_done(&parser);
+        json_done(schema);
+        arena_done(&arena);
+        error_system_done();
+        return 1;
+    }
+
+    JsonValue* cli_result = cli_parse(&parser, &arena, cli_argc, cli_argv);
     JsonValue* command    = json_object_get_cstr(cli_result, "command");
     JsonValue* help       = json_object_get_cstr(cli_result, "help_requested");
     JsonValue* ok         = json_object_get_cstr(cli_result, "ok");
@@ -465,11 +508,13 @@ internal int nerd_run_with_cli(int argc, char** argv)
     }
 
     if (string_eq_cstr(name, "build")) {
-        NerdBuildConfig config = nerd_build_config_from_json(cli_result);
-        result                 = compiler_cmd_build(&config);
+        NerdBuildConfig config =
+            nerd_build_config_from_json(cli_result, cli_keywords);
+        result = compiler_cmd_build(&config);
     } else if (string_eq_cstr(name, "run")) {
-        NerdRunConfig config = nerd_run_config_from_json(cli_result);
-        result               = compiler_cmd_run(&config);
+        NerdRunConfig config =
+            nerd_run_config_from_json(cli_result, cli_keywords);
+        result = compiler_cmd_run(&config);
     } else if (string_eq_cstr(name, "test")) {
         NerdTestConfig config = nerd_test_config_from_json(cli_result);
         result                = compiler_cmd_test(&config);

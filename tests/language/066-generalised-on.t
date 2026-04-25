@@ -1,3 +1,5 @@
+use mod std.print
+
 score :: fn (value: i32) -> i32 {
     return on value {
         < 0 => -1

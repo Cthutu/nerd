@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     i  :: 2
     ff :: 3.14
@@ -8,6 +10,8 @@ main :: fn () {
     prn(on i { 0 => "zero" else as x => $"non-zero: {x}" })
 }
 ¬
+use mod std.print
+
 main :: fn () {
     i  :: 2
     ff :: 3.14

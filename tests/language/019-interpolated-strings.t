@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Builds an interpolated string from a constant and a variable.
 name :: "world"
 count := 3

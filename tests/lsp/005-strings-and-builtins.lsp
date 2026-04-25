@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     prn("Hello, world!")
 }
@@ -12,7 +14,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
+                "line": 2,
                 "character": 0
             }
         }
@@ -26,7 +28,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 1,
+                "line": 3,
                 "character": 4
             }
         }
@@ -40,7 +42,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 1,
+                "line": 3,
                 "character": 8
             }
         }

@@ -54,6 +54,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 main :: fn () {
     values :: [1, 2, 3]
     slice :: values[..]
@@ -65,13 +67,13 @@ main :: fn () {
     "message": "Type mismatch: expected `slice field `.data` or `.count``, found `len`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
-        "line": 4,
+        "line": 6,
         "column": 18
     },
     "references": [
         {
             "kind": "primary",
-            "line": 4,
+            "line": 6,
             "column": 18,
             "length": 3,
             "message": "This expression has type `len`"

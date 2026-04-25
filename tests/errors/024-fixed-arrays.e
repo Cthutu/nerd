@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     value :: 1
     prn($"{value[0]}")
@@ -8,13 +10,13 @@ main :: fn () {
     "message": "Type mismatch: expected `array, slice, or pointer`, found `untyped integer`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
-        "line": 3,
+        "line": 5,
         "column": 17
     },
     "references": [
         {
             "kind": "primary",
-            "line": 3,
+            "line": 5,
             "column": 17,
             "length": 1,
             "message": "This expression has type `untyped integer`"
@@ -26,6 +28,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 main :: fn () {
     values :: [1, 2]
     prn($"{values["zero"]}")
@@ -36,13 +40,13 @@ main :: fn () {
     "message": "Type mismatch: expected `integer index`, found `string`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
-        "line": 3,
+        "line": 5,
         "column": 19
     },
     "references": [
         {
             "kind": "primary",
-            "line": 3,
+            "line": 5,
             "column": 19,
             "length": 6,
             "message": "This expression has type `string`"

@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     answer :: $answer {
         break $answer 41 + 1

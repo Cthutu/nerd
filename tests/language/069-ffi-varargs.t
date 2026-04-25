@@ -1,4 +1,6 @@
-fcntl :: ffi "c" (i32, i32, ...) -> i32
+use mod std.print
+
+ffi "c" fcntl (i32, i32, ...) -> i32
 
 main :: fn() {
     result := fcntl(0, 1, 0)

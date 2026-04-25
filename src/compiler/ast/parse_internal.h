@@ -48,6 +48,7 @@ typedef struct {
     bool   allow_statement_boundary;
     bool   stop_before_on_branch_head;
     bool   stop_before_call;
+    bool   stop_before_ffi_name;
 
     // Current token (from last peek or next)
     AstToken token;
@@ -75,6 +76,7 @@ typedef struct {
     Array(AstEnumPattern) enum_patterns;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
+    Array(AstTopOnInfo) top_ons;
     Array(u32) for_items;
     Array(AstForInfo) fors;
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = ROOT / "src"
 BIN_DIR = ROOT / "_bin"
+MODS_DIR = ROOT / "mods"
 OBJ_BASE = ROOT / "_obj"
 OBJ_DIR: Path = OBJ_BASE
 
@@ -171,6 +173,45 @@ def link_executable(objects: list[Path], executable: Path) -> None:
     cmd = [CC, "-o", str(executable), *objects, *LDFLAGS]
     print(f"{prefix('link', YELLOW)} {executable.relative_to(ROOT)}")
     run_command(cmd)
+
+
+def sync_directory(source: Path, destination: Path) -> None:
+    """Mirror one directory tree into another, removing stale files."""
+    if not source.exists():
+        if destination.exists():
+            shutil.rmtree(destination)
+        return
+
+    destination.mkdir(parents=True, exist_ok=True)
+
+    source_entries = {entry.name: entry for entry in source.iterdir()}
+    destination_entries = {entry.name: entry for entry in destination.iterdir()}
+
+    for name, dest_entry in destination_entries.items():
+        src_entry = source_entries.get(name)
+        if src_entry is None:
+            if dest_entry.is_dir():
+                shutil.rmtree(dest_entry)
+            else:
+                dest_entry.unlink()
+            continue
+
+        if src_entry.is_dir() != dest_entry.is_dir():
+            if dest_entry.is_dir():
+                shutil.rmtree(dest_entry)
+            else:
+                dest_entry.unlink()
+
+    for name, src_entry in source_entries.items():
+        dest_entry = destination / name
+        if src_entry.is_dir():
+            sync_directory(src_entry, dest_entry)
+            continue
+
+        if (not dest_entry.exists() or
+                src_entry.stat().st_mtime > dest_entry.stat().st_mtime or
+                src_entry.stat().st_size != dest_entry.stat().st_size):
+            shutil.copy2(src_entry, dest_entry)
 
 
 def select_cflags(profile: str) -> list[str]:
@@ -501,6 +542,8 @@ def main(argv: list[str] | None = None) -> None:
     for project, sources in project_sources.items():
         objects = [compiled[src] for src in sources]
         link_executable(objects, executable_path(project, profile))
+
+    sync_directory(MODS_DIR, BIN_DIR / "mods")
 
     print(f"{prefix('skip', GREY)} {skipped_sources} source file(s) up to date")
     finish_bar = colour("=" * 48, GREEN)

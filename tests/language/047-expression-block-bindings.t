@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Uses expression blocks as top-level constant and variable initialisers.
 constant_value :: ${
     break 4

@@ -77,7 +77,8 @@ bool ast_node_is_block_statement(const AstNode* node)
            node->kind == AK_DestructureBind ||
            node->kind == AK_DestructureVariable ||
            node->kind == AK_DestructureAssign || node->kind == AK_Assign ||
-           node->kind == AK_Use;
+           node->kind == AK_Use || node->kind == AK_FfiDef ||
+           node->kind == AK_TopOn;
 }
 
 u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
@@ -91,6 +92,9 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
         return for_info->else_block_index == U32_MAX
                    ? ast->nodes[node->b].b
                    : ast->nodes[for_info->else_block_index].b;
+    }
+    if (node->kind == AK_TopOn) {
+        return ast->nodes[ast->top_ons[node->a].body_node_index].b;
     }
     if (node->kind == AK_Bind || node->kind == AK_Variable ||
         node->kind == AK_DestructureBind ||

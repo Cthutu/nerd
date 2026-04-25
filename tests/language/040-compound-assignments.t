@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     n := 1
     n += 2

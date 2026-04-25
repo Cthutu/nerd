@@ -27,8 +27,10 @@ typedef struct {
     Array(u32) token_float_indices;
     Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
+    bool allow_statement_boundary;
     bool stop_before_on_branch_head;
     bool stop_before_call;
+    bool stop_before_ffi_name;
     Cst  cst;
 } CstParseState;
 
@@ -39,6 +41,7 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
 internal bool cst_parse_for(CstParseState* state, u32* out_node);
+internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node);
 internal bool cst_token_has_newline_before(const CstParseState* state,
                                            u32                  token_index);
 
@@ -1995,6 +1998,11 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        if (state->stop_before_ffi_name && token.kind == TK_Symbol &&
+            cst_peek_kind_at(state, 1) == TK_LParen) {
+            break;
+        }
+
         if (token.kind == TK_LBrace) {
             bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&
                                (cst_peek_kind_at(state, 1) == TK_RBrace ||
@@ -2029,6 +2037,13 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     return false;
                 }
                 continue;
+            }
+            if (cst_starts_binding(state)) {
+                break;
+            }
+            if (state->allow_statement_boundary &&
+                cst_token_starts_expression(token.kind)) {
+                break;
             }
             break;
         }
@@ -2706,6 +2721,10 @@ internal bool cst_parse_block_statement(CstParseState* state)
 {
     u32 token_index = state->token_index;
 
+    if (cst_current_token(state).kind == TK_ffi) {
+        return cst_parse_ffi_def(state, NULL);
+    }
+
     if (cst_current_token(state).kind == TK_use) {
         return cst_parse_use(state, NULL);
     }
@@ -2990,14 +3009,23 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
-    bool old_stop_before_call = state->stop_before_call;
-    state->stop_before_call   = true;
-    u32  library_node_index   = 0;
-    bool parsed_library     = cst_parse_expr_bp(state, 0, &library_node_index);
-    state->stop_before_call = old_stop_before_call;
+    bool old_stop_before_ffi_name = state->stop_before_ffi_name;
+    state->stop_before_ffi_name   = true;
+    u32  library_node_index       = 0;
+    bool parsed_library = cst_parse_expr_bp(state, 0, &library_node_index);
+    state->stop_before_ffi_name = old_stop_before_ffi_name;
     if (!parsed_library) {
         return false;
     }
+
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+    u32 symbol_handle = cst_current_symbol_handle(state);
+    if (symbol_handle == CST_NO_VALUE) {
+        return false;
+    }
+    cst_advance(state);
 
     u32 signature_index = 0;
     if (!cst_parse_callable_signature(
@@ -3009,6 +3037,7 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
     array_push(state->cst.ffi_infos,
                (CstFfiInfo){
                    .library_node_index = library_node_index,
+                   .symbol_handle      = symbol_handle,
                    .signature_index    = signature_index,
                });
 
@@ -3239,6 +3268,104 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
                          out_node);
 }
 
+internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    bool is_negated = false;
+    if (cst_current_token(state).kind == TK_Bang) {
+        is_negated = true;
+        cst_advance(state);
+    }
+
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+    u32 symbol_handle = cst_current_symbol_handle(state);
+    if (symbol_handle == CST_NO_VALUE) {
+        return false;
+    }
+    cst_advance(state);
+
+    if (cst_current_token(state).kind != TK_LBrace) {
+        return false;
+    }
+
+    u32 top_on_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_TopOn,
+                           .token_index = token_index,
+                       },
+                       &top_on_node)) {
+        return false;
+    }
+
+    u32 block_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Block,
+                           .token_index = state->token_index,
+                       },
+                       &block_node)) {
+        return false;
+    }
+    u32 first_item = (u32)array_count(state->cst.nodes);
+
+    cst_advance(state);
+    while (cst_current_token(state).kind != TK_RBrace) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = cst_parse_top_level_item(state, NULL);
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
+            return false;
+        }
+    }
+    cst_advance(state);
+
+    u32 top_on_info_index = (u32)array_count(state->cst.top_ons);
+    array_push(state->cst.top_ons,
+               (CstTopOnInfo){
+                   .symbol_handle   = symbol_handle,
+                   .body_node_index = block_node,
+                   .is_negated      = is_negated,
+               });
+    state->cst.nodes[top_on_node].a = top_on_info_index;
+    state->cst.nodes[block_node].a  = first_item;
+    state->cst.nodes[block_node].b  = (u32)array_count(state->cst.nodes);
+    if (out_node) {
+        *out_node = top_on_node;
+    }
+    return true;
+}
+
+internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
+{
+    if (cst_current_token(state).kind == TK_ffi) {
+        return cst_parse_ffi_def(state, out_node);
+    }
+
+    if (cst_current_token(state).kind == TK_use) {
+        return cst_parse_use(state, out_node);
+    }
+
+    if (cst_current_token(state).kind == TK_on) {
+        return cst_parse_top_level_on(state, out_node);
+    }
+
+    if (!cst_starts_binding(state)) {
+        return false;
+    }
+
+    if (cst_starts_variable(state) && !cst_starts_annotated_bind(state)) {
+        return cst_parse_variable(state, out_node);
+    }
+
+    return cst_parse_bind(state, out_node);
+}
+
 //------------------------------------------------------------------------------
 // Build parallel token-value tables so the parser can use direct token-index
 // access without re-running lexer-side counters during recursive parsing.
@@ -3301,21 +3428,8 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
     cst_build_token_value_tables(&state);
 
     while (state.token_index < array_count(lexer->tokens)) {
-        if (cst_current_token(&state).kind == TK_use) {
-            u32 use_index = 0;
-            if (!cst_parse_use(&state, &use_index)) {
-                cst_done(&state.cst);
-                array_free(state.token_integer_indices);
-                array_free(state.token_float_indices);
-                array_free(state.token_string_indices);
-                array_free(state.token_symbol_handles);
-                return false;
-            }
-            array_push(state.cst.bindings, use_index);
-            continue;
-        }
-
-        if (!cst_starts_binding(&state)) {
+        u32 item_index = 0;
+        if (!cst_parse_top_level_item(&state, &item_index)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
             array_free(state.token_float_indices);
@@ -3323,27 +3437,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
             array_free(state.token_symbol_handles);
             return false;
         }
-
-        u32 bind_index = 0;
-        if (cst_starts_variable(&state) && !cst_starts_annotated_bind(&state)) {
-            if (!cst_parse_variable(&state, &bind_index)) {
-                cst_done(&state.cst);
-                array_free(state.token_integer_indices);
-                array_free(state.token_float_indices);
-                array_free(state.token_string_indices);
-                array_free(state.token_symbol_handles);
-                return false;
-            }
-        } else if (!cst_parse_bind(&state, &bind_index)) {
-            cst_done(&state.cst);
-            array_free(state.token_integer_indices);
-            array_free(state.token_float_indices);
-            array_free(state.token_string_indices);
-            array_free(state.token_symbol_handles);
-            return false;
-        }
-
-        array_push(state.cst.bindings, bind_index);
+        array_push(state.cst.bindings, item_index);
     }
 
     for (u32 i = 0; i < array_count(lexer->integers); ++i) {
@@ -3391,6 +3485,7 @@ void cst_done(Cst* cst)
     array_free(cst->enum_patterns);
     array_free(cst->on_branches);
     array_free(cst->ons);
+    array_free(cst->top_ons);
     array_free(cst->for_items);
     array_free(cst->fors);
     *cst = (Cst){0};
@@ -3434,7 +3529,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
-           node->kind == CK_Use;
+           node->kind == CK_Use || node->kind == CK_FfiDef ||
+           node->kind == CK_TopOn;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -3448,6 +3544,9 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         return for_info->else_block_index == U32_MAX
                    ? cst->nodes[node->b].b
                    : cst->nodes[for_info->else_block_index].b;
+    }
+    if (node->kind == CK_TopOn) {
+        return cst->nodes[cst->top_ons[node->a].body_node_index].b;
     }
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
         node->kind == CK_DestructureBind ||

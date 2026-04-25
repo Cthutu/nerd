@@ -5,11 +5,13 @@
 -- replaced with Nerd wrappers around C printf and the compiler-known pr/prn
 -- built-ins should be removed.
 
--- pr :: fn(text string) {
---     ...
--- }
+ffi "c" printf (text: string, ...) -> i32
 
--- prn :: fn(text string) {
---     pr(text)
---     ...
--- }
+pr :: fn(text: string) {
+    printf("%.*s", text.count, text.data)
+}
+
+prn :: fn(text: string) {
+    pr(text)
+    printf("\n")
+}

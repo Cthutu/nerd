@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Statement-position block-form `on` may omit `else`.
 main :: fn () {
     value :: 2

@@ -23,6 +23,8 @@ message: string = $"Hello"
     ]
 }
 ¬
+use mod std.print
+
 helper :: fn () => 1
 main :: fn () {
     prn($"helper={helper}")
@@ -33,13 +35,13 @@ main :: fn () {
     "message": "Cannot interpolate values of type `fn () -> i32`",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
-        "line": 3,
+        "line": 5,
         "column": 19
     },
     "references": [
         {
             "kind": "primary",
-            "line": 3,
+            "line": 5,
             "column": 19,
             "length": 6,
             "message": "This expression type cannot be converted to string yet"

@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Matches exclusive and inclusive integer ranges in block-form `on` branches.
 test_branch :: fn (size: u32) -> i32 {
     return on size {

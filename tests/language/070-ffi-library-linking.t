@@ -1,8 +1,10 @@
+use mod std.print
+
 libm :: "m"
-sqrt :: ffi libm (f64) -> f64
+square_root :: ffi libm sqrt (f64) -> f64
 
 main :: fn() {
-    value := sqrt(9.0)
+    value := square_root(9.0)
     prn($"sqrt = {value}")
 }
 ¬
@@ -28,6 +30,7 @@ init
 libm = string:"m"
 end
 ¬
+double sqrt(double);
 double sqrt(double);
 
 string $libm;

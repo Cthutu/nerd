@@ -1,3 +1,5 @@
+use mod std.print
+
 Person :: plex { name string age u8 }
 
 matt :: Person {
@@ -8,7 +10,6 @@ name: "Matt"
 main :: fn () {
     prn($"His name is {matt.name} and he is {matt.age} years old")
 }
-
 ¬
 0
 ¬
@@ -34,12 +35,13 @@ end
 init
 $0 = plex(name: string:"Matt", age: u8:53)
 matt = plex{name:string,age:u8}:$0
-end¬
-typedef struct plex9 {
+end
+¬
+typedef struct plex8 {
     string $name;
     uint8_t $age;
-} plex9;
-plex9 $matt;
+} plex8;
+plex8 $matt;
 int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
@@ -56,6 +58,6 @@ int $main() {
     return 0;
 }
 void init() {
-    plex9 $0 = (plex9){.$name = (string){.data = (u8*)"Matt", .count = 4}, .$age = 53};
+    plex8 $0 = (plex8){.$name = (string){.data = (u8*)"Matt", .count = 4}, .$age = 53};
     $matt = $0;
 }

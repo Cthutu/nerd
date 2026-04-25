@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     count := 0
 

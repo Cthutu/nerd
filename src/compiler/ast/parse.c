@@ -1992,6 +1992,10 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
 
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    if (state->token.kind == TK_ffi) {
+        return ast_parse_declaration(state, NULL);
+    }
+
     if (state->token.kind == TK_use) {
         return ast_parse_use(state, NULL);
     }
@@ -2154,6 +2158,158 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
                          out_node);
 }
 
+internal bool ast_parse_top_level_item(AstParseState* state);
+
+internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_on, "Expected 'on' token");
+    AstToken on_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->lexer->source, ast_token_span(state, &on_token), TK_on);
+    }
+
+    bool is_negated = false;
+    if (state->token.kind == TK_Bang) {
+        is_negated = true;
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &on_token),
+                                             TK_Symbol,
+                                             TK_EOF);
+        }
+    }
+
+    if (state->token.kind != TK_Symbol) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+    u32 symbol_handle = state->token.value.symbol_handle;
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+
+    u32 top_on_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_TopOn,
+                           .token_index = on_token.token_index,
+                       },
+                       &top_on_node)) {
+        return false;
+    }
+
+    u32 block_token_index = state->token.token_index;
+    u32 block_index       = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_Block,
+                           .token_index = block_token_index,
+                       },
+                       &block_index)) {
+        return false;
+    }
+    u32 first_item = (u32)array_count(state->nodes);
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_RBrace,
+                                         TK_EOF);
+    }
+
+    while (state->token.kind != TK_RBrace) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_top_level_item(state);
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
+            return false;
+        }
+
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                TK_EOF);
+        }
+    }
+
+    u32 top_on_index = (u32)array_count(state->top_ons);
+    array_push(state->top_ons,
+               (AstTopOnInfo){
+                   .symbol_handle   = symbol_handle,
+                   .body_node_index = block_index,
+                   .is_negated      = is_negated,
+               });
+    state->nodes[top_on_node].a = top_on_index;
+    state->nodes[block_index].a = first_item;
+    state->nodes[block_index].b = (u32)array_count(state->nodes);
+    if (out_node) {
+        *out_node = top_on_node;
+    }
+    return true;
+}
+
+internal bool ast_parse_top_level_item(AstParseState* state)
+{
+    switch (state->token.kind) {
+    case TK_ffi:
+        return ast_parse_declaration(state, NULL);
+    case TK_use:
+        return ast_parse_use(state, NULL);
+    case TK_on:
+        return ast_parse_top_level_on(state, NULL);
+    case TK_Symbol:
+        if (ast_peek_kind_at(state, 0) != TK_Colon) {
+            break;
+        }
+        if (ast_symbol_starts_bind(state)) {
+            return ast_parse_bind(state, NULL);
+        }
+        return ast_parse_variable(state, NULL);
+    default:
+        break;
+    }
+
+    if (!ast_parse_expr(state, NULL)) {
+        return false;
+    }
+
+    if (ast_peek_token(state)) {
+        error_0204_unexpected_token(state->lexer->source,
+                                    ast_token_span(state, &state->token),
+                                    state->token.kind,
+                                    "Expected a symbol to start a binding");
+    } else {
+        AstToken eof = {
+            .kind        = TK_EOF,
+            .source      = state->lexer->source,
+            .offset      = state->lexer->source.source.count,
+            .token_index = (u32)array_count(state->lexer->tokens),
+        };
+        error_0204_unexpected_token(state->lexer->source,
+                                    ast_token_span(state, &eof),
+                                    eof.kind,
+                                    "Expected a symbol to start a binding");
+    }
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Parse one function block body as a sequence of statements.
 
@@ -2255,13 +2411,37 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
                                             TK_ffi);
         }
 
-        bool old_stop_before_call = state->stop_before_call;
-        state->stop_before_call   = true;
-        u32  library_node_index   = 0;
-        bool parsed_library       = ast_parse_expr(state, &library_node_index);
-        state->stop_before_call   = old_stop_before_call;
+        bool old_stop_before_ffi_name = state->stop_before_ffi_name;
+        state->stop_before_ffi_name   = true;
+        u32  library_node_index       = 0;
+        bool parsed_library = ast_parse_expr(state, &library_node_index);
+        state->stop_before_ffi_name = old_stop_before_ffi_name;
         if (!parsed_library) {
             return false;
+        }
+
+        if (state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+        u32 symbol_handle = state->token.value.symbol_handle;
+        if (state->token_index == state->token.token_index &&
+            !ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LParen,
+                TK_EOF);
+        }
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LParen,
+                TK_EOF);
         }
 
         if (state->token.kind != TK_LParen) {
@@ -2284,6 +2464,7 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
         u32 ffi_index = (u32)array_count(state->ffi_infos);
         array_push(state->ffi_infos,
                    (AstFfiInfo){.library_node_index = library_node_index,
+                                .symbol_handle      = symbol_handle,
                                 .signature_index    = signature_index});
 
         return ast_emit_node(state,
@@ -2798,51 +2979,7 @@ Ast ast_parse(Lexer* lexer)
 
         // <program> :: <binding>*
 
-        switch (token.kind) {
-        case TK_use:
-            if (!ast_parse_use(&state, NULL)) {
-                goto error;
-            }
-            break;
-
-        case TK_Symbol:
-            if (ast_peek_kind_at(&state, 0) != TK_Colon) {
-                goto invalid_binding_start;
-            }
-            if (ast_symbol_starts_bind(&state)) {
-                if (!ast_parse_bind(&state, NULL)) {
-                    goto error;
-                }
-            } else if (!ast_parse_variable(&state, NULL)) {
-                goto error;
-            }
-            break;
-
-        default:
-        invalid_binding_start:
-            if (!ast_parse_expr(&state, NULL)) {
-                goto error;
-            }
-
-            if (ast_peek_token(&state)) {
-                error_0204_unexpected_token(
-                    lexer->source,
-                    ast_token_span(&state, &state.token),
-                    state.token.kind,
-                    "Expected a symbol to start a binding");
-            } else {
-                AstToken eof = {
-                    .kind        = TK_EOF,
-                    .source      = lexer->source,
-                    .offset      = lexer->source.source.count,
-                    .token_index = (u32)array_count(lexer->tokens),
-                };
-                error_0204_unexpected_token(lexer->source,
-                                            ast_token_span(&state, &eof),
-                                            eof.kind,
-                                            "Expected a symbol to start a "
-                                            "binding");
-            }
+        if (!ast_parse_top_level_item(&state)) {
             goto error;
         }
     }
@@ -2870,6 +3007,7 @@ Ast ast_parse(Lexer* lexer)
         .enum_patterns       = state.enum_patterns,
         .on_branches         = state.on_branches,
         .ons                 = state.ons,
+        .top_ons             = state.top_ons,
         .for_items           = state.for_items,
         .fors                = state.fors,
     };
@@ -2897,6 +3035,7 @@ error:
                     .enum_patterns       = state.enum_patterns,
                     .on_branches         = state.on_branches,
                     .ons                 = state.ons,
+                    .top_ons             = state.top_ons,
                     .for_items           = state.for_items,
                     .fors                = state.fors});
     return (Ast){0};
@@ -2929,6 +3068,7 @@ void ast_done(Ast* ast)
     array_free(ast->enum_patterns);
     array_free(ast->on_branches);
     array_free(ast->ons);
+    array_free(ast->top_ons);
     array_free(ast->for_items);
     array_free(ast->fors);
     *ast = (Ast){0};

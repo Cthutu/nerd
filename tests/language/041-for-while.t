@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     i := 0
     for i < 5 {

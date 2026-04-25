@@ -1,3 +1,5 @@
+use mod std.print
+
 Colour :: enum { Red Green Blue }
 main :: fn () {
     colour: Colour = Green
@@ -14,7 +16,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 4
             }
         }
@@ -66,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\ncolour\n```\n\n- Kind: local variable\n- Type: `enum { #32, #64, #96 }`"
+                "value": "```nerd\ncolour\n```\n\n- Kind: local variable\n- Type: `enum { #96, #128, #160 }`"
             }
         }
     },

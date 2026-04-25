@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () -> i32 {
     values: [3]i32 = [10, 20, 30]
     array_ptr: ^[3]i32 = ^values
@@ -10,7 +12,6 @@ main :: fn () -> i32 {
 
     return array_ptr[0][0] + elem_ptr[0] + literal_ptr[0][2]
 }
-
 ¬
 33
 ¬
@@ -62,23 +63,23 @@ return i32:$20
 end
 ¬
 void init() {}
-typedef struct array8 {
+typedef struct array9 {
     int items[3];
-} array8;
+} array9;
 int $main() {
     string_builder_reset();
-    array8 $0 = (array8){.items = {10, 20, 30}};
-    array8 $values = $0;
-    array8* $1 = &$values;
-    array8* $array_ptr = $1;
+    array9 $0 = (array9){.items = {10, 20, 30}};
+    array9 $values = $0;
+    array9* $1 = &$values;
+    array9* $array_ptr = $1;
     int* $2 = &$values.items[1];
     int* $elem_ptr = $2;
-    array8 $4 = (array8){.items = {1, 2, 3}};
-    array8* $3 = &$4;
-    array8* $literal_ptr = $3;
+    array9 $4 = (array9){.items = {1, 2, 3}};
+    array9* $3 = &$4;
+    array9* $literal_ptr = $3;
     size_t $5 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"array pointer = ", .count = 16}));
-    array8 $7 = $array_ptr[0];
+    array9 $7 = $array_ptr[0];
     string_builder_append_string((string){.data = (u8*)"[", .count = 1});
     string_builder_append_string(to_string$i32($7.items[0]));
     string_builder_append_string((string){.data = (u8*)", ", .count = 2});
@@ -98,7 +99,7 @@ int $main() {
     string_builder_reset();
     size_t $11 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"literal pointer = ", .count = 18}));
-    array8 $13 = $literal_ptr[0];
+    array9 $13 = $literal_ptr[0];
     string_builder_append_string((string){.data = (u8*)"[", .count = 1});
     string_builder_append_string(to_string$i32($13.items[0]));
     string_builder_append_string((string){.data = (u8*)", ", .count = 2});
@@ -109,14 +110,14 @@ int $main() {
     string $12 = string_builder_finish($11);
     prn($12);
     string_builder_reset();
-    array8 $14 = $array_ptr[0];
+    array9 $14 = $array_ptr[0];
     #ifndef NDEBUG
     if ((long long)0 < 0 || (size_t)0 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
     #endif
     int $15 = $14.items[0];
     int $16 = $elem_ptr[0];
     int $17 = $15 + $16;
-    array8 $18 = $literal_ptr[0];
+    array9 $18 = $literal_ptr[0];
     #ifndef NDEBUG
     if ((long long)2 < 0 || (size_t)2 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
     #endif

@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     total := 0
     found :: for i := 0; i < 1; i += 1 {

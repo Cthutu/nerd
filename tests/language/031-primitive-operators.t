@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Checks float literals plus comparison, logical, bitwise, and modulo operators.
 half: f32 = 0.5
 limit: f64 = 2.0

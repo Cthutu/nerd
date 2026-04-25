@@ -1,3 +1,5 @@
+use mod std.print
+
 Colour :: enum { Red Green Blue }
 
 score :: fn (colour: Colour) -> i32 {
@@ -98,27 +100,27 @@ return i32:0
 end
 ¬
 void init() {}
-typedef struct enum8 {
+typedef struct enum7 {
     uint8_t tag;
     union { uint8_t unit; } data;
-} enum8;
-int $score(enum8 $colour) {
+} enum7;
+int $score(enum7 $colour) {
     int $0 = 0;
-    enum8 $4 = (enum8){.tag = 0};
+    enum7 $4 = (enum7){.tag = 0};
     bool $5 = $colour.tag == $4.tag;
     if (!$5) goto L2;
     L3: ;
     $0 = 10;
     goto L1;
     L2: ;
-    enum8 $8 = (enum8){.tag = 1};
+    enum7 $8 = (enum7){.tag = 1};
     bool $9 = $colour.tag == $8.tag;
     if (!$9) goto L6;
     L7: ;
     $0 = 20;
     goto L1;
     L6: ;
-    enum8 $11 = (enum8){.tag = 2};
+    enum7 $11 = (enum7){.tag = 2};
     bool $12 = $colour.tag == $11.tag;
     if (!$12) goto L1;
     L10: ;
@@ -128,12 +130,12 @@ int $score(enum8 $colour) {
 }
 int $main() {
     string_builder_reset();
-    enum8 $0 = (enum8){.tag = 0};
-    enum8 $red = $0;
-    enum8 $1 = (enum8){.tag = 1};
-    enum8 $green = $1;
-    enum8 $2 = (enum8){.tag = 2};
-    enum8 $blue = $2;
+    enum7 $0 = (enum7){.tag = 0};
+    enum7 $red = $0;
+    enum7 $1 = (enum7){.tag = 1};
+    enum7 $green = $1;
+    enum7 $2 = (enum7){.tag = 2};
+    enum7 $blue = $2;
     size_t $3 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"red ", .count = 4}));
     int $5 = $score($red);

@@ -1,3 +1,5 @@
+use mod std.print
+
 make_pair :: fn(a: i32, b: string) -> (i32, string) {
     return (a, b)
 }
@@ -96,27 +98,27 @@ return i32:$27
 end
 ¬
 void init() {}
-typedef struct tuple8 {
+typedef struct tuple9 {
     int _0;
     string _1;
-} tuple8;
-typedef struct tuple10 {
-    int _0;
-} tuple10;
+} tuple9;
 typedef struct tuple11 {
-    tuple8 _0;
-    tuple10 _1;
-    bool _2;
+    int _0;
 } tuple11;
-tuple8 $make_pair(int $a, string $b) {
-    tuple8 $0 = (tuple8){._0 = $a, ._1 = $b};
+typedef struct tuple12 {
+    tuple9 _0;
+    tuple11 _1;
+    bool _2;
+} tuple12;
+tuple9 $make_pair(int $a, string $b) {
+    tuple9 $0 = (tuple9){._0 = $a, ._1 = $b};
     return $0;
 }
 int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair = ", .count = 7}));
-    tuple8 $2 = (tuple8){._0 = 7, ._1 = (string){.data = (u8*)"seven", .count = 5}};
+    tuple9 $2 = (tuple9){._0 = 7, ._1 = (string){.data = (u8*)"seven", .count = 5}};
     int $3 = $2._0;
     string_builder_append_string(to_string$i32($3));
     string_builder_append_string(to_string$string((string){.data = (u8*)", ", .count = 2}));
@@ -139,7 +141,7 @@ int $main() {
     string_builder_append_string(to_string$string((string){.data = (u8*)"single = ", .count = 9}));
     int $9 = $2._0;
     int $10 = $9 + 1;
-    tuple10 $11 = (tuple10){._0 = $10};
+    tuple11 $11 = (tuple11){._0 = $10};
     int $12 = $11._0;
     string_builder_append_string(to_string$i32($12));
     string $8 = string_builder_finish($7);
@@ -156,7 +158,7 @@ int $main() {
     string_builder_reset();
     size_t $15 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"from_fn = ", .count = 10}));
-    tuple8 $17 = $make_pair(3, (string){.data = (u8*)"three", .count = 5});
+    tuple9 $17 = $make_pair(3, (string){.data = (u8*)"three", .count = 5});
     int $18 = $17._0;
     string_builder_append_string(to_string$i32($18));
     string_builder_append_string(to_string$string((string){.data = (u8*)", ", .count = 2}));
@@ -167,7 +169,7 @@ int $main() {
     string_builder_reset();
     size_t $20 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"nested tuple = ", .count = 15}));
-    tuple11 $22 = (tuple11){._0 = $2, ._1 = $11, ._2 = true};
+    tuple12 $22 = (tuple12){._0 = $2, ._1 = $11, ._2 = true};
     string_builder_append_string((string){.data = (u8*)"(", .count = 1});
     string_builder_append_string((string){.data = (u8*)"(", .count = 1});
     string_builder_append_string(to_string$i32($22._0._0));

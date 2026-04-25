@@ -1,3 +1,5 @@
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -13,13 +15,13 @@ main :: fn () {
     "message": "Type mismatch: expected `known plex field`, found `z`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
-        "line": 8,
+        "line": 10,
         "column": 14
     },
     "references": [
         {
             "kind": "primary",
-            "line": 8,
+            "line": 10,
             "column": 14,
             "length": 1,
             "message": "This expression has type `z`"
@@ -31,6 +33,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -46,13 +50,13 @@ main :: fn () {
     "message": "Type mismatch: expected `all plex fields`, found `different field count`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
-        "line": 7,
+        "line": 9,
         "column": 16
     },
     "references": [
         {
             "kind": "primary",
-            "line": 7,
+            "line": 9,
             "column": 16,
             "length": 1,
             "message": "This expression has type `different field count`"
@@ -64,6 +68,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -79,13 +85,13 @@ main :: fn () {
     "message": "Type mismatch: expected `unique plex field`, found `x`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
-        "line": 7,
+        "line": 9,
         "column": 27
     },
     "references": [
         {
             "kind": "primary",
-            "line": 7,
+            "line": 9,
             "column": 27,
             "length": 1,
             "message": "This expression has type `x`"
@@ -97,6 +103,8 @@ main :: fn () {
     ]
 }
 ¬
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -112,13 +120,13 @@ main :: fn () {
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
-        "line": 7,
+        "line": 9,
         "column": 21
     },
     "references": [
         {
             "kind": "primary",
-            "line": 7,
+            "line": 9,
             "column": 21,
             "length": 5,
             "message": "This expression has type `string`"

@@ -1,3 +1,5 @@
+use mod std.print
+
 value: i32: ${
     prn("fallthrough")
 }
@@ -8,13 +10,13 @@ main :: fn () => value
     "message": "Missing `break` for expression block returning `i32`",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {
-        "line": 1,
+        "line": 3,
         "column": 13
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
+            "line": 3,
             "column": 13,
             "length": 1,
             "message": "This expression block can reach the end without breaking with a `i32` value"

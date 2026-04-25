@@ -1,3 +1,5 @@
+use mod std.print
+
 Value :: union { i i32 f f32 }
 main :: fn () {
     v: Value = Value { i: 1 }
@@ -14,7 +16,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
+                "line": 4,
                 "character": 4
             }
         }
@@ -66,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nv\n```\n\n- Kind: local variable\n- Type: `union { i32 #32, f32 #96 }`"
+                "value": "```nerd\nv\n```\n\n- Kind: local variable\n- Type: `union { i32 #96, f32 #160 }`"
             }
         }
     },

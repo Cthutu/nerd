@@ -11,9 +11,9 @@
 //------------------------------------------------------------------------------
 
 typedef struct {
-    NerdSource    source;
-    bool          verbose;
-    FrontEndState results;
+    NerdSource      source;
+    FrontEndOptions options;
+    FrontEndState   results;
 } FrontEndContext;
 
 internal bool front_end_lex(FrontEndContext* ctx)
@@ -37,8 +37,10 @@ internal bool front_end_parse(FrontEndContext* ctx)
 
 internal bool front_end_sema(FrontEndContext* ctx)
 {
-    return sema_analyse(
-        &ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
+    return sema_analyse(&ctx->results.lexer,
+                        &ctx->results.ast,
+                        &ctx->options,
+                        &ctx->results.sema);
 }
 
 //------------------------------------------------------------------------------
@@ -51,13 +53,16 @@ internal bool front_end_ir_gen(FrontEndContext* ctx)
     return true;
 }
 
-bool front_end(NerdSource     source,
-               bool           verbose,
-               Timing*        timing,
-               FrontEndState* out_results)
+bool front_end(NerdSource             source,
+               const FrontEndOptions* options,
+               Timing*                timing,
+               FrontEndState*         out_results)
 {
     FrontEndContext ctx = {
-        .source = source, .verbose = verbose, .results = {0}};
+        .source  = source,
+        .options = options ? *options : (FrontEndOptions){0},
+        .results = {0},
+    };
     bool result = true;
 
     if (timing != NULL) {
@@ -70,7 +75,7 @@ bool front_end(NerdSource     source,
     } else {
         result = front_end_lex(&ctx);
     }
-    if (result && verbose) {
+    if (result && ctx.options.verbose) {
         lex_dump(&ctx.results.lexer);
     }
 
@@ -85,7 +90,7 @@ bool front_end(NerdSource     source,
         } else {
             result = front_end_parse(&ctx);
         }
-        if (result && verbose) {
+        if (result && ctx.options.verbose) {
             ast_dump(&ctx.results.ast, &ctx.results.lexer);
         }
     }
@@ -114,7 +119,7 @@ bool front_end(NerdSource     source,
         } else {
             result = front_end_ir_gen(&ctx);
         }
-        if (result && verbose) {
+        if (result && ctx.options.verbose) {
             ir_dump(&ctx.results.ir, &ctx.results.lexer);
         }
     }

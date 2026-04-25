@@ -1,3 +1,5 @@
+use mod std.print
+
 Value :: union {
     i i32
     f f32
@@ -44,16 +46,16 @@ return i32:$8
 end
 ¬
 void init() {}
-typedef union union9 {
+typedef union union8 {
     int $i;
     float $f;
-} union9;
+} union8;
 int $main() {
     string_builder_reset();
-    union9 $0 = (union9){.$i = 42};
-    union9 $a = $0;
-    union9 $1 = (union9){.$f = 3.5f};
-    union9 $b = $1;
+    union8 $0 = (union8){.$i = 42};
+    union8 $a = $0;
+    union8 $1 = (union8){.$f = 3.5f};
+    union8 $b = $1;
     size_t $2 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"i ", .count = 2}));
     int $4 = $a.$i;

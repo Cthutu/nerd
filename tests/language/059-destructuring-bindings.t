@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () -> i32 {
     (a, b) := (2, 3)
     prn($"{a} {b}")
@@ -11,7 +13,6 @@ main :: fn () -> i32 {
     prn($"{e} {f}")
     return 0
 }
-
 ¬
 0
 ¬
@@ -87,17 +88,17 @@ return i32:0
 end
 ¬
 void init() {}
-typedef struct tuple8 {
-    int _0;
-    int _1;
-} tuple8;
 typedef struct tuple9 {
     int _0;
-    string _1;
+    int _1;
 } tuple9;
+typedef struct tuple10 {
+    int _0;
+    string _1;
+} tuple10;
 int $main() {
     string_builder_reset();
-    tuple8 $0 = (tuple8){._0 = 2, ._1 = 3};
+    tuple9 $0 = (tuple9){._0 = 2, ._1 = 3};
     int $1 = $0._0;
     int $a = $1;
     int $2 = $0._1;
@@ -109,7 +110,7 @@ int $main() {
     string $4 = string_builder_finish($3);
     prn($4);
     string_builder_reset();
-    tuple8 $5 = (tuple8){._0 = $b, ._1 = $a};
+    tuple9 $5 = (tuple9){._0 = $b, ._1 = $a};
     int $6 = $5._0;
     $a = $6;
     int $7 = $5._1;
@@ -121,7 +122,7 @@ int $main() {
     string $9 = string_builder_finish($8);
     prn($9);
     string_builder_reset();
-    tuple8 $10 = (tuple8){._0 = 7, ._1 = 8};
+    tuple9 $10 = (tuple9){._0 = 7, ._1 = 8};
     int $11 = $10._0;
     $a = $11;
     int $12 = $10._1;
@@ -132,7 +133,7 @@ int $main() {
     string $14 = string_builder_finish($13);
     prn($14);
     string_builder_reset();
-    tuple9 $15 = (tuple9){._0 = 4, ._1 = (string){.data = (u8*)"four", .count = 4}};
+    tuple10 $15 = (tuple10){._0 = 4, ._1 = (string){.data = (u8*)"four", .count = 4}};
     int $16 = $15._0;
     int $c = $16;
     string $17 = $15._1;
@@ -144,7 +145,7 @@ int $main() {
     string $19 = string_builder_finish($18);
     prn($19);
     string_builder_reset();
-    tuple9 $20 = (tuple9){._0 = 5, ._1 = (string){.data = (u8*)"five", .count = 4}};
+    tuple10 $20 = (tuple10){._0 = 5, ._1 = (string){.data = (u8*)"five", .count = 4}};
     int $21 = $20._0;
     int $e = $21;
     string $22 = $20._1;

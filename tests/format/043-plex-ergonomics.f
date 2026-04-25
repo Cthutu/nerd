@@ -1,3 +1,5 @@
+use mod std.print
+
 Point::plex#c{x i32 y i32 name string}
 Packed::plex#packed{a u8 b i32}
 
@@ -12,6 +14,8 @@ prn($"{pp.name} {pp.x} {pp.y}")
 packed:=Packed{a:1,b:2}
 }
 ¬
+use mod std.print
+
 Point :: plex #c {
     x    i32
     y    i32

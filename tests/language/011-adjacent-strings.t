@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Concatenates adjacent string literals at compile time.
 main :: fn () {
     prn("Hello, " "world!")

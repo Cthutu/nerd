@@ -1,3 +1,5 @@
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -14,13 +16,13 @@ main :: fn () {
     "message": "Type mismatch: expected `known plex field`, found `z`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
-        "line": 8,
+        "line": 10,
         "column": 22
     },
     "references": [
         {
             "kind": "primary",
-            "line": 8,
+            "line": 10,
             "column": 22,
             "length": 1,
             "message": "This expression has type `z`"

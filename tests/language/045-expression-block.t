@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     first :: ${
         break 7

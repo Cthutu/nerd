@@ -10,9 +10,9 @@
 
 //------------------------------------------------------------------------------
 
-bool front_end(NerdSource     source,
-               bool           verbose,
-               Timing*        timing,
-               FrontEndState* out_results);
+bool front_end(NerdSource             source,
+               const FrontEndOptions* options,
+               Timing*                timing,
+               FrontEndState*         out_results);
 
 void front_end_results_done(FrontEndState* results);

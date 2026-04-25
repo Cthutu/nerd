@@ -1,3 +1,5 @@
+use mod std.print
+
 Colour :: enum { RED GREEN BLUE }
 
 main :: fn () {
@@ -46,32 +48,32 @@ return i32:0
 end
 ¬
 void init() {}
-typedef struct enum8 {
+typedef struct enum7 {
     uint8_t tag;
     union { uint8_t unit; } data;
-} enum8;
+} enum7;
 int $main() {
     string_builder_reset();
-    enum8 $0 = (enum8){.tag = 0};
-    enum8 $colour = $0;
+    enum7 $0 = (enum7){.tag = 0};
+    enum7 $colour = $0;
     size_t $1 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"Colour = ", .count = 9}));
     string $3 = (string){0};
-    enum8 $7 = (enum8){.tag = 0};
+    enum7 $7 = (enum7){.tag = 0};
     bool $8 = $colour.tag == $7.tag;
     if (!$8) goto L5;
     L6: ;
     $3 = (string){.data = (u8*)"red", .count = 3};
     goto L4;
     L5: ;
-    enum8 $11 = (enum8){.tag = 1};
+    enum7 $11 = (enum7){.tag = 1};
     bool $12 = $colour.tag == $11.tag;
     if (!$12) goto L9;
     L10: ;
     $3 = (string){.data = (u8*)"green", .count = 5};
     goto L4;
     L9: ;
-    enum8 $14 = (enum8){.tag = 2};
+    enum7 $14 = (enum7){.tag = 2};
     bool $15 = $colour.tag == $14.tag;
     if (!$15) goto L4;
     L13: ;

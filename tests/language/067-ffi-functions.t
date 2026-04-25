@@ -1,4 +1,6 @@
-abs :: ffi "c" (i32) -> i32
+use mod std.print
+
+ffi "c" abs (i32) -> i32
 
 main :: fn() {
     value := abs(-7)

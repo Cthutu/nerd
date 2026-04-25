@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () -> i32 {
     text :: "hello"
     whole: string = text[..]

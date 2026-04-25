@@ -1,20 +1,24 @@
+use mod std.print
+
 libc::"c"
-abs::ffi libc(i32)->i32
-puts :: ffi "c"(^u8)
-fcntl::ffi"c"(i32,i32,...)->i32
+ffi libc abs(i32)->i32
+puts :: ffi "c" puts(^u8)
+fcntl::ffi"c" fcntl(i32,i32,...)->i32
 
 main::fn(){
 value:=abs(-7)
 prn($"abs = {value}")
 }
 ¬
+use mod std.print
+
 libc :: "c"
 
-abs :: ffi libc (i32) -> i32
+ffi libc abs (i32) -> i32
 
-puts :: ffi "c" (^u8)
+puts :: ffi "c" puts (^u8)
 
-fcntl :: ffi "c" (i32, i32, ...) -> i32
+fcntl :: ffi "c" fcntl (i32, i32, ...) -> i32
 
 main :: fn () {
     value := abs(-7)

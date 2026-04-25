@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Shows that nested block state is dropped after leaving the block.
 main :: fn () {
     value := 10

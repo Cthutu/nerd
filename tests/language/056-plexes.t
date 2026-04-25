@@ -1,3 +1,5 @@
+use mod std.print
+
 Point :: plex {
     x i32
     y i32
@@ -11,7 +13,6 @@ main :: fn () -> i32 {
     prn($"q {q.name}: {q.x}, {q.y}")
     return p.x + p.y + q.x + q.y
 }
-
 ¬
 18
 ¬
@@ -59,19 +60,20 @@ $16 = i32:$14 + i32:$15
 $17 = plex{x:i32,y:i32,name:string}:q.y
 $18 = i32:$16 + i32:$17
 return i32:$18
-end¬
+end
+¬
 void init() {}
-typedef struct plex8 {
+typedef struct plex7 {
     int $x;
     int $y;
     string $name;
-} plex8;
+} plex7;
 int $main() {
     string_builder_reset();
-    plex8 $0 = (plex8){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
-    plex8 $p = $0;
-    plex8 $1 = (plex8){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
-    plex8 $q = $1;
+    plex7 $0 = (plex7){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
+    plex7 $p = $0;
+    plex7 $1 = (plex7){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
+    plex7 $q = $1;
     size_t $2 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"p ", .count = 2}));
     string $4 = $p.$name;

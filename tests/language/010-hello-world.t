@@ -1,3 +1,5 @@
+use mod std.print
+
 -- Prints a simple string from a block-bodied main.
 main :: fn () {
     prn("Hello, world!")

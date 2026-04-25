@@ -1720,6 +1720,11 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        if (state->stop_before_ffi_name && next.kind == TK_Symbol &&
+            ast_peek_kind_at(state, 0) == TK_LParen) {
+            break;
+        }
+
         if (next.kind == TK_LBrace) {
             bool starts_plex = state->nodes[left_node].kind == AK_SymbolRef &&
                                (ast_peek_kind_at(state, 0) == TK_RBrace ||

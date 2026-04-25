@@ -1,3 +1,5 @@
+use mod std.print
+
 Numbers :: [3]i32
 
 main :: fn(){
@@ -6,6 +8,8 @@ ys:[2]i32=[4,5]
 prn($"{xs[0]} {ys[1]}")
 }
 ¬
+use mod std.print
+
 Numbers :: [3]i32
 
 main :: fn () {

@@ -1,3 +1,5 @@
+use mod std.print
+
 score :: fn (size: u32) -> u32 {
     return on size {
         0..3 as matched on matched == 2 => matched + 20

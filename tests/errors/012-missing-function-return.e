@@ -1,3 +1,5 @@
+use mod std.print
+
 greet :: fn (name: string) -> string {
     prn($"Hello, {name}!")
 }
@@ -11,13 +13,13 @@ main :: fn () {
     "message": "Missing return for function returning `string`",
     "source_file": "tests/errors/012-missing-function-return.e",
     "primary_location": {
-        "line": 1,
+        "line": 3,
         "column": 10
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
+            "line": 3,
             "column": 10,
             "length": 2,
             "message": "This function can reach the end without returning a `string` value"

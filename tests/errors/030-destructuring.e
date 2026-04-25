@@ -1,3 +1,5 @@
+use mod std.print
+
 main :: fn () {
     (a, b) := (1, 2, 3)
     prn($"{a} {b}")
@@ -8,13 +10,13 @@ main :: fn () {
     "message": "Type mismatch: expected `tuple with matching arity`, found `(i32, i32, i32)`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
-        "line": 2,
+        "line": 4,
         "column": 5
     },
     "references": [
         {
             "kind": "primary",
-            "line": 2,
+            "line": 4,
             "column": 5,
             "length": 1,
             "message": "This expression has type `(i32, i32, i32)`"
