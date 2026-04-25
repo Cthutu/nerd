@@ -130,6 +130,23 @@ function stageServerExecutable(
     return targetPath;
 }
 
+function getServerEnvironment(sourcePath: string | undefined): NodeJS.ProcessEnv {
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    if (!sourcePath) {
+        return env;
+    }
+
+    const modsDir = path.join(path.dirname(sourcePath), "mods");
+    if (!fs.existsSync(modsDir) || !fs.statSync(modsDir).isDirectory()) {
+        return env;
+    }
+
+    const separator = process.platform === "win32" ? ";" : ":";
+    const existing = env.NERD_LIB_PATH?.trim();
+    env.NERD_LIB_PATH = existing ? `${modsDir}${separator}${existing}` : modsDir;
+    return env;
+}
+
 function getServerExecutable(
     context: vscode.ExtensionContext
 ): { executable: Executable; sourcePath?: string } {
@@ -141,9 +158,10 @@ function getServerExecutable(
     const command = sourcePath
         ? stageServerExecutable(sourcePath, context)
         : "nerd";
+    const env = getServerEnvironment(sourcePath);
 
     return {
-        executable: { command, args },
+        executable: { command, args, options: { env } },
         sourcePath,
     };
 }

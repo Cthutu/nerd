@@ -9,6 +9,69 @@
 
 //------------------------------------------------------------------------------
 
+internal int module_hex_value(u8 ch)
+{
+    if (ch >= '0' && ch <= '9') {
+        return (int)(ch - '0');
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return 10 + (int)(ch - 'a');
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return 10 + (int)(ch - 'A');
+    }
+    return -1;
+}
+
+internal cstr module_root_path_from_source(Arena* arena, NerdSource source)
+{
+    if (source.source_path.count == 0) {
+        return NULL;
+    }
+
+    string prefix = s("file://");
+    bool   is_uri =
+        source.source_path.count >= prefix.count &&
+        memcmp(source.source_path.data, prefix.data, prefix.count) == 0;
+    usize start = is_uri ? prefix.count : 0;
+
+#if OS_WINDOWS
+    if (is_uri && source.source_path.count > start &&
+        source.source_path.data[start] == '/') {
+        start += 1;
+    }
+#endif
+
+    char* out       = arena_alloc(arena, source.source_path.count - start + 1);
+    usize out_count = 0;
+    for (usize i = start; i < source.source_path.count; ++i) {
+        if (is_uri && source.source_path.data[i] == '%' &&
+            i + 2 < source.source_path.count) {
+            int hi = module_hex_value(source.source_path.data[i + 1]);
+            int lo = module_hex_value(source.source_path.data[i + 2]);
+            if (hi >= 0 && lo >= 0) {
+                out[out_count++] = (char)((hi << 4) | lo);
+                i += 2;
+                continue;
+            }
+        }
+
+#if OS_WINDOWS
+        if (is_uri && source.source_path.data[i] == '/') {
+            out[out_count++] = '\\';
+            continue;
+        }
+#endif
+
+        out[out_count++] = (char)source.source_path.data[i];
+    }
+
+    out[out_count] = '\0';
+    return out;
+}
+
+//------------------------------------------------------------------------------
+
 internal bool module_path_exists_in_root(Arena*               arena,
                                          const Lexer*         lexer,
                                          const Ast*           ast,
@@ -157,13 +220,12 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_InvalidRootSource;
     }
 
-    char* root_path =
-        (char*)arena_alloc(arena, root_source.source_path.count + 1);
-    memcpy(
-        root_path, root_source.source_path.data, root_source.source_path.count);
-    root_path[root_source.source_path.count] = '\0';
+    cstr root_path = module_root_path_from_source(arena, root_source);
+    if (root_path == NULL) {
+        return MRS_InvalidRootSource;
+    }
 
-    cstr root_dir                            = path_dirname(arena, root_path);
+    cstr root_dir = path_dirname(arena, root_path);
     if (module_path_exists_in_root(
             arena, lexer, ast, path, root_dir, out_result)) {
         return MRS_Found;
