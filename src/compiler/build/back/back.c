@@ -15,6 +15,10 @@
 
 //------------------------------------------------------------------------------
 
+#define GENERATED_C_WARNINGS                                                   \
+    "-Wall -Wextra -Werror -Wno-unused-function -Wno-unused-label "            \
+    "-Wno-unused-variable"
+
 typedef struct {
     const FrontEndState*      front_end_results;
     const NerdArtifactConfig* artifacts;
@@ -86,11 +90,13 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     string command =
         ctx->artifacts->release
             ? string_format(&arena,
-                            "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
+                            "clang " GENERATED_C_WARNINGS " -O2 -DNDEBUG -o "
+                            "\"%s\" \"%s\"",
                             exe_path,
                             c_path)
             : string_format(&arena,
-                            "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
+                            "clang " GENERATED_C_WARNINGS " -g -O0 -DDEBUG -o "
+                            "\"%s\" \"%s\"",
                             exe_path,
                             c_path);
     int compile_result = shell((cstr)command.data);
@@ -108,11 +114,13 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     string command =
         ctx->artifacts->release
             ? string_format(&arena,
-                            "clang -O2 -DNDEBUG -o \"%s\" \"%s\"",
+                            "clang " GENERATED_C_WARNINGS " -O2 -DNDEBUG -o "
+                            "\"%s\" \"%s\"",
                             exe_path,
                             c_path)
             : string_format(&arena,
-                            "clang -g -O0 -DDEBUG -o \"%s\" \"%s\"",
+                            "clang " GENERATED_C_WARNINGS " -g -O0 -DDEBUG -o "
+                            "\"%s\" \"%s\"",
                             exe_path,
                             c_path);
     int compile_result = shell((cstr)command.data);

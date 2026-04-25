@@ -174,7 +174,7 @@ def link_executable(objects: list[Path], executable: Path) -> None:
 
 
 def select_cflags(profile: str) -> list[str]:
-    base = ["-std=c23", "-Wall", "-Wextra", "-pipe"]
+    base = ["-std=c23", "-Wall", "-Wextra", "-Werror", "-pipe"]
     if profile == "debug":
         return [*base, "-g", "-O0", "-DDEBUG"]
     return [*base, "-O2", "-DNDEBUG"]
