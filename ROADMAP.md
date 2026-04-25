@@ -1002,8 +1002,11 @@ needed earlier.
   - Choose the smallest practical unsigned tag type.
 
 - [X] 89. Add enum construction and matching.
-  - Support constructing variants with expected-type shorthand such as `.Red`.
-  - Support matching unit variants in `on`.
+  - Support constructing variants with contextual shorthand such as `Red` when
+    the expected enum type is known.
+  - Support explicit qualified variants such as `Colour.Red` when context is
+    absent or ambiguous.
+  - Support matching bare unit variants in enum `on` branches.
   - Add exhaustiveness checks over enum variants.
 
 ## Milestone 23: Enum Payloads

@@ -1,6 +1,6 @@
 Colour :: enum { Red Green Blue }
 main :: fn () {
-    colour: Colour = .Green
+    colour: Colour = Green
     prn("enum")
 }
 ¬

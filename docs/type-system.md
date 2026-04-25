@@ -90,12 +90,13 @@ currently valid. A union value is constructed with exactly one field, such as
 for low-level and FFI-facing code, so they are intentionally not supported in
 pattern matching.
 
-Enum types are written `enum { Variant ... }` for unit variants. A value is
-constructed with expected-type shorthand such as `.Red`, so enum literals need
-an annotation, parameter type, or other enum context. Unit variants lower as a
-tag plus reserved payload storage so later payload variants can share the same
-representation. The generated tag uses the smallest practical unsigned integer
-width for the number of variants.
+Enum types are written `enum { Variant ... }` for unit variants. A bare variant
+name can be used where the expected type is already known to be that enum, such
+as `colour: Colour = Red` or an `on colour { Red => ... }` branch. When no
+context is available, use the qualified form `Colour.Red`. Unit variants lower
+as a tag plus reserved payload storage so later payload variants can share the
+same representation. The generated tag uses the smallest practical unsigned
+integer width for the number of variants.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -135,7 +136,8 @@ Block-form `on` currently supports:
 - constant value patterns
 - comma-separated constant alternatives
 - integer ranges through `..` and `..=`
-- unit enum variants through expected-type shorthand such as `.Red`
+- unit enum variants through expected enum context, such as `Red` in
+  `on colour { Red => ... }`
 
 Range endpoints are checked semantically against the scrutinee type and must be
 compile-time constants. Empty integer ranges are rejected with a dedicated

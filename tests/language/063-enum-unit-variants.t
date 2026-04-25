@@ -2,16 +2,16 @@ Colour :: enum { Red Green Blue }
 
 score :: fn (colour: Colour) -> i32 {
     return on colour {
-        .Red => 10
-        .Green => 20
-        .Blue => 30
+        Red => 10
+        Green => 20
+        Blue => 30
     }
 }
 
 main :: fn () -> i32 {
-    red: Colour = .Red
-    green: Colour = .Green
-    blue: Colour = .Blue
+    red: Colour = Red
+    green: Colour = Green
+    blue := Colour.Blue
 
     prn($"red {score(red)}")
     prn($"green {score(green)}")

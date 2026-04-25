@@ -171,7 +171,6 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_no:
     case TK_LBracket:
     case TK_Symbol:
-    case TK_Dot:
     case TK_Bang:
     case TK_Minus:
     case TK_Caret:
@@ -199,11 +198,17 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
         return true;
     }
 
-    if (token.kind != TK_Dot || cst_peek_kind_at(state, 1) != TK_Symbol) {
-        return false;
+    if (token.kind == TK_Dot && cst_peek_kind_at(state, 1) == TK_Symbol) {
+        return cst_token_can_continue_on_branch_head(
+            cst_peek_kind_at(state, 2));
     }
 
-    return cst_token_can_continue_on_branch_head(cst_peek_kind_at(state, 2));
+    if (token.kind == TK_Symbol) {
+        return cst_token_can_continue_on_branch_head(
+            cst_peek_kind_at(state, 1));
+    }
+
+    return false;
 }
 
 internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
@@ -1041,24 +1046,6 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                      .kind        = CK_SymbolRef,
                                      .token_index = state->token_index - 1,
                                      .a           = symbol_handle,
-                                 },
-                                 out_node);
-        }
-
-    case TK_Dot:
-        {
-            u32 token_index = state->token_index;
-            cst_advance(state);
-            if (cst_current_token(state).kind != TK_Symbol) {
-                return false;
-            }
-            u32 symbol = cst_current_symbol_handle(state);
-            cst_advance(state);
-            return cst_emit_node(state,
-                                 (CstNode){
-                                     .kind        = CK_EnumVariant,
-                                     .token_index = token_index,
-                                     .a           = symbol,
                                  },
                                  out_node);
         }

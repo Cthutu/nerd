@@ -64,7 +64,6 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_no:
     case TK_LBracket:
     case TK_Symbol:
-    case TK_Dot:
     case TK_Bang:
     case TK_Minus:
     case TK_Caret:
@@ -125,11 +124,17 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
         return true;
     }
 
-    if (next.kind != TK_Dot || ast_peek_kind_at(state, 0) != TK_Symbol) {
-        return false;
+    if (next.kind == TK_Dot && ast_peek_kind_at(state, 0) == TK_Symbol) {
+        return ast_token_can_continue_on_branch_head(
+            ast_peek_kind_at(state, 1));
     }
 
-    return ast_token_can_continue_on_branch_head(ast_peek_kind_at(state, 1));
+    if (next.kind == TK_Symbol) {
+        return ast_token_can_continue_on_branch_head(
+            ast_peek_kind_at(state, 0));
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------------
@@ -846,30 +851,6 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 .a           = token.value.symbol_handle,
             };
             return ast_emit_node(state, node, out_node);
-        }
-    case TK_Dot:
-        {
-            if (state->token_index == token.token_index &&
-                !ast_next_token(state)) {
-                return error_0203_expected_token(token.source,
-                                                 ast_token_span(state, &token),
-                                                 TK_Symbol,
-                                                 TK_EOF);
-            }
-            if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(token.source,
-                                                 ast_token_span(state, &token),
-                                                 TK_Symbol,
-                                                 state->token.kind);
-            }
-            AstToken variant = state->token;
-            return ast_emit_node(state,
-                                 (AstNode){
-                                     .kind        = AK_EnumVariant,
-                                     .token_index = token.token_index,
-                                     .a           = variant.value.symbol_handle,
-                                 },
-                                 out_node);
         }
     case TK_Minus:
     case TK_Bang:

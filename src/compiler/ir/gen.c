@@ -1729,7 +1729,19 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_SymbolRef:
         {
-            IrValue value = ir_unset_value();
+            IrValue value     = ir_unset_value();
+            u32     node_type = ir_node_type_index(ast, sema, node_index);
+            u32     variant   = ir_enum_variant_index(sema, node_type, node->a);
+            if (variant != U32_MAX) {
+                value = (IrValue){
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = node_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_enum(ir, value, node_type, variant);
+                node_values[node_index] = value;
+                return value;
+            }
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 u32 local_index        = sema->node_local_indices[node_index];
                 const SemaLocal* local = &sema->locals[local_index];
@@ -2074,6 +2086,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_Field:
         {
+            u32 type_index = ir_node_type_index(ast, sema, node_index);
+            u32 variant    = ir_enum_variant_index(sema, type_index, node->b);
+            if (variant != U32_MAX) {
+                IrValue value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = type_index,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_enum(ir, value, type_index, variant);
+                node_values[node_index] = value;
+                return value;
+            }
             IrValue target = ir_lower_node(lex,
                                            ast,
                                            sema,

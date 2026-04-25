@@ -742,6 +742,13 @@ internal void sema_set_constant(Ast* ast, Sema* sema, u32 node_index, i64 value)
     ast_set_flag(&ast->nodes[node_index], ANF_ConstKnown);
 }
 
+internal u32  sema_enum_variant_index(const Sema* sema,
+                                      u32         enum_type,
+                                      u32         symbol_handle);
+internal bool sema_node_is_contextual_enum_variant(const Ast*  ast,
+                                                   const Sema* sema,
+                                                   u32         node_index);
+
 //------------------------------------------------------------------------------
 // Return whether one expression can be treated as compile-time constant before
 // the constant-folding pass has populated side tables.
@@ -765,6 +772,9 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
         return sema_expr_is_constantish(ast, sema, node->a) &&
                sema_expr_is_constantish(ast, sema, node->b);
     case AK_SymbolRef:
+        if (sema_node_is_contextual_enum_variant(ast, sema, node_index)) {
+            return true;
+        }
         if (node_index < array_count(sema->node_local_indices)) {
             u32 local_index = sema->node_local_indices[node_index];
             if (local_index != sema_no_local()) {
@@ -777,6 +787,11 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
                    sema->decls[decl_index].kind == SK_Constant;
         }
         return false;
+    case AK_Field:
+        return node_index < array_count(sema->node_type_indices) &&
+               sema->node_type_indices[node_index] != sema_no_type() &&
+               sema->types[sema->node_type_indices[node_index]].kind ==
+                   STK_Enum;
     case AK_IntegerNegate:
     case AK_Expression:
     case AK_Statement:
@@ -1687,6 +1702,11 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
                                      Sema*        sema,
                                      u32          node_index,
                                      u32*         out_type_index);
+internal bool sema_try_resolve_type_symbol(const Lexer* lexer,
+                                           const Ast*   ast,
+                                           Sema*        sema,
+                                           u32          node_index,
+                                           u32*         out_type_index);
 
 internal u32 sema_destructure_binder_symbol(const Ast* ast, u32 pattern_index)
 {
@@ -2539,8 +2559,23 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       scope_index,
                                       node->b,
                                       sema);
-    case AK_InterpPartExpr:
     case AK_Field:
+        {
+            u32 ignored = sema_no_type();
+            if (sema_try_resolve_type_symbol(
+                    lexer, ast, sema, node->a, &ignored)) {
+                return true;
+            }
+            return sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          node->a,
+                                          sema);
+        }
+    case AK_InterpPartExpr:
         return sema_resolve_node_refs(lexer,
                                       ast,
                                       owner_decl_index,
@@ -2944,9 +2979,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                             lex_symbol(lexer, node->a));
                     }
                 }
-                return error_0300_unknown_symbol(lexer->source,
-                                                 sema_node_span(lexer, node),
-                                                 lex_symbol(lexer, node->a));
+                return true;
             }
             if (sema->decls[decl_index].kind == SK_TypeAlias) {
                 return error_0308_type_used_as_value(
@@ -3143,6 +3176,12 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_TupleField:
     case AK_Field:
     case AK_Index:
+        if (node->kind == AK_Field &&
+            node_index < array_count(sema->node_type_indices) &&
+            sema->node_type_indices[node_index] != sema_no_type() &&
+            sema->types[sema->node_type_indices[node_index]].kind == STK_Enum) {
+            return;
+        }
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         if (node->kind == AK_Index) {
             sema_collect_node_deps(
@@ -3187,8 +3226,9 @@ internal void sema_collect_node_deps(const Ast*  ast,
                 return;
             }
             u32 decl_index = sema->node_decl_indices[node_index];
-            ASSERT(decl_index != sema_no_decl(),
-                   "Expected resolved symbol reference");
+            if (decl_index == sema_no_decl()) {
+                return;
+            }
             if (sema->decls[decl_index].kind == SK_BuiltinFunction) {
                 return;
             }
@@ -3735,6 +3775,52 @@ internal u32 sema_enum_variant_index(const Sema* sema,
     return U32_MAX;
 }
 
+internal bool sema_node_is_contextual_enum_variant(const Ast*  ast,
+                                                   const Sema* sema,
+                                                   u32         node_index)
+{
+    if (node_index >= array_count(sema->node_type_indices)) {
+        return false;
+    }
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_SymbolRef) {
+        return false;
+    }
+    u32 type_index = sema->node_type_indices[node_index];
+    return type_index != sema_no_type() &&
+           sema_enum_variant_index(sema, type_index, node->a) != U32_MAX;
+}
+
+internal bool sema_try_resolve_type_symbol(const Lexer* lexer,
+                                           const Ast*   ast,
+                                           Sema*        sema,
+                                           u32          node_index,
+                                           u32*         out_type_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_SymbolRef ||
+        sema->node_local_indices[node_index] != sema_no_local()) {
+        return false;
+    }
+
+    u32 type_index = sema_type_index_for_name(sema, lex_symbol(lexer, node->a));
+    if (type_index == sema_no_type()) {
+        u32 decl_index = sema_find_decl(sema, node->a);
+        if (decl_index != sema_no_decl() &&
+            sema->decls[decl_index].kind == SK_TypeAlias) {
+            sema->node_decl_indices[node_index] = decl_index;
+            type_index = sema->decls[decl_index].type_index;
+        }
+    }
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+    sema->node_is_type_expr[node_index] = true;
+    sema->node_type_indices[node_index] = type_index;
+    *out_type_index                     = type_index;
+    return true;
+}
+
 internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -3895,11 +3981,20 @@ internal bool sema_on_covers_all_enum_variants(const Ast* ast,
                 continue;
             }
             const AstNode* pattern_node = &ast->nodes[pattern->a];
-            if (pattern_node->kind != AK_EnumVariant) {
+            if (pattern_node->kind != AK_EnumVariant &&
+                pattern_node->kind != AK_SymbolRef &&
+                pattern_node->kind != AK_Field) {
                 continue;
             }
-            u32 variant =
-                sema_enum_variant_index(sema, enum_type, pattern_node->a);
+            u32 variant = U32_MAX;
+            if (pattern_node->kind == AK_Field &&
+                sema->node_type_indices[pattern->a] == enum_type) {
+                variant =
+                    sema_enum_variant_index(sema, enum_type, pattern_node->b);
+            } else {
+                variant =
+                    sema_enum_variant_index(sema, enum_type, pattern_node->a);
+            }
             if (variant != U32_MAX) {
                 covered[variant] = true;
             }
@@ -5824,6 +5919,23 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Field:
         {
+            u32 qualified_type = sema_no_type();
+            if (sema_try_resolve_type_symbol(
+                    lexer, ast, sema, node->a, &qualified_type)) {
+                if (sema->types[qualified_type].kind == STK_Enum) {
+                    if (sema_enum_variant_index(
+                            sema, qualified_type, node->b) == U32_MAX) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            s("known enum variant"),
+                            lex_symbol(lexer, node->b));
+                    }
+                    type_index = qualified_type;
+                    break;
+                }
+            }
+
             u32 target_type = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->a, sema_no_type(), &target_type)) {
@@ -6266,6 +6378,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_SymbolRef:
         {
+            if (expected_type != sema_no_type() &&
+                sema_enum_variant_index(sema, expected_type, node->a) !=
+                    U32_MAX) {
+                type_index = expected_type;
+                break;
+            }
             if (sema->node_is_type_expr[node_index]) {
                 if (!sema_resolve_type_node(
                         lexer, ast, sema, node_index, &type_index)) {
@@ -6287,8 +6405,20 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             } else {
                 u32 decl_index = sema->node_decl_indices[node_index];
-                ASSERT(decl_index != sema_no_decl(),
-                       "Expected resolved symbol reference");
+                if (decl_index == sema_no_decl()) {
+                    if (expected_type != sema_no_type() &&
+                        sema->types[expected_type].kind == STK_Enum) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            s("known enum variant"),
+                            lex_symbol(lexer, node->a));
+                    }
+                    return error_0300_unknown_symbol(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        lex_symbol(lexer, node->a));
+                }
                 type_index = sema->decls[decl_index].type_index;
             }
             if (sema_type_is_concrete_integer(sema, expected_type) &&
@@ -7193,8 +7323,10 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
                 break;
             }
             u32 decl_index = sema->node_decl_indices[node_index];
-            ASSERT(decl_index != sema_no_decl(),
-                   "Expected resolved symbol reference");
+            if (decl_index == sema_no_decl()) {
+                ok = false;
+                break;
+            }
             const SemaDecl* decl = &sema->decls[decl_index];
             if (decl->kind == SK_Constant) {
                 ok = sema_try_get_constant(
@@ -7353,8 +7485,9 @@ internal bool sema_fold_node(const Lexer* lex,
                         break;
                     }
                     u32 decl_index = sema->node_decl_indices[frame->node_index];
-                    ASSERT(decl_index != sema_no_decl(),
-                           "Expected resolved symbol reference");
+                    if (decl_index == sema_no_decl()) {
+                        break;
+                    }
                     const SemaDecl* decl = &sema->decls[decl_index];
                     if (decl->kind == SK_Constant) {
                         sema_push_fold_frame(&stack, decl->value_node_index);
