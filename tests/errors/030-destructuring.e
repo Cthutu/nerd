@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () {
     (a, b) := (1, 2, 3)

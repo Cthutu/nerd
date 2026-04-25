@@ -2042,6 +2042,16 @@ internal bool ast_parse_block_statement(AstParseState* state)
     if (state->token.kind == TK_return) {
         u32 return_token_index   = state->token.token_index;
         u32 statement_expr_index = 0;
+        if (ast_peek_kind_at(state, 0) == TK_RBrace ||
+            ast_peek_kind_at(state, 0) == TK_EOF) {
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_Return,
+                                     .token_index = return_token_index,
+                                     .a           = U32_MAX,
+                                 },
+                                 NULL);
+        }
         if (!ast_next_token(state)) {
             return error_0201_missing_value(
                 state->token.source,
@@ -2142,10 +2152,8 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
     bool previous_boundary          = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
     bool ok                         = false;
-    if (state->token.kind == TK_mod) {
-        ok = ast_parse_declaration(state, &module_node);
-    } else if (state->token.kind == TK_Symbol &&
-               ast_peek_kind_at(state, 0) == TK_Dot) {
+    if (state->token.kind == TK_Symbol &&
+        ast_peek_kind_at(state, 0) == TK_Dot) {
         AstToken path_token   = state->token;
         u32      first_symbol = (u32)array_count(state->module_path_symbols);
         u32      symbol_count = 0;

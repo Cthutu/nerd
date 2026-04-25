@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Matches multiple integer values in one block-form `on` branch.
 size :: 2

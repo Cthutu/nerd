@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Matches strings with block-form `on` branches.
 choice :: "blue"

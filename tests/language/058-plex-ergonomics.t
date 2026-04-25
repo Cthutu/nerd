@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Point :: plex #c {
     x    i32

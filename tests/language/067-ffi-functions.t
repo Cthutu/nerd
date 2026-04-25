@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 ffi "c" abs (i32) -> i32
 

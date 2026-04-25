@@ -112,6 +112,16 @@ void cgen_add_symbol_name(CGen* cgen, u32 symbol_handle)
         &cgen->arena, STRINGP, STRINGV(lex_symbol(cgen->lexer, symbol_handle)));
 }
 
+internal bool cgen_builtin_is_extern(const CGen* cgen, u32 symbol_handle)
+{
+    for (u32 i = 0; i < array_count(cgen->ir->externs); ++i) {
+        if (cgen->ir->externs[i].symbol == symbol_handle) {
+            return true;
+        }
+    }
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Render a C symbol name for a built-in runtime function.
 
@@ -241,6 +251,34 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     default:
         return cgen_c_integer_type(ir, type_index);
     }
+}
+
+internal bool cgen_type_is_c_string_pointer(const Ir* ir, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    const SemaType* type = &ir->types[type_index];
+    if (type->kind != STK_Pointer) {
+        return false;
+    }
+
+    u32 pointee_type = type->first_param_type;
+    if (pointee_type == sema_no_type()) {
+        return false;
+    }
+
+    SemaTypeKind pointee_kind = ir->types[pointee_type].kind;
+    return pointee_kind == STK_U8 || pointee_kind == STK_I8;
+}
+
+internal cstr cgen_c_extern_param_type(const Ir* ir, u32 type_index)
+{
+    if (cgen_type_is_c_string_pointer(ir, type_index)) {
+        return "const char*";
+    }
+    return cgen_c_type(ir, type_index);
 }
 
 internal cstr cgen_enum_tag_type(const SemaType* type)
@@ -522,6 +560,10 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
 void cgen_add_return(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
+    if (instr->rvalue[0].kind == IR_VALUE_NONE) {
+        cgen_addn(cgen, "return;");
+        return;
+    }
     cgen_add(cgen, "return ");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
@@ -544,11 +586,31 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, "(");
     const IrCallInfo* call =
         &cgen->ir->calls[(u32)instr->rvalue[1].value.integer];
+    const SemaType* fn_type     = NULL;
+    bool            extern_call = false;
+    if (instr->rvalue[0].type != sema_no_type()) {
+        fn_type = &cgen->ir->types[instr->rvalue[0].type];
+    }
+    if (instr->rvalue[0].kind == IR_VALUE_BUILTIN) {
+        extern_call =
+            cgen_builtin_is_extern(cgen, (u32)instr->rvalue[0].value.integer);
+    }
     for (u32 i = 0; i < call->arg_count; ++i) {
         if (i > 0) {
             cgen_add(cgen, ", ");
         }
-        cgen_add_value(cgen, &cgen->ir->call_args[call->first_arg + i].value);
+        const IrValue* arg = &cgen->ir->call_args[call->first_arg + i].value;
+        if (extern_call && fn_type != NULL && fn_type->kind == STK_Function &&
+            i < fn_type->param_count) {
+            u32 param_type =
+                cgen->ir->type_param_types[fn_type->first_param_type + i];
+            if (cgen_type_is_c_string_pointer(cgen->ir, param_type)) {
+                cgen_add(cgen, "(");
+                cgen_add(cgen, cgen_c_extern_param_type(cgen->ir, param_type));
+                cgen_add(cgen, ")");
+            }
+        }
+        cgen_add_value(cgen, arg);
     }
     cgen_addn(cgen, ");");
 }
@@ -1213,7 +1275,7 @@ internal void cgen_add_extern_decls(CGen* cgen)
                 cgen_add(cgen, ", ");
             }
             cgen_add(cgen,
-                     cgen_c_type(
+                     cgen_c_extern_param_type(
                          cgen->ir,
                          cgen->ir->type_param_types[fn_type->first_param_type +
                                                     param]));

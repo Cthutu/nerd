@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Maybe :: enum { None Some(i32) }
 main :: fn () {

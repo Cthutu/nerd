@@ -15,7 +15,7 @@
 
 //------------------------------------------------------------------------------
 
-typedef struct {
+typedef struct FrontEndState {
     Lexer lexer;
     Ast   ast;
     Sema  sema;
@@ -28,22 +28,23 @@ typedef enum : u8 {
     MODULE_Failed,
 } ModuleState;
 
-typedef struct {
+typedef struct ModuleInfo {
     string        qualified_name;
     cstr          resolved_path;
     ModuleState   state;
     FrontEndState front_end;
     FileMap       source_map;
+    Array(u32) imported_module_indices;
     Array(u32) export_decl_indices;
 } ModuleInfo;
 
-typedef struct {
+typedef struct ProgramInfo {
     NerdSource root_source;
     Arena      arena;
     Array(ModuleInfo) modules;
     u32 root_module_index;
 } ProgramInfo;
 
-typedef struct {
+typedef struct BackEndState {
     CGen cgen;
 } BackEndState;

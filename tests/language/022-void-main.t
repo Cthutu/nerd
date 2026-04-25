@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Allows a block-bodied main with no explicit return value.
 main :: fn () {

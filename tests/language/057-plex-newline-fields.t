@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Person :: plex { name string age u8 }
 

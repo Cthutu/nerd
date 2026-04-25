@@ -1213,29 +1213,34 @@ internal bool testing_run_language_test(const LanguageTest* test)
         .compile_binary = true,
     };
 
-    FrontEndState   front_results = {0};
-    FrontEndOptions options       = {
-              .verbose             = false,
-              .release             = artifacts.release,
-              .require_entry_point = true,
+    FrontEndOptions options = {
+        .verbose             = false,
+        .release             = artifacts.release,
+        .require_entry_point = true,
     };
-    if (!front_end(
+    ProgramInfo program = {0};
+    if (!front_end_program(
             (NerdSource){
                 .source      = test->source,
                 .source_path = s(test->path),
             },
             &options,
             NULL,
-            &front_results)) {
-        front_end_results_done(&front_results);
+            &program)) {
+        program_info_done(&program);
         arena_done(&artifact_arena);
         return false;
     }
+    FrontEndState* front_results =
+        &program.modules[program.root_module_index].front_end;
 
-    BackEndState back_results = {0};
-    if (!back_end(&front_results, &artifacts, false, NULL, &back_results)) {
+    BackEndState       back_results       = {0};
+    NerdArtifactConfig snapshot_artifacts = artifacts;
+    snapshot_artifacts.compile_binary     = false;
+    if (!back_end(
+            front_results, &snapshot_artifacts, false, NULL, &back_results)) {
         back_end_results_done(&back_results);
-        front_end_results_done(&front_results);
+        program_info_done(&program);
         arena_done(&artifact_arena);
         return false;
     }
@@ -1244,9 +1249,17 @@ internal bool testing_run_language_test(const LanguageTest* test)
     arena_init(&output_arena);
 
     string actual_ir =
-        ir_render(&front_results.ir, &front_results.lexer, &output_arena);
+        ir_render(&front_results->ir, &front_results->lexer, &output_arena);
     string actual_c = testing_strip_section_edges(
         cgen_render_generated(&back_results.cgen, &output_arena));
+
+    if (!back_end_program(&program, &artifacts, false, NULL)) {
+        back_end_results_done(&back_results);
+        program_info_done(&program);
+        arena_done(&output_arena);
+        arena_done(&artifact_arena);
+        return false;
+    }
 
 #if OS_WINDOWS
     cstr exe_path = artifacts.binary_path;
@@ -1287,7 +1300,7 @@ internal bool testing_run_language_test(const LanguageTest* test)
     }
 
     back_end_results_done(&back_results);
-    front_end_results_done(&front_results);
+    program_info_done(&program);
 
     if (passed) {
         testing_cleanup_generated_files(artifact_root);
@@ -1378,14 +1391,23 @@ internal bool testing_run_error_test(const ErrorTest* test)
         .release             = false,
         .require_entry_point = true,
     };
-    bool front_ok = front_end(
+    ProgramInfo program  = {0};
+    bool        front_ok = front_end_program(
         (NerdSource){
-            .source      = test->source,
-            .source_path = s(test->path),
+                   .source      = test->source,
+                   .source_path = s(test->path),
         },
         &options,
         NULL,
-        &front_results);
+        &program);
+    if (front_ok) {
+        front_results = program.modules[program.root_module_index].front_end;
+        program.modules[program.root_module_index].front_end =
+            (FrontEndState){0};
+        program_info_done(&program);
+    } else {
+        program_info_done(&program);
+    }
     if (front_ok) {
         NerdArtifactConfig artifacts = {
             .binary_path    = "a.out",

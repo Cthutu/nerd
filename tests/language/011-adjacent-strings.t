@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Concatenates adjacent string literals at compile time.
 main :: fn () {

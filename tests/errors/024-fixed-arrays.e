@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () {
     value :: 1
@@ -28,7 +28,7 @@ main :: fn () {
     ]
 }
 ¬
-use mod std.print
+use std.print
 
 main :: fn () {
     values :: [1, 2]

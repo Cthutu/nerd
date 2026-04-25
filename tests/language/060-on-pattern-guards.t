@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 score :: fn (size: u32) -> u32 {
     return on size {

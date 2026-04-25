@@ -1,5 +1,5 @@
 on debug {
-    use mod std.print
+    use std.print
     answer :: 7
 
     on !feature {

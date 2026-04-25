@@ -123,6 +123,7 @@ typedef struct {
 // Compact semantic side tables keyed by declaration and AST node index.
 
 typedef struct {
+    const ProgramInfo* program;
     Array(SemaType) types;
     Array(u32) type_param_types;
     Array(u32) type_param_symbols;
@@ -150,6 +151,15 @@ bool sema_analyse(const Lexer*           lexer,
                   const FrontEndOptions* options,
                   Sema*                  out_sema);
 void sema_done(Sema* sema);
+
+u32 sema_import_symbol_handle(Lexer*       dst_lexer,
+                              const Lexer* src_lexer,
+                              u32          src_symbol_handle);
+u32 sema_import_type(Lexer*       dst_lexer,
+                     Sema*        dst_sema,
+                     const Lexer* src_lexer,
+                     const Sema*  src_sema,
+                     u32          src_type_index);
 
 u32    sema_no_decl(void);
 u32    sema_no_local(void);

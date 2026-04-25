@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Prints a simple string from a block-bodied main.
 main :: fn () {

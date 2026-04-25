@@ -57,6 +57,21 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
     return diagnostics;
 }
 
+internal bool lsp_front_end_document(NerdSource             source,
+                                     const FrontEndOptions* options,
+                                     FrontEndState*         out_front_end)
+{
+    ProgramInfo program = {0};
+    if (!front_end_program(source, options, NULL, &program)) {
+        return false;
+    }
+
+    *out_front_end = program.modules[program.root_module_index].front_end;
+    program.modules[program.root_module_index].front_end = (FrontEndState){0};
+    program_info_done(&program);
+    return true;
+}
+
 internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
 {
     doc->analysis_ok  = false;
@@ -78,13 +93,12 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
         .release             = false,
         .require_entry_point = true,
     };
-    bool ok = front_end(
+    bool ok = lsp_front_end_document(
         (NerdSource){
             .source      = document_copy_str,
             .source_path = uri,
         },
         &options,
-        NULL,
         &doc->front_end);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);

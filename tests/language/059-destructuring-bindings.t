@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () -> i32 {
     (a, b) := (2, 3)

@@ -1,16 +1,16 @@
 -- Standard printing module.
 --
--- This is the first repo-owned standard module surface. It still relies on the
--- current module-loading/bootstrap path until general module loading lands, but
--- `pr` and `prn` now live here rather than as global built-ins.
+-- This module now loads through the normal module pipeline.
 
-ffi "c" printf (text: string, ...) -> i32
+ffi "c" printf (^u8, ...) -> i32
 
-pub pr :: fn(text: string) {
-    printf("%.*s", text.count, text.data)
+pub pr :: fn(text: string) -> void {
+    printf("%.*s".data, text.count.as(i32), text.data)
+    return
 }
 
-pub prn :: fn(text: string) {
+pub prn :: fn(text: string) -> void {
     pr(text)
-    printf("\n")
+    printf("\n".data)
+    return
 }

@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Value :: union { i i32 f f32 }
 main :: fn () {

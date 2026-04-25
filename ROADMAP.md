@@ -1088,17 +1088,15 @@ needed earlier.
 
 - [X] 96. Add named module imports.
   - Support `<name> :: mod path.to.module`.
-  - Support `use <module>` and `use mod path.to.module` to bring module
-    exports into the current scope.
+  - Support `use <module>` to bring module exports into the current scope.
   - `use` can appear at top level or inside functions; imports are scoped to
     the containing scope.
   - Allow `mod` bindings wherever normal bindings are allowed, including inside
     functions; the module name follows the usual binding scope rules.
   - Parser, CST, formatter, sema, IR, CLI tests, and LSP support exist for
-    named module bindings and both `use` forms, including local function-scope
+    named module bindings and `use <module>`, including local function-scope
     imports.
-  - Map dotted module paths to files such as `std/print.n` and module folders
-    such as `std/print/mod.n` inside the configured module roots.
+  - Map dotted module paths to rooted files such as `std/print.n`.
   - Treat the right-hand side as a module value whose exported declarations are
     accessed through the chosen binding name.
   - Detect missing modules, malformed module paths, duplicate import names, and
@@ -1131,19 +1129,23 @@ needed earlier.
 
 ## Milestone 29: General Module Loading
 
-- [ ] 98. Replace bootstrap module resolution with general module loading.
+- [X] 98. Replace bootstrap module resolution with general module loading.
   - This is the first of the next design-work items and is the one whose
     direction has already been settled.
-  - Progress:
-    - rooted module-path resolution is now moving into shared compiler helpers
-      instead of living only in sema
-    - the old repo-root fallback and `mod.n` folder-module fallback should stay
-      removed so resolution matches the agreed design
-    - a program-level front-end entry point and module record/cache scaffold are
-      now in place so recursive loading can land without rewriting the
-      single-file path first
-    - the real build/run compile path now goes through the program-level loader,
-      so imported modules are parsed and analysed during ordinary compilation
+  - Completed:
+    - rooted module-path resolution now lives in shared compiler helpers
+    - the old repo-root fallback and `mod.n` folder-module fallback are gone
+    - a program-level front-end entry point plus module record/cache scaffold
+      now drives recursive loading
+    - ordinary build/run/compile paths now go through the program-level loader
+    - `pub` is parsed on top-level bindings and `use std.print` is the
+      canonical import spelling
+    - legacy `use mod ...` has been removed
+    - bootstrap resolution for `std.print` has been removed from semantic
+      analysis
+    - whole-program back-end merging now emits imported module functions into
+      the final IR/C/binary
+    - debug and release suites both pass after the loader transition
   - Remove compiler-side special-casing for `std.print`.
   - Load module source from configured module roots through the same front-end
     pipeline as normal source files.

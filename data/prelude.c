@@ -46,14 +46,6 @@ static string string_slice(string value, size_t start, size_t end)
     return (string){.data = value.data + start, .count = end - start};
 }
 
-void pr(string str) { fwrite(str.data, 1, str.count, stdout); }
-
-void prn(string str)
-{
-    fwrite(str.data, 1, str.count, stdout);
-    fputc('\n', stdout);
-}
-
 #define NERD_STRING_ARENA_CAPACITY (64 * 1024)
 
 static _Thread_local u8     g_string_arena[NERD_STRING_ARENA_CAPACITY];

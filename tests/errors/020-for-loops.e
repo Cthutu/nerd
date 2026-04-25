@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () {
     for 1 {
@@ -29,7 +29,7 @@ main :: fn () {
     ]
 }
 ¬
-use mod std.print
+use std.print
 
 main :: fn () {
     for i := 0; i < 1; i += 1 {

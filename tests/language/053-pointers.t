@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () -> i32 {
     values: [3]i32 = [10, 20, 30]

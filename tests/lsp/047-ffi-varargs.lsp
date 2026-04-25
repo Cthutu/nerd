@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 fcntl_local :: ffi "c" fcntl (i32, i32, ...) -> i32
 

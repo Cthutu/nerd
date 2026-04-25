@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Statement-position block-form `on` may omit `else`.
 main :: fn () {

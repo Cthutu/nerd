@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Matches exclusive and inclusive integer ranges in block-form `on` branches.
 test_branch :: fn (size: u32) -> i32 {

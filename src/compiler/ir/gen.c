@@ -1758,12 +1758,15 @@ internal bool ir_try_lower_module_field(const Ast*  ast,
     u32 decl_index = sema->node_decl_indices[node_index];
     ASSERT(decl_index != sema_no_decl(), "Expected module export declaration");
     const SemaDecl* decl = &sema->decls[decl_index];
-    ASSERT(decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction,
+    ASSERT(decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction ||
+               decl->kind == SK_Function,
            "Expected module export function");
 
     *out_value = (IrValue){
-        .kind          = IR_VALUE_BUILTIN,
-        .type          = decl->type_index,
+        .kind = decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction
+                    ? IR_VALUE_BUILTIN
+                    : IR_VALUE_SYMBOL,
+        .type = decl->type_index,
         .value.integer = ir_decl_runtime_symbol(ast, decl),
     };
     return true;
@@ -3128,11 +3131,22 @@ internal void ir_generate_return_statement(const Lexer*   lex,
            "Expected return node");
 
     if (return_node->a == U32_MAX) {
-        ir_add_return(ir,
-                      (IrValue){.kind          = IR_VALUE_INTEGER,
-                                .type          = ir_builtin_type(sema, STK_I32),
-                                .value.integer = 0},
-                      ir_builtin_type(sema, STK_I32));
+        ASSERT(array_count(ir->functions) > 0,
+               "Expected active function when lowering return");
+        u32 current_function_index = (u32)array_count(ir->functions) - 1;
+        u32 function_type          = ir->functions[current_function_index].type;
+        const SemaType* fn_type    = &ir->types[function_type];
+        u32             return_type = fn_type->return_type;
+        if (return_type == ir_builtin_type(sema, STK_Void)) {
+            ir_add_return(ir,
+                          (IrValue){.kind = IR_VALUE_NONE},
+                          ir_builtin_type(sema, STK_Void));
+        } else {
+            ir_add_return(
+                ir,
+                (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0},
+                return_type);
+        }
         return;
     }
 

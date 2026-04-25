@@ -94,16 +94,7 @@ bool compile(NerdSource                source,
         return false;
     }
 
-    FrontEndState* front_results =
-        &program.modules[program.root_module_index].front_end;
-
-    BackEndState back_results = {0};
-    if (!back_end(front_results,
-                  artifacts,
-                  dump_compiler_state,
-                  timing,
-                  &back_results)) {
-        back_end_results_done(&back_results);
+    if (!back_end_program(&program, artifacts, dump_compiler_state, timing)) {
         program_info_done(&program);
         if (mapped_source) {
             filemap_unload(&source_map);
@@ -111,7 +102,6 @@ bool compile(NerdSource                source,
         return false;
     }
 
-    back_end_results_done(&back_results);
     program_info_done(&program);
     if (mapped_source) {
         filemap_unload(&source_map);

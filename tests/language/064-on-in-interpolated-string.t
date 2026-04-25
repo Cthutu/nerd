@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Colour :: enum { RED GREEN BLUE }
 

@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Point :: plex {
     x i32
@@ -33,7 +33,7 @@ main :: fn () {
     ]
 }
 ¬
-use mod std.print
+use std.print
 
 Point :: plex {
     x i32
@@ -68,7 +68,7 @@ main :: fn () {
     ]
 }
 ¬
-use mod std.print
+use std.print
 
 Point :: plex {
     x i32
@@ -103,7 +103,7 @@ main :: fn () {
     ]
 }
 ¬
-use mod std.print
+use std.print
 
 Point :: plex {
     x i32

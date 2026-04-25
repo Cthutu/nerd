@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 score :: fn (value: i32) -> i32 {
     return on value {

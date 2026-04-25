@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Point :: plex {
     x i32
@@ -74,9 +74,9 @@ branch.false bool:$12, L9
 $13 = (i32,i32):pair.1
 $14 = (i32,i32):pair.0
 $15 = (i32,i32):pair.1
-local score_pair$y$on47 = i32:$15
+local score_pair$y$on46 = i32:$15
 label L10
-$0 = i32:score_pair$y$on47
+$0 = i32:score_pair$y$on46
 jump L1
 label L9
 $18 = (i32,i32):pair.0
@@ -84,10 +84,10 @@ $19 = (i32,i32):pair.1
 $20 = i32:$19 == i32:9
 branch.false bool:$20, L16
 $21 = (i32,i32):pair.0
-local score_pair$x$on52 = i32:$21
+local score_pair$x$on51 = i32:$21
 $22 = (i32,i32):pair.1
 label L17
-$23 = i32:score_pair$x$on52 * i32:10
+$23 = i32:score_pair$x$on51 * i32:10
 $0 = i32:$23
 jump L1
 label L16
@@ -104,9 +104,9 @@ branch.false bool:$5, L2
 $6 = plex{x:i32,y:i32,name:string}:point.x
 $7 = plex{x:i32,y:i32,name:string}:point.name
 $8 = plex{x:i32,y:i32,name:string}:point.x
-local score_point$x$on86 = i32:$8
+local score_point$x$on85 = i32:$8
 label L3
-$0 = i32:score_point$x$on86
+$0 = i32:score_point$x$on85
 jump L1
 label L2
 $11 = plex{x:i32,y:i32,name:string}:point.x
@@ -115,9 +115,9 @@ branch.false bool:$12, L9
 $13 = plex{x:i32,y:i32,name:string}:point.y
 $14 = plex{x:i32,y:i32,name:string}:point.x
 $15 = plex{x:i32,y:i32,name:string}:point.y
-local score_point$y$on95 = i32:$15
+local score_point$y$on94 = i32:$15
 label L10
-$16 = i32:score_point$y$on95 * i32:10
+$16 = i32:score_point$y$on94 * i32:10
 $0 = i32:$16
 jump L1
 label L9
@@ -138,9 +138,9 @@ param plex{x:i32,y:i32,name:string}:point
 local $0 = string:0
 $4 = plex{x:i32,y:i32,name:string}:point.name
 $5 = plex{x:i32,y:i32,name:string}:point.name
-local name_of$name$on130 = string:$5
+local name_of$name$on129 = string:$5
 label L3
-$0 = string:name_of$name$on130
+$0 = string:name_of$name$on129
 jump L1
 label L2
 $0 = string:""
@@ -244,9 +244,9 @@ int $score_pair(tuple10 $pair) {
     int $13 = $pair._1;
     int $14 = $pair._0;
     int $15 = $pair._1;
-    int $score_pair$y$on47 = $15;
+    int $score_pair$y$on46 = $15;
     L10: ;
-    $0 = $score_pair$y$on47;
+    $0 = $score_pair$y$on46;
     goto L1;
     L9: ;
     int $18 = $pair._0;
@@ -254,10 +254,10 @@ int $score_pair(tuple10 $pair) {
     bool $20 = $19 == 9;
     if (!$20) goto L16;
     int $21 = $pair._0;
-    int $score_pair$x$on52 = $21;
+    int $score_pair$x$on51 = $21;
     int $22 = $pair._1;
     L17: ;
-    int $23 = $score_pair$x$on52 * 10;
+    int $23 = $score_pair$x$on51 * 10;
     $0 = $23;
     goto L1;
     L16: ;
@@ -273,9 +273,9 @@ int $score_point(plex7 $point) {
     int $6 = $point.$x;
     string $7 = $point.$name;
     int $8 = $point.$x;
-    int $score_point$x$on86 = $8;
+    int $score_point$x$on85 = $8;
     L3: ;
-    $0 = $score_point$x$on86;
+    $0 = $score_point$x$on85;
     goto L1;
     L2: ;
     int $11 = $point.$x;
@@ -284,9 +284,9 @@ int $score_point(plex7 $point) {
     int $13 = $point.$y;
     int $14 = $point.$x;
     int $15 = $point.$y;
-    int $score_point$y$on95 = $15;
+    int $score_point$y$on94 = $15;
     L10: ;
-    int $16 = $score_point$y$on95 * 10;
+    int $16 = $score_point$y$on94 * 10;
     $0 = $16;
     goto L1;
     L9: ;
@@ -306,9 +306,9 @@ string $name_of(plex7 $point) {
     string $0 = (string){0};
     string $4 = $point.$name;
     string $5 = $point.$name;
-    string $name_of$name$on130 = $5;
+    string $name_of$name$on129 = $5;
     L3: ;
-    $0 = $name_of$name$on130;
+    $0 = $name_of$name$on129;
     goto L1;
     L2: ;
     $0 = (string){.data = (u8*)"", .count = 0};

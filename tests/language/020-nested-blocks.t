@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Shows that nested block state is dropped after leaving the block.
 main :: fn () {

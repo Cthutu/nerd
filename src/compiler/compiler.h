@@ -11,15 +11,20 @@
 
 //------------------------------------------------------------------------------
 
+typedef struct ProgramInfo ProgramInfo;
+typedef struct ModuleInfo  ModuleInfo;
+
 typedef struct {
     string source;
     string source_path;
 } NerdSource;
 
 typedef struct {
-    bool verbose;
-    bool release;
-    bool require_entry_point;
+    bool               verbose;
+    bool               release;
+    bool               require_entry_point;
+    const ProgramInfo* program;
+    u32                current_module_index;
     Array(string) keywords;
 } FrontEndOptions;
 

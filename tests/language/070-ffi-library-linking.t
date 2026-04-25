@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 libm :: "m"
 square_root :: ffi libm sqrt (f64) -> f64

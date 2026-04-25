@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/build.h>
 #include <compiler/error/error.h>
 #include <compiler/modules/modules.h>
 #include <compiler/sema/sema.h>
@@ -25,6 +26,7 @@ u32 sema_no_type(void) { return U32_MAX; }
 //------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
 
+internal u32 sema_builtin_type(Sema* sema, SemaTypeKind kind);
 internal u32 sema_type_index_for_name(Sema* sema, string name);
 internal u32 sema_find_decl(const Sema* sema, u32 symbol_handle);
 
@@ -37,6 +39,15 @@ internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
         }
     }
     return sema_no_decl();
+}
+
+u32 sema_import_symbol_handle(Lexer*       dst_lexer,
+                              const Lexer* src_lexer,
+                              u32          src_symbol_handle)
+{
+    InternAddResult added = {0};
+    return lex_add_symbol(
+        dst_lexer, lex_symbol(src_lexer, src_symbol_handle), &added);
 }
 
 //------------------------------------------------------------------------------
@@ -364,6 +375,209 @@ internal u32 sema_add_enum_type(Sema*                 sema,
         sema_add_enum_type_raw(sema, symbols, payload_types, count);
     array_free(symbols);
     return type_index;
+}
+
+u32 sema_import_type(Lexer*       dst_lexer,
+                     Sema*        dst_sema,
+                     const Lexer* src_lexer,
+                     const Sema*  src_sema,
+                     u32          src_type_index)
+{
+    if (src_type_index == sema_no_type()) {
+        return sema_no_type();
+    }
+
+    const SemaType* src_type = &src_sema->types[src_type_index];
+    switch (src_type->kind) {
+    case STK_Void:
+    case STK_UntypedInteger:
+    case STK_UntypedFloat:
+    case STK_String:
+    case STK_Bool:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_F32:
+    case STK_F64:
+    case STK_Isize:
+    case STK_Usize:
+        return sema_builtin_type(dst_sema, src_type->kind);
+
+    case STK_Function:
+        {
+            Array(u32) param_types = NULL;
+            for (u32 i = 0; i < src_type->param_count; ++i) {
+                array_push(
+                    param_types,
+                    sema_import_type(
+                        dst_lexer,
+                        dst_sema,
+                        src_lexer,
+                        src_sema,
+                        src_sema->type_param_types[src_type->first_param_type +
+                                                   i]));
+            }
+            u32 return_type = sema_import_type(dst_lexer,
+                                               dst_sema,
+                                               src_lexer,
+                                               src_sema,
+                                               src_type->return_type);
+            u32 imported    = sema_add_function_type_ex(
+                dst_sema, param_types, return_type, src_type->flags);
+            array_free(param_types);
+            return imported;
+        }
+
+    case STK_Module:
+        {
+            Array(u32) export_symbols = NULL;
+            Array(u32) export_types   = NULL;
+            for (u32 i = 0; i < src_type->param_count; ++i) {
+                array_push(export_symbols,
+                           sema_import_symbol_handle(
+                               dst_lexer,
+                               src_lexer,
+                               src_sema->type_param_symbols
+                                   [src_type->first_param_type + i]));
+                array_push(
+                    export_types,
+                    sema_import_type(
+                        dst_lexer,
+                        dst_sema,
+                        src_lexer,
+                        src_sema,
+                        src_sema->type_param_types[src_type->first_param_type +
+                                                   i]));
+            }
+            u32 imported =
+                sema_add_module_type_raw(dst_sema,
+                                         export_symbols,
+                                         export_types,
+                                         (u32)array_count(export_symbols));
+            array_free(export_symbols);
+            array_free(export_types);
+            return imported;
+        }
+
+    case STK_Tuple:
+        {
+            Array(u32) item_types = NULL;
+            for (u32 i = 0; i < src_type->param_count; ++i) {
+                array_push(
+                    item_types,
+                    sema_import_type(
+                        dst_lexer,
+                        dst_sema,
+                        src_lexer,
+                        src_sema,
+                        src_sema->type_param_types[src_type->first_param_type +
+                                                   i]));
+            }
+            u32 imported = sema_add_tuple_type(dst_sema, item_types);
+            array_free(item_types);
+            return imported;
+        }
+
+    case STK_Array:
+        return sema_add_array_type(dst_sema,
+                                   sema_import_type(dst_lexer,
+                                                    dst_sema,
+                                                    src_lexer,
+                                                    src_sema,
+                                                    src_type->first_param_type),
+                                   src_type->return_type);
+
+    case STK_Slice:
+        return sema_add_slice_type(
+            dst_sema,
+            sema_import_type(dst_lexer,
+                             dst_sema,
+                             src_lexer,
+                             src_sema,
+                             src_type->first_param_type));
+
+    case STK_Pointer:
+        return sema_add_pointer_type(
+            dst_sema,
+            sema_import_type(dst_lexer,
+                             dst_sema,
+                             src_lexer,
+                             src_sema,
+                             src_type->first_param_type));
+
+    case STK_Plex:
+    case STK_Union:
+        {
+            Array(u32) field_symbols = NULL;
+            Array(u32) field_types   = NULL;
+            for (u32 i = 0; i < src_type->param_count; ++i) {
+                array_push(field_symbols,
+                           sema_import_symbol_handle(
+                               dst_lexer,
+                               src_lexer,
+                               src_sema->type_param_symbols
+                                   [src_type->first_param_type + i]));
+                array_push(
+                    field_types,
+                    sema_import_type(
+                        dst_lexer,
+                        dst_sema,
+                        src_lexer,
+                        src_sema,
+                        src_sema->type_param_types[src_type->first_param_type +
+                                                   i]));
+            }
+            u32 imported =
+                src_type->kind == STK_Plex
+                    ? sema_add_plex_type_raw(dst_sema,
+                                             field_symbols,
+                                             field_types,
+                                             (u32)array_count(field_symbols),
+                                             src_type->flags)
+                    : sema_add_union_type_raw(dst_sema,
+                                              field_symbols,
+                                              field_types,
+                                              (u32)array_count(field_symbols));
+            array_free(field_symbols);
+            array_free(field_types);
+            return imported;
+        }
+
+    case STK_Enum:
+        {
+            Array(u32) variants      = NULL;
+            Array(u32) payload_types = NULL;
+            for (u32 i = 0; i < src_type->param_count; ++i) {
+                array_push(variants,
+                           sema_import_symbol_handle(
+                               dst_lexer,
+                               src_lexer,
+                               src_sema->type_param_symbols
+                                   [src_type->first_param_type + i]));
+                array_push(
+                    payload_types,
+                    sema_import_type(
+                        dst_lexer,
+                        dst_sema,
+                        src_lexer,
+                        src_sema,
+                        src_sema->type_param_types[src_type->first_param_type +
+                                                   i]));
+            }
+            u32 imported = sema_add_enum_type_raw(
+                dst_sema, variants, payload_types, (u32)array_count(variants));
+            array_free(variants);
+            array_free(payload_types);
+            return imported;
+        }
+    }
+
+    return sema_no_type();
 }
 
 //------------------------------------------------------------------------------
@@ -762,22 +976,6 @@ sema_ast_signature(const Ast* ast, const AstNode* signature_owner)
     return &ast->fn_signatures[signature_owner->a];
 }
 
-internal bool sema_module_path_exists(const Lexer*         lexer,
-                                      const Ast*           ast,
-                                      const AstModulePath* path)
-{
-    Arena arena = {0};
-    arena_init(&arena);
-
-    ModuleResolveResult result = {0};
-    bool                found =
-        module_resolve_path(&arena, lexer->source, lexer, ast, path, &result) ==
-        MRS_Found;
-
-    arena_done(&arena);
-    return found;
-}
-
 internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node);
 internal ErrorSpan sema_local_span(const Lexer*     lexer,
                                    const Ast*       ast,
@@ -800,42 +998,81 @@ internal bool      sema_resolve_node_refs(const Lexer* lexer,
                                           u32          node_index,
                                           Sema*        sema);
 
-internal bool sema_resolve_bootstrap_module(const Lexer* lexer,
-                                            const Ast*   ast,
-                                            Sema*        sema,
-                                            u32          module_path_index,
-                                            ErrorSpan    span,
-                                            u32*         out_type_index)
+internal u32 sema_find_program_module_by_path(const ProgramInfo* program,
+                                              cstr               resolved_path)
 {
-    const AstModulePath* path = &ast->module_paths[module_path_index];
-    if (!sema_module_path_exists(lexer, ast, path) ||
-        !module_path_is(lexer, ast, path, s("std"), s("print"))) {
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        if (strcmp(program->modules[i].resolved_path, resolved_path) == 0) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal bool sema_resolve_loaded_module(const Lexer* lexer,
+                                         const Ast*   ast,
+                                         Sema*        sema,
+                                         u32          module_path_index,
+                                         ErrorSpan    span,
+                                         u32*         out_type_index)
+{
+    if (sema->program == NULL) {
         return error_0304_type_mismatch(
             lexer->source, span, s("known module"), s("module path"));
     }
 
-    u32 pr_symbol     = sema_find_symbol_handle_by_name(lexer, s("pr"));
-    u32 prn_symbol    = sema_find_symbol_handle_by_name(lexer, s("prn"));
-    u32 string_type   = sema_builtin_type(sema, STK_String);
-    u32 void_type     = sema_builtin_type(sema, STK_Void);
-    Array(u32) params = NULL;
-    array_push(params, string_type);
-    u32 print_type = sema_add_function_type(sema, params, void_type);
-    array_free(params);
-
-    u32 symbols[2]   = {pr_symbol, prn_symbol};
-    u32 types[2]     = {print_type, print_type};
-    u32 export_count = 0;
-    for (u32 i = 0; i < 2; ++i) {
-        if (symbols[i] != sema_no_decl()) {
-            symbols[export_count] = symbols[i];
-            types[export_count]   = print_type;
-            ++export_count;
-        }
+    Arena arena = {0};
+    arena_init(&arena);
+    ModuleResolveResult resolved = {0};
+    ModuleResolveStatus status =
+        module_resolve_path(&arena,
+                            sema->program->root_source,
+                            lexer,
+                            ast,
+                            &ast->module_paths[module_path_index],
+                            &resolved);
+    if (status != MRS_Found) {
+        arena_done(&arena);
+        return error_0304_type_mismatch(
+            lexer->source, span, s("known module"), s("module path"));
     }
 
-    *out_type_index =
-        sema_add_module_type_raw(sema, symbols, types, export_count);
+    u32 module_index =
+        sema_find_program_module_by_path(sema->program, resolved.resolved_path);
+    if (module_index == U32_MAX) {
+        arena_done(&arena);
+        return error_0304_type_mismatch(
+            lexer->source, span, s("known module"), s("module path"));
+    }
+
+    const ModuleInfo* module  = &sema->program->modules[module_index];
+    Array(u32) export_symbols = NULL;
+    Array(u32) export_types   = NULL;
+    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
+        u32 export_decl_index = module->export_decl_indices[i];
+        if (export_decl_index >= array_count(module->front_end.sema.decls)) {
+            continue;
+        }
+
+        const SemaDecl* export_decl =
+            &module->front_end.sema.decls[export_decl_index];
+        array_push(export_symbols,
+                   sema_import_symbol_handle((Lexer*)lexer,
+                                             &module->front_end.lexer,
+                                             export_decl->symbol_handle));
+        array_push(export_types,
+                   sema_import_type((Lexer*)lexer,
+                                    sema,
+                                    &module->front_end.lexer,
+                                    &module->front_end.sema,
+                                    export_decl->type_index));
+    }
+
+    *out_type_index = sema_add_module_type_raw(
+        sema, export_symbols, export_types, (u32)array_count(export_symbols));
+    array_free(export_symbols);
+    array_free(export_types);
+    arena_done(&arena);
     return true;
 }
 
@@ -852,6 +1089,9 @@ internal u32 sema_ensure_module_export_decl(Sema* sema,
     if (type_index != sema_no_type() &&
         sema->types[type_index].kind == STK_Function) {
         kind = SK_BuiltinFunction;
+    } else if (type_index != sema_no_type() &&
+               sema->types[type_index].kind == STK_Module) {
+        kind = SK_Module;
     }
 
     array_push(sema->decls,
@@ -4193,6 +4433,9 @@ internal bool sema_collect_top_level_uses(const Lexer*           lexer,
 
 internal u32 sema_type_index_for_name(Sema* sema, string name)
 {
+    if (string_eq(name, s("void"))) {
+        return sema_builtin_type(sema, STK_Void);
+    }
     if (string_eq(name, s("bool"))) {
         return sema_builtin_type(sema, STK_Bool);
     }
@@ -8215,12 +8458,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_ModRef:
-        if (!sema_resolve_bootstrap_module(lexer,
-                                           ast,
-                                           sema,
-                                           node->a,
-                                           sema_node_span(lexer, node),
-                                           &type_index)) {
+        if (!sema_resolve_loaded_module(lexer,
+                                        ast,
+                                        sema,
+                                        node->a,
+                                        sema_node_span(lexer, node),
+                                        &type_index)) {
             return false;
         }
         break;
@@ -8283,6 +8526,12 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
         }
 
         if (decl->kind == SK_BuiltinFunction) {
+            continue;
+        }
+
+        if (decl->bind_node_index == sema_no_decl() &&
+            decl->value_node_index == sema_no_decl() &&
+            decl->type_index != sema_no_type()) {
             continue;
         }
 
@@ -8373,7 +8622,7 @@ typedef struct {
 internal void sema_clear_fold_flags(Ast* ast)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        ast->nodes[i].flags = ANF_None;
+        ast->nodes[i].flags &= ~(ANF_ConstKnown | ANF_ConstBusy);
     }
 }
 
@@ -9182,6 +9431,7 @@ bool sema_analyse(const Lexer*           lexer,
     if (options == NULL) {
         effective_options.require_entry_point = true;
     }
+    sema.program = effective_options.program;
 
     // Seed commonly-used built-in types so later materialisation can always
     // canonicalise untyped numeric literals to runtime storage types.

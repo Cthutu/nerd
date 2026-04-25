@@ -6,6 +6,7 @@
 
 #include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
+#include <compiler/internal.h>
 #include <compiler/modules/modules.h>
 
 //------------------------------------------------------------------------------
@@ -31,6 +32,126 @@ internal cstr program_copy_cstr_from_string(Arena* arena, string value)
     memcpy(copy, value.data, value.count);
     copy[value.count] = '\0';
     return copy;
+}
+
+internal bool
+program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
+{
+    if (timing == NULL) {
+        return run(data);
+    }
+
+    ThreadTimePoint start  = thread_time_now();
+    bool            result = run(data);
+    ThreadTimePoint end    = thread_time_now();
+    timing_add(timing,
+               COMPILER_STAGE_FRONT_END,
+               phase,
+               thread_time_elapsed(start, end));
+    return result;
+}
+
+typedef struct {
+    NerdSource      source;
+    FrontEndOptions options;
+    FrontEndState*  front_end;
+} ProgramFrontEndContext;
+
+internal bool program_front_end_lex(void* data)
+{
+    ProgramFrontEndContext* ctx = data;
+    return lex(ctx->source, &ctx->front_end->lexer);
+}
+
+internal bool program_front_end_parse(void* data)
+{
+    ProgramFrontEndContext* ctx = data;
+    ctx->front_end->ast         = ast_parse(&ctx->front_end->lexer);
+
+    if (array_count(ctx->front_end->lexer.tokens) > 0 &&
+        array_count(ctx->front_end->ast.nodes) == 0) {
+        return false;
+    }
+    return true;
+}
+
+internal bool program_front_end_sema(void* data)
+{
+    ProgramFrontEndContext* ctx = data;
+    return sema_analyse(&ctx->front_end->lexer,
+                        &ctx->front_end->ast,
+                        &ctx->options,
+                        &ctx->front_end->sema);
+}
+
+internal bool program_front_end_ir(void* data)
+{
+    ProgramFrontEndContext* ctx = data;
+    ctx->front_end->ir          = ir_generate(
+        &ctx->front_end->lexer, &ctx->front_end->ast, &ctx->front_end->sema);
+    return true;
+}
+
+internal bool program_front_end_parse_only(NerdSource             source,
+                                           const FrontEndOptions* options,
+                                           Timing*                timing,
+                                           FrontEndState*         front_end)
+{
+    ProgramFrontEndContext ctx = {
+        .source    = source,
+        .options   = options ? *options : (FrontEndOptions){0},
+        .front_end = front_end,
+    };
+
+    bool result = program_run_timed(
+        timing, COMPILER_PHASE_LEX, program_front_end_lex, &ctx);
+    if (result && ctx.options.verbose) {
+        lex_dump(&ctx.front_end->lexer);
+    }
+
+    if (result) {
+        result = program_run_timed(
+            timing, COMPILER_PHASE_PARSE, program_front_end_parse, &ctx);
+        if (result && ctx.options.verbose) {
+            ast_dump(&ctx.front_end->ast, &ctx.front_end->lexer);
+        }
+    }
+
+    return result;
+}
+
+internal bool program_front_end_finish(ProgramInfo*           program,
+                                       u32                    module_index,
+                                       const FrontEndOptions* options,
+                                       Timing*                timing,
+                                       bool require_entry_point)
+{
+    ModuleInfo*     module         = &program->modules[module_index];
+    FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
+    module_options.program         = program;
+    module_options.current_module_index = module_index;
+    module_options.require_entry_point  = require_entry_point;
+
+    ProgramFrontEndContext ctx          = {
+                 .source =
+            {
+                         .source      = module->front_end.lexer.source.source,
+                         .source_path = module->front_end.lexer.source.source_path,
+            },
+                 .options   = module_options,
+                 .front_end = &module->front_end,
+    };
+
+    bool result = program_run_timed(
+        timing, COMPILER_PHASE_SEMA, program_front_end_sema, &ctx);
+    if (result) {
+        result = program_run_timed(
+            timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx);
+        if (result && module_options.verbose) {
+            ir_dump(&module->front_end.ir, &module->front_end.lexer);
+        }
+    }
+    return result;
 }
 
 internal bool program_keyword_is_defined(const FrontEndOptions* options,
@@ -121,7 +242,7 @@ internal bool
 program_collect_module_dependencies(ProgramInfo*           program,
                                     const FrontEndOptions* options,
                                     Timing*                timing,
-                                    const NerdSource*      root_source,
+                                    u32                    owner_module_index,
                                     const Lexer*           lexer,
                                     const Ast*             ast,
                                     u32                    first_node,
@@ -130,7 +251,6 @@ program_collect_module_dependencies(ProgramInfo*           program,
 internal bool program_load_module_by_path(ProgramInfo*           program,
                                           const FrontEndOptions* options,
                                           Timing*                timing,
-                                          const NerdSource*      root_source,
                                           string                 qualified_name,
                                           cstr                   resolved_path)
 {
@@ -164,21 +284,20 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         .source      = source_text,
         .source_path = s(current->resolved_path),
     };
-    FrontEndOptions module_options     = *options;
+    FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
     module_options.require_entry_point = false;
 
-    if (!front_end(
+    if (!program_front_end_parse_only(
             module_source, &module_options, timing, &current->front_end)) {
         current->state = MODULE_Failed;
         return false;
     }
 
-    program_collect_module_exports(current);
     if (!program_collect_module_dependencies(
             program,
             options,
             timing,
-            root_source,
+            module_index,
             &current->front_end.lexer,
             &current->front_end.ast,
             0,
@@ -187,6 +306,13 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         return false;
     }
 
+    if (!program_front_end_finish(
+            program, module_index, options, timing, false)) {
+        current->state = MODULE_Failed;
+        return false;
+    }
+
+    program_collect_module_exports(current);
     current->state = MODULE_Loaded;
     return true;
 }
@@ -195,7 +321,7 @@ internal bool
 program_collect_module_dependencies(ProgramInfo*           program,
                                     const FrontEndOptions* options,
                                     Timing*                timing,
-                                    const NerdSource*      root_source,
+                                    u32                    owner_module_index,
                                     const Lexer*           lexer,
                                     const Ast*             ast,
                                     u32                    first_node,
@@ -211,7 +337,7 @@ program_collect_module_dependencies(ProgramInfo*           program,
                 !program_collect_module_dependencies(program,
                                                      options,
                                                      timing,
-                                                     root_source,
+                                                     owner_module_index,
                                                      lexer,
                                                      ast,
                                                      body->a,
@@ -231,22 +357,34 @@ program_collect_module_dependencies(ProgramInfo*           program,
         arena_init(&temp);
         ModuleResolveResult resolved = {0};
         ModuleResolveStatus status   = module_resolve_path(
-            &temp, *root_source, lexer, ast, path, &resolved);
+            &temp, program->root_source, lexer, ast, path, &resolved);
         if (status != MRS_Found) {
             arena_done(&temp);
             continue;
         }
 
         string qualified_name = s(resolved.qualified_name);
-        bool   ok             = program_load_module_by_path(program,
-                                              options,
-                                              timing,
-                                              root_source,
-                                              qualified_name,
-                                              resolved.resolved_path);
+        bool   ok             = program_load_module_by_path(
+            program, options, timing, qualified_name, resolved.resolved_path);
+        u32 loaded_index =
+            program_find_module_by_path(program, resolved.resolved_path);
         arena_done(&temp);
         if (!ok) {
             return false;
+        }
+        if (loaded_index != U32_MAX) {
+            ModuleInfo* owner = &program->modules[owner_module_index];
+            bool        already_recorded = false;
+            for (u32 j = 0; j < array_count(owner->imported_module_indices);
+                 ++j) {
+                if (owner->imported_module_indices[j] == loaded_index) {
+                    already_recorded = true;
+                    break;
+                }
+            }
+            if (!already_recorded) {
+                array_push(owner->imported_module_indices, loaded_index);
+            }
         }
     }
 
@@ -284,21 +422,21 @@ bool front_end_program(NerdSource             source,
     };
     array_push(program.modules, root_module);
 
-    if (!front_end(source,
-                   &effective_options,
-                   timing,
-                   &program.modules[program.root_module_index].front_end)) {
+    if (!program_front_end_parse_only(
+            source,
+            &effective_options,
+            timing,
+            &program.modules[program.root_module_index].front_end)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;
     }
 
-    program_collect_module_exports(&program.modules[program.root_module_index]);
     if (!program_collect_module_dependencies(
             &program,
             &effective_options,
             timing,
-            &program.root_source,
+            program.root_module_index,
             &program.modules[program.root_module_index].front_end.lexer,
             &program.modules[program.root_module_index].front_end.ast,
             0,
@@ -309,6 +447,17 @@ bool front_end_program(NerdSource             source,
         return false;
     }
 
+    if (!program_front_end_finish(&program,
+                                  program.root_module_index,
+                                  &effective_options,
+                                  timing,
+                                  effective_options.require_entry_point)) {
+        program.modules[program.root_module_index].state = MODULE_Failed;
+        program_info_done(&program);
+        return false;
+    }
+
+    program_collect_module_exports(&program.modules[program.root_module_index]);
     program.modules[program.root_module_index].state = MODULE_Loaded;
 
     if (out_program != NULL) {
@@ -323,6 +472,7 @@ void program_info_done(ProgramInfo* program)
 {
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         ModuleInfo* module = &program->modules[i];
+        array_free(module->imported_module_indices);
         array_free(module->export_decl_indices);
         front_end_results_done(&module->front_end);
         if (module->source_map.data != NULL) {

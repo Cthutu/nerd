@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 -- Uses expression blocks as top-level constant and variable initialisers.
 constant_value :: ${
