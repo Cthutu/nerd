@@ -1139,6 +1139,9 @@ needed earlier.
       instead of living only in sema
     - the old repo-root fallback and `mod.n` folder-module fallback should stay
       removed so resolution matches the agreed design
+    - a program-level front-end entry point and module record/cache scaffold are
+      now in place so recursive loading can land without rewriting the
+      single-file path first
   - Remove compiler-side special-casing for `std.print`.
   - Load module source from configured module roots through the same front-end
     pipeline as normal source files.

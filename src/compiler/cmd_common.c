@@ -78,9 +78,10 @@ bool compile(NerdSource                source,
     }
 
     FrontEndOptions front_end_options = {
-        .verbose  = dump_compiler_state,
-        .release  = artifacts->release,
-        .keywords = artifacts->keywords,
+        .verbose             = dump_compiler_state,
+        .release             = artifacts->release,
+        .require_entry_point = true,
+        .keywords            = artifacts->keywords,
     };
 
     FrontEndState front_results = {0};

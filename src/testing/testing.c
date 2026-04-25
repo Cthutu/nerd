@@ -1215,8 +1215,9 @@ internal bool testing_run_language_test(const LanguageTest* test)
 
     FrontEndState   front_results = {0};
     FrontEndOptions options       = {
-              .verbose = false,
-              .release = artifacts.release,
+              .verbose             = false,
+              .release             = artifacts.release,
+              .require_entry_point = true,
     };
     if (!front_end(
             (NerdSource){
@@ -1373,8 +1374,9 @@ internal bool testing_run_error_test(const ErrorTest* test)
     error_system_set_emit_output(false);
 
     FrontEndOptions options = {
-        .verbose = false,
-        .release = false,
+        .verbose             = false,
+        .release             = false,
+        .require_entry_point = true,
     };
     bool front_ok = front_end(
         (NerdSource){

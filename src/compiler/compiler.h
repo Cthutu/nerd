@@ -19,6 +19,7 @@ typedef struct {
 typedef struct {
     bool verbose;
     bool release;
+    bool require_entry_point;
     Array(string) keywords;
 } FrontEndOptions;
 

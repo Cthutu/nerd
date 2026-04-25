@@ -9179,6 +9179,9 @@ bool sema_analyse(const Lexer*           lexer,
     Sema            sema = {0};
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
+    if (options == NULL) {
+        effective_options.require_entry_point = true;
+    }
 
     // Seed commonly-used built-in types so later materialisation can always
     // canonicalise untyped numeric literals to runtime storage types.
@@ -9259,7 +9262,8 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
-    if (!sema_validate_entry_point(lexer, ast, &sema)) {
+    if (effective_options.require_entry_point &&
+        !sema_validate_entry_point(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

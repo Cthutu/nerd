@@ -74,8 +74,9 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
     FrontEndOptions options = {
-        .verbose = false,
-        .release = false,
+        .verbose             = false,
+        .release             = false,
+        .require_entry_point = true,
     };
     bool ok = front_end(
         (NerdSource){
