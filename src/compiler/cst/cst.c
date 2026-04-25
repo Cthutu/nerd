@@ -573,6 +573,7 @@ internal bool cst_parse_variable_payload(CstParseState* state,
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
+internal bool cst_parse_use(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
@@ -2705,6 +2706,10 @@ internal bool cst_parse_block_statement(CstParseState* state)
 {
     u32 token_index = state->token_index;
 
+    if (cst_current_token(state).kind == TK_use) {
+        return cst_parse_use(state, NULL);
+    }
+
     if (cst_current_token(state).kind == TK_break ||
         cst_current_token(state).kind == TK_continue) {
         CstKind kind =
@@ -3211,6 +3216,29 @@ internal bool cst_parse_destructure(CstParseState* state, u32* out_node)
                          out_node);
 }
 
+internal bool cst_parse_use(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    u32 module_node = 0;
+    if (cst_current_token(state).kind == TK_mod) {
+        if (!cst_parse_mod_ref(state, &module_node)) {
+            return false;
+        }
+    } else if (!cst_parse_expr_bp(state, 0, &module_node)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_Use,
+                             .token_index = token_index,
+                             .a           = module_node,
+                         },
+                         out_node);
+}
+
 //------------------------------------------------------------------------------
 // Build parallel token-value tables so the parser can use direct token-index
 // access without re-running lexer-side counters during recursive parsing.
@@ -3273,6 +3301,20 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
     cst_build_token_value_tables(&state);
 
     while (state.token_index < array_count(lexer->tokens)) {
+        if (cst_current_token(&state).kind == TK_use) {
+            u32 use_index = 0;
+            if (!cst_parse_use(&state, &use_index)) {
+                cst_done(&state.cst);
+                array_free(state.token_integer_indices);
+                array_free(state.token_float_indices);
+                array_free(state.token_string_indices);
+                array_free(state.token_symbol_handles);
+                return false;
+            }
+            array_push(state.cst.bindings, use_index);
+            continue;
+        }
+
         if (!cst_starts_binding(&state)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
@@ -3391,7 +3433,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_Continue || node->kind == CK_Variable ||
            node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
-           node->kind == CK_DestructureAssign || node->kind == CK_Assign;
+           node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
+           node->kind == CK_Use;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -3409,8 +3452,12 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
         node->kind == CK_DestructureBind ||
         node->kind == CK_DestructureVariable ||
-        node->kind == CK_DestructureAssign || node->kind == CK_Statement) {
+        node->kind == CK_DestructureAssign || node->kind == CK_Statement ||
+        node->kind == CK_Use) {
         u32 child_index = node->kind == CK_Statement ? node->a : node->b;
+        if (node->kind == CK_Use) {
+            child_index = node->a;
+        }
         if (child_index >= array_count(cst->nodes)) {
             return node_index + 1;
         }

@@ -134,6 +134,8 @@ string ast_kind_to_string(AstKind kind)
         return s("FfiDef");
     case AK_ModRef:
         return s("ModRef");
+    case AK_Use:
+        return s("Use");
     case AK_FnDef:
         return s("FnDef");
     case AK_FnStart:

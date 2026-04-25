@@ -142,6 +142,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `ffi`");
     case TK_mod:
         return string_from_cstr("Keyword `mod`");
+    case TK_use:
+        return string_from_cstr("Keyword `use`");
     case TK_with:
         return string_from_cstr("Keyword `with`");
     case TK_as:

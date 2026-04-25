@@ -921,6 +921,7 @@ internal bool ast_parse_block_statement(AstParseState* state);
 internal bool ast_parse_destructure(AstParseState* state, u32* out_node);
 internal bool ast_parse_destructure_pattern(AstParseState* state,
                                             u32*           out_pattern);
+internal bool ast_parse_use(AstParseState* state, u32* out_node);
 
 internal bool ast_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
 {
@@ -1991,6 +1992,10 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
 
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    if (state->token.kind == TK_use) {
+        return ast_parse_use(state, NULL);
+    }
+
     if (state->token.kind == TK_break || state->token.kind == TK_continue) {
         AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
         u32     token_index = state->token.token_index;
@@ -2114,6 +2119,39 @@ internal bool ast_parse_block_statement(AstParseState* state)
                              .a           = statement_expr_index,
                          },
                          NULL);
+}
+
+internal bool ast_parse_use(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_use, "Expected 'use' token");
+    AstToken use_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0205_expected_declaration_or_expression(
+            state->lexer->source,
+            ast_token_span(state, &use_token),
+            TK_EOF,
+            "Expected a module expression after 'use', but found end of file");
+    }
+
+    u32  module_node                = 0;
+    bool previous_boundary          = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool ok                         = state->token.kind == TK_mod
+                                          ? ast_parse_declaration(state, &module_node)
+                                          : ast_parse_expr(state, &module_node);
+    state->allow_statement_boundary = previous_boundary;
+    if (!ok) {
+        return false;
+    }
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Use,
+                             .token_index = use_token.token_index,
+                             .a           = module_node,
+                         },
+                         out_node);
 }
 
 //------------------------------------------------------------------------------
@@ -2761,6 +2799,12 @@ Ast ast_parse(Lexer* lexer)
         // <program> :: <binding>*
 
         switch (token.kind) {
+        case TK_use:
+            if (!ast_parse_use(&state, NULL)) {
+                goto error;
+            }
+            break;
+
         case TK_Symbol:
             if (ast_peek_kind_at(&state, 0) != TK_Colon) {
                 goto invalid_binding_start;

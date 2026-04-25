@@ -87,6 +87,7 @@
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
 // | AK_FfiDef          | Ast ffi-info index | 0                              |
 // | AK_ModRef          | Ast module path index | 0                            |
+// | AK_Use             | Ast index of module expression | 0                  |
 //
 // clang-format on
 
@@ -163,6 +164,7 @@ typedef enum {
     AK_FnEnd,
     AK_FfiDef,
     AK_ModRef,
+    AK_Use,
 } AstKind;
 
 typedef enum : u32 {

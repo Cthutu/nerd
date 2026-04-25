@@ -923,6 +923,10 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_ModRef:
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
+    case CK_Use:
+        sb_append_cstr(sb, "use ");
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
                   "%u",
@@ -1238,6 +1242,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return node->token_index;
     case CK_IntegerNegate:
     case CK_Statement:
+    case CK_Use:
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_Return:
     case CK_ReturnExpr:
@@ -2224,6 +2229,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_Use) {
+        sb_append_cstr(sb, "use ");
+        format_emit_expr_with_indent(sb, cst, lexer, stmt->a, 0, indent_level);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_Statement) {
         if (format_node_is_block_form_on(cst, stmt->a)) {
             format_emit_on_block_multiline(
@@ -2339,6 +2351,14 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (!first_binding) {
             sb_append_char(sb, '\n');
+        }
+
+        if (node->kind == CK_Use) {
+            sb_append_cstr(sb, "use ");
+            format_emit_expr(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            first_binding = false;
+            continue;
         }
 
         FormatAlignedStatement first_aligned = {0};

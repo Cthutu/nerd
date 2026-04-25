@@ -89,6 +89,7 @@ typedef enum {
     TK_enum,
     TK_ffi,
     TK_mod,
+    TK_use,
     TK_with,
     TK_as,
     TK_yes,

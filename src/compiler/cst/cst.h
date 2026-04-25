@@ -140,6 +140,7 @@ typedef enum {
     CK_FnBlock,
     CK_FfiDef,
     CK_ModRef,
+    CK_Use,
     CK_Statement,
     CK_Return,
     CK_ReturnExpr,

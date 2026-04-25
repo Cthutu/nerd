@@ -1082,6 +1082,10 @@ needed earlier.
 
 - [ ] 96. Add named module imports.
   - Support `<name> :: mod path.to.module`.
+  - Support `use <module>` and `use mod path.to.module` to bring module
+    exports into the current scope.
+  - `use` can appear at top level or inside functions; imports are scoped to
+    the containing scope.
   - Allow `mod` bindings wherever normal bindings are allowed, including inside
     functions; the module name follows the usual binding scope rules.
   - Initial parser/CST/formatter/sema/IR/LSP support exists for the bootstrap
