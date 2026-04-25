@@ -280,6 +280,14 @@ internal void format_emit_expr(StringBuilder* sb,
                                const Lexer*   lexer,
                                u32            node_index,
                                int            parent_precedence);
+internal void format_emit_expr_with_indent(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            node_index,
+                                           int            parent_precedence,
+                                           u32            indent_level);
+
+internal u32 g_format_expr_indent_level = 0;
 
 internal void format_emit_pattern(StringBuilder* sb,
                                   const Cst*     cst,
@@ -389,10 +397,12 @@ internal void format_emit_expr(StringBuilder* sb,
             if (part->kind == CK_InterpPartExpr) {
                 if (format_node_is_block_form_on(cst, part->a)) {
                     sb_append_cstr(sb, "{\n");
-                    format_emit_indent(sb, 1);
-                    format_emit_on_block_multiline(sb, cst, lexer, part->a, 1);
+                    u32 indent_level = g_format_expr_indent_level + 1;
+                    format_emit_indent(sb, indent_level);
+                    format_emit_on_block_multiline(
+                        sb, cst, lexer, part->a, indent_level);
                     sb_append_char(sb, '\n');
-                    format_emit_indent(sb, 1);
+                    format_emit_indent(sb, g_format_expr_indent_level);
                     sb_append_char(sb, '}');
                 } else {
                     sb_append_char(sb, '{');
@@ -845,6 +855,19 @@ internal void format_emit_expr(StringBuilder* sb,
     if (wrap) {
         sb_append_char(sb, ')');
     }
+}
+
+internal void format_emit_expr_with_indent(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            node_index,
+                                           int            parent_precedence,
+                                           u32            indent_level)
+{
+    u32 saved_indent           = g_format_expr_indent_level;
+    g_format_expr_indent_level = indent_level;
+    format_emit_expr(sb, cst, lexer, node_index, parent_precedence);
+    g_format_expr_indent_level = saved_indent;
 }
 
 internal string format_render_on_branch_head(Arena*             arena,
@@ -1935,7 +1958,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
         sb_append_cstr(sb, "return");
         if (stmt->a != U32_MAX) {
             sb_append_char(sb, ' ');
-            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->a, 0, indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -1949,7 +1973,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
         }
         if (stmt->a != U32_MAX) {
             sb_append_char(sb, ' ');
-            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->a, 0, indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -1963,7 +1988,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_variable_payload(sb, cst, lexer, stmt->b);
         } else {
             sb_append_cstr(sb, " := ");
-            format_emit_expr(sb, cst, lexer, stmt->b, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->b, 0, indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -1999,7 +2025,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_variable_payload(sb, cst, lexer, stmt->b);
         } else {
             sb_append_cstr(sb, " := ");
-            format_emit_expr(sb, cst, lexer, stmt->b, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->b, 0, indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -2008,7 +2035,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_DestructureAssign) {
         format_emit_pattern(sb, cst, lexer, stmt->a);
         sb_append_cstr(sb, " = ");
-        format_emit_expr(sb, cst, lexer, stmt->b, 0);
+        format_emit_expr_with_indent(sb, cst, lexer, stmt->b, 0, indent_level);
         sb_append_char(sb, '\n');
         return;
     }
@@ -2018,7 +2045,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
         sb_append_char(sb, ' ');
         sb_append_string(sb, format_assignment_operator(lexer, stmt));
         sb_append_char(sb, ' ');
-        format_emit_expr(sb, cst, lexer, stmt->b, 0);
+        format_emit_expr_with_indent(sb, cst, lexer, stmt->b, 0, indent_level);
         sb_append_char(sb, '\n');
         return;
     }
@@ -2029,7 +2056,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 sb, cst, lexer, stmt->a, indent_level);
         } else if (!format_emit_call_with_block_on_arg(
                        sb, cst, lexer, stmt->a, indent_level)) {
-            format_emit_expr(sb, cst, lexer, stmt->a, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->a, 0, indent_level);
         }
         sb_append_char(sb, '\n');
     }

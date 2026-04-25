@@ -12,10 +12,10 @@ main :: fn () {
     colour : Colour = RED
 
     prn($"Colour = {
-    on colour {
-        RED => "red"
-        GREEN => "green"
-        BLUE => "blue"
-    }
+        on colour {
+            RED => "red"
+            GREEN => "green"
+            BLUE => "blue"
+        }
     }")
 }
