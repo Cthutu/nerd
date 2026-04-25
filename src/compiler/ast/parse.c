@@ -2133,6 +2133,14 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node)
         if (!ast_parse_type(state, &type_index)) {
             return false;
         }
+        if (!ast_peek_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected ':' or '=' after destructuring type annotation, but "
+                "found end of file");
+        }
         if (state->token.kind != TK_Colon && state->token.kind != TK_Equal) {
             return error_0203_expected_token(
                 state->lexer->source,
@@ -2142,6 +2150,14 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node)
         }
         if (state->token.kind == TK_Colon) {
             node_kind = AK_DestructureBind;
+        }
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected destructuring initializer after type annotation, "
+                "but found end of file");
         }
         if (!ast_next_token(state)) {
             return error_0205_expected_declaration_or_expression(

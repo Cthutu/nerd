@@ -940,16 +940,14 @@ needed earlier.
   - Support binder patterns consistently.
   - Keep exhaustiveness and binder scoping explicit in semantic analysis.
 
-- [ ] 82. Add destructuring bindings.
+- [X] 82. Add destructuring bindings.
   - Support tuple destructuring in `::`, `:`, and `:=` forms.
   - Support plex destructuring with field names and shorthand field binders.
   - Support `_` in destructuring assignments.
   - Add formatter, LSP, and error coverage before extending `on`.
-  - Current implementation slice has shared AST/CST pattern tables, tuple
-    destructuring through `:=`, tuple destructuring assignment through `=`,
-    basic plex destructuring lowering, and formatter coverage. Remaining work:
-    stabilise typed/constant destructuring parser paths, add error/LSP
-    coverage, and broaden language tests.
+  - Completed coverage includes tuple `::`, `:=`, typed `: Type =`,
+    assignment `=`, `_` ignores in assignment, plex shorthand destructuring,
+    formatter, error diagnostics, and LSP hover/definition coverage.
 
 - [ ] 83. Add pattern guards.
   - Support `pattern on condition => expr`.
