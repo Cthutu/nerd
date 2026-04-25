@@ -64,8 +64,9 @@ From the current codebase and test suite:
   language tests, error tests, LSP support, formatter support, and `just test`
   coverage.
 - Prefer dense language regression tests that exercise several related runtime
-  cases in one file. Use `pr` and `prn` built-ins to make those cases visible in
-  the expected program output, rather than adding one tiny test per happy path.
+  cases in one file. Import `pr` and `prn` from `std.print` to make those
+  cases visible in the expected program output, rather than adding one tiny
+  test per happy path.
 - Deliver new language features horizontally across the toolchain.
   - A feature is not complete until the compiler, formatter, LSP, and testing
     surfaces all support it to the agreed milestone depth.
@@ -1085,7 +1086,7 @@ needed earlier.
 
 ## Milestone 27: Named Modules
 
-- [ ] 96. Add named module imports.
+- [X] 96. Add named module imports.
   - Support `<name> :: mod path.to.module`.
   - Support `use <module>` and `use mod path.to.module` to bring module
     exports into the current scope.
@@ -1093,8 +1094,9 @@ needed earlier.
     the containing scope.
   - Allow `mod` bindings wherever normal bindings are allowed, including inside
     functions; the module name follows the usual binding scope rules.
-  - Initial parser/CST/formatter/sema/IR/LSP support exists for the bootstrap
-    `std.print` module path, including local function-scope imports.
+  - Parser, CST, formatter, sema, IR, CLI tests, and LSP support exist for
+    named module bindings and both `use` forms, including local function-scope
+    imports.
   - Map dotted module paths to files such as `std/print.n` and module folders
     such as `std/print/mod.n` inside the configured module roots.
   - Treat the right-hand side as a module value whose exported declarations are
@@ -1106,25 +1108,21 @@ needed earlier.
 
 ## Milestone 28: `std.print`
 
-- [ ] 97. Move printing into `std.print`.
+- [X] 97. Move printing into `std.print`.
   - Define the first standard module as `std.print`.
   - Provide `pr` and `prn` wrappers in Nerd source.
   - Implement those wrappers via FFI to C `printf`.
   - Define the C-string/varargs boundary explicitly: Nerd `string` is a
     counted value, so wrappers must lower to a safe `printf` form such as
     `%.*s` rather than passing Nerd strings as C strings.
-  - A placeholder `mods/std/print.n` exists to reserve the standard module
-    location while FFI/module loading are implemented.
-  - Keep current compiler-known `pr` and `prn` only as a short bootstrap
-    compatibility layer while existing tests are migrated to:
-    `print :: mod std.print`.
-  - Bootstrap `print.pr` and `print.prn` currently resolve through the module
-    import syntax while still lowering to the existing compiler-known print
-    functions.
-  - Remove `pr` and `prn` as prologue/compiler built-in functions once
-    `std.print` is available and the tests have been migrated.
-  - Add dense tests covering imported `print.pr`, `print.prn`, interpolation,
-    newlines, formatting, LSP hover/definition, and invalid calls.
+  - `mods/std/print.n` is now the repo-owned standard module surface.
+  - `pr` and `prn` are no longer available as global built-ins; user code gets
+    them through `std.print`.
+  - Dense tests cover imported `pr`/`prn`, interpolation, newlines,
+    formatter/LSP integration, module-qualified calls, and invalid calls.
+  - The remaining follow-up is architectural rather than user-facing: replace
+    the current bootstrap resolution path for `std.print` with general module
+    loading so the compiler does not special-case that module internally.
 
 ## Later Milestones
 
