@@ -317,6 +317,32 @@ bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index)
     return ast_skip_type_tokens(state, &token_index);
 }
 
+internal bool ast_tokens_cross_line_break(const AstParseState* state,
+                                          u32                  previous_token,
+                                          u32                  next_token)
+{
+    if (previous_token >= array_count(state->lexer->tokens) ||
+        next_token >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+
+    const Token* previous = &state->lexer->tokens[previous_token];
+    const Token* next     = &state->lexer->tokens[next_token];
+    usize        start    = lex_token_end_offset(state->lexer, previous);
+    usize        end      = next->offset;
+    if (start > end || end > state->lexer->source.source.count) {
+        return false;
+    }
+
+    const u8* source = state->lexer->source.source.data;
+    for (usize i = start; i < end; ++i) {
+        if (source[i] == '\n' || source[i] == '\r') {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool
 ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
 {
@@ -326,9 +352,21 @@ ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
     }
 
     TokenKind next_kind = ast_kind_at_stream_index(state, token_index);
-    return next_kind == TK_EOF ||
-           (next_kind == TK_Symbol &&
-            ast_kind_at_stream_index(state, token_index + 1) == TK_Colon);
+    if (next_kind == TK_RBrace) {
+        return false;
+    }
+
+    if (next_kind == TK_EOF ||
+        (next_kind == TK_Symbol &&
+         ast_kind_at_stream_index(state, token_index + 1) == TK_Colon)) {
+        return true;
+    }
+
+    if (token_index == 0) {
+        return false;
+    }
+
+    return ast_tokens_cross_line_break(state, token_index - 1, token_index);
 }
 
 internal bool ast_symbol_starts_bind(const AstParseState* state)

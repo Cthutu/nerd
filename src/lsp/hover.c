@@ -322,7 +322,18 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
         lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
     if (ref_node_index != U32_MAX &&
         ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        return doc->front_end.sema.node_decl_indices[ref_node_index];
+        u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
+        if (decl_index != LSP_NO_DECL) {
+            return decl_index;
+        }
+
+        const AstNode* ref = &doc->front_end.ast.nodes[ref_node_index];
+        decl_index =
+            lsp_find_decl_index_by_symbol_handle(&doc->front_end.sema, ref->a);
+        if (decl_index != LSP_NO_DECL &&
+            doc->front_end.sema.decls[decl_index].kind == SK_TypeAlias) {
+            return decl_index;
+        }
     }
 
     u32 field_node_index =

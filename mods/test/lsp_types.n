@@ -1,0 +1,11 @@
+pub Point :: plex {
+    x i32
+    y i32
+}
+
+pub Colour :: enum { RED GREEN BLUE }
+
+pub Value :: union {
+    i i32
+    f f64
+}
