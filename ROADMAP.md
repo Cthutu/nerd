@@ -962,17 +962,23 @@ needed earlier.
 
 ## Milestone 20: Tuple And Plex Patterns In `on`
 
-- [ ] 84. Add tuple patterns.
+- [X] 84. Add tuple patterns.
   - Support tuple value patterns in `on`.
   - Support tuple binders and `_` ignores.
   - Keep tuple dot indexing out of patterns; use destructuring instead.
+  - Completed across AST/CST parsing, semantic binder scoping, IR lowering,
+    formatter, error tests, LSP binder hover/definition, and runtime coverage.
 
-- [ ] 85. Add plex patterns.
+- [X] 85. Add plex patterns.
   - Support plex field patterns in `on`.
   - Support shorthand field binders such as `{ x, y }`.
   - Support ignored fields and partial field matching if the semantics are made
     explicit.
   - Extend exhaustiveness checks where feasible.
+  - Completed for explicit field value patterns, shorthand binders, ignored
+    fields, partial field matching with explicit `else` where exhaustiveness
+    cannot be proven, formatter output, error tests, LSP coverage, and runtime
+    coverage.
 
 ## Milestone 21: Raw Unions For FFI
 

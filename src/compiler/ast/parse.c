@@ -787,17 +787,15 @@ internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
                    });
         ++field_count;
         if (state->token.kind == TK_Comma) {
+            if (state->token_index == state->token.token_index &&
+                !ast_next_token(state)) {
+                return false;
+            }
             if (!ast_next_token(state)) {
                 return false;
             }
-            if (ast_peek_kind_at(state, 0) == TK_RBrace) {
-                if (!ast_expect_token(state, TK_RBrace)) {
-                    return false;
-                }
+            if (state->token.kind == TK_RBrace) {
                 break;
-            }
-            if (!ast_next_token(state)) {
-                return false;
             }
             continue;
         }
@@ -805,11 +803,11 @@ internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
             if (!ast_expect_token(state, TK_Comma)) {
                 return false;
             }
-            if (state->token.kind == TK_RBrace) {
-                break;
-            }
             if (!ast_next_token(state)) {
                 return false;
+            }
+            if (state->token.kind == TK_RBrace) {
+                break;
             }
             continue;
         }
@@ -822,6 +820,11 @@ internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
         }
     } else if (state->token.kind != TK_RBrace &&
                !ast_expect_token(state, TK_RBrace)) {
+        return false;
+    }
+    if (state->token.kind == TK_RBrace &&
+        state->token_index != state->token.token_index &&
+        !ast_next_token(state)) {
         return false;
     }
     return ast_emit_pattern(state,
@@ -850,22 +853,40 @@ internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)
     if (state->token.kind != TK_RParen) {
         for (;;) {
             u32 item = U32_MAX;
-            if (!ast_parse_pattern(state, &item)) {
+            if (state->token.kind == TK_Symbol &&
+                !ast_symbol_is_underscore(state->lexer,
+                                          state->token.value.symbol_handle)) {
+                AstToken symbol = state->token;
+                if (!ast_emit_pattern(state,
+                                      (AstPattern){
+                                          .kind        = APK_Bind,
+                                          .token_index = symbol.token_index,
+                                          .a = symbol.value.symbol_handle,
+                                          .b = U32_MAX,
+                                      },
+                                      &item)) {
+                    return false;
+                }
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+            } else if (!ast_parse_pattern(state, &item)) {
                 return false;
             }
             array_push(state->pattern_items, item);
             ++item_count;
+            if (state->token.kind != TK_Comma &&
+                ast_peek_kind_at(state, 0) == TK_Comma) {
+                if (!ast_expect_token(state, TK_Comma)) {
+                    return false;
+                }
+            }
             if (state->token.kind != TK_Comma) {
                 break;
             }
-            if (!ast_next_token(state)) {
+            if (state->token_index == state->token.token_index &&
+                !ast_next_token(state)) {
                 return false;
-            }
-            if (ast_peek_kind_at(state, 0) == TK_RParen) {
-                if (!ast_expect_token(state, TK_RParen)) {
-                    return false;
-                }
-                break;
             }
             if (!ast_next_token(state)) {
                 return false;

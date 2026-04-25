@@ -464,25 +464,32 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                         TK_RBrace);
                 }
             } else {
-                branch.pattern_index = (u32)array_count(state->pattern_items);
-                branch.pattern_count = 0;
+                Array(u32) branch_patterns = NULL;
                 for (;;) {
                     u32 pattern_root = 0;
                     if (!ast_parse_pattern(state, &pattern_root)) {
+                        array_free(branch_patterns);
                         return false;
                     }
-                    array_push(state->pattern_items, pattern_root);
-                    ++branch.pattern_count;
+                    array_push(branch_patterns, pattern_root);
                     if (state->token.kind != TK_Comma) {
                         break;
                     }
                     if (!ast_next_token(state) || !ast_next_token(state)) {
+                        array_free(branch_patterns);
                         return error_0201_missing_value(
                             state->token.source,
                             ast_token_span(state, &state->token),
                             TK_FatArrow);
                     }
                 }
+                branch.pattern_index = (u32)array_count(state->pattern_items);
+                branch.pattern_count = (u32)array_count(branch_patterns);
+                for (u32 pattern = 0; pattern < branch.pattern_count;
+                     ++pattern) {
+                    array_push(state->pattern_items, branch_patterns[pattern]);
+                }
+                array_free(branch_patterns);
                 if (state->token.kind == TK_as) {
                     if (state->token.token_index == state->token_index &&
                         !ast_next_token(state)) {

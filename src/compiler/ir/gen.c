@@ -1137,6 +1137,294 @@ internal IrValue ir_build_runtime_string(const Lexer* lex,
     return result;
 }
 
+internal u32 ir_current_function_index(const Ir* ir)
+{
+    ASSERT(array_count(ir->functions) > 0, "Expected current function");
+    return (u32)array_count(ir->functions) - 1;
+}
+
+internal u32 ir_plex_field_type(const Sema* sema,
+                                u32         plex_type,
+                                u32         field_symbol)
+{
+    const SemaType* plex = &sema->types[plex_type];
+    for (u32 i = 0; i < plex->param_count; ++i) {
+        if (sema->type_param_symbols[plex->first_param_type + i] ==
+            field_symbol) {
+            return sema->type_param_types[plex->first_param_type + i];
+        }
+    }
+    ASSERT(false, "Expected resolved plex field");
+    return sema_no_type();
+}
+
+internal void ir_lower_on_pattern_match(const Lexer* lex,
+                                        const Ast*   ast,
+                                        const Sema*  sema,
+                                        u32          pattern_index,
+                                        IrValue      source,
+                                        u32          source_type,
+                                        i64          mismatch_label,
+                                        IrLoopLabels loop,
+                                        Array(IrValue) node_values,
+                                        u64* next_value_index,
+                                        Ir*  ir)
+{
+    const AstPattern* pattern   = &ast->patterns[pattern_index];
+    u32               bool_type = ir_builtin_type(sema, STK_Bool);
+    switch (pattern->kind) {
+    case APK_Value:
+        {
+            IrValue pattern_value = ir_lower_node(lex,
+                                                  ast,
+                                                  sema,
+                                                  pattern->a,
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  ir);
+            IrValue matches       = {
+                      .kind          = IR_VALUE_VARIABLE,
+                      .type          = bool_type,
+                      .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_equal(ir,
+                         matches,
+                         bool_type,
+                         source,
+                         source_type,
+                         pattern_value,
+                         ir_node_type_index(ast, sema, pattern->a));
+            ir_add_branch_false(ir, matches, bool_type, mismatch_label);
+            return;
+        }
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        {
+            IrValue start         = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          pattern->a,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            IrValue start_matches = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = bool_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_less_equal(ir,
+                              start_matches,
+                              bool_type,
+                              start,
+                              ir_node_type_index(ast, sema, pattern->a),
+                              source,
+                              source_type);
+            ir_add_branch_false(ir, start_matches, bool_type, mismatch_label);
+
+            IrValue end         = ir_lower_node(lex,
+                                        ast,
+                                        sema,
+                                        pattern->b,
+                                        loop,
+                                        node_values,
+                                        next_value_index,
+                                        ir);
+            IrValue end_matches = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = bool_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            if (pattern->kind == APK_RangeInclusive) {
+                ir_add_less_equal(ir,
+                                  end_matches,
+                                  bool_type,
+                                  source,
+                                  source_type,
+                                  end,
+                                  ir_node_type_index(ast, sema, pattern->b));
+            } else {
+                ir_add_less(ir,
+                            end_matches,
+                            bool_type,
+                            source,
+                            source_type,
+                            end,
+                            ir_node_type_index(ast, sema, pattern->b));
+            }
+            ir_add_branch_false(ir, end_matches, bool_type, mismatch_label);
+            return;
+        }
+    case APK_Bind:
+        if (pattern->b != U32_MAX) {
+            ir_lower_on_pattern_match(lex,
+                                      ast,
+                                      sema,
+                                      pattern->b,
+                                      source,
+                                      source_type,
+                                      mismatch_label,
+                                      loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+        }
+        return;
+    case APK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(ir, item, item_type, source, source_type, i);
+                ir_lower_on_pattern_match(lex,
+                                          ast,
+                                          sema,
+                                          ast->pattern_items[pattern->a + i],
+                                          item,
+                                          item_type,
+                                          mismatch_label,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            }
+            return;
+        }
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            const AstPlexPatternField* field =
+                &ast->pattern_fields[pattern->a + i];
+            u32 field_type =
+                ir_plex_field_type(sema, source_type, field->symbol_handle);
+            IrValue field_value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = field_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_field(ir,
+                         field_value,
+                         field_type,
+                         source,
+                         source_type,
+                         field->symbol_handle);
+            ir_lower_on_pattern_match(lex,
+                                      ast,
+                                      sema,
+                                      field->pattern_index,
+                                      field_value,
+                                      field_type,
+                                      mismatch_label,
+                                      loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+        }
+        return;
+    case APK_Ignore:
+        return;
+    }
+}
+
+internal void ir_lower_on_pattern_binders(const Ast*  ast,
+                                          const Sema* sema,
+                                          u32         function_index,
+                                          u32         pattern_index,
+                                          IrValue     source,
+                                          u32         source_type,
+                                          u64*        next_value_index,
+                                          Ir*         ir)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    if (pattern->kind == APK_Bind) {
+        u32 local_index = sema->pattern_local_indices[pattern_index];
+        ASSERT(local_index != sema_no_local(), "Expected on pattern binder");
+        const SemaLocal* local = &sema->locals[local_index];
+        ir_add_local(ir,
+                     function_index,
+                     local->lowered_symbol_handle,
+                     ir_value_type_for_local_index(sema, local_index),
+                     source,
+                     source_type);
+        if (pattern->b != U32_MAX) {
+            ir_lower_on_pattern_binders(ast,
+                                        sema,
+                                        function_index,
+                                        pattern->b,
+                                        source,
+                                        source_type,
+                                        next_value_index,
+                                        ir);
+        }
+        return;
+    }
+
+    switch (pattern->kind) {
+    case APK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(ir, item, item_type, source, source_type, i);
+                ir_lower_on_pattern_binders(ast,
+                                            sema,
+                                            function_index,
+                                            ast->pattern_items[pattern->a + i],
+                                            item,
+                                            item_type,
+                                            next_value_index,
+                                            ir);
+            }
+            return;
+        }
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            const AstPlexPatternField* field =
+                &ast->pattern_fields[pattern->a + i];
+            u32 field_type =
+                ir_plex_field_type(sema, source_type, field->symbol_handle);
+            IrValue field_value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = field_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_field(ir,
+                         field_value,
+                         field_type,
+                         source,
+                         source_type,
+                         field->symbol_handle);
+            ir_lower_on_pattern_binders(ast,
+                                        sema,
+                                        function_index,
+                                        field->pattern_index,
+                                        field_value,
+                                        field_type,
+                                        next_value_index,
+                                        ir);
+        }
+        return;
+    case APK_Bind:
+    case APK_Value:
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+    case APK_Ignore:
+        return;
+    }
+}
+
 internal IrValue ir_lower_call(const Lexer*   lex,
                                const Ast*     ast,
                                const Sema*    sema,
@@ -1434,6 +1722,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         .type =
                             ir_value_type_for_local_index(sema, local_index),
                         .value.integer = local->symbol_handle,
+                    };
+                } else if (local->kind == SLK_Binder &&
+                           local->value_node_index == sema_no_decl()) {
+                    value = (IrValue){
+                        .kind = IR_VALUE_LOCAL,
+                        .type =
+                            ir_value_type_for_local_index(sema, local_index),
+                        .value.integer = local->lowered_symbol_handle,
                     };
                 } else if (local->kind == SLK_Binder) {
                     value = ir_lower_node(lex,
@@ -1922,7 +2218,6 @@ internal IrValue ir_lower_node(const Lexer* lex,
                             next_label);
                     }
                 } else if (!(branch->flags & AOBF_Else)) {
-                    u32 bool_type   = ir_builtin_type(sema, STK_Bool);
                     i64 match_label = (i64)(*next_value_index)++;
                     for (u32 pattern_index = 0;
                          pattern_index < branch->pattern_count;
@@ -1934,98 +2229,27 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         if (pattern_index + 1 < branch->pattern_count) {
                             mismatch_label = (i64)(*next_value_index)++;
                         }
-                        const AstPattern* pattern =
-                            &ast->patterns[pattern_index_row];
-                        if (pattern->kind == APK_RangeExclusive ||
-                            pattern->kind == APK_RangeInclusive) {
-                            IrValue start         = ir_lower_node(lex,
-                                                          ast,
-                                                          sema,
-                                                          pattern->a,
-                                                          loop,
-                                                          node_values,
-                                                          next_value_index,
-                                                          ir);
-                            IrValue start_matches = {
-                                .kind          = IR_VALUE_VARIABLE,
-                                .type          = bool_type,
-                                .value.integer = (i64)(*next_value_index)++,
-                            };
-                            ir_add_less_equal(
-                                ir,
-                                start_matches,
-                                bool_type,
-                                start,
-                                ir_node_type_index(ast, sema, pattern->a),
-                                scrutinee,
-                                ir_node_type_index(ast, sema, node->a));
-                            ir_add_branch_false(
-                                ir, start_matches, bool_type, mismatch_label);
-
-                            IrValue end         = ir_lower_node(lex,
-                                                        ast,
-                                                        sema,
-                                                        pattern->b,
-                                                        loop,
-                                                        node_values,
-                                                        next_value_index,
-                                                        ir);
-                            IrValue end_matches = {
-                                .kind          = IR_VALUE_VARIABLE,
-                                .type          = bool_type,
-                                .value.integer = (i64)(*next_value_index)++,
-                            };
-                            if (pattern->kind == APK_RangeInclusive) {
-                                ir_add_less_equal(
-                                    ir,
-                                    end_matches,
-                                    bool_type,
-                                    scrutinee,
-                                    ir_node_type_index(ast, sema, node->a),
-                                    end,
-                                    ir_node_type_index(ast, sema, pattern->b));
-                            } else {
-                                ir_add_less(
-                                    ir,
-                                    end_matches,
-                                    bool_type,
-                                    scrutinee,
-                                    ir_node_type_index(ast, sema, node->a),
-                                    end,
-                                    ir_node_type_index(ast, sema, pattern->b));
-                            }
-                            ir_add_branch_false(
-                                ir, end_matches, bool_type, mismatch_label);
-                        } else if (pattern->kind == APK_Ignore) {
-                            // Wildcard patterns always match.
-                        } else {
-                            ASSERT(pattern->kind == APK_Value,
-                                   "Only value and range patterns lower here");
-                            IrValue pattern_value =
-                                ir_lower_node(lex,
-                                              ast,
-                                              sema,
-                                              pattern->a,
-                                              loop,
-                                              node_values,
-                                              next_value_index,
-                                              ir);
-                            IrValue matches = {
-                                .kind          = IR_VALUE_VARIABLE,
-                                .type          = bool_type,
-                                .value.integer = (i64)(*next_value_index)++,
-                            };
-                            ir_add_equal(
-                                ir,
-                                matches,
-                                bool_type,
-                                scrutinee,
-                                ir_node_type_index(ast, sema, node->a),
-                                pattern_value,
-                                ir_node_type_index(ast, sema, pattern->a));
-                            ir_add_branch_false(
-                                ir, matches, bool_type, mismatch_label);
-                        }
+                        ir_lower_on_pattern_match(
+                            lex,
+                            ast,
+                            sema,
+                            pattern_index_row,
+                            scrutinee,
+                            ir_node_type_index(ast, sema, node->a),
+                            mismatch_label,
+                            loop,
+                            node_values,
+                            next_value_index,
+                            ir);
+                        ir_lower_on_pattern_binders(
+                            ast,
+                            sema,
+                            ir_current_function_index(ir),
+                            pattern_index_row,
+                            scrutinee,
+                            ir_node_type_index(ast, sema, node->a),
+                            next_value_index,
+                            ir);
                         if (pattern_index + 1 < branch->pattern_count) {
                             ir_add_jump(ir, match_label);
                             ir_add_label(ir, mismatch_label);

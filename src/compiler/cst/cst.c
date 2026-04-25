@@ -1154,21 +1154,28 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     return false;
                 }
             } else {
-                branch.pattern_index =
-                    (u32)array_count(state->cst.pattern_items);
-                branch.pattern_count = 0;
+                Array(u32) branch_patterns = NULL;
                 for (;;) {
                     u32 pattern_root = 0;
                     if (!cst_parse_pattern(state, &pattern_root)) {
+                        array_free(branch_patterns);
                         return false;
                     }
-                    array_push(state->cst.pattern_items, pattern_root);
-                    ++branch.pattern_count;
+                    array_push(branch_patterns, pattern_root);
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;
                     }
                     cst_advance(state);
                 }
+                branch.pattern_index =
+                    (u32)array_count(state->cst.pattern_items);
+                branch.pattern_count = (u32)array_count(branch_patterns);
+                for (u32 pattern = 0; pattern < branch.pattern_count;
+                     ++pattern) {
+                    array_push(state->cst.pattern_items,
+                               branch_patterns[pattern]);
+                }
+                array_free(branch_patterns);
                 if (cst_current_token(state).kind == TK_as) {
                     cst_advance(state);
                     if (cst_current_token(state).kind != TK_Symbol) {
@@ -1410,7 +1417,23 @@ internal bool cst_parse_tuple_pattern(CstParseState* state, u32* out_pattern)
     if (cst_current_token(state).kind != TK_RParen) {
         for (;;) {
             u32 item = U32_MAX;
-            if (!cst_parse_pattern(state, &item)) {
+            if (cst_current_token(state).kind == TK_Symbol &&
+                !cst_symbol_is_underscore(state->lexer,
+                                          cst_current_symbol_handle(state))) {
+                u32 token_index = state->token_index;
+                u32 symbol      = cst_current_symbol_handle(state);
+                if (!cst_emit_pattern(state,
+                                      (CstPattern){
+                                          .kind        = CPK_Bind,
+                                          .token_index = token_index,
+                                          .a           = symbol,
+                                          .b           = U32_MAX,
+                                      },
+                                      &item)) {
+                    return false;
+                }
+                cst_advance(state);
+            } else if (!cst_parse_pattern(state, &item)) {
                 return false;
             }
             array_push(state->cst.pattern_items, item);
