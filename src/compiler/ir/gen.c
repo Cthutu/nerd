@@ -846,6 +846,71 @@ internal u32 ir_add_concat_string(Ir* ir, string lhs, string rhs)
     return ir_add_string_literal(ir, string_from(data, lhs.count + rhs.count));
 }
 
+internal bool ir_eval_string_constant(const Lexer* lex,
+                                      const Ast*   ast,
+                                      const Sema*  sema,
+                                      Ir*          ir,
+                                      u32          node_index,
+                                      string*      out)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_StringLiteral:
+        *out = ast_get_string(lex, node);
+        return true;
+    case AK_StringConcat:
+        {
+            string lhs = {0};
+            string rhs = {0};
+            if (!ir_eval_string_constant(lex, ast, sema, ir, node->a, &lhs) ||
+                !ir_eval_string_constant(lex, ast, sema, ir, node->b, &rhs)) {
+                return false;
+            }
+
+            u32 string_index = ir_add_concat_string(ir, lhs, rhs);
+            *out             = ir->strings[string_index];
+            return true;
+        }
+    case AK_Expression:
+    case AK_Statement:
+    case AK_InterpPartExpr:
+        return ir_eval_string_constant(lex, ast, sema, ir, node->a, out);
+    case AK_SymbolRef:
+        if (node_index < array_count(sema->node_local_indices)) {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index != sema_no_local() &&
+                sema->locals[local_index].kind == SLK_Constant) {
+                return ir_eval_string_constant(
+                    lex,
+                    ast,
+                    sema,
+                    ir,
+                    sema->locals[local_index].value_node_index,
+                    out);
+            }
+        }
+        if (node_index < array_count(sema->node_decl_indices)) {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant) {
+                return ir_eval_string_constant(
+                    lex,
+                    ast,
+                    sema,
+                    ir,
+                    sema->decls[decl_index].value_node_index,
+                    out);
+            }
+        }
+        return false;
+    case AK_AnnotatedValue:
+        return ir_eval_string_constant(lex, ast, sema, ir, node->b, out);
+    default:
+        return false;
+    }
+}
+
 internal u32 ir_builtin_string_type(const Sema* sema)
 {
     for (u32 i = 0; i < array_count(sema->types); ++i) {
@@ -3868,13 +3933,21 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         if (decl->kind == SK_FfiFunction) {
             const AstNode*    ffi_node = &ast->nodes[decl->value_node_index];
             const AstFfiInfo* ffi_info = &ast->ffi_infos[ffi_node->a];
-            array_push(
-                ir.externs,
-                (IrExtern){
-                    .symbol               = decl->symbol_handle,
-                    .type                 = decl->type_index,
-                    .library_string_index = ffi_info->library_string_index,
-                });
+            string            library  = {0};
+            if (!ir_eval_string_constant(lex,
+                                         ast,
+                                         sema,
+                                         &ir,
+                                         ffi_info->library_node_index,
+                                         &library)) {
+                error_ice("Could not evaluate FFI library string");
+            }
+            array_push(ir.externs,
+                       (IrExtern){
+                           .symbol  = decl->symbol_handle,
+                           .type    = decl->type_index,
+                           .library = library,
+                       });
         }
         if (ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;

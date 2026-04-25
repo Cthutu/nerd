@@ -1793,9 +1793,9 @@ internal void format_emit_ffi_def(StringBuilder* sb,
     const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
     const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
 
-    sb_append_cstr(sb, "ffi \"");
-    format_emit_string_text(sb, lexer->strings[ffi->library_string_index]);
-    sb_append_cstr(sb, "\" (");
+    sb_append_cstr(sb, "ffi ");
+    format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
+    sb_append_cstr(sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ", ");

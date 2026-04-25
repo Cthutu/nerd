@@ -88,18 +88,16 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     cstr          exe_path   = ctx->artifacts->binary_path;
     StringBuilder link_flags = {0};
     sb_init(&link_flags, &arena);
-    const Lexer* lexer = &ctx->front_end_results->lexer;
-    const Ir*    ir    = &ctx->front_end_results->ir;
+    const Ir* ir = &ctx->front_end_results->ir;
     for (u32 i = 0; i < array_count(ir->externs); ++i) {
-        string library = lexer->strings[ir->externs[i].library_string_index];
+        string library = ir->externs[i].library;
         if (string_eq(library, s("c"))) {
             continue;
         }
 
         bool already_added = false;
         for (u32 j = 0; j < i; ++j) {
-            string previous =
-                lexer->strings[ir->externs[j].library_string_index];
+            string previous = ir->externs[j].library;
             if (string_eq(previous, library)) {
                 already_added = true;
                 break;

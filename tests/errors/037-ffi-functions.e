@@ -107,3 +107,59 @@ main :: fn() {}
         "Check for a missing closing delimiter or misplaced operator"
     ]
 }
+¬
+lib :: 1
+bad :: ffi lib () -> i32
+
+main :: fn() {}
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `string`, found `untyped integer`",
+    "source_file": "tests/errors/037-ffi-functions.e",
+    "primary_location": {
+        "line": 2,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 12,
+            "length": 3,
+            "message": "This expression has type `untyped integer`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+lib : string
+bad :: ffi lib () -> i32
+
+main :: fn() {}
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `compile-time string`, found `string`",
+    "source_file": "tests/errors/037-ffi-functions.e",
+    "primary_location": {
+        "line": 2,
+        "column": 1
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 1,
+            "length": 3,
+            "message": "This expression has type `string`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

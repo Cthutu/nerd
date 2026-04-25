@@ -2210,21 +2210,32 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
 
     if (state->token.kind == TK_ffi) {
         AstToken ffi_token = state->token;
-        if (!ast_next_token(state) || state->token.kind != TK_String) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_String,
-                state->token.kind);
-        }
-        u32 library_string_index = state->token.value.string_index;
 
-        if (!ast_next_token(state) || state->token.kind != TK_LParen) {
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(state->lexer->source,
+                                            ast_token_span(state, &ffi_token),
+                                            TK_ffi);
+        }
+
+        bool old_stop_before_call = state->stop_before_call;
+        state->stop_before_call   = true;
+        u32  library_node_index   = 0;
+        bool parsed_library       = ast_parse_expr(state, &library_node_index);
+        state->stop_before_call   = old_stop_before_call;
+        if (!parsed_library) {
+            return false;
+        }
+
+        if (state->token.kind != TK_LParen) {
             return error_0203_expected_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_LParen,
                 state->token.kind);
+        }
+        if (state->token_index == state->token.token_index &&
+            !ast_next_token(state)) {
+            return false;
         }
 
         u32 signature_index = 0;
@@ -2234,8 +2245,8 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node)
 
         u32 ffi_index = (u32)array_count(state->ffi_infos);
         array_push(state->ffi_infos,
-                   (AstFfiInfo){.library_string_index = library_string_index,
-                                .signature_index      = signature_index});
+                   (AstFfiInfo){.library_node_index = library_node_index,
+                                .signature_index    = signature_index});
 
         return ast_emit_node(state,
                              (AstNode){.kind        = AK_FfiDef,

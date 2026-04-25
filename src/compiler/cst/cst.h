@@ -178,7 +178,7 @@ typedef struct {
 } CstFnSignature;
 
 typedef struct {
-    u32 library_string_index;
+    u32 library_node_index;
     u32 signature_index;
 } CstFfiInfo;
 

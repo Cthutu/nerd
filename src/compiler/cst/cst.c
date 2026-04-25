@@ -28,6 +28,7 @@ typedef struct {
     Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
     bool stop_before_on_branch_head;
+    bool stop_before_call;
     Cst  cst;
 } CstParseState;
 
@@ -1989,6 +1990,10 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        if (state->stop_before_call && token.kind == TK_LParen) {
+            break;
+        }
+
         if (token.kind == TK_LBrace) {
             bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&
                                (cst_peek_kind_at(state, 1) == TK_RBrace ||
@@ -2980,14 +2985,14 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
-    if (cst_current_token(state).kind != TK_String) {
+    bool old_stop_before_call = state->stop_before_call;
+    state->stop_before_call   = true;
+    u32  library_node_index   = 0;
+    bool parsed_library     = cst_parse_expr_bp(state, 0, &library_node_index);
+    state->stop_before_call = old_stop_before_call;
+    if (!parsed_library) {
         return false;
     }
-    u32 library_string_index = cst_current_string_index(state);
-    if (library_string_index == CST_NO_VALUE) {
-        return false;
-    }
-    cst_advance(state);
 
     u32 signature_index = 0;
     if (!cst_parse_callable_signature(
@@ -2998,8 +3003,8 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
     u32 ffi_info_index = (u32)array_count(state->cst.ffi_infos);
     array_push(state->cst.ffi_infos,
                (CstFfiInfo){
-                   .library_string_index = library_string_index,
-                   .signature_index      = signature_index,
+                   .library_node_index = library_node_index,
+                   .signature_index    = signature_index,
                });
 
     return cst_emit_node(state,

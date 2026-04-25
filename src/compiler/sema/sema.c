@@ -3269,6 +3269,18 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       scope_index,
                                       node->a,
                                       sema);
+    case AK_FfiDef:
+        {
+            const AstFfiInfo* ffi_info = &ast->ffi_infos[node->a];
+            return sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          ffi_info->library_node_index,
+                                          sema);
+        }
     case AK_Return:
     case AK_ReturnExpr:
         return node->a == U32_MAX
@@ -3613,6 +3625,16 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_TypePointer:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         return;
+    case AK_FfiDef:
+        {
+            const AstFfiInfo* ffi_info = &ast->ffi_infos[node->a];
+            sema_collect_node_deps(ast,
+                                   sema,
+                                   owner_decl_index,
+                                   ffi_info->library_node_index,
+                                   out_sema);
+            return;
+        }
     case AK_SymbolRef:
         {
             if (sema->node_is_type_expr[node_index]) {
@@ -7844,6 +7866,34 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             const AstFfiInfo*     ffi_info = &ast->ffi_infos[node->a];
             const AstFnSignature* signature =
                 &ast->fn_signatures[ffi_info->signature_index];
+            u32 string_type  = sema_builtin_type(sema, STK_String);
+            u32 library_type = sema_no_type();
+            if (!sema_infer_node_type(lexer,
+                                      ast,
+                                      sema,
+                                      ffi_info->library_node_index,
+                                      string_type,
+                                      &library_type)) {
+                return false;
+            }
+            if (!sema_type_matches(sema, library_type, string_type)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[ffi_info->library_node_index]),
+                    sema_type_name(sema, &temp_arena, string_type),
+                    sema_type_name(sema, &temp_arena, library_type));
+            }
+            if (!sema_expr_is_constantish(
+                    ast, sema, ffi_info->library_node_index)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[ffi_info->library_node_index]),
+                    s("compile-time string"),
+                    sema_type_name(sema, &temp_arena, library_type));
+            }
+
             u32 return_type = sema_builtin_type(sema, STK_Void);
             if (signature->return_type_node_index != U32_MAX &&
                 !sema_resolve_type_node(lexer,

@@ -96,9 +96,9 @@ typedef struct {
 } IrGlobal;
 
 typedef struct {
-    u32 symbol;
-    u32 type;
-    u32 library_string_index;
+    u32    symbol;
+    u32    type;
+    string library;
 } IrExtern;
 
 typedef struct {

@@ -1,4 +1,5 @@
-sqrt :: ffi "m" (f64) -> f64
+libm :: "m"
+sqrt :: ffi libm (f64) -> f64
 
 main :: fn() {
     value := sqrt(9.0)
@@ -10,6 +11,7 @@ main :: fn() {
 sqrt = 3
 
 ¬
+global libm
 fn main
 string.reset
 $0 = call fn(f64)->f64:sqrt, f64:9.0
@@ -22,10 +24,13 @@ call fn(string)->void:prn, string:$2
 string.reset
 return i32:0
 end
+init
+libm = string:"m"
+end
 ¬
-void init() {}
 double sqrt(double);
 
+string $libm;
 int $main() {
     string_builder_reset();
     double $0 = sqrt(9.0);
@@ -37,4 +42,7 @@ int $main() {
     prn($2);
     string_builder_reset();
     return 0;
+}
+void init() {
+    $libm = (string){.data = (u8*)"m", .count = 1};
 }

@@ -47,6 +47,7 @@ typedef struct {
     u32    symbol_index;
     bool   allow_statement_boundary;
     bool   stop_before_on_branch_head;
+    bool   stop_before_call;
 
     // Current token (from last peek or next)
     AstToken token;
