@@ -59,16 +59,15 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
 
 internal bool lsp_front_end_document(NerdSource             source,
                                      const FrontEndOptions* options,
+                                     ProgramInfo*           out_program,
                                      FrontEndState*         out_front_end)
 {
-    ProgramInfo program = {0};
-    if (!front_end_program(source, options, NULL, &program)) {
+    if (!front_end_program(source, options, NULL, out_program)) {
         return false;
     }
 
-    *out_front_end = program.modules[program.root_module_index].front_end;
-    program.modules[program.root_module_index].front_end = (FrontEndState){0};
-    program_info_done(&program);
+    *out_front_end =
+        out_program->modules[out_program->root_module_index].front_end;
     return true;
 }
 
@@ -99,6 +98,7 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
             .source_path = uri,
         },
         &options,
+        &doc->program,
         &doc->front_end);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
@@ -137,7 +137,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
         arena_init(&doc->arena);
     } else {
         cst_done(&doc->cst);
-        front_end_results_done(&doc->front_end);
+        program_info_done(&doc->program);
         arena_reset(&doc->arena);
         doc->cst = (Cst){0};
     }
@@ -172,7 +172,7 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
     cst_done(&doc->cst);
     doc->cst = (Cst){0};
 
-    front_end_results_done(&doc->front_end);
+    program_info_done(&doc->program);
     arena_reset(&doc->arena);
 
     bool       ok          = lsp_analyse_document(doc, uri, text);
@@ -186,7 +186,7 @@ void lsp_document_done(LspDocument* doc)
     cst_done(&doc->cst);
     doc->cst = (Cst){0};
 
-    front_end_results_done(&doc->front_end);
+    program_info_done(&doc->program);
     arena_done(&doc->arena);
     *doc = (LspDocument){0};
 }
