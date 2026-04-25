@@ -86,6 +86,8 @@ typedef enum {
     TK_plex,
     TK_union,
     TK_enum,
+    TK_ffi,
+    TK_mod,
     TK_with,
     TK_as,
     TK_yes,

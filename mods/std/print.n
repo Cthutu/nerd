@@ -1,0 +1,15 @@
+-- Standard printing module.
+--
+-- This file records the target public surface while FFI and module loading are
+-- being implemented. Once MS25-MS27 are complete, these declarations should be
+-- replaced with Nerd wrappers around C printf and the compiler-known pr/prn
+-- built-ins should be removed.
+
+-- pr :: fn(text string) {
+--     ...
+-- }
+
+-- prn :: fn(text string) {
+--     pr(text)
+--     ...
+-- }

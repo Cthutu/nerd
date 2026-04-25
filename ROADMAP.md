@@ -1041,11 +1041,68 @@ needed earlier.
     comparison values must be compile-time constants; relational operators are
     numeric-only and do not contribute to exhaustiveness analysis.
 
-## Later Milestones
+## Milestone 25: FFI Function Declarations
 
-- [ ] Add FFI declarations and calls.
-  - Build on raw unions, `plex #c`, `plex #packed`, pointers, arrays, and slices.
-  - Keep ABI rules documented and covered by generated C tests.
+- [ ] 94. Add FFI function declarations and calls.
+  - Support declarations such as `printf :: ffi "c" (format ^i8, ...) -> i32`.
+  - Allow an omitted return type to mean `void`.
+  - Link `ffi "name"` against `libname.a` on Linux and `name.lib` on Windows.
+  - Reserve `#` annotations for calling conventions such as `#stdcall` once
+    the default C calling convention is working.
+  - Start with ABI-safe primitive, pointer, `plex #c`, `plex #packed`, and
+    `union` types; reject higher-level Nerd-only types unless explicitly
+    lowered by a wrapper.
+  - Keep ABI rules documented and covered by generated C, language, formatter,
+    LSP, and error tests.
+
+## Milestone 26: Standard Module Layout
+
+- [ ] 95. Add the standard module layout and installer support.
+  - Store repo-owned standard modules under `mods/`.
+  - Extend `just install` to copy `mods/` next to the installed `nerd`
+    executable.
+  - Initial repo/install layout exists; compiler module-root discovery still
+    needs to be wired into semantic analysis.
+  - Resolve standard modules from `NERD_LIB_PATH` entries first, then from the
+    `mods/` folder next to the running compiler executable.
+  - Do not support source-relative module lookup; project-local modules should
+    be supplied through `NERD_LIB_PATH`.
+
+## Milestone 27: Named Modules
+
+- [ ] 96. Add named module imports.
+  - Support `<name> :: mod path.to.module`.
+  - Allow `mod` bindings wherever normal bindings are allowed, including inside
+    functions; the module name follows the usual binding scope rules.
+  - Map dotted module paths to files such as `std/print.n` and module folders
+    such as `std/print/mod.n` inside the configured module roots.
+  - Treat the right-hand side as a module value whose exported declarations are
+    accessed through the chosen binding name.
+  - Detect missing modules, malformed module paths, duplicate import names, and
+    import cycles with useful diagnostics.
+  - Decide the first privacy model before implementation; exported-by-default
+    is acceptable for the initial standard library if kept explicit in docs.
+
+## Milestone 28: `std.print`
+
+- [ ] 97. Move printing into `std.print`.
+  - Define the first standard module as `std.print`.
+  - Provide `pr` and `prn` wrappers in Nerd source.
+  - Implement those wrappers via FFI to C `printf`.
+  - Define the C-string/varargs boundary explicitly: Nerd `string` is a
+    counted value, so wrappers must lower to a safe `printf` form such as
+    `%.*s` rather than passing Nerd strings as C strings.
+  - A placeholder `mods/std/print.n` exists to reserve the standard module
+    location while FFI/module loading are implemented.
+  - Keep current compiler-known `pr` and `prn` only as a short bootstrap
+    compatibility layer while existing tests are migrated to:
+    `print :: mod std.print`.
+  - Remove `pr` and `prn` as prologue/compiler built-in functions once
+    `std.print` is available and the tests have been migrated.
+  - Add dense tests covering imported `print.pr`, `print.prn`, interpolation,
+    newlines, formatting, LSP hover/definition, and invalid calls.
+
+## Later Milestones
 
 - [ ] Retire `TODO.md` once its ideas have been integrated into the numbered
   roadmap or deliberately deferred.

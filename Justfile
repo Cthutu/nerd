@@ -54,6 +54,7 @@ vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
 user_bin_dir := "~/.local/bin"
 user_bin_nerd := user_bin_dir + "/nerd"
+user_mods_dir := user_bin_dir + "/mods"
 nvim_src_dir := "syntax/nerd-nvim"
 nvim_config_dir := "~/.config/nvim"
 nvim_plugin_dir := nvim_config_dir + "/lua/plugins"
@@ -78,8 +79,9 @@ install-nvim:
 install:
     just format
     just build-release nerd
-    mkdir -p {{user_bin_dir}}
+    mkdir -p {{user_bin_dir}} {{user_mods_dir}}
     cp _bin/nerd {{user_bin_nerd}}
+    cp -R mods/. {{user_mods_dir}}/
     just install-nvim
     just uninstall
     just package
@@ -92,4 +94,3 @@ do:
     just test
     just test-release
     just install
-

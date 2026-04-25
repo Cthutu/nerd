@@ -136,6 +136,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `union`");
     case TK_enum:
         return string_from_cstr("Keyword `enum`");
+    case TK_ffi:
+        return string_from_cstr("Keyword `ffi`");
+    case TK_mod:
+        return string_from_cstr("Keyword `mod`");
     case TK_with:
         return string_from_cstr("Keyword `with`");
     case TK_as:
