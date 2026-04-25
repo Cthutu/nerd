@@ -198,6 +198,7 @@ typedef struct {
 typedef struct {
     u32 token_index;
     u32 symbol_handle;
+    u32 type_node_index;
 } CstEnumVariant;
 
 typedef struct {
@@ -232,6 +233,7 @@ typedef enum : u32 {
     CPK_RangeInclusive,
     CPK_Tuple,
     CPK_Plex,
+    CPK_EnumVariant,
 } CstPatternKind;
 
 typedef struct {
@@ -246,6 +248,13 @@ typedef struct {
     u32 symbol_handle;
     u32 pattern_index;
 } CstPlexPatternField;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 first_pattern;
+    u32 pattern_count;
+} CstEnumPattern;
 
 typedef struct {
     u32 pattern_index;
@@ -303,6 +312,7 @@ typedef struct {
     Array(CstPattern) patterns;
     Array(u32) pattern_items;
     Array(CstPlexPatternField) pattern_fields;
+    Array(CstEnumPattern) enum_patterns;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
     Array(u32) for_items;

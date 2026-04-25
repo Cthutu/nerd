@@ -350,7 +350,8 @@ void ir_add_tuple_field(Ir*     ir,
                });
 }
 
-void ir_add_enum(Ir* ir, IrValue lvalue, u32 lvalue_type, u32 variant_index)
+void ir_add_enum(
+    Ir* ir, IrValue lvalue, u32 lvalue_type, u32 variant_index, IrValue payload)
 {
     lvalue.type = lvalue_type;
     array_push(ir->instructions,
@@ -359,7 +360,26 @@ void ir_add_enum(Ir* ir, IrValue lvalue, u32 lvalue_type, u32 variant_index)
                    .lvalue = lvalue,
                    .rvalue = {{.kind          = IR_VALUE_INTEGER,
                                .value.integer = variant_index},
-                              {0}},
+                              payload},
+               });
+}
+
+void ir_add_enum_payload(Ir*     ir,
+                         IrValue lvalue,
+                         u32     lvalue_type,
+                         IrValue source,
+                         u32     source_type,
+                         u32     variant_index)
+{
+    lvalue.type = lvalue_type;
+    source.type = source_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ENUM_PAYLOAD,
+                   .lvalue = lvalue,
+                   .rvalue = {source,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = variant_index}},
                });
 }
 
@@ -1100,6 +1120,19 @@ internal bool ir_pattern_contains_interpolation(const Ast* ast,
             }
         }
         return false;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (ir_pattern_contains_interpolation(
+                        ast,
+                        ast->pattern_items[enum_pattern->first_pattern + i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
     case APK_Ignore:
         return false;
     }
@@ -1358,6 +1391,87 @@ internal void ir_lower_on_pattern_match(const Lexer* lex,
                                       ir);
         }
         return;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            u32 variant = ir_enum_variant_index(
+                sema, source_type, enum_pattern->symbol_handle);
+            IrValue pattern_value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = source_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_enum(
+                ir, pattern_value, source_type, variant, ir_unset_value());
+            IrValue matches = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = bool_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_equal(ir,
+                         matches,
+                         bool_type,
+                         source,
+                         source_type,
+                         pattern_value,
+                         source_type);
+            ir_add_branch_false(ir, matches, bool_type, mismatch_label);
+
+            u32 payload_type =
+                sema->type_param_types
+                    [sema->types[source_type].first_param_type + variant];
+            if (payload_type == sema_no_type()) {
+                return;
+            }
+            IrValue payload = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = payload_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_enum_payload(
+                ir, payload, payload_type, source, source_type, variant);
+            if (enum_pattern->pattern_count == 1) {
+                ir_lower_on_pattern_match(
+                    lex,
+                    ast,
+                    sema,
+                    ast->pattern_items[enum_pattern->first_pattern],
+                    payload,
+                    payload_type,
+                    mismatch_label,
+                    loop,
+                    node_values,
+                    next_value_index,
+                    ir);
+                return;
+            }
+            const SemaType* tuple = &sema->types[payload_type];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(
+                    ir, item, item_type, payload, payload_type, i);
+                ir_lower_on_pattern_match(
+                    lex,
+                    ast,
+                    sema,
+                    ast->pattern_items[enum_pattern->first_pattern + i],
+                    item,
+                    item_type,
+                    mismatch_label,
+                    loop,
+                    node_values,
+                    next_value_index,
+                    ir);
+            }
+            return;
+        }
     case APK_Ignore:
         return;
     }
@@ -1447,6 +1561,60 @@ internal void ir_lower_on_pattern_binders(const Ast*  ast,
                                         ir);
         }
         return;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            u32 variant = ir_enum_variant_index(
+                sema, source_type, enum_pattern->symbol_handle);
+            u32 payload_type =
+                sema->type_param_types
+                    [sema->types[source_type].first_param_type + variant];
+            if (payload_type == sema_no_type()) {
+                return;
+            }
+            IrValue payload = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = payload_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_enum_payload(
+                ir, payload, payload_type, source, source_type, variant);
+            if (enum_pattern->pattern_count == 1) {
+                ir_lower_on_pattern_binders(
+                    ast,
+                    sema,
+                    function_index,
+                    ast->pattern_items[enum_pattern->first_pattern],
+                    payload,
+                    payload_type,
+                    next_value_index,
+                    ir);
+                return;
+            }
+            const SemaType* tuple = &sema->types[payload_type];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(
+                    ir, item, item_type, payload, payload_type, i);
+                ir_lower_on_pattern_binders(
+                    ast,
+                    sema,
+                    function_index,
+                    ast->pattern_items[enum_pattern->first_pattern + i],
+                    item,
+                    item_type,
+                    next_value_index,
+                    ir);
+            }
+            return;
+        }
     case APK_Bind:
     case APK_Value:
     case APK_RangeExclusive:
@@ -1738,7 +1906,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     .type          = node_type,
                     .value.integer = (i64)(*next_value_index)++,
                 };
-                ir_add_enum(ir, value, node_type, variant);
+                ir_add_enum(ir, value, node_type, variant, ir_unset_value());
                 node_values[node_index] = value;
                 return value;
             }
@@ -2009,7 +2177,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 .type          = type_index,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_enum(ir, value, type_index, variant);
+            ir_add_enum(ir, value, type_index, variant, ir_unset_value());
             node_values[node_index] = value;
             return value;
         }
@@ -2094,7 +2262,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     .type          = type_index,
                     .value.integer = (i64)(*next_value_index)++,
                 };
-                ir_add_enum(ir, value, type_index, variant);
+                ir_add_enum(ir, value, type_index, variant, ir_unset_value());
                 node_values[node_index] = value;
                 return value;
             }
@@ -2240,6 +2408,63 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_Call:
         {
+            u32 type_index = ir_node_type_index(ast, sema, node_index);
+            if (type_index != sema_no_type() &&
+                sema->types[type_index].kind == STK_Enum) {
+                const AstNode* callee = &ast->nodes[node->a];
+                u32            variant_symbol =
+                    callee->kind == AK_Field ? callee->b : callee->a;
+                u32 variant =
+                    ir_enum_variant_index(sema, type_index, variant_symbol);
+                if (variant != U32_MAX) {
+                    const AstCallInfo* call    = &ast->calls[node->b];
+                    IrValue            payload = ir_unset_value();
+                    u32                payload_type =
+                        sema->type_param_types[sema->types[type_index]
+                                                   .first_param_type +
+                                               variant];
+                    if (call->arg_count == 1) {
+                        payload      = ir_lower_node(lex,
+                                                ast,
+                                                sema,
+                                                ast->call_args[call->first_arg],
+                                                loop,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+                        payload.type = payload_type;
+                    } else if (call->arg_count > 1) {
+                        Array(IrValue) items = NULL;
+                        for (u32 i = 0; i < call->arg_count; ++i) {
+                            array_push(items,
+                                       ir_lower_node(
+                                           lex,
+                                           ast,
+                                           sema,
+                                           ast->call_args[call->first_arg + i],
+                                           loop,
+                                           node_values,
+                                           next_value_index,
+                                           ir));
+                        }
+                        payload = (IrValue){
+                            .kind          = IR_VALUE_VARIABLE,
+                            .type          = payload_type,
+                            .value.integer = (i64)(*next_value_index)++,
+                        };
+                        ir_add_tuple(ir, payload, payload_type, items);
+                        array_free(items);
+                    }
+                    IrValue value = {
+                        .kind          = IR_VALUE_VARIABLE,
+                        .type          = type_index,
+                        .value.integer = (i64)(*next_value_index)++,
+                    };
+                    ir_add_enum(ir, value, type_index, variant, payload);
+                    node_values[node_index] = value;
+                    return value;
+                }
+            }
             IrValue value = ir_lower_call(
                 lex, ast, sema, node, loop, node_values, next_value_index, ir);
             node_values[node_index] = value;

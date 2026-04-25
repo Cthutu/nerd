@@ -1011,12 +1011,12 @@ needed earlier.
 
 ## Milestone 23: Enum Payloads
 
-- [ ] 90. Add tuple-like enum payloads.
+- [X] 90. Add tuple-like enum payloads.
   - Support variants such as `Point(f32, f32)`.
   - Lower payload storage through the enum's internal union representation.
   - Support payload access through pattern matching.
 
-- [ ] 91. Extend enum pattern matching.
+- [X] 91. Extend enum pattern matching.
   - Support enum variant binders in `on`.
   - Support `_` ignores inside enum payload patterns.
   - Extend formatter, LSP, error, and documentation coverage.

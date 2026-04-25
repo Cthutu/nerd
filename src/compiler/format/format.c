@@ -349,6 +349,26 @@ internal void format_emit_pattern(StringBuilder* sb,
         }
         sb_append_cstr(sb, " }");
         break;
+    case CPK_EnumVariant:
+        {
+            const CstEnumPattern* enum_pattern =
+                &cst->enum_patterns[pattern->a];
+            sb_append_string(sb,
+                             lex_symbol(lexer, enum_pattern->symbol_handle));
+            sb_append_char(sb, '(');
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                format_emit_pattern(
+                    sb,
+                    cst,
+                    lexer,
+                    cst->pattern_items[enum_pattern->first_pattern + i]);
+            }
+            sb_append_char(sb, ')');
+        }
+        break;
     }
 }
 
@@ -778,6 +798,28 @@ internal void format_emit_expr(StringBuilder* sb,
                     &cst->enum_variants[enum_type->first_variant + i];
                 sb_append_char(sb, ' ');
                 sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
+                if (variant->type_node_index != U32_MAX) {
+                    sb_append_char(sb, '(');
+                    const CstNode* variant_type =
+                        &cst->nodes[variant->type_node_index];
+                    if (variant_type->kind == CK_TypeTuple) {
+                        for (u32 item = 0; item < variant_type->b; ++item) {
+                            if (item > 0) {
+                                sb_append_cstr(sb, ", ");
+                            }
+                            format_emit_expr(
+                                sb,
+                                cst,
+                                lexer,
+                                cst->tuple_items[variant_type->a + item],
+                                0);
+                        }
+                    } else {
+                        format_emit_expr(
+                            sb, cst, lexer, variant->type_node_index, 0);
+                    }
+                    sb_append_char(sb, ')');
+                }
             }
             sb_append_cstr(sb, " }");
         }

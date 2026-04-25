@@ -68,6 +68,7 @@ typedef struct {
     Array(AstPattern) patterns;
     Array(u32) pattern_items;
     Array(AstPlexPatternField) pattern_fields;
+    Array(AstEnumPattern) enum_patterns;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(u32) for_items;

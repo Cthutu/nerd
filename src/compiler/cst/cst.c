@@ -294,6 +294,25 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
                 return false;
             }
             (*io_index)++;
+            if (cst_kind_at_stream_index(state, *io_index) == TK_LParen) {
+                (*io_index)++;
+                if (cst_kind_at_stream_index(state, *io_index) != TK_RParen) {
+                    for (;;) {
+                        if (!cst_skip_type_tokens(state, io_index)) {
+                            return false;
+                        }
+                        if (cst_kind_at_stream_index(state, *io_index) !=
+                            TK_Comma) {
+                            break;
+                        }
+                        (*io_index)++;
+                    }
+                }
+                if (cst_kind_at_stream_index(state, *io_index) != TK_RParen) {
+                    return false;
+                }
+                (*io_index)++;
+            }
         }
         (*io_index)++;
         return true;
@@ -812,13 +831,54 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
+            u32 variant_token     = state->token_index;
+            u32 variant_symbol    = cst_current_symbol_handle(state);
+            u32 variant_type_node = U32_MAX;
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_LParen) {
+                u32 lparen = state->token_index;
+                cst_advance(state);
+                u32 first_item = (u32)array_count(state->cst.tuple_items);
+                u32 item_count = 0;
+                if (cst_current_token(state).kind != TK_RParen) {
+                    for (;;) {
+                        u32 item = 0;
+                        if (!cst_parse_type(state, &item)) {
+                            return false;
+                        }
+                        array_push(state->cst.tuple_items, item);
+                        item_count++;
+                        if (cst_current_token(state).kind != TK_Comma) {
+                            break;
+                        }
+                        cst_advance(state);
+                    }
+                }
+                if (!cst_consume(state, TK_RParen)) {
+                    return false;
+                }
+                if (item_count == 1) {
+                    variant_type_node = state->cst.tuple_items[first_item];
+                } else {
+                    if (!cst_emit_node(state,
+                                       (CstNode){
+                                           .kind        = CK_TypeTuple,
+                                           .token_index = lparen,
+                                           .a           = first_item,
+                                           .b           = item_count,
+                                       },
+                                       &variant_type_node)) {
+                        return false;
+                    }
+                }
+            }
             array_push(state->cst.enum_variants,
                        (CstEnumVariant){
-                           .token_index   = state->token_index,
-                           .symbol_handle = cst_current_symbol_handle(state),
+                           .token_index     = variant_token,
+                           .symbol_handle   = variant_symbol,
+                           .type_node_index = variant_type_node,
                        });
             variant_count++;
-            cst_advance(state);
         }
         if (!cst_consume(state, TK_RBrace)) {
             return false;
@@ -1613,6 +1673,73 @@ internal bool cst_parse_plex_pattern(CstParseState* state, u32* out_pattern)
                             out_pattern);
 }
 
+internal bool cst_parse_enum_variant_pattern(CstParseState* state,
+                                             u32*           out_pattern)
+{
+    u32 token_index = state->token_index;
+    u32 symbol      = cst_current_symbol_handle(state);
+    cst_advance(state);
+    if (!cst_consume(state, TK_LParen)) {
+        return false;
+    }
+
+    u32 first_pattern = (u32)array_count(state->cst.pattern_items);
+    u32 pattern_count = 0;
+    if (cst_current_token(state).kind != TK_RParen) {
+        for (;;) {
+            u32 item = U32_MAX;
+            if (cst_current_token(state).kind == TK_Symbol &&
+                !cst_symbol_is_underscore(state->lexer,
+                                          cst_current_symbol_handle(state)) &&
+                cst_peek_kind_at(state, 1) != TK_LParen) {
+                u32 item_token  = state->token_index;
+                u32 item_symbol = cst_current_symbol_handle(state);
+                if (!cst_emit_pattern(state,
+                                      (CstPattern){
+                                          .kind        = CPK_Bind,
+                                          .token_index = item_token,
+                                          .a           = item_symbol,
+                                          .b           = U32_MAX,
+                                      },
+                                      &item)) {
+                    return false;
+                }
+                cst_advance(state);
+            } else if (!cst_parse_pattern(state, &item)) {
+                return false;
+            }
+            array_push(state->cst.pattern_items, item);
+            pattern_count++;
+            if (cst_current_token(state).kind != TK_Comma) {
+                break;
+            }
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_RParen) {
+                break;
+            }
+        }
+    }
+    if (!cst_consume(state, TK_RParen)) {
+        return false;
+    }
+
+    u32 enum_pattern_index = (u32)array_count(state->cst.enum_patterns);
+    array_push(state->cst.enum_patterns,
+               (CstEnumPattern){
+                   .token_index   = token_index,
+                   .symbol_handle = symbol,
+                   .first_pattern = first_pattern,
+                   .pattern_count = pattern_count,
+               });
+    return cst_emit_pattern(state,
+                            (CstPattern){
+                                .kind        = CPK_EnumVariant,
+                                .token_index = token_index,
+                                .a           = enum_pattern_index,
+                            },
+                            out_pattern);
+}
+
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 {
     if (cst_current_token(state).kind == TK_Symbol &&
@@ -1633,6 +1760,10 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
     }
     if (cst_current_token(state).kind == TK_LBrace) {
         return cst_parse_plex_pattern(state, out_pattern);
+    }
+    if (cst_current_token(state).kind == TK_Symbol &&
+        cst_peek_kind_at(state, 1) == TK_LParen) {
+        return cst_parse_enum_variant_pattern(state, out_pattern);
     }
 
     u32 start_node = 0;
@@ -2955,6 +3086,7 @@ void cst_done(Cst* cst)
     array_free(cst->patterns);
     array_free(cst->pattern_items);
     array_free(cst->pattern_fields);
+    array_free(cst->enum_patterns);
     array_free(cst->on_branches);
     array_free(cst->ons);
     array_free(cst->for_items);

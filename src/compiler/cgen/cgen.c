@@ -650,9 +650,35 @@ void cgen_add_enum(CGen* cgen, const IrInstruction* instr)
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
     cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-    arena_format(
-        &cgen->arena, "){.tag = %lld};", instr->rvalue[0].value.integer);
+    arena_format(&cgen->arena, "){.tag = %lld", instr->rvalue[0].value.integer);
+    if (instr->rvalue[1].kind != IR_VALUE_NONE) {
+        u32 variant = (u32)instr->rvalue[0].value.integer;
+        u32 symbol =
+            cgen->ir->type_param_symbols[cgen->ir->types[instr->lvalue.type]
+                                             .first_param_type +
+                                         variant];
+        cgen_add(cgen, ", .data.");
+        cgen_add_symbol_name(cgen, symbol);
+        cgen_add(cgen, " = ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+    }
+    cgen_add(cgen, "};");
     cgen_addn(cgen, "");
+}
+
+void cgen_add_enum_payload(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, ".data.");
+    u32 variant = (u32)instr->rvalue[1].value.integer;
+    u32 symbol =
+        cgen->ir->type_param_symbols
+            [cgen->ir->types[instr->rvalue[0].type].first_param_type + variant];
+    cgen_add_symbol_name(cgen, symbol);
+    cgen_addn(cgen, ";");
 }
 
 void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
@@ -1069,7 +1095,42 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             cgen_indent(cgen);
             cgen_start_line(cgen);
             arena_format(&cgen->arena, "%s tag;\n", cgen_enum_tag_type(type));
-            cgen_add_line(cgen, "union { uint8_t unit; } data;");
+            bool has_payload = false;
+            for (u32 variant = 0; variant < type->param_count; ++variant) {
+                if (cgen->ir->type_param_types[type->first_param_type +
+                                               variant] != sema_no_type()) {
+                    has_payload = true;
+                    break;
+                }
+            }
+            if (!has_payload) {
+                cgen_add_line(cgen, "union { uint8_t unit; } data;");
+                cgen_dedent(cgen);
+                cgen_start_line(cgen);
+                arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+                cgen_addn(cgen, "");
+                continue;
+            }
+            cgen_add_line(cgen, "union {");
+            cgen_indent(cgen);
+            for (u32 variant = 0; variant < type->param_count; ++variant) {
+                u32 payload_type =
+                    cgen->ir
+                        ->type_param_types[type->first_param_type + variant];
+                if (payload_type == sema_no_type()) {
+                    continue;
+                }
+                cgen_start_line(cgen);
+                cgen_add(cgen, cgen_c_type(cgen->ir, payload_type));
+                cgen_add(cgen, " ");
+                cgen_add_symbol_name(
+                    cgen,
+                    cgen->ir
+                        ->type_param_symbols[type->first_param_type + variant]);
+                cgen_addn(cgen, ";");
+            }
+            cgen_dedent(cgen);
+            cgen_add_line(cgen, "} data;");
             cgen_dedent(cgen);
             cgen_start_line(cgen);
             arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
@@ -1263,6 +1324,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_ENUM:
             cgen_add_enum(cgen, instr);
+            break;
+        case IR_OP_ENUM_PAYLOAD:
+            cgen_add_enum_payload(cgen, instr);
             break;
         case IR_OP_TUPLE:
             cgen_add_tuple(cgen, instr);

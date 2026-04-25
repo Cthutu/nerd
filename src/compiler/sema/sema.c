@@ -256,7 +256,10 @@ internal u32 sema_add_union_type(Sema*               sema,
     return type_index;
 }
 
-internal u32 sema_add_enum_type_raw(Sema* sema, const u32* variants, u32 count)
+internal u32 sema_add_enum_type_raw(Sema*      sema,
+                                    const u32* variants,
+                                    const u32* payload_types,
+                                    u32        count)
 {
     for (u32 i = 0; i < array_count(sema->types); ++i) {
         const SemaType* existing = &sema->types[i];
@@ -270,6 +273,11 @@ internal u32 sema_add_enum_type_raw(Sema* sema, const u32* variants, u32 count)
                 matches = false;
                 break;
             }
+            if (sema->type_param_types[existing->first_param_type + j] !=
+                payload_types[j]) {
+                matches = false;
+                break;
+            }
         }
         if (matches) {
             return i;
@@ -279,7 +287,7 @@ internal u32 sema_add_enum_type_raw(Sema* sema, const u32* variants, u32 count)
     u32 first_variant = (u32)array_count(sema->type_param_symbols);
     for (u32 i = 0; i < count; ++i) {
         array_push(sema->type_param_symbols, variants[i]);
-        array_push(sema->type_param_types, sema_no_type());
+        array_push(sema->type_param_types, payload_types[i]);
     }
     return sema_add_type(sema,
                          (SemaType){
@@ -292,13 +300,15 @@ internal u32 sema_add_enum_type_raw(Sema* sema, const u32* variants, u32 count)
 
 internal u32 sema_add_enum_type(Sema*                 sema,
                                 const AstEnumVariant* variants,
-                                u32                   count)
+                                Array(u32) payload_types,
+                                u32 count)
 {
     Array(u32) symbols = NULL;
     for (u32 i = 0; i < count; ++i) {
         array_push(symbols, variants[i].symbol_handle);
     }
-    u32 type_index = sema_add_enum_type_raw(sema, symbols, count);
+    u32 type_index =
+        sema_add_enum_type_raw(sema, symbols, payload_types, count);
     array_free(symbols);
     return type_index;
 }
@@ -480,14 +490,22 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
     if (sema->types[type_index].kind == STK_Enum) {
         const SemaType* enum_type = &sema->types[type_index];
         Array(u32) variants       = NULL;
+        Array(u32) payload_types  = NULL;
         for (u32 i = 0; i < enum_type->param_count; ++i) {
             array_push(
                 variants,
                 sema->type_param_symbols[enum_type->first_param_type + i]);
+            u32 payload_type =
+                sema->type_param_types[enum_type->first_param_type + i];
+            array_push(payload_types,
+                       payload_type == sema_no_type()
+                           ? sema_no_type()
+                           : sema_materialise_type(sema, payload_type));
         }
         u32 materialised = sema_add_enum_type_raw(
-            (Sema*)sema, variants, enum_type->param_count);
+            (Sema*)sema, variants, payload_types, enum_type->param_count);
         array_free(variants);
+        array_free(payload_types);
         return materialised;
     }
 
@@ -660,6 +678,14 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_format(&sb,
                           "#%u",
                           sema->type_param_symbols[type->first_param_type + i]);
+                u32 payload_type =
+                    sema->type_param_types[type->first_param_type + i];
+                if (payload_type != sema_no_type()) {
+                    sb_append_char(&sb, '(');
+                    sb_append_string(&sb,
+                                     sema_type_name(sema, arena, payload_type));
+                    sb_append_char(&sb, ')');
+                }
             }
             sb_append_cstr(&sb, " }");
             return sb_to_string(&sb);
@@ -1298,11 +1324,39 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
     case AK_TypeEnum:
         {
             const AstEnumTypeInfo* enum_type = &ast->enum_types[node->a];
-            *out_is_type                     = true;
-            *out_type_index                  = sema_add_enum_type(
+            Array(u32) payload_types         = NULL;
+            for (u32 i = 0; i < enum_type->variant_count; ++i) {
+                const AstEnumVariant* variant =
+                    &ast->enum_variants[enum_type->first_variant + i];
+                bool payload_is_type = true;
+                u32  payload_type    = sema_no_type();
+                if (variant->type_node_index != U32_MAX &&
+                    !sema_try_classify_type_node(lexer,
+                                                 ast,
+                                                 sema,
+                                                 owner_decl_index,
+                                                 variant->type_node_index,
+                                                 alias_states,
+                                                 &payload_is_type,
+                                                 &payload_type)) {
+                    array_free(payload_types);
+                    return false;
+                }
+                if (!payload_is_type) {
+                    array_free(payload_types);
+                    *out_is_type    = false;
+                    *out_type_index = sema_no_type();
+                    return true;
+                }
+                array_push(payload_types, payload_type);
+            }
+            *out_is_type    = true;
+            *out_type_index = sema_add_enum_type(
                 sema,
                 &ast->enum_variants[enum_type->first_variant],
+                payload_types,
                 enum_type->variant_count);
+            array_free(payload_types);
             return true;
         }
 
@@ -1838,6 +1892,15 @@ internal bool sema_pattern_contains_binder(const Ast* ast, u32 pattern_index)
             }
         }
     }
+    if (pattern->kind == APK_EnumVariant) {
+        const AstEnumPattern* enum_pattern = &ast->enum_patterns[pattern->a];
+        for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+            if (sema_pattern_contains_binder(
+                    ast, ast->pattern_items[enum_pattern->first_pattern + i])) {
+                return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -1921,6 +1984,24 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
             }
         }
         return true;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (!sema_collect_on_pattern_binders(
+                        lexer,
+                        ast,
+                        sema,
+                        owner_decl_index,
+                        current_function_symbol,
+                        scope_index,
+                        ast->pattern_items[enum_pattern->first_pattern + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     case APK_Value:
     case APK_RangeExclusive:
     case APK_RangeInclusive:
@@ -2487,6 +2568,25 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
             }
         }
         return true;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (!sema_resolve_pattern_refs(
+                        lexer,
+                        ast,
+                        owner_decl_index,
+                        current_function_symbol,
+                        capture_scope_index,
+                        scope_index,
+                        ast->pattern_items[enum_pattern->first_pattern + i],
+                        sema)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     case APK_Ignore:
         return true;
     }
@@ -3061,6 +3161,20 @@ internal void sema_collect_pattern_deps(const Ast*  ast,
                 owner_decl_index,
                 ast->pattern_fields[pattern->a + i].pattern_index,
                 out_sema);
+        }
+        return;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                sema_collect_pattern_deps(
+                    ast,
+                    sema,
+                    owner_decl_index,
+                    ast->pattern_items[enum_pattern->first_pattern + i],
+                    out_sema);
+            }
         }
         return;
     case APK_Ignore:
@@ -3775,6 +3889,19 @@ internal u32 sema_enum_variant_index(const Sema* sema,
     return U32_MAX;
 }
 
+internal u32 sema_enum_variant_payload_type(const Sema* sema,
+                                            u32         enum_type,
+                                            u32         variant_index)
+{
+    if (enum_type == sema_no_type() ||
+        sema->types[enum_type].kind != STK_Enum ||
+        variant_index >= sema->types[enum_type].param_count) {
+        return sema_no_type();
+    }
+    return sema->type_param_types[sema->types[enum_type].first_param_type +
+                                  variant_index];
+}
+
 internal bool sema_node_is_contextual_enum_variant(const Ast*  ast,
                                                    const Sema* sema,
                                                    u32         node_index)
@@ -3977,23 +4104,27 @@ internal bool sema_on_covers_all_enum_variants(const Ast* ast,
             const AstPattern* pattern =
                 &ast->patterns[ast->pattern_items[branch->pattern_index +
                                                   pattern_index]];
-            if (pattern->kind != APK_Value) {
-                continue;
-            }
-            const AstNode* pattern_node = &ast->nodes[pattern->a];
-            if (pattern_node->kind != AK_EnumVariant &&
-                pattern_node->kind != AK_SymbolRef &&
-                pattern_node->kind != AK_Field) {
-                continue;
-            }
             u32 variant = U32_MAX;
-            if (pattern_node->kind == AK_Field &&
-                sema->node_type_indices[pattern->a] == enum_type) {
-                variant =
-                    sema_enum_variant_index(sema, enum_type, pattern_node->b);
-            } else {
-                variant =
-                    sema_enum_variant_index(sema, enum_type, pattern_node->a);
+            if (pattern->kind == APK_EnumVariant) {
+                const AstEnumPattern* enum_pattern =
+                    &ast->enum_patterns[pattern->a];
+                variant = sema_enum_variant_index(
+                    sema, enum_type, enum_pattern->symbol_handle);
+            } else if (pattern->kind == APK_Value) {
+                const AstNode* pattern_node = &ast->nodes[pattern->a];
+                if (pattern_node->kind != AK_EnumVariant &&
+                    pattern_node->kind != AK_SymbolRef &&
+                    pattern_node->kind != AK_Field) {
+                    continue;
+                }
+                if (pattern_node->kind == AK_Field &&
+                    sema->node_type_indices[pattern->a] == enum_type) {
+                    variant = sema_enum_variant_index(
+                        sema, enum_type, pattern_node->b);
+                } else {
+                    variant = sema_enum_variant_index(
+                        sema, enum_type, pattern_node->a);
+                }
             }
             if (variant != U32_MAX) {
                 covered[variant] = true;
@@ -4196,6 +4327,60 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                                                 field->pattern_index,
                                                 field_type,
                                                 false)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    case APK_EnumVariant:
+        {
+            if (value_type == sema_no_type() ||
+                sema->types[value_type].kind != STK_Enum) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("enum"),
+                    sema_type_name(sema, &temp_arena, value_type));
+            }
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            u32 variant = sema_enum_variant_index(
+                sema, value_type, enum_pattern->symbol_handle);
+            if (variant == U32_MAX) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("known enum variant"),
+                    lex_symbol(lexer, enum_pattern->symbol_handle));
+            }
+            u32 payload_type =
+                sema_enum_variant_payload_type(sema, value_type, variant);
+            u32 expected_count =
+                payload_type == sema_no_type()
+                    ? 0
+                    : (sema->types[payload_type].kind == STK_Tuple
+                           ? sema->types[payload_type].param_count
+                           : 1);
+            if (expected_count != enum_pattern->pattern_count) {
+                return error_0313_argument_count_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    expected_count,
+                    enum_pattern->pattern_count);
+            }
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 expected_item =
+                    sema->types[payload_type].kind == STK_Tuple
+                        ? sema->type_param_types
+                              [sema->types[payload_type].first_param_type + i]
+                        : payload_type;
+                if (!sema_check_on_pattern_type(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern + i],
+                        expected_item,
+                        false)) {
                     return false;
                 }
             }
@@ -5137,6 +5322,19 @@ internal bool sema_pattern_contains_interpolation(const Ast* ast,
             }
         }
         return false;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (sema_pattern_contains_interpolation(
+                        ast,
+                        ast->pattern_items[enum_pattern->first_pattern + i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
     case APK_Ignore:
         return false;
     }
@@ -5180,6 +5378,19 @@ internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
             }
         }
         return sema_no_decl();
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 found = sema_find_interpolated_string_pattern(
+                    ast, ast->pattern_items[enum_pattern->first_pattern + i]);
+                if (found != sema_no_decl()) {
+                    return found;
+                }
+            }
+            return sema_no_decl();
+        }
     case APK_Ignore:
         return sema_no_decl();
     }
@@ -5418,6 +5629,21 @@ internal bool sema_validate_interpolated_string_pattern(const Lexer* lexer,
             }
         }
         return true;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (!sema_validate_interpolated_string_pattern(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
     case APK_Ignore:
         return true;
     }
@@ -6888,6 +7114,102 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Call:
         {
+            const AstCallInfo* call         = &ast->calls[node->b];
+            u32                enum_context = sema_no_type();
+            if (expected_type != sema_no_type() &&
+                sema->types[expected_type].kind == STK_Enum) {
+                enum_context = expected_type;
+            }
+            const AstNode* possible_callee = &ast->nodes[node->a];
+            if (enum_context == sema_no_type() &&
+                possible_callee->kind == AK_Field) {
+                u32 qualified_type = sema_no_type();
+                if (sema_try_resolve_type_symbol(lexer,
+                                                 ast,
+                                                 sema,
+                                                 possible_callee->a,
+                                                 &qualified_type) &&
+                    sema->types[qualified_type].kind == STK_Enum) {
+                    enum_context = qualified_type;
+                }
+            }
+            if (enum_context != sema_no_type()) {
+                const AstNode* callee         = &ast->nodes[node->a];
+                u32            variant_symbol = U32_MAX;
+                if (callee->kind == AK_SymbolRef) {
+                    variant_symbol = callee->a;
+                } else if (callee->kind == AK_Field) {
+                    u32 qualified_type = sema_no_type();
+                    if (!sema_try_resolve_type_symbol(
+                            lexer, ast, sema, callee->a, &qualified_type)) {
+                        qualified_type = sema_no_type();
+                    }
+                    if (qualified_type != enum_context) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, callee),
+                            sema_type_name(sema, &temp_arena, enum_context),
+                            sema_type_name(sema, &temp_arena, qualified_type));
+                    }
+                    variant_symbol = callee->b;
+                }
+                if (variant_symbol != U32_MAX) {
+                    u32 variant = sema_enum_variant_index(
+                        sema, enum_context, variant_symbol);
+                    if (variant == U32_MAX) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, callee),
+                            s("known enum variant"),
+                            lex_symbol(lexer, variant_symbol));
+                    }
+                    u32 payload_type = sema_enum_variant_payload_type(
+                        sema, enum_context, variant);
+                    u32 expected_count =
+                        payload_type == sema_no_type()
+                            ? 0
+                            : (sema->types[payload_type].kind == STK_Tuple
+                                   ? sema->types[payload_type].param_count
+                                   : 1);
+                    if (expected_count != call->arg_count) {
+                        return error_0313_argument_count_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            expected_count,
+                            call->arg_count);
+                    }
+                    for (u32 i = 0; i < call->arg_count; ++i) {
+                        u32 arg_node = ast->call_args[call->first_arg + i];
+                        u32 expected_arg =
+                            sema->types[payload_type].kind == STK_Tuple
+                                ? sema->type_param_types
+                                      [sema->types[payload_type]
+                                           .first_param_type +
+                                       i]
+                                : payload_type;
+                        u32 arg_type = sema_no_type();
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  arg_node,
+                                                  expected_arg,
+                                                  &arg_type)) {
+                            return false;
+                        }
+                        if (!sema_type_matches(sema, expected_arg, arg_type)) {
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(lexer, &ast->nodes[arg_node]),
+                                sema_type_name(sema, &temp_arena, expected_arg),
+                                sema_type_name(sema, &temp_arena, arg_type));
+                        }
+                    }
+                    sema->node_type_indices[node->a] = enum_context;
+                    type_index                       = enum_context;
+                    break;
+                }
+            }
+
             u32 callee_type = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->a, sema_no_type(), &callee_type)) {
@@ -6902,8 +7224,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(sema, &temp_arena, callee_type));
             }
 
-            const SemaType*    fn_type = &sema->types[callee_type];
-            const AstCallInfo* call    = &ast->calls[node->b];
+            const SemaType* fn_type = &sema->types[callee_type];
             if (fn_type->param_count != call->arg_count) {
                 return error_0313_argument_count_mismatch(
                     lexer->source,

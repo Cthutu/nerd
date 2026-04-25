@@ -231,6 +231,12 @@ internal void ir_render_type_name(StringBuilder* sb,
                 sb,
                 lex_symbol(lexer,
                            ir->type_param_symbols[type->first_param_type + i]));
+            u32 payload_type = ir->type_param_types[type->first_param_type + i];
+            if (payload_type != sema_no_type()) {
+                sb_append_char(sb, '(');
+                ir_render_type_name(sb, ir, lexer, payload_type);
+                sb_append_char(sb, ')');
+            }
         }
         sb_append_cstr(sb, "}");
         break;
@@ -436,6 +442,16 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_ENUM:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_format(&sb, " = enum(%lld)", instr->rvalue[0].value.integer);
+            if (instr->rvalue[1].kind != IR_VALUE_NONE) {
+                sb_append_cstr(&sb, " ");
+                ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            }
+            break;
+        case IR_OP_ENUM_PAYLOAD:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            sb_format(&sb, ".payload(%lld)", instr->rvalue[1].value.integer);
             break;
         case IR_OP_FIELD:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

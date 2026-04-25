@@ -218,6 +218,7 @@ typedef struct {
 typedef struct {
     u32 token_index;
     u32 symbol_handle;
+    u32 type_node_index;
 } AstEnumVariant;
 
 typedef struct {
@@ -252,6 +253,7 @@ typedef enum : u32 {
     APK_RangeInclusive,
     APK_Tuple,
     APK_Plex,
+    APK_EnumVariant,
 } AstPatternKind;
 
 typedef struct {
@@ -266,6 +268,13 @@ typedef struct {
     u32 symbol_handle;
     u32 pattern_index;
 } AstPlexPatternField;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 first_pattern;
+    u32 pattern_count;
+} AstEnumPattern;
 
 typedef struct {
     u32 pattern_index;
@@ -320,6 +329,7 @@ typedef struct {
     Array(AstPattern) patterns;
     Array(u32) pattern_items;
     Array(AstPlexPatternField) pattern_fields;
+    Array(AstEnumPattern) enum_patterns;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(u32) for_items;
