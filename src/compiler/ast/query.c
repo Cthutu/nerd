@@ -74,7 +74,8 @@ bool ast_node_is_block_statement(const AstNode* node)
            node->kind == AK_Break || node->kind == AK_Continue ||
            node->kind == AK_Return || node->kind == AK_Statement ||
            node->kind == AK_Bind || node->kind == AK_Variable ||
-           node->kind == AK_Assign;
+           node->kind == AK_DestructureBind ||
+           node->kind == AK_DestructureVariable || node->kind == AK_Assign;
 }
 
 u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
@@ -90,7 +91,8 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
                    : ast->nodes[for_info->else_block_index].b;
     }
     if (node->kind == AK_Bind || node->kind == AK_Variable ||
-        node->kind == AK_Statement) {
+        node->kind == AK_DestructureBind ||
+        node->kind == AK_DestructureVariable || node->kind == AK_Statement) {
         u32 child_index = node->kind == AK_Statement ? node->a : node->b;
         if (child_index >= array_count(ast->nodes)) {
             return node_index + 1;

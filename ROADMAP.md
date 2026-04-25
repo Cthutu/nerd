@@ -945,6 +945,11 @@ needed earlier.
   - Support plex destructuring with field names and shorthand field binders.
   - Support `_` in destructuring assignments.
   - Add formatter, LSP, and error coverage before extending `on`.
+  - Current implementation slice has shared AST/CST pattern tables, tuple
+    destructuring through `:=`, basic plex destructuring lowering, and
+    formatter coverage. Remaining work: stabilise typed/constant
+    destructuring parser paths, add error/LSP coverage, and broaden language
+    tests.
 
 - [ ] 83. Add pattern guards.
   - Support `pattern on condition => expr`.

@@ -791,6 +791,14 @@ internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node)
                        .end   = lex_token_end_offset(lexer, token)};
 }
 
+internal ErrorSpan sema_pattern_span(const Lexer*      lexer,
+                                     const AstPattern* pattern)
+{
+    const Token* token = &lexer->tokens[pattern->token_index];
+    return (ErrorSpan){.start = token->offset,
+                       .end   = lex_token_end_offset(lexer, token)};
+}
+
 //------------------------------------------------------------------------------
 // Look up the source span for a collected declaration binding.
 
@@ -1514,11 +1522,126 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                      u32          scope_index,
                                      u32          node_index,
                                      Sema*        sema);
+internal bool sema_resolve_pattern_refs(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        u32          owner_decl_index,
+                                        u32          current_function_symbol,
+                                        u32          capture_scope_index,
+                                        u32          scope_index,
+                                        u32          pattern_index,
+                                        Sema*        sema);
 internal bool sema_resolve_type_node(const Lexer* lexer,
                                      const Ast*   ast,
                                      Sema*        sema,
                                      u32          node_index,
                                      u32*         out_type_index);
+
+internal u32 sema_destructure_binder_symbol(const Ast* ast, u32 pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    if (pattern->kind == APK_Bind) {
+        return pattern->a;
+    }
+    if (pattern->kind == APK_Value) {
+        const AstNode* node = &ast->nodes[pattern->a];
+        if (node->kind == AK_SymbolRef) {
+            return node->a;
+        }
+    }
+    return U32_MAX;
+}
+
+internal bool sema_collect_destructure_pattern(const Lexer*  lexer,
+                                               const Ast*    ast,
+                                               Sema*         sema,
+                                               u32           owner_decl_index,
+                                               u32           scope_index,
+                                               u32           decl_node_index,
+                                               SemaLocalKind kind,
+                                               u32           pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    u32 symbol = sema_destructure_binder_symbol(ast, pattern_index);
+    if (symbol != U32_MAX) {
+        u32 duplicate = sema_find_local_in_scope(sema, scope_index, symbol);
+        if (duplicate != sema_no_local()) {
+            const SemaLocal* previous = &sema->locals[duplicate];
+            return error_0301_duplicate_binding(
+                lexer->source,
+                sema_pattern_span(lexer, pattern),
+                lex_symbol(lexer, symbol),
+                sema_local_span(lexer, ast, previous));
+        }
+
+        array_push(sema->locals,
+                   (SemaLocal){
+                       .kind                  = kind,
+                       .symbol_handle         = symbol,
+                       .owner_decl_index      = owner_decl_index,
+                       .scope_index           = scope_index,
+                       .decl_node_index       = decl_node_index,
+                       .decl_token_index      = pattern->token_index,
+                       .type_node_index       = sema_no_type(),
+                       .value_node_index      = ast->nodes[decl_node_index].b,
+                       .type_index            = sema_no_type(),
+                       .lowered_symbol_handle = symbol,
+                   });
+        sema->pattern_local_indices[pattern_index] =
+            (u32)array_count(sema->locals) - 1;
+        sema->scopes[scope_index].local_count++;
+        if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
+            return sema_collect_destructure_pattern(lexer,
+                                                    ast,
+                                                    sema,
+                                                    owner_decl_index,
+                                                    scope_index,
+                                                    decl_node_index,
+                                                    kind,
+                                                    pattern->b);
+        }
+        return true;
+    }
+
+    switch (pattern->kind) {
+    case APK_Ignore:
+        return true;
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_collect_destructure_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    owner_decl_index,
+                    scope_index,
+                    decl_node_index,
+                    kind,
+                    ast->pattern_items[pattern->a + i])) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_collect_destructure_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    owner_decl_index,
+                    scope_index,
+                    decl_node_index,
+                    kind,
+                    ast->pattern_fields[pattern->a + i].pattern_index)) {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_pattern_span(lexer, pattern),
+                                        s("destructuring binder"),
+                                        s("value pattern"));
+    }
+}
 
 internal bool sema_collect_block_statements(const Lexer* lexer,
                                             const Ast*   ast,
@@ -1672,6 +1795,44 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                 return false;
             }
             i = for_end;
+            continue;
+        }
+
+        if (node->kind == AK_DestructureBind ||
+            node->kind == AK_DestructureVariable) {
+            u32            value_node_index = node->b;
+            u32            type_node_index  = sema_no_type();
+            const AstNode* payload          = &ast->nodes[value_node_index];
+            if (payload->kind == AK_AnnotatedValue) {
+                type_node_index  = payload->a;
+                value_node_index = payload->b;
+            }
+            if (type_node_index != sema_no_type()) {
+                sema_mark_type_expr_nodes(ast, sema, type_node_index);
+            }
+            if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        sema_no_scope(),
+                                        scope_index,
+                                        value_node_index,
+                                        sema)) {
+                return false;
+            }
+            if (!sema_collect_destructure_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    owner_decl_index,
+                    scope_index,
+                    i,
+                    node->kind == AK_DestructureBind ? SLK_Binder
+                                                     : SLK_Variable,
+                    node->a)) {
+                return false;
+            }
+            i++;
             continue;
         }
 
@@ -1887,6 +2048,90 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                                          sema);
 }
 
+internal bool sema_resolve_pattern_refs(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        u32          owner_decl_index,
+                                        u32          current_function_symbol,
+                                        u32          capture_scope_index,
+                                        u32          scope_index,
+                                        u32          pattern_index,
+                                        Sema*        sema)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      pattern->a,
+                                      sema);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      pattern->a,
+                                      sema) &&
+               sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      pattern->b,
+                                      sema);
+    case APK_Bind:
+        return pattern->b == U32_MAX
+                   ? true
+                   : sema_resolve_pattern_refs(lexer,
+                                               ast,
+                                               owner_decl_index,
+                                               current_function_symbol,
+                                               capture_scope_index,
+                                               scope_index,
+                                               pattern->b,
+                                               sema);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_resolve_pattern_refs(lexer,
+                                           ast,
+                                           owner_decl_index,
+                                           current_function_symbol,
+                                           capture_scope_index,
+                                           scope_index,
+                                           ast->pattern_items[pattern->a + i],
+                                           sema)) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_resolve_pattern_refs(
+                    lexer,
+                    ast,
+                    owner_decl_index,
+                    current_function_symbol,
+                    capture_scope_index,
+                    scope_index,
+                    ast->pattern_fields[pattern->a + i].pattern_index,
+                    sema)) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Ignore:
+        return true;
+    }
+    return true;
+}
+
 internal bool sema_resolve_node_refs(const Lexer* lexer,
                                      const Ast*   ast,
                                      u32          owner_decl_index,
@@ -1941,6 +2186,16 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             }
             return true;
         }
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->b,
+                                      sema);
     case AK_InterpPartExpr:
     case AK_Field:
         return sema_resolve_node_refs(lexer,
@@ -2065,19 +2320,30 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        if (!sema_resolve_node_refs(
+                        if (!sema_resolve_pattern_refs(
                                 lexer,
                                 ast,
                                 owner_decl_index,
                                 current_function_symbol,
                                 capture_scope_index,
                                 scope_index,
-                                ast->on_pattern_nodes
-                                    [branch->pattern_node_index + pattern],
+                                ast->pattern_items[branch->pattern_index +
+                                                   pattern],
                                 sema)) {
                             return false;
                         }
                     }
+                }
+                if (branch->guard_node_index != U32_MAX &&
+                    !sema_resolve_node_refs(lexer,
+                                            ast,
+                                            owner_decl_index,
+                                            current_function_symbol,
+                                            capture_scope_index,
+                                            branch_scope,
+                                            branch->guard_node_index,
+                                            sema)) {
+                    return false;
                 }
                 if (!sema_resolve_node_refs(lexer,
                                             ast,
@@ -2349,6 +2615,61 @@ internal void sema_collect_node_deps(const Ast*  ast,
                                      const Sema* sema,
                                      u32         owner_decl_index,
                                      u32         node_index,
+                                     Sema*       out_sema);
+
+internal void sema_collect_pattern_deps(const Ast*  ast,
+                                        const Sema* sema,
+                                        u32         owner_decl_index,
+                                        u32         pattern_index,
+                                        Sema*       out_sema)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        sema_collect_node_deps(
+            ast, sema, owner_decl_index, pattern->a, out_sema);
+        return;
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        sema_collect_node_deps(
+            ast, sema, owner_decl_index, pattern->a, out_sema);
+        sema_collect_node_deps(
+            ast, sema, owner_decl_index, pattern->b, out_sema);
+        return;
+    case APK_Bind:
+        if (pattern->b != U32_MAX) {
+            sema_collect_pattern_deps(
+                ast, sema, owner_decl_index, pattern->b, out_sema);
+        }
+        return;
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            sema_collect_pattern_deps(ast,
+                                      sema,
+                                      owner_decl_index,
+                                      ast->pattern_items[pattern->a + i],
+                                      out_sema);
+        }
+        return;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            sema_collect_pattern_deps(
+                ast,
+                sema,
+                owner_decl_index,
+                ast->pattern_fields[pattern->a + i].pattern_index,
+                out_sema);
+        }
+        return;
+    case APK_Ignore:
+        return;
+    }
+}
+
+internal void sema_collect_node_deps(const Ast*  ast,
+                                     const Sema* sema,
+                                     u32         owner_decl_index,
+                                     u32         node_index,
                                      Sema*       out_sema)
 {
     const AstNode* node = &ast->nodes[node_index];
@@ -2382,14 +2703,20 @@ internal void sema_collect_node_deps(const Ast*  ast,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        sema_collect_node_deps(
+                        sema_collect_pattern_deps(
                             ast,
                             sema,
                             owner_decl_index,
-                            ast->on_pattern_nodes[branch->pattern_node_index +
-                                                  pattern],
+                            ast->pattern_items[branch->pattern_index + pattern],
                             out_sema);
                     }
+                }
+                if (branch->guard_node_index != U32_MAX) {
+                    sema_collect_node_deps(ast,
+                                           sema,
+                                           owner_decl_index,
+                                           branch->guard_node_index,
+                                           out_sema);
                 }
                 sema_collect_node_deps(ast,
                                        sema,
@@ -2521,6 +2848,10 @@ internal void sema_collect_node_deps(const Ast*  ast,
                          owner_decl_index,
                          sema->node_decl_indices[node_index]);
         }
+        return;
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         return;
     case AK_For:
         {
@@ -3157,11 +3488,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                    u32          expected_type,
                                    u32*         out_type_index);
 internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index);
+internal bool sema_pattern_contains_interpolation(const Ast* ast,
+                                                  u32        pattern_index);
 internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index);
+internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
+                                                   u32        pattern_index);
 internal bool sema_validate_interpolated_strings(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
                                                  u32          node_index);
+internal bool sema_validate_interpolated_string_pattern(const Lexer* lexer,
+                                                        const Ast*   ast,
+                                                        Sema*        sema,
+                                                        u32 pattern_index);
 internal bool sema_infer_local_binding_type(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -3499,7 +3838,9 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
-        if (stmt->kind == AK_Variable || stmt->kind == AK_Assign) {
+        if (stmt->kind == AK_Variable || stmt->kind == AK_Assign ||
+            stmt->kind == AK_DestructureBind ||
+            stmt->kind == AK_DestructureVariable) {
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, i, sema_no_type(), &ignored)) {
@@ -3729,13 +4070,18 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        if (sema_node_contains_interpolation(
+                        if (sema_pattern_contains_interpolation(
                                 ast,
-                                ast->on_pattern_nodes
-                                    [branch->pattern_node_index + pattern])) {
+                                ast->pattern_items[branch->pattern_index +
+                                                   pattern])) {
                             return true;
                         }
                     }
+                }
+                if (branch->guard_node_index != U32_MAX &&
+                    sema_node_contains_interpolation(
+                        ast, branch->guard_node_index)) {
+                    return true;
                 }
                 if (sema_node_contains_interpolation(ast,
                                                      branch->expr_node_index)) {
@@ -3800,6 +4146,8 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
         return sema_node_contains_interpolation(ast, node->a);
     case AK_Variable:
     case AK_Assign:
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
     case AK_AnnotatedValue:
         return sema_node_contains_interpolation(ast, node->b);
     case AK_Break:
@@ -3912,13 +4260,20 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        found = sema_find_interpolated_string_node(
+                        found = sema_find_interpolated_string_pattern(
                             ast,
-                            ast->on_pattern_nodes[branch->pattern_node_index +
-                                                  pattern]);
+                            ast->pattern_items[branch->pattern_index +
+                                               pattern]);
                         if (found != sema_no_decl()) {
                             return found;
                         }
+                    }
+                }
+                if (branch->guard_node_index != U32_MAX) {
+                    found = sema_find_interpolated_string_node(
+                        ast, branch->guard_node_index);
+                    if (found != sema_no_decl()) {
+                        return found;
                     }
                 }
                 found = sema_find_interpolated_string_node(
@@ -4046,6 +4401,85 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     }
 }
 
+internal bool sema_pattern_contains_interpolation(const Ast* ast,
+                                                  u32        pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        return sema_node_contains_interpolation(ast, pattern->a);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return sema_node_contains_interpolation(ast, pattern->a) ||
+               sema_node_contains_interpolation(ast, pattern->b);
+    case APK_Bind:
+        return pattern->b != U32_MAX &&
+               sema_pattern_contains_interpolation(ast, pattern->b);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (sema_pattern_contains_interpolation(
+                    ast, ast->pattern_items[pattern->a + i])) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (sema_pattern_contains_interpolation(
+                    ast, ast->pattern_fields[pattern->a + i].pattern_index)) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Ignore:
+        return false;
+    }
+    return false;
+}
+
+internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
+                                                   u32        pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        return sema_find_interpolated_string_node(ast, pattern->a);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        {
+            u32 found = sema_find_interpolated_string_node(ast, pattern->a);
+            return found != sema_no_decl()
+                       ? found
+                       : sema_find_interpolated_string_node(ast, pattern->b);
+        }
+    case APK_Bind:
+        return pattern->b == U32_MAX
+                   ? sema_no_decl()
+                   : sema_find_interpolated_string_pattern(ast, pattern->b);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            u32 found = sema_find_interpolated_string_pattern(
+                ast, ast->pattern_items[pattern->a + i]);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+        }
+        return sema_no_decl();
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            u32 found = sema_find_interpolated_string_pattern(
+                ast, ast->pattern_fields[pattern->a + i].pattern_index);
+            if (found != sema_no_decl()) {
+                return found;
+            }
+        }
+        return sema_no_decl();
+    case APK_Ignore:
+        return sema_no_decl();
+    }
+    return sema_no_decl();
+}
+
 internal bool sema_validate_interpolated_strings(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
@@ -4103,15 +4537,20 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        if (!sema_validate_interpolated_strings(
+                        if (!sema_validate_interpolated_string_pattern(
                                 lexer,
                                 ast,
                                 sema,
-                                ast->on_pattern_nodes
-                                    [branch->pattern_node_index + pattern])) {
+                                ast->pattern_items[branch->pattern_index +
+                                                   pattern])) {
                             return false;
                         }
                     }
+                }
+                if (branch->guard_node_index != U32_MAX &&
+                    !sema_validate_interpolated_strings(
+                        lexer, ast, sema, branch->guard_node_index)) {
+                    return false;
                 }
                 if (!sema_validate_interpolated_strings(
                         lexer, ast, sema, branch->expr_node_index)) {
@@ -4193,6 +4632,9 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_BreakExpr:
         return node->a == U32_MAX ||
                sema_validate_interpolated_strings(lexer, ast, sema, node->a);
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        return sema_validate_interpolated_strings(lexer, ast, sema, node->b);
     case AK_For:
         {
             const AstForInfo* for_info = &ast->fors[node->a];
@@ -4229,6 +4671,147 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
         }
     default:
         return true;
+    }
+}
+
+internal bool sema_validate_interpolated_string_pattern(const Lexer* lexer,
+                                                        const Ast*   ast,
+                                                        Sema*        sema,
+                                                        u32 pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        return sema_validate_interpolated_strings(lexer, ast, sema, pattern->a);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return sema_validate_interpolated_strings(
+                   lexer, ast, sema, pattern->a) &&
+               sema_validate_interpolated_strings(lexer, ast, sema, pattern->b);
+    case APK_Bind:
+        return pattern->b == U32_MAX ||
+               sema_validate_interpolated_string_pattern(
+                   lexer, ast, sema, pattern->b);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_validate_interpolated_string_pattern(
+                    lexer, ast, sema, ast->pattern_items[pattern->a + i])) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_validate_interpolated_string_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->pattern_fields[pattern->a + i].pattern_index)) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Ignore:
+        return true;
+    }
+    return true;
+}
+
+internal bool sema_assign_destructure_pattern_type(const Lexer* lexer,
+                                                   const Ast*   ast,
+                                                   Sema*        sema,
+                                                   u32          pattern_index,
+                                                   u32          value_type)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    u32 symbol = sema_destructure_binder_symbol(ast, pattern_index);
+    if (symbol != U32_MAX) {
+        u32 local_index = sema->pattern_local_indices[pattern_index];
+        ASSERT(local_index != sema_no_local(),
+               "Expected destructuring pattern local");
+        sema->locals[local_index].type_index = value_type;
+        if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
+            return sema_assign_destructure_pattern_type(
+                lexer, ast, sema, pattern->b, value_type);
+        }
+        return true;
+    }
+
+    switch (pattern->kind) {
+    case APK_Ignore:
+        return true;
+    case APK_Tuple:
+        {
+            if (value_type == sema_no_type() ||
+                sema->types[value_type].kind != STK_Tuple) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("tuple"),
+                    sema_type_name(sema, &temp_arena, value_type));
+            }
+            const SemaType* tuple = &sema->types[value_type];
+            if (tuple->param_count != pattern->b) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("tuple with matching arity"),
+                    sema_type_name(sema, &temp_arena, value_type));
+            }
+            for (u32 i = 0; i < pattern->b; ++i) {
+                if (!sema_assign_destructure_pattern_type(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[pattern->a + i],
+                        sema->type_param_types[tuple->first_param_type + i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    case APK_Plex:
+        {
+            if (value_type == sema_no_type() ||
+                sema->types[value_type].kind != STK_Plex) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("plex"),
+                    sema_type_name(sema, &temp_arena, value_type));
+            }
+            const SemaType* plex = &sema->types[value_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                const AstPlexPatternField* field =
+                    &ast->pattern_fields[pattern->a + i];
+                u32 field_type = sema_no_type();
+                for (u32 j = 0; j < plex->param_count; ++j) {
+                    if (sema->type_param_symbols[plex->first_param_type + j] ==
+                        field->symbol_handle) {
+                        field_type =
+                            sema->type_param_types[plex->first_param_type + j];
+                        break;
+                    }
+                }
+                if (field_type == sema_no_type()) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_pattern_span(lexer, pattern),
+                        s("known plex field"),
+                        lex_symbol(lexer, field->symbol_handle));
+                }
+                if (!sema_assign_destructure_pattern_type(
+                        lexer, ast, sema, field->pattern_index, field_type)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    default:
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_pattern_span(lexer, pattern),
+                                        s("destructuring binder"),
+                                        s("value pattern"));
     }
 }
 
@@ -5044,6 +5627,38 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         return error_ice(
             "Range patterns must only appear inside block-form `on`");
 
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        {
+            u32 value_node = node->b;
+            u32 annotated  = sema_no_type();
+            if (ast->nodes[value_node].kind == AK_AnnotatedValue) {
+                annotated = sema_no_type();
+                if (!sema_resolve_type_node(lexer,
+                                            ast,
+                                            sema,
+                                            ast->nodes[value_node].a,
+                                            &annotated)) {
+                    return false;
+                }
+                value_node = ast->nodes[value_node].b;
+            }
+            u32 value_type = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, value_node, annotated, &value_type)) {
+                return false;
+            }
+            value_type = annotated != sema_no_type()
+                             ? annotated
+                             : sema_materialise_type(sema, value_type);
+            if (!sema_assign_destructure_pattern_type(
+                    lexer, ast, sema, node->a, value_type)) {
+                return false;
+            }
+            type_index = sema_builtin_type(sema, STK_Void);
+        }
+        break;
+
     case AK_On:
         {
             const AstOnInfo* on             = &ast->ons[node->b];
@@ -5091,7 +5706,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (branch->flags & AOBF_Else) {
                     has_else = true;
                 }
-                u32 branch_local_index =
+                bool unguarded_branch = branch->guard_node_index == U32_MAX;
+                u32  branch_local_index =
                     sema->on_branch_local_indices[on->first_branch + i];
                 if (branch_local_index != sema_no_local()) {
                     sema->locals[branch_local_index].type_index =
@@ -5100,19 +5716,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        u32 pattern_node =
-                            ast->on_pattern_nodes[branch->pattern_node_index +
-                                                  pattern];
-                        const AstNode* pattern = &ast->nodes[pattern_node];
-                        if (pattern->kind == AK_RangeExclusive ||
-                            pattern->kind == AK_RangeInclusive) {
+                        u32 pattern_index =
+                            ast->pattern_items[branch->pattern_index + pattern];
+                        const AstPattern* pattern =
+                            &ast->patterns[pattern_index];
+                        if (pattern->kind == APK_RangeExclusive ||
+                            pattern->kind == APK_RangeInclusive) {
                             if (!sema_type_is_concrete_integer(
                                     sema, scrutinee_type)) {
                                 string actual = sema_type_name(
                                     sema, &temp_arena, scrutinee_type);
                                 return error_0326_invalid_binary_operands(
                                     lexer->source,
-                                    sema_node_span(lexer, pattern),
+                                    sema_pattern_span(lexer, pattern),
                                     s(".."),
                                     s("integer range bounds"),
                                     actual,
@@ -5140,7 +5756,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                       ast, sema, pattern->b))) {
                                 return error_0322_non_constant_on_pattern(
                                     lexer->source,
-                                    sema_node_span(lexer, pattern));
+                                    sema_pattern_span(lexer, pattern));
                             }
 
                             i64 start_value = 0;
@@ -5153,18 +5769,37 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 sema_try_eval_integer_constant(
                                     lexer, ast, sema, pattern->b, &end_value)) {
                                 bool inclusive =
-                                    pattern->kind == AK_RangeInclusive;
+                                    pattern->kind == APK_RangeInclusive;
                                 bool valid = inclusive
                                                  ? start_value <= end_value
                                                  : start_value < end_value;
                                 if (!valid) {
                                     return error_0324_invalid_on_range_bounds(
                                         lexer->source,
-                                        sema_node_span(lexer, pattern),
+                                        sema_pattern_span(lexer, pattern),
                                         inclusive);
                                 }
                             }
                         } else {
+                            if (pattern->kind == APK_Ignore) {
+                                if (unguarded_branch &&
+                                    branch->pattern_count == 1) {
+                                    has_else = true;
+                                }
+                                continue;
+                            }
+                            if (pattern->kind == APK_Bind &&
+                                pattern->b != U32_MAX) {
+                                pattern_index = pattern->b;
+                                pattern       = &ast->patterns[pattern_index];
+                            }
+                            if (pattern->kind != APK_Value) {
+                                return error_0322_non_constant_on_pattern(
+                                    lexer->source,
+                                    sema_node_span(lexer,
+                                                   &ast->nodes[node->a]));
+                            }
+                            u32 pattern_node = pattern->a;
                             u32 pattern_type = sema_no_type();
                             if (!sema_infer_node_type(lexer,
                                                       ast,
@@ -5182,6 +5817,25 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                    &ast->nodes[pattern_node]));
                             }
                         }
+                    }
+                }
+
+                if (branch->guard_node_index != U32_MAX) {
+                    u32 guard_type = sema_no_type();
+                    if (!sema_infer_node_type(lexer,
+                                              ast,
+                                              sema,
+                                              branch->guard_node_index,
+                                              bool_type,
+                                              &guard_type)) {
+                        return false;
+                    }
+                    if (guard_type != bool_type) {
+                        return error_0319_invalid_on_condition(
+                            lexer->source,
+                            sema_node_span(
+                                lexer, &ast->nodes[branch->guard_node_index]),
+                            sema_type_name(sema, &temp_arena, guard_type));
                     }
                 }
 
@@ -6609,6 +7263,9 @@ bool sema_analyse(const Lexer* lexer, Ast* ast, Sema* out_sema)
     for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
         array_push(sema.on_branch_local_indices, sema_no_local());
     }
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        array_push(sema.pattern_local_indices, sema_no_local());
+    }
 
     sema_add_builtin_decls(lexer, &sema);
 
@@ -6690,6 +7347,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_lowered_symbol_handles);
     array_free(sema->node_type_indices);
     array_free(sema->on_branch_local_indices);
+    array_free(sema->pattern_local_indices);
     array_free(sema->node_is_type_expr);
     array_free(sema->node_const_known);
     array_free(sema->node_const_values);

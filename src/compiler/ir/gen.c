@@ -891,6 +891,9 @@ internal u32 ir_find_function_param_local(const Sema*     sema,
     return sema_no_local();
 }
 
+internal bool ir_pattern_contains_interpolation(const Ast* ast,
+                                                u32        pattern_index);
+
 internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
 {
     const AstNode* node = &ast->nodes[node_index];
@@ -906,6 +909,9 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Field:
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        return ir_node_contains_interpolation(ast, node->b);
     case AK_Slice:
         {
             const AstSliceInfo* slice = &ast->slices[node->a];
@@ -944,10 +950,10 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
                          ++pattern) {
-                        if (ir_node_contains_interpolation(
+                        if (ir_pattern_contains_interpolation(
                                 ast,
-                                ast->on_pattern_nodes
-                                    [branch->pattern_node_index + pattern])) {
+                                ast->pattern_items[branch->pattern_index +
+                                                   pattern])) {
                             return true;
                         }
                     }
@@ -1030,6 +1036,42 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     default:
         return false;
     }
+}
+
+internal bool ir_pattern_contains_interpolation(const Ast* ast,
+                                                u32        pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+        return ir_node_contains_interpolation(ast, pattern->a);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return ir_node_contains_interpolation(ast, pattern->a) ||
+               ir_node_contains_interpolation(ast, pattern->b);
+    case APK_Bind:
+        return pattern->b != U32_MAX &&
+               ir_pattern_contains_interpolation(ast, pattern->b);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (ir_pattern_contains_interpolation(
+                    ast, ast->pattern_items[pattern->a + i])) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (ir_pattern_contains_interpolation(
+                    ast, ast->pattern_fields[pattern->a + i].pattern_index)) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Ignore:
+        return false;
+    }
+    return false;
 }
 
 internal IrValue           ir_lower_node(const Lexer* lex,
@@ -1380,6 +1422,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                           node_values,
                                           next_value_index,
                                           ir);
+                } else if (local->kind == SLK_Binder &&
+                           local->decl_node_index != sema_no_decl() &&
+                           (ast->nodes[local->decl_node_index].kind ==
+                                AK_DestructureBind ||
+                            ast->nodes[local->decl_node_index].kind ==
+                                AK_DestructureVariable)) {
+                    value = (IrValue){
+                        .kind = IR_VALUE_LOCAL,
+                        .type =
+                            ir_value_type_for_local_index(sema, local_index),
+                        .value.integer = local->symbol_handle,
+                    };
                 } else if (local->kind == SLK_Binder) {
                     value = ir_lower_node(lex,
                                           ast,
@@ -1872,16 +1926,17 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     for (u32 pattern_index = 0;
                          pattern_index < branch->pattern_count;
                          ++pattern_index) {
-                        u32 pattern_node =
-                            ast->on_pattern_nodes[branch->pattern_node_index +
-                                                  pattern_index];
+                        u32 pattern_index_row =
+                            ast->pattern_items[branch->pattern_index +
+                                               pattern_index];
                         i64 mismatch_label = next_label;
                         if (pattern_index + 1 < branch->pattern_count) {
                             mismatch_label = (i64)(*next_value_index)++;
                         }
-                        const AstNode* pattern = &ast->nodes[pattern_node];
-                        if (pattern->kind == AK_RangeExclusive ||
-                            pattern->kind == AK_RangeInclusive) {
+                        const AstPattern* pattern =
+                            &ast->patterns[pattern_index_row];
+                        if (pattern->kind == APK_RangeExclusive ||
+                            pattern->kind == APK_RangeInclusive) {
                             IrValue start         = ir_lower_node(lex,
                                                           ast,
                                                           sema,
@@ -1919,7 +1974,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                 .type          = bool_type,
                                 .value.integer = (i64)(*next_value_index)++,
                             };
-                            if (pattern->kind == AK_RangeInclusive) {
+                            if (pattern->kind == APK_RangeInclusive) {
                                 ir_add_less_equal(
                                     ir,
                                     end_matches,
@@ -1940,12 +1995,16 @@ internal IrValue ir_lower_node(const Lexer* lex,
                             }
                             ir_add_branch_false(
                                 ir, end_matches, bool_type, mismatch_label);
+                        } else if (pattern->kind == APK_Ignore) {
+                            // Wildcard patterns always match.
                         } else {
+                            ASSERT(pattern->kind == APK_Value,
+                                   "Only value and range patterns lower here");
                             IrValue pattern_value =
                                 ir_lower_node(lex,
                                               ast,
                                               sema,
-                                              pattern_node,
+                                              pattern->a,
                                               loop,
                                               node_values,
                                               next_value_index,
@@ -1962,7 +2021,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                 scrutinee,
                                 ir_node_type_index(ast, sema, node->a),
                                 pattern_value,
-                                ir_node_type_index(ast, sema, pattern_node));
+                                ir_node_type_index(ast, sema, pattern->a));
                             ir_add_branch_false(
                                 ir, matches, bool_type, mismatch_label);
                         }
@@ -1972,6 +2031,22 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         }
                     }
                     ir_add_label(ir, match_label);
+                }
+
+                if (branch->guard_node_index != U32_MAX) {
+                    IrValue guard = ir_lower_node(lex,
+                                                  ast,
+                                                  sema,
+                                                  branch->guard_node_index,
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  ir);
+                    ir_add_branch_false(
+                        ir,
+                        guard,
+                        ir_node_type_index(ast, sema, branch->guard_node_index),
+                        next_label);
                 }
 
                 if (ast->nodes[branch->expr_node_index].kind == AK_Return ||
@@ -2368,6 +2443,123 @@ internal void ir_generate_return_statement(const Lexer*   lex,
     ir_add_return(ir, value, ir_node_type_index(ast, sema, return_node->a));
 }
 
+internal u32 ir_destructure_binder_symbol(const Ast* ast, u32 pattern_index)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    if (pattern->kind == APK_Bind) {
+        return pattern->a;
+    }
+    if (pattern->kind == APK_Value) {
+        const AstNode* node = &ast->nodes[pattern->a];
+        if (node->kind == AK_SymbolRef) {
+            return node->a;
+        }
+    }
+    return U32_MAX;
+}
+
+internal void ir_lower_destructure_pattern(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         function_index,
+                                           u32         pattern_index,
+                                           IrValue     source,
+                                           u32         source_type,
+                                           u64*        next_value_index,
+                                           Ir*         ir)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    u32               symbol = ir_destructure_binder_symbol(ast, pattern_index);
+    if (symbol != U32_MAX) {
+        u32 local_index = sema->pattern_local_indices[pattern_index];
+        ASSERT(local_index != sema_no_local(),
+               "Expected destructuring pattern local");
+        u32 local_type = ir_value_type_for_local_index(sema, local_index);
+        ir_add_local(
+            ir, function_index, symbol, local_type, source, source_type);
+        if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
+            ir_lower_destructure_pattern(ast,
+                                         sema,
+                                         function_index,
+                                         pattern->b,
+                                         source,
+                                         source_type,
+                                         next_value_index,
+                                         ir);
+        }
+        return;
+    }
+
+    switch (pattern->kind) {
+    case APK_Ignore:
+        return;
+    case APK_Tuple:
+        {
+            const SemaType* tuple = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                u32 item_type =
+                    sema->type_param_types[tuple->first_param_type + i];
+                IrValue item = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = item_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_tuple_field(ir, item, item_type, source, source_type, i);
+                ir_lower_destructure_pattern(ast,
+                                             sema,
+                                             function_index,
+                                             ast->pattern_items[pattern->a + i],
+                                             item,
+                                             item_type,
+                                             next_value_index,
+                                             ir);
+            }
+            return;
+        }
+    case APK_Plex:
+        {
+            const SemaType* plex = &sema->types[source_type];
+            for (u32 i = 0; i < pattern->b; ++i) {
+                const AstPlexPatternField* field =
+                    &ast->pattern_fields[pattern->a + i];
+                u32 field_type = sema_no_type();
+                for (u32 j = 0; j < plex->param_count; ++j) {
+                    if (sema->type_param_symbols[plex->first_param_type + j] ==
+                        field->symbol_handle) {
+                        field_type =
+                            sema->type_param_types[plex->first_param_type + j];
+                        break;
+                    }
+                }
+                ASSERT(field_type != sema_no_type(),
+                       "Expected resolved plex field");
+                IrValue field_value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = field_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_field(ir,
+                             field_value,
+                             field_type,
+                             source,
+                             source_type,
+                             field->symbol_handle);
+                ir_lower_destructure_pattern(ast,
+                                             sema,
+                                             function_index,
+                                             field->pattern_index,
+                                             field_value,
+                                             field_type,
+                                             next_value_index,
+                                             ir);
+            }
+            return;
+        }
+    default:
+        ASSERT(false, "Unsupported destructuring pattern");
+        return;
+    }
+}
+
 internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  const Ast*   ast,
                                                  const Sema*  sema,
@@ -2612,6 +2804,31 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
         }
         ir_add_local(
             ir, function_index, node->a, local_type, value, local_type);
+        return IR_STMT_FALLTHROUGH;
+    }
+
+    if (node->kind == AK_DestructureBind ||
+        node->kind == AK_DestructureVariable) {
+        u32 value_node = node->b;
+        if (ast->nodes[value_node].kind == AK_AnnotatedValue) {
+            value_node = ast->nodes[value_node].b;
+        }
+        IrValue value = ir_lower_node(lex,
+                                      ast,
+                                      sema,
+                                      value_node,
+                                      loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+        ir_lower_destructure_pattern(ast,
+                                     sema,
+                                     function_index,
+                                     node->a,
+                                     value,
+                                     ir_node_type_index(ast, sema, value_node),
+                                     next_value_index,
+                                     ir);
         return IR_STMT_FALLTHROUGH;
     }
 

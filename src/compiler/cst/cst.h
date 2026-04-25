@@ -54,6 +54,8 @@
 // | CK_RangeExclusive  | Start node index      | End node index        |
 // | CK_RangeInclusive  | Start node index      | End node index        |
 // | CK_On              | Scrutinee node index  | On-info index         |
+// | CK_DestructureBind | Pattern index         | Value node index      |
+// | CK_DestructureVariable | Pattern index      | Value node index      |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
@@ -120,6 +122,8 @@ typedef enum {
     CK_RangeExclusive,
     CK_RangeInclusive,
     CK_On,
+    CK_DestructureBind,
+    CK_DestructureVariable,
     CK_TypeFn,
     CK_TypeTuple,
     CK_TypeArray,
@@ -205,10 +209,34 @@ typedef struct {
     u32 field_count;
 } CstPlexLiteralInfo;
 
+typedef enum : u32 {
+    CPK_Value,
+    CPK_Ignore,
+    CPK_Bind,
+    CPK_RangeExclusive,
+    CPK_RangeInclusive,
+    CPK_Tuple,
+    CPK_Plex,
+} CstPatternKind;
+
 typedef struct {
-    u32 pattern_node_index;
+    CstPatternKind kind;
+    u32            token_index;
+    u32            a;
+    u32            b;
+} CstPattern;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 pattern_index;
+} CstPlexPatternField;
+
+typedef struct {
+    u32 pattern_index;
     u32 expr_node_index;
     u32 pattern_count;
+    u32 guard_node_index;
     u32 flags;
     u32 binder_symbol_handle;
     u32 binder_token_index;
@@ -255,7 +283,9 @@ typedef struct {
     Array(CstPlexTypeInfo) plex_types;
     Array(CstPlexLiteralField) plex_literal_fields;
     Array(CstPlexLiteralInfo) plex_literals;
-    Array(u32) on_pattern_nodes;
+    Array(CstPattern) patterns;
+    Array(u32) pattern_items;
+    Array(CstPlexPatternField) pattern_fields;
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
     Array(u32) for_items;

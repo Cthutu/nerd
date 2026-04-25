@@ -55,6 +55,8 @@
 // | AK_RangeExclusive  | Ast index start   | Ast index of end                |
 // | AK_RangeInclusive  | Ast index start   | Ast index of end                |
 // | AK_On              | Ast index scrutinee | Ast on-info index             |
+// | AK_DestructureBind | Ast pattern index | Ast index of value              |
+// | AK_DestructureVariable | Ast pattern index | Ast index of value          |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
@@ -124,6 +126,8 @@ typedef enum {
     AK_RangeExclusive,
     AK_RangeInclusive,
     AK_On,
+    AK_DestructureBind,
+    AK_DestructureVariable,
     AK_TypeFn,
     AK_TypeTuple,
     AK_TypeArray,
@@ -223,10 +227,34 @@ typedef struct {
     u32 field_count;
 } AstPlexLiteralInfo;
 
+typedef enum : u32 {
+    APK_Value,
+    APK_Ignore,
+    APK_Bind,
+    APK_RangeExclusive,
+    APK_RangeInclusive,
+    APK_Tuple,
+    APK_Plex,
+} AstPatternKind;
+
 typedef struct {
-    u32 pattern_node_index;
+    AstPatternKind kind;
+    u32            token_index;
+    u32            a;
+    u32            b;
+} AstPattern;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 pattern_index;
+} AstPlexPatternField;
+
+typedef struct {
+    u32 pattern_index;
     u32 expr_node_index;
     u32 pattern_count;
+    u32 guard_node_index;
     u32 flags;
     u32 binder_symbol_handle;
     u32 binder_token_index;
@@ -270,7 +298,9 @@ typedef struct {
     Array(AstPlexTypeInfo) plex_types;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
-    Array(u32) on_pattern_nodes;
+    Array(AstPattern) patterns;
+    Array(u32) pattern_items;
+    Array(AstPlexPatternField) pattern_fields;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(u32) for_items;

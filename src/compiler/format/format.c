@@ -268,6 +268,74 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                                               const Lexer*   lexer,
                                               u32            node_index,
                                               u32            indent_level);
+internal void format_emit_expr(StringBuilder* sb,
+                               const Cst*     cst,
+                               const Lexer*   lexer,
+                               u32            node_index,
+                               int            parent_precedence);
+
+internal void format_emit_pattern(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            pattern_index)
+{
+    const CstPattern* pattern = &cst->patterns[pattern_index];
+    switch (pattern->kind) {
+    case CPK_Value:
+        format_emit_expr(sb, cst, lexer, pattern->a, 0);
+        break;
+    case CPK_Ignore:
+        sb_append_char(sb, '_');
+        break;
+    case CPK_Bind:
+        sb_append_string(sb, lex_symbol(lexer, pattern->a));
+        if (pattern->b != U32_MAX) {
+            sb_append_cstr(sb, " @ ");
+            format_emit_pattern(sb, cst, lexer, pattern->b);
+        }
+        break;
+    case CPK_RangeExclusive:
+    case CPK_RangeInclusive:
+        format_emit_expr(sb, cst, lexer, pattern->a, 0);
+        sb_append_cstr(sb, pattern->kind == CPK_RangeInclusive ? "..=" : "..");
+        format_emit_expr(sb, cst, lexer, pattern->b, 0);
+        break;
+    case CPK_Tuple:
+        sb_append_char(sb, '(');
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            format_emit_pattern(
+                sb, cst, lexer, cst->pattern_items[pattern->a + i]);
+        }
+        if (pattern->b == 1) {
+            sb_append_char(sb, ',');
+        }
+        sb_append_char(sb, ')');
+        break;
+    case CPK_Plex:
+        sb_append_cstr(sb, "{ ");
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            const CstPlexPatternField* field =
+                &cst->pattern_fields[pattern->a + i];
+            sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+            const CstPattern* field_pattern =
+                &cst->patterns[field->pattern_index];
+            if (!(field_pattern->kind == CPK_Bind &&
+                  field_pattern->b == U32_MAX &&
+                  field_pattern->a == field->symbol_handle)) {
+                sb_append_cstr(sb, ": ");
+                format_emit_pattern(sb, cst, lexer, field->pattern_index);
+            }
+        }
+        sb_append_cstr(sb, " }");
+        break;
+    }
+}
 
 internal void format_emit_expr(StringBuilder* sb,
                                const Cst*     cst,
@@ -652,14 +720,18 @@ internal void format_emit_expr(StringBuilder* sb,
                         if (pattern > 0) {
                             sb_append_cstr(sb, ", ");
                         }
-                        format_emit_expr(
+                        format_emit_pattern(
                             sb,
                             cst,
                             lexer,
-                            cst->on_pattern_nodes[branch->pattern_node_index +
-                                                  pattern],
-                            0);
+                            cst->pattern_items[branch->pattern_index +
+                                               pattern]);
                     }
+                }
+                if (branch->guard_node_index != U32_MAX) {
+                    sb_append_cstr(sb, " on ");
+                    format_emit_expr(
+                        sb, cst, lexer, branch->guard_node_index, 0);
                 }
                 sb_append_cstr(sb, " => ");
                 format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
@@ -761,12 +833,15 @@ internal string format_render_on_branch_head(Arena*             arena,
             if (pattern > 0) {
                 sb_append_cstr(&sb, ", ");
             }
-            format_emit_expr(
+            format_emit_pattern(
                 &sb,
                 cst,
                 lexer,
-                cst->on_pattern_nodes[branch->pattern_node_index + pattern],
-                0);
+                cst->pattern_items[branch->pattern_index + pattern]);
+        }
+        if (branch->guard_node_index != U32_MAX) {
+            sb_append_cstr(&sb, " on ");
+            format_emit_expr(&sb, cst, lexer, branch->guard_node_index, 0);
         }
     }
 
@@ -1044,6 +1119,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_AnnotatedValue:
     case CK_Bind:
     case CK_Variable:
+    case CK_DestructureBind:
+    case CK_DestructureVariable:
     case CK_Assign:
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_Call:
@@ -1865,6 +1942,28 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 sb, cst, lexer, stmt->b, indent_level);
         } else {
             format_emit_value(sb, cst, lexer, stmt->b);
+        }
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_DestructureBind) {
+        format_emit_pattern(sb, cst, lexer, stmt->a);
+        sb_append_cstr(
+            sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
+        format_emit_value(sb, cst, lexer, stmt->b);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_DestructureVariable) {
+        format_emit_pattern(sb, cst, lexer, stmt->a);
+        if (cst->nodes[stmt->b].kind == CK_AnnotatedValue) {
+            sb_append_cstr(sb, ": ");
+            format_emit_variable_payload(sb, cst, lexer, stmt->b);
+        } else {
+            sb_append_cstr(sb, " := ");
+            format_emit_expr(sb, cst, lexer, stmt->b, 0);
         }
         sb_append_char(sb, '\n');
         return;

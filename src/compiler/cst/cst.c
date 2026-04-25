@@ -32,8 +32,9 @@ typedef struct {
 
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
 internal bool cst_parse_variable(CstParseState* state, u32* out_node);
+internal bool cst_parse_destructure(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
-internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node);
+internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
 internal bool cst_parse_for(CstParseState* state, u32* out_node);
 
@@ -190,6 +191,31 @@ internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
         return TK_EOF;
     }
     return state->lexer->tokens[index].kind;
+}
+
+internal bool cst_skip_balanced_tokens(const CstParseState* state,
+                                       u32*                 io_index,
+                                       TokenKind            open_kind,
+                                       TokenKind            close_kind)
+{
+    if (cst_kind_at_stream_index(state, *io_index) != open_kind) {
+        return false;
+    }
+    u32 depth = 0;
+    while (*io_index < array_count(state->lexer->tokens)) {
+        TokenKind kind = cst_kind_at_stream_index(state, *io_index);
+        if (kind == open_kind) {
+            depth++;
+        } else if (kind == close_kind) {
+            depth--;
+            (*io_index)++;
+            return depth == 0;
+        } else if (kind == TK_EOF) {
+            return false;
+        }
+        (*io_index)++;
+    }
+    return false;
 }
 
 internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
@@ -1084,6 +1110,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
             CstOnBranch branch          = {0};
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
+            branch.guard_node_index     = U32_MAX;
             if (cst_current_token(state).kind == TK_Symbol &&
                 cst_peek_kind_at(state, 1) == TK_At) {
                 branch.binder_symbol_handle = cst_current_symbol_handle(state);
@@ -1100,20 +1127,27 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     return false;
                 }
             } else {
-                branch.pattern_node_index =
-                    (u32)array_count(state->cst.on_pattern_nodes);
+                branch.pattern_index =
+                    (u32)array_count(state->cst.pattern_items);
                 branch.pattern_count = 0;
                 for (;;) {
                     u32 pattern_root = 0;
-                    if (!cst_parse_on_branch_pattern(state, &pattern_root)) {
+                    if (!cst_parse_pattern(state, &pattern_root)) {
                         return false;
                     }
-                    array_push(state->cst.on_pattern_nodes, pattern_root);
+                    array_push(state->cst.pattern_items, pattern_root);
                     ++branch.pattern_count;
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;
                     }
                     cst_advance(state);
+                }
+                if (cst_current_token(state).kind == TK_on) {
+                    cst_advance(state);
+                    if (!cst_parse_expr_bp(
+                            state, 0, &branch.guard_node_index)) {
+                        return false;
+                    }
                 }
                 if (!cst_consume(state, TK_FatArrow)) {
                     return false;
@@ -1162,6 +1196,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         return false;
     }
     if (cst_current_token(state).kind != TK_else) {
+        u32 true_node    = 0;
         u32 true_pattern = 0;
         if (!cst_emit_node(state,
                            (CstNode){
@@ -1169,13 +1204,24 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                                .token_index = token_index,
                                .a           = 1,
                            },
-                           &true_pattern)) {
+                           &true_node)) {
             return false;
         }
+        true_pattern = (u32)array_count(state->cst.patterns);
+        array_push(state->cst.patterns,
+                   (CstPattern){
+                       .kind        = CPK_Value,
+                       .token_index = token_index,
+                       .a           = true_node,
+                   });
+        u32 first_pattern = (u32)array_count(state->cst.pattern_items);
+        array_push(state->cst.pattern_items, true_pattern);
         array_push(state->cst.on_branches,
                    (CstOnBranch){
-                       .pattern_node_index   = true_pattern,
+                       .pattern_index        = first_pattern,
                        .expr_node_index      = true_expr,
+                       .pattern_count        = 1,
+                       .guard_node_index     = U32_MAX,
                        .binder_symbol_handle = U32_MAX,
                        .binder_token_index   = U32_MAX,
                    });
@@ -1205,6 +1251,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         return false;
     }
 
+    u32 true_node    = 0;
     u32 true_pattern = 0;
     if (!cst_emit_node(state,
                        (CstNode){
@@ -1212,13 +1259,24 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                            .token_index = token_index,
                            .a           = 1,
                        },
-                       &true_pattern)) {
+                       &true_node)) {
         return false;
     }
+    true_pattern = (u32)array_count(state->cst.patterns);
+    array_push(state->cst.patterns,
+               (CstPattern){
+                   .kind        = CPK_Value,
+                   .token_index = token_index,
+                   .a           = true_node,
+               });
+    u32 first_pattern = (u32)array_count(state->cst.pattern_items);
+    array_push(state->cst.pattern_items, true_pattern);
     array_push(state->cst.on_branches,
                (CstOnBranch){
-                   .pattern_node_index   = true_pattern,
+                   .pattern_index        = first_pattern,
                    .expr_node_index      = true_expr,
+                   .pattern_count        = 1,
+                   .guard_node_index     = U32_MAX,
                    .binder_symbol_handle = U32_MAX,
                    .binder_token_index   = U32_MAX,
                });
@@ -1226,6 +1284,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                (CstOnBranch){
                    .expr_node_index      = false_expr,
                    .flags                = COBF_Else,
+                   .guard_node_index     = U32_MAX,
                    .binder_symbol_handle = U32_MAX,
                    .binder_token_index   = U32_MAX,
                });
@@ -1290,21 +1349,186 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
     return cst_parse_expr_bp(state, 0, out_node);
 }
 
-internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node)
+internal bool cst_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
 {
+    return string_eq_cstr(lex_symbol(lexer, symbol_handle), "_");
+}
+
+internal bool
+cst_emit_pattern(CstParseState* state, CstPattern pattern, u32* out_pattern)
+{
+    *out_pattern = (u32)array_count(state->cst.patterns);
+    array_push(state->cst.patterns, pattern);
+    return true;
+}
+
+internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
+
+internal bool cst_parse_tuple_pattern(CstParseState* state, u32* out_pattern)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+    u32 first_item = (u32)array_count(state->cst.pattern_items);
+    u32 item_count = 0;
+    if (cst_current_token(state).kind != TK_RParen) {
+        for (;;) {
+            u32 item = U32_MAX;
+            if (!cst_parse_pattern(state, &item)) {
+                return false;
+            }
+            array_push(state->cst.pattern_items, item);
+            ++item_count;
+            if (cst_current_token(state).kind != TK_Comma) {
+                break;
+            }
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_RParen) {
+                break;
+            }
+        }
+    }
+    if (!cst_consume(state, TK_RParen)) {
+        return false;
+    }
+    return cst_emit_pattern(state,
+                            (CstPattern){
+                                .kind        = CPK_Tuple,
+                                .token_index = token_index,
+                                .a           = first_item,
+                                .b           = item_count,
+                            },
+                            out_pattern);
+}
+
+internal bool cst_parse_plex_pattern(CstParseState* state, u32* out_pattern)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+    u32 first_field = (u32)array_count(state->cst.pattern_fields);
+    u32 field_count = 0;
+    while (cst_current_token(state).kind != TK_RBrace) {
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+        u32 field_token   = state->token_index;
+        u32 field_symbol  = cst_current_symbol_handle(state);
+        u32 field_pattern = U32_MAX;
+        if (cst_symbol_is_underscore(state->lexer, field_symbol)) {
+            if (!cst_emit_pattern(state,
+                                  (CstPattern){
+                                      .kind        = CPK_Ignore,
+                                      .token_index = field_token,
+                                  },
+                                  &field_pattern)) {
+                return false;
+            }
+            cst_advance(state);
+        } else if (cst_peek_kind_at(state, 1) == TK_Colon) {
+            cst_advance(state);
+            if (!cst_consume(state, TK_Colon) ||
+                !cst_parse_pattern(state, &field_pattern)) {
+                return false;
+            }
+        } else {
+            if (!cst_emit_pattern(state,
+                                  (CstPattern){
+                                      .kind        = CPK_Bind,
+                                      .token_index = field_token,
+                                      .a           = field_symbol,
+                                      .b           = U32_MAX,
+                                  },
+                                  &field_pattern)) {
+                return false;
+            }
+            cst_advance(state);
+        }
+        array_push(state->cst.pattern_fields,
+                   (CstPlexPatternField){
+                       .token_index   = field_token,
+                       .symbol_handle = field_symbol,
+                       .pattern_index = field_pattern,
+                   });
+        ++field_count;
+        if (cst_current_token(state).kind == TK_Comma) {
+            cst_advance(state);
+        }
+    }
+    if (!cst_consume(state, TK_RBrace)) {
+        return false;
+    }
+    return cst_emit_pattern(state,
+                            (CstPattern){
+                                .kind        = CPK_Plex,
+                                .token_index = token_index,
+                                .a           = first_field,
+                                .b           = field_count,
+                            },
+                            out_pattern);
+}
+
+internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
+{
+    if (cst_current_token(state).kind == TK_Symbol &&
+        cst_peek_kind_at(state, 1) == TK_At) {
+        u32 token_index = state->token_index;
+        u32 symbol      = cst_current_symbol_handle(state);
+        cst_advance(state);
+        if (!cst_consume(state, TK_At)) {
+            return false;
+        }
+        u32 child = U32_MAX;
+        if (!cst_parse_pattern(state, &child)) {
+            return false;
+        }
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = CPK_Bind,
+                                    .token_index = token_index,
+                                    .a           = symbol,
+                                    .b           = child,
+                                },
+                                out_pattern);
+    }
+
+    if (cst_current_token(state).kind == TK_Symbol &&
+        cst_symbol_is_underscore(state->lexer,
+                                 cst_current_symbol_handle(state))) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = CPK_Ignore,
+                                    .token_index = token_index,
+                                },
+                                out_pattern);
+    }
+
+    if (cst_current_token(state).kind == TK_LParen) {
+        return cst_parse_tuple_pattern(state, out_pattern);
+    }
+    if (cst_current_token(state).kind == TK_LBrace) {
+        return cst_parse_plex_pattern(state, out_pattern);
+    }
+
     u32 start_node = 0;
     if (!cst_parse_expr_bp(state, 0, &start_node)) {
         return false;
     }
 
-    CstKind range_kind = CK_IntegerPlus;
+    CstPatternKind range_kind = CPK_Value;
     if (cst_current_token(state).kind == TK_Range) {
-        range_kind = CK_RangeExclusive;
+        range_kind = CPK_RangeExclusive;
     } else if (cst_current_token(state).kind == TK_RangeInclusive) {
-        range_kind = CK_RangeInclusive;
+        range_kind = CPK_RangeInclusive;
     } else {
-        *out_node = start_node;
-        return true;
+        return cst_emit_pattern(
+            state,
+            (CstPattern){
+                .kind        = CPK_Value,
+                .token_index = state->cst.nodes[start_node].token_index,
+                .a           = start_node,
+            },
+            out_pattern);
     }
 
     u32 token_index = state->token_index;
@@ -1314,14 +1538,14 @@ internal bool cst_parse_on_branch_pattern(CstParseState* state, u32* out_node)
         return false;
     }
 
-    return cst_emit_node(state,
-                         (CstNode){
-                             .kind        = range_kind,
-                             .token_index = token_index,
-                             .a           = start_node,
-                             .b           = end_node,
-                         },
-                         out_node);
+    return cst_emit_pattern(state,
+                            (CstPattern){
+                                .kind        = range_kind,
+                                .token_index = token_index,
+                                .a           = start_node,
+                                .b           = end_node,
+                            },
+                            out_pattern);
 }
 
 //------------------------------------------------------------------------------
@@ -2094,6 +2318,20 @@ internal bool cst_parse_block_statement(CstParseState* state)
                              NULL);
     }
 
+    if (cst_current_token(state).kind == TK_LParen ||
+        cst_current_token(state).kind == TK_LBrace) {
+        u32 cursor = state->token_index;
+        if (cst_skip_balanced_tokens(state,
+                                     &cursor,
+                                     cst_current_token(state).kind,
+                                     cst_current_token(state).kind == TK_LParen
+                                         ? TK_RParen
+                                         : TK_RBrace) &&
+            cst_kind_at_stream_index(state, cursor) == TK_Colon) {
+            return cst_parse_destructure(state, NULL);
+        }
+    }
+
     if (cst_current_token(state).kind == TK_LBrace) {
         return cst_parse_nested_block(state, NULL);
     }
@@ -2388,6 +2626,65 @@ internal bool cst_parse_variable(CstParseState* state, u32* out_node)
                          out_node);
 }
 
+internal bool cst_parse_destructure(CstParseState* state, u32* out_node)
+{
+    u32     token_index = state->token_index;
+    u32     pattern     = U32_MAX;
+    u32     type_node   = CST_NO_VALUE;
+    u32     value       = 0;
+    CstKind kind        = CK_DestructureBind;
+
+    if (!cst_parse_pattern(state, &pattern) || !cst_consume(state, TK_Colon)) {
+        return false;
+    }
+
+    if (cst_current_token(state).kind == TK_Colon) {
+        cst_advance(state);
+    } else if (cst_current_token(state).kind == TK_Equal) {
+        kind = CK_DestructureVariable;
+        cst_advance(state);
+    } else {
+        kind = CK_DestructureVariable;
+        if (!cst_parse_type(state, &type_node)) {
+            return false;
+        }
+        if (cst_current_token(state).kind == TK_Colon) {
+            kind = CK_DestructureBind;
+            cst_advance(state);
+        } else if (cst_current_token(state).kind == TK_Equal) {
+            cst_advance(state);
+        } else {
+            return false;
+        }
+    }
+
+    if (!cst_parse_expr_bp(state, 0, &value)) {
+        return false;
+    }
+
+    if (type_node != CST_NO_VALUE) {
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_AnnotatedValue,
+                               .token_index = token_index,
+                               .a           = type_node,
+                               .b           = value,
+                           },
+                           &value)) {
+            return false;
+        }
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = kind,
+                             .token_index = token_index,
+                             .a           = pattern,
+                             .b           = value,
+                         },
+                         out_node);
+}
+
 //------------------------------------------------------------------------------
 // Build parallel token-value tables so the parser can use direct token-index
 // access without re-running lexer-side counters during recursive parsing.
@@ -2515,7 +2812,9 @@ void cst_done(Cst* cst)
     array_free(cst->plex_types);
     array_free(cst->plex_literal_fields);
     array_free(cst->plex_literals);
-    array_free(cst->on_pattern_nodes);
+    array_free(cst->patterns);
+    array_free(cst->pattern_items);
+    array_free(cst->pattern_fields);
     array_free(cst->on_branches);
     array_free(cst->ons);
     array_free(cst->for_items);
@@ -2558,7 +2857,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_For || node->kind == CK_Break ||
            node->kind == CK_Continue || node->kind == CK_Variable ||
-           node->kind == CK_Assign;
+           node->kind == CK_DestructureBind ||
+           node->kind == CK_DestructureVariable || node->kind == CK_Assign;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -2574,7 +2874,8 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
                    : cst->nodes[for_info->else_block_index].b;
     }
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
-        node->kind == CK_Statement) {
+        node->kind == CK_DestructureBind ||
+        node->kind == CK_DestructureVariable || node->kind == CK_Statement) {
         u32 child_index = node->kind == CK_Statement ? node->a : node->b;
         if (child_index >= array_count(cst->nodes)) {
             return node_index + 1;

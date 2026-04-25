@@ -130,6 +130,7 @@ typedef struct {
     Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
     Array(u32) on_branch_local_indices;
+    Array(u32) pattern_local_indices;
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
     Array(i64) node_const_values;

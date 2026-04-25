@@ -62,7 +62,9 @@ typedef struct {
     Array(AstPlexTypeInfo) plex_types;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
-    Array(u32) on_pattern_nodes;
+    Array(AstPattern) patterns;
+    Array(u32) pattern_items;
+    Array(AstPlexPatternField) pattern_fields;
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(u32) for_items;
@@ -103,6 +105,7 @@ bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index);
 bool ast_parse_expr(AstParseState* state, u32* out_expr_node);
 bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node);
 bool ast_parse_type(AstParseState* state, u32* out_node);
+bool ast_parse_pattern(AstParseState* state, u32* out_pattern);
 bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index);
 bool ast_parse_fn_signature(AstParseState* state,
                             bool           allow_named_params,
