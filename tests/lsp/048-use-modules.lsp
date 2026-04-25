@@ -18,6 +18,20 @@ main :: fn () {
                 "character": 4
             }
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 3,
+                "character": 4
+            }
+        }
     }
 ]
 ¬
@@ -67,6 +81,23 @@ main :: fn () {
             "contents": {
                 "kind": "markdown",
                 "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+            "uri": "__REPO_URI__/_bin/mods/std/print.n",
+            "range": {
+                "start": {
+                    "line": 11,
+                    "character": 4
+                },
+                "end": {
+                    "line": 11,
+                    "character": 7
+                }
             }
         }
     },

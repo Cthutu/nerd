@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/modules/modules.h>
 #include <lsp/lsp.h>
 
 #define LSP_NO_DECL UINT32_MAX
@@ -108,6 +109,174 @@ internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_Field && node->token_index == token_index) {
+            return i;
+        }
+    }
+
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
+// Return the AST module-reference node that owns a given token index, if any.
+
+internal u32 lsp_find_modref_node_at_token(const Ast* ast, u32 token_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_ModRef ||
+            node->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        const AstModulePath* path          = &ast->module_paths[node->a];
+        u32                  current_token = node->token_index;
+        for (u32 j = 0; j < path->symbol_count; ++j) {
+            if (current_token == token_index) {
+                return i;
+            }
+            current_token += 1;
+            if (j + 1 < path->symbol_count) {
+                current_token += 1;
+            }
+        }
+    }
+
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
+// Convert one filesystem path into a file:// URI for LSP responses.
+
+internal string lsp_path_to_uri(Arena* arena, cstr path)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, "file://");
+
+#if OS_WINDOWS
+    if (path[0] != '\0' && path[1] == ':') {
+        sb_append_char(&sb, '/');
+    }
+#endif
+
+    for (const char* cursor = path; *cursor != '\0'; ++cursor) {
+        u8 ch = (u8)*cursor;
+#if OS_WINDOWS
+        if (ch == '\\') {
+            sb_append_char(&sb, '/');
+            continue;
+        }
+#endif
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+            (ch >= '0' && ch <= '9') || ch == '/' || ch == '-' || ch == '_' ||
+            ch == '.' || ch == '~') {
+            sb_append_char(&sb, (char)ch);
+        } else {
+            sb_format(&sb, "%%%02X", ch);
+        }
+    }
+
+    return sb_to_string(&sb);
+}
+
+//------------------------------------------------------------------------------
+// Build a location object for one declaration inside a specific module.
+
+internal JsonValue*
+lsp_module_decl_location(const ModuleInfo* module, Arena* arena, u32 decl_index)
+{
+    if (decl_index >= array_count(module->front_end.sema.decls)) {
+        return NULL;
+    }
+
+    const SemaDecl* decl = &module->front_end.sema.decls[decl_index];
+    if (decl->bind_node_index == LSP_NO_DECL ||
+        decl->bind_node_index >= array_count(module->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* bind = &module->front_end.ast.nodes[decl->bind_node_index];
+    usize          start_offset;
+    usize          end_offset;
+    lsp_token_offsets(&module->front_end.lexer,
+                      bind->token_index,
+                      &start_offset,
+                      &end_offset);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(
+        location, arena, "uri", lsp_path_to_uri(arena, module->resolved_path));
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_range(
+            arena, module->front_end.lexer.source, start_offset, end_offset));
+    return location;
+}
+
+//------------------------------------------------------------------------------
+// Build a location object for the start of one module source file.
+
+internal JsonValue* lsp_module_file_location(const ModuleInfo* module,
+                                             Arena*            arena)
+{
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(
+        location, arena, "uri", lsp_path_to_uri(arena, module->resolved_path));
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_range(arena, module->front_end.lexer.source, 0, 0));
+    return location;
+}
+
+//------------------------------------------------------------------------------
+// Resolve one imported symbol through a module type back to its exporting decl.
+
+internal JsonValue* lsp_imported_symbol_location(const LspDocument* doc,
+                                                 Arena*             arena,
+                                                 u32                module_type,
+                                                 u32 symbol_handle)
+{
+    if (module_type == sema_no_type() ||
+        module_type >= array_count(doc->front_end.sema.types)) {
+        return NULL;
+    }
+
+    const SemaType* type = &doc->front_end.sema.types[module_type];
+    if (type->kind != STK_Module || doc->program.modules == NULL ||
+        type->return_type >= array_count(doc->program.modules)) {
+        return NULL;
+    }
+
+    const ModuleInfo* module = &doc->program.modules[type->return_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (doc->front_end.sema.type_param_symbols[type->first_param_type +
+                                                   i] != symbol_handle) {
+            continue;
+        }
+        if (i >= array_count(module->export_decl_indices)) {
+            return NULL;
+        }
+        return lsp_module_decl_location(
+            module, arena, module->export_decl_indices[i]);
+    }
+
+    return NULL;
+}
+
+//------------------------------------------------------------------------------
+// Resolve one loaded module by canonical path inside the current program.
+
+internal u32 lsp_find_program_module_by_path(const ProgramInfo* program,
+                                             cstr               resolved_path)
+{
+    if (program == NULL) {
+        return U32_MAX;
+    }
+
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        if (strcmp(program->modules[i].resolved_path, resolved_path) == 0) {
             return i;
         }
     }
@@ -500,6 +669,15 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
                                       u32                decl_index)
 {
     const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl() &&
+        decl->import_module_index < array_count(doc->program.modules)) {
+        return lsp_module_decl_location(
+            &doc->program.modules[decl->import_module_index],
+            arena,
+            decl->import_decl_index);
+    }
+
     if (decl->bind_node_index == LSP_NO_DECL) {
         return NULL;
     }
@@ -747,10 +925,77 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
         return;
     }
 
+    u32 modref_node_index =
+        lsp_find_modref_node_at_token(&doc->front_end.ast, token_index);
+    if (modref_node_index != U32_MAX) {
+        if (modref_node_index <
+            array_count(doc->front_end.sema.node_type_indices)) {
+            u32 module_type =
+                doc->front_end.sema.node_type_indices[modref_node_index];
+            if (module_type != sema_no_type() &&
+                module_type < array_count(doc->front_end.sema.types)) {
+                const SemaType* type = &doc->front_end.sema.types[module_type];
+                if (type->kind == STK_Module && doc->program.modules != NULL &&
+                    type->return_type < array_count(doc->program.modules)) {
+                    JsonValue* location = lsp_module_file_location(
+                        &doc->program.modules[type->return_type],
+                        message->arena);
+                    json_object_set_object(response, "result", location);
+                    lsp_send_response(message->arena, response);
+                    return;
+                }
+            }
+        }
+
+        const AstNode* modref = &doc->front_end.ast.nodes[modref_node_index];
+        if (modref->a < array_count(doc->front_end.ast.module_paths)) {
+            Arena temp_arena = {0};
+            arena_init(&temp_arena);
+            ModuleResolveResult resolved = {0};
+            ModuleResolveStatus status =
+                module_resolve_path(&temp_arena,
+                                    doc->front_end.lexer.source,
+                                    &doc->front_end.lexer,
+                                    &doc->front_end.ast,
+                                    &doc->front_end.ast.module_paths[modref->a],
+                                    &resolved);
+            if (status == MRS_Found) {
+                u32 module_index = lsp_find_program_module_by_path(
+                    &doc->program, resolved.resolved_path);
+                if (module_index != U32_MAX) {
+                    JsonValue* location = lsp_module_file_location(
+                        &doc->program.modules[module_index], message->arena);
+                    arena_done(&temp_arena);
+                    json_object_set_object(response, "result", location);
+                    lsp_send_response(message->arena, response);
+                    return;
+                }
+            }
+            arena_done(&temp_arena);
+        }
+    }
+
     u32 local_index = lsp_find_local_index_for_token(doc, token_index);
     if (local_index != sema_no_local()) {
-        JsonValue* location =
-            lsp_local_location(doc, message->arena, uri, local_index);
+        const SemaLocal* local    = &doc->front_end.sema.locals[local_index];
+        JsonValue*       location = NULL;
+        if (local->decl_node_index < array_count(doc->front_end.ast.nodes)) {
+            const AstNode* decl_node =
+                &doc->front_end.ast.nodes[local->decl_node_index];
+            if (decl_node->kind == AK_Use &&
+                decl_node->a <
+                    array_count(doc->front_end.sema.node_type_indices)) {
+                location = lsp_imported_symbol_location(
+                    doc,
+                    message->arena,
+                    doc->front_end.sema.node_type_indices[decl_node->a],
+                    local->symbol_handle);
+            }
+        }
+        if (location == NULL) {
+            location =
+                lsp_local_location(doc, message->arena, uri, local_index);
+        }
         json_object_set_object(response, "result", location);
         lsp_send_response(message->arena, response);
         return;

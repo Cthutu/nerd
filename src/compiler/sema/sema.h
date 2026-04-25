@@ -78,6 +78,8 @@ typedef struct {
     u32          type_node_index;
     u32          value_node_index;
     u32          type_index;
+    u32          import_module_index;
+    u32          import_decl_index;
 } SemaDecl;
 
 typedef enum : u8 {

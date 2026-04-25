@@ -118,12 +118,14 @@ internal u32 sema_add_function_type(Sema* sema,
 internal u32 sema_add_module_type_raw(Sema*      sema,
                                       const u32* export_symbols,
                                       const u32* export_types,
-                                      u32        export_count)
+                                      u32        export_count,
+                                      u32        module_index)
 {
     for (u32 i = 0; i < array_count(sema->types); ++i) {
         const SemaType* existing = &sema->types[i];
         if (existing->kind != STK_Module ||
-            existing->param_count != export_count) {
+            existing->param_count != export_count ||
+            existing->return_type != module_index) {
             continue;
         }
 
@@ -153,7 +155,7 @@ internal u32 sema_add_module_type_raw(Sema*      sema,
                              .kind             = STK_Module,
                              .param_count      = (u16)export_count,
                              .first_param_type = first_export,
-                             .return_type      = sema_no_type(),
+                             .return_type      = module_index,
                          });
 }
 
@@ -458,7 +460,8 @@ u32 sema_import_type(Lexer*       dst_lexer,
                 sema_add_module_type_raw(dst_sema,
                                          export_symbols,
                                          export_types,
-                                         (u32)array_count(export_symbols));
+                                         (u32)array_count(export_symbols),
+                                         src_type->return_type);
             array_free(export_symbols);
             array_free(export_types);
             return imported;
@@ -1068,8 +1071,11 @@ internal bool sema_resolve_loaded_module(const Lexer* lexer,
                                     export_decl->type_index));
     }
 
-    *out_type_index = sema_add_module_type_raw(
-        sema, export_symbols, export_types, (u32)array_count(export_symbols));
+    *out_type_index = sema_add_module_type_raw(sema,
+                                               export_symbols,
+                                               export_types,
+                                               (u32)array_count(export_symbols),
+                                               module_index);
     array_free(export_symbols);
     array_free(export_types);
     arena_done(&arena);
@@ -1078,7 +1084,9 @@ internal bool sema_resolve_loaded_module(const Lexer* lexer,
 
 internal u32 sema_ensure_module_export_decl(Sema* sema,
                                             u32   symbol_handle,
-                                            u32   type_index)
+                                            u32   type_index,
+                                            u32   import_module_index,
+                                            u32   import_decl_index)
 {
     u32 decl_index = sema_find_decl(sema, symbol_handle);
     if (decl_index != sema_no_decl()) {
@@ -1096,12 +1104,14 @@ internal u32 sema_ensure_module_export_decl(Sema* sema,
 
     array_push(sema->decls,
                (SemaDecl){
-                   .kind             = kind,
-                   .symbol_handle    = symbol_handle,
-                   .bind_node_index  = sema_no_decl(),
-                   .type_node_index  = sema_no_type(),
-                   .value_node_index = sema_no_decl(),
-                   .type_index       = type_index,
+                   .kind                = kind,
+                   .symbol_handle       = symbol_handle,
+                   .bind_node_index     = sema_no_decl(),
+                   .type_node_index     = sema_no_type(),
+                   .value_node_index    = sema_no_decl(),
+                   .type_index          = type_index,
+                   .import_module_index = import_module_index,
+                   .import_decl_index   = import_decl_index,
                });
     return (u32)array_count(sema->decls) - 1;
 }
@@ -1180,7 +1190,18 @@ internal bool sema_import_module_exports_to_decls(const Lexer* lexer,
     for (u32 i = 0; i < module->param_count; ++i) {
         u32 symbol = sema->type_param_symbols[module->first_param_type + i];
         u32 type   = sema->type_param_types[module->first_param_type + i];
-        sema_ensure_module_export_decl(sema, symbol, type);
+        u32 import_module_index = module->return_type;
+        u32 import_decl_index   = sema_no_decl();
+        if (sema->program != NULL &&
+            import_module_index < array_count(sema->program->modules)) {
+            const ModuleInfo* import_module =
+                &sema->program->modules[import_module_index];
+            if (i < array_count(import_module->export_decl_indices)) {
+                import_decl_index = import_module->export_decl_indices[i];
+            }
+        }
+        sema_ensure_module_export_decl(
+            sema, symbol, type, import_module_index, import_decl_index);
     }
 
     return true;
@@ -2152,12 +2173,14 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
 
         array_push(sema->decls,
                    (SemaDecl){
-                       .kind             = kind,
-                       .symbol_handle    = symbol_handle,
-                       .bind_node_index  = i,
-                       .type_node_index  = type_node_index,
-                       .value_node_index = value_node_index,
-                       .type_index       = sema_no_type(),
+                       .kind                = kind,
+                       .symbol_handle       = symbol_handle,
+                       .bind_node_index     = i,
+                       .type_node_index     = type_node_index,
+                       .value_node_index    = value_node_index,
+                       .type_index          = sema_no_type(),
+                       .import_module_index = sema_no_decl(),
+                       .import_decl_index   = sema_no_decl(),
                    });
     }
     return true;
@@ -7080,9 +7103,25 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         type_index =
                             sema->type_param_types[module->first_param_type +
                                                    i];
+                        u32 import_module_index = module->return_type;
+                        u32 import_decl_index   = sema_no_decl();
+                        if (sema->program != NULL &&
+                            import_module_index <
+                                array_count(sema->program->modules)) {
+                            const ModuleInfo* import_module =
+                                &sema->program->modules[import_module_index];
+                            if (i < array_count(
+                                        import_module->export_decl_indices)) {
+                                import_decl_index =
+                                    import_module->export_decl_indices[i];
+                            }
+                        }
                         sema->node_decl_indices[node - ast->nodes] =
-                            sema_ensure_module_export_decl(
-                                sema, node->b, type_index);
+                            sema_ensure_module_export_decl(sema,
+                                                           node->b,
+                                                           type_index,
+                                                           import_module_index,
+                                                           import_decl_index);
                         break;
                     }
                 }

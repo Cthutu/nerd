@@ -1159,9 +1159,88 @@ internal bool testing_run_lsp_test(const LspTest* test)
     if (!testing_lsp_output_to_json(
             &output_arena, run_result.stdout_text, &actual_json)) {
         passed = false;
-    } else if (!testing_compare_json(
-                   "LSP JSON", test->expected_json, actual_json)) {
-        passed = false;
+    } else {
+        string expected_json   = test->expected_json;
+        string placeholder     = s("__REPO_URI__");
+        bool   has_placeholder = false;
+        for (usize i = 0; i + placeholder.count <= test->expected_json.count;
+             ++i) {
+            if (memcmp(test->expected_json.data + i,
+                       placeholder.data,
+                       placeholder.count) == 0) {
+                has_placeholder = true;
+                break;
+            }
+        }
+
+        if (has_placeholder) {
+            cstr repo_path = path_canonical(&output_arena, ".");
+            if (repo_path != NULL) {
+                StringBuilder uri_sb = {0};
+                sb_init(&uri_sb, &output_arena);
+                sb_append_cstr(&uri_sb, "file://");
+                for (const char* cursor = repo_path; *cursor != '\0';
+                     ++cursor) {
+#if OS_WINDOWS
+                    if (*cursor == '\\') {
+                        sb_append_char(&uri_sb, '/');
+                        continue;
+                    }
+#endif
+                    if ((*cursor >= 'A' && *cursor <= 'Z') ||
+                        (*cursor >= 'a' && *cursor <= 'z') ||
+                        (*cursor >= '0' && *cursor <= '9') || *cursor == '/' ||
+                        *cursor == '-' || *cursor == '_' || *cursor == '.' ||
+                        *cursor == '~') {
+                        sb_append_char(&uri_sb, *cursor);
+                    } else {
+                        sb_format(&uri_sb, "%%%02X", (u8)*cursor);
+                    }
+                }
+                string repo_uri           = sb_to_string(&uri_sb);
+
+                StringBuilder expected_sb = {0};
+                sb_init(&expected_sb, &output_arena);
+                usize cursor = 0;
+                while (cursor < test->expected_json.count) {
+                    usize match = test->expected_json.count;
+                    for (usize i = cursor;
+                         i + placeholder.count <= test->expected_json.count;
+                         ++i) {
+                        if (memcmp(test->expected_json.data + i,
+                                   placeholder.data,
+                                   placeholder.count) == 0) {
+                            match = i;
+                            break;
+                        }
+                    }
+
+                    if (match == test->expected_json.count) {
+                        sb_append_string(
+                            &expected_sb,
+                            (string){
+                                .data  = test->expected_json.data + cursor,
+                                .count = test->expected_json.count - cursor,
+                            });
+                        break;
+                    }
+
+                    sb_append_string(
+                        &expected_sb,
+                        (string){
+                            .data  = test->expected_json.data + cursor,
+                            .count = match - cursor,
+                        });
+                    sb_append_string(&expected_sb, repo_uri);
+                    cursor = match + placeholder.count;
+                }
+                expected_json = sb_to_string(&expected_sb);
+            }
+        }
+
+        if (!testing_compare_json("LSP JSON", expected_json, actual_json)) {
+            passed = false;
+        }
     }
 
     if (!passed && run_result.stderr_text.count > 0) {

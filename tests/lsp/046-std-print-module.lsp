@@ -46,6 +46,20 @@ main :: fn () {
                 "character": 11
             }
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 0,
+                "character": 13
+            }
+        }
     }
 ]
 ¬
@@ -111,6 +125,23 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 4,
+        "result": {
+            "uri": "__REPO_URI__/_bin/mods/std/print.n",
+            "range": {
+                "start": {
+                    "line": 11,
+                    "character": 4
+                },
+                "end": {
+                    "line": 11,
+                    "character": 7
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
         "result": null
     },
     {
