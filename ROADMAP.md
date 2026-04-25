@@ -1064,14 +1064,15 @@ needed earlier.
 
 ## Milestone 26: Standard Module Layout
 
-- [ ] 95. Add the standard module layout and installer support.
+- [X] 95. Add the standard module layout and installer support.
   - Store repo-owned standard modules under `mods/`.
   - Extend `just install` to copy `mods/` next to the installed `nerd`
     executable.
   - Repo/install layout exists: `mods/` is copied beside the installed
     executable.
-  - Compiler module-root discovery still needs to be wired into semantic
-    analysis.
+  - Compiler module-root discovery is wired into semantic analysis for module
+    paths: `NERD_LIB_PATH` first, then installed `mods`, then the repo/dev
+    `mods` fallback used by `_bin/nerd-debug`.
   - Resolve standard modules from `NERD_LIB_PATH` entries first, then from the
     `mods/` folder next to the running compiler executable.
   - Do not support source-relative module lookup; project-local modules should

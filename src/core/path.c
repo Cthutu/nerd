@@ -8,7 +8,9 @@
 #include <stdio.h>
 
 #if OS_POSIX
+#    include <limits.h>
 #    include <sys/stat.h>
+#    include <unistd.h>
 #endif
 
 //------------------------------------------------------------------------------
@@ -78,6 +80,56 @@ string path_stem(string path)
     }
 
     return string_from(filename.data, stem_len);
+}
+
+cstr path_dirname(Arena* arena, cstr path)
+{
+    usize       len            = strlen(path);
+    const char* last_separator = NULL;
+    for (const char* p = path; *p != '\0'; p++) {
+        if (path_is_separator(*p)) {
+            last_separator = p;
+        }
+    }
+
+    if (last_separator == NULL) {
+        return ".";
+    }
+
+    usize dirname_len = (usize)(last_separator - path);
+    if (dirname_len == 0) {
+        dirname_len = 1;
+    }
+    if (dirname_len > len) {
+        dirname_len = len;
+    }
+
+    char* result = (char*)arena_alloc(arena, dirname_len + 1);
+    memcpy(result, path, dirname_len);
+    result[dirname_len] = '\0';
+    return result;
+}
+
+cstr path_executable_dir(Arena* arena)
+{
+#if OS_WINDOWS
+    char  buffer[MAX_PATH] = {0};
+    DWORD written          = GetModuleFileNameA(NULL, buffer, sizeof(buffer));
+    if (written == 0 || written >= sizeof(buffer)) {
+        return ".";
+    }
+    return path_dirname(arena, buffer);
+#elif OS_LINUX
+    char    buffer[PATH_MAX] = {0};
+    ssize_t written = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (written <= 0) {
+        return ".";
+    }
+    buffer[written] = '\0';
+    return path_dirname(arena, buffer);
+#else
+    return ".";
+#endif
 }
 
 cstr path_join(Arena* arena, cstr left, cstr right)

@@ -818,6 +818,101 @@ internal bool sema_module_path_is(const Lexer*         lexer,
                second);
 }
 
+internal cstr sema_module_path_to_relative(Arena*               arena,
+                                           const Lexer*         lexer,
+                                           const Ast*           ast,
+                                           const AstModulePath* path,
+                                           cstr                 suffix)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (u32 i = 0; i < path->symbol_count; ++i) {
+        if (i > 0) {
+#if OS_WINDOWS
+            sb_append_char(&sb, '\\');
+#else
+            sb_append_char(&sb, '/');
+#endif
+        }
+        sb_append_string(
+            &sb,
+            lex_symbol(lexer,
+                       ast->module_path_symbols[path->first_symbol + i]));
+    }
+    sb_append_cstr(&sb, suffix);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+}
+
+internal bool sema_module_path_exists_in_root(Arena*               arena,
+                                              const Lexer*         lexer,
+                                              const Ast*           ast,
+                                              const AstModulePath* path,
+                                              cstr                 root)
+{
+    cstr module_file =
+        path_join(arena,
+                  root,
+                  sema_module_path_to_relative(arena, lexer, ast, path, ".n"));
+    if (path_exists(module_file) && !path_is_directory(module_file)) {
+        return true;
+    }
+
+    cstr module_dir = path_join(
+        arena, root, sema_module_path_to_relative(arena, lexer, ast, path, ""));
+    cstr module_mod = path_join(arena, module_dir, "mod.n");
+    return path_exists(module_mod) && !path_is_directory(module_mod);
+}
+
+internal bool sema_module_path_exists(const Lexer*         lexer,
+                                      const Ast*           ast,
+                                      const AstModulePath* path)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    bool found = false;
+    cstr env   = getenv("NERD_LIB_PATH");
+    if (env != NULL && env[0] != '\0') {
+        cstr  start     = env;
+        char  separator = OS_WINDOWS ? ';' : ':';
+        usize env_len   = strlen(env);
+        for (usize i = 0; i <= env_len && !found; ++i) {
+            if (env[i] != separator && env[i] != '\0') {
+                continue;
+            }
+
+            usize root_len = (usize)(env + i - start);
+            if (root_len > 0) {
+                char* root = (char*)arena_alloc(&arena, root_len + 1);
+                memcpy(root, start, root_len);
+                root[root_len] = '\0';
+                found          = sema_module_path_exists_in_root(
+                    &arena, lexer, ast, path, root);
+            }
+            start = env + i + 1;
+        }
+    }
+
+    if (!found) {
+        cstr exe_dir  = path_executable_dir(&arena);
+        cstr mods_dir = path_join(&arena, exe_dir, "mods");
+        found =
+            sema_module_path_exists_in_root(&arena, lexer, ast, path, mods_dir);
+    }
+
+    if (!found) {
+        cstr exe_dir       = path_executable_dir(&arena);
+        cstr repo_root     = path_dirname(&arena, exe_dir);
+        cstr repo_mods_dir = path_join(&arena, repo_root, "mods");
+        found              = sema_module_path_exists_in_root(
+            &arena, lexer, ast, path, repo_mods_dir);
+    }
+
+    arena_done(&arena);
+    return found;
+}
+
 internal bool sema_resolve_bootstrap_module(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -826,7 +921,8 @@ internal bool sema_resolve_bootstrap_module(const Lexer* lexer,
                                             u32*         out_type_index)
 {
     const AstModulePath* path = &ast->module_paths[module_path_index];
-    if (!sema_module_path_is(lexer, ast, path, s("std"), s("print"))) {
+    if (!sema_module_path_exists(lexer, ast, path) ||
+        !sema_module_path_is(lexer, ast, path, s("std"), s("print"))) {
         return error_0304_type_mismatch(
             lexer->source, span, s("known module"), s("module path"));
     }
