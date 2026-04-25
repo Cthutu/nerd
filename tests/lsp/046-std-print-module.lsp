@@ -142,7 +142,19 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 5,
-        "result": null
+        "result": {
+            "uri": "__REPO_URI__/_bin/mods/std/print.n",
+            "range": {
+                "start": {
+                    "line": 0,
+                    "character": 0
+                },
+                "end": {
+                    "line": 0,
+                    "character": 0
+                }
+            }
+        }
     },
     {
         "jsonrpc": "2.0",

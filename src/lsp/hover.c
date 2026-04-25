@@ -119,7 +119,9 @@ internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
 //------------------------------------------------------------------------------
 // Return the AST module-reference node that owns a given token index, if any.
 
-internal u32 lsp_find_modref_node_at_token(const Ast* ast, u32 token_index)
+internal u32 lsp_find_modref_node_at_token(const Lexer* lexer,
+                                           const Ast*   ast,
+                                           u32          token_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
@@ -130,6 +132,10 @@ internal u32 lsp_find_modref_node_at_token(const Ast* ast, u32 token_index)
 
         const AstModulePath* path          = &ast->module_paths[node->a];
         u32                  current_token = node->token_index;
+        if (current_token < array_count(lexer->tokens) &&
+            lexer->tokens[current_token].kind == TK_mod) {
+            current_token += 1;
+        }
         for (u32 j = 0; j < path->symbol_count; ++j) {
             if (current_token == token_index) {
                 return i;
@@ -925,8 +931,8 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
         return;
     }
 
-    u32 modref_node_index =
-        lsp_find_modref_node_at_token(&doc->front_end.ast, token_index);
+    u32 modref_node_index = lsp_find_modref_node_at_token(
+        &doc->front_end.lexer, &doc->front_end.ast, token_index);
     if (modref_node_index != U32_MAX) {
         if (modref_node_index <
             array_count(doc->front_end.sema.node_type_indices)) {
