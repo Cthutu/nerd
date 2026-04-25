@@ -18,6 +18,13 @@ internal void format_emit_for_header_items(StringBuilder* sb,
                                            const Lexer*   lexer,
                                            u32            first_item,
                                            u32            item_count);
+internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index);
+internal void format_emit_on_block_multiline(StringBuilder* sb,
+                                             const Cst*     cst,
+                                             const Lexer*   lexer,
+                                             u32            node_index,
+                                             u32            indent_level);
 
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
@@ -380,9 +387,18 @@ internal void format_emit_expr(StringBuilder* sb,
                 continue;
             }
             if (part->kind == CK_InterpPartExpr) {
-                sb_append_char(sb, '{');
-                format_emit_expr(sb, cst, lexer, part->a, 0);
-                sb_append_char(sb, '}');
+                if (format_node_is_block_form_on(cst, part->a)) {
+                    sb_append_cstr(sb, "{\n");
+                    format_emit_indent(sb, 1);
+                    format_emit_on_block_multiline(sb, cst, lexer, part->a, 1);
+                    sb_append_char(sb, '\n');
+                    format_emit_indent(sb, 1);
+                    sb_append_char(sb, '}');
+                } else {
+                    sb_append_char(sb, '{');
+                    format_emit_expr(sb, cst, lexer, part->a, 0);
+                    sb_append_char(sb, '}');
+                }
                 continue;
             }
             error_ice("Unhandled interpolated string part kind: %u",

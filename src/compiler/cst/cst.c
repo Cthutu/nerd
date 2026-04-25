@@ -27,7 +27,8 @@ typedef struct {
     Array(u32) token_float_indices;
     Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
-    Cst cst;
+    bool stop_before_on_branch_head;
+    Cst  cst;
 } CstParseState;
 
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
@@ -183,6 +184,26 @@ internal bool cst_token_starts_expression(TokenKind kind)
     default:
         return false;
     }
+}
+
+internal bool cst_token_can_continue_on_branch_head(TokenKind kind)
+{
+    return kind == TK_FatArrow || kind == TK_as || kind == TK_on;
+}
+
+internal bool
+cst_current_token_starts_on_branch_head(const CstParseState* state)
+{
+    Token token = cst_current_token(state);
+    if (token.kind == TK_else) {
+        return true;
+    }
+
+    if (token.kind != TK_Dot || cst_peek_kind_at(state, 1) != TK_Symbol) {
+        return false;
+    }
+
+    return cst_token_can_continue_on_branch_head(cst_peek_kind_at(state, 2));
 }
 
 internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
@@ -1464,7 +1485,12 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
                              out_node);
     }
 
-    return cst_parse_expr_bp(state, 0, out_node);
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->stop_before_on_branch_head = true;
+    bool parsed                       = cst_parse_expr_bp(state, 0, out_node);
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
+    return parsed;
 }
 
 internal bool cst_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
@@ -1674,6 +1700,11 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         Token token = cst_current_token(state);
         u8    left_bp;
         u8    right_bp;
+
+        if (state->stop_before_on_branch_head &&
+            cst_current_token_starts_on_branch_head(state)) {
+            break;
+        }
 
         if (token.kind == TK_LBrace) {
             bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&

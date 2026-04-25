@@ -113,6 +113,25 @@ internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
     return kind == TK_with;
 }
 
+internal bool ast_token_can_continue_on_branch_head(TokenKind kind)
+{
+    return kind == TK_FatArrow || kind == TK_as || kind == TK_on;
+}
+
+internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
+                                                   AstToken             next)
+{
+    if (next.kind == TK_else) {
+        return true;
+    }
+
+    if (next.kind != TK_Dot || ast_peek_kind_at(state, 0) != TK_Symbol) {
+        return false;
+    }
+
+    return ast_token_can_continue_on_branch_head(ast_peek_kind_at(state, 1));
+}
+
 //------------------------------------------------------------------------------
 // Return Pratt binding powers for supported infix operators.
 
@@ -364,7 +383,15 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
                              out_node);
     }
 
-    return ast_parse_expr_bp(state, 0, out_node);
+    bool previous_allow_statement_boundary = state->allow_statement_boundary;
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->allow_statement_boundary   = true;
+    state->stop_before_on_branch_head = true;
+    bool parsed                       = ast_parse_expr_bp(state, 0, out_node);
+    state->allow_statement_boundary   = previous_allow_statement_boundary;
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
+    return parsed;
 }
 
 internal bool
@@ -1555,6 +1582,11 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
         next = state->token;
+
+        if (state->stop_before_on_branch_head &&
+            ast_next_token_starts_on_branch_head(state, next)) {
+            break;
+        }
 
         if (next.kind == TK_LBrace) {
             bool starts_plex = state->nodes[left_node].kind == AK_SymbolRef &&
