@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Colour::enum{RED GREEN BLUE}
 
@@ -8,7 +8,7 @@ colour:Colour=RED
 prn($"Colour = {on colour { RED => "red" GREEN => "green" BLUE => "blue" }}")
 }
 ¬
-use mod std.print
+use std.print
 
 Colour :: enum { RED GREEN BLUE }
 

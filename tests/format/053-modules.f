@@ -1,4 +1,4 @@
-print::mod std.print
+pub print::mod std.print
 
 main::fn(){
 local_print::mod std.print
@@ -7,7 +7,7 @@ print.prn("Hello")
 print.pr("same")
 }
 ¬
-print :: mod std.print
+pub print :: mod std.print
 
 main :: fn () {
     local_print :: mod std.print

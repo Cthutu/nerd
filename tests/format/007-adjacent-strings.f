@@ -1,8 +1,8 @@
-use mod std.print
+use std.print
 
 main::fn(){prn("Hello, ""world!")}
 ¬
-use mod std.print
+use std.print
 
 main :: fn () {
     prn("Hello, " "world!")

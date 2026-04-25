@@ -163,11 +163,16 @@ typedef enum {
 
 typedef struct {
     CstKind kind : 8;
-    u8      _pad;
+    u8      flags;
     u16     _pad2;
     u32     token_index;
     u32     a, b;
 } CstNode;
+
+typedef enum : u8 {
+    CNF_None   = 0,
+    CNF_Public = 1 << 0,
+} CstNodeFlag;
 
 typedef struct {
     u32 symbol_handle;

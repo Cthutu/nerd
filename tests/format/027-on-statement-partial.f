@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 main :: fn () {
     value :: 2
@@ -6,7 +6,7 @@ main :: fn () {
     on value { 1 => prn("one") }
 }
 ¬
-use mod std.print
+use std.print
 
 main :: fn () {
     value :: 2

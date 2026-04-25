@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Point::plex{x i32 y i32 name string}
 
@@ -8,7 +8,7 @@ p:Point=Point{x:1,y:2,name:"p"}
 prn($"{p.name} {p.x} {p.y}")
 }
 ¬
-use mod std.print
+use std.print
 
 Point :: plex {
     x    i32

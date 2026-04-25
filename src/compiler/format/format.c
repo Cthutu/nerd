@@ -273,6 +273,10 @@ internal void format_emit_mod_ref(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
                                   u32            module_path_index);
+internal void format_emit_module_path(StringBuilder* sb,
+                                      const Cst*     cst,
+                                      const Lexer*   lexer,
+                                      u32            module_path_index);
 internal void format_emit_value(StringBuilder* sb,
                                 const Cst*     cst,
                                 const Lexer*   lexer,
@@ -930,7 +934,11 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_Use:
         sb_append_cstr(sb, "use ");
-        format_emit_expr(sb, cst, lexer, node->a, 0);
+        if (cst->nodes[node->a].kind == CK_ModRef) {
+            format_emit_module_path(sb, cst, lexer, cst->nodes[node->a].a);
+        } else {
+            format_emit_expr(sb, cst, lexer, node->a, 0);
+        }
         break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
@@ -1853,8 +1861,16 @@ internal void format_emit_mod_ref(StringBuilder* sb,
                                   const Lexer*   lexer,
                                   u32            module_path_index)
 {
-    const CstModulePath* path = &cst->module_paths[module_path_index];
     sb_append_cstr(sb, "mod ");
+    format_emit_module_path(sb, cst, lexer, module_path_index);
+}
+
+internal void format_emit_module_path(StringBuilder* sb,
+                                      const Cst*     cst,
+                                      const Lexer*   lexer,
+                                      u32            module_path_index)
+{
+    const CstModulePath* path = &cst->module_paths[module_path_index];
     for (u32 i = 0; i < path->symbol_count; ++i) {
         if (i > 0) {
             sb_append_char(sb, '.');
@@ -2069,6 +2085,9 @@ internal void format_emit_for_header_item(StringBuilder* sb,
         return;
     }
     if (item->kind == CK_Bind) {
+        if (item->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
         sb_append_cstr(
             sb, cst->nodes[item->b].kind == CK_AnnotatedValue ? " : " : " :: ");
@@ -2225,6 +2244,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Bind) {
+        if (stmt->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
         sb_append_cstr(
             sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
@@ -2281,7 +2303,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Use) {
         sb_append_cstr(sb, "use ");
-        format_emit_expr_with_indent(sb, cst, lexer, stmt->a, 0, indent_level);
+        if (cst->nodes[stmt->a].kind == CK_ModRef) {
+            format_emit_module_path(sb, cst, lexer, cst->nodes[stmt->a].a);
+        } else {
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->a, 0, indent_level);
+        }
         sb_append_char(sb, '\n');
         return;
     }
@@ -2417,7 +2444,11 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (node->kind == CK_Use) {
             sb_append_cstr(sb, "use ");
-            format_emit_expr(sb, &cst, &lexer, node->a, 0);
+            if (cst.nodes[node->a].kind == CK_ModRef) {
+                format_emit_module_path(sb, &cst, &lexer, cst.nodes[node->a].a);
+            } else {
+                format_emit_expr(sb, &cst, &lexer, node->a, 0);
+            }
             sb_append_char(sb, '\n');
             first_binding = false;
             continue;
@@ -2482,8 +2513,11 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             array_free(aligned);
         }
 
-        sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
         if (node->kind == CK_Bind) {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
+            sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
             sb_append_cstr(
                 sb,
                 cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
@@ -2493,6 +2527,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
         } else {
+            sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
             if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
                 cst.nodes[node->b].kind == CK_ZeroInit) {
                 sb_append_cstr(sb, ": ");

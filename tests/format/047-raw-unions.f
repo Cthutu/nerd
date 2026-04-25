@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Value::union{i i32 f f32 label string}
 
@@ -7,7 +7,7 @@ v:Value=Value{i:42}
 prn($"{v.i}")
 }
 ¬
-use mod std.print
+use std.print
 
 Value :: union {
     i     i32

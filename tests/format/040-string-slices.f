@@ -1,8 +1,8 @@
-use mod std.print
+use std.print
 
 main::fn(){text::"hello" whole:string=text[..] ell:string=text[1..4] prn($"{ell.count} {ell.data[0]}")}
 ¬
-use mod std.print
+use std.print
 
 main :: fn () {
     text :: "hello"

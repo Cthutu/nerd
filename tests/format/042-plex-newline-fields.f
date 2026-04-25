@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 Person :: plex { name string age u8 }
 
@@ -11,7 +11,7 @@ main :: fn () {
     prn($"His name is {matt.name} and he is {matt.age} years old")
 }
 ¬
-use mod std.print
+use std.print
 
 Person :: plex {
     name string

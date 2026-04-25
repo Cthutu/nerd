@@ -178,6 +178,7 @@ typedef enum : u8 {
     ANF_None       = 0,
     ANF_ConstKnown = 1 << 0,
     ANF_ConstBusy  = 1 << 1,
+    ANF_Public     = 1 << 2,
 } AstNodeFlag;
 
 typedef struct {

@@ -2141,9 +2141,49 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
     u32  module_node                = 0;
     bool previous_boundary          = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
-    bool ok                         = state->token.kind == TK_mod
-                                          ? ast_parse_declaration(state, &module_node)
-                                          : ast_parse_expr(state, &module_node);
+    bool ok                         = false;
+    if (state->token.kind == TK_mod) {
+        ok = ast_parse_declaration(state, &module_node);
+    } else if (state->token.kind == TK_Symbol &&
+               ast_peek_kind_at(state, 0) == TK_Dot) {
+        AstToken path_token   = state->token;
+        u32      first_symbol = (u32)array_count(state->module_path_symbols);
+        u32      symbol_count = 0;
+
+        for (;;) {
+            array_push(state->module_path_symbols,
+                       state->token.value.symbol_handle);
+            ++symbol_count;
+            if (ast_peek_kind_at(state, 0) != TK_Dot) {
+                break;
+            }
+            if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state) ||
+                state->token.kind != TK_Symbol) {
+                state->allow_statement_boundary = previous_boundary;
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+        }
+
+        u32 module_path_index = (u32)array_count(state->module_paths);
+        array_push(state->module_paths,
+                   (AstModulePath){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+        ok = ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_ModRef,
+                               .token_index = path_token.token_index,
+                               .a           = module_path_index,
+                           },
+                           &module_node);
+    } else {
+        ok = ast_parse_expr(state, &module_node);
+    }
     state->allow_statement_boundary = previous_boundary;
     if (!ok) {
         return false;
@@ -2267,23 +2307,83 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
 
 internal bool ast_parse_top_level_item(AstParseState* state)
 {
+    bool is_public = false;
+    if (state->token.kind == TK_pub) {
+        is_public = true;
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a top-level binding after 'pub', but found end of "
+                "file");
+        }
+    }
+
     switch (state->token.kind) {
     case TK_ffi:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected a symbol to start a "
+                "public binding");
+        }
         return ast_parse_declaration(state, NULL);
     case TK_use:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected a symbol to start a "
+                "public binding");
+        }
         return ast_parse_use(state, NULL);
     case TK_on:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected a symbol to start a "
+                "public binding");
+        }
         return ast_parse_top_level_on(state, NULL);
     case TK_Symbol:
         if (ast_peek_kind_at(state, 0) != TK_Colon) {
             break;
         }
         if (ast_symbol_starts_bind(state)) {
-            return ast_parse_bind(state, NULL);
+            u32 bind_index = 0;
+            if (!ast_parse_bind(state, &bind_index)) {
+                return false;
+            }
+            if (is_public) {
+                ast_set_flag(&state->nodes[bind_index], ANF_Public);
+            }
+            return true;
+        }
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected a symbol to start a "
+                "public binding");
         }
         return ast_parse_variable(state, NULL);
     default:
         break;
+    }
+
+    if (is_public) {
+        return error_0204_unexpected_token(state->lexer->source,
+                                           ast_token_span(state, &state->token),
+                                           state->token.kind,
+                                           "Expected a symbol to start a "
+                                           "public binding");
     }
 
     if (!ast_parse_expr(state, NULL)) {

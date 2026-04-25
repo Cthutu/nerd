@@ -1,4 +1,4 @@
-use mod std.print
+use std.print
 
 libc::"c"
 ffi libc abs(i32)->i32
@@ -10,7 +10,7 @@ value:=abs(-7)
 prn($"abs = {value}")
 }
 ¬
-use mod std.print
+use std.print
 
 libc :: "c"
 

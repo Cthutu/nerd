@@ -3255,6 +3255,44 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
         if (!cst_parse_mod_ref(state, &module_node)) {
             return false;
         }
+    } else if (cst_current_token(state).kind == TK_Symbol &&
+               cst_peek_kind_at(state, 1) == TK_Dot) {
+        u32 path_token_index = state->token_index;
+        u32 first_symbol     = (u32)array_count(state->cst.module_path_symbols);
+        u32 symbol_count     = 0;
+
+        for (;;) {
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            array_push(state->cst.module_path_symbols, symbol_handle);
+            ++symbol_count;
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_Dot) {
+                break;
+            }
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+        }
+
+        u32 module_path_index = (u32)array_count(state->cst.module_paths);
+        array_push(state->cst.module_paths,
+                   (CstModulePath){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_ModRef,
+                               .token_index = path_token_index,
+                               .a           = module_path_index,
+                           },
+                           &module_node)) {
+            return false;
+        }
     } else if (!cst_parse_expr_bp(state, 0, &module_node)) {
         return false;
     }
@@ -3343,15 +3381,30 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
 {
+    bool is_public = false;
+    if (cst_current_token(state).kind == TK_pub) {
+        is_public = true;
+        cst_advance(state);
+    }
+
     if (cst_current_token(state).kind == TK_ffi) {
+        if (is_public) {
+            return false;
+        }
         return cst_parse_ffi_def(state, out_node);
     }
 
     if (cst_current_token(state).kind == TK_use) {
+        if (is_public) {
+            return false;
+        }
         return cst_parse_use(state, out_node);
     }
 
     if (cst_current_token(state).kind == TK_on) {
+        if (is_public) {
+            return false;
+        }
         return cst_parse_top_level_on(state, out_node);
     }
 
@@ -3360,10 +3413,23 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
     }
 
     if (cst_starts_variable(state) && !cst_starts_annotated_bind(state)) {
+        if (is_public) {
+            return false;
+        }
         return cst_parse_variable(state, out_node);
     }
 
-    return cst_parse_bind(state, out_node);
+    u32 bind_node = 0;
+    if (!cst_parse_bind(state, &bind_node)) {
+        return false;
+    }
+    if (is_public) {
+        state->cst.nodes[bind_node].flags |= CNF_Public;
+    }
+    if (out_node != NULL) {
+        *out_node = bind_node;
+    }
+    return true;
 }
 
 //------------------------------------------------------------------------------

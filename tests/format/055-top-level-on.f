@@ -11,7 +11,7 @@ on debug {
     answer :: 7
 
     on !feature {
-        use mod std.print
+        use std.print
         fallback :: 9
     }
 }
