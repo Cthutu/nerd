@@ -1129,6 +1129,124 @@ needed earlier.
 - [ ] Retire `TODO.md` once its ideas have been integrated into the numbered
   roadmap or deliberately deferred.
 
+## Milestone 29: General Module Loading
+
+- [ ] 98. Replace bootstrap module resolution with general module loading.
+  - This is the first of the next design-work items and is the one whose
+    direction has already been settled.
+  - Remove compiler-side special-casing for `std.print`.
+  - Load module source from configured module roots through the same front-end
+    pipeline as normal source files.
+  - Build module exports from analysed module declarations rather than
+    synthesising them in semantic analysis.
+  - Keep module loading deterministic and cache analysed modules per build so
+    repeated imports do not reparse or reanalyse the same file.
+  - Resolve dotted module paths such as `std.print` to rooted files such as
+    `std/print.n`.
+  - Support only rooted module lookup; do not add relative module imports.
+  - Search module roots in this order:
+    - the directory of the root `.n` file being built
+    - entries from `NERD_LIB_PATH`, left to right
+    - the installed `mods/` directory beside the `nerd` executable
+  - Deduplicate loaded modules by canonical resolved file path while preserving
+    the dotted module path for diagnostics and lowered-name qualification.
+  - Detect and report module load failures and module import cycles with useful
+    diagnostics.
+  - Keep `data/prelude.c` and `data/epilogue.c` as backend/runtime support for
+    generated C, but remove bootstrap modules entirely from the language/module
+    system.
+  - Completion criterion: no compiler-known bootstrap module resolution remains;
+    `std.print` is loaded and exported exactly like any other Nerd module.
+
+## Milestone 30: Module Exports And Privacy
+
+- [ ] 99. Define the first stable module visibility model.
+  - This is the second of the next design-work items and its design direction
+    has already been settled. Implementation follows general module loading.
+  - Use `pub` as the explicit export marker.
+  - Allow `pub` only on top-level bindings.
+  - Allow public module-valued bindings such as `pub p :: mod std.print` to
+    re-export submodules through ordinary namespacing.
+  - Define what `use` imports from a module and how non-exported names behave.
+  - Keep the initial model simple, documented, and enforced consistently in
+    sema, formatter, LSP, and tests.
+  - Add regressions for duplicate export names, private-name access, and
+    shadowing through `use`.
+
+## Milestone 31: Pattern And Enum Consolidation
+
+- [ ] 100. Consolidate the long-term enum and pattern model.
+  - This is the third of the next design-work items and its design direction
+    has now been settled.
+  - Keep `on` pattern rules explicit and teachable as enums, payloads, and
+    structural patterns grow.
+  - Allow implicit enum variant scoping only where the expected value is
+    unambiguously of the enum type.
+  - Keep explicit qualified enum names valid everywhere, for example
+    `Colour.RED`.
+  - Keep `else` as the wildcard for branching. Reserve `_` for destructuring.
+  - Keep binders post-pattern with `as`.
+  - Keep guards trailing with `on`.
+  - Treat tuple patterns as tuple-shaped value patterns, but require explicit
+    binders such as `(2, 3, as x)` so bare names always remain value/name
+    matches rather than introducing new symbols implicitly.
+  - Treat plex patterns similarly, with explicit field binders such as
+    `{ x: 20, y: _, z: as z }`.
+  - Do not add array/slice pattern matching yet.
+  - Keep formatter and diagnostics aligned with the intended reading order of
+    patterns and binders.
+  - Add focused tests for ambiguous cases so future syntax changes do not
+    erode clarity.
+
+## Milestone 32: FFI Consolidation
+
+- [ ] 101. Keep the FFI surface explicit and ABI-focused.
+  - This is the fourth of the next design-work items and its design direction
+    has now been settled.
+  - Keep the foreign symbol name explicit in the surface syntax, with an
+    optional local rename binding.
+  - Allow the FFI library operand to be any expression that evaluates to a
+    string.
+  - Keep omitted return types meaning `void`.
+  - Allow `...` only in FFI declarations.
+  - Start with the default C ABI only; defer calling-convention syntax until it
+    is needed and specified.
+  - Restrict FFI signatures to ABI-obvious Nerd types and reject higher-level
+    types whose layout or calling convention is not explicit.
+  - Preserve the rule that convenience must not hide ABI-sensitive behaviour.
+  - Document the supported ABI-safe Nerd types and the rejected higher-level
+    types.
+  - Add calling-convention support only when the behaviour is specified and
+    tested across platforms that need it.
+  - Keep FFI diagnostics concrete about why one type/signature is unsafe.
+
+## Milestone 33: Standard Library Expansion
+
+- [ ] 102. Expand the standard library only after module loading and exports are
+  stable.
+  - This is the fifth of the next design-work items and should stay sequenced
+    after module loading and export/privacy work.
+  - Treat `std.print` as the first real module and use it to validate the
+    module/export design.
+  - Add the next standard modules only after the module loader, export rules,
+    and import ergonomics are settled.
+  - Keep standard library growth disciplined so the core language semantics do
+    not drift under a large library surface.
+
+## Milestone 34: Grouped `use` Syntax
+
+- [ ] 103. Add grouped `use` as parser-level syntax sugar.
+  - Support grouped forms rooted at one module path, for example:
+    `use std.collections { array list.single list.double }`.
+  - Treat grouped `use` as pure desugaring into multiple ordinary `use`
+    statements in the parser.
+  - Keep sema, module loading, export rules, and IR generation unaware of the
+    grouped syntax.
+  - Prefer direct parser expansion into multiple ordinary `AK_Use` nodes rather
+    than introducing a separate grouped-use semantic form.
+  - Add formatter and LSP coverage so grouped imports remain stable and
+    readable.
+
 ## Future Ideas
 
 These items are worth keeping visible, but they are not assigned to a numbered

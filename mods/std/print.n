@@ -1,17 +1,16 @@
 -- Standard printing module.
 --
--- This file records the target public surface while FFI and module loading are
--- being implemented. Once MS25-MS27 are complete, these declarations should be
--- replaced with Nerd wrappers around C printf and the compiler-known pr/prn
--- built-ins should be removed.
+-- This is the first repo-owned standard module surface. It still relies on the
+-- current module-loading/bootstrap path until general module loading lands, but
+-- `pr` and `prn` now live here rather than as global built-ins.
 
 ffi "c" printf (text: string, ...) -> i32
 
-pr :: fn(text: string) {
+pub pr :: fn(text: string) {
     printf("%.*s", text.count, text.data)
 }
 
-prn :: fn(text: string) {
+pub prn :: fn(text: string) {
     pr(text)
     printf("\n")
 }
