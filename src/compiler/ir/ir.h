@@ -96,6 +96,12 @@ typedef struct {
 } IrGlobal;
 
 typedef struct {
+    u32 symbol;
+    u32 type;
+    u32 library_string_index;
+} IrExtern;
+
+typedef struct {
     u32  symbol;
     u32  type;
     u32  function_index;
@@ -145,6 +151,7 @@ typedef struct {
 typedef struct {
     Array(IrInstruction) instructions;
     Array(IrGlobal) globals;
+    Array(IrExtern) externs;
     Array(IrFunction) functions;
     Array(IrLocal) locals;
     Array(IrCallArg) call_args;

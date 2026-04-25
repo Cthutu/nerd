@@ -84,21 +84,46 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr c_path   = ctx->artifacts->c_path;
-    cstr exe_path = ctx->artifacts->binary_path;
+    cstr          c_path     = ctx->artifacts->c_path;
+    cstr          exe_path   = ctx->artifacts->binary_path;
+    StringBuilder link_flags = {0};
+    sb_init(&link_flags, &arena);
+    const Lexer* lexer = &ctx->front_end_results->lexer;
+    const Ir*    ir    = &ctx->front_end_results->ir;
+    for (u32 i = 0; i < array_count(ir->externs); ++i) {
+        string library = lexer->strings[ir->externs[i].library_string_index];
+        if (string_eq(library, s("c"))) {
+            continue;
+        }
+
+        bool already_added = false;
+        for (u32 j = 0; j < i; ++j) {
+            string previous =
+                lexer->strings[ir->externs[j].library_string_index];
+            if (string_eq(previous, library)) {
+                already_added = true;
+                break;
+            }
+        }
+        if (!already_added) {
+            sb_format(&link_flags, " -l" STRINGP, STRINGV(library));
+        }
+    }
 #if OS_POSIX
     string command =
         ctx->artifacts->release
             ? string_format(&arena,
                             "clang " GENERATED_C_WARNINGS " -O2 -DNDEBUG -o "
-                            "\"%s\" \"%s\"",
+                            "\"%s\" \"%s\"" STRINGP,
                             exe_path,
-                            c_path)
+                            c_path,
+                            STRINGV(sb_to_string(&link_flags)))
             : string_format(&arena,
                             "clang " GENERATED_C_WARNINGS " -g -O0 -DDEBUG -o "
-                            "\"%s\" \"%s\"",
+                            "\"%s\" \"%s\"" STRINGP,
                             exe_path,
-                            c_path);
+                            c_path,
+                            STRINGV(sb_to_string(&link_flags)));
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);
@@ -115,14 +140,16 @@ internal bool back_end_compile_c(BackEndContext* ctx)
         ctx->artifacts->release
             ? string_format(&arena,
                             "clang " GENERATED_C_WARNINGS " -O2 -DNDEBUG -o "
-                            "\"%s\" \"%s\"",
+                            "\"%s\" \"%s\"" STRINGP,
                             exe_path,
-                            c_path)
+                            c_path,
+                            STRINGV(sb_to_string(&link_flags)))
             : string_format(&arena,
                             "clang " GENERATED_C_WARNINGS " -g -O0 -DDEBUG -o "
-                            "\"%s\" \"%s\"",
+                            "\"%s\" \"%s\"" STRINGP,
                             exe_path,
-                            c_path);
+                            c_path,
+                            STRINGV(sb_to_string(&link_flags)));
     int compile_result = shell((cstr)command.data);
     if (compile_result != 0) {
         arena_done(&arena);

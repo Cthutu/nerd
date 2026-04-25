@@ -159,6 +159,8 @@ internal cstr cgen_c_integer_type(const Ir* ir, u32 type_index)
     }
 
     switch (ir->types[type_index].kind) {
+    case STK_Void:
+        return "void";
     case STK_I8:
         return "int8_t";
     case STK_I16:
@@ -1192,6 +1194,38 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
     }
 }
 
+internal void cgen_add_extern_decls(CGen* cgen)
+{
+    for (u32 i = 0; i < array_count(cgen->ir->externs); ++i) {
+        const IrExtern* extern_decl = &cgen->ir->externs[i];
+        const SemaType* fn_type     = &cgen->ir->types[extern_decl->type];
+        ASSERT(fn_type->kind == STK_Function, "Expected FFI function type");
+
+        cgen_start_line(cgen);
+        cgen_add(cgen, cgen_c_type(cgen->ir, fn_type->return_type));
+        cgen_add(cgen, " ");
+        cgen_add_builtin_name(cgen, extern_decl->symbol);
+        cgen_add(cgen, "(");
+        for (u32 param = 0; param < fn_type->param_count; ++param) {
+            if (param > 0) {
+                cgen_add(cgen, ", ");
+            }
+            cgen_add(cgen,
+                     cgen_c_type(
+                         cgen->ir,
+                         cgen->ir->type_param_types[fn_type->first_param_type +
+                                                    param]));
+        }
+        if (fn_type->param_count == 0) {
+            cgen_add(cgen, "void");
+        }
+        cgen_addn(cgen, ");");
+    }
+    if (array_count(cgen->ir->externs) > 0) {
+        cgen_addn(cgen, "");
+    }
+}
+
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL ||
@@ -1248,6 +1282,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
     }
 
     cgen_add_tuple_type_decls(cgen);
+    cgen_add_extern_decls(cgen);
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];

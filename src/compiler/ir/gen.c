@@ -2006,9 +2006,11 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 const SemaDecl* decl = &sema->decls[decl_index];
 
                 value                = (IrValue){
-                                   .kind = decl->kind == SK_BuiltinFunction ? IR_VALUE_BUILTIN
-                                                                            : IR_VALUE_SYMBOL,
-                                   .type = decl->type_index,
+                                   .kind          = decl->kind == SK_BuiltinFunction ||
+                                    decl->kind == SK_FfiFunction
+                                                        ? IR_VALUE_BUILTIN
+                                                        : IR_VALUE_SYMBOL,
+                                   .type          = decl->type_index,
                                    .value.integer = decl->symbol_handle,
                 };
             }
@@ -3814,6 +3816,17 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
+        if (decl->kind == SK_FfiFunction) {
+            const AstNode*    ffi_node = &ast->nodes[decl->value_node_index];
+            const AstFfiInfo* ffi_info = &ast->ffi_infos[ffi_node->a];
+            array_push(
+                ir.externs,
+                (IrExtern){
+                    .symbol               = decl->symbol_handle,
+                    .type                 = decl->type_index,
+                    .library_string_index = ffi_info->library_string_index,
+                });
+        }
         if (ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;
             ir_add_global(&ir, decl->symbol_handle, decl->type_index);
@@ -3870,6 +3883,7 @@ void ir_done(Ir* ir)
 {
     array_free(ir->instructions);
     array_free(ir->globals);
+    array_free(ir->externs);
     array_free(ir->functions);
     array_free(ir->locals);
     array_free(ir->call_args);

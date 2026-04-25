@@ -15,6 +15,7 @@ typedef enum : u8 {
     SK_Variable,
     SK_TypeAlias,
     SK_Function,
+    SK_FfiFunction,
     SK_BuiltinFunction,
 } SemaDeclKind;
 

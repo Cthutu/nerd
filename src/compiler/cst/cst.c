@@ -570,12 +570,18 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
+internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
                                      bool           allow_named_params,
                                      bool           require_return_type,
                                      u32*           out_signature_index);
+internal bool cst_parse_callable_signature(CstParseState* state,
+                                           TokenKind      introducer,
+                                           bool           allow_named_params,
+                                           bool           require_return_type,
+                                           u32*           out_signature_index);
 
 //------------------------------------------------------------------------------
 // Parse one type annotation.
@@ -591,7 +597,23 @@ internal bool cst_parse_fn_signature(CstParseState* state,
                                      bool           require_return_type,
                                      u32*           out_signature_index)
 {
-    if (!cst_consume(state, TK_fn) || !cst_consume(state, TK_LParen)) {
+    return cst_parse_callable_signature(state,
+                                        TK_fn,
+                                        allow_named_params,
+                                        require_return_type,
+                                        out_signature_index);
+}
+
+internal bool cst_parse_callable_signature(CstParseState* state,
+                                           TokenKind      introducer,
+                                           bool           allow_named_params,
+                                           bool           require_return_type,
+                                           u32*           out_signature_index)
+{
+    if (introducer != TK_EOF && !cst_consume(state, introducer)) {
+        return false;
+    }
+    if (!cst_consume(state, TK_LParen)) {
         return false;
     }
 
@@ -2884,7 +2906,47 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
         return cst_parse_fn_expr(state, out_node);
     }
 
+    if (cst_current_token(state).kind == TK_ffi) {
+        return cst_parse_ffi_def(state, out_node);
+    }
+
     return cst_parse_expr_bp(state, 0, out_node);
+}
+
+internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    if (cst_current_token(state).kind != TK_String) {
+        return false;
+    }
+    u32 library_string_index = cst_current_string_index(state);
+    if (library_string_index == CST_NO_VALUE) {
+        return false;
+    }
+    cst_advance(state);
+
+    u32 signature_index = 0;
+    if (!cst_parse_callable_signature(
+            state, TK_EOF, false, false, &signature_index)) {
+        return false;
+    }
+
+    u32 ffi_info_index = (u32)array_count(state->cst.ffi_infos);
+    array_push(state->cst.ffi_infos,
+               (CstFfiInfo){
+                   .library_string_index = library_string_index,
+                   .signature_index      = signature_index,
+               });
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_FfiDef,
+                             .token_index = token_index,
+                             .a           = ffi_info_index,
+                         },
+                         out_node);
 }
 
 internal bool
@@ -3201,6 +3263,7 @@ void cst_done(Cst* cst)
     array_free(cst->bindings);
     array_free(cst->params);
     array_free(cst->fn_signatures);
+    array_free(cst->ffi_infos);
     array_free(cst->call_args);
     array_free(cst->tuple_items);
     array_free(cst->calls);

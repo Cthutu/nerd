@@ -280,7 +280,8 @@ internal string lsp_decl_signature(const LspDocument* doc,
                                    Arena*             arena,
                                    const SemaDecl*    decl)
 {
-    if (decl->kind != SK_Function && decl->kind != SK_BuiltinFunction) {
+    if (decl->kind != SK_Function && decl->kind != SK_FfiFunction &&
+        decl->kind != SK_BuiltinFunction) {
         return s("<unknown>");
     }
     if (decl->kind == SK_BuiltinFunction) {
@@ -391,7 +392,8 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         inferred_type = lsp_decl_signature(doc, arena, decl);
     }
 
-    if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
+    if (decl->kind == SK_Function || decl->kind == SK_FfiFunction ||
+        decl->kind == SK_BuiltinFunction) {
         return string_format(arena,
                              STRINGP "\n\n- Kind: " STRINGP,
                              STRINGV(lsp_markdown_code_block(
@@ -580,8 +582,9 @@ internal bool lsp_get_request_context(LspState*         state,
 
 internal int lsp_decl_symbol_kind(const SemaDecl* decl)
 {
-    return decl->kind == SK_Function ? LSP_SYMBOL_KIND_FUNCTION
-                                     : LSP_SYMBOL_KIND_CONSTANT;
+    return decl->kind == SK_Function || decl->kind == SK_FfiFunction
+               ? LSP_SYMBOL_KIND_FUNCTION
+               : LSP_SYMBOL_KIND_CONSTANT;
 }
 
 //------------------------------------------------------------------------------

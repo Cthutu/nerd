@@ -463,6 +463,79 @@ bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index)
     return ast_parse_fn_signature(state, false, true, out_signature_index);
 }
 
+//------------------------------------------------------------------------------
+// Parse an FFI function signature after `ffi "<library>"`.
+
+internal bool ast_parse_ffi_signature(AstParseState* state,
+                                      u32*           out_signature_index)
+{
+    ASSERT(state->token.kind == TK_LParen, "Expected FFI parameter list");
+
+    u32 first_param = (u32)array_count(state->params);
+    u32 param_count = 0;
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_RParen,
+                                         TK_EOF);
+    }
+
+    if (state->token.kind != TK_RParen) {
+        for (;;) {
+            AstToken type_token = state->token;
+            u32      type_node  = 0;
+            if (!ast_parse_type(state, &type_node)) {
+                return false;
+            }
+
+            array_push(state->params,
+                       (AstParam){
+                           .token_index     = type_token.token_index,
+                           .symbol_handle   = U32_MAX,
+                           .type_node_index = type_node,
+                       });
+            ++param_count;
+
+            if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                if (!ast_expect_token(state, TK_Comma) ||
+                    !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen);
+                }
+                continue;
+            }
+            break;
+        }
+
+        if (!ast_expect_token(state, TK_RParen)) {
+            return false;
+        }
+    }
+
+    u32 return_type = U32_MAX;
+    if (ast_peek_kind_at(state, 0) == TK_ThinArrow) {
+        if (!ast_expect_token(state, TK_ThinArrow) || !ast_next_token(state)) {
+            return false;
+        }
+        if (!ast_parse_type(state, &return_type)) {
+            return false;
+        }
+    }
+
+    u32 signature_index = (u32)array_count(state->fn_signatures);
+    array_push(state->fn_signatures,
+               (AstFnSignature){
+                   .first_param            = first_param,
+                   .param_count            = param_count,
+                   .return_type_node_index = return_type,
+               });
+    *out_signature_index = signature_index;
+    return true;
+}
+
 bool ast_parse_type(AstParseState* state, u32* out_node)
 {
     ASSERT(out_node != NULL, "Type parser requires an output node");
@@ -809,7 +882,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
-    if (kind == TK_fn) {
+    if (kind == TK_fn || kind == TK_ffi) {
         return PQ_Declaration;
     }
 
@@ -2079,6 +2152,42 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 //
 bool ast_parse_declaration(AstParseState* state, u32* out_node)
 {
+    if (state->token.kind == TK_ffi) {
+        AstToken ffi_token = state->token;
+        if (!ast_next_token(state) || state->token.kind != TK_String) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_String,
+                state->token.kind);
+        }
+        u32 library_string_index = state->token.value.string_index;
+
+        if (!ast_next_token(state) || state->token.kind != TK_LParen) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LParen,
+                state->token.kind);
+        }
+
+        u32 signature_index = 0;
+        if (!ast_parse_ffi_signature(state, &signature_index)) {
+            return false;
+        }
+
+        u32 ffi_index = (u32)array_count(state->ffi_infos);
+        array_push(state->ffi_infos,
+                   (AstFfiInfo){.library_string_index = library_string_index,
+                                .signature_index      = signature_index});
+
+        return ast_emit_node(state,
+                             (AstNode){.kind        = AK_FfiDef,
+                                       .token_index = ffi_token.token_index,
+                                       .a           = ffi_index},
+                             out_node);
+    }
+
     // Assume current token is `fn`
     ASSERT(state->token.kind == TK_fn, "Expected 'fn' token for declaration");
     AstToken fn_token        = state->token;
@@ -2631,6 +2740,7 @@ Ast ast_parse(Lexer* lexer)
         .nodes               = state.nodes,
         .params              = state.params,
         .fn_signatures       = state.fn_signatures,
+        .ffi_infos           = state.ffi_infos,
         .call_args           = state.call_args,
         .tuple_items         = state.tuple_items,
         .calls               = state.calls,
@@ -2655,6 +2765,7 @@ error:
     ast_done(&(Ast){.nodes               = state.nodes,
                     .params              = state.params,
                     .fn_signatures       = state.fn_signatures,
+                    .ffi_infos           = state.ffi_infos,
                     .call_args           = state.call_args,
                     .tuple_items         = state.tuple_items,
                     .calls               = state.calls,
@@ -2684,6 +2795,7 @@ void ast_done(Ast* ast)
     array_free(ast->nodes);
     array_free(ast->params);
     array_free(ast->fn_signatures);
+    array_free(ast->ffi_infos);
     array_free(ast->call_args);
     array_free(ast->tuple_items);
     array_free(ast->calls);

@@ -1383,7 +1383,7 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
         return true;
     }
     if (decl->kind == SK_Variable || decl->kind == SK_Function ||
-        decl->kind == SK_BuiltinFunction) {
+        decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
         *out_is_type    = false;
         *out_type_index = sema_no_type();
         return true;
@@ -1477,6 +1477,8 @@ internal bool sema_collect_decls(const Lexer* lexer, const Ast* ast, Sema* sema)
             kind = SK_Variable;
         } else if (value->kind == AK_FnDef) {
             kind = SK_Function;
+        } else if (value->kind == AK_FfiDef) {
+            kind = SK_FfiFunction;
         }
 
         array_push(sema->decls,
@@ -3364,7 +3366,8 @@ internal void sema_collect_node_deps(const Ast*  ast,
             if (decl_index == sema_no_decl()) {
                 return;
             }
-            if (sema->decls[decl_index].kind == SK_BuiltinFunction) {
+            if (sema->decls[decl_index].kind == SK_BuiltinFunction ||
+                sema->decls[decl_index].kind == SK_FfiFunction) {
                 return;
             }
             sema_add_dep(out_sema, owner_decl_index, decl_index);
@@ -4464,7 +4467,7 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
             const SemaDecl* decl =
                 &sema->decls[sema->node_decl_indices[node_index]];
             return decl->kind == SK_Constant || decl->kind == SK_Variable ||
-                   decl->kind == SK_Function;
+                   decl->kind == SK_Function || decl->kind == SK_FfiFunction;
         }
         return false;
     case AK_Array:
@@ -7531,6 +7534,40 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         }
         break;
 
+    case AK_FfiDef:
+        {
+            const AstFfiInfo*     ffi_info = &ast->ffi_infos[node->a];
+            const AstFnSignature* signature =
+                &ast->fn_signatures[ffi_info->signature_index];
+            u32 return_type = sema_builtin_type(sema, STK_Void);
+            if (signature->return_type_node_index != U32_MAX &&
+                !sema_resolve_type_node(lexer,
+                                        ast,
+                                        sema,
+                                        signature->return_type_node_index,
+                                        &return_type)) {
+                return false;
+            }
+
+            Array(u32) param_types = NULL;
+            for (u32 i = 0; i < signature->param_count; ++i) {
+                u32 param_type = sema_no_type();
+                if (!sema_resolve_type_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->params[signature->first_param + i].type_node_index,
+                        &param_type)) {
+                    array_free(param_types);
+                    return false;
+                }
+                array_push(param_types, param_type);
+            }
+            type_index = sema_add_function_type(sema, param_types, return_type);
+            array_free(param_types);
+        }
+        break;
+
     default:
         type_index = sema_no_type();
         break;
@@ -7619,7 +7656,9 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
             decl->type_index =
                 annotated != sema_no_type()
                     ? annotated
-                    : (decl->kind == SK_Function || decl->kind == SK_Constant
+                    : (decl->kind == SK_Function ||
+                               decl->kind == SK_FfiFunction ||
+                               decl->kind == SK_Constant
                            ? inferred_type
                            : sema_materialise_type(sema, inferred_type));
         }

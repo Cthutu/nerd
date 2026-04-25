@@ -260,6 +260,10 @@ internal void format_emit_fn_signature(StringBuilder* sb,
                                        const Lexer*   lexer,
                                        u32            signature_index,
                                        bool           include_return_type);
+internal void format_emit_ffi_def(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            ffi_info_index);
 internal void format_emit_value(StringBuilder* sb,
                                 const Cst*     cst,
                                 const Lexer*   lexer,
@@ -909,6 +913,9 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_block_contents(sb, cst, lexer, node->b, 1);
         sb_append_cstr(sb, "}");
         break;
+    case CK_FfiDef:
+        format_emit_ffi_def(sb, cst, lexer, node->a);
+        break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
                   "%u",
@@ -1318,6 +1325,12 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_FnBlock:
         return format_node_end_token_index(cst, lexer, node->b);
+    case CK_FfiDef:
+        return format_fn_signature_end_token_index(
+            cst,
+            lexer,
+            node->token_index,
+            cst->ffi_infos[node->a].signature_index);
     case CK_ExprBlock:
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_Block:
@@ -1521,8 +1534,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
-            payload->kind == CK_For || payload->kind == CK_ExprBlock ||
-            payload->kind == CK_TypePlex) {
+            payload->kind == CK_FfiDef || payload->kind == CK_For ||
+            payload->kind == CK_ExprBlock || payload->kind == CK_TypePlex) {
             return false;
         }
 
@@ -1748,6 +1761,31 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     sb_append_char(sb, ')');
 
     if (include_return_type && signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+}
+
+internal void format_emit_ffi_def(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            ffi_info_index)
+{
+    const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
+    const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
+
+    sb_append_cstr(sb, "ffi \"");
+    format_emit_string_text(sb, lexer->strings[ffi->library_string_index]);
+    sb_append_cstr(sb, "\" (");
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const CstParam* param = &cst->params[signature->first_param + i];
+        format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
+    }
+    sb_append_char(sb, ')');
+    if (signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
@@ -2195,6 +2233,9 @@ internal void format_emit_value(StringBuilder* sb,
         sb_append_cstr(sb, " {\n");
         format_emit_block_contents(sb, cst, lexer, node->b, 1);
         sb_append_cstr(sb, "}");
+        break;
+    case CK_FfiDef:
+        format_emit_ffi_def(sb, cst, lexer, node->a);
         break;
     default:
         format_emit_expr(sb, cst, lexer, node_index, 0);

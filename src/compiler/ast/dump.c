@@ -130,6 +130,8 @@ string ast_kind_to_string(AstKind kind)
         return s("AnnotatedValue");
     case AK_ZeroInit:
         return s("ZeroInit");
+    case AK_FfiDef:
+        return s("FfiDef");
     case AK_FnDef:
         return s("FnDef");
     case AK_FnStart:

@@ -63,8 +63,9 @@
 // | CK_TypeSlice       | Element type node     | 0                     |
 // | CK_TypePointer     | Pointee type node     | 0                     |
 // | CK_TypePlex        | Plex-type index       | 0                     |
-// | CK_FnExpr          | Body node index       | 0                     |
-// | CK_FnBlock         | First stmt index      | End-exclusive index   |
+// | CK_FnExpr          | Fn-signature index    | Body node index       |
+// | CK_FnBlock         | Fn-signature index    | Block node index      |
+// | CK_FfiDef          | FFI-info index        | 0                     |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
@@ -136,6 +137,7 @@ typedef enum {
     CK_TypeEnum,
     CK_FnExpr,
     CK_FnBlock,
+    CK_FfiDef,
     CK_Statement,
     CK_Return,
     CK_ReturnExpr,
@@ -171,6 +173,11 @@ typedef struct {
     u32 param_count;
     u32 return_type_node_index;
 } CstFnSignature;
+
+typedef struct {
+    u32 library_string_index;
+    u32 signature_index;
+} CstFfiInfo;
 
 typedef struct {
     u32 first_arg;
@@ -306,6 +313,7 @@ typedef struct {
     Array(u32) bindings;
     Array(CstParam) params;
     Array(CstFnSignature) fn_signatures;
+    Array(CstFfiInfo) ffi_infos;
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(CstCallInfo) calls;
