@@ -30,6 +30,10 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
                                              const Lexer*   lexer,
                                              u32            node_index,
                                              u32            indent_level);
+internal usize format_rendered_expr_width(const Cst*   cst,
+                                          const Lexer* lexer,
+                                          u32          node_index,
+                                          u32          indent_level);
 
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
@@ -591,6 +595,16 @@ internal void format_emit_expr(StringBuilder* sb,
             if (node->kind == CK_PlexUpdate) {
                 sb_append_cstr(sb, " with");
             }
+
+            usize max_field_width = 0;
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                const CstPlexLiteralField* field =
+                    &cst->plex_literal_fields[plex->first_field + i];
+                usize field_width = lex_symbol(lexer, field->symbol_handle).count;
+                if (field_width > max_field_width) {
+                    max_field_width = field_width;
+                }
+            }
             sb_append_cstr(sb,
                            (plex->target_node_index != U32_MAX ||
                             node->kind == CK_PlexUpdate)
@@ -602,7 +616,11 @@ internal void format_emit_expr(StringBuilder* sb,
                 }
                 const CstPlexLiteralField* field =
                     &cst->plex_literal_fields[plex->first_field + i];
-                sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+                string field_name = lex_symbol(lexer, field->symbol_handle);
+                sb_append_string(sb, field_name);
+                for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+                    sb_append_char(sb, ' ');
+                }
                 sb_append_cstr(sb, ": ");
                 format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
             }
@@ -1676,7 +1694,7 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         string field_name = lex_symbol(lexer, field->symbol_handle);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
-        for (usize pad = field_name.count; pad < max_field_width; ++pad) {
+        for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
             sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, ": ");
@@ -1688,6 +1706,79 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal bool format_plex_literals_have_same_shape(const Cst* cst,
+                                                   const CstNode* a,
+                                                   const CstNode* b)
+{
+    if ((a->kind != CK_Plex && a->kind != CK_PlexUpdate) ||
+        (b->kind != CK_Plex && b->kind != CK_PlexUpdate)) {
+        return false;
+    }
+
+    const CstPlexLiteralInfo* plex_a = &cst->plex_literals[a->a];
+    const CstPlexLiteralInfo* plex_b = &cst->plex_literals[b->a];
+    if (plex_a->field_count != plex_b->field_count) {
+        return false;
+    }
+
+    for (u32 i = 0; i < plex_a->field_count; ++i) {
+        const CstPlexLiteralField* field_a =
+            &cst->plex_literal_fields[plex_a->first_field + i];
+        const CstPlexLiteralField* field_b =
+            &cst->plex_literal_fields[plex_b->first_field + i];
+        if (field_a->symbol_handle != field_b->symbol_handle) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+internal void format_emit_plex_literal_single_line_aligned(
+    StringBuilder* sb,
+    const Cst*     cst,
+    const Lexer*   lexer,
+    const CstNode* node,
+    const usize*   field_name_widths,
+    const usize*   field_value_widths)
+{
+    const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
+
+    if (plex->target_node_index != U32_MAX) {
+        format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+    }
+    if (node->kind == CK_PlexUpdate) {
+        sb_append_cstr(sb, " with");
+    }
+    sb_append_cstr(sb,
+                   (plex->target_node_index != U32_MAX ||
+                    node->kind == CK_PlexUpdate)
+                       ? " { "
+                       : "{ ");
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const CstPlexLiteralField* field =
+            &cst->plex_literal_fields[plex->first_field + i];
+        string field_name = lex_symbol(lexer, field->symbol_handle);
+        sb_append_string(sb, field_name);
+        for (usize pad = field_name.count; pad <= field_name_widths[i]; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+        sb_append_cstr(sb, ": ");
+        format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
+        if (i + 1 < plex->field_count) {
+            usize value_width =
+                format_rendered_expr_width(cst, lexer, field->value_node_index, 0);
+            sb_append_char(sb, ',');
+            for (usize pad = value_width; pad <= field_value_widths[i]; ++pad) {
+                sb_append_char(sb, ' ');
+            }
+        } else {
+            sb_append_char(sb, ' ');
+        }
+    }
+    sb_append_char(sb, '}');
+}
+
 internal void format_emit_array_multiline(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
@@ -1696,13 +1787,98 @@ internal void format_emit_array_multiline(StringBuilder* sb,
 {
     sb_append_cstr(sb, "[\n");
     for (u32 i = 0; i < node->b; ++i) {
+        u32            item_index = cst->tuple_items[node->a + i];
+        const CstNode* item       = &cst->nodes[item_index];
         format_emit_indent(sb, indent_level + 1);
-        format_emit_expr_with_indent(
-            sb, cst, lexer, cst->tuple_items[node->a + i], 0, indent_level + 1);
+
+        if ((item->kind == CK_Plex || item->kind == CK_PlexUpdate) &&
+            format_node_is_single_line(cst, lexer, item_index)) {
+            u32 run_end = i + 1;
+            while (run_end < node->b) {
+                u32 next_index = cst->tuple_items[node->a + run_end];
+                if (!format_node_is_single_line(cst, lexer, next_index) ||
+                    !format_plex_literals_have_same_shape(
+                        cst, item, &cst->nodes[next_index])) {
+                    break;
+                }
+                ++run_end;
+            }
+
+            if (run_end > i + 1) {
+                const CstPlexLiteralInfo* first_plex = &cst->plex_literals[item->a];
+                Array(usize)              field_name_widths = NULL;
+                Array(usize)              field_value_widths = NULL;
+                for (u32 field = 0; field < first_plex->field_count; ++field) {
+                    array_push(field_name_widths, 0);
+                    array_push(field_value_widths, 0);
+                }
+
+                for (u32 cursor = i; cursor < run_end; ++cursor) {
+                    const CstPlexLiteralInfo* current_plex =
+                        &cst->plex_literals[cst->nodes[cst->tuple_items[node->a + cursor]].a];
+                    for (u32 field = 0; field < current_plex->field_count; ++field) {
+                        const CstPlexLiteralField* literal_field =
+                            &cst->plex_literal_fields[current_plex->first_field + field];
+                        usize field_name_width =
+                            lex_symbol(lexer, literal_field->symbol_handle).count;
+                        if (field_name_width > field_name_widths[field]) {
+                            field_name_widths[field] = field_name_width;
+                        }
+
+                        usize value_width = format_rendered_expr_width(
+                            cst,
+                            lexer,
+                            literal_field->value_node_index,
+                            indent_level + 1);
+                        if (value_width > field_value_widths[field]) {
+                            field_value_widths[field] = value_width;
+                        }
+                    }
+                }
+
+                for (u32 cursor = i; cursor < run_end; ++cursor) {
+                    if (cursor > i) {
+                        format_emit_indent(sb, indent_level + 1);
+                    }
+                    u32 current_index = cst->tuple_items[node->a + cursor];
+                    format_emit_plex_literal_single_line_aligned(
+                        sb,
+                        cst,
+                        lexer,
+                        &cst->nodes[current_index],
+                        field_name_widths,
+                        field_value_widths);
+                    sb_append_cstr(sb, ",\n");
+                }
+
+                array_free(field_name_widths);
+                array_free(field_value_widths);
+                i = run_end - 1;
+                continue;
+            }
+        }
+
+        format_emit_expr_with_indent(sb, cst, lexer, item_index, 0, indent_level + 1);
         sb_append_cstr(sb, ",\n");
     }
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, ']');
+}
+
+internal usize format_rendered_expr_width(const Cst*   cst,
+                                          const Lexer* lexer,
+                                          u32          node_index,
+                                          u32          indent_level)
+{
+    Arena scratch = {0};
+    arena_init(&scratch, 0, ARENA_DEFAULT_NUM_PAGES_GROW);
+
+    StringBuilder sb = {0};
+    sb_init(&sb, &scratch);
+    format_emit_expr_with_indent(&sb, cst, lexer, node_index, 0, indent_level);
+    usize width = sb.size;
+    arena_done(&scratch);
+    return width;
 }
 
 internal void format_emit_type_plex_multiline(StringBuilder* sb,
