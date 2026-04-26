@@ -224,11 +224,11 @@ typedef struct plex7 {
     int $y;
     string $name;
 } plex7;
-typedef struct tuple10 {
+typedef struct tuple11 {
     int _0;
     int _1;
-} tuple10;
-int $score_pair(tuple10 $pair) {
+} tuple11;
+int $score_pair(tuple11 $pair) {
     int $0 = 0;
     int $4 = $pair._0;
     bool $5 = $4 == 0;
@@ -321,7 +321,7 @@ int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair zero ", .count = 10}));
-    tuple10 $2 = (tuple10){._0 = 0, ._1 = 7};
+    tuple11 $2 = (tuple11){._0 = 0, ._1 = 7};
     int $3 = $score_pair($2);
     string_builder_append_string(to_string$i32($3));
     string $1 = string_builder_finish($0);
@@ -329,7 +329,7 @@ int $main() {
     string_builder_reset();
     size_t $4 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair one ", .count = 9}));
-    tuple10 $6 = (tuple10){._0 = 1, ._1 = 8};
+    tuple11 $6 = (tuple11){._0 = 1, ._1 = 8};
     int $7 = $score_pair($6);
     string_builder_append_string(to_string$i32($7));
     string $5 = string_builder_finish($4);
@@ -337,7 +337,7 @@ int $main() {
     string_builder_reset();
     size_t $8 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair nine ", .count = 10}));
-    tuple10 $10 = (tuple10){._0 = 4, ._1 = 9};
+    tuple11 $10 = (tuple11){._0 = 4, ._1 = 9};
     int $11 = $score_pair($10);
     string_builder_append_string(to_string$i32($11));
     string $9 = string_builder_finish($8);
@@ -345,7 +345,7 @@ int $main() {
     string_builder_reset();
     size_t $12 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"pair else ", .count = 10}));
-    tuple10 $14 = (tuple10){._0 = 2, ._1 = 3};
+    tuple11 $14 = (tuple11){._0 = 2, ._1 = 3};
     int $15 = $score_pair($14);
     string_builder_append_string(to_string$i32($15));
     string $13 = string_builder_finish($12);

@@ -46,7 +46,7 @@ main :: fn () => on value {
             "line": 2,
             "column": 18,
             "length": 2,
-            "message": "This `on` can miss a value"
+            "message": "This `on` does not produce a value on every path"
         }
     ],
     "notes": [],

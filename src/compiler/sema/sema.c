@@ -2398,7 +2398,7 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             type_node_index  = value->a;
             value_node_index = value->b;
             value            = &ast->nodes[value_node_index];
-        } else if (value->kind == AK_ZeroInit) {
+        } else if (value->kind == AK_ZeroInit || value->kind == AK_Undefined) {
             type_node_index  = value->a;
             value_node_index = sema_no_decl();
         }
@@ -3333,7 +3333,8 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             if (payload->kind == AK_AnnotatedValue) {
                 type_node_index  = payload->a;
                 value_node_index = payload->b;
-            } else if (payload->kind == AK_ZeroInit) {
+            } else if (payload->kind == AK_ZeroInit ||
+                       payload->kind == AK_Undefined) {
                 type_node_index  = payload->a;
                 value_node_index = sema_no_decl();
             }
@@ -3648,6 +3649,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_BoolLiteral:
     case AK_EnumVariant:
     case AK_ZeroInit:
+    case AK_Undefined:
     case AK_Continue:
     case AK_ContinueExpr:
     case AK_Block:
@@ -4507,7 +4509,8 @@ internal void sema_collect_node_deps(const Ast*  ast,
         return;
     case AK_Variable:
         if (node->b < array_count(ast->nodes) &&
-            ast->nodes[node->b].kind != AK_ZeroInit) {
+            ast->nodes[node->b].kind != AK_ZeroInit &&
+            ast->nodes[node->b].kind != AK_Undefined) {
             u32 value_node_index = node->b;
             if (ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
                 value_node_index = ast->nodes[value_node_index].b;
@@ -5152,6 +5155,18 @@ internal bool sema_type_is_castable_primitive(const Sema* sema, u32 type_index)
     default:
         return false;
     }
+}
+
+internal bool sema_type_is_u8_slice(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    return type->kind == STK_Slice &&
+           type->first_param_type != sema_no_type() &&
+           sema->types[type->first_param_type].kind == STK_U8;
 }
 
 internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
@@ -5912,11 +5927,18 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                                           Sema*        sema,
                                           u32          first_node,
                                           u32          end_node,
+                                          u32          expected_return_type,
                                           u32*         in_out_return_type,
                                           bool*        out_has_return)
 {
     for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* stmt = &ast->nodes[i];
+
+        if (stmt->kind == AK_FnStart) {
+            i = stmt->b - 1;
+            continue;
+        }
+
         if (!ast_node_is_block_statement(stmt)) {
             continue;
         }
@@ -5927,6 +5949,7 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                                              sema,
                                              stmt->a,
                                              stmt->b,
+                                             expected_return_type,
                                              in_out_return_type,
                                              out_has_return)) {
                 return false;
@@ -6015,6 +6038,7 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                                              sema,
                                              body->a,
                                              body->b,
+                                             expected_return_type,
                                              in_out_return_type,
                                              &loop_has_return)) {
                 return false;
@@ -6109,11 +6133,12 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
         }
 
         if (stmt->a != U32_MAX) {
+            u32 expected_return = expected_return_type;
             if (!sema_infer_node_type(lexer,
                                       ast,
                                       sema,
                                       stmt->a,
-                                      sema_no_type(),
+                                      expected_return,
                                       in_out_return_type)) {
                 return false;
             }
@@ -7966,6 +7991,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                              sema,
                                              body->a,
                                              body->b,
+                                             sema_no_type(),
                                              &ignored_type,
                                              &has_return)) {
                 return false;
@@ -7981,6 +8007,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                  sema,
                                                  else_block->a,
                                                  else_block->b,
+                                                 sema_no_type(),
                                                  &ignored_type,
                                                  &has_return)) {
                     return false;
@@ -8198,10 +8225,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
 
-            if (!(sema_type_is_castable_primitive(sema, source_type) &&
-                  sema_type_is_castable_primitive(sema, target_type) &&
-                  sema->types[target_type].kind != STK_UntypedInteger &&
-                  sema->types[target_type].kind != STK_UntypedFloat)) {
+            bool primitive_cast =
+                sema_type_is_castable_primitive(sema, source_type) &&
+                sema_type_is_castable_primitive(sema, target_type) &&
+                sema->types[target_type].kind != STK_UntypedInteger &&
+                sema->types[target_type].kind != STK_UntypedFloat;
+
+            bool string_slice_cast =
+                (source_type == sema_builtin_type(sema, STK_String) &&
+                 sema_type_is_u8_slice(sema, target_type)) ||
+                (target_type == sema_builtin_type(sema, STK_String) &&
+                 sema_type_is_u8_slice(sema, source_type));
+
+            if (!(primitive_cast || string_slice_cast)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -8931,24 +8967,28 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                             ? fn_start->b - 1
                                             : interp_index]));
                 }
+                u32 expected_return =
+                    has_explicit_return_type ? return_type : sema_no_type();
                 if (!sema_infer_node_type(lexer,
                                           ast,
                                           sema,
                                           fn_start->b - 1,
-                                          sema_no_type(),
+                                          expected_return,
                                           &return_type)) {
                     return false;
                 }
                 return_type = sema_materialise_type(sema, return_type);
             } else {
                 bool has_return = false;
-                if (!sema_infer_block_statements(lexer,
-                                                 ast,
-                                                 sema,
-                                                 node->a + 1,
-                                                 fn_start->b,
-                                                 &return_type,
-                                                 &has_return)) {
+                if (!sema_infer_block_statements(
+                        lexer,
+                        ast,
+                        sema,
+                        node->a + 1,
+                        fn_start->b,
+                        has_explicit_return_type ? return_type : sema_no_type(),
+                        &return_type,
+                        &has_return)) {
                     return false;
                 }
                 if (has_explicit_return_type && !has_return) {
@@ -10108,7 +10148,8 @@ bool sema_analyse(const Lexer*           lexer,
     }
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         if (ast->nodes[i].kind == AK_AnnotatedValue ||
-            ast->nodes[i].kind == AK_ZeroInit) {
+            ast->nodes[i].kind == AK_ZeroInit ||
+            ast->nodes[i].kind == AK_Undefined) {
             sema_mark_type_expr_nodes(ast, &sema, ast->nodes[i].a);
         } else if (ast->nodes[i].kind == AK_Cast) {
             sema_mark_type_expr_nodes(ast, &sema, ast->nodes[i].b);

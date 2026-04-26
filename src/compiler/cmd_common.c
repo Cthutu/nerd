@@ -15,8 +15,8 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
 {
     return (NerdArtifactConfig){
         .binary_path    = "a.out",
-        .ir_path        = "a.ir",
-        .c_path         = "a.c",
+        .ir_path        = "_a.ir",
+        .c_path         = "_a.gen.c",
         .emit_ir_file   = false,
         .emit_c_file    = false,
         .compile_binary = true,
@@ -31,6 +31,46 @@ cstr compiler_cmd_copy_path(Arena* arena, string path)
     memcpy(copy, path.data, path.count);
     copy[path.count] = '\0';
     return copy;
+}
+
+cstr compiler_cmd_output_root(Arena* arena, string output_path, NerdSource source)
+{
+    if (output_path.count > 0) {
+        return compiler_cmd_copy_path(arena, output_path);
+    }
+
+    if (source.source_path.count > 0) {
+        cstr source_path = compiler_cmd_copy_path(arena, source.source_path);
+        return path_replace_extension(arena, source_path, "");
+    }
+
+    return compiler_cmd_default_artifacts().binary_path;
+}
+
+cstr compiler_cmd_sidecar_path(Arena* arena, cstr output_root, cstr extension)
+{
+    cstr   dir_path = path_dirname(arena, output_root);
+    string stem     = path_stem(s(output_root));
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_char(&sb, '_');
+    sb_append_string(&sb, stem);
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
+}
+
+cstr compiler_cmd_temp_binary_path(Arena* arena, cstr output_root)
+{
+    cstr   dir_path = path_dirname(arena, output_root);
+    string stem     = path_stem(s(output_root));
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_char(&sb, '_');
+    sb_append_string(&sb, stem);
+    sb_append_cstr(&sb, ".out");
+    sb_append_null(&sb);
+    return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
 }
 
 bool compile(NerdSource                source,

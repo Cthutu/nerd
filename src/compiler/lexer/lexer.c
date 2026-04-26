@@ -431,7 +431,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             {"use", 3, TK_use},       {"pub", 3, TK_pub},
             {"with", 4, TK_with},     {"in", 2, TK_in},
             {"as", 2, TK_as},         {"yes", 3, TK_yes},
-            {"no", 2, TK_no},         {NULL, 0, 0},
+            {"no", 2, TK_no},         {"undefined", 9, TK_undefined},
+            {NULL, 0, 0},
         };
 
         bool is_keyword = false;
@@ -897,6 +898,8 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         return token->offset + 6;
     case TK_continue:
         return token->offset + 8;
+    case TK_undefined:
+        return token->offset + 9;
     default:
         return token->offset + 1;
     }

@@ -654,6 +654,7 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
 void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
 {
     u32 target_type = instr->lvalue.type;
+    u32 source_type = instr->rvalue[0].type;
     cgen_start_line(cgen);
     if (instr->lvalue.kind == IR_VALUE_VARIABLE) {
         cgen_add_decl_type_and_name(cgen, target_type, &instr->lvalue);
@@ -665,6 +666,37 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     if (instr->lvalue.kind != IR_VALUE_VARIABLE) {
         cgen_add_value(cgen, &instr->lvalue);
     }
+
+    bool target_is_string = target_type != sema_no_type() &&
+                            cgen->ir->types[target_type].kind == STK_String;
+    bool source_is_string = source_type != sema_no_type() &&
+                            cgen->ir->types[source_type].kind == STK_String;
+    bool target_is_u8_slice =
+        target_type != sema_no_type() &&
+        cgen->ir->types[target_type].kind == STK_Slice &&
+        cgen->ir->types[target_type].first_param_type != sema_no_type() &&
+        cgen->ir->types[cgen->ir->types[target_type].first_param_type].kind ==
+            STK_U8;
+    bool source_is_u8_slice =
+        source_type != sema_no_type() &&
+        cgen->ir->types[source_type].kind == STK_Slice &&
+        cgen->ir->types[source_type].first_param_type != sema_no_type() &&
+        cgen->ir->types[cgen->ir->types[source_type].first_param_type].kind ==
+            STK_U8;
+
+    if ((target_is_string && source_is_u8_slice) ||
+        (target_is_u8_slice && source_is_string)) {
+        cgen_add(cgen, " = (");
+        cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
+        cgen_add(cgen, "){.data = ");
+        cgen_add_value(cgen, &instr->rvalue[0]);
+        cgen_add(cgen, ".data, .count = ");
+        cgen_add_value(cgen, &instr->rvalue[0]);
+        cgen_add(cgen, ".count}");
+        cgen_addn(cgen, ";");
+        return;
+    }
+
     cgen_add(cgen, " = (");
     cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
     cgen_add(cgen, ")");
@@ -1354,6 +1386,10 @@ void cgen_add_local(CGen* cgen, const IrInstruction* instr)
     u32 type_index = instr->lvalue.type;
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, type_index, &instr->lvalue);
+    if (instr->rvalue[0].kind == IR_VALUE_NONE) {
+        cgen_addn(cgen, ";");
+        return;
+    }
     cgen_add(cgen, " = ");
     cgen_add_typed_value(cgen, &instr->rvalue[0], type_index);
     cgen_addn(cgen, ";");

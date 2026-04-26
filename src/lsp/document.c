@@ -71,12 +71,24 @@ internal bool lsp_front_end_document(NerdSource             source,
     return true;
 }
 
-internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
+internal void lsp_document_reset_runtime(LspDocument* doc)
 {
-    doc->analysis_ok  = false;
-    doc->has_cst      = false;
+    cst_done(&doc->cst);
+    doc->cst = (Cst){0};
+    program_info_done(&doc->program);
+    arena_done(&doc->arena);
+    *doc = (LspDocument){0};
+}
 
-    u8* document_copy = (u8*)arena_alloc(&doc->arena, content.count);
+internal bool
+lsp_stage_document(LspDocument* staged, string uri, string content)
+{
+    *staged = (LspDocument){0};
+    arena_init(&staged->arena);
+    staged->analysis_ok = false;
+    staged->has_cst     = false;
+
+    u8* document_copy   = (u8*)arena_alloc(&staged->arena, content.count);
     memcpy(document_copy, content.data, content.count);
 
     string document_copy_str = {.data = document_copy, .count = content.count};
@@ -98,23 +110,37 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
             .source_path = uri,
         },
         &options,
-        &doc->program,
-        &doc->front_end);
+        &staged->program,
+        &staged->front_end);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
     if (!ok) {
         lsp_log("Front-end analysis failed for current document contents");
+        program_info_done(&staged->program);
         return false;
     }
 
-    doc->analysis_ok = true;
-    if (cst_parse(&doc->front_end.lexer, &doc->cst)) {
-        doc->has_cst = true;
+    staged->analysis_ok = true;
+    if (cst_parse(&staged->front_end.lexer, &staged->cst)) {
+        staged->has_cst = true;
     } else {
         lsp_log("CST parsing failed for current document contents");
     }
 
+    return true;
+}
+
+internal bool lsp_analyse_document(LspDocument* doc, string uri, string content)
+{
+    LspDocument staged = {0};
+    if (!lsp_stage_document(&staged, uri, content)) {
+        lsp_document_reset_runtime(&staged);
+        return false;
+    }
+
+    lsp_document_done(doc);
+    *doc = staged;
     return true;
 }
 
@@ -135,11 +161,6 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     LspDocument* doc = LspDocumentMap_entry(&state->documents, uri, &new_doc);
     if (new_doc) {
         arena_init(&doc->arena);
-    } else {
-        cst_done(&doc->cst);
-        program_info_done(&doc->program);
-        arena_reset(&doc->arena);
-        doc->cst = (Cst){0};
     }
 
     bool       ok          = lsp_analyse_document(doc, uri, text);
@@ -168,12 +189,6 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
                 STRINGV(uri));
         return;
     }
-
-    cst_done(&doc->cst);
-    doc->cst = (Cst){0};
-
-    program_info_done(&doc->program);
-    arena_reset(&doc->arena);
 
     bool       ok          = lsp_analyse_document(doc, uri, text);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)

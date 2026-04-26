@@ -1304,6 +1304,14 @@ needed earlier.
     and import ergonomics are settled.
   - Keep standard library growth disciplined so the core language semantics do
     not drift under a large library surface.
+  - Progress:
+    - Explicit `undefined` initialisation for typed variables is now supported,
+      which unblocks standard-library code that wants deliberate
+      uninitialised storage while keeping zero-initialisation as the default
+      for ordinary variables.
+    - Narrow `string` <-> `[]u8` cast support is now in place for explicit
+      low-level interop, which is enough for `std.print.input` to compile as a
+      real standard-library function without reintroducing bootstrap shortcuts.
 
 ## Milestone 34: Grouped `use` Syntax
 
@@ -1376,6 +1384,22 @@ needed earlier.
     matches the intended breadth of the numbered error codes.
   - Add command regression tests for aliases and for `explain`.
 
+## Remaining Near-Term Work
+
+These are the active unfinished items after the current `undefined` work:
+
+- [ ] 21. Keep extending the formatter as new language features land.
+- [ ] 22. Keep extending the LSP as new language features land.
+- [ ] 101. Finish the FFI-consolidation milestone.
+- [ ] 102. Continue standard-library expansion beyond `std.print`.
+- [ ] 103. Add grouped `use` syntax.
+- [ ] 105. Add the CLI ergonomics follow-up (`b`, `r`, and `explain`).
+
+These are intentionally deferred and should not be treated as near-term tasks:
+
+- Trait-based conversion/formatting support
+- AST compaction / revisiting in-place compaction strategy
+
 ## Future Ideas
 
 These items are worth keeping visible, but they are not assigned to a numbered
@@ -1414,8 +1438,12 @@ milestone yet.
     practical.
   - Keep the emitted literals semantically equivalent to the original source.
 - [ ] Add trait-based conversion and formatting support for user-defined types.
+  - Leave this for a later planned milestone; it needs a more deliberate
+    design pass than the current language/library work.
 - [ ] Revisit whether in-place AST compaction is the best home for constant
   folding after a first implementation exists and can be measured.
+  - Leave this for later planning too; do not fold it into the current
+    standard-library and ergonomics work.
 - [ ] Add a synthetic diagnostic harness for hard-limit error categories that
   are impractical to trigger through normal source files, including `0102`,
   `0105`, and `0200`.

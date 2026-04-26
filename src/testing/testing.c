@@ -135,6 +135,34 @@ internal bool testing_set_test_mods_env(Arena* arena)
 #endif
 }
 
+internal cstr testing_generated_sidecar_path(Arena* arena,
+                                             cstr   artifact_root,
+                                             cstr   extension)
+{
+    cstr   dir_path = path_dirname(arena, artifact_root);
+    string stem     = path_stem(s(artifact_root));
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_char(&sb, '_');
+    sb_append_string(&sb, stem);
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
+}
+
+internal cstr testing_generated_temp_binary_path(Arena* arena, cstr artifact_root)
+{
+    cstr   dir_path = path_dirname(arena, artifact_root);
+    string stem     = path_stem(s(artifact_root));
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_char(&sb, '_');
+    sb_append_string(&sb, stem);
+    sb_append_cstr(&sb, ".out");
+    sb_append_null(&sb);
+    return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
+}
+
 internal bool testing_write_file(cstr path, string text)
 {
     FILE* file = fopen(path, "wb");
@@ -700,15 +728,18 @@ internal void testing_cleanup_generated_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr ir_path  = path_replace_extension(&arena, artifact_root, ".ir");
-    cstr c_path   = path_replace_extension(&arena, artifact_root, ".c");
-    cstr exe_path = path_replace_extension(&arena, artifact_root, ".out");
+    cstr ir_path  = testing_generated_sidecar_path(&arena, artifact_root, ".ir");
+    cstr c_path =
+        testing_generated_sidecar_path(&arena, artifact_root, ".gen.c");
+    cstr exe_path = testing_generated_temp_binary_path(&arena, artifact_root);
 
     path_remove(ir_path);
     path_remove(c_path);
     path_remove(exe_path);
+    path_remove(artifact_root);
 #if OS_WINDOWS
     path_remove(path_replace_extension(&arena, artifact_root, ".exe"));
+    path_remove(path_replace_extension(&arena, exe_path, ".exe"));
 #endif
 
     arena_done(&arena);
@@ -1326,11 +1357,12 @@ internal bool testing_run_language_test(const LanguageTest* test)
     testing_cleanup_generated_files(artifact_root);
 
     NerdArtifactConfig artifacts = {
-        .binary_path =
-            path_replace_extension(&artifact_arena, artifact_root, ".out"),
-        .ir_path =
-            path_replace_extension(&artifact_arena, artifact_root, ".ir"),
-        .c_path = path_replace_extension(&artifact_arena, artifact_root, ".c"),
+        .binary_path    = testing_generated_temp_binary_path(
+            &artifact_arena, artifact_root),
+        .ir_path        = testing_generated_sidecar_path(
+            &artifact_arena, artifact_root, ".ir"),
+        .c_path         = testing_generated_sidecar_path(
+            &artifact_arena, artifact_root, ".gen.c"),
         .emit_ir_file   = true,
         .emit_c_file    = true,
         .compile_binary = true,
@@ -1530,8 +1562,8 @@ internal bool testing_run_error_test(const ErrorTest* test)
     if (front_ok) {
         NerdArtifactConfig artifacts = {
             .binary_path    = "a.out",
-            .ir_path        = "a.ir",
-            .c_path         = "a.c",
+            .ir_path        = "_a.ir",
+            .c_path         = "_a.gen.c",
             .emit_ir_file   = false,
             .emit_c_file    = false,
             .compile_binary = false,
@@ -1813,12 +1845,18 @@ internal bool testing_run_command_test(const CommandTest* test)
         path_replace_extension(&artifact_arena, test->path, "");
     cstr input_path =
         path_replace_extension(&artifact_arena, artifact_root, ".input.n");
-    cstr binary_path = path_replace_extension(&artifact_arena, input_path, "");
+    cstr output_root = path_replace_extension(&artifact_arena, input_path, "");
+    cstr kept_binary_path = output_root;
+    cstr temp_binary_path =
+        testing_generated_temp_binary_path(&artifact_arena, output_root);
 
     path_remove(input_path);
-    path_remove(binary_path);
+    path_remove(kept_binary_path);
+    path_remove(temp_binary_path);
 #if OS_WINDOWS
     path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
+    path_remove(path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
+    path_remove(path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
 #endif
 
     if (!testing_write_file(input_path, test->source)) {
@@ -1869,12 +1907,16 @@ internal bool testing_run_command_test(const CommandTest* test)
             passed = false;
         }
 
-        if (strcmp(test->run_mode, "delete") == 0 && path_exists(binary_path)) {
-            eprn("Expected run command to delete executable: %s", binary_path);
+        if (strcmp(test->run_mode, "delete") == 0 &&
+            path_exists(temp_binary_path)) {
+            eprn("Expected run command to delete executable: %s",
+                 temp_binary_path);
             passed = false;
         }
-        if (strcmp(test->run_mode, "keep") == 0 && !path_exists(binary_path)) {
-            eprn("Expected run command to keep executable: %s", binary_path);
+        if (strcmp(test->run_mode, "keep") == 0 &&
+            !path_exists(kept_binary_path)) {
+            eprn("Expected run command to keep executable: %s",
+                 kept_binary_path);
             passed = false;
         }
         arena_done(&run_arena);
@@ -1897,20 +1939,27 @@ internal bool testing_run_command_test(const CommandTest* test)
             passed = false;
         }
 
-        if (strcmp(test->run_mode, "delete") == 0 && path_exists(binary_path)) {
-            eprn("Expected run command to delete executable: %s", binary_path);
+        if (strcmp(test->run_mode, "delete") == 0 &&
+            path_exists(temp_binary_path)) {
+            eprn("Expected run command to delete executable: %s",
+                 temp_binary_path);
             passed = false;
         }
-        if (strcmp(test->run_mode, "keep") == 0 && !path_exists(binary_path)) {
-            eprn("Expected run command to keep executable: %s", binary_path);
+        if (strcmp(test->run_mode, "keep") == 0 &&
+            !path_exists(kept_binary_path)) {
+            eprn("Expected run command to keep executable: %s",
+                 kept_binary_path);
             passed = false;
         }
     }
 
     path_remove(input_path);
-    path_remove(binary_path);
+    path_remove(kept_binary_path);
+    path_remove(temp_binary_path);
 #if OS_WINDOWS
     path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
+    path_remove(path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
+    path_remove(path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
 #endif
 
     arena_done(&cwd_arena);

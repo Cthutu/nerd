@@ -15,26 +15,6 @@ TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead)
     return state->lexer->tokens[index].kind;
 }
 
-internal bool ast_token_is_assignment_operator(TokenKind kind)
-{
-    switch (kind) {
-    case TK_Equal:
-    case TK_PlusEqual:
-    case TK_MinusEqual:
-    case TK_StarEqual:
-    case TK_SlashEqual:
-    case TK_PercentEqual:
-    case TK_AmpEqual:
-    case TK_CaretEqual:
-    case TK_PipeEqual:
-    case TK_AmpAmpEqual:
-    case TK_PipePipeEqual:
-        return true;
-    default:
-        return false;
-    }
-}
-
 internal TokenKind ast_cursor_kind(const AstParseState* state)
 {
     if (state->token_index >= array_count(state->lexer->tokens)) {
@@ -1887,14 +1867,6 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
         return false;
     }
 
-    if (ast_token_is_assignment_operator(ast_cursor_kind(state))) {
-        if (!ast_next_token(state)) {
-            return false;
-        }
-        *out_raw_expr = false;
-        *out_node     = expr_node;
-        return ast_parse_assignment(state, out_node);
-    }
     if (ast_cursor_starts_binding_operator(state)) {
         return error_0206_invalid_binding_target(
             state->lexer->source, ast_token_span(state, &state->token));
@@ -2425,12 +2397,6 @@ internal bool ast_parse_block_statement(AstParseState* state)
     }
     state->allow_statement_boundary = previous_boundary;
 
-    if (ast_token_is_assignment_operator(ast_cursor_kind(state))) {
-        if (!ast_next_token(state)) {
-            return false;
-        }
-        return ast_parse_assignment(state, &statement_expr_index);
-    }
     if (ast_cursor_starts_binding_operator(state)) {
         return error_0206_invalid_binding_target(
             state->lexer->source, ast_token_span(state, &state->token));
@@ -3111,7 +3077,6 @@ internal bool ast_parse_variable_payload(AstParseState* state,
     }
 
     if (ast_peek_token(state) && state->token.kind == TK_Equal) {
-        u32 value_index = 0;
         if (!ast_expect_token(state, TK_Equal) || !ast_next_token(state)) {
             return error_0205_expected_declaration_or_expression(
                 state->token.source,
@@ -3119,6 +3084,16 @@ internal bool ast_parse_variable_payload(AstParseState* state,
                 TK_EOF,
                 "Expected an initializer after '=', but found end of file");
         }
+        if (state->token.kind == TK_undefined) {
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_Undefined,
+                                     .token_index = state->token.token_index,
+                                     .a           = type_index,
+                                 },
+                                 out_value_node);
+        }
+        u32 value_index = 0;
         bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;
         bool ok                         = ast_parse_expr(state, &value_index);
@@ -3298,7 +3273,16 @@ parse_value:
 
 bool ast_parse_assignment(AstParseState* state, u32* out_node)
 {
-    ASSERT(ast_token_is_assignment_operator(state->token.kind),
+    ASSERT(state->token.kind == TK_Equal || state->token.kind == TK_PlusEqual ||
+               state->token.kind == TK_MinusEqual ||
+               state->token.kind == TK_StarEqual ||
+               state->token.kind == TK_SlashEqual ||
+               state->token.kind == TK_PercentEqual ||
+               state->token.kind == TK_AmpEqual ||
+               state->token.kind == TK_CaretEqual ||
+               state->token.kind == TK_PipeEqual ||
+               state->token.kind == TK_AmpAmpEqual ||
+               state->token.kind == TK_PipePipeEqual,
            "Expected assignment operator");
     ASSERT(out_node != NULL && *out_node < array_count(state->nodes),
            "Expected assignment target node");

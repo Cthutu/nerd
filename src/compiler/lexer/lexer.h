@@ -96,6 +96,7 @@ typedef enum {
     TK_as,
     TK_yes,
     TK_no,
+    TK_undefined,
 } TokenKind;
 
 typedef struct {

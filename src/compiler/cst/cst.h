@@ -82,6 +82,7 @@
 // | CK_Continue        | 0                     | Symbol or U32_MAX    |
 // | CK_AnnotatedValue  | Type node index       | Value node index      |
 // | CK_ZeroInit        | Type node index       | 0                     |
+// | CK_Undefined       | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
 // | CK_Variable        | Symbol handle         | Value node index      |
 // | CK_Assign          | Symbol handle         | Value node index      |
@@ -158,6 +159,7 @@ typedef enum {
     CK_Continue,
     CK_AnnotatedValue,
     CK_ZeroInit,
+    CK_Undefined,
     CK_Bind,
     CK_Variable,
     CK_Assign,

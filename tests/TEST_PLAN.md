@@ -174,15 +174,19 @@ Generated artifact names should come from the original source file stem.
 
 Examples:
 
-- `foo.n` -> `foo.ir`
-- `foo.n` -> `foo.c`
+- `foo.n` -> `_foo.ir`
+- `foo.n` -> `_foo.gen.c`
 
 For test files, artifacts should use the `.t` file stem:
 
-- `tests/language/001-number.t` -> `tests/language/001-number.ir`
-- `tests/language/001-number.t` -> `tests/language/001-number.c`
+- `tests/language/001-number.t` -> `tests/language/_001-number.ir`
+- `tests/language/001-number.t` -> `tests/language/_001-number.gen.c`
 
 The executable should use the same stem without an extension where practical.
+For `run` without the keep flag, the temporary executable should use the
+underscored disposable form:
+
+- `foo.n` -> `_foo.out`
 
 ## Clean-up Policy
 

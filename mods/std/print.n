@@ -3,6 +3,7 @@
 -- This module now loads through the normal module pipeline.
 
 ffi "c" printf (^u8, ...) -> i32
+ffi "c" scanf (^u8, ...) -> i32
 
 pub pr :: fn(text: string) -> void {
     printf("%.*s".data, text.count.as(i32), text.data)
@@ -13,4 +14,11 @@ pub prn :: fn(text: string) -> void {
     pr(text)
     printf("\n".data)
     return
+}
+
+pub input :: fn(prompt: string) -> string {
+    pr(prompt)
+    buf: [256]u8 = undefined
+    scanf("%255s\0".data, buf[..].data)
+    return buf[0..].as(string)
 }

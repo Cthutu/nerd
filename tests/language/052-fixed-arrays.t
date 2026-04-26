@@ -63,19 +63,19 @@ return i32:$17
 end
 ¬
 void init() {}
-typedef struct array9 {
-    int items[2];
-} array9;
 typedef struct array10 {
-    int items[3];
+    int items[2];
 } array10;
+typedef struct array11 {
+    int items[3];
+} array11;
 int $main() {
     string_builder_reset();
-    array9 $0 = (array9){.items = {4, 5}};
-    array9 $ys = $0;
+    array10 $0 = (array10){.items = {4, 5}};
+    array10 $ys = $0;
     size_t $1 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"xs = ", .count = 5}));
-    array10 $3 = (array10){.items = {1, 2, 3}};
+    array11 $3 = (array11){.items = {1, 2, 3}};
     #ifndef NDEBUG
     if ((long long)0 < 0 || (size_t)0 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
     #endif

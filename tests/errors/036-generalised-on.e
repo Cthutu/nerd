@@ -20,7 +20,7 @@ main :: fn () -> i32 {
             "line": 3,
             "column": 12,
             "length": 2,
-            "message": "This `on` can miss a value"
+            "message": "This `on` does not produce a value on every path"
         }
     ],
     "notes": [],

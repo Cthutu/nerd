@@ -678,8 +678,10 @@ bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
         source,
         span,
         "Value-producing block-form `on` expressions must be exhaustive");
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "This `on` can miss a value");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `on` does not produce a value on every path");
     error_add_help(&error,
                    "Add an `else` branch, or use this `on` as a statement "
                    "when missing cases should be a no-op.");

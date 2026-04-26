@@ -3520,6 +3520,17 @@ cst_parse_variable_payload(CstParseState* state, u32 token_index, u32* out_node)
 
     if (cst_current_token(state).kind == TK_Equal) {
         cst_advance(state);
+        if (cst_current_token(state).kind == TK_undefined) {
+            u32 undefined_token = state->token_index;
+            cst_advance(state);
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_Undefined,
+                                     .token_index = undefined_token,
+                                     .a           = type_node,
+                                 },
+                                 out_node);
+        }
         if (!cst_parse_expr_bp(state, 0, &value)) {
             return false;
         }

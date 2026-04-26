@@ -142,6 +142,26 @@ internal bool ast_token_can_continue_on_branch_head(TokenKind kind)
     return kind == TK_FatArrow || kind == TK_as || kind == TK_on;
 }
 
+internal bool ast_token_is_assignment_operator(TokenKind kind)
+{
+    switch (kind) {
+    case TK_Equal:
+    case TK_PlusEqual:
+    case TK_MinusEqual:
+    case TK_StarEqual:
+    case TK_SlashEqual:
+    case TK_PercentEqual:
+    case TK_AmpEqual:
+    case TK_CaretEqual:
+    case TK_PipeEqual:
+    case TK_AmpAmpEqual:
+    case TK_PipePipeEqual:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
                                                    AstToken             next)
 {
@@ -200,6 +220,20 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
 bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
 {
     switch (kind) {
+    case TK_Equal:
+    case TK_PlusEqual:
+    case TK_MinusEqual:
+    case TK_StarEqual:
+    case TK_SlashEqual:
+    case TK_PercentEqual:
+    case TK_AmpEqual:
+    case TK_CaretEqual:
+    case TK_PipeEqual:
+    case TK_AmpAmpEqual:
+    case TK_PipePipeEqual:
+        *out_left_bp  = AST_BP_ASSIGNMENT;
+        *out_right_bp = AST_BP_ASSIGNMENT;
+        return true;
     case TK_LParen:
     case TK_LBracket:
     case TK_LBrace:
@@ -286,18 +320,6 @@ internal bool ast_node_is_stringish(const AstParseState* state, u32 node_index)
     default:
         return false;
     }
-}
-
-internal u32 ast_integer_value_index_for_token(const AstParseState* state,
-                                               u32                  token_index)
-{
-    u32 integer_index = 0;
-    for (u32 i = 0; i < token_index; ++i) {
-        if (state->lexer->tokens[i].kind == TK_Integer) {
-            integer_index++;
-        }
-    }
-    return integer_index;
 }
 
 internal bool ast_parse_interpolated_string(AstParseState* state,
@@ -1140,43 +1162,48 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                     TK_RBracket);
             }
 
-            u32 first_item = (u32)array_count(state->tuple_items);
-            u32 item_count = 0;
+            Array(u32) items = NULL;
             if (state->token.kind != TK_RBracket) {
                 for (;;) {
                     u32 item = 0;
                     if (!ast_parse_expr_bp(state, 0, &item)) {
+                        array_free(items);
                         return false;
                     }
-                    array_push(state->tuple_items, item);
-                    item_count++;
+                    array_push(items, item);
 
                     if (state->token.kind == TK_Comma) {
                         if (!ast_next_token(state)) {
+                            array_free(items);
                             return false;
                         }
                         if (ast_peek_kind_at(state, 0) == TK_RBracket) {
                             if (!ast_expect_token(state, TK_RBracket)) {
+                                array_free(items);
                                 return false;
                             }
                             break;
                         }
                         if (!ast_next_token(state)) {
+                            array_free(items);
                             return false;
                         }
                         continue;
                     }
                     if (ast_peek_kind_at(state, 0) == TK_Comma) {
                         if (!ast_expect_token(state, TK_Comma)) {
+                            array_free(items);
                             return false;
                         }
                         if (ast_peek_kind_at(state, 0) == TK_RBracket) {
                             if (!ast_expect_token(state, TK_RBracket)) {
+                                array_free(items);
                                 return false;
                             }
                             goto emit_array_literal;
                         }
                         if (!ast_next_token(state)) {
+                            array_free(items);
                             return false;
                         }
                         continue;
@@ -1188,15 +1215,23 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             if (state->token.kind == TK_RBracket &&
                 state->token_index == state->token.token_index) {
                 if (!ast_next_token(state)) {
+                    array_free(items);
                     return false;
                 }
             } else if (state->token.kind != TK_RBracket) {
                 if (!ast_expect_token(state, TK_RBracket)) {
+                    array_free(items);
                     return false;
                 }
             }
 
         emit_array_literal:
+            u32 first_item = (u32)array_count(state->tuple_items);
+            for (u32 i = 0; i < array_count(items); ++i) {
+                array_push(state->tuple_items, items[i]);
+            }
+            u32 item_count = (u32)array_count(items);
+            array_free(items);
             return ast_emit_node(state,
                                  (AstNode){
                                      .kind        = AK_Array,
@@ -1352,6 +1387,11 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
     u8  right_bp   = 0;
     u32 right_node = 0;
 
+    if (ast_token_is_assignment_operator(op.kind)) {
+        *out_node = left_node;
+        return ast_parse_assignment(state, out_node);
+    }
+
     if (op.kind == TK_Caret && ast_consumed_caret_is_postfix_deref(state)) {
         AstNode node = {
             .kind        = AK_Deref,
@@ -1485,36 +1525,26 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     "Remove the `<` and keep `..` for an exclusive end "
                     "range or slice");
             }
-            if (range_token_index + 2 < array_count(state->lexer->tokens) &&
-                state->lexer->tokens[range_token_index + 1].kind ==
-                    TK_Integer &&
-                state->lexer->tokens[range_token_index + 2].kind ==
-                    TK_RBracket) {
-                AstNode end = {
-                    .kind        = AK_IntegerLiteral,
-                    .token_index = range_token_index + 1,
-                    .a           = ast_integer_value_index_for_token(
-                        state, range_token_index + 1),
-                };
-                if (!ast_emit_node(state, end, &end_node)) {
-                    return false;
-                }
-                state->token = (AstToken){
-                    .kind   = TK_RBracket,
-                    .source = state->lexer->source,
-                    .offset =
-                        state->lexer->tokens[range_token_index + 2].offset,
-                    .token_index = range_token_index + 2,
-                };
-                state->token_index = range_token_index + 3;
-            } else if (ast_token_starts_expression(state->token.kind)) {
+            if (ast_token_starts_expression(state->token.kind)) {
                 if (!ast_parse_expr_bp(state, 0, &end_node)) {
                     return false;
                 }
             }
-            if (state->token.kind != TK_RBracket &&
-                !ast_expect_token(state, TK_RBracket)) {
-                return false;
+            bool bracket_already_consumed =
+                state->token.kind == TK_RBracket &&
+                state->token_index == state->token.token_index + 1;
+            if (!bracket_already_consumed) {
+                if (state->token.kind == TK_RBracket) {
+                    if (!ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_RBracket,
+                            TK_EOF);
+                    }
+                } else if (!ast_expect_token(state, TK_RBracket)) {
+                    return false;
+                }
             }
             u32 slice_index = (u32)array_count(state->slices);
             array_push(state->slices,

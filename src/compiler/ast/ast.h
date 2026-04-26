@@ -83,6 +83,7 @@
 // | AK_Assign          | Ast index of target | Ast index of value            |
 // | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
 // | AK_ZeroInit        | Ast index of type | 0                               |
+// | AK_Undefined       | Ast index of type | 0                               |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |
 // | AK_FnStart         | Ast fn-signature index | AK_FnEnd index             |
 // | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
@@ -162,6 +163,7 @@ typedef enum {
     AK_Assign,
     AK_AnnotatedValue,
     AK_ZeroInit,
+    AK_Undefined,
     AK_FnDef,
     AK_FnStart,
     AK_FnEnd,

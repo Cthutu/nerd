@@ -119,19 +119,19 @@ return i32:$41
 end
 ¬
 void init() {}
-typedef struct array9 {
+typedef struct array10 {
     int items[3];
-} array9;
-typedef struct slice10 {
+} array10;
+typedef struct slice11 {
     int* data;
     uintptr_t count;
-} slice10;
+} slice11;
 int $main() {
     string_builder_reset();
-    array9 $0 = (array9){.items = {1, 2, 3}};
-    array9 $values = $0;
-    slice10 $1 = (slice10){.data = $values.items, .count = 3};
-    slice10 $2 = (slice10){0};
+    array10 $0 = (array10){.items = {1, 2, 3}};
+    array10 $values = $0;
+    slice11 $1 = (slice11){.data = $values.items, .count = 3};
+    slice11 $2 = (slice11){0};
     $2 = $1;
     int $3 = 0;
     $3 = 0;
@@ -152,8 +152,8 @@ int $main() {
     goto L4;
     L6: ;
     int $total = 0;
-    slice10 $11 = (slice10){.data = $values.items, .count = 3};
-    slice10 $12 = (slice10){0};
+    slice11 $11 = (slice11){.data = $values.items, .count = 3};
+    slice11 $12 = (slice11){0};
     $12 = $11;
     int $13 = 0;
     $13 = 0;

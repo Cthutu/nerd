@@ -1070,7 +1070,8 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
                     const AstNode* value =
                         &doc->front_end.ast.nodes[value_node_index];
                     if (value->kind == AK_AnnotatedValue ||
-                        value->kind == AK_ZeroInit) {
+                        value->kind == AK_ZeroInit ||
+                        value->kind == AK_Undefined) {
                         JsonValue* location = lsp_field_location_from_type_node(
                             doc, arena, uri, value->a, field->b);
                         if (location != NULL) {

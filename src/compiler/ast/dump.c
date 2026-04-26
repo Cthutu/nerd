@@ -130,6 +130,8 @@ string ast_kind_to_string(AstKind kind)
         return s("AnnotatedValue");
     case AK_ZeroInit:
         return s("ZeroInit");
+    case AK_Undefined:
+        return s("Undefined");
     case AK_FfiDef:
         return s("FfiDef");
     case AK_ModRef:
@@ -370,6 +372,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 &temp_arena, "type=%u value=%u", node->a, node->b));
             break;
         case AK_ZeroInit:
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "type=%u", node->a));
+            break;
+        case AK_Undefined:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "type=%u", node->a));
             break;

@@ -12,17 +12,18 @@
 
 //------------------------------------------------------------------------------
 
-#define AST_BP_LOGICAL_OR 10
-#define AST_BP_LOGICAL_AND 20
-#define AST_BP_BITWISE_OR 30
-#define AST_BP_BITWISE_XOR 40
-#define AST_BP_BITWISE_AND 50
-#define AST_BP_EQUALITY 60
-#define AST_BP_COMPARISON 70
-#define AST_BP_ADDITIVE 80
-#define AST_BP_MULTIPLICATIVE 90
-#define AST_BP_PREFIX 100
-#define AST_BP_POSTFIX 110
+#define AST_BP_ASSIGNMENT 10
+#define AST_BP_LOGICAL_OR 20
+#define AST_BP_LOGICAL_AND 30
+#define AST_BP_BITWISE_OR 40
+#define AST_BP_BITWISE_XOR 50
+#define AST_BP_BITWISE_AND 60
+#define AST_BP_EQUALITY 70
+#define AST_BP_COMPARISON 80
+#define AST_BP_ADDITIVE 90
+#define AST_BP_MULTIPLICATIVE 100
+#define AST_BP_PREFIX 110
+#define AST_BP_POSTFIX 120
 
 typedef struct {
     TokenKind  kind;

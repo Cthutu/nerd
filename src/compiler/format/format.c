@@ -1438,6 +1438,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
             lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_ZeroInit:
         return format_node_end_token_index(cst, lexer, node->a);
+    case CK_Undefined:
+        return node->token_index;
     default:
         return node->token_index;
     }
@@ -1598,6 +1600,10 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         } else if (payload->kind == CK_ZeroInit) {
             typed = true;
             type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
+        } else if (payload->kind == CK_Undefined) {
+            typed = true;
+            type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
+            value = s("undefined");
         } else {
             value = format_render_expr_to_string(arena, cst, lexer, node->b);
         }
@@ -2145,7 +2151,8 @@ internal void format_emit_for_header_item(StringBuilder* sb,
     if (item->kind == CK_Variable) {
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(item)));
         if (cst->nodes[item->b].kind == CK_AnnotatedValue ||
-            cst->nodes[item->b].kind == CK_ZeroInit) {
+            cst->nodes[item->b].kind == CK_ZeroInit ||
+            cst->nodes[item->b].kind == CK_Undefined) {
             sb_append_cstr(sb, ": ");
             format_emit_variable_payload(sb, cst, lexer, item->b);
         } else {
@@ -2307,7 +2314,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_Variable) {
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
-            cst->nodes[stmt->b].kind == CK_ZeroInit) {
+            cst->nodes[stmt->b].kind == CK_ZeroInit ||
+            cst->nodes[stmt->b].kind == CK_Undefined) {
             sb_append_cstr(sb, ": ");
             format_emit_variable_payload(sb, cst, lexer, stmt->b);
         } else {
@@ -2436,6 +2444,12 @@ internal void format_emit_value(StringBuilder* sb,
         return;
     }
 
+    if (node->kind == CK_Undefined) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_cstr(sb, " = undefined");
+        return;
+    }
+
     switch (node->kind) {
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
@@ -2482,6 +2496,12 @@ internal void format_emit_variable_payload(StringBuilder* sb,
 
     if (node->kind == CK_ZeroInit) {
         format_emit_expr(sb, cst, lexer, node->a, 0);
+        return;
+    }
+
+    if (node->kind == CK_Undefined) {
+        format_emit_expr(sb, cst, lexer, node->a, 0);
+        sb_append_cstr(sb, " = undefined");
         return;
     }
 
@@ -2605,7 +2625,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         } else {
             sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
             if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
-                cst.nodes[node->b].kind == CK_ZeroInit) {
+                cst.nodes[node->b].kind == CK_ZeroInit ||
+                cst.nodes[node->b].kind == CK_Undefined) {
                 sb_append_cstr(sb, ": ");
                 format_emit_variable_payload(sb, &cst, &lexer, node->b);
             } else {

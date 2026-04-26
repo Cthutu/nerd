@@ -129,11 +129,11 @@ main :: fn () {
             "uri": "__REPO_URI__/_bin/mods/std/print.n",
             "range": {
                 "start": {
-                    "line": 11,
+                    "line": 12,
                     "character": 4
                 },
                 "end": {
-                    "line": 11,
+                    "line": 12,
                     "character": 7
                 }
             }
