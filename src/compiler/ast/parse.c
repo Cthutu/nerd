@@ -15,13 +15,9 @@ TokenKind ast_peek_kind_at(const AstParseState* state, u32 lookahead)
     return state->lexer->tokens[index].kind;
 }
 
-internal bool ast_symbol_starts_assignment(const AstParseState* state)
+internal bool ast_token_is_assignment_operator(TokenKind kind)
 {
-    if (state->token.kind != TK_Symbol) {
-        return false;
-    }
-
-    switch (ast_peek_kind_at(state, 0)) {
+    switch (kind) {
     case TK_Equal:
     case TK_PlusEqual:
     case TK_MinusEqual:
@@ -1876,11 +1872,6 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
         return ast_parse_variable(state, out_node);
     }
 
-    if (ast_symbol_starts_assignment(state)) {
-        *out_raw_expr = false;
-        return ast_parse_assignment(state, out_node);
-    }
-
     u32  expr_node                  = 0;
     bool previous_boundary          = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
@@ -1888,6 +1879,15 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
     state->allow_statement_boundary = previous_boundary;
     if (!ok) {
         return false;
+    }
+
+    if (ast_token_is_assignment_operator(ast_cursor_kind(state))) {
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        *out_raw_expr = false;
+        *out_node     = expr_node;
+        return ast_parse_assignment(state, out_node);
     }
 
     *out_node     = expr_node;
@@ -2404,10 +2404,6 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_variable(state, NULL);
     }
 
-    if (ast_symbol_starts_assignment(state)) {
-        return ast_parse_assignment(state, NULL);
-    }
-
     u32 statement_expr_index        = 0;
     u32 statement_token             = state->token.token_index;
 
@@ -2418,6 +2414,13 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return false;
     }
     state->allow_statement_boundary = previous_boundary;
+
+    if (ast_token_is_assignment_operator(ast_cursor_kind(state))) {
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        return ast_parse_assignment(state, &statement_expr_index);
+    }
 
     return ast_emit_node(state,
                          (AstNode){
@@ -3281,13 +3284,15 @@ parse_value:
 
 bool ast_parse_assignment(AstParseState* state, u32* out_node)
 {
-    ASSERT(state->token.kind == TK_Symbol,
-           "Expected symbol token for assignment");
-    AstToken symbol_token = state->token;
-
-    if (!ast_next_token(state)) {
-        return false;
+    ASSERT(ast_token_is_assignment_operator(state->token.kind),
+           "Expected assignment operator");
+    ASSERT(out_node != NULL && *out_node < array_count(state->nodes),
+           "Expected assignment target node");
+    u32 target_node = *out_node;
+    if (state->nodes[target_node].kind == AK_Expression) {
+        target_node = state->nodes[target_node].a;
     }
+
     AstToken assign_token = state->token;
     if (assign_token.kind != TK_Equal) {
         AstKind ignored = AK_IntegerPlus;
@@ -3318,21 +3323,18 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
 
     AstKind binary_kind = AK_IntegerPlus;
     if (ast_compound_assignment_binary_kind(assign_token.kind, &binary_kind)) {
-        u32 symbol_ref = 0;
-        if (!ast_emit_node(state,
-                           (AstNode){
-                               .kind        = AK_SymbolRef,
-                               .token_index = symbol_token.token_index,
-                               .a           = symbol_token.value.symbol_handle,
-                           },
-                           &symbol_ref)) {
-            return false;
+        if (state->nodes[target_node].kind != AK_SymbolRef) {
+            return error_0203_expected_token(
+                state->token.source,
+                ast_token_span(state, &assign_token),
+                TK_Equal,
+                assign_token.kind);
         }
         if (!ast_emit_node(state,
                            (AstNode){
                                .kind        = binary_kind,
                                .token_index = assign_token.token_index,
-                               .a           = symbol_ref,
+                               .a           = target_node,
                                .b           = value_node,
                            },
                            &value_node)) {
@@ -3340,14 +3342,15 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
         }
     }
 
-    return ast_emit_node(state,
-                         (AstNode){
-                             .kind        = AK_Assign,
-                             .token_index = symbol_token.token_index,
-                             .a           = symbol_token.value.symbol_handle,
-                             .b           = value_node,
-                         },
-                         out_node);
+    return ast_emit_node(
+        state,
+        (AstNode){
+            .kind        = AK_Assign,
+            .token_index = state->nodes[target_node].token_index,
+            .a           = target_node,
+            .b           = value_node,
+        },
+        out_node);
 }
 
 //------------------------------------------------------------------------------

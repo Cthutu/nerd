@@ -571,6 +571,22 @@ void cgen_add_assign(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+void cgen_add_store(CGen* cgen, const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add(cgen, "*");
+    cgen_add_value(cgen, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    ASSERT(instr->lvalue.type != sema_no_type(),
+           "Expected pointer type for store");
+    ASSERT(cgen->ir->types[instr->lvalue.type].kind == STK_Pointer,
+           "Expected pointer type for store");
+    cgen_add_typed_value(cgen,
+                         &instr->rvalue[0],
+                         cgen->ir->types[instr->lvalue.type].first_param_type);
+    cgen_addn(cgen, ";");
+}
+
 //------------------------------------------------------------------------------
 // Emit a C return from an IR return instruction.
 
@@ -1454,6 +1470,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_ASSIGN:
             cgen_add_assign(cgen, instr);
+            break;
+        case IR_OP_STORE:
+            cgen_add_store(cgen, instr);
             break;
         case IR_OP_CALL:
             cgen_add_call(cgen, instr);

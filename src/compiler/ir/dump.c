@@ -334,6 +334,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_cstr(&sb, " = ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             break;
+        case IR_OP_STORE:
+            sb_append_cstr(&sb, "*");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
+            break;
         case IR_OP_CALL:
             if (instr->lvalue.kind != IR_VALUE_NONE) {
                 ir_render_value(&sb, ir, lexer, &instr->lvalue);

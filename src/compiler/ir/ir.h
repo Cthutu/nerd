@@ -22,6 +22,7 @@ typedef enum : u8 {
     IR_OP_PARAM,
     IR_OP_LOCAL,
     IR_OP_ASSIGN,
+    IR_OP_STORE,
     IR_OP_CALL,
     IR_OP_CAST,
     IR_OP_ENUM,

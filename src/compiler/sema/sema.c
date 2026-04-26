@@ -3373,27 +3373,15 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         }
 
         if (node->kind == AK_Assign) {
-            u32 local_index = sema_lookup_local(sema, scope_index, node->a);
-            if (local_index != sema_no_local()) {
-                if (sema->locals[local_index].kind == SLK_Binder ||
-                    !sema_local_is_runtime_value(&sema->locals[local_index])) {
-                    return error_0305_invalid_assignment_target(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        lex_symbol(lexer, node->a));
-                }
-                sema->node_local_indices[i] = local_index;
-            } else {
-                u32 decl_index = sema_find_decl(sema, node->a);
-                if (decl_index == sema_no_decl()) {
-                    return error_0300_unknown_symbol(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        lex_symbol(lexer, node->a));
-                }
-                sema->node_decl_indices[i] = decl_index;
-            }
             if (!sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        sema_no_scope(),
+                                        scope_index,
+                                        node->a,
+                                        sema) ||
+                !sema_resolve_node_refs(lexer,
                                         ast,
                                         owner_decl_index,
                                         current_function_symbol,
@@ -3402,6 +3390,31 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                                         node->b,
                                         sema)) {
                 return false;
+            }
+
+            const AstNode* target = &ast->nodes[node->a];
+            if (target->kind == AK_SymbolRef) {
+                u32 local_index = sema->node_local_indices[node->a];
+                if (local_index != sema_no_local()) {
+                    if (sema->locals[local_index].kind == SLK_Binder ||
+                        !sema_local_is_runtime_value(
+                            &sema->locals[local_index])) {
+                        return error_0305_invalid_assignment_target(
+                            lexer->source,
+                            sema_node_span(lexer, target),
+                            lex_symbol(lexer, target->a));
+                    }
+                    sema->node_local_indices[i] = local_index;
+                } else {
+                    u32 decl_index = sema->node_decl_indices[node->a];
+                    if (decl_index == sema_no_decl()) {
+                        return error_0300_unknown_symbol(
+                            lexer->source,
+                            sema_node_span(lexer, target),
+                            lex_symbol(lexer, target->a));
+                    }
+                    sema->node_decl_indices[i] = decl_index;
+                }
             }
             i++;
             continue;
@@ -4434,6 +4447,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
         }
         return;
     case AK_Assign:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
         sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
         if (sema->node_local_indices[node_index] == sema_no_local() &&
             sema->node_decl_indices[node_index] != sema_no_decl()) {
@@ -8809,21 +8823,39 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Assign:
         {
-            u32 target_type = sema_no_type();
-            if (sema->node_local_indices[node_index] != sema_no_local()) {
-                target_type = sema->locals[sema->node_local_indices[node_index]]
-                                  .type_index;
-            } else {
-                u32 decl_index = sema->node_decl_indices[node_index];
-                ASSERT(decl_index != sema_no_decl(),
-                       "Expected resolved target");
-                if (sema->decls[decl_index].kind != SK_Variable) {
-                    return error_0305_invalid_assignment_target(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        lex_symbol(lexer, node->a));
+            u32            target_type = sema_no_type();
+            const AstNode* target      = &ast->nodes[node->a];
+            if (target->kind == AK_SymbolRef) {
+                if (sema->node_local_indices[node_index] != sema_no_local()) {
+                    target_type =
+                        sema->locals[sema->node_local_indices[node_index]]
+                            .type_index;
+                } else {
+                    u32 decl_index = sema->node_decl_indices[node_index];
+                    ASSERT(decl_index != sema_no_decl(),
+                           "Expected resolved target");
+                    if (sema->decls[decl_index].kind != SK_Variable) {
+                        return error_0305_invalid_assignment_target(
+                            lexer->source,
+                            sema_node_span(lexer, target),
+                            lex_symbol(lexer, target->a));
+                    }
+                    target_type = sema->decls[decl_index].type_index;
                 }
-                target_type = sema->decls[decl_index].type_index;
+            } else if (target->kind == AK_Deref) {
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          sema_no_type(),
+                                          &target_type)) {
+                    return false;
+                }
+            } else {
+                return error_0305_invalid_assignment_target(
+                    lexer->source,
+                    sema_node_span(lexer, target),
+                    s("expression"));
             }
 
             if (sema_node_contains_interpolation(ast, node->b)) {
@@ -9965,8 +9997,22 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                                           expr_label_count);
     case AK_Bind:
     case AK_Variable:
+        return sema_validate_loop_control(lexer,
+                                          ast,
+                                          node->b,
+                                          loop_depth,
+                                          expr_block_depth,
+                                          expr_labels,
+                                          expr_label_count);
     case AK_Assign:
         return sema_validate_loop_control(lexer,
+                                          ast,
+                                          node->a,
+                                          loop_depth,
+                                          expr_block_depth,
+                                          expr_labels,
+                                          expr_label_count) &&
+               sema_validate_loop_control(lexer,
                                           ast,
                                           node->b,
                                           loop_depth,

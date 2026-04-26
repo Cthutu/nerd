@@ -80,7 +80,7 @@
 // | AK_Continue        | 0                 | Symbol or U32_MAX              |
 // | AK_Bind            | Symbol            | Ast index of type or expression |
 // | AK_Variable        | Symbol            | Ast index of type/value/zero    |
-// | AK_Assign          | Symbol            | Ast index of value              |
+// | AK_Assign          | Ast index of target | Ast index of value            |
 // | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
 // | AK_ZeroInit        | Ast index of type | 0                               |
 // | AK_FnDef           | Body start index  | Fn syntax kind                  |

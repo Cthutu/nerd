@@ -176,6 +176,19 @@ void ir_add_assign(
                });
 }
 
+void ir_add_store(
+    Ir* ir, IrValue pointer, u32 pointer_type, IrValue rvalue, u32 rvalue_type)
+{
+    pointer.type = pointer_type;
+    rvalue.type  = rvalue_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_STORE,
+                   .lvalue = pointer,
+                   .rvalue = {rvalue, {0}},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append a call instruction to the IR stream.
 
@@ -3943,20 +3956,45 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_Assign) {
         IrValue value = ir_lower_node(
             lex, ast, sema, node->b, loop, node_values, next_value_index, ir);
-        u32     local_index = sema->node_local_indices[node_index];
-        IrValue target =
-            local_index != sema_no_local()
-                ? (IrValue){.kind          = IR_VALUE_LOCAL,
-                            .type          = ir_value_type_for_local_index(sema,
-                                                                  local_index),
-                            .value.integer = node->a}
-                : (IrValue){.kind = IR_VALUE_SYMBOL,
-                            .type = ir_value_type_for_decl(sema, node->a),
-                            .value.integer = node->a};
-        u32 target_type = local_index != sema_no_local()
-                              ? ir_value_type_for_local_index(sema, local_index)
-                              : ir_value_type_for_decl(sema, node->a);
-        ir_add_assign(ir, target, target_type, value, target_type);
+        const AstNode* target_node = &ast->nodes[node->a];
+        if (target_node->kind == AK_SymbolRef) {
+            u32 local_index = sema->node_local_indices[node_index];
+            IrValue target =
+                local_index != sema_no_local()
+                    ? (IrValue){
+                          .kind          = IR_VALUE_LOCAL,
+                          .type          = ir_value_type_for_local_index(
+                              sema, local_index),
+                          .value.integer =
+                              sema->locals[local_index].lowered_symbol_handle,
+                      }
+                    : (IrValue){.kind = IR_VALUE_SYMBOL,
+                                .type = ir_value_type_for_decl(
+                                    sema, target_node->a),
+                                .value.integer = target_node->a};
+            u32 target_type =
+                local_index != sema_no_local()
+                    ? ir_value_type_for_local_index(sema, local_index)
+                    : ir_value_type_for_decl(sema, target_node->a);
+            ir_add_assign(ir, target, target_type, value, target_type);
+        } else if (target_node->kind == AK_Deref) {
+            IrValue pointer = ir_lower_node(lex,
+                                            ast,
+                                            sema,
+                                            target_node->a,
+                                            loop,
+                                            node_values,
+                                            next_value_index,
+                                            ir);
+            ir_add_store(ir,
+                         pointer,
+                         ir_node_type_index(ast, sema, target_node->a),
+                         value,
+                         ir_node_type_index(ast, sema, node->a));
+        } else {
+            error_ice("Unsupported assignment target node kind: %d",
+                      target_node->kind);
+        }
         return IR_STMT_FALLTHROUGH;
     }
 
