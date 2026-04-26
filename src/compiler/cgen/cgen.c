@@ -839,7 +839,8 @@ void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
 void cgen_add_index(CGen* cgen, const IrInstruction* instr)
 {
     const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
-    if (target_type->kind == STK_Array || target_type->kind == STK_Slice) {
+    if (target_type->kind == STK_Array || target_type->kind == STK_Slice ||
+        target_type->kind == STK_String) {
         cgen_start_line(cgen);
         cgen_add(cgen, "#ifndef NDEBUG");
         cgen_addn(cgen, "");
@@ -857,9 +858,10 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
         } else {
             cgen_add(cgen, " >= ");
             cgen_add_value(cgen, &instr->rvalue[0]);
+            cgen_add(cgen, ".count) { fprintf(stderr, \"fatal: ");
             cgen_add(cgen,
-                     ".count) { fprintf(stderr, \"fatal: slice index out of "
-                     "bounds\\n\"); abort(); }");
+                     target_type->kind == STK_String ? "string" : "slice");
+            cgen_add(cgen, " index out of bounds\\n\"); abort(); }");
         }
         cgen_addn(cgen, "");
         cgen_start_line(cgen);
@@ -874,7 +876,10 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen,
              target_type->kind == STK_Array
                  ? ".items["
-                 : (target_type->kind == STK_Slice ? ".data[" : "["));
+                 : ((target_type->kind == STK_Slice ||
+                     target_type->kind == STK_String)
+                        ? ".data["
+                        : "["));
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
 }
@@ -895,7 +900,13 @@ void cgen_add_address_of_index(CGen* cgen, const IrInstruction* instr)
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = &");
     cgen_add_value(cgen, &instr->rvalue[0]);
-    cgen_add(cgen, target_type->kind == STK_Array ? ".items[" : "[");
+    cgen_add(cgen,
+             target_type->kind == STK_Array
+                 ? ".items["
+                 : ((target_type->kind == STK_Slice ||
+                     target_type->kind == STK_String)
+                        ? ".data["
+                        : "["));
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
 }

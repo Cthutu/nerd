@@ -25,6 +25,7 @@
 // | CK_LogicalNot      | Operand node index    | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
 // | CK_AddressOf       | Operand node index    | 0                     |
+// | CK_Deref           | Operand node index    | 0                     |
 // | CK_IntegerPlus     | Left node index       | Right node index      |
 // | CK_IntegerMinus    | Left node index       | Right node index      |
 // | CK_IntegerMultiply | Left node index       | Right node index      |
@@ -99,6 +100,7 @@ typedef enum {
     CK_LogicalNot,
     CK_IntegerNegate,
     CK_AddressOf,
+    CK_Deref,
     CK_IntegerPlus,
     CK_IntegerMinus,
     CK_IntegerMultiply,
@@ -321,14 +323,25 @@ typedef struct {
     bool is_negated;
 } CstTopOnInfo;
 
+typedef enum : u32 {
+    CFM_Condition,
+    CFM_CStyle,
+    CFM_In,
+} CstForMode;
+
 typedef struct {
-    u32 first_init;
-    u32 init_count;
-    u32 condition_node_index;
-    u32 first_update;
-    u32 update_count;
-    u32 label_symbol;
-    u32 else_block_index;
+    u32  mode;
+    u32  first_init;
+    u32  init_count;
+    u32  condition_node_index;
+    u32  first_update;
+    u32  update_count;
+    u32  iterable_node_index;
+    u32  item_symbol;
+    u32  item_token_index;
+    u32  label_symbol;
+    u32  else_block_index;
+    bool item_is_pointer;
 } CstForInfo;
 
 typedef struct {

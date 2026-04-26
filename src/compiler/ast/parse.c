@@ -1845,6 +1845,16 @@ internal bool ast_for_token_is_body_start(TokenKind kind)
     return kind == TK_LBrace || kind == TK_Dollar;
 }
 
+internal bool ast_token_starts_for_in(const AstParseState* state)
+{
+    if (state->token.kind == TK_Symbol) {
+        return ast_cursor_kind(state) == TK_in;
+    }
+    return state->token.kind == TK_Caret &&
+           ast_cursor_kind(state) == TK_Symbol &&
+           ast_peek_kind_at(state, 1) == TK_in;
+}
+
 internal bool ast_parse_for_body(AstParseState* state,
                                  AstForInfo*    for_info,
                                  u32*           out_body_node)
@@ -1889,13 +1899,18 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     u32        for_token_index = state->token.token_index;
     u32        for_node        = 0;
     AstForInfo for_info        = {
+               .mode                 = AFM_Condition,
                .first_init           = U32_MAX,
                .init_count           = 0,
                .condition_node_index = U32_MAX,
                .first_update         = U32_MAX,
                .update_count         = 0,
+               .iterable_node_index  = U32_MAX,
+               .item_symbol          = U32_MAX,
+               .item_token_index     = U32_MAX,
                .label_symbol         = U32_MAX,
                .else_block_index     = U32_MAX,
+               .item_is_pointer      = false,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -1912,8 +1927,42 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                                          TK_LBrace,
                                          TK_EOF);
     }
-    if (!ast_for_token_is_body_start(state->token.kind)) {
+    if (!ast_for_token_is_body_start(state->token.kind) &&
+        ast_token_starts_for_in(state)) {
+        for_info.mode = AFM_In;
+        if (state->token.kind == TK_Caret) {
+            for_info.item_is_pointer = true;
+            if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+        }
+        ASSERT(state->token.kind == TK_Symbol,
+               "Expected symbol token for for-in loop item");
+        for_info.item_symbol      = state->token.value.symbol_handle;
+        for_info.item_token_index = state->token.token_index;
+        if (!ast_expect_token(state, TK_in) || !ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace);
+        }
+        bool previous_boundary          = state->allow_statement_boundary;
+        bool previous_stop_for_body     = state->stop_before_for_body;
+        state->allow_statement_boundary = true;
+        state->stop_before_for_body     = true;
+        bool ok = ast_parse_expr(state, &for_info.iterable_node_index);
+        state->stop_before_for_body     = previous_stop_for_body;
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
+            return false;
+        }
+    } else if (!ast_for_token_is_body_start(state->token.kind)) {
         if (state->token.kind == TK_Semicolon) {
+            for_info.mode = AFM_CStyle;
             if (ast_cursor_kind(state) != TK_Semicolon) {
                 if (!ast_next_token(state)) {
                     return false;
@@ -1982,6 +2031,7 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                 for_info.condition_node_index = first_node;
             } else if (state->token.kind == TK_Comma ||
                        state->token.kind == TK_Semicolon) {
+                for_info.mode = AFM_CStyle;
                 if (state->token.kind == TK_Comma) {
                     if (!ast_parse_for_item_list(state,
                                                  true,
@@ -2068,10 +2118,10 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                     state->token.kind);
             }
         }
-        if (state->token_index == state->token.token_index &&
-            !ast_next_token(state)) {
-            return false;
-        }
+    }
+    if (state->token_index == state->token.token_index &&
+        !ast_next_token(state)) {
+        return false;
     }
     if (!ast_parse_for_body(state, &for_info, &body_node)) {
         return false;

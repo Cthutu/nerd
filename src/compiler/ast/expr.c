@@ -112,6 +112,30 @@ internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
     return kind == TK_with;
 }
 
+internal bool ast_caret_is_postfix_deref(const AstParseState* state,
+                                         AstToken             token)
+{
+    ASSERT(token.kind == TK_Caret, "Expected caret token");
+    if (token.token_index + 1 >= array_count(state->lexer->tokens)) {
+        return true;
+    }
+    if (ast_token_has_newline_before(state, token.token_index + 1)) {
+        return true;
+    }
+    return !ast_token_starts_expression(ast_peek_kind_at(state, 0));
+}
+
+internal bool ast_consumed_caret_is_postfix_deref(const AstParseState* state)
+{
+    if (state->token_index >= array_count(state->lexer->tokens)) {
+        return true;
+    }
+    if (ast_token_has_newline_before(state, state->token_index)) {
+        return true;
+    }
+    return !ast_token_starts_expression(ast_expr_cursor_kind(state));
+}
+
 internal bool ast_token_can_continue_on_branch_head(TokenKind kind)
 {
     return kind == TK_FatArrow || kind == TK_as || kind == TK_on;
@@ -1241,6 +1265,15 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
     u8  right_bp   = 0;
     u32 right_node = 0;
 
+    if (op.kind == TK_Caret && ast_consumed_caret_is_postfix_deref(state)) {
+        AstNode node = {
+            .kind        = AK_Deref,
+            .token_index = op.token_index,
+            .a           = left_node,
+        };
+        return ast_emit_node(state, node, out_node);
+    }
+
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {
         error_ice("Unhandled led token kind: %d", op.kind);
     }
@@ -1726,6 +1759,11 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        if (state->stop_before_for_body &&
+            (next.kind == TK_LBrace || next.kind == TK_Dollar)) {
+            break;
+        }
+
         if (next.kind == TK_LBrace) {
             bool starts_plex = state->nodes[left_node].kind == AK_SymbolRef &&
                                (ast_peek_kind_at(state, 0) == TK_RBrace ||
@@ -1736,7 +1774,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             }
         }
 
-        if (!ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
+        bool caret_is_postfix =
+            next.kind == TK_Caret && ast_caret_is_postfix_deref(state, next);
+        if (!caret_is_postfix &&
+            !ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
             if (ast_next_tokens_start_binding(state)) {
                 break;
             }
@@ -1772,6 +1813,11 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
                     next.source, ast_token_span(state, &next), next.kind);
             }
             break;
+        }
+
+        if (caret_is_postfix) {
+            left_bp  = AST_BP_POSTFIX;
+            right_bp = AST_BP_POSTFIX;
         }
 
         if (state->allow_statement_boundary &&

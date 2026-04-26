@@ -422,25 +422,16 @@ internal bool lexer_lex_one_token(NerdSource source,
             u8        length;
             TokenKind kind;
         } keywords[] = {
-            {"fn", 2, TK_fn},
-            {"for", 3, TK_for},
-            {"on", 2, TK_on},
-            {"else", 4, TK_else},
-            {"break", 5, TK_break},
-            {"continue", 8, TK_continue},
-            {"return", 6, TK_return},
-            {"plex", 4, TK_plex},
-            {"union", 5, TK_union},
-            {"enum", 4, TK_enum},
-            {"ffi", 3, TK_ffi},
-            {"mod", 3, TK_mod},
-            {"use", 3, TK_use},
-            {"pub", 3, TK_pub},
-            {"with", 4, TK_with},
-            {"as", 2, TK_as},
-            {"yes", 3, TK_yes},
-            {"no", 2, TK_no},
-            {NULL, 0, 0},
+            {"fn", 2, TK_fn},         {"for", 3, TK_for},
+            {"on", 2, TK_on},         {"else", 4, TK_else},
+            {"break", 5, TK_break},   {"continue", 8, TK_continue},
+            {"return", 6, TK_return}, {"plex", 4, TK_plex},
+            {"union", 5, TK_union},   {"enum", 4, TK_enum},
+            {"ffi", 3, TK_ffi},       {"mod", 3, TK_mod},
+            {"use", 3, TK_use},       {"pub", 3, TK_pub},
+            {"with", 4, TK_with},     {"in", 2, TK_in},
+            {"as", 2, TK_as},         {"yes", 3, TK_yes},
+            {"no", 2, TK_no},         {NULL, 0, 0},
         };
 
         bool is_keyword = false;
@@ -882,6 +873,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         return token->offset + 3;
     case TK_fn:
     case TK_on:
+    case TK_in:
     case TK_as:
         return token->offset + 2;
     case TK_for:

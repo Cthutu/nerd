@@ -148,6 +148,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `pub`");
     case TK_with:
         return string_from_cstr("Keyword `with`");
+    case TK_in:
+        return string_from_cstr("Keyword `in`");
     case TK_as:
         return string_from_cstr("Keyword `as`");
     case TK_yes:

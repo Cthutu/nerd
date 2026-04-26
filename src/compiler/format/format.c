@@ -565,6 +565,10 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, '^');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
+    case CK_Deref:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_char(sb, '^');
+        break;
     case CK_ReturnExpr:
         sb_append_cstr(sb, "return");
         if (node->a != U32_MAX) {
@@ -604,9 +608,16 @@ internal void format_emit_expr(StringBuilder* sb,
         {
             const CstForInfo* for_info = &cst->fors[node->a];
             sb_append_cstr(sb, "for");
-            bool is_c_style =
-                for_info->init_count > 0 || for_info->update_count > 0;
-            if (is_c_style) {
+            if (for_info->iterable_node_index != U32_MAX) {
+                sb_append_char(sb, ' ');
+                if (for_info->item_is_pointer) {
+                    sb_append_char(sb, '^');
+                }
+                sb_append_string(sb, lex_symbol(lexer, for_info->item_symbol));
+                sb_append_cstr(sb, " in ");
+                format_emit_expr(
+                    sb, cst, lexer, for_info->iterable_node_index, 0);
+            } else if (for_info->mode == CFM_CStyle) {
                 sb_append_char(sb, ' ');
                 if (for_info->init_count > 0) {
                     format_emit_for_header_items(sb,
@@ -2185,9 +2196,15 @@ internal void format_emit_block_statement(StringBuilder* sb,
 #endif
         const CstForInfo* for_info = &cst->fors[stmt->a];
         sb_append_cstr(sb, "for");
-        bool is_c_style =
-            for_info->init_count > 0 || for_info->update_count > 0;
-        if (is_c_style) {
+        if (for_info->iterable_node_index != U32_MAX) {
+            sb_append_char(sb, ' ');
+            if (for_info->item_is_pointer) {
+                sb_append_char(sb, '^');
+            }
+            sb_append_string(sb, lex_symbol(lexer, for_info->item_symbol));
+            sb_append_cstr(sb, " in ");
+            format_emit_expr(sb, cst, lexer, for_info->iterable_node_index, 0);
+        } else if (for_info->mode == CFM_CStyle) {
             sb_append_char(sb, ' ');
             if (for_info->init_count > 0) {
                 format_emit_for_header_items(

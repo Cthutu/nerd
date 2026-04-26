@@ -27,6 +27,7 @@
 // | AK_LogicalNot      | Ast index of rhs  | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
 // | AK_AddressOf       | Ast index of value | 0                              |
+// | AK_Deref           | Ast index of value | 0                              |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
 // | AK_IntegerMinus    | Ast index of left | Ast index of right              |
 // | AK_IntegerMultiply | Ast index of left | Ast index of right              |
@@ -105,6 +106,7 @@ typedef enum {
     AK_LogicalNot,
     AK_IntegerNegate,
     AK_AddressOf,
+    AK_Deref,
     AK_IntegerPlus,
     AK_IntegerMinus,
     AK_IntegerMultiply,
@@ -337,14 +339,25 @@ typedef struct {
     bool is_negated;
 } AstTopOnInfo;
 
+typedef enum : u32 {
+    AFM_Condition,
+    AFM_CStyle,
+    AFM_In,
+} AstForMode;
+
 typedef struct {
-    u32 first_init;
-    u32 init_count;
-    u32 condition_node_index;
-    u32 first_update;
-    u32 update_count;
-    u32 label_symbol;
-    u32 else_block_index;
+    u32  mode;
+    u32  first_init;
+    u32  init_count;
+    u32  condition_node_index;
+    u32  first_update;
+    u32  update_count;
+    u32  iterable_node_index;
+    u32  item_symbol;
+    u32  item_token_index;
+    u32  label_symbol;
+    u32  else_block_index;
+    bool item_is_pointer;
 } AstForInfo;
 
 typedef struct {

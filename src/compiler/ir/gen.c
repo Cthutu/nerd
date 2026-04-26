@@ -517,6 +517,25 @@ void ir_add_address_of_index(Ir*     ir,
                });
 }
 
+void ir_add_add(Ir*     ir,
+                IrValue lvalue,
+                u32     lvalue_type,
+                IrValue lhs,
+                u32     lhs_type,
+                IrValue rhs,
+                u32     rhs_type)
+{
+    lvalue.type = lvalue_type;
+    lhs.type    = lhs_type;
+    rhs.type    = rhs_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ADD,
+                   .lvalue = lvalue,
+                   .rvalue = {lhs, rhs},
+               });
+}
+
 //------------------------------------------------------------------------------
 // Append explicit string-builder instructions to the IR stream.
 
@@ -1007,6 +1026,23 @@ internal u32 ir_find_function_param_local(const Sema*     sema,
     return sema_no_local();
 }
 
+internal u32 ir_find_scope_local(const Sema* sema,
+                                 u32         scope_index,
+                                 u32         symbol_handle)
+{
+    if (scope_index == U32_MAX) {
+        return sema_no_local();
+    }
+    const SemaScope* scope = &sema->scopes[scope_index];
+    u32              end   = scope->first_local + scope->local_count;
+    for (u32 i = end; i-- > scope->first_local;) {
+        if (sema->locals[i].symbol_handle == symbol_handle) {
+            return i;
+        }
+    }
+    return sema_no_local();
+}
+
 internal bool ir_pattern_contains_interpolation(const Ast* ast,
                                                 u32        pattern_index);
 
@@ -1022,6 +1058,7 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_AddressOf:
+    case AK_Deref:
     case AK_Field:
     case AK_Cast:
         return ir_node_contains_interpolation(ast, node->a);
@@ -2089,7 +2126,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         .kind = IR_VALUE_LOCAL,
                         .type =
                             ir_value_type_for_local_index(sema, local_index),
-                        .value.integer = local->symbol_handle,
+                        .value.integer = local->lowered_symbol_handle,
                     };
                 } else if (local->kind == SLK_Binder &&
                            local->value_node_index == sema_no_decl()) {
@@ -2119,7 +2156,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         .kind = IR_VALUE_LOCAL,
                         .type =
                             ir_value_type_for_local_index(sema, local_index),
-                        .value.integer = local->symbol_handle,
+                        .value.integer = local->lowered_symbol_handle,
                     };
                 }
             } else {
@@ -2188,6 +2225,37 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                   ir_node_type_index(ast, sema, node_index),
                                   target);
             }
+            node_values[node_index] = value;
+            return value;
+        }
+
+    case AK_Deref:
+        {
+            IrValue pointer = ir_lower_node(lex,
+                                            ast,
+                                            sema,
+                                            node->a,
+                                            loop,
+                                            node_values,
+                                            next_value_index,
+                                            ir);
+            IrValue index   = {
+                  .kind          = IR_VALUE_INTEGER,
+                  .type          = ir_builtin_type(sema, STK_Usize),
+                  .value.integer = 0,
+            };
+            IrValue value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_index(ir,
+                         value,
+                         ir_node_type_index(ast, sema, node_index),
+                         pointer,
+                         ir_node_type_index(ast, sema, node->a),
+                         index,
+                         ir_builtin_type(sema, STK_Usize));
             node_values[node_index] = value;
             return value;
         }
@@ -3476,8 +3544,214 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_For) {
         ASSERT(ast->nodes[node->b].kind == AK_Block, "Expected for body block");
         const AstForInfo* for_info = &ast->fors[node->a];
-        u32     result_type        = ir_node_type_index(ast, sema, node_index);
-        IrValue result             = ir_unset_value();
+        if (for_info->iterable_node_index != U32_MAX) {
+            u32 iterable_type =
+                ir_node_type_index(ast, sema, for_info->iterable_node_index);
+            u32 usize_type = ir_builtin_type(sema, STK_Usize);
+            u32 bool_type  = ir_builtin_type(sema, STK_Bool);
+            u32 for_scope  = sema->node_scope_indices[node_index];
+            u32 item_local_index =
+                ir_find_scope_local(sema, for_scope, for_info->item_symbol);
+            ASSERT(item_local_index != sema_no_local(),
+                   "Expected resolved for-in item local");
+            u32 lowered_item_type = sema->locals[item_local_index].type_index;
+
+            IrValue iterable_value =
+                ir_lower_node(lex,
+                              ast,
+                              sema,
+                              for_info->iterable_node_index,
+                              loop,
+                              node_values,
+                              next_value_index,
+                              ir);
+            IrValue iterable_temp = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = iterable_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_temp_local(ir, iterable_temp, iterable_type);
+            ir_add_assign(ir,
+                          iterable_temp,
+                          iterable_type,
+                          iterable_value,
+                          iterable_type);
+
+            IrValue index_temp = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = usize_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_temp_local(ir, index_temp, usize_type);
+            ir_add_assign(ir,
+                          index_temp,
+                          usize_type,
+                          (IrValue){.kind          = IR_VALUE_INTEGER,
+                                    .type          = usize_type,
+                                    .value.integer = 0},
+                          usize_type);
+
+            u32     result_type = ir_node_type_index(ast, sema, node_index);
+            IrValue result      = ir_unset_value();
+            if (result_type != ir_builtin_type(sema, STK_Void)) {
+                result = (IrValue){
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = result_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_temp_local(ir, result, result_type);
+            }
+
+            i64 start_label    = (i64)(*next_value_index)++;
+            i64 continue_label = (i64)(*next_value_index)++;
+            i64 end_label      = (i64)(*next_value_index)++;
+            i64 else_label     = for_info->else_block_index != U32_MAX
+                                     ? (i64)(*next_value_index)++
+                                     : end_label;
+            ir_add_label(ir, start_label);
+
+            IrValue count_value = {0};
+            if (sema->types[iterable_type].kind == STK_Array) {
+                count_value = (IrValue){
+                    .kind          = IR_VALUE_INTEGER,
+                    .type          = usize_type,
+                    .value.integer = sema->types[iterable_type].return_type,
+                };
+            } else {
+                IrValue count_temp = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = usize_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_field(ir,
+                             count_temp,
+                             usize_type,
+                             iterable_temp,
+                             iterable_type,
+                             lex_add_symbol((Lexer*)lex,
+                                            s("count"),
+                                            &(InternAddResult){0}));
+                count_value = count_temp;
+            }
+
+            IrValue condition = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = bool_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_less(ir,
+                        condition,
+                        bool_type,
+                        index_temp,
+                        usize_type,
+                        count_value,
+                        usize_type);
+            ir_add_branch_false(ir, condition, bool_type, else_label);
+
+            IrValue item_value = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = lowered_item_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            if (for_info->item_is_pointer) {
+                ir_add_address_of_index(ir,
+                                        item_value,
+                                        lowered_item_type,
+                                        iterable_temp,
+                                        iterable_type,
+                                        index_temp,
+                                        usize_type);
+            } else {
+                ir_add_index(ir,
+                             item_value,
+                             lowered_item_type,
+                             iterable_temp,
+                             iterable_type,
+                             index_temp,
+                             usize_type);
+            }
+            ir_add_local(ir,
+                         function_index,
+                         sema->locals[item_local_index].lowered_symbol_handle,
+                         lowered_item_type,
+                         item_value,
+                         lowered_item_type);
+
+            IrLoopLabels inner_loop   = loop;
+            inner_loop.break_label    = end_label;
+            inner_loop.continue_label = continue_label;
+            ASSERT(inner_loop.loop_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
+                   "Too many nested loop targets");
+            inner_loop.loop_targets[inner_loop.loop_target_count++] =
+                (IrLoopTarget){
+                    .label_symbol   = for_info->label_symbol,
+                    .break_label    = end_label,
+                    .continue_label = continue_label,
+                };
+            if (result_type != ir_builtin_type(sema, STK_Void)) {
+                ASSERT(inner_loop.expr_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
+                       "Too many nested value targets");
+                inner_loop.expr_targets[inner_loop.expr_target_count++] =
+                    (IrExprBlockTarget){
+                        .label_symbol = for_info->label_symbol,
+                        .break_label  = end_label,
+                        .result       = result,
+                        .result_type  = result_type,
+                    };
+            }
+
+            IrStatementResult body_result =
+                ir_generate_statement(lex,
+                                      ast,
+                                      sema,
+                                      function_index,
+                                      node->b,
+                                      inner_loop,
+                                      node_values,
+                                      next_value_index,
+                                      ir);
+            if (body_result != IR_STMT_RETURN) {
+                ir_add_label(ir, continue_label);
+                IrValue next_index = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = usize_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_add(ir,
+                           next_index,
+                           usize_type,
+                           index_temp,
+                           usize_type,
+                           (IrValue){.kind          = IR_VALUE_INTEGER,
+                                     .type          = usize_type,
+                                     .value.integer = 1},
+                           usize_type);
+                ir_add_assign(
+                    ir, index_temp, usize_type, next_index, usize_type);
+                ir_add_jump(ir, start_label);
+            }
+            if (for_info->else_block_index != U32_MAX) {
+                ir_add_label(ir, else_label);
+                IrStatementResult else_result =
+                    ir_generate_statement(lex,
+                                          ast,
+                                          sema,
+                                          function_index,
+                                          for_info->else_block_index,
+                                          inner_loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+                if (else_result == IR_STMT_RETURN) {
+                    return IR_STMT_RETURN;
+                }
+            }
+            ir_add_label(ir, end_label);
+            node_values[node_index] = result;
+            return IR_STMT_FALLTHROUGH;
+        }
+        u32     result_type = ir_node_type_index(ast, sema, node_index);
+        IrValue result      = ir_unset_value();
         if (result_type != ir_builtin_type(sema, STK_Void)) {
             result = (IrValue){
                 .kind          = IR_VALUE_VARIABLE,

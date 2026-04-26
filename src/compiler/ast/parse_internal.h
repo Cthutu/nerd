@@ -49,6 +49,7 @@ typedef struct {
     bool   stop_before_on_branch_head;
     bool   stop_before_call;
     bool   stop_before_ffi_name;
+    bool   stop_before_for_body;
 
     // Current token (from last peek or next)
     AstToken token;
