@@ -104,7 +104,7 @@ main :: fn () {
             "line": 3,
             "column": 23,
             "length": 1,
-            "message": "This `<` cannot follow `..` here"
+            "message": "This `<` cannot appear after `..`"
         }
     ],
     "notes": [

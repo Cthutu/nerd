@@ -1475,8 +1475,15 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 }
             } while (state->token.token_index <= range_token_index);
             if (state->token.kind == TK_Less) {
-                return error_0207_unexpected_less_after_range(
-                    state->lexer->source, ast_token_span(state, &state->token));
+                return error_0207_unexpected_operator(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    "`<`",
+                    "after `..`",
+                    "Exclusive end ranges and slices use `..`; inclusive "
+                    "end forms use `..=`",
+                    "Remove the `<` and keep `..` for an exclusive end "
+                    "range or slice");
             }
             if (range_token_index + 2 < array_count(state->lexer->tokens) &&
                 state->lexer->tokens[range_token_index + 1].kind ==
