@@ -1,0 +1,3 @@
+pub alpha :: fn() -> i32 {
+    return 40
+}

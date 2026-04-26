@@ -12,15 +12,14 @@ main :: fn () {
 }
 ¬
 use std.print
-
 Person :: plex {
     name string
     age  u8
 }
 
 matt :: Person {
-    name: "Matt"
-    age : 53
+    name : "Matt"
+    age  : 53
 }
 
 main :: fn () {

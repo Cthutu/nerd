@@ -1317,7 +1317,7 @@ needed earlier.
 
 ## Milestone 34: Grouped `use` Syntax
 
-- [ ] 103. Add grouped `use` as parser-level syntax sugar.
+- [X] 103. Add grouped `use` as parser-level syntax sugar.
   - Support grouped forms rooted at one module path, for example:
     `use std.collections { array list.single list.double }`.
   - Treat grouped `use` as pure desugaring into multiple ordinary `use`
@@ -1328,6 +1328,17 @@ needed earlier.
     than introducing a separate grouped-use semantic form.
   - Add formatter and LSP coverage so grouped imports remain stable and
     readable.
+  - Progress:
+    - Grouped `use` now parses in both AST and CST as pure syntax sugar and
+      expands directly into multiple ordinary flat `use` nodes.
+    - Whole-program module IR merging now folds per-module init bodies into one
+      final init block, which fixed duplicate init definitions exposed by
+      grouped imports.
+    - Imported constant and function exports now carry stable lowered symbols
+      through sema/IR, which fixed grouped imports of module exports that are
+      referenced at runtime.
+    - Language, formatter, and LSP regression coverage now includes grouped
+      `use`.
 
 ## Milestone 35: Parser Diagnostic Category Audit
 
@@ -1394,7 +1405,6 @@ These are the active unfinished items after the current `undefined` work:
 - [ ] 22. Keep extending the LSP as new language features land.
 - [ ] 101. Finish the FFI-consolidation milestone.
 - [ ] 102. Continue standard-library expansion beyond `std.print`.
-- [ ] 103. Add grouped `use` syntax.
 - [ ] 105. Add the CLI ergonomics follow-up (`b`, `r`, and `explain`).
 
 These are intentionally deferred and should not be treated as near-term tasks:

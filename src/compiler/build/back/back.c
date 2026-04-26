@@ -163,6 +163,8 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         program, program->root_module_index, visited, &module_order);
     array_free(visited);
 
+    Array(IrInstruction) merged_init_instructions = NULL;
+
     for (u32 module_order_index = 0;
          module_order_index < array_count(module_order);
          ++module_order_index) {
@@ -305,8 +307,17 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
             array_push(merge.ir.locals, local);
         }
 
+        bool in_module_init = false;
         for (u32 i = 0; i < array_count(module_ir->instructions); ++i) {
             IrInstruction instr = module_ir->instructions[i];
+            if (instr.op == IR_OP_INIT_START) {
+                in_module_init = true;
+                continue;
+            }
+            if (instr.op == IR_OP_INIT_END) {
+                in_module_init = false;
+                continue;
+            }
             instr.lvalue        = back_end_remap_ir_value(&instr.lvalue,
                                                    module_ir,
                                                    type_map,
@@ -348,12 +359,31 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                 break;
             }
 
-            array_push(merge.ir.instructions, instr);
+            if (in_module_init) {
+                array_push(merged_init_instructions, instr);
+            } else {
+                array_push(merge.ir.instructions, instr);
+            }
         }
 
         array_free(type_map);
         array_free(string_map);
     }
+
+    if (array_count(merged_init_instructions) > 0) {
+        array_push(merge.ir.instructions,
+                   (IrInstruction){
+                       .op = IR_OP_INIT_START,
+                   });
+        for (u32 i = 0; i < array_count(merged_init_instructions); ++i) {
+            array_push(merge.ir.instructions, merged_init_instructions[i]);
+        }
+        array_push(merge.ir.instructions,
+                   (IrInstruction){
+                       .op = IR_OP_INIT_END,
+                   });
+    }
+    array_free(merged_init_instructions);
 
     merge.ir.types                = merge.sema.types;
     merge.ir.type_param_types     = merge.sema.type_param_types;

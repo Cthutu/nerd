@@ -102,14 +102,14 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "__REPO_URI__/_bin/mods/std/print.n",
+            "uri": "file:///home/matt/nerd/_bin/mods/std/print.n",
             "range": {
                 "start": {
-                    "line": 12,
+                    "line": 16,
                     "character": 4
                 },
                 "end": {
-                    "line": 12,
+                    "line": 16,
                     "character": 7
                 }
             }
@@ -119,7 +119,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "__REPO_URI__/_bin/mods/std/print.n",
+            "uri": "file:///home/matt/nerd/_bin/mods/std/print.n",
             "range": {
                 "start": {
                     "line": 0,

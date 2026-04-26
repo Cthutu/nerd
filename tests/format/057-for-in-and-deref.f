@@ -9,7 +9,6 @@ return ptr^
 }
 ¬
 use std.print
-
 main :: fn () -> i32 {
     values : [2]i32 = [1, 2]
     ptr    : ^i32   = ^values[1]

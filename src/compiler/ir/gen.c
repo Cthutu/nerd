@@ -919,7 +919,8 @@ internal bool ir_eval_string_constant(const Lexer* lex,
         if (node_index < array_count(sema->node_local_indices)) {
             u32 local_index = sema->node_local_indices[node_index];
             if (local_index != sema_no_local() &&
-                sema->locals[local_index].kind == SLK_Constant) {
+                sema->locals[local_index].kind == SLK_Constant &&
+                sema->locals[local_index].value_node_index != sema_no_decl()) {
                 return ir_eval_string_constant(
                     lex,
                     ast,
@@ -932,7 +933,8 @@ internal bool ir_eval_string_constant(const Lexer* lex,
         if (node_index < array_count(sema->node_decl_indices)) {
             u32 decl_index = sema->node_decl_indices[node_index];
             if (decl_index != sema_no_decl() &&
-                sema->decls[decl_index].kind == SK_Constant) {
+                sema->decls[decl_index].kind == SK_Constant &&
+                sema->decls[decl_index].value_node_index != sema_no_decl()) {
                 return ir_eval_string_constant(
                     lex,
                     ast,
@@ -1969,8 +1971,20 @@ internal void ir_append_string_node(const Lexer* lex,
 
 internal bool ir_decl_requires_runtime(const Sema* sema, const SemaDecl* decl)
 {
+    if (decl->bind_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    if (decl->kind == SK_Variable) {
+        return true;
+    }
+
+    if (decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
     if (decl->kind != SK_Constant) {
-        return decl->kind == SK_Variable;
+        return false;
     }
 
     return !sema->node_const_known[decl->value_node_index];
@@ -2127,7 +2141,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 u32 local_index        = sema->node_local_indices[node_index];
                 const SemaLocal* local = &sema->locals[local_index];
-                if (local->kind == SLK_Constant) {
+                if (local->kind == SLK_Constant &&
+                    local->value_node_index != sema_no_decl()) {
                     value = ir_lower_node(lex,
                                           ast,
                                           sema,
@@ -2136,6 +2151,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                           node_values,
                                           next_value_index,
                                           ir);
+                } else if (local->kind == SLK_Constant) {
+                    value = (IrValue){
+                        .kind          = IR_VALUE_SYMBOL,
+                        .type          = local->type_index,
+                        .value.integer = local->lowered_symbol_handle,
+                    };
                 } else if (local->kind == SLK_Binder &&
                            local->decl_node_index != sema_no_decl() &&
                            (ast->nodes[local->decl_node_index].kind ==

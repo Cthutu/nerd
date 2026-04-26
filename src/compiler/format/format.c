@@ -13,23 +13,23 @@
 
 #define FORMAT_WRAP_WIDTH 80
 
-internal void format_emit_for_header_items(StringBuilder* sb,
-                                           const Cst*     cst,
-                                           const Lexer*   lexer,
-                                           u32            first_item,
-                                           u32            item_count);
-internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
-internal void format_emit_top_on(StringBuilder* sb,
-                                 const Cst*     cst,
-                                 const Lexer*   lexer,
-                                 u32            top_on_index,
-                                 u32            indent_level);
-internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index);
-internal void format_emit_on_block_multiline(StringBuilder* sb,
-                                             const Cst*     cst,
-                                             const Lexer*   lexer,
-                                             u32            node_index,
-                                             u32            indent_level);
+internal void  format_emit_for_header_items(StringBuilder* sb,
+                                            const Cst*     cst,
+                                            const Lexer*   lexer,
+                                            u32            first_item,
+                                            u32            item_count);
+internal void  format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal void  format_emit_top_on(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            top_on_index,
+                                  u32            indent_level);
+internal bool  format_node_is_block_form_on(const Cst* cst, u32 node_index);
+internal void  format_emit_on_block_multiline(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              u32            indent_level);
 internal usize format_rendered_expr_width(const Cst*   cst,
                                           const Lexer* lexer,
                                           u32          node_index,
@@ -600,7 +600,8 @@ internal void format_emit_expr(StringBuilder* sb,
             for (u32 i = 0; i < plex->field_count; ++i) {
                 const CstPlexLiteralField* field =
                     &cst->plex_literal_fields[plex->first_field + i];
-                usize field_width = lex_symbol(lexer, field->symbol_handle).count;
+                usize field_width =
+                    lex_symbol(lexer, field->symbol_handle).count;
                 if (field_width > max_field_width) {
                     max_field_width = field_width;
                 }
@@ -618,7 +619,8 @@ internal void format_emit_expr(StringBuilder* sb,
                     &cst->plex_literal_fields[plex->first_field + i];
                 string field_name = lex_symbol(lexer, field->symbol_handle);
                 sb_append_string(sb, field_name);
-                for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+                for (usize pad = field_name.count; pad <= max_field_width;
+                     ++pad) {
                     sb_append_char(sb, ' ');
                 }
                 sb_append_cstr(sb, ": ");
@@ -1706,7 +1708,7 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
-internal bool format_plex_literals_have_same_shape(const Cst* cst,
+internal bool format_plex_literals_have_same_shape(const Cst*     cst,
                                                    const CstNode* a,
                                                    const CstNode* b)
 {
@@ -1734,13 +1736,13 @@ internal bool format_plex_literals_have_same_shape(const Cst* cst,
     return true;
 }
 
-internal void format_emit_plex_literal_single_line_aligned(
-    StringBuilder* sb,
-    const Cst*     cst,
-    const Lexer*   lexer,
-    const CstNode* node,
-    const usize*   field_name_widths,
-    const usize*   field_value_widths)
+internal void
+format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
+                                             const Cst*     cst,
+                                             const Lexer*   lexer,
+                                             const CstNode* node,
+                                             const usize*   field_name_widths,
+                                             const usize*   field_value_widths)
 {
     const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
 
@@ -1750,11 +1752,11 @@ internal void format_emit_plex_literal_single_line_aligned(
     if (node->kind == CK_PlexUpdate) {
         sb_append_cstr(sb, " with");
     }
-    sb_append_cstr(sb,
-                   (plex->target_node_index != U32_MAX ||
-                    node->kind == CK_PlexUpdate)
-                       ? " { "
-                       : "{ ");
+    sb_append_cstr(
+        sb,
+        (plex->target_node_index != U32_MAX || node->kind == CK_PlexUpdate)
+            ? " { "
+            : "{ ");
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexLiteralField* field =
             &cst->plex_literal_fields[plex->first_field + i];
@@ -1766,8 +1768,8 @@ internal void format_emit_plex_literal_single_line_aligned(
         sb_append_cstr(sb, ": ");
         format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
         if (i + 1 < plex->field_count) {
-            usize value_width =
-                format_rendered_expr_width(cst, lexer, field->value_node_index, 0);
+            usize value_width = format_rendered_expr_width(
+                cst, lexer, field->value_node_index, 0);
             sb_append_char(sb, ',');
             for (usize pad = value_width; pad <= field_value_widths[i]; ++pad) {
                 sb_append_char(sb, ' ');
@@ -1805,9 +1807,10 @@ internal void format_emit_array_multiline(StringBuilder* sb,
             }
 
             if (run_end > i + 1) {
-                const CstPlexLiteralInfo* first_plex = &cst->plex_literals[item->a];
-                Array(usize)              field_name_widths = NULL;
-                Array(usize)              field_value_widths = NULL;
+                const CstPlexLiteralInfo* first_plex =
+                    &cst->plex_literals[item->a];
+                Array(usize) field_name_widths  = NULL;
+                Array(usize) field_value_widths = NULL;
                 for (u32 field = 0; field < first_plex->field_count; ++field) {
                     array_push(field_name_widths, 0);
                     array_push(field_value_widths, 0);
@@ -1815,12 +1818,16 @@ internal void format_emit_array_multiline(StringBuilder* sb,
 
                 for (u32 cursor = i; cursor < run_end; ++cursor) {
                     const CstPlexLiteralInfo* current_plex =
-                        &cst->plex_literals[cst->nodes[cst->tuple_items[node->a + cursor]].a];
-                    for (u32 field = 0; field < current_plex->field_count; ++field) {
+                        &cst->plex_literals
+                             [cst->nodes[cst->tuple_items[node->a + cursor]].a];
+                    for (u32 field = 0; field < current_plex->field_count;
+                         ++field) {
                         const CstPlexLiteralField* literal_field =
-                            &cst->plex_literal_fields[current_plex->first_field + field];
+                            &cst->plex_literal_fields
+                                 [current_plex->first_field + field];
                         usize field_name_width =
-                            lex_symbol(lexer, literal_field->symbol_handle).count;
+                            lex_symbol(lexer, literal_field->symbol_handle)
+                                .count;
                         if (field_name_width > field_name_widths[field]) {
                             field_name_widths[field] = field_name_width;
                         }
@@ -1858,7 +1865,8 @@ internal void format_emit_array_multiline(StringBuilder* sb,
             }
         }
 
-        format_emit_expr_with_indent(sb, cst, lexer, item_index, 0, indent_level + 1);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, item_index, 0, indent_level + 1);
         sb_append_cstr(sb, ",\n");
     }
     format_emit_indent(sb, indent_level);
@@ -2922,21 +2930,18 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             } else {
                 format_emit_expr(sb, &cst, &lexer, node->a, 0);
             }
-            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }
 
         if (node->kind == CK_FfiDef) {
             format_emit_ffi_def(sb, &cst, &lexer, node->a);
-            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
-            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }

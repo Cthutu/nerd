@@ -1,14 +1,35 @@
-enabled: bool = yes
-main :: fn () => on enabled => 42 else 7
+use test { grouped { alpha } }
+
+main :: fn () {
+    alpha()
+}
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/semanticTokens/full",
+        "method": "textDocument/hover",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 3,
+                "character": 4
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 3,
+                "character": 4
             }
         }
     }
@@ -57,73 +78,27 @@ main :: fn () => on enabled => 42 else 7
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "data": [
-                0,
-                0,
-                7,
-                4,
-                0,
-                0,
-                9,
-                4,
-                4,
-                0,
-                0,
-                7,
-                3,
-                2,
-                0,
-                1,
-                0,
-                4,
-                4,
-                0,
-                0,
-                8,
-                2,
-                2,
-                0,
-                0,
-                4,
-                1,
-                4,
-                0,
-                0,
-                2,
-                2,
-                4,
-                0,
-                0,
-                3,
-                2,
-                2,
-                0,
-                0,
-                3,
-                7,
-                4,
-                0,
-                0,
-                8,
-                2,
-                4,
-                0,
-                0,
-                3,
-                2,
-                3,
-                0,
-                0,
-                3,
-                4,
-                2,
-                0,
-                0,
-                5,
-                1,
-                3,
-                0
-            ]
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nalpha :: fn () -> i32\n```\n\n- Kind: function"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+            "uri": "file:///home/matt/nerd/tests/mods/test/grouped/alpha.n",
+            "range": {
+                "start": {
+                    "line": 0,
+                    "character": 4
+                },
+                "end": {
+                    "line": 0,
+                    "character": 9
+                }
+            }
         }
     },
     {

@@ -95,10 +95,10 @@ internal bool lexer_lex_string_literal(NerdSource source,
                 break;
             case 'x':
                 {
-                    u8 value = 0;
+                    u8  value  = 0;
                     u32 digits = 0;
                     while (i < source_code.count && digits < 2) {
-                        u8 hex = source_code.data[i];
+                        u8 hex    = source_code.data[i];
                         u8 nibble = 0;
                         if (hex >= '0' && hex <= '9') {
                             nibble = (u8)(hex - '0');
@@ -450,7 +450,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             source, source_code, io_index, lexer, TK_String, *io_index);
     }
 
-    if (c == 'c' && i + 1 < source_code.count && source_code.data[i + 1] == '"') {
+    if (c == 'c' && i + 1 < source_code.count &&
+        source_code.data[i + 1] == '"') {
         *io_index = i + 1;
         return lexer_lex_string_literal(
             source, source_code, io_index, lexer, TK_CString, i);
@@ -880,8 +881,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_String:
     case TK_CString:
         {
-            usize index = token->offset +
-                          (token->kind == TK_CString ? 2 : 1);
+            usize index = token->offset + (token->kind == TK_CString ? 2 : 1);
             while (index < lexer->source.source.count) {
                 if (lexer->source.source.data[index] == '\\') {
                     index += 2;

@@ -772,6 +772,18 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node);
+internal bool cst_parse_module_path_symbols(CstParseState* state,
+                                            Array(u32)*    out_symbols);
+internal bool cst_emit_use_from_symbols(CstParseState* state,
+                                        u32            use_token_index,
+                                        u32            path_token_index,
+                                        const u32*     symbols,
+                                        u32            symbol_count,
+                                        u32*           out_use_node);
+internal bool cst_parse_grouped_use_entries(CstParseState* state,
+                                            u32            use_token_index,
+                                            Array(u32)*    prefix_symbols,
+                                            u32*           out_first_use_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
@@ -3871,47 +3883,44 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
+    if (cst_current_token(state).kind == TK_Symbol &&
+        (cst_peek_kind_at(state, 1) == TK_Dot ||
+         cst_peek_kind_at(state, 1) == TK_LBrace)) {
+        u32        path_token_index = state->token_index;
+        Array(u32) symbols          = NULL;
+        if (!cst_parse_module_path_symbols(state, &symbols)) {
+            array_free(symbols);
+            return false;
+        }
+
+        if (cst_current_token(state).kind == TK_LBrace) {
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_RBrace) {
+                array_free(symbols);
+                return false;
+            }
+            bool ok = cst_parse_grouped_use_entries(
+                state, token_index, &symbols, out_node);
+            array_free(symbols);
+            if (ok && out_node != NULL) {
+                *out_node = U32_MAX;
+            }
+            return ok;
+        }
+
+        bool ok = cst_emit_use_from_symbols(state,
+                                            token_index,
+                                            path_token_index,
+                                            symbols,
+                                            (u32)array_count(symbols),
+                                            out_node);
+        array_free(symbols);
+        return ok;
+    }
+
     u32 module_node = 0;
     if (cst_current_token(state).kind == TK_mod) {
         if (!cst_parse_mod_ref(state, &module_node)) {
-            return false;
-        }
-    } else if (cst_current_token(state).kind == TK_Symbol &&
-               cst_peek_kind_at(state, 1) == TK_Dot) {
-        u32 path_token_index = state->token_index;
-        u32 first_symbol     = (u32)array_count(state->cst.module_path_symbols);
-        u32 symbol_count     = 0;
-
-        for (;;) {
-            u32 symbol_handle = cst_current_symbol_handle(state);
-            if (symbol_handle == CST_NO_VALUE) {
-                return false;
-            }
-            array_push(state->cst.module_path_symbols, symbol_handle);
-            ++symbol_count;
-            cst_advance(state);
-            if (cst_current_token(state).kind != TK_Dot) {
-                break;
-            }
-            cst_advance(state);
-            if (cst_current_token(state).kind != TK_Symbol) {
-                return false;
-            }
-        }
-
-        u32 module_path_index = (u32)array_count(state->cst.module_paths);
-        array_push(state->cst.module_paths,
-                   (CstModulePath){
-                       .first_symbol = first_symbol,
-                       .symbol_count = symbol_count,
-                   });
-        if (!cst_emit_node(state,
-                           (CstNode){
-                               .kind        = CK_ModRef,
-                               .token_index = path_token_index,
-                               .a           = module_path_index,
-                           },
-                           &module_node)) {
             return false;
         }
     } else if (!cst_parse_expr_bp(state, 0, &module_node)) {
@@ -3925,6 +3934,123 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
                              .a           = module_node,
                          },
                          out_node);
+}
+
+internal bool cst_parse_module_path_symbols(CstParseState* state,
+                                            Array(u32)*    out_symbols)
+{
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+
+    for (;;) {
+        u32 symbol_handle = cst_current_symbol_handle(state);
+        if (symbol_handle == CST_NO_VALUE) {
+            return false;
+        }
+        array_push(*out_symbols, symbol_handle);
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Dot) {
+            break;
+        }
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+internal bool cst_emit_use_from_symbols(CstParseState* state,
+                                        u32            use_token_index,
+                                        u32            path_token_index,
+                                        const u32*     symbols,
+                                        u32            symbol_count,
+                                        u32*           out_use_node)
+{
+    u32 first_symbol = (u32)array_count(state->cst.module_path_symbols);
+    for (u32 i = 0; i < symbol_count; ++i) {
+        array_push(state->cst.module_path_symbols, symbols[i]);
+    }
+
+    u32 module_path_index = (u32)array_count(state->cst.module_paths);
+    array_push(state->cst.module_paths,
+               (CstModulePath){
+                   .first_symbol = first_symbol,
+                   .symbol_count = symbol_count,
+               });
+
+    u32 module_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_ModRef,
+                           .token_index = path_token_index,
+                           .a           = module_path_index,
+                       },
+                       &module_node)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_Use,
+                             .token_index = use_token_index,
+                             .a           = module_node,
+                         },
+                         out_use_node);
+}
+
+internal bool cst_parse_grouped_use_entries(CstParseState* state,
+                                            u32            use_token_index,
+                                            Array(u32)*    prefix_symbols,
+                                            u32*           out_first_use_node)
+{
+    for (;;) {
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+
+        u32   path_token_index = state->token_index;
+        usize prefix_count     = array_count(*prefix_symbols);
+        if (!cst_parse_module_path_symbols(state, prefix_symbols)) {
+            return false;
+        }
+
+        if (cst_current_token(state).kind == TK_LBrace) {
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_RBrace) {
+                return false;
+            }
+            if (!cst_parse_grouped_use_entries(
+                    state, use_token_index, prefix_symbols, out_first_use_node)) {
+                return false;
+            }
+        } else {
+            u32 use_node = 0;
+            if (!cst_emit_use_from_symbols(state,
+                                           use_token_index,
+                                           path_token_index,
+                                           *prefix_symbols,
+                                           (u32)array_count(*prefix_symbols),
+                                           &use_node)) {
+                return false;
+            }
+            if (out_first_use_node != NULL) {
+                array_push(state->cst.bindings, use_node);
+            }
+        }
+
+        __array_count(*prefix_symbols) = prefix_count;
+
+        if (cst_current_token(state).kind == TK_EOF) {
+            return false;
+        }
+        if (cst_current_token(state).kind == TK_RBrace) {
+            cst_advance(state);
+            return true;
+        }
+    }
 }
 
 internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
@@ -4116,7 +4242,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
     cst_build_token_value_tables(&state);
 
     while (state.token_index < array_count(lexer->tokens)) {
-        u32 item_index = 0;
+        u32 item_index = U32_MAX;
         if (!cst_parse_top_level_item(&state, &item_index)) {
             cst_done(&state.cst);
             array_free(state.token_integer_indices);
@@ -4125,7 +4251,9 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
             array_free(state.token_symbol_handles);
             return false;
         }
-        array_push(state.cst.bindings, item_index);
+        if (item_index != U32_MAX) {
+            array_push(state.cst.bindings, item_index);
+        }
     }
 
     for (u32 i = 0; i < array_count(lexer->integers); ++i) {

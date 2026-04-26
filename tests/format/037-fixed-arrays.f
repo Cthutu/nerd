@@ -9,7 +9,6 @@ prn($"{xs[0]} {ys[1]}")
 }
 ¬
 use std.print
-
 Numbers :: [3]i32
 
 main :: fn () {

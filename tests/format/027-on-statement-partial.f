@@ -7,7 +7,6 @@ main :: fn () {
 }
 ¬
 use std.print
-
 main :: fn () {
     value :: 2
 

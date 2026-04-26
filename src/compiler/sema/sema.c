@@ -1181,6 +1181,37 @@ internal u32 sema_ensure_module_export_decl(Sema*        sema,
     return (u32)array_count(sema->decls) - 1;
 }
 
+internal u32 sema_imported_export_lowered_symbol_handle(Lexer*       dst_lexer,
+                                                        const Sema*  sema,
+                                                        u32          module_index,
+                                                        u32          decl_index,
+                                                        u32          fallback)
+{
+    if (sema->program == NULL || module_index >= array_count(sema->program->modules)) {
+        return fallback;
+    }
+
+    const ModuleInfo* module = &sema->program->modules[module_index];
+    if (decl_index >= array_count(module->front_end.sema.decls)) {
+        return fallback;
+    }
+
+    const SemaDecl* decl = &module->front_end.sema.decls[decl_index];
+    if (decl->value_node_index != sema_no_decl() &&
+        decl->value_node_index <
+            array_count(module->front_end.sema.node_lowered_symbol_handles)) {
+        u32 lowered =
+            module->front_end.sema.node_lowered_symbol_handles[decl->value_node_index];
+        if (lowered != U32_MAX) {
+            return sema_import_symbol_handle(dst_lexer,
+                                             &module->front_end.lexer,
+                                             lowered);
+        }
+    }
+
+    return fallback;
+}
+
 internal bool sema_import_module_exports_to_scope(const Lexer* lexer,
                                                   const Ast*   ast,
                                                   Sema*        sema,
@@ -1241,20 +1272,40 @@ internal bool sema_import_module_exports_to_scope(const Lexer* lexer,
                 sema_local_span(lexer, ast, local));
         }
 
+        SemaDeclKind import_decl_kind = SK_Constant;
+        if (sema->program != NULL &&
+            import_module_index < array_count(sema->program->modules) &&
+            import_decl_index < array_count(sema->program->modules[import_module_index]
+                                                .front_end.sema.decls)) {
+            import_decl_kind =
+                sema->program->modules[import_module_index]
+                    .front_end.sema.decls[import_decl_index]
+                    .kind;
+        }
+
+        sema_ensure_module_export_decl(sema,
+                                       symbol,
+                                       type,
+                                       import_decl_kind,
+                                       import_module_index,
+                                       import_decl_index);
+        u32 lowered_symbol_handle = sema_imported_export_lowered_symbol_handle(
+            (Lexer*)lexer, sema, import_module_index, import_decl_index, symbol);
+
         array_push(
             sema->locals,
             (SemaLocal){
                 .kind = sema->types[type].kind == STK_Function ? SLK_Function
                                                                : SLK_Constant,
-                .symbol_handle    = symbol,
-                .owner_decl_index = sema->scopes[scope_index].owner_decl_index,
-                .scope_index      = scope_index,
-                .decl_node_index  = use_node_index,
-                .decl_token_index = U32_MAX,
-                .type_node_index  = sema_no_type(),
-                .value_node_index = sema_no_decl(),
-                .type_index       = type,
-                .lowered_symbol_handle = symbol,
+                .symbol_handle         = symbol,
+                .owner_decl_index      = sema->scopes[scope_index].owner_decl_index,
+                .scope_index           = scope_index,
+                .decl_node_index       = use_node_index,
+                .decl_token_index      = U32_MAX,
+                .type_node_index       = sema_no_type(),
+                .value_node_index      = sema_no_decl(),
+                .type_index            = type,
+                .lowered_symbol_handle = lowered_symbol_handle,
             });
         sema->scopes[scope_index].local_count++;
     }
@@ -7254,8 +7305,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_StringConcat:
         if (node->kind == AK_StringLiteral &&
             lexer->tokens[node->token_index].kind == TK_CString) {
-            type_index = sema_add_pointer_type(
-                sema, sema_builtin_type(sema, STK_U8));
+            type_index =
+                sema_add_pointer_type(sema, sema_builtin_type(sema, STK_U8));
         } else {
             type_index = sema_builtin_type(sema, STK_String);
         }
@@ -9510,7 +9561,8 @@ internal bool sema_fold_node(const Lexer* lex,
                         const SemaLocal* local =
                             &sema->locals[out_sema->node_local_indices
                                               [frame->node_index]];
-                        if (local->kind == SLK_Constant) {
+                        if (local->kind == SLK_Constant &&
+                            local->value_node_index != sema_no_decl()) {
                             sema_push_fold_frame(&stack,
                                                  local->value_node_index);
                         }
@@ -9521,7 +9573,8 @@ internal bool sema_fold_node(const Lexer* lex,
                         break;
                     }
                     const SemaDecl* decl = &sema->decls[decl_index];
-                    if (decl->kind == SK_Constant) {
+                    if (decl->kind == SK_Constant &&
+                        decl->value_node_index != sema_no_decl()) {
                         sema_push_fold_frame(&stack, decl->value_node_index);
                     }
                 }

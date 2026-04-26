@@ -1068,6 +1068,16 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node);
 internal bool ast_parse_destructure_pattern(AstParseState* state,
                                             u32*           out_pattern);
 internal bool ast_parse_use(AstParseState* state, u32* out_node);
+internal bool ast_parse_module_path_symbols(AstParseState* state,
+                                            Array(u32)*    out_symbols);
+internal bool ast_emit_use_from_symbols(AstParseState* state,
+                                        u32            use_token_index,
+                                        u32            path_token_index,
+                                        const u32*     symbols,
+                                        u32            symbol_count);
+internal bool ast_parse_grouped_use_entries(AstParseState* state,
+                                            u32            use_token_index,
+                                            Array(u32)*    prefix_symbols);
 
 internal bool ast_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
 {
@@ -2425,50 +2435,52 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
             "Expected a module expression after 'use', but found end of file");
     }
 
-    u32  module_node                = 0;
-    bool previous_boundary          = state->allow_statement_boundary;
-    state->allow_statement_boundary = true;
-    bool ok                         = false;
     if (state->token.kind == TK_Symbol &&
-        ast_peek_kind_at(state, 0) == TK_Dot) {
-        AstToken path_token   = state->token;
-        u32      first_symbol = (u32)array_count(state->module_path_symbols);
-        u32      symbol_count = 0;
+        (ast_peek_kind_at(state, 0) == TK_Dot ||
+         ast_peek_kind_at(state, 0) == TK_LBrace)) {
+        AstToken   path_token = state->token;
+        Array(u32) symbols    = NULL;
+        if (!ast_parse_module_path_symbols(state, &symbols)) {
+            array_free(symbols);
+            return false;
+        }
 
-        for (;;) {
-            array_push(state->module_path_symbols,
-                       state->token.value.symbol_handle);
-            ++symbol_count;
-            if (ast_peek_kind_at(state, 0) != TK_Dot) {
-                break;
+        if (ast_peek_kind_at(state, 0) == TK_LBrace) {
+            if (!ast_expect_token(state, TK_LBrace) || !ast_next_token(state)) {
+                array_free(symbols);
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &path_token),
+                    TK_Symbol,
+                    TK_EOF);
             }
-            if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state) ||
-                state->token.kind != TK_Symbol) {
-                state->allow_statement_boundary = previous_boundary;
+            if (state->token.kind == TK_RBrace) {
+                array_free(symbols);
                 return error_0203_expected_token(
                     state->lexer->source,
                     ast_token_span(state, &state->token),
                     TK_Symbol,
                     state->token.kind);
             }
+            bool ok =
+                ast_parse_grouped_use_entries(state, use_token.token_index, &symbols);
+            array_free(symbols);
+            return ok;
         }
 
-        u32 module_path_index = (u32)array_count(state->module_paths);
-        array_push(state->module_paths,
-                   (AstModulePath){
-                       .first_symbol = first_symbol,
-                       .symbol_count = symbol_count,
-                   });
-        ok = ast_emit_node(state,
-                           (AstNode){
-                               .kind        = AK_ModRef,
-                               .token_index = path_token.token_index,
-                               .a           = module_path_index,
-                           },
-                           &module_node);
-    } else {
-        ok = ast_parse_expr(state, &module_node);
+        bool ok = ast_emit_use_from_symbols(state,
+                                            use_token.token_index,
+                                            path_token.token_index,
+                                            symbols,
+                                            (u32)array_count(symbols));
+        array_free(symbols);
+        return ok;
     }
+
+    u32  module_node                = 0;
+    bool previous_boundary          = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool ok                         = ast_parse_expr(state, &module_node);
     state->allow_statement_boundary = previous_boundary;
     if (!ok) {
         return false;
@@ -2481,6 +2493,132 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
                              .a           = module_node,
                          },
                          out_node);
+}
+
+internal bool ast_parse_module_path_symbols(AstParseState* state,
+                                            Array(u32)*    out_symbols)
+{
+    if (state->token.kind != TK_Symbol) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+
+    for (;;) {
+        array_push(*out_symbols, state->token.value.symbol_handle);
+        if (ast_peek_kind_at(state, 0) != TK_Dot) {
+            break;
+        }
+        if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state) ||
+            state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &state->token),
+                                             TK_Symbol,
+                                             state->token.kind);
+        }
+    }
+
+    return true;
+}
+
+internal bool ast_emit_use_from_symbols(AstParseState* state,
+                                        u32            use_token_index,
+                                        u32            path_token_index,
+                                        const u32*     symbols,
+                                        u32            symbol_count)
+{
+    u32 first_symbol = (u32)array_count(state->module_path_symbols);
+    for (u32 i = 0; i < symbol_count; ++i) {
+        array_push(state->module_path_symbols, symbols[i]);
+    }
+
+    u32 module_path_index = (u32)array_count(state->module_paths);
+    array_push(state->module_paths,
+               (AstModulePath){
+                   .first_symbol = first_symbol,
+                   .symbol_count = symbol_count,
+               });
+
+    u32 module_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_ModRef,
+                           .token_index = path_token_index,
+                           .a           = module_path_index,
+                       },
+                       &module_node)) {
+        return false;
+    }
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Use,
+                             .token_index = use_token_index,
+                             .a           = module_node,
+                         },
+                         NULL);
+}
+
+internal bool ast_parse_grouped_use_entries(AstParseState* state,
+                                            u32            use_token_index,
+                                            Array(u32)*    prefix_symbols)
+{
+    for (;;) {
+        if (state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &state->token),
+                                             TK_Symbol,
+                                             state->token.kind);
+        }
+
+        AstToken path_token   = state->token;
+        usize    prefix_count = array_count(*prefix_symbols);
+        if (!ast_parse_module_path_symbols(state, prefix_symbols)) {
+            return false;
+        }
+
+        if (ast_peek_kind_at(state, 0) == TK_LBrace) {
+            if (!ast_expect_token(state, TK_LBrace) || !ast_next_token(state)) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &path_token),
+                                                 TK_Symbol,
+                                                 TK_EOF);
+            }
+            if (state->token.kind == TK_RBrace) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &state->token),
+                                                 TK_Symbol,
+                                                 state->token.kind);
+            }
+            if (!ast_parse_grouped_use_entries(
+                    state, use_token_index, prefix_symbols)) {
+                return false;
+            }
+        } else if (!ast_emit_use_from_symbols(state,
+                                              use_token_index,
+                                              path_token.token_index,
+                                              *prefix_symbols,
+                                              (u32)array_count(*prefix_symbols))) {
+            return false;
+        }
+
+        __array_count(*prefix_symbols) = prefix_count;
+
+        TokenKind next = ast_peek_kind_at(state, 0);
+        if (next == TK_EOF) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &state->token),
+                                             TK_RBrace,
+                                             TK_EOF);
+        }
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        if (state->token.kind == TK_RBrace) {
+            return true;
+        }
+    }
 }
 
 internal bool ast_parse_top_level_item(AstParseState* state);

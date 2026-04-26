@@ -8,7 +8,6 @@ prn($"{v.i}")
 }
 ¬
 use std.print
-
 Value :: union {
     i     i32
     f     f32
@@ -16,6 +15,6 @@ Value :: union {
 }
 
 main :: fn () {
-    v : Value = Value { i: 42 }
+    v : Value = Value { i : 42 }
     prn($"{v.i}")
 }
