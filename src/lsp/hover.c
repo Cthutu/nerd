@@ -688,6 +688,75 @@ internal string lsp_local_hover_text(const LspDocument* doc,
 }
 
 //------------------------------------------------------------------------------
+// Return a hover summary for one plex/union field access.
+
+internal string lsp_field_hover_text(const LspDocument* doc,
+                                     Arena*             arena,
+                                     u32                field_node_index)
+{
+    if (field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("");
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind != AK_Field ||
+        field->a >= array_count(doc->front_end.sema.node_type_indices)) {
+        return s("");
+    }
+
+    u32 target_type = doc->front_end.sema.node_type_indices[field->a];
+    if (target_type == sema_no_type() ||
+        target_type >= array_count(doc->front_end.sema.types)) {
+        return s("");
+    }
+
+    const SemaType* target = &doc->front_end.sema.types[target_type];
+    if (target->kind == STK_Pointer) {
+        u32 pointee_type = target->first_param_type;
+        if (pointee_type < array_count(doc->front_end.sema.types) &&
+            (doc->front_end.sema.types[pointee_type].kind == STK_Plex ||
+             doc->front_end.sema.types[pointee_type].kind == STK_Union)) {
+            target_type = pointee_type;
+            target      = &doc->front_end.sema.types[target_type];
+        }
+    }
+
+    if (target->kind != STK_Plex && target->kind != STK_Union) {
+        return s("");
+    }
+
+    for (u32 i = 0; i < target->param_count; ++i) {
+        if (doc->front_end.sema
+                .type_param_symbols[target->first_param_type + i] != field->b) {
+            continue;
+        }
+
+        string name = lex_symbol(&doc->front_end.lexer, field->b);
+        string type = sema_type_name(
+            &doc->front_end.lexer,
+            &doc->front_end.sema,
+            arena,
+            doc->front_end.sema.type_param_types[target->first_param_type + i]);
+        string owner = sema_type_name(
+            &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
+        string kind =
+            target->kind == STK_Union ? s("union field") : s("plex field");
+
+        return string_format(
+            arena,
+            STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
+                    "\n- Owner: `" STRINGP "`",
+            STRINGV(lsp_markdown_code_block(
+                arena, string_format(arena, STRINGP, STRINGV(name)))),
+            STRINGV(kind),
+            STRINGV(type),
+            STRINGV(owner));
+    }
+
+    return s("");
+}
+
+//------------------------------------------------------------------------------
 // Build a location object for one top-level declaration binding.
 
 internal JsonValue* lsp_decl_location(const LspDocument* doc,
@@ -884,15 +953,28 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             }
 
             u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
-            if (decl_index == LSP_NO_DECL) {
-                lsp_cancel(response, message->arena);
-                return;
+            if (decl_index != LSP_NO_DECL) {
+                lsp_set_markdown_hover(
+                    response,
+                    message->arena,
+                    lsp_decl_hover_text(doc, message->arena, decl_index));
+                break;
             }
 
-            lsp_set_markdown_hover(
-                response,
-                message->arena,
-                lsp_decl_hover_text(doc, message->arena, decl_index));
+            u32 field_node_index =
+                lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
+            if (field_node_index != U32_MAX) {
+                string field_hover =
+                    lsp_field_hover_text(doc, message->arena, field_node_index);
+                if (field_hover.count != 0) {
+                    lsp_set_markdown_hover(
+                        response, message->arena, field_hover);
+                    break;
+                }
+            }
+
+            lsp_cancel(response, message->arena);
+            return;
         }
         break;
 

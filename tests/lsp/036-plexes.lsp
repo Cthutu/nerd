@@ -25,6 +25,20 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 3,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 6,
+                "character": 13
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
         "method": "textDocument/semanticTokens/full",
         "params": {
             "textDocument": {
@@ -86,6 +100,16 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 3,
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nx\n```\n\n- Kind: plex field\n- Type: `i32`\n- Owner: `plex { i32 x, i32 y }`"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
         "result": {
             "data": [
                 0,4,3,0,0,0,3,1,4,0,0,1,5,0,0,2,0,5,0,0,0,6,1,4,0,0,1,1,4,0,0,
