@@ -18,6 +18,9 @@ static const char g_cgen_epilogue[] = {
 
 internal void cgen_add_value(CGen* cgen, const IrValue* value);
 internal void cgen_add_float_literal(CGen* cgen, f64 value, u32 type_index);
+internal u32  cgen_record_field_type(const CGen* cgen,
+                                     u32         record_type,
+                                     u32         field_symbol);
 
 //------------------------------------------------------------------------------
 // C generation helpers
@@ -928,6 +931,36 @@ void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
+void cgen_add_store_field(CGen*                cgen,
+                          const Lexer*         lexer,
+                          const IrInstruction* instr)
+{
+    cgen_start_line(cgen);
+    cgen_add_value(cgen, &instr->lvalue);
+    const SemaType* target_type = &cgen->ir->types[instr->lvalue.type];
+    bool            pointer_to_record =
+        target_type->kind == STK_Pointer &&
+        (cgen->ir->types[target_type->first_param_type].kind == STK_Plex ||
+         cgen->ir->types[target_type->first_param_type].kind == STK_Union);
+    cgen_add(cgen, pointer_to_record ? "->" : ".");
+    if (target_type->kind == STK_Plex || target_type->kind == STK_Union ||
+        pointer_to_record) {
+        cgen_add_symbol_name(cgen, (u32)instr->rvalue[0].value.integer);
+    } else {
+        string field = lex_symbol(lexer, (u32)instr->rvalue[0].value.integer);
+        cgen_add_bytes(cgen, (const char*)field.data, field.count);
+    }
+    cgen_add(cgen, " = ");
+    u32 value_type = instr->lvalue.type;
+    if (pointer_to_record) {
+        value_type = target_type->first_param_type;
+    }
+    value_type = cgen_record_field_type(
+        cgen, value_type, (u32)instr->rvalue[0].value.integer);
+    cgen_add_typed_value(cgen, &instr->rvalue[1], value_type);
+    cgen_addn(cgen, ";");
+}
+
 void cgen_add_index(CGen* cgen, const IrInstruction* instr)
 {
     const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
@@ -1001,6 +1034,21 @@ void cgen_add_address_of_index(CGen* cgen, const IrInstruction* instr)
                         : "["));
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
+}
+
+internal u32 cgen_record_field_type(const CGen* cgen,
+                                    u32         record_type,
+                                    u32         field_symbol)
+{
+    const SemaType* record = &cgen->ir->types[record_type];
+    for (u32 i = 0; i < record->param_count; ++i) {
+        if (cgen->ir->type_param_symbols[record->first_param_type + i] ==
+            field_symbol) {
+            return cgen->ir->type_param_types[record->first_param_type + i];
+        }
+    }
+    error_ice("Expected resolved record field");
+    return sema_no_type();
 }
 
 void cgen_add_string_reset(CGen* cgen)
@@ -1562,6 +1610,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_FIELD:
             cgen_add_field(cgen, cgen->lexer, instr);
+            break;
+        case IR_OP_STORE_FIELD:
+            cgen_add_store_field(cgen, cgen->lexer, instr);
             break;
         case IR_OP_INDEX:
             cgen_add_index(cgen, instr);

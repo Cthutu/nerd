@@ -1,0 +1,24 @@
+pub Arena :: plex {
+    base     ^u8
+    capacity usize
+    cursor   usize
+}
+
+ffi "c" malloc (size: usize) -> ^u8
+ffi "c" realloc (ptr: ^u8, size: usize) -> ^u8
+ffi "c" free (ptr: ^u8)
+
+pub arena_new :: fn (capacity: usize) -> Arena {
+    return Arena {
+        base: malloc(capacity)
+        capacity: capacity
+        cursor: 0
+    }
+}
+
+pub arena_free :: fn (arena: ^Arena) {
+    free(arena.base)
+    arena.base = nil
+    arena.capacity = 0
+    arena.cursor = 0
+}

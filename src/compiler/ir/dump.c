@@ -481,6 +481,14 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_string(
                 &sb, lex_symbol(lexer, (u32)instr->rvalue[1].value.integer));
             break;
+        case IR_OP_STORE_FIELD:
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_char(&sb, '.');
+            sb_append_string(
+                &sb, lex_symbol(lexer, (u32)instr->rvalue[0].value.integer));
+            sb_append_cstr(&sb, " = ");
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
+            break;
         case IR_OP_INDEX:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");

@@ -318,19 +318,19 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                 in_module_init = false;
                 continue;
             }
-            instr.lvalue        = back_end_remap_ir_value(&instr.lvalue,
+            instr.lvalue    = back_end_remap_ir_value(&instr.lvalue,
                                                    module_ir,
                                                    type_map,
                                                    string_map,
                                                    &merge,
                                                    &front_end->lexer);
-            instr.rvalue[0]     = back_end_remap_ir_value(&instr.rvalue[0],
+            instr.rvalue[0] = back_end_remap_ir_value(&instr.rvalue[0],
                                                       module_ir,
                                                       type_map,
                                                       string_map,
                                                       &merge,
                                                       &front_end->lexer);
-            instr.rvalue[1]     = back_end_remap_ir_value(&instr.rvalue[1],
+            instr.rvalue[1] = back_end_remap_ir_value(&instr.rvalue[1],
                                                       module_ir,
                                                       type_map,
                                                       string_map,
@@ -354,6 +354,12 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                     &merge.lexer,
                     &front_end->lexer,
                     (u32)module_ir->instructions[i].rvalue[1].value.integer);
+                break;
+            case IR_OP_STORE_FIELD:
+                instr.rvalue[0].value.integer = sema_import_symbol_handle(
+                    &merge.lexer,
+                    &front_end->lexer,
+                    (u32)module_ir->instructions[i].rvalue[0].value.integer);
                 break;
             default:
                 break;

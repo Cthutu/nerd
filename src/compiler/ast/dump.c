@@ -20,6 +20,8 @@ string ast_kind_to_string(AstKind kind)
         return s("StringLiteral");
     case AK_BoolLiteral:
         return s("BoolLiteral");
+    case AK_NilLiteral:
+        return s("NilLiteral");
     case AK_StringConcat:
         return s("StringConcat");
     case AK_InterpPartExpr:
@@ -201,6 +203,9 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_BoolLiteral:
             row[3] = table_cell_string(node->a != 0 ? s("yes") : s("no"));
+            break;
+        case AK_NilLiteral:
+            row[3] = table_cell_string(s("nil"));
             break;
         case AK_StringConcat:
             row[3] = table_cell_string(

@@ -158,6 +158,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `yes`");
     case TK_no:
         return string_from_cstr("Keyword `no`");
+    case TK_nil:
+        return string_from_cstr("Keyword `nil`");
     case TK_undefined:
         return string_from_cstr("Keyword `undefined`");
     default:

@@ -178,6 +178,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
+    case TK_nil:
     case TK_LBracket:
     case TK_LBrace:
     case TK_Symbol:
@@ -773,7 +774,7 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
-                                            Array(u32)*    out_symbols);
+                                            Array(u32) * out_symbols);
 internal bool cst_emit_use_from_symbols(CstParseState* state,
                                         u32            use_token_index,
                                         u32            path_token_index,
@@ -782,8 +783,8 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
                                         u32*           out_use_node);
 internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                             u32            use_token_index,
-                                            Array(u32)*    prefix_symbols,
-                                            u32*           out_first_use_node);
+                                            Array(u32) * prefix_symbols,
+                                            u32* out_first_use_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
@@ -836,20 +837,21 @@ internal bool cst_parse_callable_signature(CstParseState* state,
 
     if (cst_current_token(state).kind != TK_RParen) {
         for (;;) {
-            if (!allow_named_params && !require_return_type &&
+            if (!require_return_type &&
                 cst_current_token(state).kind == TK_Ellipsis) {
                 is_varargs = true;
                 cst_advance(state);
                 break;
             }
             if (allow_named_params) {
-                if (cst_current_token(state).kind != TK_Symbol) {
-                    return false;
-                }
-                u32 symbol_handle = cst_current_symbol_handle(state);
-                cst_advance(state);
-                if (!cst_consume(state, TK_Colon)) {
-                    return false;
+                u32 symbol_handle = CST_NO_VALUE;
+                if (cst_current_token(state).kind == TK_Symbol &&
+                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                    symbol_handle = cst_current_symbol_handle(state);
+                    cst_advance(state);
+                    if (!cst_consume(state, TK_Colon)) {
+                        return false;
+                    }
                 }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
@@ -874,7 +876,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
             ++param_count;
             if (cst_current_token(state).kind == TK_Comma) {
                 cst_advance(state);
-                if (!allow_named_params && !require_return_type &&
+                if (!require_return_type &&
                     cst_current_token(state).kind == TK_Ellipsis) {
                     is_varargs = true;
                     cst_advance(state);
@@ -1386,6 +1388,14 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  .kind        = CK_BoolLiteral,
                                  .token_index = state->token_index - 1,
                                  .a           = token.kind == TK_yes ? 1u : 0u,
+                             },
+                             out_node);
+    case TK_nil:
+        cst_advance(state);
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_NilLiteral,
+                                 .token_index = state->token_index - 1,
                              },
                              out_node);
 
@@ -3651,7 +3661,7 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
 
     u32 signature_index = 0;
     if (!cst_parse_callable_signature(
-            state, TK_EOF, false, false, &signature_index)) {
+            state, TK_EOF, true, false, &signature_index)) {
         return false;
     }
 
@@ -3886,8 +3896,8 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
     if (cst_current_token(state).kind == TK_Symbol &&
         (cst_peek_kind_at(state, 1) == TK_Dot ||
          cst_peek_kind_at(state, 1) == TK_LBrace)) {
-        u32        path_token_index = state->token_index;
-        Array(u32) symbols          = NULL;
+        u32 path_token_index = state->token_index;
+        Array(u32) symbols   = NULL;
         if (!cst_parse_module_path_symbols(state, &symbols)) {
             array_free(symbols);
             return false;
@@ -3937,7 +3947,7 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
 }
 
 internal bool cst_parse_module_path_symbols(CstParseState* state,
-                                            Array(u32)*    out_symbols)
+                                            Array(u32) * out_symbols)
 {
     if (cst_current_token(state).kind != TK_Symbol) {
         return false;
@@ -4003,8 +4013,8 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
 
 internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                             u32            use_token_index,
-                                            Array(u32)*    prefix_symbols,
-                                            u32*           out_first_use_node)
+                                            Array(u32) * prefix_symbols,
+                                            u32* out_first_use_node)
 {
     for (;;) {
         if (cst_current_token(state).kind != TK_Symbol) {
@@ -4022,8 +4032,10 @@ internal bool cst_parse_grouped_use_entries(CstParseState* state,
             if (cst_current_token(state).kind == TK_RBrace) {
                 return false;
             }
-            if (!cst_parse_grouped_use_entries(
-                    state, use_token_index, prefix_symbols, out_first_use_node)) {
+            if (!cst_parse_grouped_use_entries(state,
+                                               use_token_index,
+                                               prefix_symbols,
+                                               out_first_use_node)) {
                 return false;
             }
         } else {

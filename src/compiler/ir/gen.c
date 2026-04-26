@@ -488,6 +488,25 @@ void ir_add_field(Ir*     ir,
                });
 }
 
+void ir_add_store_field(Ir*     ir,
+                        IrValue target,
+                        u32     target_type,
+                        u32     field_symbol,
+                        IrValue rvalue,
+                        u32     rvalue_type)
+{
+    target.type = target_type;
+    rvalue.type = rvalue_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_STORE_FIELD,
+                   .lvalue = target,
+                   .rvalue = {{.kind          = IR_VALUE_INTEGER,
+                               .value.integer = field_symbol},
+                              rvalue},
+               });
+}
+
 void ir_add_index(Ir*     ir,
                   IrValue lvalue,
                   u32     lvalue_type,
@@ -2029,6 +2048,17 @@ internal IrValue ir_lower_node(const Lexer* lex,
             return value;
         }
 
+    case AK_NilLiteral:
+        {
+            IrValue value = {
+                .kind          = IR_VALUE_INTEGER,
+                .type          = ir_node_type_index(ast, sema, node_index),
+                .value.integer = 0,
+            };
+            node_values[node_index] = value;
+            return value;
+        }
+
     case AK_StringLiteral:
         {
             IrValue value = {
@@ -2495,6 +2525,26 @@ internal IrValue ir_lower_node(const Lexer* lex,
                              ir_node_type_index(ast, sema, target_node->a),
                              value,
                              ir_node_type_index(ast, sema, node->a));
+            } else if (target_node->kind == AK_Field) {
+                const AstNode* field_base       = &ast->nodes[target_node->a];
+                u32            target_base_node = field_base->kind == AK_Deref
+                                                      ? field_base->a
+                                                      : target_node->a;
+                IrValue        target           = ir_lower_node(lex,
+                                               ast,
+                                               sema,
+                                               target_base_node,
+                                               loop,
+                                               node_values,
+                                               next_value_index,
+                                               ir);
+                ir_add_store_field(
+                    ir,
+                    target,
+                    ir_node_type_index(ast, sema, target_base_node),
+                    target_node->b,
+                    value,
+                    ir_node_type_index(ast, sema, node->a));
             } else {
                 error_ice("Unsupported assignment target node kind: %d",
                           target_node->kind);

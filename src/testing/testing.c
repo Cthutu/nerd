@@ -434,8 +434,7 @@ internal bool testing_parse_command_test(Arena*       arena,
         }
     }
 
-    if ((section_count < 3 || section_count > 6) ||
-        cursor <= file_text.count) {
+    if ((section_count < 3 || section_count > 6) || cursor <= file_text.count) {
         eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
@@ -443,14 +442,13 @@ internal bool testing_parse_command_test(Arena*       arena,
     string run_mode = section_count >= 4
                           ? testing_trim_ascii_whitespace(sections[3])
                           : (string){0};
-    string cli_args = section_count == 5
-                          ? testing_trim_ascii_whitespace(sections[4])
-                      : section_count == 6
-                          ? testing_trim_ascii_whitespace(sections[4])
-                          : (string){0};
+    string cli_args =
+        section_count == 5   ? testing_trim_ascii_whitespace(sections[4])
+        : section_count == 6 ? testing_trim_ascii_whitespace(sections[4])
+                             : (string){0};
     string command_name = section_count == 6
                               ? testing_trim_ascii_whitespace(sections[5])
-                          : (string){0};
+                              : (string){0};
 
     if (run_mode.count > 0 && !string_eq(run_mode, s("delete")) &&
         !string_eq(run_mode, s("keep"))) {
@@ -463,8 +461,7 @@ internal bool testing_parse_command_test(Arena*       arena,
             command_name.count > 0
                 ? testing_copy_cstr(
                       arena,
-                      (cstr)string_format(
-                          arena, STRINGP, STRINGV(command_name))
+                      (cstr)string_format(arena, STRINGP, STRINGV(command_name))
                           .data)
                 : "run",
         .run_mode =
@@ -1887,15 +1884,13 @@ internal bool testing_run_command_test(const CommandTest* test)
     string input_name   = path_filename(s(input_path));
     cstr   input_arg =
         (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
-    bool command_is_run =
-        strcmp(test->command_name, "run") == 0 ||
-        strcmp(test->command_name, "r") == 0;
-    bool command_is_build =
-        strcmp(test->command_name, "build") == 0 ||
-        strcmp(test->command_name, "b") == 0;
+    bool command_is_run = strcmp(test->command_name, "run") == 0 ||
+                          strcmp(test->command_name, "r") == 0;
+    bool command_is_build = strcmp(test->command_name, "build") == 0 ||
+                            strcmp(test->command_name, "b") == 0;
     bool command_is_explain = strcmp(test->command_name, "explain") == 0;
 
-    bool passed = true;
+    bool passed             = true;
     if (!testing_set_current_directory(test_dir)) {
         eprn("Failed to change directory to command test dir: %s", test_dir);
         passed = false;
@@ -1909,7 +1904,7 @@ internal bool testing_run_command_test(const CommandTest* test)
         cstr nerd_binary_rel = "_bin/nerd";
 #endif
         cstr nerd_binary = path_join(&run_arena, original_cwd, nerd_binary_rel);
-        string command = {0};
+        string command   = {0};
         if (command_is_explain) {
             command = string_format(&run_arena,
                                     "\"%s\" %s %s",

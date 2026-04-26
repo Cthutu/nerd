@@ -33,6 +33,7 @@ typedef enum : u8 {
     IR_OP_ARRAY,
     IR_OP_SLICE,
     IR_OP_FIELD,
+    IR_OP_STORE_FIELD,
     IR_OP_INDEX,
     IR_OP_ADDRESS_OF,
     IR_OP_ADDRESS_OF_INDEX,

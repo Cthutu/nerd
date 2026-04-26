@@ -125,8 +125,8 @@ internal const NerdErrorExplain nerd_error_explanations[] = {
 
 internal const NerdErrorExplain* nerd_find_error_explanation(i32 code)
 {
-    for (usize i = 0;
-         i < sizeof(nerd_error_explanations) / sizeof(nerd_error_explanations[0]);
+    for (usize i = 0; i < sizeof(nerd_error_explanations) /
+                              sizeof(nerd_error_explanations[0]);
          ++i) {
         if (nerd_error_explanations[i].code == code) {
             return &nerd_error_explanations[i];
@@ -198,7 +198,8 @@ internal int nerd_explain_code(const JsonValue* cli_result)
         nerd_cli_param_string(cli_result, "command.params.code", (string){0});
     i32 code = 0;
     if (!nerd_parse_error_code(code_text, &code)) {
-        eprn("Expected a numeric error code, found " STRINGP, STRINGV(code_text));
+        eprn("Expected a numeric error code, found " STRINGP,
+             STRINGV(code_text));
         return 1;
     }
 
@@ -307,12 +308,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                               "Run one normal build",
                                               build_flags,
                                               build_params));
-        json_array_push(commands,
-                        nerd_cli_make_command(arena,
-                                              "b",
-                                              "Alias for build",
-                                              build_flags,
-                                              build_params));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "b", "Alias for build", build_flags, build_params));
     }
     {
         JsonValue* run_params = json_new_array(arena);
@@ -355,12 +354,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                               "Build and run one program",
                                               run_flags,
                                               run_params));
-        json_array_push(commands,
-                        nerd_cli_make_command(arena,
-                                              "r",
-                                              "Alias for run",
-                                              run_flags,
-                                              run_params));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "r", "Alias for run", run_flags, run_params));
     }
     json_array_push(
         commands,
@@ -399,20 +396,22 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         nerd_cli_make_command(arena, "lsp", "Run the LSP server", NULL, NULL));
     {
         JsonValue* explain_params = json_new_array(arena);
-        json_array_push(explain_params,
-                        nerd_cli_make_param(arena,
-                                            "code",
-                                            "positional",
-                                            NULL,
-                                            NULL,
-                                            "Compiler diagnostic code to explain",
-                                            true));
-        json_array_push(commands,
-                        nerd_cli_make_command(arena,
-                                              "explain",
-                                              "Explain one compiler diagnostic code",
-                                              NULL,
-                                              explain_params));
+        json_array_push(
+            explain_params,
+            nerd_cli_make_param(arena,
+                                "code",
+                                "positional",
+                                NULL,
+                                NULL,
+                                "Compiler diagnostic code to explain",
+                                true));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(arena,
+                                  "explain",
+                                  "Explain one compiler diagnostic code",
+                                  NULL,
+                                  explain_params));
     }
 
     return schema;

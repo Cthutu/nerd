@@ -500,6 +500,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_BoolLiteral:
         sb_append_cstr(sb, node->a != 0 ? "yes" : "no");
         break;
+    case CK_NilLiteral:
+        sb_append_cstr(sb, "nil");
+        break;
     case CK_StringLiteral:
         if (lexer->tokens[node->token_index].kind == TK_CString) {
             sb_append_char(sb, 'c');
@@ -1422,6 +1425,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_FloatLiteral:
     case CK_StringLiteral:
     case CK_BoolLiteral:
+    case CK_NilLiteral:
     case CK_SymbolRef:
         return node->token_index;
     case CK_InterpolatedString:
@@ -2298,6 +2302,10 @@ internal void format_emit_ffi_def(StringBuilder* sb,
             sb_append_cstr(sb, ", ");
         }
         const CstParam* param = &cst->params[signature->first_param + i];
+        if (param->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
+            sb_append_cstr(sb, ": ");
+        }
         format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
     }
     if (signature->is_varargs) {

@@ -19,6 +19,7 @@
 // | AK_FloatLiteral    | Float index       | 0                               |
 // | AK_StringLiteral   | String index      | 0                               |
 // | AK_BoolLiteral     | 0 no, 1 yes       | 0                               |
+// | AK_NilLiteral      | 0                 | 0                               |
 // | AK_StringConcat    | Ast index of lhs  | Ast index of rhs                |
 // | AK_InterpPartExpr  | Ast index of expr | 0                               |
 // | AK_InterpolatedString | First part index | End-exclusive part index      |
@@ -99,6 +100,7 @@ typedef enum {
     AK_FloatLiteral,
     AK_StringLiteral,
     AK_BoolLiteral,
+    AK_NilLiteral,
     AK_StringConcat,
     AK_InterpPartExpr,
     AK_InterpolatedString,
