@@ -1386,7 +1386,7 @@ needed earlier.
 
 ## Milestone 36: CLI Ergonomics
 
-- [ ] 105. Improve command-line ergonomics once the diagnostic audit has
+- [X] 105. Improve command-line ergonomics once the diagnostic audit has
   stabilised.
   - Add short command aliases for common subcommands:
     - `nerd b` as an alias for `nerd build`
@@ -1405,7 +1405,6 @@ These are the active unfinished items after the current `undefined` work:
 - [ ] 22. Keep extending the LSP as new language features land.
 - [ ] 101. Finish the FFI-consolidation milestone.
 - [ ] 102. Continue standard-library expansion beyond `std.print`.
-- [ ] 105. Add the CLI ergonomics follow-up (`b`, `r`, and `explain`).
 
 These are intentionally deferred and should not be treated as near-term tasks:
 

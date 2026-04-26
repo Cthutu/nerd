@@ -60,6 +60,166 @@ internal JsonValue* nerd_cli_make_command(
     return command;
 }
 
+internal string nerd_cli_param_string(const JsonValue* cli_result,
+                                      cstr             path,
+                                      string           fallback);
+
+typedef struct {
+    i32  code;
+    cstr title;
+} NerdErrorExplain;
+
+internal const NerdErrorExplain nerd_error_explanations[] = {
+    {100, "Unexpected character"},
+    {101, "Integer literal too large"},
+    {102, "File too large"},
+    {103, "Invalid number literal"},
+    {104, "Symbol too long"},
+    {105, "Too many symbols"},
+    {106, "Unterminated string literal"},
+    {107, "Unterminated packed integer literal"},
+    {108, "Packed integer literal too large"},
+    {200, "Code too complex"},
+    {201, "Missing value"},
+    {202, "Missing operator"},
+    {203, "Expected token"},
+    {204, "Unexpected token"},
+    {205, "Expected declaration or expression"},
+    {206, "Invalid binding target"},
+    {207, "Unexpected operator"},
+    {300, "Unknown symbol"},
+    {301, "Duplicate binding"},
+    {302, "Dependency cycle"},
+    {303, "Unknown type"},
+    {304, "Type mismatch"},
+    {305, "Invalid assignment target"},
+    {306, "Invalid variable type"},
+    {307, "Invalid cast"},
+    {308, "Type used as value"},
+    {309, "Type alias cycle"},
+    {310, "Invalid interpolation context"},
+    {311, "Invalid interpolation type"},
+    {312, "Interpolated string escapes"},
+    {313, "Argument count mismatch"},
+    {314, "Missing return"},
+    {315, "Missing entry point"},
+    {316, "Invalid entry point"},
+    {317, "Non-closure capture"},
+    {318, "Mixed function return style"},
+    {319, "Invalid on condition"},
+    {320, "On-branch type mismatch"},
+    {321, "Invalid on match type"},
+    {322, "Non-constant on pattern"},
+    {323, "Negative unsigned inference"},
+    {324, "Invalid on range bounds"},
+    {325, "Invalid unary operand"},
+    {326, "Invalid binary operands"},
+    {327, "Non-exhaustive on"},
+    {328, "Loop control outside loop"},
+    {329, "Missing expression-block break"},
+    {330, "Unknown control label"},
+    {331, "Continue to non-loop label"},
+    {332, "Missing loop else"},
+    {333, "Invalid loop else"},
+};
+
+internal const NerdErrorExplain* nerd_find_error_explanation(i32 code)
+{
+    for (usize i = 0;
+         i < sizeof(nerd_error_explanations) / sizeof(nerd_error_explanations[0]);
+         ++i) {
+        if (nerd_error_explanations[i].code == code) {
+            return &nerd_error_explanations[i];
+        }
+    }
+
+    return NULL;
+}
+
+internal bool nerd_parse_error_code(string text, i32* out_code)
+{
+    if (text.count == 0) {
+        return false;
+    }
+
+    i32 code = 0;
+    for (usize i = 0; i < text.count; ++i) {
+        u8 c = text.data[i];
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        code = code * 10 + (i32)(c - '0');
+    }
+
+    *out_code = code;
+    return true;
+}
+
+internal cstr nerd_error_phase_name(i32 code)
+{
+    if (code >= 100 && code < 200) {
+        return "Lexer";
+    }
+    if (code >= 200 && code < 300) {
+        return "Parser";
+    }
+    if (code >= 300 && code < 400) {
+        return "Semantic analysis";
+    }
+
+    return NULL;
+}
+
+internal cstr nerd_error_phase_summary(i32 code)
+{
+    if (code >= 100 && code < 200) {
+        return "The lexer could not turn raw source text into valid tokens. "
+               "These errors usually come from invalid characters, malformed "
+               "literals, or token-size limits before parsing begins.";
+    }
+    if (code >= 200 && code < 300) {
+        return "The parser could not continue the current source form. These "
+               "errors usually come from missing syntax, unexpected "
+               "punctuation, or mixing incompatible forms in one construct.";
+    }
+    if (code >= 300 && code < 400) {
+        return "Semantic analysis understood the syntax but rejected the "
+               "program's meaning. These errors usually come from type "
+               "mistakes, invalid bindings, missing names, or rule "
+               "violations after parsing succeeded.";
+    }
+
+    return NULL;
+}
+
+internal int nerd_explain_code(const JsonValue* cli_result)
+{
+    string code_text =
+        nerd_cli_param_string(cli_result, "command.params.code", (string){0});
+    i32 code = 0;
+    if (!nerd_parse_error_code(code_text, &code)) {
+        eprn("Expected a numeric error code, found " STRINGP, STRINGV(code_text));
+        return 1;
+    }
+
+    const NerdErrorExplain* explanation = nerd_find_error_explanation(code);
+    cstr                    phase_name  = nerd_error_phase_name(code);
+    cstr                    phase_body  = nerd_error_phase_summary(code);
+    if (explanation == NULL || phase_name == NULL || phase_body == NULL) {
+        eprn("No explanation is available for error code %04d", code);
+        return 1;
+    }
+
+    prn("%04d %s", code, explanation->title);
+    prn("");
+    prn("%s diagnostic.", phase_name);
+    prn("%s", phase_body);
+    prn("Read the primary diagnostic message for the exact source-specific "
+        "details. Notes explain the rule or context; help points at the most "
+        "likely fix.");
+    return 0;
+}
+
 internal JsonValue* nerd_cli_schema(Arena* arena)
 {
     JsonValue* schema   = json_new_object(arena);
@@ -147,6 +307,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                               "Run one normal build",
                                               build_flags,
                                               build_params));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "b",
+                                              "Alias for build",
+                                              build_flags,
+                                              build_params));
     }
     {
         JsonValue* run_params = json_new_array(arena);
@@ -189,6 +355,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                               "Build and run one program",
                                               run_flags,
                                               run_params));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "r",
+                                              "Alias for run",
+                                              run_flags,
+                                              run_params));
     }
     json_array_push(
         commands,
@@ -225,6 +397,23 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     json_array_push(
         commands,
         nerd_cli_make_command(arena, "lsp", "Run the LSP server", NULL, NULL));
+    {
+        JsonValue* explain_params = json_new_array(arena);
+        json_array_push(explain_params,
+                        nerd_cli_make_param(arena,
+                                            "code",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Compiler diagnostic code to explain",
+                                            true));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "explain",
+                                              "Explain one compiler diagnostic code",
+                                              NULL,
+                                              explain_params));
+    }
 
     return schema;
 }
@@ -507,11 +696,11 @@ internal int nerd_run_with_cli(int argc, char** argv)
         nerd_print_args_table(argc, argv);
     }
 
-    if (string_eq_cstr(name, "build")) {
+    if (string_eq_cstr(name, "build") || string_eq_cstr(name, "b")) {
         NerdBuildConfig config =
             nerd_build_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_build(&config);
-    } else if (string_eq_cstr(name, "run")) {
+    } else if (string_eq_cstr(name, "run") || string_eq_cstr(name, "r")) {
         NerdRunConfig config =
             nerd_run_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_run(&config);
@@ -521,6 +710,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
     } else if (string_eq_cstr(name, "format")) {
         NerdFormatConfig config = nerd_format_config_from_json(cli_result);
         result                  = compiler_cmd_format(&config);
+    } else if (string_eq_cstr(name, "explain")) {
+        result = nerd_explain_code(cli_result);
     } else if (string_eq_cstr(name, "lsp")) {
         lsp_log("Launching nerd lsp");
         result = lsp_run();

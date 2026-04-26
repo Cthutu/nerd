@@ -53,6 +53,7 @@ typedef struct {
 } LspTest;
 
 typedef struct {
+    cstr   command_name;
     cstr   run_mode;
     cstr   cli_args;
     cstr   path;
@@ -254,11 +255,11 @@ internal bool testing_parse_language_test(Arena*        arena,
                                           string        file_text,
                                           LanguageTest* out_test)
 {
-    string sections[5]   = {0};
+    string sections[6]   = {0};
     usize  cursor        = 0;
     usize  section_count = 0;
 
-    while (section_count < 5 &&
+    while (section_count < 6 &&
            testing_split_next_section(
                file_text, &cursor, &sections[section_count])) {
         section_count++;
@@ -420,11 +421,11 @@ internal bool testing_parse_command_test(Arena*       arena,
                                          string       file_text,
                                          CommandTest* out_test)
 {
-    string sections[5]   = {0};
+    string sections[6]   = {0};
     usize  cursor        = 0;
     usize  section_count = 0;
 
-    while (section_count < 5 &&
+    while (section_count < 6 &&
            testing_split_next_section(
                file_text, &cursor, &sections[section_count])) {
         section_count++;
@@ -433,18 +434,22 @@ internal bool testing_parse_command_test(Arena*       arena,
         }
     }
 
-    if ((section_count != 3 && section_count != 4 && section_count != 5) ||
+    if ((section_count < 3 || section_count > 6) ||
         cursor <= file_text.count) {
         eprn("%sInvalid command test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
     }
 
-    string run_mode =
-        section_count == 4   ? testing_trim_ascii_whitespace(sections[3])
-        : section_count == 5 ? testing_trim_ascii_whitespace(sections[3])
-                             : (string){0};
+    string run_mode = section_count >= 4
+                          ? testing_trim_ascii_whitespace(sections[3])
+                          : (string){0};
     string cli_args = section_count == 5
                           ? testing_trim_ascii_whitespace(sections[4])
+                      : section_count == 6
+                          ? testing_trim_ascii_whitespace(sections[4])
+                          : (string){0};
+    string command_name = section_count == 6
+                              ? testing_trim_ascii_whitespace(sections[5])
                           : (string){0};
 
     if (run_mode.count > 0 && !string_eq(run_mode, s("delete")) &&
@@ -454,6 +459,14 @@ internal bool testing_parse_command_test(Arena*       arena,
     }
 
     *out_test = (CommandTest){
+        .command_name =
+            command_name.count > 0
+                ? testing_copy_cstr(
+                      arena,
+                      (cstr)string_format(
+                          arena, STRINGP, STRINGV(command_name))
+                          .data)
+                : "run",
         .run_mode =
             section_count == 4 || section_count == 5
                 ? testing_copy_cstr(arena,
@@ -1874,12 +1887,20 @@ internal bool testing_run_command_test(const CommandTest* test)
     string input_name   = path_filename(s(input_path));
     cstr   input_arg =
         (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
+    bool command_is_run =
+        strcmp(test->command_name, "run") == 0 ||
+        strcmp(test->command_name, "r") == 0;
+    bool command_is_build =
+        strcmp(test->command_name, "build") == 0 ||
+        strcmp(test->command_name, "b") == 0;
+    bool command_is_explain = strcmp(test->command_name, "explain") == 0;
 
     bool passed = true;
     if (!testing_set_current_directory(test_dir)) {
         eprn("Failed to change directory to command test dir: %s", test_dir);
         passed = false;
-    } else if (test->cli_args && test->cli_args[0] != '\0') {
+    } else if ((test->cli_args && test->cli_args[0] != '\0') ||
+               strcmp(test->command_name, "run") != 0) {
         Arena run_arena = {0};
         arena_init(&run_arena);
 #if CONFIG_DEBUG
@@ -1888,11 +1909,21 @@ internal bool testing_run_command_test(const CommandTest* test)
         cstr nerd_binary_rel = "_bin/nerd";
 #endif
         cstr nerd_binary = path_join(&run_arena, original_cwd, nerd_binary_rel);
-        string      command    = string_format(&run_arena,
-                                       "\"%s\" run %s \"%s\"",
-                                       nerd_binary,
-                                       test->cli_args,
-                                       input_arg);
+        string command = {0};
+        if (command_is_explain) {
+            command = string_format(&run_arena,
+                                    "\"%s\" %s %s",
+                                    nerd_binary,
+                                    test->command_name,
+                                    test->cli_args);
+        } else {
+            command = string_format(&run_arena,
+                                    "\"%s\" %s %s \"%s\"",
+                                    nerd_binary,
+                                    test->command_name,
+                                    test->cli_args,
+                                    input_arg);
+        }
         ShellResult run_result = shell_capture((cstr)command.data, &run_arena);
         if (!testing_compare_exit_code(test->expected_return_value,
                                        run_result.exit_code)) {
@@ -1910,15 +1941,20 @@ internal bool testing_run_command_test(const CommandTest* test)
             passed = false;
         }
 
-        if (strcmp(test->run_mode, "delete") == 0 &&
+        if (command_is_run && strcmp(test->run_mode, "delete") == 0 &&
             path_exists(temp_binary_path)) {
             eprn("Expected run command to delete executable: %s",
                  temp_binary_path);
             passed = false;
         }
-        if (strcmp(test->run_mode, "keep") == 0 &&
+        if (command_is_run && strcmp(test->run_mode, "keep") == 0 &&
             !path_exists(kept_binary_path)) {
             eprn("Expected run command to keep executable: %s",
+                 kept_binary_path);
+            passed = false;
+        }
+        if (command_is_build && !path_exists(kept_binary_path)) {
+            eprn("Expected build command to produce executable: %s",
                  kept_binary_path);
             passed = false;
         }
@@ -1942,13 +1978,13 @@ internal bool testing_run_command_test(const CommandTest* test)
             passed = false;
         }
 
-        if (strcmp(test->run_mode, "delete") == 0 &&
+        if (command_is_run && strcmp(test->run_mode, "delete") == 0 &&
             path_exists(temp_binary_path)) {
             eprn("Expected run command to delete executable: %s",
                  temp_binary_path);
             passed = false;
         }
-        if (strcmp(test->run_mode, "keep") == 0 &&
+        if (command_is_run && strcmp(test->run_mode, "keep") == 0 &&
             !path_exists(kept_binary_path)) {
             eprn("Expected run command to keep executable: %s",
                  kept_binary_path);
