@@ -94,7 +94,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "uri": "__REPO_URI__/_bin/mods/test/lsp_types.n",
+            "uri": "__REPO_URI__/tests/mods/test/lsp_types.n",
             "range": {
                 "start": {
                     "line": 0,
@@ -111,7 +111,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "__REPO_URI__/_bin/mods/test/lsp_types.n",
+            "uri": "__REPO_URI__/tests/mods/test/lsp_types.n",
             "range": {
                 "start": {
                     "line": 5,
@@ -128,14 +128,14 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "__REPO_URI__/_bin/mods/test/lsp_types.n",
+            "uri": "__REPO_URI__/tests/mods/test/lsp_types.n",
             "range": {
                 "start": {
-                    "line": 7,
+                    "line": 10,
                     "character": 4
                 },
                 "end": {
-                    "line": 7,
+                    "line": 10,
                     "character": 9
                 }
             }

@@ -18,6 +18,12 @@
 
 //------------------------------------------------------------------------------
 
+#if OS_POSIX
+extern int setenv(const char* name, const char* value, int overwrite);
+#endif
+
+//------------------------------------------------------------------------------
+
 typedef struct {
     cstr   path;
     string source;
@@ -89,6 +95,44 @@ internal cstr testing_copy_cstr(Arena* arena, cstr text)
     char* copy = (char*)arena_alloc(arena, len + 1);
     memcpy(copy, text, len + 1);
     return copy;
+}
+
+internal cstr testing_test_mods_dir(Arena* arena)
+{
+    cstr path = path_canonical(arena, "tests/mods");
+    if (path != NULL) {
+        return path;
+    }
+    cstr tests_dir = path_join(arena, ".", "tests");
+    return path_join(arena, tests_dir, "mods");
+}
+
+internal bool testing_set_test_mods_env(Arena* arena)
+{
+    cstr tests_mods = testing_test_mods_dir(arena);
+    if (tests_mods == NULL) {
+        return false;
+    }
+
+    cstr existing = getenv("NERD_LIB_PATH");
+#if OS_WINDOWS
+    cstr separator = ";";
+#else
+    cstr separator = ":";
+#endif
+
+    cstr env_value = tests_mods;
+    if (existing != NULL && existing[0] != '\0') {
+        env_value = (cstr)string_format(
+                        arena, "%s%s%s", tests_mods, separator, existing)
+                        .data;
+    }
+
+#if OS_WINDOWS
+    return _putenv_s("NERD_LIB_PATH", env_value) == 0;
+#else
+    return setenv("NERD_LIB_PATH", env_value, 1) == 0;
+#endif
 }
 
 internal bool testing_write_file(cstr path, string text)
@@ -1937,6 +1981,14 @@ int testing_run_suite(cstr tests_root)
 {
     testing_cleanup_generated_tree(tests_root);
 
+    Arena env_arena = {0};
+    arena_init(&env_arena);
+    if (!testing_set_test_mods_env(&env_arena)) {
+        arena_done(&env_arena);
+        eprn("Failed to configure NERD_LIB_PATH for test modules");
+        return 1;
+    }
+
     TestCounts counts = {0};
     int        result = testing_run_language_suite(tests_root, &counts);
     if (testing_run_error_suite(tests_root, &counts) != 0) {
@@ -1955,6 +2007,7 @@ int testing_run_suite(cstr tests_root)
     prn("");
     testing_print_summary_table(&counts);
 
+    arena_done(&env_arena);
     return result;
 }
 
