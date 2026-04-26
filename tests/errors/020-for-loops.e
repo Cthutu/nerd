@@ -95,8 +95,8 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0201",
-    "message": "Missing value before Colon `:`",
+    "code": "0206",
+    "message": "Invalid binding target before `:=`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 4,
@@ -108,13 +108,13 @@ main :: fn () {
             "line": 4,
             "column": 12,
             "length": 1,
-            "message": "Colon `:` cannot appear here"
+            "message": "`:=` starts a new binding here"
         }
     ],
     "notes": [],
     "help": [
-        "A colon starts a type annotation or `:=` binding, so the parser was still expecting an expression value here",
-        "If you meant to update an existing value, use `=` instead of `:=`"
+        "Bindings started with `:=` must begin with a symbol or supported destructuring pattern",
+        "Use `=` to assign to an existing value such as a dereference or field access"
     ]
 }
 ¬

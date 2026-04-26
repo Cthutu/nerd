@@ -43,6 +43,12 @@ internal TokenKind ast_cursor_kind(const AstParseState* state)
     return state->lexer->tokens[state->token_index].kind;
 }
 
+internal bool ast_cursor_starts_binding_operator(const AstParseState* state)
+{
+    return ast_cursor_kind(state) == TK_Colon &&
+           ast_peek_kind_at(state, 0) == TK_Equal;
+}
+
 internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
 {
     switch (op) {
@@ -1889,6 +1895,10 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
         *out_node     = expr_node;
         return ast_parse_assignment(state, out_node);
     }
+    if (ast_cursor_starts_binding_operator(state)) {
+        return error_0206_invalid_binding_target(
+            state->lexer->source, ast_token_span(state, &state->token));
+    }
 
     *out_node     = expr_node;
     *out_raw_expr = true;
@@ -2420,6 +2430,10 @@ internal bool ast_parse_block_statement(AstParseState* state)
             return false;
         }
         return ast_parse_assignment(state, &statement_expr_index);
+    }
+    if (ast_cursor_starts_binding_operator(state)) {
+        return error_0206_invalid_binding_target(
+            state->lexer->source, ast_token_span(state, &state->token));
     }
 
     return ast_emit_node(state,

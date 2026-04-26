@@ -127,6 +127,9 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
                                                    cstr       help_format,
                                                    ...);
 
+// Used when `:=` appears after an expression that cannot start a binding.
+bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span);
+
 //------------------------------------------------------------------------------
 // Semantic analysis errors
 

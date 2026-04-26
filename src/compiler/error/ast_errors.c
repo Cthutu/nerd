@@ -132,5 +132,23 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
     return false;
 }
 
+bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(206, source, span, "Invalid binding target before `:=`");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "`:=` starts a new binding here");
+    error_add_help(
+        &error,
+        "Bindings started with `:=` must begin with a symbol or supported "
+        "destructuring pattern");
+    error_add_help(
+        &error,
+        "Use `=` to assign to an existing value such as a dereference or "
+        "field access");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
