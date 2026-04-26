@@ -59,6 +59,7 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_Integer:
     case TK_Float:
     case TK_String:
+    case TK_CString:
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
@@ -1017,6 +1018,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             return ast_emit_node(state, node, out_node);
         }
     case TK_String:
+    case TK_CString:
         {
             AstNode node = {
                 .kind        = AK_StringLiteral,

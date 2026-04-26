@@ -51,7 +51,8 @@ string ast_get_string(const Lexer* lexer, const AstNode* node)
     if (string_index >= array_count(lexer->strings)) {
         error_ice("String index out of bounds");
     }
-    if (lexer->tokens[node->token_index].kind != TK_String) {
+    if (lexer->tokens[node->token_index].kind != TK_String &&
+        lexer->tokens[node->token_index].kind != TK_CString) {
         error_ice("Token is not a string");
     }
     return lexer->strings[string_index];

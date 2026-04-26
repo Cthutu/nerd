@@ -148,6 +148,21 @@ void cgen_add_c_string_literal(CGen* cgen, string text)
         case '\t':
             cgen_add(cgen, "\\t");
             break;
+        case '\0':
+            cgen_add(cgen, "\\0");
+            break;
+        case '\a':
+            cgen_add(cgen, "\\a");
+            break;
+        case '\b':
+            cgen_add(cgen, "\\b");
+            break;
+        case '\f':
+            cgen_add(cgen, "\\f");
+            break;
+        case '\v':
+            cgen_add(cgen, "\\v");
+            break;
         case '\\':
             cgen_add(cgen, "\\\\");
             break;
@@ -543,12 +558,20 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         cgen_add_builtin_name(cgen, (u32)value->value.integer);
         break;
     case IR_VALUE_STRING:
-        cgen_add(cgen, "(string){.data = (u8*)");
-        cgen_add_c_string_literal(cgen,
-                                  cgen->ir->strings[(u32)value->value.integer]);
-        arena_format(&cgen->arena,
-                     ", .count = %zu}",
-                     cgen->ir->strings[(u32)value->value.integer].count);
+        if (cgen->ir->types[value->type].kind == STK_String) {
+            cgen_add(cgen, "(string){.data = (u8*)");
+            cgen_add_c_string_literal(
+                cgen, cgen->ir->strings[(u32)value->value.integer]);
+            arena_format(&cgen->arena,
+                         ", .count = %zu}",
+                         cgen->ir->strings[(u32)value->value.integer].count);
+        } else if (cgen_type_is_c_string_pointer(cgen->ir, value->type)) {
+            cgen_add(cgen, "(u8*)");
+            cgen_add_c_string_literal(
+                cgen, cgen->ir->strings[(u32)value->value.integer]);
+        } else {
+            error_ice("IR string value has unsupported type");
+        }
         break;
     default:
         error_ice("Unknown IR value kind: %u", value->kind);

@@ -174,6 +174,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_Integer:
     case TK_Float:
     case TK_String:
+    case TK_CString:
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
@@ -923,7 +924,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32 token_index = state->token_index;
         cst_advance(state);
         Array(u32) items = NULL;
-        u32        item  = 0;
+        u32 item         = 0;
         if (!cst_parse_type(state, &item)) {
             return false;
         }
@@ -1348,6 +1349,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
         }
 
     case TK_String:
+    case TK_CString:
         {
             u32 string_index = cst_current_string_index(state);
             if (string_index == CST_NO_VALUE) {
@@ -4080,6 +4082,7 @@ internal void cst_build_token_value_tables(CstParseState* state)
             break;
 
         case TK_String:
+        case TK_CString:
             array_push(state->token_integer_indices, CST_NO_VALUE);
             array_push(state->token_float_indices, CST_NO_VALUE);
             array_push(state->token_string_indices, string_index++);

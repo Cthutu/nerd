@@ -38,7 +38,8 @@ internal bool lexer_lex_string_literal(NerdSource source,
                                        string     source_code,
                                        usize*     io_index,
                                        Lexer*     lexer,
-                                       TokenKind  token_kind)
+                                       TokenKind  token_kind,
+                                       usize      token_offset)
 {
     usize start = *io_index;
     usize i     = start + 1;
@@ -77,6 +78,44 @@ internal bool lexer_lex_string_literal(NerdSource source,
             case 't':
                 ch = '\t';
                 break;
+            case '0':
+                ch = '\0';
+                break;
+            case 'a':
+                ch = '\a';
+                break;
+            case 'b':
+                ch = '\b';
+                break;
+            case 'f':
+                ch = '\f';
+                break;
+            case 'v':
+                ch = '\v';
+                break;
+            case 'x':
+                {
+                    u8 value = 0;
+                    u32 digits = 0;
+                    while (i < source_code.count && digits < 2) {
+                        u8 hex = source_code.data[i];
+                        u8 nibble = 0;
+                        if (hex >= '0' && hex <= '9') {
+                            nibble = (u8)(hex - '0');
+                        } else if (hex >= 'a' && hex <= 'f') {
+                            nibble = (u8)(10 + (hex - 'a'));
+                        } else if (hex >= 'A' && hex <= 'F') {
+                            nibble = (u8)(10 + (hex - 'A'));
+                        } else {
+                            break;
+                        }
+                        value = (u8)((value << 4) | nibble);
+                        ++digits;
+                        ++i;
+                    }
+                    ch = digits == 0 ? 'x' : value;
+                }
+                break;
             default:
                 ch = escaped;
                 break;
@@ -92,7 +131,7 @@ internal bool lexer_lex_string_literal(NerdSource source,
     }
 
     array_push(lexer->tokens,
-               (Token){.kind = token_kind, .offset = (u32)start});
+               (Token){.kind = token_kind, .offset = (u32)token_offset});
     array_push(lexer->strings, string_from(buffer, length));
     *io_index = i;
     return true;
@@ -109,6 +148,16 @@ internal u8 lexer_decode_escape(u8 escaped, u8 quote)
         return '\r';
     case 't':
         return '\t';
+    case '0':
+        return '\0';
+    case 'a':
+        return '\a';
+    case 'b':
+        return '\b';
+    case 'f':
+        return '\f';
+    case 'v':
+        return '\v';
     default:
         return escaped == quote ? quote : escaped;
     }
@@ -398,7 +447,13 @@ internal bool lexer_lex_one_token(NerdSource source,
 
     if (c == '"') {
         return lexer_lex_string_literal(
-            source, source_code, io_index, lexer, TK_String);
+            source, source_code, io_index, lexer, TK_String, *io_index);
+    }
+
+    if (c == 'c' && i + 1 < source_code.count && source_code.data[i + 1] == '"') {
+        *io_index = i + 1;
+        return lexer_lex_string_literal(
+            source, source_code, io_index, lexer, TK_CString, i);
     }
 
     if (c == '\'') {
@@ -422,16 +477,26 @@ internal bool lexer_lex_one_token(NerdSource source,
             u8        length;
             TokenKind kind;
         } keywords[] = {
-            {"fn", 2, TK_fn},         {"for", 3, TK_for},
-            {"on", 2, TK_on},         {"else", 4, TK_else},
-            {"break", 5, TK_break},   {"continue", 8, TK_continue},
-            {"return", 6, TK_return}, {"plex", 4, TK_plex},
-            {"union", 5, TK_union},   {"enum", 4, TK_enum},
-            {"ffi", 3, TK_ffi},       {"mod", 3, TK_mod},
-            {"use", 3, TK_use},       {"pub", 3, TK_pub},
-            {"with", 4, TK_with},     {"in", 2, TK_in},
-            {"as", 2, TK_as},         {"yes", 3, TK_yes},
-            {"no", 2, TK_no},         {"undefined", 9, TK_undefined},
+            {"fn", 2, TK_fn},
+            {"for", 3, TK_for},
+            {"on", 2, TK_on},
+            {"else", 4, TK_else},
+            {"break", 5, TK_break},
+            {"continue", 8, TK_continue},
+            {"return", 6, TK_return},
+            {"plex", 4, TK_plex},
+            {"union", 5, TK_union},
+            {"enum", 4, TK_enum},
+            {"ffi", 3, TK_ffi},
+            {"mod", 3, TK_mod},
+            {"use", 3, TK_use},
+            {"pub", 3, TK_pub},
+            {"with", 4, TK_with},
+            {"in", 2, TK_in},
+            {"as", 2, TK_as},
+            {"yes", 3, TK_yes},
+            {"no", 2, TK_no},
+            {"undefined", 9, TK_undefined},
             {NULL, 0, 0},
         };
 
@@ -813,8 +878,10 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
             return index;
         }
     case TK_String:
+    case TK_CString:
         {
-            usize index = token->offset + 1;
+            usize index = token->offset +
+                          (token->kind == TK_CString ? 2 : 1);
             while (index < lexer->source.source.count) {
                 if (lexer->source.source.data[index] == '\\') {
                     index += 2;

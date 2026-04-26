@@ -261,6 +261,7 @@ internal void ast_sync_value_indices(AstParseState* state, u32 token_index)
             state->float_index++;
             break;
         case TK_String:
+        case TK_CString:
             state->string_index++;
             break;
         case TK_Symbol:
@@ -3093,7 +3094,7 @@ internal bool ast_parse_variable_payload(AstParseState* state,
                                  },
                                  out_value_node);
         }
-        u32 value_index = 0;
+        u32  value_index                = 0;
         bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;
         bool ok                         = ast_parse_expr(state, &value_index);

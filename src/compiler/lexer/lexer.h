@@ -24,6 +24,7 @@ typedef enum {
     TK_Integer,
     TK_Float,
     TK_String,
+    TK_CString,
     TK_InterpolatedStringStart,
     TK_InterpolatedStringEnd,
     TK_Symbol,

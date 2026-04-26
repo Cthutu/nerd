@@ -20,6 +20,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Float");
     case TK_String:
         return string_from_cstr("String");
+    case TK_CString:
+        return string_from_cstr("CString");
     case TK_InterpolatedStringStart:
         return string_from_cstr("InterpolatedStringStart `$\"`");
     case TK_InterpolatedStringEnd:
@@ -200,6 +202,7 @@ void lex_dump(const Lexer* lexer)
                 &temp_arena, "%.17g", lexer->floats[float_index++]));
             break;
         case TK_String:
+        case TK_CString:
             row[3] = table_cell_string(lexer->strings[string_index++]);
             break;
         case TK_Symbol:

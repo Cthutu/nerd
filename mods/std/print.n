@@ -10,20 +10,19 @@ input_buf: [256]u8
 input_len: usize
 
 pub pr :: fn(text: string) -> void {
-    printf("%.*s".data, text.count.as(i32), text.data)
+    printf(c"%.*s", text.count.as(i32), text.data)
     return
 }
 
 pub prn :: fn(text: string) -> void {
     pr(text)
-    printf("\n".data)
+    printf(c"\n")
     return
 }
 
 pub input :: fn(prompt: string) -> string {
     pr(prompt)
-    read_count := scanf("%255s".data, input_buf[..].data)
-    on read_count != 1 => input_len = 0
-    on read_count == 1 => input_len = strlen(input_buf[..].data)
+    read_count := scanf(c"%255s", input_buf[..].data)
+    input_len := on read_count == 1 => strlen(input_buf[..].data) else 0
     return input_buf[0..input_len].as(string)
 }

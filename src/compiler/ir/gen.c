@@ -2019,7 +2019,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
         {
             IrValue value = {
                 .kind = IR_VALUE_STRING,
-                .type = ir_builtin_string_type(sema),
+                .type = ir_node_type_index(ast, sema, node_index),
                 .value.integer =
                     ir_add_string_literal(ir, ast_get_string(lex, node)),
             };
