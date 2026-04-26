@@ -1338,6 +1338,21 @@ needed earlier.
     its own error category.
   - Add regression coverage for any wording/category changes so the diagnostic
     policy stays stable once regularised.
+  - Progress:
+    - `0203` (`expected token`) now has an extensible API that accepts
+      optional note/help context while preserving the simple wrapper used by
+      most parser call sites.
+    - `0204` (`unexpected token`) now has an extensible API that accepts
+      optional note/help context while preserving the existing wrapper
+      behaviour, including the unmatched-right-parenthesis case.
+    - `0205` (`expected declaration or expression`) now has an extensible API
+      that accepts optional note/help context while preserving the simple
+      wrapper used by current parser call sites.
+    - The primary messages for `0203`-`0205` now carry the concrete
+      expected/found token information rather than relying only on secondary
+      references.
+    - Regression snapshots were refreshed for the affected parser diagnostics
+      so message-shape changes remain intentional.
 
 ## Milestone 36: CLI Ergonomics
 

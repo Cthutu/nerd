@@ -107,6 +107,12 @@ bool error_0202_missing_operator(NerdSource source,
                                  TokenKind  expected_kind);
 
 // Used when a specific token is required to continue parsing.
+bool error_0203_expected_token_ex(NerdSource source,
+                                  ErrorSpan  span,
+                                  TokenKind  expected_kind,
+                                  TokenKind  actual_kind,
+                                  cstr       note,
+                                  cstr       help);
 bool error_0203_expected_token(NerdSource source,
                                ErrorSpan  span,
                                TokenKind  expected_kind,
@@ -114,6 +120,11 @@ bool error_0203_expected_token(NerdSource source,
 
 // Used when parsing succeeds for a complete expression but trailing tokens
 // remain.
+bool error_0204_unexpected_token_ex(NerdSource source,
+                                    ErrorSpan  span,
+                                    TokenKind  actual_kind,
+                                    cstr       note,
+                                    cstr       help);
 bool error_0204_unexpected_token(NerdSource source,
                                  ErrorSpan  span,
                                  TokenKind  actual_kind,
@@ -121,6 +132,11 @@ bool error_0204_unexpected_token(NerdSource source,
                                  ...);
 
 // Expected declaration or expression
+bool error_0205_expected_declaration_or_expression_ex(NerdSource source,
+                                                      ErrorSpan  span,
+                                                      TokenKind  actual_kind,
+                                                      cstr       note,
+                                                      cstr       help);
 bool error_0205_expected_declaration_or_expression(NerdSource source,
                                                    ErrorSpan  span,
                                                    TokenKind  actual_kind,

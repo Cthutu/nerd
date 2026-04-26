@@ -67,19 +67,64 @@ bool error_0202_missing_operator(NerdSource source,
     return false;
 }
 
+bool error_0203_expected_token_ex(NerdSource source,
+                                  ErrorSpan  span,
+                                  TokenKind  expected_kind,
+                                  TokenKind  actual_kind,
+                                  cstr       note,
+                                  cstr       help)
+{
+    string    expected = token_kind_to_string(expected_kind);
+    string    actual   = token_kind_to_string(actual_kind);
+    ErrorInfo error    = error_init(203,
+                                 source,
+                                 span,
+                                 "Expected %.*s but found %.*s",
+                                 STRINGV(expected),
+                                 STRINGV(actual));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
+    error_render(&error);
+    return false;
+}
+
 bool error_0203_expected_token(NerdSource source,
                                ErrorSpan  span,
                                TokenKind  expected_kind,
                                TokenKind  actual_kind)
 {
-    string    expected = token_kind_to_string(expected_kind);
-    string    actual   = token_kind_to_string(actual_kind);
-    ErrorInfo error =
-        error_init(203, source, span, "Expected %.*s", STRINGV(expected));
+    return error_0203_expected_token_ex(
+        source,
+        span,
+        expected_kind,
+        actual_kind,
+        NULL,
+        "Check for a missing closing delimiter or misplaced operator");
+}
+
+bool error_0204_unexpected_token_ex(NerdSource source,
+                                    ErrorSpan  span,
+                                    TokenKind  actual_kind,
+                                    cstr       note,
+                                    cstr       help)
+{
+    string    actual = token_kind_to_string(actual_kind);
+    ErrorInfo error  = error_init(
+        204, source, span, "Unexpected %.*s after expression", STRINGV(actual));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
-    error_add_help(
-        &error, "Check for a missing closing delimiter or misplaced operator");
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
     error_render(&error);
     return false;
 }
@@ -87,26 +132,56 @@ bool error_0203_expected_token(NerdSource source,
 bool error_0204_unexpected_token(
     NerdSource source, ErrorSpan span, TokenKind actual_kind, cstr format, ...)
 {
-    string    actual = token_kind_to_string(actual_kind);
-    ErrorInfo error =
-        error_init(204, source, span, "Unexpected token after expression");
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
-
     if (actual_kind == TK_RParen) {
-        error_add_note(
-            &error,
-            "This right parenthesis does not match an opening parenthesis");
-        error_add_help(&error,
-                       "Add the missing opening parenthesis or remove the "
-                       "extra right parenthesis");
-    } else {
-        va_list args;
-        va_start(args, format);
-        error_add_helpv(&error, format, args);
-        va_end(args);
+        return error_0204_unexpected_token_ex(
+            source,
+            span,
+            actual_kind,
+            "This right parenthesis does not match an opening parenthesis",
+            "Add the missing opening parenthesis or remove the extra right "
+            "parenthesis");
     }
 
+    Arena         scratch = {0};
+    StringBuilder sb      = {0};
+    arena_init(&scratch);
+    sb_init(&sb, &scratch);
+    va_list args;
+    va_start(args, format);
+    sb_formatv(&sb, format, args);
+    va_end(args);
+    string help = sb_to_string(&sb);
+    bool   ok   = error_0204_unexpected_token_ex(source,
+                                             span,
+                                             actual_kind,
+                                             NULL,
+                                             help.count == 0 ? NULL
+                                                                 : (cstr)help.data);
+    arena_done(&scratch);
+    return ok;
+}
+
+bool error_0205_expected_declaration_or_expression_ex(NerdSource source,
+                                                      ErrorSpan  span,
+                                                      TokenKind  actual_kind,
+                                                      cstr       note,
+                                                      cstr       help)
+{
+    string    actual = token_kind_to_string(actual_kind);
+    ErrorInfo error =
+        error_init(205,
+                   source,
+                   span,
+                   "Expected declaration or expression but found %.*s",
+                   STRINGV(actual));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
     error_render(&error);
     return false;
 }
@@ -117,19 +192,23 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
                                                    cstr       help_format,
                                                    ...)
 {
-    string    actual = token_kind_to_string(actual_kind);
-    ErrorInfo error =
-        error_init(205, source, span, "Expected declaration or expression");
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
-
+    Arena         scratch = {0};
+    StringBuilder sb      = {0};
+    arena_init(&scratch);
+    sb_init(&sb, &scratch);
     va_list args;
     va_start(args, help_format);
-    error_add_helpv(&error, help_format, args);
+    sb_formatv(&sb, help_format, args);
     va_end(args);
-
-    error_render(&error);
-    return false;
+    string help = sb_to_string(&sb);
+    bool   ok   = error_0205_expected_declaration_or_expression_ex(
+        source,
+        span,
+        actual_kind,
+        NULL,
+        help.count == 0 ? NULL : (cstr)help.data);
+    arena_done(&scratch);
+    return ok;
 }
 
 bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)

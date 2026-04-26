@@ -54,7 +54,7 @@ main ::
 ¬
 {
     "code": "0205",
-    "message": "Expected declaration or expression",
+    "message": "Expected declaration or expression but found EOF",
     "source_file": "tests/errors/009-coverage-gaps.e",
     "primary_location": {
         "line": 1,

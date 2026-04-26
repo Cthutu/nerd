@@ -87,7 +87,7 @@ main :: fn() {}
 ¬
 {
     "code": "0203",
-    "message": "Expected Symbol",
+    "message": "Expected Symbol but found Ellipsis `...`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 1,

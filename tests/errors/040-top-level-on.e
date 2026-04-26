@@ -2,7 +2,7 @@ on 1 {}
 ¬
 {
     "code": "0203",
-    "message": "Expected Symbol",
+    "message": "Expected Symbol but found Integer",
     "source_file": "tests/errors/040-top-level-on.e",
     "primary_location": {
         "line": 1,

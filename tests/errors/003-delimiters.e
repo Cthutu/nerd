@@ -2,7 +2,7 @@
 ¬
 {
     "code": "0203",
-    "message": "Expected RightParen `)`",
+    "message": "Expected RightParen `)` but found EOF",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
         "line": 1,
@@ -27,7 +27,7 @@
 ¬
 {
     "code": "0204",
-    "message": "Unexpected token after expression",
+    "message": "Unexpected RightParen `)` after expression",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
         "line": 1,
