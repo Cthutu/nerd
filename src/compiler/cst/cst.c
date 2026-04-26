@@ -37,6 +37,7 @@ typedef struct {
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
 internal bool cst_parse_variable(CstParseState* state, u32* out_node);
 internal bool cst_parse_destructure(CstParseState* state, u32* out_node);
+internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
@@ -283,6 +284,117 @@ internal bool cst_skip_balanced_tokens(const CstParseState* state,
     return false;
 }
 
+internal bool cst_skip_until_matching_rbracket(const CstParseState* state,
+                                               u32*                 io_index)
+{
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    u32 brace_depth   = 0;
+
+    while (*io_index < array_count(state->lexer->tokens)) {
+        TokenKind kind = cst_kind_at_stream_index(state, *io_index);
+        switch (kind) {
+        case TK_LParen:
+            paren_depth++;
+            break;
+        case TK_RParen:
+            if (paren_depth == 0) {
+                return false;
+            }
+            paren_depth--;
+            break;
+        case TK_LBracket:
+            bracket_depth++;
+            break;
+        case TK_RBracket:
+            if (paren_depth == 0 && brace_depth == 0 && bracket_depth == 0) {
+                return true;
+            }
+            if (bracket_depth == 0) {
+                return false;
+            }
+            bracket_depth--;
+            break;
+        case TK_LBrace:
+            brace_depth++;
+            break;
+        case TK_RBrace:
+            if (brace_depth == 0) {
+                return false;
+            }
+            brace_depth--;
+            break;
+        case TK_EOF:
+            return false;
+        default:
+            break;
+        }
+        (*io_index)++;
+    }
+
+    return false;
+}
+
+internal bool cst_skip_enum_value_tokens(const CstParseState* state,
+                                         u32*                 io_index)
+{
+    u32 start_index   = *io_index;
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    u32 brace_depth   = 0;
+
+    while (*io_index < array_count(state->lexer->tokens)) {
+        TokenKind kind = cst_kind_at_stream_index(state, *io_index);
+        if (kind == TK_EOF) {
+            return false;
+        }
+        if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+            kind == TK_RBrace) {
+            return true;
+        }
+        if (*io_index > start_index && paren_depth == 0 && bracket_depth == 0 &&
+            brace_depth == 0 && kind == TK_Symbol &&
+            cst_token_has_newline_before(state, *io_index)) {
+            return true;
+        }
+
+        switch (kind) {
+        case TK_LParen:
+            paren_depth++;
+            break;
+        case TK_RParen:
+            if (paren_depth == 0) {
+                return false;
+            }
+            paren_depth--;
+            break;
+        case TK_LBracket:
+            bracket_depth++;
+            break;
+        case TK_RBracket:
+            if (bracket_depth == 0) {
+                return false;
+            }
+            bracket_depth--;
+            break;
+        case TK_LBrace:
+            brace_depth++;
+            break;
+        case TK_RBrace:
+            if (brace_depth == 0) {
+                return false;
+            }
+            brace_depth--;
+            break;
+        default:
+            break;
+        }
+        (*io_index)++;
+    }
+
+    return false;
+}
+
 internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
 {
     TokenKind kind = cst_kind_at_stream_index(state, *io_index);
@@ -316,6 +428,12 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
             (*io_index)++;
             if (!cst_skip_type_tokens(state, io_index)) {
                 return false;
+            }
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Equal) {
+                (*io_index)++;
+                if (!cst_skip_enum_value_tokens(state, io_index)) {
+                    return false;
+                }
             }
         }
         (*io_index)++;
@@ -357,8 +475,9 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     }
     if (kind == TK_LBracket) {
         (*io_index)++;
-        if (cst_kind_at_stream_index(state, *io_index) == TK_Integer) {
-            (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket &&
+            !cst_skip_until_matching_rbracket(state, io_index)) {
+            return false;
         }
         if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
             return false;
@@ -807,20 +926,10 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                                  },
                                  out_node);
         }
-        if (cst_current_token(state).kind != TK_Integer) {
-            return false;
-        }
         u32 length = 0;
-        if (!cst_emit_node(state,
-                           (CstNode){
-                               .kind        = CK_IntegerLiteral,
-                               .token_index = state->token_index,
-                               .a           = cst_current_integer_index(state),
-                           },
-                           &length)) {
+        if (!cst_parse_expr_bp(state, 0, &length)) {
             return false;
         }
-        cst_advance(state);
         if (!cst_consume(state, TK_RBracket)) {
             return false;
         }
@@ -930,9 +1039,10 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
-            u32 variant_token     = state->token_index;
-            u32 variant_symbol    = cst_current_symbol_handle(state);
-            u32 variant_type_node = U32_MAX;
+            u32 variant_token      = state->token_index;
+            u32 variant_symbol     = cst_current_symbol_handle(state);
+            u32 variant_type_node  = U32_MAX;
+            u32 variant_value_node = U32_MAX;
             cst_advance(state);
             if (cst_current_token(state).kind == TK_LParen) {
                 u32 lparen = state->token_index;
@@ -971,11 +1081,22 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                     }
                 }
             }
+            if (cst_current_token(state).kind == TK_Equal) {
+                cst_advance(state);
+                bool previous_boundary = state->allow_statement_boundary;
+                state->allow_statement_boundary = true;
+                bool parsed = cst_parse_expr_bp(state, 0, &variant_value_node);
+                state->allow_statement_boundary = previous_boundary;
+                if (!parsed) {
+                    return false;
+                }
+            }
             array_push(state->cst.enum_variants,
                        (CstEnumVariant){
-                           .token_index     = variant_token,
-                           .symbol_handle   = variant_symbol,
-                           .type_node_index = variant_type_node,
+                           .token_index      = variant_token,
+                           .symbol_handle    = variant_symbol,
+                           .type_node_index  = variant_type_node,
+                           .value_node_index = variant_value_node,
                        });
             variant_count++;
         }

@@ -1247,6 +1247,19 @@ needed earlier.
       `tests/errors/035-enum-payloads.e`,
       `tests/format/046-on-structural-patterns.f`, and
       `tests/lsp/040-on-structural-patterns.lsp`.
+    - Follow-up:
+      - Enum variants now support C-style discriminants:
+        default numbering starts at `0`, `= <integer constant expression>`
+        resets the running discriminant, and later variants continue upward
+        from that value.
+      - Enum variants remain typed as enum values in normal expressions, but
+        their discriminants are available as untyped integers in compile-time
+        integer-constant-expression contexts such as fixed array lengths.
+      - Fixed array type syntax now accepts constant expressions in the length
+        position, not just integer literals, so forms such as
+        `[Direction.NUM_DIRECTIONS]RoomType` are valid.
+      - Invalid fixed-array lengths now diagnose the length expression itself
+        instead of misreporting the surrounding type declaration.
 
 ## Milestone 32: FFI Consolidation
 

@@ -226,6 +226,7 @@ typedef struct {
     u32 token_index;
     u32 symbol_handle;
     u32 type_node_index;
+    u32 value_node_index;
 } CstEnumVariant;
 
 typedef struct {

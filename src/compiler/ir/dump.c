@@ -450,7 +450,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             break;
         case IR_OP_ENUM:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
-            sb_format(&sb, " = enum(%lld)", instr->rvalue[0].value.integer);
+            sb_format(
+                &sb,
+                " = enum(%lld)",
+                ir->type_param_values[ir->types[instr->lvalue.type]
+                                          .first_param_type +
+                                      (u32)instr->rvalue[0].value.integer]);
             if (instr->rvalue[1].kind != IR_VALUE_NONE) {
                 sb_append_cstr(&sb, " ");
                 ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);

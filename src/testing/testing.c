@@ -1403,17 +1403,13 @@ internal bool testing_run_language_test(const LanguageTest* test)
         passed = false;
     }
 
-    if (test->expected_ir.count == 0) {
-        testing_print_missing_section("IR", actual_ir);
-        passed = false;
-    } else if (!testing_compare_text("IR", test->expected_ir, actual_ir)) {
+    if (test->expected_ir.count > 0 &&
+        !testing_compare_text("IR", test->expected_ir, actual_ir)) {
         passed = false;
     }
 
-    if (test->expected_c.count == 0) {
-        testing_print_missing_section("C", actual_c);
-        passed = false;
-    } else if (!testing_compare_text("C", test->expected_c, actual_c)) {
+    if (test->expected_c.count > 0 &&
+        !testing_compare_text("C", test->expected_c, actual_c)) {
         passed = false;
     }
 

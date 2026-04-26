@@ -101,6 +101,10 @@ internal TokenKind ast_kind_at_stream_index(const AstParseState* state,
     return state->lexer->tokens[index].kind;
 }
 
+internal bool ast_tokens_cross_line_break(const AstParseState* state,
+                                          u32                  previous_token,
+                                          u32                  current_token);
+
 internal bool ast_skip_balanced_tokens(const AstParseState* state,
                                        u32*                 io_index,
                                        TokenKind            open_kind,
@@ -123,6 +127,117 @@ internal bool ast_skip_balanced_tokens(const AstParseState* state,
         }
         (*io_index)++;
     }
+    return false;
+}
+
+internal bool ast_skip_until_matching_rbracket(const AstParseState* state,
+                                               u32*                 io_index)
+{
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    u32 brace_depth   = 0;
+
+    while (*io_index < array_count(state->lexer->tokens)) {
+        TokenKind kind = ast_kind_at_stream_index(state, *io_index);
+        switch (kind) {
+        case TK_LParen:
+            paren_depth++;
+            break;
+        case TK_RParen:
+            if (paren_depth == 0) {
+                return false;
+            }
+            paren_depth--;
+            break;
+        case TK_LBracket:
+            bracket_depth++;
+            break;
+        case TK_RBracket:
+            if (paren_depth == 0 && brace_depth == 0 && bracket_depth == 0) {
+                return true;
+            }
+            if (bracket_depth == 0) {
+                return false;
+            }
+            bracket_depth--;
+            break;
+        case TK_LBrace:
+            brace_depth++;
+            break;
+        case TK_RBrace:
+            if (brace_depth == 0) {
+                return false;
+            }
+            brace_depth--;
+            break;
+        case TK_EOF:
+            return false;
+        default:
+            break;
+        }
+        (*io_index)++;
+    }
+
+    return false;
+}
+
+internal bool ast_skip_enum_value_tokens(const AstParseState* state,
+                                         u32*                 io_index)
+{
+    u32 start_index   = *io_index;
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    u32 brace_depth   = 0;
+
+    while (*io_index < array_count(state->lexer->tokens)) {
+        TokenKind kind = ast_kind_at_stream_index(state, *io_index);
+        if (kind == TK_EOF) {
+            return false;
+        }
+        if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+            kind == TK_RBrace) {
+            return true;
+        }
+        if (*io_index > start_index && paren_depth == 0 && bracket_depth == 0 &&
+            brace_depth == 0 && kind == TK_Symbol &&
+            ast_tokens_cross_line_break(state, *io_index - 1, *io_index)) {
+            return true;
+        }
+
+        switch (kind) {
+        case TK_LParen:
+            paren_depth++;
+            break;
+        case TK_RParen:
+            if (paren_depth == 0) {
+                return false;
+            }
+            paren_depth--;
+            break;
+        case TK_LBracket:
+            bracket_depth++;
+            break;
+        case TK_RBracket:
+            if (bracket_depth == 0) {
+                return false;
+            }
+            bracket_depth--;
+            break;
+        case TK_LBrace:
+            brace_depth++;
+            break;
+        case TK_RBrace:
+            if (brace_depth == 0) {
+                return false;
+            }
+            brace_depth--;
+            break;
+        default:
+            break;
+        }
+        (*io_index)++;
+    }
+
     return false;
 }
 
@@ -243,14 +358,21 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
                 }
                 (*io_index)++;
             }
+            if (ast_kind_at_stream_index(state, *io_index) == TK_Equal) {
+                (*io_index)++;
+                if (!ast_skip_enum_value_tokens(state, io_index)) {
+                    return false;
+                }
+            }
         }
         (*io_index)++;
         return true;
     }
     if (kind == TK_LBracket) {
         (*io_index)++;
-        if (ast_kind_at_stream_index(state, *io_index) == TK_Integer) {
-            (*io_index)++;
+        if (ast_kind_at_stream_index(state, *io_index) != TK_RBracket &&
+            !ast_skip_until_matching_rbracket(state, io_index)) {
+            return false;
         }
         if (ast_kind_at_stream_index(state, *io_index) != TK_RBracket) {
             return false;
@@ -671,20 +793,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  },
                                  out_node);
         }
-        if (state->token.kind != TK_Integer) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_Integer,
-                state->token.kind);
-        }
-        AstNode length_node = {
-            .kind        = AK_IntegerLiteral,
-            .token_index = state->token.token_index,
-            .a           = state->token.value.integer_index,
-        };
         u32 length_index = 0;
-        if (!ast_emit_node(state, length_node, &length_index) ||
+        if (!ast_parse_expr(state, &length_index) ||
             !ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
             return false;
         }
@@ -831,8 +941,9 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                     TK_Symbol,
                     state->token.kind);
             }
-            AstToken variant_token     = state->token;
-            u32      variant_type_node = U32_MAX;
+            AstToken variant_token      = state->token;
+            u32      variant_type_node  = U32_MAX;
+            u32      variant_value_node = U32_MAX;
             if (ast_peek_kind_at(state, 0) == TK_LParen) {
                 AstToken lparen = state->token;
                 if (!ast_expect_token(state, TK_LParen) ||
@@ -876,11 +987,25 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                     }
                 }
             }
+            if (ast_peek_kind_at(state, 0) == TK_Equal) {
+                if (!ast_expect_token(state, TK_Equal) ||
+                    !ast_next_token(state)) {
+                    return false;
+                }
+                bool previous_boundary = state->allow_statement_boundary;
+                state->allow_statement_boundary = true;
+                bool parsed = ast_parse_expr(state, &variant_value_node);
+                state->allow_statement_boundary = previous_boundary;
+                if (!parsed) {
+                    return false;
+                }
+            }
             array_push(state->enum_variants,
                        (AstEnumVariant){
                            .token_index     = variant_token.token_index,
                            .symbol_handle   = variant_token.value.symbol_handle,
                            .type_node_index = variant_type_node,
+                           .value_node_index = variant_value_node,
                        });
             variant_count++;
             if (!ast_next_token(state)) {

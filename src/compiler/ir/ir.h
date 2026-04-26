@@ -163,6 +163,7 @@ typedef struct {
     Array(SemaType) types;
     Array(u32) type_param_types;
     Array(u32) type_param_symbols;
+    Array(i64) type_param_values;
     Arena arena;
 } Ir;
 

@@ -4227,6 +4227,9 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(sema->type_param_symbols); ++i) {
         array_push(ir.type_param_symbols, sema->type_param_symbols[i]);
     }
+    for (u32 i = 0; i < array_count(sema->type_param_values); ++i) {
+        array_push(ir.type_param_values, sema->type_param_values[i]);
+    }
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
@@ -4317,6 +4320,7 @@ void ir_done(Ir* ir)
     array_free(ir->types);
     array_free(ir->type_param_types);
     array_free(ir->type_param_symbols);
+    array_free(ir->type_param_values);
     if (ir->arena.data != NULL) {
         arena_done(&ir->arena);
     }

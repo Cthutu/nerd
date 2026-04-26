@@ -281,12 +281,21 @@ internal cstr cgen_c_extern_param_type(const Ir* ir, u32 type_index)
     return cgen_c_type(ir, type_index);
 }
 
-internal cstr cgen_enum_tag_type(const SemaType* type)
+internal cstr cgen_enum_tag_type(const Ir* ir, u32 type_index)
 {
-    if (type->param_count <= UINT8_MAX) {
+    const SemaType* type             = &ir->types[type_index];
+    i64             max_discriminant = 0;
+    for (u32 i = 0; i < type->param_count; ++i) {
+        i64 value = ir->type_param_values[type->first_param_type + i];
+        if (value > max_discriminant) {
+            max_discriminant = value;
+        }
+    }
+
+    if (max_discriminant <= UINT8_MAX) {
         return "uint8_t";
     }
-    if (type->param_count <= UINT16_MAX) {
+    if (max_discriminant <= UINT16_MAX) {
         return "uint16_t";
     }
     return "uint32_t";
@@ -460,6 +469,14 @@ cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
     if (value->kind == IR_VALUE_INTEGER && type_index != sema_no_type() &&
         cgen->ir->types[type_index].kind == STK_Bool) {
         cgen_add(cgen, value->value.integer != 0 ? "true" : "false");
+        return;
+    }
+
+    if (value->kind == IR_VALUE_INTEGER && type_index != sema_no_type() &&
+        cgen->ir->types[type_index].kind == STK_Enum) {
+        cgen_add(cgen, "(");
+        cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+        arena_format(&cgen->arena, "){.tag = %lld}", value->value.integer);
         return;
     }
 
@@ -712,17 +729,21 @@ void cgen_add_plex(CGen* cgen, const IrInstruction* instr)
 
 void cgen_add_enum(CGen* cgen, const IrInstruction* instr)
 {
+    u32 variant_index = (u32)instr->rvalue[0].value.integer;
+    i64 tag_value =
+        cgen->ir->type_param_values[cgen->ir->types[instr->lvalue.type]
+                                        .first_param_type +
+                                    variant_index];
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
     cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
-    arena_format(&cgen->arena, "){.tag = %lld", instr->rvalue[0].value.integer);
+    arena_format(&cgen->arena, "){.tag = %lld", tag_value);
     if (instr->rvalue[1].kind != IR_VALUE_NONE) {
-        u32 variant = (u32)instr->rvalue[0].value.integer;
         u32 symbol =
             cgen->ir->type_param_symbols[cgen->ir->types[instr->lvalue.type]
                                              .first_param_type +
-                                         variant];
+                                         variant_index];
         cgen_add(cgen, ", .data.");
         cgen_add_symbol_name(cgen, symbol);
         cgen_add(cgen, " = ");
@@ -1131,10 +1152,10 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL) &&
         cgen->ir->types[instr->rvalue[0].type].kind == STK_Enum;
     if (enum_equality) {
-        cgen_add_value(cgen, &instr->rvalue[0]);
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
         cgen_add(cgen, ".tag");
         cgen_add(cgen, op);
-        cgen_add_value(cgen, &instr->rvalue[1]);
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
         cgen_addn(cgen, ".tag;");
         return;
     }
@@ -1171,7 +1192,8 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             cgen_addn(cgen, "");
             cgen_indent(cgen);
             cgen_start_line(cgen);
-            arena_format(&cgen->arena, "%s tag;\n", cgen_enum_tag_type(type));
+            arena_format(
+                &cgen->arena, "%s tag;\n", cgen_enum_tag_type(cgen->ir, i));
             bool has_payload = false;
             for (u32 variant = 0; variant < type->param_count; ++variant) {
                 if (cgen->ir->type_param_types[type->first_param_type +

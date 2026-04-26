@@ -140,6 +140,7 @@ internal void back_end_merge_program_done(ProgramBackEndMerge* merge)
     merge->sema.types              = NULL;
     merge->sema.type_param_types   = NULL;
     merge->sema.type_param_symbols = NULL;
+    merge->sema.type_param_values  = NULL;
     sema_done(&merge->sema);
     lex_done(&merge->lexer);
     *merge = (ProgramBackEndMerge){0};
@@ -357,9 +358,11 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
     merge.ir.types                = merge.sema.types;
     merge.ir.type_param_types     = merge.sema.type_param_types;
     merge.ir.type_param_symbols   = merge.sema.type_param_symbols;
+    merge.ir.type_param_values    = merge.sema.type_param_values;
     merge.sema.types              = NULL;
     merge.sema.type_param_types   = NULL;
     merge.sema.type_param_symbols = NULL;
+    merge.sema.type_param_values  = NULL;
 
     array_free(module_order);
     *out_merge = merge;
