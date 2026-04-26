@@ -139,9 +139,9 @@ internal cstr testing_generated_sidecar_path(Arena* arena,
                                              cstr   artifact_root,
                                              cstr   extension)
 {
-    cstr   dir_path = path_dirname(arena, artifact_root);
-    string stem     = path_stem(s(artifact_root));
-    StringBuilder sb = {0};
+    cstr          dir_path = path_dirname(arena, artifact_root);
+    string        stem     = path_stem(s(artifact_root));
+    StringBuilder sb       = {0};
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
@@ -150,11 +150,12 @@ internal cstr testing_generated_sidecar_path(Arena* arena,
     return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
 }
 
-internal cstr testing_generated_temp_binary_path(Arena* arena, cstr artifact_root)
+internal cstr testing_generated_temp_binary_path(Arena* arena,
+                                                 cstr   artifact_root)
 {
-    cstr   dir_path = path_dirname(arena, artifact_root);
-    string stem     = path_stem(s(artifact_root));
-    StringBuilder sb = {0};
+    cstr          dir_path = path_dirname(arena, artifact_root);
+    string        stem     = path_stem(s(artifact_root));
+    StringBuilder sb       = {0};
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
@@ -728,7 +729,7 @@ internal void testing_cleanup_generated_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr ir_path  = testing_generated_sidecar_path(&arena, artifact_root, ".ir");
+    cstr ir_path = testing_generated_sidecar_path(&arena, artifact_root, ".ir");
     cstr c_path =
         testing_generated_sidecar_path(&arena, artifact_root, ".gen.c");
     cstr exe_path = testing_generated_temp_binary_path(&arena, artifact_root);
@@ -1357,11 +1358,11 @@ internal bool testing_run_language_test(const LanguageTest* test)
     testing_cleanup_generated_files(artifact_root);
 
     NerdArtifactConfig artifacts = {
-        .binary_path    = testing_generated_temp_binary_path(
-            &artifact_arena, artifact_root),
-        .ir_path        = testing_generated_sidecar_path(
+        .binary_path =
+            testing_generated_temp_binary_path(&artifact_arena, artifact_root),
+        .ir_path = testing_generated_sidecar_path(
             &artifact_arena, artifact_root, ".ir"),
-        .c_path         = testing_generated_sidecar_path(
+        .c_path = testing_generated_sidecar_path(
             &artifact_arena, artifact_root, ".gen.c"),
         .emit_ir_file   = true,
         .emit_c_file    = true,
@@ -1855,8 +1856,10 @@ internal bool testing_run_command_test(const CommandTest* test)
     path_remove(temp_binary_path);
 #if OS_WINDOWS
     path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
-    path_remove(path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
-    path_remove(path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
+    path_remove(
+        path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
+    path_remove(
+        path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
 #endif
 
     if (!testing_write_file(input_path, test->source)) {
@@ -1958,8 +1961,10 @@ internal bool testing_run_command_test(const CommandTest* test)
     path_remove(temp_binary_path);
 #if OS_WINDOWS
     path_remove(path_replace_extension(&artifact_arena, input_path, ".exe"));
-    path_remove(path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
-    path_remove(path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
+    path_remove(
+        path_replace_extension(&artifact_arena, kept_binary_path, ".exe"));
+    path_remove(
+        path_replace_extension(&artifact_arena, temp_binary_path, ".exe"));
 #endif
 
     arena_done(&cwd_arena);

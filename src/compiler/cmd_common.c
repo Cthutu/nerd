@@ -33,7 +33,9 @@ cstr compiler_cmd_copy_path(Arena* arena, string path)
     return copy;
 }
 
-cstr compiler_cmd_output_root(Arena* arena, string output_path, NerdSource source)
+cstr compiler_cmd_output_root(Arena*     arena,
+                              string     output_path,
+                              NerdSource source)
 {
     if (output_path.count > 0) {
         return compiler_cmd_copy_path(arena, output_path);
@@ -49,9 +51,9 @@ cstr compiler_cmd_output_root(Arena* arena, string output_path, NerdSource sourc
 
 cstr compiler_cmd_sidecar_path(Arena* arena, cstr output_root, cstr extension)
 {
-    cstr   dir_path = path_dirname(arena, output_root);
-    string stem     = path_stem(s(output_root));
-    StringBuilder sb = {0};
+    cstr          dir_path = path_dirname(arena, output_root);
+    string        stem     = path_stem(s(output_root));
+    StringBuilder sb       = {0};
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
@@ -62,9 +64,9 @@ cstr compiler_cmd_sidecar_path(Arena* arena, cstr output_root, cstr extension)
 
 cstr compiler_cmd_temp_binary_path(Arena* arena, cstr output_root)
 {
-    cstr   dir_path = path_dirname(arena, output_root);
-    string stem     = path_stem(s(output_root));
-    StringBuilder sb = {0};
+    cstr          dir_path = path_dirname(arena, output_root);
+    string        stem     = path_stem(s(output_root));
+    StringBuilder sb       = {0};
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
