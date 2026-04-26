@@ -19,9 +19,11 @@ bool error_0200_code_too_complex(NerdSource source, ErrorSpan span)
     return false;
 }
 
-bool error_0201_missing_value(NerdSource source,
-                              ErrorSpan  span,
-                              TokenKind  expected_kind)
+bool error_0201_missing_value_ex(NerdSource source,
+                                 ErrorSpan  span,
+                                 TokenKind  expected_kind,
+                                 cstr       note,
+                                 cstr       help)
 {
     string    token = token_kind_to_string(expected_kind);
     ErrorInfo error = error_init(
@@ -31,27 +33,33 @@ bool error_0201_missing_value(NerdSource source,
                         span,
                         "%.*s cannot appear here",
                         STRINGV(token));
-    if (expected_kind == TK_Colon) {
-        error_add_note(
-            &error,
-            "A colon starts a type annotation or `:=` binding, so the parser "
-            "was still expecting an expression value here");
-        error_add_help(
-            &error,
-            "If you meant to update an existing value, use `=` instead of "
-            "`:=`");
-    } else {
-        error_add_help(
-            &error,
-            "Insert a literal, parenthesized expression, or unary operator");
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
     }
     error_render(&error);
     return false;
 }
 
-bool error_0202_missing_operator(NerdSource source,
-                                 ErrorSpan  span,
-                                 TokenKind  expected_kind)
+bool error_0201_missing_value(NerdSource source,
+                              ErrorSpan  span,
+                              TokenKind  expected_kind)
+{
+    return error_0201_missing_value_ex(
+        source,
+        span,
+        expected_kind,
+        NULL,
+        "Insert a literal, parenthesized expression, or unary operator");
+}
+
+bool error_0202_missing_operator_ex(NerdSource source,
+                                    ErrorSpan  span,
+                                    TokenKind  expected_kind,
+                                    cstr       note,
+                                    cstr       help)
 {
     string    token = token_kind_to_string(expected_kind);
     ErrorInfo error = error_init(
@@ -61,10 +69,26 @@ bool error_0202_missing_operator(NerdSource source,
                         span,
                         "%.*s starts a new expression here",
                         STRINGV(token));
-    error_add_help(
-        &error, "Insert an operator such as +, -, *, /, or %% between values");
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
     error_render(&error);
     return false;
+}
+
+bool error_0202_missing_operator(NerdSource source,
+                                 ErrorSpan  span,
+                                 TokenKind  expected_kind)
+{
+    return error_0202_missing_operator_ex(
+        source,
+        span,
+        expected_kind,
+        NULL,
+        "Insert an operator such as +, -, *, /, or %% between values");
 }
 
 bool error_0203_expected_token_ex(NerdSource source,

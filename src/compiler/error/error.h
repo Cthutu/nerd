@@ -97,11 +97,21 @@ bool error_0108_packed_integer_literal_too_large(NerdSource source,
 bool error_0200_code_too_complex(NerdSource source, ErrorSpan span);
 
 // Used when an operator is found without a previous value.
+bool error_0201_missing_value_ex(NerdSource source,
+                                 ErrorSpan  span,
+                                 TokenKind  expected_kind,
+                                 cstr       note,
+                                 cstr       help);
 bool error_0201_missing_value(NerdSource source,
                               ErrorSpan  span,
                               TokenKind  expected_kind);
 
 // Used when two values are found that are not separated with an operator.
+bool error_0202_missing_operator_ex(NerdSource source,
+                                    ErrorSpan  span,
+                                    TokenKind  expected_kind,
+                                    cstr       note,
+                                    cstr       help);
 bool error_0202_missing_operator(NerdSource source,
                                  ErrorSpan  span,
                                  TokenKind  expected_kind);

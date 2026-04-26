@@ -1321,7 +1321,7 @@ needed earlier.
 
 ## Milestone 35: Parser Diagnostic Category Audit
 
-- [ ] 104. Audit and regularise the `0200` parser diagnostic family before the
+- [X] 104. Audit and regularise the `0200` parser diagnostic family before the
   surface area grows further.
   - Keep `02xx` codes broad enough that `nerd explain <code>` can describe the
     category generically rather than only one syntax corner-case.
@@ -1348,9 +1348,18 @@ needed earlier.
     - `0205` (`expected declaration or expression`) now has an extensible API
       that accepts optional note/help context while preserving the simple
       wrapper used by current parser call sites.
+    - `0201` (`missing value`) now has an extensible API that accepts optional
+      note/help context, and the generic helper no longer hardcodes a
+      colon-specific parser explanation internally.
+    - `0202` (`missing operator`) now has an extensible API that accepts
+      optional note/help context.
     - The primary messages for `0203`-`0205` now carry the concrete
       expected/found token information rather than relying only on secondary
       references.
+    - The `0200` family now consistently distinguishes broad diagnostic
+      categories from source-specific wording. Category-specific helpers remain
+      broad; concrete parser incidents are expressed through rendered primary
+      messages, notes, and help text.
     - Regression snapshots were refreshed for the affected parser diagnostics
       so message-shape changes remain intentional.
 

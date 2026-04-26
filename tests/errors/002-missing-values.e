@@ -69,6 +69,6 @@
     ],
     "notes": [],
     "help": [
-        "Insert an operator such as +, -, *, /, or % between values"
+        "Insert an operator such as +, -, *, /, or %% between values"
     ]
 }
