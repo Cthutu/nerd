@@ -36,7 +36,7 @@ main :: fn () -> i32 {
 ¬
 {
     "code": "0321",
-    "message": "Block-form `on` does not support values of type `union { i32 #32, f32 #96 }`",
+    "message": "Block-form `on` does not support values of type `union { i32 i, f32 f }`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 4,
@@ -121,7 +121,7 @@ main :: fn () {
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `plex value`, found `union { i32 #32, f32 #96 }`",
+    "message": "Type mismatch: expected `plex value`, found `union { i32 i, f32 f }`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 4,
@@ -133,7 +133,7 @@ main :: fn () {
             "line": 4,
             "column": 12,
             "length": 4,
-            "message": "This expression has type `union { i32 #32, f32 #96 }`"
+            "message": "This expression has type `union { i32 i, f32 f }`"
         }
     ],
     "notes": [],

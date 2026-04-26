@@ -170,6 +170,9 @@ u32    sema_materialise_type(const Sema* sema, u32 type_index);
 bool   sema_type_is_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_concrete_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_float(const Sema* sema, u32 type_index);
-string sema_type_name(const Sema* sema, Arena* arena, u32 type_index);
+string sema_type_name(const Lexer* lexer,
+                      const Sema*  sema,
+                      Arena*       arena,
+                      u32          type_index);
 
 //------------------------------------------------------------------------------

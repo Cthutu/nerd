@@ -495,8 +495,10 @@ internal string lsp_decl_signature(const LspDocument* doc,
     if (decl->kind == SK_BuiltinFunction) {
         string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
         if (string_eq(name, s("pr")) || string_eq(name, s("prn"))) {
-            string rendered =
-                sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+            string rendered = sema_type_name(&doc->front_end.lexer,
+                                             &doc->front_end.sema,
+                                             arena,
+                                             decl->type_index);
             return string_eq(rendered, s("<unknown>"))
                        ? s("fn (string) -> void")
                        : rendered;
@@ -529,7 +531,8 @@ internal string lsp_decl_signature(const LspDocument* doc,
             }
         }
     }
-    return sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+    return sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, decl->type_index);
 }
 
 //------------------------------------------------------------------------------
@@ -546,7 +549,8 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
         return s("<unknown>");
     }
 
-    return sema_type_name(&doc->front_end.sema,
+    return sema_type_name(&doc->front_end.lexer,
+                          &doc->front_end.sema,
                           arena,
                           doc->front_end.sema.node_type_indices[node_index]);
 }
@@ -585,20 +589,26 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     string kind = s("value");
     string inferred_type = s("<unknown>");
     if (decl->kind == SK_TypeAlias) {
-        kind = s("type alias");
-        inferred_type =
-            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+        kind          = s("type alias");
+        inferred_type = sema_type_name(&doc->front_end.lexer,
+                                       &doc->front_end.sema,
+                                       arena,
+                                       decl->type_index);
     } else if (decl->kind == SK_Constant) {
         kind          = s("constant");
         inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
     } else if (decl->kind == SK_Variable) {
-        kind = s("variable");
-        inferred_type =
-            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+        kind          = s("variable");
+        inferred_type = sema_type_name(&doc->front_end.lexer,
+                                       &doc->front_end.sema,
+                                       arena,
+                                       decl->type_index);
     } else if (decl->kind == SK_Module) {
-        kind = s("module");
-        inferred_type =
-            sema_type_name(&doc->front_end.sema, arena, decl->type_index);
+        kind          = s("module");
+        inferred_type = sema_type_name(&doc->front_end.lexer,
+                                       &doc->front_end.sema,
+                                       arena,
+                                       decl->type_index);
     } else {
         kind          = s("function");
         inferred_type = lsp_decl_signature(doc, arena, decl);
@@ -663,8 +673,8 @@ internal string lsp_local_hover_text(const LspDocument* doc,
 {
     const SemaLocal* local = &doc->front_end.sema.locals[local_index];
     string name = lex_symbol(&doc->front_end.lexer, local->symbol_handle);
-    string type =
-        sema_type_name(&doc->front_end.sema, arena, local->type_index);
+    string type = sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, local->type_index);
     string kind =
         local->kind == SLK_Binder ? s("pattern binder") : s("local variable");
 

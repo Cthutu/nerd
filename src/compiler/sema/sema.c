@@ -799,7 +799,10 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
 //------------------------------------------------------------------------------
 // Render one semantic type as source-facing text.
 
-string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
+string sema_type_name(const Lexer* lexer,
+                      const Sema*  sema,
+                      Arena*       arena,
+                      u32          type_index)
 {
     if (type_index == sema_no_type()) {
         return s("<unknown>");
@@ -853,6 +856,7 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_append_string(
                     &sb,
                     sema_type_name(
+                        lexer,
                         sema,
                         arena,
                         sema->type_param_types[type->first_param_type + i]));
@@ -864,8 +868,8 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_append_cstr(&sb, "...");
             }
             sb_append_cstr(&sb, ") -> ");
-            sb_append_string(&sb,
-                             sema_type_name(sema, arena, type->return_type));
+            sb_append_string(
+                &sb, sema_type_name(lexer, sema, arena, type->return_type));
             return sb_to_string(&sb);
         }
     case STK_Module:
@@ -882,6 +886,7 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_append_string(
                     &sb,
                     sema_type_name(
+                        lexer,
                         sema,
                         arena,
                         sema->type_param_types[type->first_param_type + i]));
@@ -898,7 +903,8 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_init(&sb, arena);
             sb_format(&sb, "[%u]", type->return_type);
             sb_append_string(
-                &sb, sema_type_name(sema, arena, type->first_param_type));
+                &sb,
+                sema_type_name(lexer, sema, arena, type->first_param_type));
             return sb_to_string(&sb);
         }
     case STK_Slice:
@@ -907,7 +913,8 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_init(&sb, arena);
             sb_append_cstr(&sb, "[]");
             sb_append_string(
-                &sb, sema_type_name(sema, arena, type->first_param_type));
+                &sb,
+                sema_type_name(lexer, sema, arena, type->first_param_type));
             return sb_to_string(&sb);
         }
     case STK_Pointer:
@@ -916,7 +923,8 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
             sb_init(&sb, arena);
             sb_append_char(&sb, '^');
             sb_append_string(
-                &sb, sema_type_name(sema, arena, type->first_param_type));
+                &sb,
+                sema_type_name(lexer, sema, arena, type->first_param_type));
             return sb_to_string(&sb);
         }
     case STK_Plex:
@@ -933,13 +941,16 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 sb_append_string(
                     &sb,
                     sema_type_name(
+                        lexer,
                         sema,
                         arena,
                         sema->type_param_types[type->first_param_type + i]));
                 sb_append_char(&sb, ' ');
-                sb_format(&sb,
-                          "#%u",
-                          sema->type_param_symbols[type->first_param_type + i]);
+                sb_append_string(
+                    &sb,
+                    lex_symbol(
+                        lexer,
+                        sema->type_param_symbols[type->first_param_type + i]));
             }
             sb_append_cstr(&sb, " }");
             return sb_to_string(&sb);
@@ -953,15 +964,17 @@ string sema_type_name(const Sema* sema, Arena* arena, u32 type_index)
                 if (i > 0) {
                     sb_append_cstr(&sb, ", ");
                 }
-                sb_format(&sb,
-                          "#%u",
-                          sema->type_param_symbols[type->first_param_type + i]);
+                sb_append_string(
+                    &sb,
+                    lex_symbol(
+                        lexer,
+                        sema->type_param_symbols[type->first_param_type + i]));
                 u32 payload_type =
                     sema->type_param_types[type->first_param_type + i];
                 if (payload_type != sema_no_type()) {
                     sb_append_char(&sb, '(');
-                    sb_append_string(&sb,
-                                     sema_type_name(sema, arena, payload_type));
+                    sb_append_string(
+                        &sb, sema_type_name(lexer, sema, arena, payload_type));
                     sb_append_char(&sb, ')');
                 }
             }
@@ -1132,7 +1145,7 @@ internal bool sema_import_module_exports_to_scope(const Lexer* lexer,
             lexer->source,
             sema_node_span(lexer, &ast->nodes[use_node_index]),
             s("module"),
-            sema_type_name(sema, &temp_arena, module_type));
+            sema_type_name(lexer, sema, &temp_arena, module_type));
     }
 
     const SemaType* module = &sema->types[module_type];
@@ -1186,7 +1199,7 @@ internal bool sema_import_module_exports_to_decls(const Lexer* lexer,
             lexer->source,
             sema_node_span(lexer, &ast->nodes[use_node_index]),
             s("module"),
-            sema_type_name(sema, &temp_arena, module_type));
+            sema_type_name(lexer, sema, &temp_arena, module_type));
     }
 
     const SemaType* module = &sema->types[module_type];
@@ -5065,14 +5078,15 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
-                    sema_type_name(sema, &temp_arena, value_type),
-                    sema_type_name(sema, &temp_arena, pattern_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type),
+                    sema_type_name(lexer, sema, &temp_arena, pattern_type));
             }
             if ((pattern->kind == APK_Less || pattern->kind == APK_LessEqual ||
                  pattern->kind == APK_Greater ||
                  pattern->kind == APK_GreaterEqual) &&
                 !sema_type_is_numeric(sema, value_type)) {
-                string actual = sema_type_name(sema, &temp_arena, value_type);
+                string actual =
+                    sema_type_name(lexer, sema, &temp_arena, value_type);
                 return error_0326_invalid_binary_operands(
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
@@ -5092,7 +5106,8 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
     case APK_RangeInclusive:
         {
             if (!sema_type_is_concrete_integer(sema, value_type)) {
-                string actual = sema_type_name(sema, &temp_arena, value_type);
+                string actual =
+                    sema_type_name(lexer, sema, &temp_arena, value_type);
                 return error_0326_invalid_binary_operands(
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
@@ -5153,7 +5168,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* tuple = &sema->types[value_type];
             if (tuple->param_count != pattern->b) {
@@ -5161,7 +5176,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple with matching arity"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             for (u32 i = 0; i < pattern->b; ++i) {
                 if (!sema_check_on_pattern_type(
@@ -5184,7 +5199,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("plex"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* plex = &sema->types[value_type];
             for (u32 i = 0; i < pattern->b; ++i) {
@@ -5225,7 +5240,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("enum"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
@@ -5352,9 +5367,9 @@ internal bool sema_merge_control_break_type(const Lexer* lexer,
         bool ok = error_0320_on_branch_type_mismatch(
             lexer->source,
             sema_node_span(lexer, &ast->nodes[*in_out_result_type_node]),
-            sema_type_name(sema, &temp_arena, *in_out_result_type),
+            sema_type_name(lexer, sema, &temp_arena, *in_out_result_type),
             sema_node_span(lexer, &ast->nodes[break_node->a]),
-            sema_type_name(sema, &temp_arena, break_type));
+            sema_type_name(lexer, sema, &temp_arena, break_type));
         arena_done(&temp_arena);
         return ok;
     }
@@ -5759,9 +5774,9 @@ internal bool sema_infer_expr_block_type(const Lexer* lexer,
                     bool ok = error_0320_on_branch_type_mismatch(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[result_type_node]),
-                        sema_type_name(sema, &temp_arena, result_type),
+                        sema_type_name(lexer, sema, &temp_arena, result_type),
                         sema_node_span(lexer, &ast->nodes[stmt->a]),
-                        sema_type_name(sema, &temp_arena, break_type));
+                        sema_type_name(lexer, sema, &temp_arena, break_type));
                     arena_done(&temp_arena);
                     return ok;
                 }
@@ -5791,7 +5806,7 @@ internal bool sema_infer_expr_block_type(const Lexer* lexer,
         bool ok = error_0329_missing_expression_block_break(
             lexer->source,
             sema_node_span(lexer, node),
-            sema_type_name(sema, &temp_arena, result_type));
+            sema_type_name(lexer, sema, &temp_arena, result_type));
         arena_done(&temp_arena);
         return ok;
     }
@@ -6590,7 +6605,7 @@ internal bool sema_assign_destructure_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* tuple = &sema->types[value_type];
             if (tuple->param_count != pattern->b) {
@@ -6598,7 +6613,7 @@ internal bool sema_assign_destructure_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple with matching arity"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             for (u32 i = 0; i < pattern->b; ++i) {
                 if (!sema_assign_destructure_pattern_type(
@@ -6620,7 +6635,7 @@ internal bool sema_assign_destructure_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("plex"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* plex = &sema->types[value_type];
             for (u32 i = 0; i < pattern->b; ++i) {
@@ -6674,8 +6689,8 @@ internal bool sema_check_destructure_assign_pattern_type(const Lexer* lexer,
             return error_0304_type_mismatch(
                 lexer->source,
                 sema_pattern_span(lexer, pattern),
-                sema_type_name(sema, &temp_arena, target_type),
-                sema_type_name(sema, &temp_arena, value_type));
+                sema_type_name(lexer, sema, &temp_arena, target_type),
+                sema_type_name(lexer, sema, &temp_arena, value_type));
         }
         if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
             return sema_check_destructure_assign_pattern_type(
@@ -6695,7 +6710,7 @@ internal bool sema_check_destructure_assign_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* tuple = &sema->types[value_type];
             if (tuple->param_count != pattern->b) {
@@ -6703,7 +6718,7 @@ internal bool sema_check_destructure_assign_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("tuple with matching arity"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             for (u32 i = 0; i < pattern->b; ++i) {
                 if (!sema_check_destructure_assign_pattern_type(
@@ -6725,7 +6740,7 @@ internal bool sema_check_destructure_assign_pattern_type(const Lexer* lexer,
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("plex"),
-                    sema_type_name(sema, &temp_arena, value_type));
+                    sema_type_name(lexer, sema, &temp_arena, value_type));
             }
             const SemaType* plex = &sema->types[value_type];
             for (u32 i = 0; i < pattern->b; ++i) {
@@ -6804,7 +6819,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 s("enum context"),
                 expected_type == sema_no_type()
                     ? s("<unknown>")
-                    : sema_type_name(sema, &temp_arena, expected_type));
+                    : sema_type_name(lexer, sema, &temp_arena, expected_type));
         }
         if (sema_enum_variant_index(sema, expected_type, node->a) == U32_MAX) {
             return error_0304_type_mismatch(lexer->source,
@@ -6834,7 +6849,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[node->a]),
                     s("addressable value"),
-                    sema_type_name(sema, &temp_arena, pointee_type));
+                    sema_type_name(lexer, sema, &temp_arena, pointee_type));
             }
             type_index = sema_add_pointer_type(sema, pointee_type);
         }
@@ -6860,7 +6875,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0311_invalid_interpolation_type(
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[part->a]),
-                    sema_type_name(sema, &temp_arena, part_type));
+                    sema_type_name(lexer, sema, &temp_arena, part_type));
             }
         }
         type_index = sema_builtin_type(sema, STK_String);
@@ -6880,7 +6895,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(sema, &temp_arena, expected_type),
+                    sema_type_name(lexer, sema, &temp_arena, expected_type),
                     s("tuple with different arity"));
             }
             for (u32 i = 0; i < node->b; ++i) {
@@ -6923,7 +6938,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("tuple"),
-                    sema_type_name(sema, &temp_arena, tuple_type));
+                    sema_type_name(lexer, sema, &temp_arena, tuple_type));
             }
             const SemaType* tuple = &sema->types[tuple_type];
             if (node->b >= tuple->param_count) {
@@ -6931,7 +6946,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("valid tuple field"),
-                    sema_type_name(sema, &temp_arena, tuple_type));
+                    sema_type_name(lexer, sema, &temp_arena, tuple_type));
             }
             type_index =
                 sema->type_param_types[tuple->first_param_type + node->b];
@@ -6971,14 +6986,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_node_span(lexer, node),
                     node->kind == AK_Plex ? s("plex or union type")
                                           : s("plex value"),
-                    sema_type_name(sema, &temp_arena, target_type));
+                    sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             if (target_is_union && node->kind == AK_PlexUpdate) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("plex value"),
-                    sema_type_name(sema, &temp_arena, target_type));
+                    sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             const SemaType* record = &sema->types[target_type];
             if (target_is_plex && node->kind == AK_Plex &&
@@ -7165,7 +7180,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_node_span(lexer, node),
                     s("slice, string, module, plex, union, or pointer to "
                       "plex/union"),
-                    sema_type_name(sema, &temp_arena, target_type));
+                    sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             string field = lex_symbol(lexer, node->b);
             if (string_eq(field, s("data"))) {
@@ -7199,7 +7214,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(sema, &temp_arena, expected_type),
+                    sema_type_name(lexer, sema, &temp_arena, expected_type),
                     s("array with different length"));
             }
 
@@ -7235,8 +7250,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0304_type_mismatch(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[item_node]),
-                        sema_type_name(sema, &temp_arena, item_type),
-                        sema_type_name(sema, &temp_arena, actual_item));
+                        sema_type_name(lexer, sema, &temp_arena, item_type),
+                        sema_type_name(lexer, sema, &temp_arena, actual_item));
                 }
             }
 
@@ -7264,7 +7279,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("array, slice, or string"),
-                    sema_type_name(sema, &temp_arena, target_type));
+                    sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             if (slice->start_node_index != U32_MAX) {
                 u32 start_type = sema_no_type();
@@ -7283,7 +7298,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer,
                                        &ast->nodes[slice->start_node_index]),
                         s("integer slice bound"),
-                        sema_type_name(sema, &temp_arena, start_type));
+                        sema_type_name(lexer, sema, &temp_arena, start_type));
                 }
             }
             if (slice->end_node_index != U32_MAX) {
@@ -7303,7 +7318,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer,
                                        &ast->nodes[slice->end_node_index]),
                         s("integer slice bound"),
-                        sema_type_name(sema, &temp_arena, end_type));
+                        sema_type_name(lexer, sema, &temp_arena, end_type));
                 }
             }
             type_index =
@@ -7329,7 +7344,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("array, slice, or pointer"),
-                    sema_type_name(sema, &temp_arena, array_type));
+                    sema_type_name(lexer, sema, &temp_arena, array_type));
             }
 
             u32 index_type = sema_no_type();
@@ -7343,7 +7358,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[node->b]),
                     s("integer index"),
-                    sema_type_name(sema, &temp_arena, index_type));
+                    sema_type_name(lexer, sema, &temp_arena, index_type));
             }
 
             type_index = sema->types[array_type].first_param_type;
@@ -7540,7 +7555,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 bool ok = error_0332_missing_loop_else(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(sema, &temp_arena, loop_type));
+                    sema_type_name(lexer, sema, &temp_arena, loop_type));
                 arena_done(&temp_arena);
                 return ok;
             }
@@ -7551,7 +7566,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 bool ok = error_0332_missing_loop_else(
                     lexer->source,
                     sema_node_span(lexer, else_block),
-                    sema_type_name(sema, &temp_arena, loop_type));
+                    sema_type_name(lexer, sema, &temp_arena, loop_type));
                 arena_done(&temp_arena);
                 return ok;
             }
@@ -7617,7 +7632,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         return error_0323_negative_unsigned_inference(
                             lexer->source,
                             sema_node_span(lexer, node),
-                            sema_type_name(sema, &temp_arena, expected_type));
+                            sema_type_name(
+                                lexer, sema, &temp_arena, expected_type));
                     }
                 }
                 type_index = expected_type;
@@ -7654,7 +7670,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_node_span(lexer, node),
                     s("!"),
                     s("bool"),
-                    sema_type_name(sema, &temp_arena, type_index));
+                    sema_type_name(lexer, sema, &temp_arena, type_index));
             }
             type_index = sema_builtin_type(sema, STK_Bool);
             break;
@@ -7665,7 +7681,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema_node_span(lexer, node),
                 s("-"),
                 s("numeric"),
-                sema_type_name(sema, &temp_arena, type_index));
+                sema_type_name(lexer, sema, &temp_arena, type_index));
         }
         break;
 
@@ -7689,8 +7705,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(sema, &temp_arena, source_type),
-                    sema_type_name(sema, &temp_arena, target_type));
+                    sema_type_name(lexer, sema, &temp_arena, source_type),
+                    sema_type_name(lexer, sema, &temp_arena, target_type));
             }
 
             type_index = target_type;
@@ -7762,7 +7778,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0319_invalid_on_condition(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[node->a]),
-                        sema_type_name(sema, &temp_arena, scrutinee_type));
+                        sema_type_name(
+                            lexer, sema, &temp_arena, scrutinee_type));
                 }
             } else {
                 if (sema->types[scrutinee_type].kind == STK_UntypedInteger) {
@@ -7779,7 +7796,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0321_invalid_on_match_type(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[node->a]),
-                        sema_type_name(sema, &temp_arena, scrutinee_type));
+                        sema_type_name(
+                            lexer, sema, &temp_arena, scrutinee_type));
                 }
             }
 
@@ -7812,7 +7830,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             lexer->source,
                             sema_node_span(
                                 lexer, &ast->nodes[branch->guard_node_index]),
-                            sema_type_name(sema, &temp_arena, condition_type));
+                            sema_type_name(
+                                lexer, sema, &temp_arena, condition_type));
                     }
                 } else if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
@@ -7846,7 +7865,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             lexer->source,
                             sema_node_span(
                                 lexer, &ast->nodes[branch->guard_node_index]),
-                            sema_type_name(sema, &temp_arena, guard_type));
+                            sema_type_name(
+                                lexer, sema, &temp_arena, guard_type));
                     }
                 }
 
@@ -7915,10 +7935,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0320_on_branch_type_mismatch(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[branch_type_node]),
-                        sema_type_name(sema, &temp_arena, branch_type),
+                        sema_type_name(lexer, sema, &temp_arena, branch_type),
                         sema_node_span(lexer,
                                        &ast->nodes[branch->expr_node_index]),
-                        sema_type_name(sema, &temp_arena, current_type));
+                        sema_type_name(lexer, sema, &temp_arena, current_type));
                 }
             }
 
@@ -7993,8 +8013,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(sema, &temp_arena, lhs_type),
-                    sema_type_name(sema, &temp_arena, rhs_type));
+                    sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                    sema_type_name(lexer, sema, &temp_arena, rhs_type));
             }
 
             switch (node->kind) {
@@ -8014,8 +8034,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                           ? s("*")
                                           : s("/"))),
                         s("matching numeric operands"),
-                        sema_type_name(sema, &temp_arena, lhs_type),
-                        sema_type_name(sema, &temp_arena, rhs_type));
+                        sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                        sema_type_name(lexer, sema, &temp_arena, rhs_type));
                 }
                 type_index = lhs_type;
                 break;
@@ -8034,8 +8054,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                    : (node->kind == AK_BitwiseXor ? s("^")
                                                                   : s("|"))),
                         s("matching integer operands"),
-                        sema_type_name(sema, &temp_arena, lhs_type),
-                        sema_type_name(sema, &temp_arena, rhs_type));
+                        sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                        sema_type_name(lexer, sema, &temp_arena, rhs_type));
                 }
                 type_index = lhs_type;
                 break;
@@ -8047,8 +8067,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer, node),
                         node->kind == AK_Equal ? s("==") : s("!="),
                         s("matching numeric or bool operands"),
-                        sema_type_name(sema, &temp_arena, lhs_type),
-                        sema_type_name(sema, &temp_arena, rhs_type));
+                        sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                        sema_type_name(lexer, sema, &temp_arena, rhs_type));
                 }
                 type_index = sema_builtin_type(sema, STK_Bool);
                 break;
@@ -8067,8 +8087,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                    : (node->kind == AK_Greater ? s(">")
                                                                : s(">="))),
                         s("matching numeric operands"),
-                        sema_type_name(sema, &temp_arena, lhs_type),
-                        sema_type_name(sema, &temp_arena, rhs_type));
+                        sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                        sema_type_name(lexer, sema, &temp_arena, rhs_type));
                 }
                 type_index = sema_builtin_type(sema, STK_Bool);
                 break;
@@ -8080,8 +8100,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer, node),
                         node->kind == AK_LogicalAnd ? s("&&") : s("||"),
                         s("matching bool operands"),
-                        sema_type_name(sema, &temp_arena, lhs_type),
-                        sema_type_name(sema, &temp_arena, rhs_type));
+                        sema_type_name(lexer, sema, &temp_arena, lhs_type),
+                        sema_type_name(lexer, sema, &temp_arena, rhs_type));
                 }
                 type_index = sema_builtin_type(sema, STK_Bool);
                 break;
@@ -8128,8 +8148,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         return error_0304_type_mismatch(
                             lexer->source,
                             sema_node_span(lexer, callee),
-                            sema_type_name(sema, &temp_arena, enum_context),
-                            sema_type_name(sema, &temp_arena, qualified_type));
+                            sema_type_name(
+                                lexer, sema, &temp_arena, enum_context),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, qualified_type));
                     }
                     variant_symbol = callee->b;
                 }
@@ -8180,8 +8202,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             return error_0304_type_mismatch(
                                 lexer->source,
                                 sema_node_span(lexer, &ast->nodes[arg_node]),
-                                sema_type_name(sema, &temp_arena, expected_arg),
-                                sema_type_name(sema, &temp_arena, arg_type));
+                                sema_type_name(
+                                    lexer, sema, &temp_arena, expected_arg),
+                                sema_type_name(
+                                    lexer, sema, &temp_arena, arg_type));
                         }
                     }
                     sema->node_type_indices[node->a] = enum_context;
@@ -8201,7 +8225,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("function"),
-                    sema_type_name(sema, &temp_arena, callee_type));
+                    sema_type_name(lexer, sema, &temp_arena, callee_type));
             }
 
             const SemaType* fn_type = &sema->types[callee_type];
@@ -8233,7 +8257,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             lexer->source,
                             sema_node_span(lexer, &ast->nodes[arg_node]),
                             s("FFI-safe vararg type"),
-                            sema_type_name(sema, &temp_arena, arg_type));
+                            sema_type_name(lexer, sema, &temp_arena, arg_type));
                     }
                     continue;
                 }
@@ -8241,8 +8265,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0304_type_mismatch(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[arg_node]),
-                        sema_type_name(sema, &temp_arena, expected_arg),
-                        sema_type_name(sema, &temp_arena, arg_type));
+                        sema_type_name(lexer, sema, &temp_arena, expected_arg),
+                        sema_type_name(lexer, sema, &temp_arena, arg_type));
                 }
             }
 
@@ -8272,7 +8296,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0306_invalid_variable_type(
                         lexer->source,
                         sema_local_span(lexer, ast, local),
-                        sema_type_name(sema, &temp_arena, annotated));
+                        sema_type_name(lexer, sema, &temp_arena, annotated));
                 }
                 local->type_index = annotated;
                 type_index        = annotated;
@@ -8307,7 +8331,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return error_0306_invalid_variable_type(
                     lexer->source,
                     sema_local_span(lexer, ast, local),
-                    sema_type_name(sema, &temp_arena, type_index));
+                    sema_type_name(lexer, sema, &temp_arena, type_index));
             }
             local->type_index = type_index;
         }
@@ -8411,7 +8435,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return error_0314_missing_return(
                         lexer->source,
                         sema_node_span(lexer, node),
-                        sema_type_name(sema, &temp_arena, return_type));
+                        sema_type_name(lexer, sema, &temp_arena, return_type));
                 }
             }
 
@@ -8458,8 +8482,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer,
                                    &ast->nodes[ffi_info->library_node_index]),
-                    sema_type_name(sema, &temp_arena, string_type),
-                    sema_type_name(sema, &temp_arena, library_type));
+                    sema_type_name(lexer, sema, &temp_arena, string_type),
+                    sema_type_name(lexer, sema, &temp_arena, library_type));
             }
             if (!sema_expr_is_constantish(
                     ast, sema, ffi_info->library_node_index)) {
@@ -8468,7 +8492,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_node_span(lexer,
                                    &ast->nodes[ffi_info->library_node_index]),
                     s("compile-time string"),
-                    sema_type_name(sema, &temp_arena, library_type));
+                    sema_type_name(lexer, sema, &temp_arena, library_type));
             }
 
             u32 return_type = sema_builtin_type(sema, STK_Void);
@@ -8488,7 +8512,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[span_node]),
                     s("FFI-safe return type"),
-                    sema_type_name(sema, &temp_arena, return_type));
+                    sema_type_name(lexer, sema, &temp_arena, return_type));
             }
 
             Array(u32) param_types = NULL;
@@ -8507,7 +8531,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[param_type_node]),
                         s("FFI-safe parameter type"),
-                        sema_type_name(sema, &temp_arena, param_type));
+                        sema_type_name(lexer, sema, &temp_arena, param_type));
                 }
                 array_push(param_types, param_type);
             }
@@ -8551,7 +8575,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             return error_0323_negative_unsigned_inference(
                 lexer->source,
                 sema_node_span(lexer, node),
-                sema_type_name(sema, &temp_arena, expected_type));
+                sema_type_name(lexer, sema, &temp_arena, expected_type));
         }
     }
 
@@ -8560,8 +8584,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         return error_0304_type_mismatch(
             lexer->source,
             sema_node_span(lexer, node),
-            sema_type_name(sema, &temp_arena, expected_type),
-            sema_type_name(sema, &temp_arena, type_index));
+            sema_type_name(lexer, sema, &temp_arena, expected_type),
+            sema_type_name(lexer, sema, &temp_arena, type_index));
     }
 
     sema->node_type_indices[node_index] = type_index;
@@ -8623,7 +8647,7 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
                 return error_0306_invalid_variable_type(
                     lexer->source,
                     sema_decl_span(lexer, ast, decl),
-                    sema_type_name(sema, &temp_arena, decl->type_index));
+                    sema_type_name(lexer, sema, &temp_arena, decl->type_index));
             }
         } else {
             decl->type_index =
@@ -9014,7 +9038,7 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),
-            sema_type_name(sema, &temp_arena, type_index));
+            sema_type_name(lexer, sema, &temp_arena, type_index));
     }
 
     const SemaType* fn_type = &sema->types[type_index];
@@ -9023,7 +9047,7 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),
-            sema_type_name(sema, &temp_arena, type_index));
+            sema_type_name(lexer, sema, &temp_arena, type_index));
     }
 
     return true;

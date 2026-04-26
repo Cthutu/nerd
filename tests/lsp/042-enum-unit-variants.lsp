@@ -68,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\ncolour\n```\n\n- Kind: local variable\n- Type: `enum { #96, #128, #160 }`"
+                "value": "```nerd\ncolour\n```\n\n- Kind: local variable\n- Type: `enum { Red, Green, Blue }`"
             }
         }
     },

@@ -11,6 +11,20 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 5,
+                "character": 4
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
         "method": "textDocument/semanticTokens/full",
         "params": {
             "textDocument": {
@@ -20,4 +34,72 @@ main :: fn () {
     }
 ]
 ¬
-[{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"Nerd LSP","version":"0.1.0"},"capabilities":{"textDocumentSync":1,"hoverProvider":true,"definitionProvider":true,"documentSymbolProvider":true,"semanticTokensProvider":{"legend":{"tokenTypes":["variable","function","keyword","number","operator","string"],"tokenModifiers":[]},"full":true}}}},{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///test.n","diagnostics":[]}},{"jsonrpc":"2.0","id":2,"result":{"data":[0,4,3,0,0,0,3,1,4,0,0,1,5,0,0,2,0,5,0,0,0,6,1,4,0,0,1,1,4,0,0,2,4,2,0,0,7,1,0,0,0,2,3,0,0,0,4,1,0,0,0,2,3,0,0,2,0,4,0,0,0,5,1,4,0,0,1,1,4,0,0,2,2,2,0,1,4,1,0,0,0,2,1,4,0,0,1,1,4,0,0,2,5,0,0,0,8,1,0,0,0,1,1,4,0,0,2,1,3,0,0,3,1,0,0,0,1,1,4,0,0,2,1,3,0,1,4,3,0,0,0,4,2,5,0,0,3,1,0,0,0,1,1,4,0,0,1,1,0,0,0,2,1,5,0,0,2,1,0,0,0,1,1,4,0,0,1,1,0,0,0,2,1,5,0]}},{"jsonrpc":"2.0","id":999,"result":null}]
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+            "serverInfo": {
+                "name": "Nerd LSP",
+                "version": "0.1.0"
+            },
+            "capabilities": {
+                "textDocumentSync": 1,
+                "hoverProvider": true,
+                "definitionProvider": true,
+                "documentSymbolProvider": true,
+                "semanticTokensProvider": {
+                    "legend": {
+                        "tokenTypes": [
+                            "variable",
+                            "function",
+                            "keyword",
+                            "number",
+                            "operator",
+                            "string"
+                        ],
+                        "tokenModifiers": []
+                    },
+                    "full": true
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "file:///test.n",
+            "diagnostics": []
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\np\n```\n\n- Kind: local variable\n- Type: `plex { i32 x, i32 y }`"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+            "data": [
+                0,4,3,0,0,0,3,1,4,0,0,1,5,0,0,2,0,5,0,0,0,6,1,4,0,0,1,1,4,0,0,
+                2,4,2,0,0,7,1,0,0,0,2,3,0,0,0,4,1,0,0,0,2,3,0,0,2,0,4,0,0,0,5,
+                1,4,0,0,1,1,4,0,0,2,2,2,0,1,4,1,0,0,0,2,1,4,0,0,1,1,4,0,0,2,5,
+                0,0,0,8,1,0,0,0,1,1,4,0,0,2,1,3,0,0,3,1,0,0,0,1,1,4,0,0,2,1,3,
+                0,1,4,3,0,0,0,4,2,5,0,0,3,1,0,0,0,1,1,4,0,0,1,1,0,0,0,2,1,5,0,
+                0,2,1,0,0,0,1,1,4,0,0,1,1,0,0,0,2,1,5,0
+            ]
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 999,
+        "result": null
+    }
+]
