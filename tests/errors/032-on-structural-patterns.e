@@ -54,3 +54,31 @@ main :: fn () => on Point { x: 1, y: 2 } {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+main :: fn () => on (1, 2) {
+    (1, x) => 1
+    else => 0
+}
+¬
+{
+    "code": "0300",
+    "message": "Unknown symbol `x`",
+    "source_file": "tests/errors/032-on-structural-patterns.e",
+    "primary_location": {
+        "line": 2,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 9,
+            "length": 1,
+            "message": "This symbol is not defined"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Add a binding for `x` or fix the spelling."
+    ]
+}

@@ -5,8 +5,8 @@ Maybe :: enum { None Some(i32) Pair(i32, i32) Text(string) }
 score :: fn (value: Maybe) -> i32 {
     return on value {
         None => 0
-        Some(x) => x
-        Pair(left, right) => left + right
+        Some(as x) => x
+        Pair(as left, as right) => left + right
         Text(_) => 100
     }
 }
@@ -42,9 +42,9 @@ $9 = enum{None,Some(i32),Pair((i32,i32)),Text(string)}:value == enum{None,Some(i
 branch.false bool:$9, L6
 $10 = enum{None,Some(i32),Pair((i32,i32)),Text(string)}:value.payload(1)
 $11 = enum{None,Some(i32),Pair((i32,i32)),Text(string)}:value.payload(1)
-local score$x$on46 = i32:$11
+local score$x$on47 = i32:$11
 label L7
-$0 = i32:score$x$on46
+$0 = i32:score$x$on47
 jump L1
 label L6
 $14 = enum(2)
@@ -55,11 +55,11 @@ $17 = (i32,i32):$16.0
 $18 = (i32,i32):$16.1
 $19 = enum{None,Some(i32),Pair((i32,i32)),Text(string)}:value.payload(2)
 $20 = (i32,i32):$19.0
-local score$left$on52 = i32:$20
+local score$left$on54 = i32:$20
 $21 = (i32,i32):$19.1
-local score$right$on54 = i32:$21
+local score$right$on57 = i32:$21
 label L13
-$22 = i32:score$left$on52 + i32:score$right$on54
+$22 = i32:score$left$on54 + i32:score$right$on57
 $0 = i32:$22
 jump L1
 label L12
@@ -131,9 +131,9 @@ int $score(enum8 $value) {
     if (!$9) goto L6;
     int $10 = $value.data.$Some;
     int $11 = $value.data.$Some;
-    int $score$x$on46 = $11;
+    int $score$x$on47 = $11;
     L7: ;
-    $0 = $score$x$on46;
+    $0 = $score$x$on47;
     goto L1;
     L6: ;
     enum8 $14 = (enum8){.tag = 2};
@@ -144,11 +144,11 @@ int $score(enum8 $value) {
     int $18 = $16._1;
     tuple7 $19 = $value.data.$Pair;
     int $20 = $19._0;
-    int $score$left$on52 = $20;
+    int $score$left$on54 = $20;
     int $21 = $19._1;
-    int $score$right$on54 = $21;
+    int $score$right$on57 = $21;
     L13: ;
-    int $22 = $score$left$on52 + $score$right$on54;
+    int $22 = $score$left$on54 + $score$right$on57;
     $0 = $22;
     goto L1;
     L12: ;

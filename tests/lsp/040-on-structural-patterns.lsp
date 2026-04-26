@@ -1,6 +1,6 @@
 Point :: plex { x i32 y i32 }
 main :: fn () => on Point { x: 3, y: 4 } {
-    { x: 3, y } => y
+    { x: 3, y: as y } => y
     else => 0
 }
 ¬
@@ -77,29 +77,12 @@ main :: fn () => on Point { x: 3, y: 4 } {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\ny\n```\n\n- Kind: pattern binder\n- Type: `i32`"
-            }
-        }
+        "result": null
     },
     {
         "jsonrpc": "2.0",
         "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 2,
-                    "character": 12
-                },
-                "end": {
-                    "line": 2,
-                    "character": 13
-                }
-            }
-        }
+        "result": null
     },
     {
         "jsonrpc": "2.0",

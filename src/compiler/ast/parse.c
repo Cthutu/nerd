@@ -1018,17 +1018,7 @@ internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
                 return false;
             }
         } else {
-            if (!ast_emit_pattern(state,
-                                  (AstPattern){
-                                      .kind        = APK_Bind,
-                                      .token_index = field.token_index,
-                                      .a           = field.value.symbol_handle,
-                                      .b           = U32_MAX,
-                                  },
-                                  &field_pattern)) {
-                return false;
-            }
-            if (!ast_next_token(state)) {
+            if (!ast_parse_pattern(state, &field_pattern)) {
                 return false;
             }
         }
@@ -1106,24 +1096,7 @@ internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)
     if (state->token.kind != TK_RParen) {
         for (;;) {
             u32 item = U32_MAX;
-            if (state->token.kind == TK_Symbol &&
-                !ast_symbol_is_underscore(state->lexer,
-                                          state->token.value.symbol_handle)) {
-                AstToken symbol = state->token;
-                if (!ast_emit_pattern(state,
-                                      (AstPattern){
-                                          .kind        = APK_Bind,
-                                          .token_index = symbol.token_index,
-                                          .a = symbol.value.symbol_handle,
-                                          .b = U32_MAX,
-                                      },
-                                      &item)) {
-                    return false;
-                }
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-            } else if (!ast_parse_pattern(state, &item)) {
+            if (!ast_parse_pattern(state, &item)) {
                 return false;
             }
             array_push(state->pattern_items, item);
@@ -1187,25 +1160,7 @@ internal bool ast_parse_enum_variant_pattern(AstParseState* state,
     if (state->token.kind != TK_RParen) {
         for (;;) {
             u32 item = U32_MAX;
-            if (state->token.kind == TK_Symbol &&
-                !ast_symbol_is_underscore(state->lexer,
-                                          state->token.value.symbol_handle) &&
-                ast_peek_kind_at(state, 0) != TK_LParen) {
-                AstToken symbol = state->token;
-                if (!ast_emit_pattern(state,
-                                      (AstPattern){
-                                          .kind        = APK_Bind,
-                                          .token_index = symbol.token_index,
-                                          .a = symbol.value.symbol_handle,
-                                          .b = U32_MAX,
-                                      },
-                                      &item)) {
-                    return false;
-                }
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-            } else if (!ast_parse_pattern(state, &item)) {
+            if (!ast_parse_pattern(state, &item)) {
                 return false;
             }
             array_push(state->pattern_items, item);
@@ -1285,6 +1240,37 @@ internal AstPatternKind ast_parse_comparison_pattern_kind(TokenKind kind)
 
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
 {
+    if (state->token.kind == TK_as) {
+        AstToken as_token = state->token;
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &as_token),
+                                             TK_Symbol,
+                                             TK_EOF);
+        }
+        if (state->token.kind != TK_Symbol ||
+            ast_symbol_is_underscore(state->lexer,
+                                     state->token.value.symbol_handle)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+        AstToken symbol = state->token;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+        return ast_emit_pattern(state,
+                                (AstPattern){
+                                    .kind        = APK_Bind,
+                                    .token_index = symbol.token_index,
+                                    .a           = symbol.value.symbol_handle,
+                                    .b           = U32_MAX,
+                                },
+                                out_pattern);
+    }
+
     AstPatternKind comparison_kind =
         ast_parse_comparison_pattern_kind(state->token.kind);
     if (comparison_kind != APK_Value) {

@@ -309,7 +309,8 @@ internal u32 g_format_expr_indent_level = 0;
 internal void format_emit_pattern(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
-                                  u32            pattern_index)
+                                  u32            pattern_index,
+                                  bool           explicit_binds)
 {
     const CstPattern* pattern = &cst->patterns[pattern_index];
     switch (pattern->kind) {
@@ -336,8 +337,10 @@ internal void format_emit_pattern(StringBuilder* sb,
         break;
     case CPK_Bind:
         if (pattern->b != U32_MAX) {
-            format_emit_pattern(sb, cst, lexer, pattern->b);
+            format_emit_pattern(sb, cst, lexer, pattern->b, explicit_binds);
             sb_append_cstr(sb, " as ");
+        } else if (explicit_binds) {
+            sb_append_cstr(sb, "as ");
         }
         sb_append_string(sb, lex_symbol(lexer, pattern->a));
         break;
@@ -353,8 +356,11 @@ internal void format_emit_pattern(StringBuilder* sb,
             if (i > 0) {
                 sb_append_cstr(sb, ", ");
             }
-            format_emit_pattern(
-                sb, cst, lexer, cst->pattern_items[pattern->a + i]);
+            format_emit_pattern(sb,
+                                cst,
+                                lexer,
+                                cst->pattern_items[pattern->a + i],
+                                explicit_binds);
         }
         if (pattern->b == 1) {
             sb_append_char(sb, ',');
@@ -372,11 +378,12 @@ internal void format_emit_pattern(StringBuilder* sb,
             sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
             const CstPattern* field_pattern =
                 &cst->patterns[field->pattern_index];
-            if (!(field_pattern->kind == CPK_Bind &&
+            if (!(!explicit_binds && field_pattern->kind == CPK_Bind &&
                   field_pattern->b == U32_MAX &&
                   field_pattern->a == field->symbol_handle)) {
                 sb_append_cstr(sb, ": ");
-                format_emit_pattern(sb, cst, lexer, field->pattern_index);
+                format_emit_pattern(
+                    sb, cst, lexer, field->pattern_index, explicit_binds);
             }
         }
         sb_append_cstr(sb, " }");
@@ -396,7 +403,8 @@ internal void format_emit_pattern(StringBuilder* sb,
                     sb,
                     cst,
                     lexer,
-                    cst->pattern_items[enum_pattern->first_pattern + i]);
+                    cst->pattern_items[enum_pattern->first_pattern + i],
+                    explicit_binds);
             }
             sb_append_char(sb, ')');
         }
@@ -807,8 +815,8 @@ internal void format_emit_expr(StringBuilder* sb,
                             sb,
                             cst,
                             lexer,
-                            cst->pattern_items[branch->pattern_index +
-                                               pattern]);
+                            cst->pattern_items[branch->pattern_index + pattern],
+                            true);
                     }
                 }
                 if (branch->binder_symbol_handle != U32_MAX) {
@@ -984,7 +992,8 @@ internal string format_render_on_branch_head(Arena*             arena,
                 &sb,
                 cst,
                 lexer,
-                cst->pattern_items[branch->pattern_index + pattern]);
+                cst->pattern_items[branch->pattern_index + pattern],
+                true);
         }
     }
     if (branch->binder_symbol_handle != U32_MAX) {
@@ -2261,7 +2270,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_DestructureBind) {
-        format_emit_pattern(sb, cst, lexer, stmt->a);
+        format_emit_pattern(sb, cst, lexer, stmt->a, false);
         sb_append_cstr(
             sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
         format_emit_value(sb, cst, lexer, stmt->b);
@@ -2270,7 +2279,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_DestructureVariable) {
-        format_emit_pattern(sb, cst, lexer, stmt->a);
+        format_emit_pattern(sb, cst, lexer, stmt->a, false);
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue) {
             sb_append_cstr(sb, ": ");
             format_emit_variable_payload(sb, cst, lexer, stmt->b);
@@ -2284,7 +2293,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_DestructureAssign) {
-        format_emit_pattern(sb, cst, lexer, stmt->a);
+        format_emit_pattern(sb, cst, lexer, stmt->a, false);
         sb_append_cstr(sb, " = ");
         format_emit_expr_with_indent(sb, cst, lexer, stmt->b, 0, indent_level);
         sb_append_char(sb, '\n');
