@@ -150,5 +150,21 @@ bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)
     return false;
 }
 
+bool error_0207_unexpected_less_after_range(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(207, source, span, "Unexpected `<` after `..`");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This `<` cannot follow `..` here");
+    error_add_note(&error,
+                   "Exclusive end ranges and slices use `..`; inclusive end "
+                   "forms use `..=`");
+    error_add_help(
+        &error,
+        "Remove the `<` and keep `..` for an exclusive end range or slice");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

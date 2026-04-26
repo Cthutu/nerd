@@ -84,3 +84,33 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+main :: fn () {
+    values :: [1, 2, 3]
+    slice :: values[..< values.count]
+}
+¬
+{
+    "code": "0207",
+    "message": "Unexpected `<` after `..`",
+    "source_file": "tests/errors/026-slices.e",
+    "primary_location": {
+        "line": 3,
+        "column": 23
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 23,
+            "length": 1,
+            "message": "This `<` cannot follow `..` here"
+        }
+    ],
+    "notes": [
+        "Exclusive end ranges and slices use `..`; inclusive end forms use `..=`"
+    ],
+    "help": [
+        "Remove the `<` and keep `..` for an exclusive end range or slice"
+    ]
+}
