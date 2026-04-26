@@ -32,7 +32,7 @@ bool error_0201_missing_value(NerdSource source,
                         "%.*s cannot appear here",
                         STRINGV(token));
     if (expected_kind == TK_Colon) {
-        error_add_help(
+        error_add_note(
             &error,
             "A colon starts a type annotation or `:=` binding, so the parser "
             "was still expecting an expression value here");
@@ -138,7 +138,7 @@ bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)
         error_init(206, source, span, "Invalid binding target before `:=`");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "`:=` starts a new binding here");
-    error_add_help(
+    error_add_note(
         &error,
         "Bindings started with `:=` must begin with a symbol or supported "
         "destructuring pattern");

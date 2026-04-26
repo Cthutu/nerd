@@ -81,6 +81,12 @@ From the current codebase and test suite:
     appropriate notes or help text, or
   - an ICE when the failure represents a compiler bug or violated internal
     invariant rather than invalid user source.
+- Keep diagnostic note/help roles distinct:
+  - use notes for extra explanatory context about why the error happened, what
+    language rule applies, or what related compiler fact is relevant
+  - use help for actionable fix guidance about what the user can change
+  - avoid using help for static background context when no concrete fix advice
+    is being given
 - Use help messages for contextual fix guidance. Use note messages for more
   static explanatory context that is not tailored to one specific fix.
 - Test artefact clean-up must stay developer-friendly:

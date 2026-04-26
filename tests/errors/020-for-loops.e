@@ -111,9 +111,10 @@ main :: fn () {
             "message": "`:=` starts a new binding here"
         }
     ],
-    "notes": [],
+    "notes": [
+        "Bindings started with `:=` must begin with a symbol or supported destructuring pattern"
+    ],
     "help": [
-        "Bindings started with `:=` must begin with a symbol or supported destructuring pattern",
         "Use `=` to assign to an existing value such as a dereference or field access"
     ]
 }
