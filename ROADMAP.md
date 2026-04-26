@@ -310,7 +310,9 @@ needed earlier.
   - Keep formatter work horizontally synchronised with compiler, LSP, and test
     support for each feature.
   - Current formatter coverage includes primitive operators, float literal
-    spelling, local declaration alignment, and split const/variable alignment
+    spelling, assignment expressions, `for ... in` over strings, dereference
+    assignment targets, multiline arrays, multiline contextual plex literals,
+    local declaration alignment, and split const/variable alignment
     sub-paragraphs.
 
 - [ ] 22. Extend the LSP as new language features land.
@@ -1417,8 +1419,8 @@ milestone yet.
   - Keep commas required in array literals. Do not adopt optional-comma syntax,
     because the parser/formatter trade-off is not worth the ambiguity pressure.
 - [ ] Improve plex literal formatting.
-  - For multi-line plex literals, align the `:` tokens so field values begin in
-    the same column.
+  - [x] For multi-line plex literals, align the `:` tokens so field values
+    begin in the same column.
   - For consecutive single-line plex literals in the same paragraph or array,
     align field/value columns vertically across the sibling literals when they
     all remain single-line.

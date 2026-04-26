@@ -85,7 +85,7 @@
 // | CK_Undefined       | Type node index       | 0                     |
 // | CK_Bind            | Symbol handle         | Value node index      |
 // | CK_Variable        | Symbol handle         | Value node index      |
-// | CK_Assign          | Symbol handle         | Value node index      |
+// | CK_Assign          | Target node index     | Value node index      |
 
 typedef enum {
     CK_IntegerLiteral,
