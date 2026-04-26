@@ -109,3 +109,29 @@ main :: fn () => values[0]
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+values: [2]i32: [1, 2, 3]
+main :: fn () => values[0]
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `[2]i32`, found `array with different length`",
+    "source_file": "tests/errors/024-fixed-arrays.e",
+    "primary_location": {
+        "line": 1,
+        "column": 17
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 17,
+            "length": 1,
+            "message": "This expression has type `array with different length`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

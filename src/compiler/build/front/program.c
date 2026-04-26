@@ -34,6 +34,13 @@ internal cstr program_copy_cstr_from_string(Arena* arena, string value)
     return copy;
 }
 
+internal void program_rebind_sema_programs(ProgramInfo* program)
+{
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        program->modules[i].front_end.sema.program = program;
+    }
+}
+
 internal bool
 program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
 {
@@ -293,25 +300,28 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         return false;
     }
 
+    Lexer module_lexer = current->front_end.lexer;
+    Ast   module_ast   = current->front_end.ast;
     if (!program_collect_module_dependencies(
             program,
             options,
             timing,
             module_index,
-            &current->front_end.lexer,
-            &current->front_end.ast,
+            &module_lexer,
+            &module_ast,
             0,
-            (u32)array_count(current->front_end.ast.nodes))) {
-        current->state = MODULE_Failed;
+            (u32)array_count(module_ast.nodes))) {
+        program->modules[module_index].state = MODULE_Failed;
         return false;
     }
 
     if (!program_front_end_finish(
             program, module_index, options, timing, false)) {
-        current->state = MODULE_Failed;
+        program->modules[module_index].state = MODULE_Failed;
         return false;
     }
 
+    current = &program->modules[module_index];
     program_collect_module_exports(current);
     current->state = MODULE_Loaded;
     return true;
@@ -432,16 +442,19 @@ bool front_end_program(NerdSource             source,
         return false;
     }
 
+    Lexer root_lexer =
+        program.modules[program.root_module_index].front_end.lexer;
+    Ast root_ast = program.modules[program.root_module_index].front_end.ast;
+
     if (!program_collect_module_dependencies(
             &program,
             &effective_options,
             timing,
             program.root_module_index,
-            &program.modules[program.root_module_index].front_end.lexer,
-            &program.modules[program.root_module_index].front_end.ast,
+            &root_lexer,
+            &root_ast,
             0,
-            (u32)array_count(program.modules[program.root_module_index]
-                                 .front_end.ast.nodes))) {
+            (u32)array_count(root_ast.nodes))) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;
@@ -462,6 +475,7 @@ bool front_end_program(NerdSource             source,
 
     if (out_program != NULL) {
         *out_program = program;
+        program_rebind_sema_programs(out_program);
     } else {
         program_info_done(&program);
     }

@@ -277,11 +277,18 @@ void ir_add_tuple(Ir* ir, IrValue lvalue, u32 lvalue_type, Array(IrValue) items)
         });
 }
 
-void ir_add_plex_items(Ir*     ir,
-                       IrValue lvalue,
-                       u32     lvalue_type,
-                       Array(u32) symbols,
-                       Array(IrValue) values);
+void          ir_add_plex_items(Ir*     ir,
+                                IrValue lvalue,
+                                u32     lvalue_type,
+                                Array(u32) symbols,
+                                Array(IrValue) values);
+internal bool ir_decl_uses_implicit_array_slice(const Ast*      ast,
+                                                const Sema*     sema,
+                                                const SemaDecl* decl);
+internal u32  ir_decl_implicit_array_slice_type(const Ast*      ast,
+                                                const Sema*     sema,
+                                                const SemaDecl* decl);
+internal u32  ir_hidden_backing_symbol(Lexer* lexer, u32 symbol_handle);
 
 void ir_add_plex(Ir*                       ir,
                  IrValue                   lvalue,
@@ -2549,6 +2556,35 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                          next_value_index,
                                          ir));
             }
+            u32 implicit_array_type =
+                node_index < array_count(sema->node_implicit_array_type_indices)
+                    ? sema->node_implicit_array_type_indices[node_index]
+                    : sema_no_type();
+            if (implicit_array_type != sema_no_type()) {
+                IrValue array_value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = implicit_array_type,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_array(ir, array_value, implicit_array_type, items);
+                IrValue slice_value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = ir_node_type_index(ast, sema, node_index),
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_slice(ir,
+                             slice_value,
+                             ir_node_type_index(ast, sema, node_index),
+                             array_value,
+                             implicit_array_type,
+                             ir_unset_value(),
+                             sema_no_type(),
+                             ir_unset_value(),
+                             sema_no_type());
+                array_free(items);
+                node_values[node_index] = slice_value;
+                return slice_value;
+            }
             IrValue value = {
                 .kind          = IR_VALUE_VARIABLE,
                 .type          = ir_node_type_index(ast, sema, node_index),
@@ -4041,8 +4077,73 @@ internal void ir_generate_global_init(const Lexer*    lex,
                                       Ir*             ir)
 {
     Array(IrValue) node_values = ir_make_node_values(ast);
-    IrValue result             = {
-                    .kind = IR_VALUE_INTEGER, .type = decl->type_index, .value.integer = 0};
+    if (ir_decl_uses_implicit_array_slice(ast, sema, decl)) {
+        u32 backing_type = ir_decl_implicit_array_slice_type(ast, sema, decl);
+        u32 backing_symbol =
+            ir_hidden_backing_symbol((Lexer*)lex, decl->symbol_handle);
+        u32            array_node_index = decl->value_node_index;
+        const AstNode* array_node       = &ast->nodes[array_node_index];
+        if (array_node->kind == AK_Expression) {
+            array_node_index = array_node->a;
+            array_node       = &ast->nodes[array_node_index];
+        }
+        ASSERT(array_node->kind == AK_Array,
+               "Expected implicit slice backing to come from array literal");
+        Array(IrValue) items = NULL;
+        for (u32 i = 0; i < array_node->b; ++i) {
+            array_push(items,
+                       ir_lower_node(lex,
+                                     ast,
+                                     sema,
+                                     ast->tuple_items[array_node->a + i],
+                                     ir_no_control_labels(),
+                                     node_values,
+                                     next_value_index,
+                                     ir));
+        }
+        IrValue backing_value = {
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = backing_type,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        ir_add_array(ir, backing_value, backing_type, items);
+        array_free(items);
+        ir_add_assign(ir,
+                      (IrValue){.kind          = IR_VALUE_SYMBOL,
+                                .type          = backing_type,
+                                .value.integer = backing_symbol},
+                      backing_type,
+                      backing_value,
+                      backing_type);
+
+        IrValue slice_value = {
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = decl->type_index,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        ir_add_slice(ir,
+                     slice_value,
+                     decl->type_index,
+                     (IrValue){.kind          = IR_VALUE_SYMBOL,
+                               .type          = backing_type,
+                               .value.integer = backing_symbol},
+                     backing_type,
+                     ir_unset_value(),
+                     sema_no_type(),
+                     ir_unset_value(),
+                     sema_no_type());
+        ir_add_assign(ir,
+                      (IrValue){.kind          = IR_VALUE_SYMBOL,
+                                .type          = decl->type_index,
+                                .value.integer = decl->symbol_handle},
+                      decl->type_index,
+                      slice_value,
+                      decl->type_index);
+        array_free(node_values);
+        return;
+    }
+    IrValue result = {
+        .kind = IR_VALUE_INTEGER, .type = decl->type_index, .value.integer = 0};
     if (decl->value_node_index != sema_no_decl()) {
         result = ir_lower_node(lex,
                                ast,
@@ -4061,6 +4162,50 @@ internal void ir_generate_global_init(const Lexer*    lex,
                   result,
                   decl->type_index);
     array_free(node_values);
+}
+
+internal u32 ir_decl_implicit_array_slice_node_index(const Ast*      ast,
+                                                     const SemaDecl* decl)
+{
+    if (decl->value_node_index == sema_no_decl()) {
+        return sema_no_decl();
+    }
+    u32 node_index = decl->value_node_index;
+    if (ast->nodes[node_index].kind == AK_Expression) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
+internal bool ir_decl_uses_implicit_array_slice(const Ast*      ast,
+                                                const Sema*     sema,
+                                                const SemaDecl* decl)
+{
+    u32 node_index = ir_decl_implicit_array_slice_node_index(ast, decl);
+    return node_index != sema_no_decl() &&
+           node_index < array_count(sema->node_implicit_array_type_indices) &&
+           sema->node_implicit_array_type_indices[node_index] != sema_no_type();
+}
+
+internal u32 ir_decl_implicit_array_slice_type(const Ast*      ast,
+                                               const Sema*     sema,
+                                               const SemaDecl* decl)
+{
+    u32 node_index = ir_decl_implicit_array_slice_node_index(ast, decl);
+    if (node_index == sema_no_decl()) {
+        return sema_no_type();
+    }
+    return sema->node_implicit_array_type_indices[node_index];
+}
+
+internal u32 ir_hidden_backing_symbol(Lexer* lexer, u32 symbol_handle)
+{
+    string backing_name =
+        string_format(&temp_arena,
+                      STRINGP "$backing",
+                      STRINGV(lex_symbol(lexer, symbol_handle)));
+    InternAddResult ignored = {0};
+    return lex_add_symbol(lexer, backing_name, &ignored);
 }
 
 //------------------------------------------------------------------------------
@@ -4293,6 +4438,12 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         if (ir_decl_requires_runtime(sema, decl)) {
             has_constants = true;
             ir_add_global(&ir, decl->symbol_handle, decl->type_index);
+            if (ir_decl_uses_implicit_array_slice(ast, sema, decl)) {
+                ir_add_global(
+                    &ir,
+                    ir_hidden_backing_symbol((Lexer*)lex, decl->symbol_handle),
+                    ir_decl_implicit_array_slice_type(ast, sema, decl));
+            }
         }
     }
 

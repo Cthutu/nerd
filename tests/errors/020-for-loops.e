@@ -88,6 +88,37 @@ main :: fn () {
 }
 ¬
 main :: fn () {
+    text : []u8 = "a"[..]
+    for ^c in text {
+        c^ := c^
+    }
+}
+¬
+{
+    "code": "0201",
+    "message": "Missing value before Colon `:`",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 4,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 12,
+            "length": 1,
+            "message": "Colon `:` cannot appear here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "A colon starts a type annotation or `:=` binding, so the parser was still expecting an expression value here",
+        "If you meant to update an existing value, use `=` instead of `:=`"
+    ]
+}
+¬
+main :: fn () {
     for {
         for on yes => break {
         }

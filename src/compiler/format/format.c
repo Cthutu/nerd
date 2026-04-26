@@ -535,7 +535,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_PlexUpdate:
         {
             const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
-            format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+            if (plex->target_node_index != U32_MAX) {
+                format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+            }
             if (node->kind == CK_PlexUpdate) {
                 sb_append_cstr(sb, " with");
             }

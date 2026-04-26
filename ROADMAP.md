@@ -1315,6 +1315,26 @@ needed earlier.
 These items are worth keeping visible, but they are not assigned to a numbered
 milestone yet.
 
+- [ ] Extend contextual aggregate construction and collection ergonomics.
+  - Keep typed constant bindings valid with an explicit type between the
+    colons, for example `rooms : []Room : value`.
+  - [x] Allow contextual unnamed plex literals such as `{ ... }` when the
+    expected type is an unambiguous `plex`, for example inside `[]Room`
+    literals.
+  - [x] Allow implicit full-range array-to-slice coercion when the expected
+    target type is `[]T`, so assigning an array literal to a slice does not
+    require an explicit trailing `[..]`.
+  - Keep commas required in array literals. Do not adopt optional-comma syntax,
+    because the parser/formatter trade-off is not worth the ambiguity pressure.
+- [ ] Improve plex literal formatting.
+  - For multi-line plex literals, align the `:` tokens so field values begin in
+    the same column.
+  - For consecutive single-line plex literals in the same paragraph or array,
+    align field/value columns vertically across the sibling literals when they
+    all remain single-line.
+  - Do not add commas between fields inside plex literals; commas only separate
+    array elements and other collection items where the language already
+    requires them.
 - [ ] Support top-level interpolated string bindings once the runtime init model
   is robust enough.
 - [ ] Add a generated initialisation path for more than top-level constants when

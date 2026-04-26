@@ -31,9 +31,20 @@ bool error_0201_missing_value(NerdSource source,
                         span,
                         "%.*s cannot appear here",
                         STRINGV(token));
-    error_add_help(
-        &error,
-        "Insert a literal, parenthesized expression, or unary operator");
+    if (expected_kind == TK_Colon) {
+        error_add_help(
+            &error,
+            "A colon starts a type annotation or `:=` binding, so the parser "
+            "was still expecting an expression value here");
+        error_add_help(
+            &error,
+            "If you meant to update an existing value, use `=` instead of "
+            "`:=`");
+    } else {
+        error_add_help(
+            &error,
+            "Insert a literal, parenthesized expression, or unary operator");
+    }
     error_render(&error);
     return false;
 }

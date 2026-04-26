@@ -3963,8 +3963,10 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
         {
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
             if (node->kind == AK_Plex) {
-                sema_mark_type_expr_nodes(
-                    ast, sema, literal->target_node_index);
+                if (literal->target_node_index != U32_MAX) {
+                    sema_mark_type_expr_nodes(
+                        ast, sema, literal->target_node_index);
+                }
             } else if (!sema_resolve_node_refs(lexer,
                                                ast,
                                                owner_decl_index,
@@ -7377,11 +7379,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
             u32                       target_type = sema_no_type();
             if (node->kind == AK_Plex) {
-                if (!sema_resolve_type_node(lexer,
-                                            ast,
-                                            sema,
-                                            literal->target_node_index,
-                                            &target_type)) {
+                if (literal->target_node_index == U32_MAX) {
+                    target_type = expected_type;
+                } else if (!sema_resolve_type_node(lexer,
+                                                   ast,
+                                                   sema,
+                                                   literal->target_node_index,
+                                                   &target_type)) {
                     return false;
                 }
             } else {
@@ -7622,6 +7626,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Array:
         {
+            const SemaType* expected_slice =
+                expected_type != sema_no_type() &&
+                        sema->types[expected_type].kind == STK_Slice
+                    ? &sema->types[expected_type]
+                    : NULL;
             const SemaType* expected_array =
                 expected_type != sema_no_type() &&
                         sema->types[expected_type].kind == STK_Array
@@ -7636,9 +7645,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     s("array with different length"));
             }
 
-            u32 item_type = expected_array != NULL
-                                ? expected_array->first_param_type
-                                : sema_no_type();
+            u32 item_type =
+                expected_array != NULL
+                    ? expected_array->first_param_type
+                    : (expected_slice != NULL ? expected_slice->first_param_type
+                                              : sema_no_type());
             if (node->b == 0 && item_type == sema_no_type()) {
                 return error_0304_type_mismatch(
                     lexer->source,
@@ -7673,7 +7684,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            type_index = sema_add_array_type(sema, item_type, node->b);
+            u32 array_type = sema_add_array_type(sema, item_type, node->b);
+            if (expected_slice != NULL &&
+                expected_slice->first_param_type == item_type) {
+                type_index = expected_type;
+                sema->node_implicit_array_type_indices[node_index] = array_type;
+            } else {
+                type_index = array_type;
+            }
         }
         break;
 
@@ -10068,6 +10086,7 @@ bool sema_analyse(const Lexer*           lexer,
         array_push(sema.node_scope_indices, sema_no_scope());
         array_push(sema.node_lowered_symbol_handles, U32_MAX);
         array_push(sema.node_type_indices, sema_no_type());
+        array_push(sema.node_implicit_array_type_indices, sema_no_type());
         array_push(sema.node_is_type_expr, false);
         array_push(sema.node_const_known, false);
         array_push(sema.node_const_values, 0);
@@ -10162,6 +10181,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_scope_indices);
     array_free(sema->node_lowered_symbol_handles);
     array_free(sema->node_type_indices);
+    array_free(sema->node_implicit_array_type_indices);
     array_free(sema->on_branch_local_indices);
     array_free(sema->pattern_local_indices);
     array_free(sema->node_is_type_expr);

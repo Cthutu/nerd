@@ -177,6 +177,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_yes:
     case TK_no:
     case TK_LBracket:
+    case TK_LBrace:
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
@@ -1436,6 +1437,64 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                      .token_index = token_index,
                                      .a           = first_item,
                                      .b           = item_count,
+                                 },
+                                 out_node);
+        }
+    case TK_LBrace:
+        {
+            u32 token_index = state->token_index;
+            cst_advance(state);
+            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
+            u32 field_count = 0;
+            while (cst_current_token(state).kind != TK_RBrace) {
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                u32 field_token  = state->token_index;
+                u32 field_symbol = cst_current_symbol_handle(state);
+                cst_advance(state);
+                if (!cst_consume(state, TK_Colon)) {
+                    return false;
+                }
+                u32 value = 0;
+                if (!cst_parse_expr_bp(state, 0, &value)) {
+                    return false;
+                }
+                array_push(state->cst.plex_literal_fields,
+                           (CstPlexLiteralField){
+                               .token_index      = field_token,
+                               .symbol_handle    = field_symbol,
+                               .value_node_index = value,
+                           });
+                field_count++;
+                if (cst_current_token(state).kind == TK_Comma) {
+                    cst_advance(state);
+                    if (cst_current_token(state).kind == TK_RBrace) {
+                        break;
+                    }
+                    continue;
+                }
+                if (cst_current_token(state).kind == TK_Symbol &&
+                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                    continue;
+                }
+                break;
+            }
+            if (!cst_consume(state, TK_RBrace)) {
+                return false;
+            }
+            u32 literal_index = (u32)array_count(state->cst.plex_literals);
+            array_push(state->cst.plex_literals,
+                       (CstPlexLiteralInfo){
+                           .target_node_index = U32_MAX,
+                           .first_field       = first_field,
+                           .field_count       = field_count,
+                       });
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_Plex,
+                                     .token_index = token_index,
+                                     .a           = literal_index,
                                  },
                                  out_node);
         }
