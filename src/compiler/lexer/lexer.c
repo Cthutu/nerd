@@ -98,6 +98,67 @@ internal bool lexer_lex_string_literal(NerdSource source,
     return true;
 }
 
+internal u8 lexer_decode_escape(u8 escaped, u8 quote)
+{
+    switch (escaped) {
+    case '\\':
+        return '\\';
+    case 'n':
+        return '\n';
+    case 'r':
+        return '\r';
+    case 't':
+        return '\t';
+    default:
+        return escaped == quote ? quote : escaped;
+    }
+}
+
+internal bool lexer_lex_packed_integer_literal(NerdSource source,
+                                               string     source_code,
+                                               usize*     io_index,
+                                               Lexer*     lexer)
+{
+    usize start  = *io_index;
+    usize i      = start + 1;
+    u64   value  = 0;
+    u32   bytes  = 0;
+    bool  closed = false;
+
+    while (i < source_code.count) {
+        u8 ch = source_code.data[i++];
+        if (ch == '\'') {
+            closed = true;
+            break;
+        }
+        if (ch == '\n' || ch == '\r') {
+            break;
+        }
+        if (ch == '\\' && i < source_code.count) {
+            ch = lexer_decode_escape(source_code.data[i++], '\'');
+        }
+
+        if (bytes >= 8) {
+            return error_0108_packed_integer_literal_too_large(
+                source, (ErrorSpan){.start = start, .end = i});
+        }
+
+        value = (value << 8) | ch;
+        bytes++;
+    }
+
+    if (!closed) {
+        return error_0107_unterminated_packed_integer_literal(
+            source, (ErrorSpan){.start = start, .end = i});
+    }
+
+    array_push(lexer->tokens,
+               (Token){.kind = TK_Integer, .offset = (u32)start});
+    array_push(lexer->integers, value);
+    *io_index = i;
+    return true;
+}
+
 internal bool lexer_lex_interpolated_text(NerdSource source,
                                           string     source_code,
                                           usize      interpolation_start,
@@ -191,27 +252,7 @@ internal bool lexer_lex_interpolated_text(NerdSource source,
         }
 
         if (ch == '\\' && i < source_code.count) {
-            u8 escaped = source_code.data[i++];
-            switch (escaped) {
-            case '"':
-                ch = '"';
-                break;
-            case '\\':
-                ch = '\\';
-                break;
-            case 'n':
-                ch = '\n';
-                break;
-            case 'r':
-                ch = '\r';
-                break;
-            case 't':
-                ch = '\t';
-                break;
-            default:
-                ch = escaped;
-                break;
-            }
+            ch = lexer_decode_escape(source_code.data[i++], '"');
         }
 
         buffer[length++] = ch;
@@ -358,6 +399,11 @@ internal bool lexer_lex_one_token(NerdSource source,
     if (c == '"') {
         return lexer_lex_string_literal(
             source, source_code, io_index, lexer, TK_String);
+    }
+
+    if (c == '\'') {
+        return lexer_lex_packed_integer_literal(
+            source, source_code, io_index, lexer);
     }
 
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
@@ -730,6 +776,31 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
 {
     switch (token->kind) {
     case TK_Integer:
+        {
+            if (lexer->source.source.count > token->offset &&
+                lexer->source.source.data[token->offset] == '\'') {
+                usize index = token->offset + 1;
+                while (index < lexer->source.source.count) {
+                    if (lexer->source.source.data[index] == '\\') {
+                        index += 2;
+                        continue;
+                    }
+                    if (lexer->source.source.data[index] == '\'') {
+                        return index + 1;
+                    }
+                    index++;
+                }
+                return index;
+            }
+
+            usize index = token->offset;
+            while (index < lexer->source.source.count &&
+                   lexer->source.source.data[index] >= '0' &&
+                   lexer->source.source.data[index] <= '9') {
+                index++;
+            }
+            return index;
+        }
     case TK_Float:
         {
             usize index = token->offset;
@@ -738,7 +809,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
                    lexer->source.source.data[index] <= '9') {
                 index++;
             }
-            if (token->kind == TK_Float && index < lexer->source.source.count &&
+            if (index < lexer->source.source.count &&
                 lexer->source.source.data[index] == '.') {
                 index++;
                 while (index < lexer->source.source.count &&

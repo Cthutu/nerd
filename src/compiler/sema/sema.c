@@ -5078,6 +5078,49 @@ internal bool sema_pattern_contains_interpolation(const Ast* ast,
 internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index);
 internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
                                                    u32        pattern_index);
+
+internal bool sema_integer_literal_is_packed(const Lexer*   lexer,
+                                             const AstNode* node)
+{
+    ASSERT(node->kind == AK_IntegerLiteral, "Expected integer literal node");
+    ASSERT(node->token_index < array_count(lexer->tokens),
+           "Integer literal token index out of bounds");
+    const Token* token = &lexer->tokens[node->token_index];
+    return token->kind == TK_Integer &&
+           token->offset < lexer->source.source.count &&
+           lexer->source.source.data[token->offset] == '\'';
+}
+
+internal u32 sema_packed_integer_literal_type(const Lexer*   lexer,
+                                              const AstNode* node,
+                                              Sema*          sema)
+{
+    const Token* token = &lexer->tokens[node->token_index];
+    usize        start = token->offset + 1;
+    usize        end   = lex_token_end_offset(lexer, token);
+    usize        bytes = 0;
+
+    ASSERT(end > start, "Packed integer literal must include closing quote");
+    end--;
+
+    for (usize i = start; i < end; ++i) {
+        if (lexer->source.source.data[i] == '\\' && i + 1 < end) {
+            i++;
+        }
+        bytes++;
+    }
+
+    if (bytes <= 1) {
+        return sema_builtin_type(sema, STK_U8);
+    }
+    if (bytes <= 2) {
+        return sema_builtin_type(sema, STK_U16);
+    }
+    if (bytes <= 4) {
+        return sema_builtin_type(sema, STK_U32);
+    }
+    return sema_builtin_type(sema, STK_U64);
+}
 internal bool sema_validate_interpolated_strings(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
@@ -6853,9 +6896,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     switch (node->kind) {
     case AK_IntegerLiteral:
-        type_index = sema_type_is_concrete_integer(sema, expected_type)
-                         ? expected_type
-                         : sema_builtin_type(sema, STK_UntypedInteger);
+        if (sema_integer_literal_is_packed(lexer, node)) {
+            type_index =
+                sema_type_is_concrete_integer(sema, expected_type)
+                    ? expected_type
+                    : sema_packed_integer_literal_type(lexer, node, sema);
+        } else {
+            type_index = sema_type_is_concrete_integer(sema, expected_type)
+                             ? expected_type
+                             : sema_builtin_type(sema, STK_UntypedInteger);
+        }
         break;
 
     case AK_FloatLiteral:

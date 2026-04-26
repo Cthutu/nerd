@@ -260,6 +260,25 @@ internal void format_emit_float_literal(StringBuilder* sb,
         sb, string_from(lexer->source.source.data + start, end - start));
 }
 
+internal void format_emit_integer_literal(StringBuilder* sb,
+                                          const Lexer*   lexer,
+                                          u32            token_index)
+{
+    ASSERT(token_index < array_count(lexer->tokens),
+           "Integer literal token index out of bounds");
+    const Token* token = &lexer->tokens[token_index];
+    ASSERT(token->kind == TK_Integer, "Expected integer token");
+
+    usize start = token->offset;
+    usize end   = lex_token_end_offset(lexer, token);
+    if (end > lexer->source.source.count) {
+        end = lexer->source.source.count;
+    }
+
+    sb_append_string(
+        sb, string_from(lexer->source.source.data + start, end - start));
+}
+
 internal void format_emit_fn_signature(StringBuilder* sb,
                                        const Cst*     cst,
                                        const Lexer*   lexer,
@@ -433,7 +452,7 @@ internal void format_emit_expr(StringBuilder* sb,
 
     switch (node->kind) {
     case CK_IntegerLiteral:
-        sb_format(sb, "%u", (u32)cst_get_integer(cst, node));
+        format_emit_integer_literal(sb, lexer, node->token_index);
         break;
     case CK_FloatLiteral:
         format_emit_float_literal(sb, lexer, node->token_index);

@@ -108,4 +108,34 @@ bool error_0106_unterminated_string_literal(NerdSource source, ErrorSpan span)
     return false;
 }
 
+bool error_0107_unterminated_packed_integer_literal(NerdSource source,
+                                                    ErrorSpan  span)
+{
+    ErrorInfo error_info =
+        error_init(107, source, span, "Unterminated packed integer literal");
+    error_add_reference(&error_info,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "Packed integer literal starts here");
+    error_add_help(&error_info,
+                   "Add a closing single quote to terminate the literal.");
+    error_render(&error_info);
+    return false;
+}
+
+bool error_0108_packed_integer_literal_too_large(NerdSource source,
+                                                 ErrorSpan  span)
+{
+    ErrorInfo error_info =
+        error_init(108, source, span, "Packed integer literal is too large");
+    error_add_reference(&error_info,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This literal exceeds the 8-byte limit");
+    error_add_help(&error_info,
+                   "Use at most 8 bytes inside one single-quote literal.");
+    error_render(&error_info);
+    return false;
+}
+
 //------------------------------------------------------------------------------

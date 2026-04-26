@@ -87,6 +87,10 @@ bool error_0103_invalid_number_literal(NerdSource source,
 bool error_0104_symbol_too_long(NerdSource source, ErrorSpan span);
 bool error_0105_too_many_symbols(NerdSource source);
 bool error_0106_unterminated_string_literal(NerdSource source, ErrorSpan span);
+bool error_0107_unterminated_packed_integer_literal(NerdSource source,
+                                                    ErrorSpan  span);
+bool error_0108_packed_integer_literal_too_large(NerdSource source,
+                                                 ErrorSpan  span);
 
 // Used when the AST node array can't be formed because we have more than 4
 // billion nodes
