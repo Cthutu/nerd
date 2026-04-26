@@ -1253,8 +1253,9 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 state->token.kind);
         }
 
+        bool empty_call      = state->token.kind == TK_RParen;
         Array(u32) arg_nodes = NULL;
-        if (state->token.kind != TK_RParen) {
+        if (!empty_call) {
             for (;;) {
                 right_node = 0;
                 if (!ast_parse_expr_bp(state, 0, &right_node)) {
@@ -1287,7 +1288,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             }
         }
         if (state->token.kind == TK_RParen) {
-            if (!ast_next_token(state)) {
+            if (!empty_call && !ast_next_token(state)) {
                 array_free(arg_nodes);
                 return false;
             }

@@ -1,0 +1,9 @@
+pub printer :: mod std.print
+
+pub forty_two :: fn() -> i32 {
+    return 42
+}
+
+secret :: fn() -> i32 {
+    return 7
+}

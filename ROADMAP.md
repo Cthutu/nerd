@@ -1172,7 +1172,7 @@ needed earlier.
 
 ## Milestone 30: Module Exports And Privacy
 
-- [ ] 99. Define the first stable module visibility model.
+- [x] 99. Define the first stable module visibility model.
   - This is the second of the next design-work items and its design direction
     has already been settled. Implementation follows general module loading.
   - Use `pub` as the explicit export marker.
@@ -1184,6 +1184,19 @@ needed earlier.
     sema, formatter, LSP, and tests.
   - Add regressions for duplicate export names, private-name access, and
     shadowing through `use`.
+  - Implemented:
+    - module export tables now expose only `pub` top-level bindings
+    - `use` now raises duplicate-binding diagnostics instead of silently
+      shadowing existing names
+    - access to non-exported module members now fails with a targeted semantic
+      error
+    - public module-valued re-exports are covered by `tests/language/073-module-pub-reexport.t`
+    - privacy and `use` shadowing regressions are covered by
+      `tests/errors/041-module-privacy.e`
+  - Regression fixed during MS30:
+    - zero-argument calls at the end of a block were parsed inconsistently in
+      the postfix-call path; this now behaves correctly and is covered by the
+      privacy regression above.
 
 ## Milestone 31: Pattern And Enum Consolidation
 

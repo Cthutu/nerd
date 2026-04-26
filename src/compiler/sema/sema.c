@@ -26,9 +26,12 @@ u32 sema_no_type(void) { return U32_MAX; }
 //------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
 
-internal u32 sema_builtin_type(Sema* sema, SemaTypeKind kind);
-internal u32 sema_type_index_for_name(Sema* sema, string name);
-internal u32 sema_find_decl(const Sema* sema, u32 symbol_handle);
+internal u32       sema_builtin_type(Sema* sema, SemaTypeKind kind);
+internal u32       sema_type_index_for_name(Sema* sema, string name);
+internal u32       sema_find_decl(const Sema* sema, u32 symbol_handle);
+internal ErrorSpan sema_decl_span(const Lexer*    lexer,
+                                  const Ast*      ast,
+                                  const SemaDecl* decl);
 
 internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
 {
@@ -1152,18 +1155,44 @@ internal bool sema_import_module_exports_to_scope(const Lexer* lexer,
     for (u32 i = 0; i < module->param_count; ++i) {
         u32 symbol = sema->type_param_symbols[module->first_param_type + i];
         u32 type   = sema->type_param_types[module->first_param_type + i];
+        u32 import_module_index = module->return_type;
+        u32 import_decl_index   = sema_no_decl();
 
-        if (sema_find_decl(sema, symbol) != sema_no_decl()) {
-            continue;
+        if (sema->program != NULL &&
+            import_module_index < array_count(sema->program->modules)) {
+            const ModuleInfo* import_module =
+                &sema->program->modules[import_module_index];
+            if (i < array_count(import_module->export_decl_indices)) {
+                import_decl_index = import_module->export_decl_indices[i];
+            }
         }
 
-        u32 duplicate = sema_find_local_in_scope(sema, scope_index, symbol);
-        if (duplicate != sema_no_local()) {
+        u32 existing_decl = sema_find_decl(sema, symbol);
+        if (existing_decl != sema_no_decl()) {
+            const SemaDecl* decl = &sema->decls[existing_decl];
+            if (decl->bind_node_index == sema_no_decl() &&
+                decl->import_module_index == import_module_index &&
+                decl->import_decl_index == import_decl_index) {
+                continue;
+            }
             return error_0301_duplicate_binding(
                 lexer->source,
                 sema_node_span(lexer, &ast->nodes[use_node_index]),
                 lex_symbol(lexer, symbol),
-                sema_local_span(lexer, ast, &sema->locals[duplicate]));
+                sema_decl_span(lexer, ast, decl));
+        }
+
+        u32 duplicate = sema_find_local_in_scope(sema, scope_index, symbol);
+        if (duplicate != sema_no_local()) {
+            const SemaLocal* local = &sema->locals[duplicate];
+            if (local->decl_node_index == use_node_index) {
+                continue;
+            }
+            return error_0301_duplicate_binding(
+                lexer->source,
+                sema_node_span(lexer, &ast->nodes[use_node_index]),
+                lex_symbol(lexer, symbol),
+                sema_local_span(lexer, ast, local));
         }
 
         array_push(
@@ -1223,6 +1252,22 @@ internal bool sema_import_module_exports_to_decls(const Lexer* lexer,
                 }
             }
         }
+
+        u32 existing_decl = sema_find_decl(sema, symbol);
+        if (existing_decl != sema_no_decl()) {
+            const SemaDecl* decl = &sema->decls[existing_decl];
+            if (decl->bind_node_index == sema_no_decl() &&
+                decl->import_module_index == import_module_index &&
+                decl->import_decl_index == import_decl_index) {
+                continue;
+            }
+            return error_0301_duplicate_binding(
+                lexer->source,
+                sema_node_span(lexer, &ast->nodes[use_node_index]),
+                lex_symbol(lexer, symbol),
+                sema_decl_span(lexer, ast, decl));
+        }
+
         sema_ensure_module_export_decl(sema,
                                        symbol,
                                        type,
