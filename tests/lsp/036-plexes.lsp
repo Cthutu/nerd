@@ -39,6 +39,20 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 4,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 6,
+                "character": 13
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
         "method": "textDocument/semanticTokens/full",
         "params": {
             "textDocument": {
@@ -110,6 +124,23 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 4,
+        "result": {
+            "uri": "file:///test.n",
+            "range": {
+                "start": {
+                    "line": 2,
+                    "character": 16
+                },
+                "end": {
+                    "line": 2,
+                    "character": 17
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
         "result": {
             "data": [
                 0,4,3,0,0,0,3,1,4,0,0,1,5,0,0,2,0,5,0,0,0,6,1,4,0,0,1,1,4,0,0,

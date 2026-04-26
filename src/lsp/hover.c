@@ -825,6 +825,289 @@ internal JsonValue* lsp_local_location(const LspDocument* doc,
 }
 
 //------------------------------------------------------------------------------
+// Build a location object for one field inside a local plex/union type node.
+
+internal JsonValue* lsp_local_record_field_location(const LspDocument* doc,
+                                                    Arena*             arena,
+                                                    string             uri,
+                                                    u32 type_index,
+                                                    u32 field_symbol)
+{
+    if (type_index >= array_count(doc->front_end.sema.types)) {
+        return NULL;
+    }
+
+    const SemaType* target_type = &doc->front_end.sema.types[type_index];
+
+    for (u32 i = 0; i < array_count(doc->front_end.ast.nodes); ++i) {
+        const AstNode* node = &doc->front_end.ast.nodes[i];
+        if (node->kind != AK_TypePlex ||
+            i >= array_count(doc->front_end.sema.node_type_indices)) {
+            continue;
+        }
+
+        u32 candidate_type_index = doc->front_end.sema.node_type_indices[i];
+        if (candidate_type_index == sema_no_type() ||
+            candidate_type_index >= array_count(doc->front_end.sema.types)) {
+            continue;
+        }
+
+        const SemaType* candidate_type =
+            &doc->front_end.sema.types[candidate_type_index];
+        if (candidate_type->kind != target_type->kind ||
+            candidate_type->param_count != target_type->param_count) {
+            continue;
+        }
+
+        bool matches = true;
+        for (u32 j = 0; j < target_type->param_count; ++j) {
+            if (doc->front_end.sema
+                        .type_param_symbols[candidate_type->first_param_type +
+                                            j] !=
+                    doc->front_end.sema
+                        .type_param_symbols[target_type->first_param_type +
+                                            j] ||
+                doc->front_end.sema
+                        .type_param_types[candidate_type->first_param_type +
+                                          j] !=
+                    doc->front_end.sema
+                        .type_param_types[target_type->first_param_type + j]) {
+                matches = false;
+                break;
+            }
+        }
+        if (!matches) {
+            continue;
+        }
+
+        const AstPlexTypeInfo* plex = &doc->front_end.ast.plex_types[node->a];
+        for (u32 j = 0; j < plex->field_count; ++j) {
+            const AstPlexField* field =
+                &doc->front_end.ast.plex_fields[plex->first_field + j];
+            if (field->symbol_handle != field_symbol) {
+                continue;
+            }
+
+            usize start_offset;
+            usize end_offset;
+            lsp_token_offsets(&doc->front_end.lexer,
+                              field->token_index,
+                              &start_offset,
+                              &end_offset);
+
+            JsonValue* location = json_new_object(arena);
+            json_object_set_string(location, arena, "uri", uri);
+            json_object_set_object(location,
+                                   "range",
+                                   lsp_make_range(arena,
+                                                  doc->front_end.lexer.source,
+                                                  start_offset,
+                                                  end_offset));
+            return location;
+        }
+    }
+
+    return NULL;
+}
+
+//------------------------------------------------------------------------------
+// Build a location object for one field referenced from a local type node.
+
+internal JsonValue* lsp_field_location_from_type_node(const LspDocument* doc,
+                                                      Arena*             arena,
+                                                      string             uri,
+                                                      u32 type_node_index,
+                                                      u32 field_symbol)
+{
+    if (type_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* type_node = &doc->front_end.ast.nodes[type_node_index];
+    if (type_node->kind == AK_TypePlex) {
+        const AstPlexTypeInfo* plex =
+            &doc->front_end.ast.plex_types[type_node->a];
+        for (u32 i = 0; i < plex->field_count; ++i) {
+            const AstPlexField* field =
+                &doc->front_end.ast.plex_fields[plex->first_field + i];
+            if (field->symbol_handle != field_symbol) {
+                continue;
+            }
+
+            usize start_offset;
+            usize end_offset;
+            lsp_token_offsets(&doc->front_end.lexer,
+                              field->token_index,
+                              &start_offset,
+                              &end_offset);
+
+            JsonValue* location = json_new_object(arena);
+            json_object_set_string(location, arena, "uri", uri);
+            json_object_set_object(location,
+                                   "range",
+                                   lsp_make_range(arena,
+                                                  doc->front_end.lexer.source,
+                                                  start_offset,
+                                                  end_offset));
+            return location;
+        }
+        return NULL;
+    }
+
+    if (type_node->kind == AK_SymbolRef &&
+        type_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
+        u32 decl_index = doc->front_end.sema.node_decl_indices[type_node_index];
+        if (decl_index != sema_no_decl() &&
+            decl_index < array_count(doc->front_end.sema.decls)) {
+            const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+            if (decl->kind == SK_TypeAlias &&
+                decl->bind_node_index < array_count(doc->front_end.ast.nodes)) {
+                const AstNode* bind =
+                    &doc->front_end.ast.nodes[decl->bind_node_index];
+                return lsp_field_location_from_type_node(
+                    doc, arena, uri, bind->b, field_symbol);
+            }
+        }
+    }
+
+    return NULL;
+}
+
+//------------------------------------------------------------------------------
+// Return a field location when the current file has exactly one matching
+// plex/union field symbol.
+
+internal JsonValue* lsp_unique_record_field_location(const LspDocument* doc,
+                                                     Arena*             arena,
+                                                     string             uri,
+                                                     u32 field_symbol)
+{
+    u32   matched_token_index = U32_MAX;
+    usize match_count         = 0;
+
+    for (u32 i = 0; i < array_count(doc->front_end.ast.plex_fields); ++i) {
+        const AstPlexField* field = &doc->front_end.ast.plex_fields[i];
+        if (field->symbol_handle != field_symbol) {
+            continue;
+        }
+        matched_token_index = field->token_index;
+        match_count += 1;
+        if (match_count > 1) {
+            return NULL;
+        }
+    }
+
+    if (match_count != 1) {
+        return NULL;
+    }
+
+    usize start_offset;
+    usize end_offset;
+    lsp_token_offsets(
+        &doc->front_end.lexer, matched_token_index, &start_offset, &end_offset);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_range(
+            arena, doc->front_end.lexer.source, start_offset, end_offset));
+    return location;
+}
+
+//------------------------------------------------------------------------------
+// Build a location object for one plex/union field-access token.
+
+internal JsonValue* lsp_field_location(const LspDocument* doc,
+                                       Arena*             arena,
+                                       string             uri,
+                                       u32                field_node_index)
+{
+    if (field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind != AK_Field ||
+        field->a >= array_count(doc->front_end.sema.node_type_indices)) {
+        return NULL;
+    }
+
+    u32 target_type = doc->front_end.sema.node_type_indices[field->a];
+    if (target_type == sema_no_type() ||
+        target_type >= array_count(doc->front_end.sema.types)) {
+        return NULL;
+    }
+
+    const SemaType* target = &doc->front_end.sema.types[target_type];
+    if (target->kind == STK_Pointer) {
+        u32 pointee_type = target->first_param_type;
+        if (pointee_type < array_count(doc->front_end.sema.types) &&
+            (doc->front_end.sema.types[pointee_type].kind == STK_Plex ||
+             doc->front_end.sema.types[pointee_type].kind == STK_Union)) {
+            target_type = pointee_type;
+            target      = &doc->front_end.sema.types[target_type];
+        }
+    }
+
+    if (target->kind != STK_Plex && target->kind != STK_Union) {
+        return NULL;
+    }
+
+    if (field->a < array_count(doc->front_end.ast.nodes) &&
+        field->a < array_count(doc->front_end.sema.node_local_indices)) {
+        u32 local_index = doc->front_end.sema.node_local_indices[field->a];
+        if (local_index != sema_no_local() &&
+            local_index < array_count(doc->front_end.sema.locals)) {
+            const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+            if (local->decl_node_index <
+                array_count(doc->front_end.ast.nodes)) {
+                const AstNode* bind =
+                    &doc->front_end.ast.nodes[local->decl_node_index];
+                u32 value_node_index = bind->b;
+                if (value_node_index < array_count(doc->front_end.ast.nodes)) {
+                    const AstNode* value =
+                        &doc->front_end.ast.nodes[value_node_index];
+                    if (value->kind == AK_AnnotatedValue ||
+                        value->kind == AK_ZeroInit) {
+                        JsonValue* location = lsp_field_location_from_type_node(
+                            doc, arena, uri, value->a, field->b);
+                        if (location != NULL) {
+                            return location;
+                        }
+                    } else if (value->kind == AK_Plex ||
+                               value->kind == AK_PlexUpdate) {
+                        const AstPlexLiteralInfo* literal =
+                            &doc->front_end.ast.plex_literals[value->a];
+                        if (literal->target_node_index != U32_MAX) {
+                            JsonValue* location =
+                                lsp_field_location_from_type_node(
+                                    doc,
+                                    arena,
+                                    uri,
+                                    literal->target_node_index,
+                                    field->b);
+                            if (location != NULL) {
+                                return location;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    JsonValue* location =
+        lsp_local_record_field_location(doc, arena, uri, target_type, field->b);
+    if (location != NULL) {
+        return location;
+    }
+
+    return lsp_unique_record_field_location(doc, arena, uri, field->b);
+}
+
+//------------------------------------------------------------------------------
 // Build a request context for one position-based LSP query.
 
 internal bool lsp_get_request_context(LspState*         state,
@@ -1032,6 +1315,18 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
     if (token->kind != TK_Symbol) {
         lsp_cancel(response, message->arena);
         return;
+    }
+
+    u32 field_node_index =
+        lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
+    if (field_node_index != U32_MAX) {
+        JsonValue* field_location =
+            lsp_field_location(doc, message->arena, uri, field_node_index);
+        if (field_location != NULL) {
+            json_object_set_object(response, "result", field_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
     }
 
     u32 modref_node_index = lsp_find_modref_node_at_token(
