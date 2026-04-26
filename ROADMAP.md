@@ -76,6 +76,9 @@ From the current codebase and test suite:
   - `0100`-`0199` lexer
   - `0200`-`0299` parser / AST construction
   - `0300`-`0399` semantic analysis
+- Keep the fuller diagnostic design policy recorded in
+  [docs/error-system.md](/home/matt/nerd/docs/error-system.md) and update that
+  document when the project's error-shaping rules change.
 - Every language-compilation failure point must produce either:
   - a categorised compiler diagnostic with source spans, useful references, and
     appropriate notes or help text, or
@@ -1315,6 +1318,39 @@ needed earlier.
     than introducing a separate grouped-use semantic form.
   - Add formatter and LSP coverage so grouped imports remain stable and
     readable.
+
+## Milestone 35: Parser Diagnostic Category Audit
+
+- [ ] 104. Audit and regularise the `0200` parser diagnostic family before the
+  surface area grows further.
+  - Keep `02xx` codes broad enough that `nerd explain <code>` can describe the
+    category generically rather than only one syntax corner-case.
+  - Treat that `explain` test as the measure of whether a diagnostic code is
+    too narrow.
+  - Prefer category-stable parser diagnostics whose rendered primary messages
+    are templated with concrete expected/found/operator details.
+  - Keep note/help roles strict:
+    - notes explain why the parser rejected the construct and which language
+      rule applies
+    - help gives actionable correction guidance
+  - Review `0201`-`0207` first and refactor any APIs that still force
+    parser-specific explanation text into `help` or encode one syntax corner as
+    its own error category.
+  - Add regression coverage for any wording/category changes so the diagnostic
+    policy stays stable once regularised.
+
+## Milestone 36: CLI Ergonomics
+
+- [ ] 105. Improve command-line ergonomics once the diagnostic audit has
+  stabilised.
+  - Add short command aliases for common subcommands:
+    - `nerd b` as an alias for `nerd build`
+    - `nerd r` as an alias for `nerd run`
+  - Add `nerd explain <error-code>` to describe broad diagnostic categories,
+    how they typically arise, and how to interpret their note/help text.
+  - Keep the explanation text category-level rather than case-level, so it
+    matches the intended breadth of the numbered error codes.
+  - Add command regression tests for aliases and for `explain`.
 
 ## Future Ideas
 
