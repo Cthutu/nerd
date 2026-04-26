@@ -1274,7 +1274,7 @@ needed earlier.
 
 ## Milestone 32: FFI Consolidation
 
-- [ ] 101. Keep the FFI surface explicit and ABI-focused.
+- [X] 101. Keep the FFI surface explicit and ABI-focused.
   - This is the fourth of the next design-work items and its design direction
     has now been settled.
   - Keep the foreign symbol name explicit in the surface syntax, with an
@@ -1403,7 +1403,6 @@ These are the active unfinished items after the current `undefined` work:
 
 - [ ] 21. Keep extending the formatter as new language features land.
 - [ ] 22. Keep extending the LSP as new language features land.
-- [ ] 101. Finish the FFI-consolidation milestone.
 - [ ] 102. Continue standard-library expansion beyond `std.print`.
 
 These are intentionally deferred and should not be treated as near-term tasks:
