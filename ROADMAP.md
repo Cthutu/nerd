@@ -1200,7 +1200,7 @@ needed earlier.
 
 ## Milestone 31: Pattern And Enum Consolidation
 
-- [ ] 100. Consolidate the long-term enum and pattern model.
+- [X] 100. Consolidate the long-term enum and pattern model.
   - This is the third of the next design-work items and its design direction
     has now been settled.
   - Keep `on` pattern rules explicit and teachable as enums, payloads, and
@@ -1242,6 +1242,7 @@ needed earlier.
       `tests/language/063-enum-unit-variants.t`,
       `tests/language/061-on-structural-patterns.t`,
       `tests/language/065-enum-payloads.t`,
+      `tests/language/074-qualified-enum-patterns.t`,
       `tests/errors/032-on-structural-patterns.e`,
       `tests/errors/035-enum-payloads.e`,
       `tests/format/046-on-structural-patterns.f`, and
