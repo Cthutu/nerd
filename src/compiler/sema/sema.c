@@ -5289,6 +5289,24 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
             }
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
+            if (enum_pattern->qualifier_node_index != U32_MAX) {
+                u32 qualified_type = sema_no_type();
+                if (!sema_resolve_type_node(lexer,
+                                            ast,
+                                            sema,
+                                            enum_pattern->qualifier_node_index,
+                                            &qualified_type)) {
+                    return false;
+                }
+                if (qualified_type != value_type) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_pattern_span(lexer, pattern),
+                        sema_type_name(lexer, sema, &temp_arena, value_type),
+                        sema_type_name(
+                            lexer, sema, &temp_arena, qualified_type));
+                }
+            }
             u32 variant = sema_enum_variant_index(
                 sema, value_type, enum_pattern->symbol_handle);
             if (variant == U32_MAX) {
@@ -7623,12 +7641,6 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_SymbolRef:
         {
-            if (expected_type != sema_no_type() &&
-                sema_enum_variant_index(sema, expected_type, node->a) !=
-                    U32_MAX) {
-                type_index = expected_type;
-                break;
-            }
             if (sema->node_is_type_expr[node_index]) {
                 if (!sema_resolve_type_node(
                         lexer, ast, sema, node_index, &type_index)) {
@@ -7651,6 +7663,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             } else {
                 u32 decl_index = sema->node_decl_indices[node_index];
                 if (decl_index == sema_no_decl()) {
+                    if (expected_type != sema_no_type() &&
+                        sema->types[expected_type].kind == STK_Enum &&
+                        sema_enum_variant_index(sema, expected_type, node->a) !=
+                            U32_MAX) {
+                        type_index = expected_type;
+                        break;
+                    }
                     if (expected_type != sema_no_type() &&
                         sema->types[expected_type].kind == STK_Enum) {
                         return error_0304_type_mismatch(
@@ -8181,7 +8200,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (enum_context != sema_no_type()) {
                 const AstNode* callee         = &ast->nodes[node->a];
                 u32            variant_symbol = U32_MAX;
-                if (callee->kind == AK_SymbolRef) {
+                if (callee->kind == AK_SymbolRef &&
+                    sema->node_local_indices[node->a] == sema_no_local() &&
+                    sema->node_decl_indices[node->a] == sema_no_decl()) {
                     variant_symbol = callee->a;
                 } else if (callee->kind == AK_Field) {
                     u32 qualified_type = sema_no_type();

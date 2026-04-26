@@ -392,6 +392,11 @@ internal void format_emit_pattern(StringBuilder* sb,
         {
             const CstEnumPattern* enum_pattern =
                 &cst->enum_patterns[pattern->a];
+            if (enum_pattern->qualifier_node_index != U32_MAX) {
+                format_emit_expr(
+                    sb, cst, lexer, enum_pattern->qualifier_node_index, 0);
+                sb_append_char(sb, '.');
+            }
             sb_append_string(sb,
                              lex_symbol(lexer, enum_pattern->symbol_handle));
             sb_append_char(sb, '(');

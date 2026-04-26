@@ -1229,13 +1229,21 @@ needed earlier.
     - Bare names inside structural `on` patterns now remain value/name matches,
       which means unknown bare names fail as unresolved symbols rather than
       silently binding.
+    - Contextual enum variant resolution now only applies when normal symbol
+      lookup does not find a binding first, so local names such as `Red`
+      shadow enum variants in ordinary expression position while explicit forms
+      such as `Colour.Red` remain available.
+    - Qualified enum payload patterns such as `Maybe.Some(as x)` now parse,
+      format, and type-check against the expected enum type.
     - The CST formatter now preserves the distinction:
       destructuring keeps binder shorthand, while `on` structural patterns emit
       explicit binders such as `{ x: 3, y: as y }`.
     - Regressions are covered in:
+      `tests/language/063-enum-unit-variants.t`,
       `tests/language/061-on-structural-patterns.t`,
       `tests/language/065-enum-payloads.t`,
       `tests/errors/032-on-structural-patterns.e`,
+      `tests/errors/035-enum-payloads.e`,
       `tests/format/046-on-structural-patterns.f`, and
       `tests/lsp/040-on-structural-patterns.lsp`.
 

@@ -10,6 +10,12 @@ score :: fn (colour: Colour) -> i32 {
     }
 }
 
+pick_shadowed :: fn () -> Colour {
+    Red: Colour = Green
+    picked: Colour = Red
+    return picked
+}
+
 main :: fn () -> i32 {
     red: Colour = Red
     green: Colour = Green
@@ -18,6 +24,7 @@ main :: fn () -> i32 {
     prn($"red {score(red)}")
     prn($"green {score(green)}")
     prn($"blue {score(blue)}")
+    prn($"shadowed {score(pick_shadowed())}")
     prn($"total {score(red) + score(green) + score(blue)}")
 
     return 0
@@ -28,6 +35,7 @@ main :: fn () -> i32 {
 red 10
 green 20
 blue 30
+shadowed 10
 total 60
 
 ¬
@@ -55,6 +63,13 @@ label L10
 $0 = i32:30
 label L1
 return i32:$0
+end
+fn pick_shadowed
+$0 = enum(1)
+local Red = enum{Red,Green,Blue}:$0
+$1 = enum(0)
+local picked = enum{Red,Green,Blue}:$1
+return enum{Red,Green,Blue}:picked
 end
 fn main
 string.reset
@@ -86,15 +101,23 @@ $10 = string.finish $9
 call fn(string)->void:prn, string:$10
 string.reset
 $12 = string.start
-string.append string:"total "
-$14 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:red
-$15 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:green
-$16 = i32:$14 + i32:$15
-$17 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:blue
-$18 = i32:$16 + i32:$17
-string.append i32:$18
+string.append string:"shadowed "
+$14 = call fn()->enum{Red,Green,Blue}:pick_shadowed
+$15 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:$14
+string.append i32:$15
 $13 = string.finish $12
 call fn(string)->void:prn, string:$13
+string.reset
+$16 = string.start
+string.append string:"total "
+$18 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:red
+$19 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:green
+$20 = i32:$18 + i32:$19
+$21 = call fn(enum{Red,Green,Blue})->i32:score, enum{Red,Green,Blue}:blue
+$22 = i32:$20 + i32:$21
+string.append i32:$22
+$17 = string.finish $16
+call fn(string)->void:prn, string:$17
 string.reset
 return i32:0
 end
@@ -128,6 +151,13 @@ int $score(enum7 $colour) {
     L1: ;
     return $0;
 }
+enum7 $pick_shadowed() {
+    enum7 $0 = (enum7){.tag = 1};
+    enum7 $Red = $0;
+    enum7 $1 = (enum7){.tag = 0};
+    enum7 $picked = $1;
+    return $picked;
+}
 int $main() {
     string_builder_reset();
     enum7 $0 = (enum7){.tag = 0};
@@ -158,15 +188,23 @@ int $main() {
     prn($10);
     string_builder_reset();
     size_t $12 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"total ", .count = 6}));
-    int $14 = $score($red);
-    int $15 = $score($green);
-    int $16 = $14 + $15;
-    int $17 = $score($blue);
-    int $18 = $16 + $17;
-    string_builder_append_string(to_string$i32($18));
+    string_builder_append_string(to_string$string((string){.data = (u8*)"shadowed ", .count = 9}));
+    enum7 $14 = $pick_shadowed();
+    int $15 = $score($14);
+    string_builder_append_string(to_string$i32($15));
     string $13 = string_builder_finish($12);
     prn($13);
+    string_builder_reset();
+    size_t $16 = string_builder_mark();
+    string_builder_append_string(to_string$string((string){.data = (u8*)"total ", .count = 6}));
+    int $18 = $score($red);
+    int $19 = $score($green);
+    int $20 = $18 + $19;
+    int $21 = $score($blue);
+    int $22 = $20 + $21;
+    string_builder_append_string(to_string$i32($22));
+    string $17 = string_builder_finish($16);
+    prn($17);
     string_builder_reset();
     return 0;
 }

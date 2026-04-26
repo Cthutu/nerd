@@ -9,8 +9,10 @@ Blue=>30
 }
 
 main::fn(){
-red:Colour=Red
-score(red)
+Red:Colour=Green
+picked:Colour=Red
+explicit:Colour=Colour.Red
+score(picked)+score(explicit)
 }
 ¬
 Colour :: enum { Red Green Blue }
@@ -24,6 +26,9 @@ score :: fn (colour: Colour) -> i32 {
 }
 
 main :: fn () {
-    red : Colour = Red
-    score(red)
+    Red      : Colour = Green
+    picked   : Colour = Red
+    explicit : Colour = Colour.Red
+
+    score(picked) + score(explicit)
 }

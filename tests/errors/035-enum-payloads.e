@@ -59,3 +59,37 @@ main :: fn () -> i32 {
         "Pass exactly 1 argument to match the function signature."
     ]
 }
+¬
+Maybe :: enum { None Some(i32) }
+Other :: enum { None Some(i64) }
+
+main :: fn () -> i32 {
+    value: Maybe = Some(1)
+    return on value {
+        Other.Some(as x) => x
+        else => 0
+    }
+}
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `enum { None, Some(i32) }`, found `enum { None, Some(i64) }`",
+    "source_file": "tests/errors/035-enum-payloads.e",
+    "primary_location": {
+        "line": 7,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 7,
+            "column": 9,
+            "length": 5,
+            "message": "This expression has type `enum { None, Some(i64) }`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

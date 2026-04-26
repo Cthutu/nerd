@@ -282,6 +282,7 @@ typedef struct {
 
 typedef struct {
     u32 token_index;
+    u32 qualifier_node_index;
     u32 symbol_handle;
     u32 first_pattern;
     u32 pattern_count;

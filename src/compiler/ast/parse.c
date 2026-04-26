@@ -1146,12 +1146,106 @@ internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)
                             out_pattern);
 }
 
+internal bool ast_pattern_starts_enum_variant(const AstParseState* state)
+{
+    if (state->token.kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 index = state->token.token_index + 1;
+    if (index >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+
+    if (state->lexer->tokens[index].kind == TK_LParen) {
+        return true;
+    }
+
+    bool saw_dot = false;
+    while (index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_Dot) {
+        saw_dot = true;
+        index++;
+        if (index >= array_count(state->lexer->tokens) ||
+            state->lexer->tokens[index].kind != TK_Symbol) {
+            return false;
+        }
+        index++;
+    }
+
+    return saw_dot && index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_LParen;
+}
+
 internal bool ast_parse_enum_variant_pattern(AstParseState* state,
                                              u32*           out_pattern)
 {
-    AstToken variant = state->token;
+    AstToken variant   = state->token;
+    u32      qualifier = U32_MAX;
+    u32      symbol    = variant.value.symbol_handle;
+
     ASSERT(variant.kind == TK_Symbol, "Expected enum variant pattern");
-    if (!ast_expect_token(state, TK_LParen) || !ast_next_token(state)) {
+    if (!ast_next_token(state)) {
+        return false;
+    }
+
+    if (state->token.kind == TK_Dot) {
+        u32 left = U32_MAX;
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_SymbolRef,
+                               .token_index = variant.token_index,
+                               .a           = symbol,
+                           },
+                           &left)) {
+            return false;
+        }
+
+        while (state->token.kind == TK_Dot) {
+            AstToken dot = state->token;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(state->lexer->source,
+                                                 ast_token_span(state, &dot),
+                                                 TK_Symbol,
+                                                 state->token.kind);
+            }
+            symbol = state->token.value.symbol_handle;
+            if (ast_peek_kind_at(state, 0) == TK_Dot) {
+                u32 field = U32_MAX;
+                if (!ast_emit_node(state,
+                                   (AstNode){
+                                       .kind        = AK_Field,
+                                       .token_index = state->token.token_index,
+                                       .a           = left,
+                                       .b           = symbol,
+                                   },
+                                   &field)) {
+                    return false;
+                }
+                left = field;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
+            qualifier = left;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            break;
+        }
+    }
+
+    if (state->token.kind != TK_LParen) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &variant),
+                                         TK_LParen,
+                                         state->token.kind);
+    }
+    if (!ast_next_token(state)) {
         return false;
     }
 
@@ -1204,10 +1298,11 @@ internal bool ast_parse_enum_variant_pattern(AstParseState* state,
     u32 enum_pattern_index = (u32)array_count(state->enum_patterns);
     array_push(state->enum_patterns,
                (AstEnumPattern){
-                   .token_index   = variant.token_index,
-                   .symbol_handle = variant.value.symbol_handle,
-                   .first_pattern = first_pattern,
-                   .pattern_count = pattern_count,
+                   .token_index          = variant.token_index,
+                   .qualifier_node_index = qualifier,
+                   .symbol_handle        = symbol,
+                   .first_pattern        = first_pattern,
+                   .pattern_count        = pattern_count,
                });
     return ast_emit_pattern(state,
                             (AstPattern){
@@ -1326,8 +1421,7 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
         return ast_parse_plex_pattern(state, out_pattern);
     }
 
-    if (state->token.kind == TK_Symbol &&
-        ast_peek_kind_at(state, 0) == TK_LParen) {
+    if (ast_pattern_starts_enum_variant(state)) {
         return ast_parse_enum_variant_pattern(state, out_pattern);
     }
 

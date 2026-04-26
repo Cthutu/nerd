@@ -81,7 +81,7 @@ main :: fn () => on enabled => 42 else 7
                 1,
                 0,
                 4,
-                0,
+                1,
                 0,
                 0,
                 5,
