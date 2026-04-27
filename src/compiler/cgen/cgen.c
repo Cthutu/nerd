@@ -1280,6 +1280,29 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         cgen_addn(cgen, ".tag;");
         return;
     }
+    bool slice_equality =
+        (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL) &&
+        instr->rvalue[0].type != sema_no_type() &&
+        instr->rvalue[1].type != sema_no_type() &&
+        cgen->ir->types[instr->rvalue[0].type].kind == STK_Slice &&
+        cgen->ir->types[instr->rvalue[1].type].kind == STK_Slice;
+    if (slice_equality) {
+        cgen_add(cgen, "(");
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
+        cgen_add(cgen, ".data == ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+        cgen_add(cgen, ".data && ");
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
+        cgen_add(cgen, ".count == ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+        cgen_add(cgen, ".count)");
+        if (instr->op == IR_OP_NOT_EQUAL) {
+            cgen_addn(cgen, " == 0;");
+        } else {
+            cgen_addn(cgen, ";");
+        }
+        return;
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[1]);
