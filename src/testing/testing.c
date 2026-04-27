@@ -195,6 +195,15 @@ internal cstr testing_generated_aux_path(Arena* arena,
     return (cstr)sb_to_string(&sb).data;
 }
 
+internal bool testing_has_current_flavor_marker(string path)
+{
+#if CONFIG_DEBUG
+    return strstr((const char*)path.data, ".debug.") != NULL;
+#else
+    return strstr((const char*)path.data, ".release.") != NULL;
+#endif
+}
+
 internal bool testing_write_file(cstr path, string text)
 {
     FILE* file = fopen(path, "wb");
@@ -396,8 +405,8 @@ internal bool testing_parse_format_test(Arena*      arena,
     }
 
     *out_test = (FormatTest){
-        .path   = testing_copy_cstr(arena, path),
-        .source = testing_copy_string(arena,
+        .path          = testing_copy_cstr(arena, path),
+        .source        = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .expected_text = testing_copy_string(
             arena, testing_strip_section_edges(sections[1])),
@@ -432,8 +441,8 @@ internal bool testing_parse_lsp_test(Arena*   arena,
     }
 
     *out_test = (LspTest){
-        .path   = testing_copy_cstr(arena, path),
-        .source = testing_copy_string(arena,
+        .path          = testing_copy_cstr(arena, path),
+        .source        = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .requests_json = testing_copy_string(
             arena, testing_strip_section_edges(sections[1])),
@@ -510,8 +519,8 @@ internal bool testing_parse_command_test(Arena*       arena,
                       (cstr)string_format(arena, STRINGP, STRINGV(cli_args))
                           .data)
                 : "",
-        .path   = testing_copy_cstr(arena, path),
-        .source = testing_copy_string(arena,
+        .path                  = testing_copy_cstr(arena, path),
+        .source                = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .expected_return_value = testing_copy_string(
             arena, testing_trim_ascii_whitespace(sections[1])),
@@ -793,7 +802,8 @@ internal void testing_cleanup_generated_format_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr input_path  = testing_generated_aux_path(&arena, artifact_root, ".input.n");
+    cstr input_path =
+        testing_generated_aux_path(&arena, artifact_root, ".input.n");
     cstr format_path = path_replace_extension(&arena, input_path, ".format");
 
     path_remove(input_path);
@@ -807,8 +817,10 @@ internal void testing_cleanup_generated_lsp_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr input_path  = testing_generated_aux_path(&arena, artifact_root, ".lsp.in");
-    cstr output_path = testing_generated_aux_path(&arena, artifact_root, ".lsp.out");
+    cstr input_path =
+        testing_generated_aux_path(&arena, artifact_root, ".lsp.in");
+    cstr output_path =
+        testing_generated_aux_path(&arena, artifact_root, ".lsp.out");
 
     path_remove(input_path);
     path_remove(output_path);
@@ -831,19 +843,22 @@ internal void testing_cleanup_generated_tree(cstr directory)
     while (dir_iter_next(&iter, &arena, &child_path, &is_directory)) {
         if (is_directory) {
             testing_cleanup_generated_tree(child_path);
-        } else if (path_has_extension(s(child_path), ".ir") ||
-                   path_has_extension(s(child_path), ".c") ||
-                   path_has_extension(s(child_path), ".out") ||
-                   path_has_extension(s(child_path), ".format") ||
-                   path_has_extension(s(child_path), ".input.n") ||
-                   path_has_extension(s(child_path), ".lsp.in") ||
-                   path_has_extension(s(child_path), ".lsp.out") ||
-                   path_has_extension(s(child_path), ".pdb")) {
+        } else if ((path_has_extension(s(child_path), ".ir") ||
+                    path_has_extension(s(child_path), ".c") ||
+                    path_has_extension(s(child_path), ".out") ||
+                    path_has_extension(s(child_path), ".format") ||
+                    path_has_extension(s(child_path), ".input.n") ||
+                    path_has_extension(s(child_path), ".lsp.in") ||
+                    path_has_extension(s(child_path), ".lsp.out") ||
+                    path_has_extension(s(child_path), ".pdb")) &&
+                   testing_has_current_flavor_marker(s(child_path))) {
             path_remove(child_path);
-        } else if (path_has_extension(s(child_path), ".input")) {
+        } else if (path_has_extension(s(child_path), ".input") &&
+                   testing_has_current_flavor_marker(s(child_path))) {
             path_remove(child_path);
 #if OS_WINDOWS
-        } else if (path_has_extension(s(child_path), ".input.exe")) {
+        } else if (path_has_extension(s(child_path), ".input.exe") &&
+                   testing_has_current_flavor_marker(s(child_path))) {
             path_remove(child_path);
 #endif
         }
@@ -1646,8 +1661,8 @@ internal bool testing_run_error_test(const ErrorTest* test)
     ProgramInfo program  = {0};
     bool        front_ok = front_end_program(
         (NerdSource){
-            .source      = test->source,
-            .source_path = s(test->path),
+                   .source      = test->source,
+                   .source_path = s(test->path),
         },
         &options,
         NULL,
@@ -1973,10 +1988,10 @@ internal bool testing_run_command_test(const CommandTest* test)
     string input_name   = path_filename(s(input_path));
     cstr   input_arg =
         (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
-    bool command_is_run     = strcmp(test->command_name, "run") == 0 ||
-                              strcmp(test->command_name, "r") == 0;
-    bool command_is_build   = strcmp(test->command_name, "build") == 0 ||
-                              strcmp(test->command_name, "b") == 0;
+    bool command_is_run = strcmp(test->command_name, "run") == 0 ||
+                          strcmp(test->command_name, "r") == 0;
+    bool command_is_build = strcmp(test->command_name, "build") == 0 ||
+                            strcmp(test->command_name, "b") == 0;
     bool command_is_explain = strcmp(test->command_name, "explain") == 0;
 
     bool passed             = true;
