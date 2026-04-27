@@ -67,6 +67,22 @@ internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
     }
 }
 
+internal bool
+ast_node_can_be_assignment_target(const AstParseState* state, u32 node_index)
+{
+    const AstNode* node = &state->nodes[node_index];
+    switch (node->kind) {
+    case AK_SymbolRef:
+    case AK_Field:
+    case AK_Deref:
+        return true;
+    case AK_Expression:
+        return ast_node_can_be_assignment_target(state, node->a);
+    default:
+        return false;
+    }
+}
+
 internal bool ast_symbol_starts_variable(const AstParseState* state)
 {
     return state->token.kind == TK_Symbol &&
@@ -3476,7 +3492,7 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
 
     AstKind binary_kind = AK_IntegerPlus;
     if (ast_compound_assignment_binary_kind(assign_token.kind, &binary_kind)) {
-        if (state->nodes[target_node].kind != AK_SymbolRef) {
+        if (!ast_node_can_be_assignment_target(state, target_node)) {
             return error_0203_expected_token(
                 state->token.source,
                 ast_token_span(state, &assign_token),
