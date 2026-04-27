@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     value := 1

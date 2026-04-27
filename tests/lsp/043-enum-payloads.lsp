@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Maybe :: enum { None Some(i32) }
 main :: fn () {

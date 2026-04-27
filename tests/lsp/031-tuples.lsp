@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 make_pair :: fn(a: i32, b: string) -> (i32, string) {
     return (a, b)

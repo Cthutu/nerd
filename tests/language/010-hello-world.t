@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Prints a simple string from a block-bodied main.
 main :: fn () {

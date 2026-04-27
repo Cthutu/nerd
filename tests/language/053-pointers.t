@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     values: [3]i32 = [10, 20, 30]
@@ -62,66 +62,4 @@ $20 = i32:$17 + i32:$19
 return i32:$20
 end
 ¬
-void init() {}
-typedef struct array10 {
-    int items[3];
-} array10;
-int $main() {
-    string_builder_reset();
-    array10 $0 = (array10){.items = {10, 20, 30}};
-    array10 $values = $0;
-    array10* $1 = &$values;
-    array10* $array_ptr = $1;
-    int* $2 = &$values.items[1];
-    int* $elem_ptr = $2;
-    array10 $4 = (array10){.items = {1, 2, 3}};
-    array10* $3 = &$4;
-    array10* $literal_ptr = $3;
-    size_t $5 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"array pointer = ", .count = 16}));
-    array10 $7 = $array_ptr[0];
-    string_builder_append_string((string){.data = (u8*)"[", .count = 1});
-    string_builder_append_string(to_string$i32($7.items[0]));
-    string_builder_append_string((string){.data = (u8*)", ", .count = 2});
-    string_builder_append_string(to_string$i32($7.items[1]));
-    string_builder_append_string((string){.data = (u8*)", ", .count = 2});
-    string_builder_append_string(to_string$i32($7.items[2]));
-    string_builder_append_string((string){.data = (u8*)"]", .count = 1});
-    string $6 = string_builder_finish($5);
-    prn($6);
-    string_builder_reset();
-    size_t $8 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"elem pointer = ", .count = 15}));
-    int $10 = $elem_ptr[0];
-    string_builder_append_string(to_string$i32($10));
-    string $9 = string_builder_finish($8);
-    prn($9);
-    string_builder_reset();
-    size_t $11 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"literal pointer = ", .count = 18}));
-    array10 $13 = $literal_ptr[0];
-    string_builder_append_string((string){.data = (u8*)"[", .count = 1});
-    string_builder_append_string(to_string$i32($13.items[0]));
-    string_builder_append_string((string){.data = (u8*)", ", .count = 2});
-    string_builder_append_string(to_string$i32($13.items[1]));
-    string_builder_append_string((string){.data = (u8*)", ", .count = 2});
-    string_builder_append_string(to_string$i32($13.items[2]));
-    string_builder_append_string((string){.data = (u8*)"]", .count = 1});
-    string $12 = string_builder_finish($11);
-    prn($12);
-    string_builder_reset();
-    array10 $14 = $array_ptr[0];
-    #ifndef NDEBUG
-    if ((long long)0 < 0 || (size_t)0 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
-    #endif
-    int $15 = $14.items[0];
-    int $16 = $elem_ptr[0];
-    int $17 = $15 + $16;
-    array10 $18 = $literal_ptr[0];
-    #ifndef NDEBUG
-    if ((long long)2 < 0 || (size_t)2 >= 3) { fprintf(stderr, "fatal: array index out of bounds\n"); abort(); }
-    #endif
-    int $19 = $18.items[2];
-    int $20 = $17 + $19;
-    return $20;
-}
+

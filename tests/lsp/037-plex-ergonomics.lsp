@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Point :: plex #c {
     x    i32
@@ -88,7 +88,7 @@ main :: fn () {
                 0,
                 0,
                 1,
-                5,
+                2,
                 0,
                 0,
                 2,

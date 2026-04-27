@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () {
     for 1 {
@@ -29,7 +29,7 @@ main :: fn () {
     ]
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     for i := 0; i < 1; i += 1 {
@@ -127,25 +127,25 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
-    "message": "`break` can only be used inside a loop or expression block",
+    "code": "0203",
+    "message": "Expected LeftBrace `{` but found RightBrace `}`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
-        "line": 3,
-        "column": 23
+        "line": 5,
+        "column": 5
     },
     "references": [
         {
             "kind": "primary",
-            "line": 3,
-            "column": 23,
-            "length": 5,
-            "message": "This `break` is not inside a `for` loop or expression block"
+            "line": 5,
+            "column": 5,
+            "length": 1,
+            "message": "Found RightBrace `}` here"
         }
     ],
     "notes": [],
     "help": [
-        "Move `break` into a `for` loop or expression block."
+        "Check for a missing closing delimiter or misplaced operator"
     ]
 }
 ¬
@@ -242,24 +242,24 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
-    "message": "`break` can only be used inside a loop or expression block",
+    "code": "0203",
+    "message": "Expected LeftBrace `{` but found RightBrace `}`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
-        "line": 2,
-        "column": 19
+        "line": 4,
+        "column": 1
     },
     "references": [
         {
             "kind": "primary",
-            "line": 2,
-            "column": 19,
-            "length": 5,
-            "message": "This `break` is not inside a `for` loop or expression block"
+            "line": 4,
+            "column": 1,
+            "length": 1,
+            "message": "Found RightBrace `}` here"
         }
     ],
     "notes": [],
     "help": [
-        "Move `break` into a `for` loop or expression block."
+        "Check for a missing closing delimiter or misplaced operator"
     ]
 }

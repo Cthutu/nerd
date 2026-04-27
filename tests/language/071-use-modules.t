@@ -1,9 +1,9 @@
-use std.print
+use std.io
 
 main :: fn() {
     prn("top")
 
-    p :: mod std.print
+    p :: mod std.io
     use p
 
     prn("local")

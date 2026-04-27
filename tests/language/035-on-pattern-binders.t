@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Binds the matched value inside each block-form `on` branch.
 size :: 2

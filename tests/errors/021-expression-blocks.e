@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 value: i32: ${
     prn("fallthrough")

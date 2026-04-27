@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Point :: plex {
     x i32
@@ -63,17 +63,17 @@ return i32:$18
 end
 ¬
 void init() {}
-typedef struct plex7 {
+typedef struct plex8 {
     int $x;
     int $y;
     string $name;
-} plex7;
+} plex8;
 int $main() {
     string_builder_reset();
-    plex7 $0 = (plex7){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
-    plex7 $p = $0;
-    plex7 $1 = (plex7){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
-    plex7 $q = $1;
+    plex8 $0 = (plex8){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
+    plex8 $p = $0;
+    plex8 $1 = (plex8){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
+    plex8 $q = $1;
     size_t $2 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"p ", .count = 2}));
     string $4 = $p.$name;

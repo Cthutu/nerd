@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Numbers :: [3]i32
 
@@ -8,7 +8,7 @@ ys:[2]i32=[4,5]
 prn($"{xs[0]} {ys[1]}")
 }
 ¬
-use std.print
+use std.io
 
 Numbers :: [3]i32
 

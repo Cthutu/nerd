@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Matches integer values with block-form `on` branches.
 size :: 2

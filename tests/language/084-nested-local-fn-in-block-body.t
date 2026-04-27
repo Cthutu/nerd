@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 lowercase_first :: fn (text: string) -> u8 {
     tolower :: fn (char: u8) -> u8 {

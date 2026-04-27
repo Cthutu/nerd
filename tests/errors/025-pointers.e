@@ -26,7 +26,7 @@ main :: fn () {
     ]
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     values: [2]i32 = [1, 2]

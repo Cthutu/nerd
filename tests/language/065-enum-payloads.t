@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Maybe :: enum { None Some(i32) Pair(i32, i32) Text(string) }
 
@@ -104,91 +104,4 @@ $11 = call fn(enum{None,Some(i32),Pair((i32,i32)),Text(string)})->i32:score, enu
 return i32:$11
 end
 ¬
-void init() {}
-typedef struct tuple7 {
-    int _0;
-    int _1;
-} tuple7;
-typedef struct enum8 {
-    uint8_t tag;
-    union {
-        int $Some;
-        tuple7 $Pair;
-        string $Text;
-    } data;
-} enum8;
-int $score(enum8 $value) {
-    int $0 = 0;
-    enum8 $4 = (enum8){.tag = 0};
-    bool $5 = $value.tag == $4.tag;
-    if (!$5) goto L2;
-    L3: ;
-    $0 = 0;
-    goto L1;
-    L2: ;
-    enum8 $8 = (enum8){.tag = 1};
-    bool $9 = $value.tag == $8.tag;
-    if (!$9) goto L6;
-    int $10 = $value.data.$Some;
-    int $11 = $value.data.$Some;
-    int $score$x$on47 = $11;
-    L7: ;
-    $0 = $score$x$on47;
-    goto L1;
-    L6: ;
-    enum8 $14 = (enum8){.tag = 2};
-    bool $15 = $value.tag == $14.tag;
-    if (!$15) goto L12;
-    tuple7 $16 = $value.data.$Pair;
-    int $17 = $16._0;
-    int $18 = $16._1;
-    tuple7 $19 = $value.data.$Pair;
-    int $20 = $19._0;
-    int $score$left$on54 = $20;
-    int $21 = $19._1;
-    int $score$right$on57 = $21;
-    L13: ;
-    int $22 = $score$left$on54 + $score$right$on57;
-    $0 = $22;
-    goto L1;
-    L12: ;
-    enum8 $24 = (enum8){.tag = 3};
-    bool $25 = $value.tag == $24.tag;
-    if (!$25) goto L1;
-    string $26 = $value.data.$Text;
-    string $27 = $value.data.$Text;
-    L23: ;
-    $0 = 100;
-    L1: ;
-    return $0;
-}
-int $main() {
-    string_builder_reset();
-    enum8 $0 = (enum8){.tag = 0};
-    enum8 $a = $0;
-    enum8 $1 = (enum8){.tag = 1, .data.$Some = 5};
-    enum8 $b = $1;
-    tuple7 $2 = (tuple7){._0 = 10, ._1 = 20};
-    enum8 $3 = (enum8){.tag = 2, .data.$Pair = $2};
-    enum8 $c = $3;
-    enum8 $4 = (enum8){.tag = 3, .data.$Text = (string){.data = (u8*)"hello", .count = 5}};
-    enum8 $d = $4;
-    size_t $5 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"scores ", .count = 7}));
-    int $7 = $score($a);
-    string_builder_append_string(to_string$i32($7));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $8 = $score($b);
-    string_builder_append_string(to_string$i32($8));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $9 = $score($c);
-    string_builder_append_string(to_string$i32($9));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $10 = $score($d);
-    string_builder_append_string(to_string$i32($10));
-    string $6 = string_builder_finish($5);
-    prn($6);
-    string_builder_reset();
-    int $11 = $score($c);
-    return $11;
-}
+

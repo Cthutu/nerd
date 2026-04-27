@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () {
     value :: 1
@@ -28,7 +28,7 @@ main :: fn () {
     ]
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     values :: [1, 2]

@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Checks float literals plus comparison, logical, bitwise, and modulo operators.
 half: f32 = 0.5

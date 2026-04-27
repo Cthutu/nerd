@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 split :: fn (s: string, sep: string) -> [..]string {
     parts: [..]string

@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Block-form `on` materialises untyped local integer constants to i32.
 main :: fn () {

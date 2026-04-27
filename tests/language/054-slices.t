@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     values: [5]i32 = [10, 20, 30, 40, 50]
@@ -104,33 +104,33 @@ return i32:$31
 end
 ¬
 void init() {}
-typedef struct array10 {
+typedef struct array11 {
     int items[5];
-} array10;
-typedef struct slice11 {
+} array11;
+typedef struct slice12 {
     int* data;
     uintptr_t count;
-} slice11;
-typedef struct array12 {
+} slice12;
+typedef struct array13 {
     int items[3];
-} array12;
+} array13;
 int $main() {
     string_builder_reset();
-    array10 $0 = (array10){.items = {10, 20, 30, 40, 50}};
-    array10 $values = $0;
-    slice11 $1 = (slice11){.data = $values.items, .count = 5};
-    slice11 $all = $1;
-    slice11 $2 = (slice11){.data = $values.items + 1, .count = (4) - (1)};
-    slice11 $middle = $2;
-    slice11 $3 = (slice11){.data = $values.items, .count = (3) - (0)};
-    slice11 $from_start = $3;
-    slice11 $4 = (slice11){.data = $values.items + 2, .count = 5 - 2};
-    slice11 $to_end = $4;
-    array12 $5 = (array12){.items = {1, 2, 3}};
-    slice11 $6 = (slice11){.data = $5.items, .count = 3};
-    slice11 $literal = $6;
-    slice11 $7 = (slice11){.data = $all.data + 1, .count = (3) - (1)};
-    slice11 $reslice = $7;
+    array11 $0 = (array11){.items = {10, 20, 30, 40, 50}};
+    array11 $values = $0;
+    slice12 $1 = (slice12){.data = $values.items, .count = 5};
+    slice12 $all = $1;
+    slice12 $2 = (slice12){.data = $values.items + 1, .count = (4) - (1)};
+    slice12 $middle = $2;
+    slice12 $3 = (slice12){.data = $values.items, .count = (3) - (0)};
+    slice12 $from_start = $3;
+    slice12 $4 = (slice12){.data = $values.items + 2, .count = 5 - 2};
+    slice12 $to_end = $4;
+    array13 $5 = (array13){.items = {1, 2, 3}};
+    slice12 $6 = (slice12){.data = $5.items, .count = 3};
+    slice12 $literal = $6;
+    slice12 $7 = (slice12){.data = $all.data + 1, .count = (3) - (1)};
+    slice12 $reslice = $7;
     size_t $8 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"all = ", .count = 6}));
     string_builder_append_string((string){.data = (u8*)"[", .count = 1});

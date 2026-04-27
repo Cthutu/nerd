@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Allows a block-bodied main with no explicit return value.
 main :: fn () {

@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Statement-position block-form `on` may omit `else`.
 main :: fn () {

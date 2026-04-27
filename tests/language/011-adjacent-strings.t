@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Concatenates adjacent string literals at compile time.
 main :: fn () {

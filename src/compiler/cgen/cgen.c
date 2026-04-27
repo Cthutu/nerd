@@ -549,7 +549,8 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         cgen_add_symbol_name(cgen, (u32)value->value.integer);
         break;
     case IR_VALUE_INTEGER:
-        if (cgen->ir->types[value->type].kind == STK_Slice &&
+        if (value->type != sema_no_type() &&
+            cgen->ir->types[value->type].kind == STK_Slice &&
             value->value.integer == 0) {
             cgen_add(cgen, "(");
             cgen_add(cgen, cgen_c_type(cgen->ir, value->type));

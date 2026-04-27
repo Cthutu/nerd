@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 greet :: fn (name: string) -> string {
     prn($"Hello, {name}!")

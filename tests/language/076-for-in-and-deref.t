@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     values: [3]i32 = [1, 2, 3]
@@ -119,19 +119,19 @@ return i32:$41
 end
 ¬
 void init() {}
-typedef struct array10 {
+typedef struct array11 {
     int items[3];
-} array10;
-typedef struct slice11 {
+} array11;
+typedef struct slice12 {
     int* data;
     uintptr_t count;
-} slice11;
+} slice12;
 int $main() {
     string_builder_reset();
-    array10 $0 = (array10){.items = {1, 2, 3}};
-    array10 $values = $0;
-    slice11 $1 = (slice11){.data = $values.items, .count = 3};
-    slice11 $2 = (slice11){0};
+    array11 $0 = (array11){.items = {1, 2, 3}};
+    array11 $values = $0;
+    slice12 $1 = (slice12){.data = $values.items, .count = 3};
+    slice12 $2 = (slice12){0};
     $2 = $1;
     int $3 = 0;
     $3 = 0;
@@ -152,8 +152,8 @@ int $main() {
     goto L4;
     L6: ;
     int $total = 0;
-    slice11 $11 = (slice11){.data = $values.items, .count = 3};
-    slice11 $12 = (slice11){0};
+    slice12 $11 = (slice12){.data = $values.items, .count = 3};
+    slice12 $12 = (slice12){0};
     $12 = $11;
     int $13 = 0;
     $13 = 0;

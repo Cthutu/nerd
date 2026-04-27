@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 score :: fn (size: u32) -> u32 {
     return on size {

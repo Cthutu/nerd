@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 -- Uses expression blocks as top-level constant and variable initialisers.
 constant_value :: ${

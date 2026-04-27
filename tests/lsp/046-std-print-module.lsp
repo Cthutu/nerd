@@ -1,4 +1,4 @@
-print :: mod std.print
+print :: mod std.io
 
 main :: fn () {
     print.prn("Hello")
@@ -126,7 +126,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "file:///home/matt/nerd/_bin/mods/std/print.n",
+            "uri": "file:///home/matt/nerd/_bin/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 16,
@@ -143,7 +143,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 5,
         "result": {
-            "uri": "file:///home/matt/nerd/_bin/mods/std/print.n",
+            "uri": "file:///home/matt/nerd/_bin/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 0,

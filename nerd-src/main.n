@@ -1,6 +1,6 @@
 arena :: mod std.arena
 
-print :: mod std.print
+print :: mod std.io
 
 main :: fn () {
     a := arena.arena_new(1024)

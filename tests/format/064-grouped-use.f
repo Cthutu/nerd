@@ -1,7 +1,7 @@
-use   std { print }
+use   std { io }
 use test { grouped { alpha beta } }
 ¬
-use std.print
+use std.io
 
 use test.grouped.alpha
 

@@ -23,7 +23,7 @@ message: string = $"Hello"
     ]
 }
 ¬
-use std.print
+use std.io
 
 helper :: fn () => 1
 main :: fn () {

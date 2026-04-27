@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Point::plex{x i32 y i32 name string}
 
@@ -11,7 +11,7 @@ main::fn(){
 prn($"{a} {b} {name} {x} {y}")
 }
 ¬
-use std.print
+use std.io
 
 Point :: plex {
     x    i32

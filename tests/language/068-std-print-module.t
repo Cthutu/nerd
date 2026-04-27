@@ -1,7 +1,7 @@
-print :: mod std.print
+print :: mod std.io
 
 main :: fn() {
-    local_print :: mod std.print
+    local_print :: mod std.io
 
     local_print.prn("Local")
     print.prn("Hello")

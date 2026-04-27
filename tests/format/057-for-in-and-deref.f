@@ -1,4 +1,4 @@
-use std.print
+use std.io
 main::fn()->i32{
 values:[2]i32=[1,2]
 ptr:^i32=^values[1]
@@ -8,7 +8,7 @@ prn($"{item^}")
 return ptr^
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     values : [2]i32 = [1, 2]

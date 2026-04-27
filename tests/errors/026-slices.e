@@ -54,7 +54,7 @@ main :: fn () {
     ]
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     values :: [1, 2, 3]

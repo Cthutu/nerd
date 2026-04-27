@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Direction :: enum {
     NORTH

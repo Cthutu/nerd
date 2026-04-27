@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () {
     value :: for i := 0; i < 1; i += 1 {
@@ -78,7 +78,7 @@ main :: fn () {
                 0,
                 0,
                 1,
-                5,
+                2,
                 0,
                 0,
                 2,

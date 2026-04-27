@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 a :: 'a'
 ab :: 'ab'

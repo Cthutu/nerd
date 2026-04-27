@@ -64,7 +64,7 @@ From the current codebase and test suite:
   language tests, error tests, LSP support, formatter support, and `just test`
   coverage.
 - Prefer dense language regression tests that exercise several related runtime
-  cases in one file. Import `pr` and `prn` from `std.print` to make those
+  cases in one file. Import `pr` and `prn` from `std.io` to make those
   cases visible in the expected program output, rather than adding one tiny
   test per happy path.
 - Deliver new language features horizontally across the toolchain.
@@ -1115,22 +1115,22 @@ needed earlier.
   - Decide the first privacy model before implementation; exported-by-default
     is acceptable for the initial standard library if kept explicit in docs.
 
-## Milestone 28: `std.print`
+## Milestone 28: `std.io`
 
-- [X] 97. Move printing into `std.print`.
-  - Define the first standard module as `std.print`.
+- [X] 97. Move printing into `std.io`.
+  - Define the first standard module as `std.io`.
   - Provide `pr` and `prn` wrappers in Nerd source.
   - Implement those wrappers via FFI to C `printf`.
   - Define the C-string/varargs boundary explicitly: Nerd `string` is a
     counted value, so wrappers must lower to a safe `printf` form such as
     `%.*s` rather than passing Nerd strings as C strings.
-  - `mods/std/print.n` is now the repo-owned standard module surface.
+  - `mods/std/io.n` is now the repo-owned standard module surface.
   - `pr` and `prn` are no longer available as global built-ins; user code gets
-    them through `std.print`.
+    them through `std.io`.
   - Dense tests cover imported `pr`/`prn`, interpolation, newlines,
     formatter/LSP integration, module-qualified calls, and invalid calls.
   - The remaining follow-up is architectural rather than user-facing: replace
-    the current bootstrap resolution path for `std.print` with general module
+    the current bootstrap resolution path for `std.io` with general module
     loading so the compiler does not special-case that module internally.
 
 ## Later Milestones
@@ -1149,22 +1149,22 @@ needed earlier.
     - a program-level front-end entry point plus module record/cache scaffold
       now drives recursive loading
     - ordinary build/run/compile paths now go through the program-level loader
-    - `pub` is parsed on top-level bindings and `use std.print` is the
+    - `pub` is parsed on top-level bindings and `use std.io` is the
       canonical import spelling
     - legacy `use mod ...` has been removed
-    - bootstrap resolution for `std.print` has been removed from semantic
+    - bootstrap resolution for `std.io` has been removed from semantic
       analysis
     - whole-program back-end merging now emits imported module functions into
       the final IR/C/binary
     - debug and release suites both pass after the loader transition
-  - Remove compiler-side special-casing for `std.print`.
+  - Remove compiler-side special-casing for `std.io`.
   - Load module source from configured module roots through the same front-end
     pipeline as normal source files.
   - Build module exports from analysed module declarations rather than
     synthesising them in semantic analysis.
   - Keep module loading deterministic and cache analysed modules per build so
     repeated imports do not reparse or reanalyse the same file.
-  - Resolve dotted module paths such as `std.print` to rooted files such as
+  - Resolve dotted module paths such as `std.io` to rooted files such as
     `std/print.n`.
   - Support only rooted module lookup; do not add relative module imports.
   - Search module roots in this order:
@@ -1179,7 +1179,7 @@ needed earlier.
     generated C, but remove bootstrap modules entirely from the language/module
     system.
   - Completion criterion: no compiler-known bootstrap module resolution remains;
-    `std.print` is loaded and exported exactly like any other Nerd module.
+    `std.io` is loaded and exported exactly like any other Nerd module.
 
 ## Milestone 30: Module Exports And Privacy
 
@@ -1188,7 +1188,7 @@ needed earlier.
     has already been settled. Implementation follows general module loading.
   - Use `pub` as the explicit export marker.
   - Allow `pub` only on top-level bindings.
-  - Allow public module-valued bindings such as `pub p :: mod std.print` to
+  - Allow public module-valued bindings such as `pub p :: mod std.io` to
     re-export submodules through ordinary namespacing.
   - Define what `use` imports from a module and how non-exported names behave.
   - Keep the initial model simple, documented, and enforced consistently in
@@ -1300,7 +1300,7 @@ needed earlier.
   stable.
   - This is the fifth of the next design-work items and should stay sequenced
     after module loading and export/privacy work.
-  - Treat `std.print` as the first real module and use it to validate the
+  - Treat `std.io` as the first real module and use it to validate the
     module/export design.
   - Add the next standard modules only after the module loader, export rules,
     and import ergonomics are settled.
@@ -1312,7 +1312,7 @@ needed earlier.
       uninitialised storage while keeping zero-initialisation as the default
       for ordinary variables.
     - Narrow `string` <-> `[]u8` cast support is now in place for explicit
-      low-level interop, which is enough for `std.print.input` to compile as a
+      low-level interop, which is enough for `std.io.input` to compile as a
       real standard-library function without reintroducing bootstrap shortcuts.
 
 ## Milestone 34: Grouped `use` Syntax
@@ -1470,7 +1470,7 @@ These are the active unfinished items after the current `undefined` work:
 
 - [ ] 21. Keep extending the formatter as new language features land.
 - [ ] 22. Keep extending the LSP as new language features land.
-- [ ] 102. Continue standard-library expansion beyond `std.print`.
+- [ ] 102. Continue standard-library expansion beyond `std.io`.
 - [ ] 106. Add first-class dynamic arrays using `[..]T`.
 
 These are intentionally deferred and should not be treated as near-term tasks:

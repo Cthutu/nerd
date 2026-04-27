@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 score :: fn (value: i32) -> i32 {
     return on value {

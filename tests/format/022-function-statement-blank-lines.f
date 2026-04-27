@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
 count := 1
@@ -13,7 +13,7 @@ prn($"next: {next}")
 return next
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     count := 1

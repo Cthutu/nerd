@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () {
     value :: 2
@@ -6,7 +6,7 @@ main :: fn () {
     on value { 1 => prn("one") }
 }
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     value :: 2

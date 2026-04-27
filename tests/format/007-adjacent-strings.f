@@ -1,8 +1,8 @@
-use std.print
+use std.io
 
 main::fn(){prn("Hello, ""world!")}
 ¬
-use std.print
+use std.io
 
 main :: fn () {
     prn("Hello, " "world!")

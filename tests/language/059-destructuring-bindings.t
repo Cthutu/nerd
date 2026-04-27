@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 main :: fn () -> i32 {
     (a, b) := (2, 3)
@@ -87,75 +87,4 @@ string.reset
 return i32:0
 end
 ¬
-void init() {}
-typedef struct tuple10 {
-    int _0;
-    int _1;
-} tuple10;
-typedef struct tuple11 {
-    int _0;
-    string _1;
-} tuple11;
-int $main() {
-    string_builder_reset();
-    tuple10 $0 = (tuple10){._0 = 2, ._1 = 3};
-    int $1 = $0._0;
-    int $a = $1;
-    int $2 = $0._1;
-    int $b = $2;
-    size_t $3 = string_builder_mark();
-    string_builder_append_string(to_string$i32($a));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    string_builder_append_string(to_string$i32($b));
-    string $4 = string_builder_finish($3);
-    prn($4);
-    string_builder_reset();
-    tuple10 $5 = (tuple10){._0 = $b, ._1 = $a};
-    int $6 = $5._0;
-    $a = $6;
-    int $7 = $5._1;
-    $b = $7;
-    size_t $8 = string_builder_mark();
-    string_builder_append_string(to_string$i32($a));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    string_builder_append_string(to_string$i32($b));
-    string $9 = string_builder_finish($8);
-    prn($9);
-    string_builder_reset();
-    tuple10 $10 = (tuple10){._0 = 7, ._1 = 8};
-    int $11 = $10._0;
-    $a = $11;
-    int $12 = $10._1;
-    size_t $13 = string_builder_mark();
-    string_builder_append_string(to_string$i32($a));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    string_builder_append_string(to_string$i32($b));
-    string $14 = string_builder_finish($13);
-    prn($14);
-    string_builder_reset();
-    tuple11 $15 = (tuple11){._0 = 4, ._1 = (string){.data = (u8*)"four", .count = 4}};
-    int $16 = $15._0;
-    int $c = $16;
-    string $17 = $15._1;
-    string $d = $17;
-    size_t $18 = string_builder_mark();
-    string_builder_append_string(to_string$i32($c));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    string_builder_append_string(to_string$string($d));
-    string $19 = string_builder_finish($18);
-    prn($19);
-    string_builder_reset();
-    tuple11 $20 = (tuple11){._0 = 5, ._1 = (string){.data = (u8*)"five", .count = 4}};
-    int $21 = $20._0;
-    int $e = $21;
-    string $22 = $20._1;
-    string $f = $22;
-    size_t $23 = string_builder_mark();
-    string_builder_append_string(to_string$i32($e));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    string_builder_append_string(to_string$string($f));
-    string $24 = string_builder_finish($23);
-    prn($24);
-    string_builder_reset();
-    return 0;
-}
+

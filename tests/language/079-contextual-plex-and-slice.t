@@ -1,4 +1,4 @@
-use std.print
+use std.io
 
 Point :: plex { x i32 y i32 }
 
