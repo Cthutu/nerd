@@ -54,8 +54,8 @@ ext_name := "nerd-language-" + version
 src_dir  := "syntax/nerd-vscode"
 vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
-user_bin_dir := "~/.local/bin"
-user_bin_nerd := user_bin_dir + "/nerd"
+user_bin_dir := if os_family() == "windows" { replace(env_var("LOCALAPPDATA"), "\\", "/") + "/nerd" } else { "~/.local/bin" }
+user_bin_nerd := user_bin_dir + "/nerd" + exe_suffix
 user_mods_dir := user_bin_dir + "/mods"
 nvim_src_dir := "syntax/nerd-nvim"
 nvim_config_dir := if os_family() == "windows" { replace(env_var("LOCALAPPDATA"), "\\", "/") + "/nvim" } else { "~/.config/nvim" }
@@ -81,8 +81,9 @@ install-nvim:
 install:
     just format
     just build-release nerd
+    rm -rf {{user_mods_dir}}
     mkdir -p {{user_bin_dir}} {{user_mods_dir}}
-    cp _bin/nerd {{user_bin_nerd}}
+    cp _bin/nerd{{exe_suffix}} {{user_bin_nerd}}
     cp -R mods/. {{user_mods_dir}}/
     just install-nvim
     just uninstall

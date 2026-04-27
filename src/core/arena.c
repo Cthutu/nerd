@@ -60,10 +60,9 @@ void _arena_init(Arena* arena, ArenaDefaultParams params)
 
 #if OS_WINDOWS
     // Reserve the full range.
-    u8* memory = (u8*)VirtualAlloc(nullptr,
-                                   params.reserved_size,
-                                   MEM_RESERVE | MEM_COMMIT,
-                                   PAGE_READWRITE);
+    u8* memory = (u8*)VirtualAlloc(
+        nullptr, params.reserved_size, MEM_RESERVE, PAGE_READWRITE);
+    mem_check(memory);
 
     // Allocate the first block.
     mem_check(
