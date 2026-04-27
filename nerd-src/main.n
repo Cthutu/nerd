@@ -1,6 +1,11 @@
--- This is a test for real Nerd code.  As I build up the compiler,
--- I will add to this to reproduce the compiler in itself.
-answer :: 42
+arena :: mod std.arena
 
-main :: fn () => answer
+print :: mod std.print
 
+main :: fn () {
+    a := arena.arena_new(1024)
+
+    print.prn($"Arena capacity: {a.capacity}")
+
+    arena.arena_free(^a)
+}
