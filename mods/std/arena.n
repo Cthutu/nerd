@@ -1,12 +1,12 @@
 pub Arena :: plex {
-    base     ^u8
+    base     ^void
     capacity usize
     cursor   usize
 }
 
-ffi "c" malloc (size: usize) -> ^u8
-ffi "c" realloc (ptr: ^u8, size: usize) -> ^u8
-ffi "c" free (ptr: ^u8)
+ffi "c" malloc (size: usize) -> ^void
+ffi "c" realloc (ptr: ^void, size: usize) -> ^void
+ffi "c" free (ptr: ^void)
 
 pub arena_new :: fn (capacity: usize) -> Arena {
     return Arena {

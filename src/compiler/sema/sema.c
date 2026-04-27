@@ -9273,7 +9273,8 @@ internal bool
 sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
-        SemaDecl* decl          = &sema->decls[sema->ordered_decl_indices[i]];
+        u32       decl_index    = sema->ordered_decl_indices[i];
+        SemaDecl* decl          = &sema->decls[decl_index];
         u32       annotated     = sema_no_type();
         u32       inferred_type = sema_no_type();
 
@@ -9311,6 +9312,11 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
                 return false;
             }
         }
+
+        // Recursive inference can grow sema->decls through module export
+        // import. Reacquire the declaration pointer before writing back
+        // inferred types.
+        decl = &sema->decls[decl_index];
 
         if (decl->kind == SK_Variable) {
             decl->type_index = annotated != sema_no_type()
