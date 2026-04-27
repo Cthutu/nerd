@@ -1,24 +1,4 @@
-io :: mod std.io
-
-main :: fn () {
-    io.prn("Welcome to Little Cave Adventure!")
-    io.prn("It is very dark in here.")
-
-    for {
-        input := get_input()
-
-        on input {
-            "quit", "q" => break
-            "look", "l" => io.prn("You see nothing but darkness.")
-        }
-    }
-
-    io.prn("\nBye!")
-}
-
-get_input :: fn () -> string {
-    return io.input("--> ")
-}
+use std.print
 
 split :: fn (s: string, sep: string) -> [..]string {
     parts: [..]string
@@ -48,3 +28,33 @@ split :: fn (s: string, sep: string) -> [..]string {
     parts.push(s[start ..])
     return parts
 }
+
+main :: fn () -> i32 {
+    empty: [..]string
+    on empty.count != 0 => return 1
+    on empty.capacity != 0 => return 2
+
+    names: [4..]string = ["north", "south"]
+    on names.count != 2 => return 3
+    on names.capacity < 4 => return 4
+
+    names.push("east")
+    view := names[..]
+    on view.count != 3 => return 5
+
+    parts := split("look north", " ")
+    on parts.count != 2 => return 6
+    on parts.capacity < 2 => return 7
+
+    prn($"{view[0]} {view[1]} {view[2]}")
+    prn($"{parts[0]} {parts[1]}")
+    return 0
+}
+¬
+0
+¬
+north south east
+look north
+
+¬
+¬

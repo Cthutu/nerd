@@ -1404,10 +1404,33 @@ needed earlier.
     - `[N]T` remains fixed-size inline storage
     - `[]T` remains a non-owning slice view
     - `[..]T` becomes an owning growable array
+    - `[n..]T` is declaration-only construction syntax for a `[..]T` value
+      with minimum initial capacity `n`
   - Represent dynamic arrays with contiguous element storage and hidden runtime
     metadata for `count` and `capacity`.
-  - Do not add `[n..]T`, `[..n]T`, or operator sugar in this milestone.
-    Capacity control should start with explicit methods such as `reserve`.
+  - Do not add `[..n]T` or operator sugar in this milestone.
+  - Treat `[n..]T` as construction metadata, not as a distinct type:
+    - `names: [..]string` has type `[..]string`, count `0`, capacity `0`,
+      and does not allocate
+    - `names: [16..]string` has type `[..]string`, count `0`, and capacity
+      at least `16`
+    - `names: [16..]string = ["north", "south"]` has type `[..]string`,
+      count `2`, and capacity at least `16`
+    - `names: [2..]string = ["north", "south", "east"]` has type
+      `[..]string`, count `3`, and capacity at least `3`
+  - Keep `[n..]T` declaration-only. It should not be accepted as a reusable
+    type alias or general type expression because `n` is not part of type
+    identity.
+  - Interpret `n` as a minimum initial capacity. If the initialiser has more
+    than `n` elements, the array must grow enough to hold the initialiser.
+  - Initialisation from array literals, fixed arrays, slices, or other dynamic
+    arrays should copy elements into newly owned dynamic-array storage. Do not
+    introduce move semantics in this milestone.
+  - Implement `[n..]T` initialisation as direct construction with the requested
+    minimum capacity, not as a visible two-step initialise-then-reserve
+    operation.
+  - Keep `[..]T` initialisation nil-backed and allocation-free until storage is
+    required by an initialiser, `push`, `append`, or `reserve`.
   - Support the core method surface first:
     - `push(value)`
     - `append(values)`
@@ -1424,6 +1447,9 @@ needed earlier.
   - Expose `count` and `capacity` as read-only fields, and expose `data` only
     if it remains consistent with the existing low-level slice/string surface.
   - Make `items[..]` produce a normal `[]T` view without copying elements.
+  - A slice view must not outlive the dynamic array that owns its storage.
+    Functions that build a dynamic array should return `[..]T` when ownership
+    is transferred to the caller, not `[]T`.
   - Lower method calls through runtime helpers rather than expanding growth
     logic throughout generated C.
   - Add language, formatter, LSP, and error coverage before marking the
