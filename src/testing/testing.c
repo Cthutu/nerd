@@ -146,6 +146,12 @@ internal cstr testing_generated_sidecar_path(Arena* arena,
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
+    sb_append_char(&sb, '.');
+#if CONFIG_DEBUG
+    sb_append_cstr(&sb, "debug");
+#else
+    sb_append_cstr(&sb, "release");
+#endif
     sb_append_cstr(&sb, extension);
     sb_append_null(&sb);
     return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
@@ -160,9 +166,33 @@ internal cstr testing_generated_temp_binary_path(Arena* arena,
     sb_init(&sb, arena);
     sb_append_char(&sb, '_');
     sb_append_string(&sb, stem);
+    sb_append_char(&sb, '.');
+#if CONFIG_DEBUG
+    sb_append_cstr(&sb, "debug");
+#else
+    sb_append_cstr(&sb, "release");
+#endif
     sb_append_cstr(&sb, ".out");
     sb_append_null(&sb);
     return path_join(arena, dir_path, (cstr)sb_to_string(&sb).data);
+}
+
+internal cstr testing_generated_aux_path(Arena* arena,
+                                         cstr   artifact_root,
+                                         cstr   suffix)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, artifact_root);
+    sb_append_char(&sb, '.');
+#if CONFIG_DEBUG
+    sb_append_cstr(&sb, "debug");
+#else
+    sb_append_cstr(&sb, "release");
+#endif
+    sb_append_cstr(&sb, suffix);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
 }
 
 internal bool testing_write_file(cstr path, string text)
@@ -763,7 +793,7 @@ internal void testing_cleanup_generated_format_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr input_path = path_replace_extension(&arena, artifact_root, ".input.n");
+    cstr input_path  = testing_generated_aux_path(&arena, artifact_root, ".input.n");
     cstr format_path = path_replace_extension(&arena, input_path, ".format");
 
     path_remove(input_path);
@@ -777,9 +807,8 @@ internal void testing_cleanup_generated_lsp_files(cstr artifact_root)
     Arena arena = {0};
     arena_init(&arena);
 
-    cstr input_path = path_replace_extension(&arena, artifact_root, ".lsp.in");
-    cstr output_path =
-        path_replace_extension(&arena, artifact_root, ".lsp.out");
+    cstr input_path  = testing_generated_aux_path(&arena, artifact_root, ".lsp.in");
+    cstr output_path = testing_generated_aux_path(&arena, artifact_root, ".lsp.out");
 
     path_remove(input_path);
     path_remove(output_path);
@@ -1210,9 +1239,9 @@ internal bool testing_run_lsp_test(const LspTest* test)
     testing_cleanup_generated_lsp_files(artifact_root);
 
     cstr input_path =
-        path_replace_extension(&artifact_arena, artifact_root, ".lsp.in");
+        testing_generated_aux_path(&artifact_arena, artifact_root, ".lsp.in");
     cstr output_path =
-        path_replace_extension(&artifact_arena, artifact_root, ".lsp.out");
+        testing_generated_aux_path(&artifact_arena, artifact_root, ".lsp.out");
 
     string input_text = {0};
     if (!testing_lsp_build_input(
@@ -1742,7 +1771,7 @@ internal bool testing_run_format_test(const FormatTest* test)
     testing_cleanup_generated_format_files(artifact_root);
 
     cstr input_path =
-        path_replace_extension(&artifact_arena, artifact_root, ".input.n");
+        testing_generated_aux_path(&artifact_arena, artifact_root, ".input.n");
     cstr output_path =
         path_replace_extension(&artifact_arena, input_path, ".format");
 
@@ -1915,7 +1944,7 @@ internal bool testing_run_command_test(const CommandTest* test)
     cstr artifact_root =
         path_replace_extension(&artifact_arena, test->path, "");
     cstr input_path =
-        path_replace_extension(&artifact_arena, artifact_root, ".input.n");
+        testing_generated_aux_path(&artifact_arena, artifact_root, ".input.n");
     cstr output_root = path_replace_extension(&artifact_arena, input_path, "");
     cstr kept_binary_path = output_root;
     cstr temp_binary_path =

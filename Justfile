@@ -32,6 +32,9 @@ test:
 test-release:
     just run-release nerd test
 
+test-all:
+    bash -lc 'set -uo pipefail; just test > /tmp/nerd-test.debug.log 2>&1 & pid1=$!; just test-release > /tmp/nerd-test.release.log 2>&1 & pid2=$!; s1=0; s2=0; wait $pid1 || s1=$?; wait $pid2 || s2=$?; cat /tmp/nerd-test.debug.log; cat /tmp/nerd-test.release.log; test $s1 -eq 0 -a $s2 -eq 0'
+
 test-build:
     just run nerd build -v nerd-src/main.n
 
@@ -43,6 +46,7 @@ alias c := clean
 alias f := format
 alias t := test
 alias tr := test-release
+alias ta := test-all
 alias tb := test-build
 
 #
@@ -94,6 +98,5 @@ alias i := install
 
 do:
     just clean
-    just test
-    just test-release
+    just test-all
     just install
