@@ -624,7 +624,7 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
         return;
     }
     cgen_add(cgen, "return ");
-    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
     cgen_addn(cgen, ";");
 }
 

@@ -434,11 +434,34 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
 internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
 {
     if (state->token.kind == TK_return) {
+        u32 token_index = state->token.token_index;
+        u32 payload     = U32_MAX;
+        if (ast_token_starts_expression(ast_expr_cursor_kind(state))) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            bool previous_allow_statement_boundary =
+                state->allow_statement_boundary;
+            bool previous_stop_before_on_branch_head =
+                state->stop_before_on_branch_head;
+            state->allow_statement_boundary   = true;
+            state->stop_before_on_branch_head = true;
+            if (!ast_parse_expr_bp(state, 0, &payload)) {
+                state->allow_statement_boundary =
+                    previous_allow_statement_boundary;
+                state->stop_before_on_branch_head =
+                    previous_stop_before_on_branch_head;
+                return false;
+            }
+            state->allow_statement_boundary = previous_allow_statement_boundary;
+            state->stop_before_on_branch_head =
+                previous_stop_before_on_branch_head;
+        }
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = AK_ReturnExpr,
-                                 .token_index = state->token.token_index,
-                                 .a           = U32_MAX,
+                                 .token_index = token_index,
+                                 .a           = payload,
                              },
                              out_node);
     }
@@ -447,6 +470,7 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
         AstKind kind =
             state->token.kind == TK_break ? AK_BreakExpr : AK_ContinueExpr;
         u32 token_index = state->token.token_index;
+        u32 payload     = U32_MAX;
         u32 label       = U32_MAX;
         if (ast_expr_cursor_kind(state) == TK_Dollar) {
             if (!ast_next_token(state) || !ast_next_token(state) ||
@@ -459,11 +483,33 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
             }
             label = state->token.value.symbol_handle;
         }
+        if (kind == AK_BreakExpr &&
+            ast_token_starts_expression(ast_expr_cursor_kind(state))) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            bool previous_allow_statement_boundary =
+                state->allow_statement_boundary;
+            bool previous_stop_before_on_branch_head =
+                state->stop_before_on_branch_head;
+            state->allow_statement_boundary   = true;
+            state->stop_before_on_branch_head = true;
+            if (!ast_parse_expr_bp(state, 0, &payload)) {
+                state->allow_statement_boundary =
+                    previous_allow_statement_boundary;
+                state->stop_before_on_branch_head =
+                    previous_stop_before_on_branch_head;
+                return false;
+            }
+            state->allow_statement_boundary = previous_allow_statement_boundary;
+            state->stop_before_on_branch_head =
+                previous_stop_before_on_branch_head;
+        }
         return ast_emit_node(state,
                              (AstNode){
                                  .kind        = kind,
                                  .token_index = token_index,
-                                 .a           = U32_MAX,
+                                 .a           = payload,
                                  .b           = label,
                              },
                              out_node);
@@ -1798,13 +1844,14 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 return false;
             }
 
-            u32 extra_node = U32_MAX;
-            bool has_comma = state->token.kind == TK_Comma;
+            u32  extra_node = U32_MAX;
+            bool has_comma  = state->token.kind == TK_Comma;
             if (!has_comma && ast_peek_token(state)) {
                 has_comma = state->token.kind == TK_Comma;
             }
             if (has_comma) {
-                if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                if (!ast_expect_token(state, TK_Comma) ||
+                    !ast_next_token(state)) {
                     return false;
                 }
                 if (!ast_parse_expr(state, &extra_node)) {
