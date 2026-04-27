@@ -1,0 +1,81 @@
+io :: mod std.io
+
+c_malloc :: ffi "c" malloc (size: usize) -> ^void
+
+main :: fn () {
+    io.prn("Welcome to Little Cave Adventure!")
+    io.prn("It is very dark in here.")
+
+    for {
+        input := get_input()
+
+        on input {
+            "quit", "q" => break
+            "look", "l" => io.prn("You see nothing but darkness.")
+        }
+    }
+
+    io.prn("\nBye!")
+}
+
+get_input :: fn () -> string {
+    return io.input("--> ")
+}
+
+split :: fn (s: string, sep: string) -> []string {
+    for sep.count == 0 {
+        parts := c_malloc(16).as([]string, 1)
+        on parts == nil => return nil
+        parts.data[0] = s
+        return parts
+    }
+
+    part_count: usize = 1
+    i: usize = 0
+    for i + sep.count <= s.count {
+        matched := yes
+        for j: usize = 0; j < sep.count; j += 1 {
+            on s.data[i + j] != sep.data[j] => matched = no
+        }
+
+        for matched {
+            part_count += 1
+            i += sep.count
+            break
+        }
+
+        for !matched {
+            i += 1
+            break
+        }
+    }
+
+    parts := c_malloc(part_count * 16).as([]string, part_count)
+    on parts == nil => return nil
+
+    start: usize = 0
+    index: usize = 0
+    i = 0
+    for i + sep.count <= s.count {
+        matched := yes
+        for j: usize = 0; j < sep.count; j += 1 {
+            on s.data[i + j] != sep.data[j] => matched = no
+        }
+
+        for matched {
+            parts.data[index] = s[start .. i]
+            index += 1
+            i += sep.count
+            start = i
+            break
+        }
+
+        for !matched {
+            i += 1
+            break
+        }
+    }
+
+    parts.data[index] = s[start ..]
+    return parts
+}

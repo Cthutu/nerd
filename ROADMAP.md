@@ -1397,6 +1397,38 @@ needed earlier.
     matches the intended breadth of the numbered error codes.
   - Add command regression tests for aliases and for `explain`.
 
+## Milestone 37: Dynamic Arrays
+
+- [ ] 106. Add first-class dynamic arrays using `[..]T`.
+  - Keep the initial syntax deliberately small:
+    - `[N]T` remains fixed-size inline storage
+    - `[]T` remains a non-owning slice view
+    - `[..]T` becomes an owning growable array
+  - Represent dynamic arrays with contiguous element storage and hidden runtime
+    metadata for `count` and `capacity`.
+  - Do not add `[n..]T`, `[..n]T`, or operator sugar in this milestone.
+    Capacity control should start with explicit methods such as `reserve`.
+  - Support the core method surface first:
+    - `push(value)`
+    - `append(values)`
+    - `reserve(capacity)`
+    - `clear()`
+    - `free()`
+  - Require mutating methods such as `push`, `append`, `reserve`, `clear`, and
+    `free` to operate on mutable dynamic-array lvalues because they may update
+    the backing pointer.
+  - Allow indexing and slicing to mirror fixed arrays and slices:
+    - `items[i]`
+    - `items[..]`
+    - `items[start .. end]`
+  - Expose `count` and `capacity` as read-only fields, and expose `data` only
+    if it remains consistent with the existing low-level slice/string surface.
+  - Make `items[..]` produce a normal `[]T` view without copying elements.
+  - Lower method calls through runtime helpers rather than expanding growth
+    logic throughout generated C.
+  - Add language, formatter, LSP, and error coverage before marking the
+    milestone complete.
+
 ## Remaining Near-Term Work
 
 These are the active unfinished items after the current `undefined` work:
@@ -1404,6 +1436,7 @@ These are the active unfinished items after the current `undefined` work:
 - [ ] 21. Keep extending the formatter as new language features land.
 - [ ] 22. Keep extending the LSP as new language features land.
 - [ ] 102. Continue standard-library expansion beyond `std.print`.
+- [ ] 106. Add first-class dynamic arrays using `[..]T`.
 
 These are intentionally deferred and should not be treated as near-term tasks:
 
