@@ -32,9 +32,6 @@ test:
 test-release:
     just run-release nerd test
 
-test-all:
-    bash -lc 'set -uo pipefail; s1=0; s2=0; just test > >(sed -u "s/^/[debug] /") 2> >(sed -u "s/^/[debug] /" >&2) & pid1=$!; just test-release > >(sed -u "s/^/[release] /") 2> >(sed -u "s/^/[release] /" >&2) & pid2=$!; wait $pid1 || s1=$?; wait $pid2 || s2=$?; test $s1 -eq 0 -a $s2 -eq 0'
-
 test-build:
     just run nerd build -v nerd-src/main.n
 
@@ -46,7 +43,6 @@ alias c := clean
 alias f := format
 alias t := test
 alias tr := test-release
-alias ta := test-all
 alias tb := test-build
 
 #
@@ -98,5 +94,6 @@ alias i := install
 
 do:
     just clean
-    just test-all
+    just test
+    just test-release
     just install
