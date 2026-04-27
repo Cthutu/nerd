@@ -1,3 +1,6 @@
+-- Based on article at https://helderman.github.io/htpataic/htpataic01.html
+-- This is used to dogfood the language
+
 io :: mod std.io
 
 main :: fn () {
