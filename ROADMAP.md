@@ -1426,6 +1426,12 @@ needed earlier.
   - Initialisation from array literals, fixed arrays, slices, or other dynamic
     arrays should copy elements into newly owned dynamic-array storage. Do not
     introduce move semantics in this milestone.
+  - Use explicit manual lifetime management in this milestone. Dynamic arrays
+    own their backing allocation, and callers are responsible for calling
+    `free()` when that owned storage is no longer needed.
+  - Do not add automatic scope cleanup, destructor/drop semantics, or implicit
+    move semantics in this milestone. Those need a separate ownership design
+    pass.
   - Implement `[n..]T` initialisation as direct construction with the requested
     minimum capacity, not as a visible two-step initialise-then-reserve
     operation.
@@ -1450,6 +1456,9 @@ needed earlier.
   - A slice view must not outlive the dynamic array that owns its storage.
     Functions that build a dynamic array should return `[..]T` when ownership
     is transferred to the caller, not `[]T`.
+  - Calling `free()` should release the backing storage and leave the dynamic
+    array in the same observable state as a default `[..]T` value: count `0`,
+    capacity `0`, and nil-backed storage.
   - Lower method calls through runtime helpers rather than expanding growth
     logic throughout generated C.
   - Add language, formatter, LSP, and error coverage before marking the
