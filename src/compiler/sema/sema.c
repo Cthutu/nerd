@@ -2821,8 +2821,8 @@ internal bool sema_local_is_runtime_value(const SemaLocal* local)
 
 internal bool sema_local_is_decl_binding(const SemaLocal* local)
 {
-    return local->kind == SLK_Constant || local->kind == SLK_Function ||
-           local->kind == SLK_TypeAlias;
+    return local->kind == SLK_Variable || local->kind == SLK_Constant ||
+           local->kind == SLK_Function || local->kind == SLK_TypeAlias;
 }
 
 internal u32 sema_mangle_child_function_symbol(const Lexer* lexer,
@@ -5205,10 +5205,9 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
                 if (!sema_try_eval_integer_constant(
                         lexer, ast, sema, node->a, &min_capacity) ||
                     min_capacity < 0 || min_capacity > INT32_MAX) {
-                    return error_0303_unknown_type(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        s("<dynamic array>"));
+                    return error_0303_unknown_type(lexer->source,
+                                                   sema_node_span(lexer, node),
+                                                   s("<dynamic array>"));
                 }
             }
 
@@ -5463,11 +5462,11 @@ internal bool sema_dynarray_method_signature(Sema*        sema,
         return false;
     }
 
-    u32         item_type = sema->types[dynarray_type].first_param_type;
-    string      method    = lex_symbol(lexer, method_symbol);
-    Array(u32)  params    = NULL;
-    u32         result    = sema_builtin_type(sema, STK_Void);
-    bool        matched   = true;
+    u32    item_type  = sema->types[dynarray_type].first_param_type;
+    string method     = lex_symbol(lexer, method_symbol);
+    Array(u32) params = NULL;
+    u32  result       = sema_builtin_type(sema, STK_Void);
+    bool matched      = true;
 
     if (string_eq(method, s("push"))) {
         array_push(params, item_type);
@@ -8101,8 +8100,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             const SemaType* expected_slice =
                 expected_type != sema_no_type() &&
                         (sema->types[expected_type].kind == STK_Slice ||
-                         sema->types[expected_type].kind ==
-                             STK_DynamicArray)
+                         sema->types[expected_type].kind == STK_DynamicArray)
                     ? &sema->types[expected_type]
                     : NULL;
             const SemaType* expected_array =
@@ -9234,8 +9232,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Call:
         {
-            const AstCallInfo* call       = &ast->calls[node->b];
-            const AstNode* callee_node = &ast->nodes[node->a];
+            const AstCallInfo* call        = &ast->calls[node->b];
+            const AstNode*     callee_node = &ast->nodes[node->a];
             if (callee_node->kind == AK_Field) {
                 u32 receiver_type = sema_no_type();
                 if (!sema_infer_node_type(lexer,
@@ -9251,8 +9249,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     if (!sema_node_can_mutate_dynarray(ast, callee_node->a)) {
                         return error_0305_invalid_assignment_target(
                             lexer->source,
-                            sema_node_span(lexer,
-                                           &ast->nodes[callee_node->a]),
+                            sema_node_span(lexer, &ast->nodes[callee_node->a]),
                             s("expression"));
                     }
 
@@ -9270,10 +9267,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
 
                     string method = lex_symbol(lexer, callee_node->b);
-                    u32    item_type =
-                        sema->types[receiver_type].first_param_type;
-                    u32    slice_type = sema_add_slice_type(sema, item_type);
-                    u32    usize_type = sema_builtin_type(sema, STK_Usize);
+                    u32 item_type = sema->types[receiver_type].first_param_type;
+                    u32 slice_type = sema_add_slice_type(sema, item_type);
+                    u32 usize_type = sema_builtin_type(sema, STK_Usize);
 
                     if (string_eq(method, s("push"))) {
                         if (call->arg_count != 1) {
@@ -9298,7 +9294,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 lexer->source,
                                 sema_node_span(
                                     lexer,
-                                    &ast->nodes[ast->call_args[call->first_arg]]),
+                                    &ast->nodes
+                                         [ast->call_args[call->first_arg]]),
                                 sema_type_name(
                                     lexer, sema, &temp_arena, item_type),
                                 sema_type_name(
@@ -9314,21 +9311,26 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         }
                         u32 arg_node = ast->call_args[call->first_arg];
                         u32 arg_type = sema_no_type();
-                        if (!sema_infer_node_type(
-                                lexer, ast, sema, arg_node, slice_type, &arg_type)) {
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  arg_node,
+                                                  slice_type,
+                                                  &arg_type)) {
                             return false;
                         }
-                        bool ok = sema_type_matches(sema, slice_type, arg_type) ||
-                                  (arg_type != sema_no_type() &&
-                                   sema->types[arg_type].kind ==
-                                       STK_DynamicArray &&
-                                   sema->types[arg_type].first_param_type ==
-                                       item_type);
+                        bool ok =
+                            sema_type_matches(sema, slice_type, arg_type) ||
+                            (arg_type != sema_no_type() &&
+                             sema->types[arg_type].kind == STK_DynamicArray &&
+                             sema->types[arg_type].first_param_type ==
+                                 item_type);
                         if (!ok) {
                             return error_0304_type_mismatch(
                                 lexer->source,
                                 sema_node_span(lexer, &ast->nodes[arg_node]),
-                                s("slice or dynamic array with matching item type"),
+                                s("slice or dynamic array with matching item "
+                                  "type"),
                                 sema_type_name(
                                     lexer, sema, &temp_arena, arg_type));
                         }
@@ -9355,7 +9357,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 lexer->source,
                                 sema_node_span(
                                     lexer,
-                                    &ast->nodes[ast->call_args[call->first_arg]]),
+                                    &ast->nodes
+                                         [ast->call_args[call->first_arg]]),
                                 s("integer"),
                                 sema_type_name(
                                     lexer, sema, &temp_arena, arg_type));
@@ -9372,12 +9375,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
 
                     sema->node_type_indices[node->a] = method_type;
-                    type_index                       = sema_builtin_type(
-                        sema, STK_Void);
+                    type_index = sema_builtin_type(sema, STK_Void);
                     break;
                 }
             }
-            u32                enum_context = sema_no_type();
+            u32 enum_context = sema_no_type();
             if (expected_type != sema_no_type() &&
                 sema->types[expected_type].kind == STK_Enum) {
                 enum_context = expected_type;
