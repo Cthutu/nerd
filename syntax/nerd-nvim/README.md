@@ -2,7 +2,9 @@
 
 This directory contains the repo-owned Neovim runtime files for Nerd.
 
-The `install-nvim` recipe copies them into a Linux Neovim configuration:
+The `install-nvim` recipe copies them into the platform Neovim configuration
+directory. On Linux/macOS this is `~/.config/nvim`; on Windows this is
+`%LOCALAPPDATA%/nvim`.
 
 - `lua/plugins/nerd.lua` -> `~/.config/nvim/lua/plugins/nerd.lua`
 - `ftdetect/nerd.vim` -> `~/.config/nvim/ftdetect/nerd.vim`

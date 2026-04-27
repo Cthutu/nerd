@@ -3173,18 +3173,18 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
     u32        for_node    = 0;
     u32        body        = 0;
     CstForInfo for_info    = {
-           .mode                 = CFM_Condition,
-           .first_init           = U32_MAX,
-           .init_count           = 0,
-           .condition_node_index = U32_MAX,
-           .first_update         = U32_MAX,
-           .update_count         = 0,
-           .iterable_node_index  = U32_MAX,
-           .item_symbol          = U32_MAX,
-           .item_token_index     = U32_MAX,
-           .label_symbol         = U32_MAX,
-           .else_block_index     = U32_MAX,
-           .item_is_pointer      = false,
+        .mode                 = CFM_Condition,
+        .first_init           = U32_MAX,
+        .init_count           = 0,
+        .condition_node_index = U32_MAX,
+        .first_update         = U32_MAX,
+        .update_count         = 0,
+        .iterable_node_index  = U32_MAX,
+        .item_symbol          = U32_MAX,
+        .item_token_index     = U32_MAX,
+        .label_symbol         = U32_MAX,
+        .else_block_index     = U32_MAX,
+        .item_is_pointer      = false,
     };
     if (!cst_emit_node(state,
                        (CstNode){

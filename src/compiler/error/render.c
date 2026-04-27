@@ -145,6 +145,17 @@ internal usize error_terminal_width(void)
     }
 #endif
 
+#if OS_WINDOWS
+    char  columns_env[32] = {0};
+    DWORD columns_len =
+        GetEnvironmentVariableA("COLUMNS", columns_env, sizeof(columns_env));
+    if (columns_len > 0 && columns_len < sizeof(columns_env)) {
+        usize width = (usize)strtoull(columns_env, NULL, 10);
+        if (width > 0) {
+            return width;
+        }
+    }
+#elif OS_POSIX
     cstr columns_env = getenv("COLUMNS");
     if (columns_env != NULL && columns_env[0] != '\0') {
         usize width = (usize)strtoull(columns_env, NULL, 10);
@@ -152,6 +163,7 @@ internal usize error_terminal_width(void)
             return width;
         }
     }
+#endif
 
     return 80;
 }
@@ -360,7 +372,7 @@ internal void error_print_snippet(const ErrorInfo* error_info)
     for (u32 line = display_start; line <= display_end; line++) {
         ErrorSpan line_span = error_find_line_span(source_text, line);
         string    line_text = string_from(source_text.data + line_span.start,
-                                       line_span.end - line_span.start);
+                                          line_span.end - line_span.start);
         error_print_source_line(gutter_width, line + 1, line_text);
 
         for (usize i = 0; i < array_count(error_info->references); i++) {
@@ -423,9 +435,9 @@ internal void error_normal_render(const ErrorInfo* error_info)
                                       ANSI_RESET);
     } else {
         prefix        = string_format(&temp_arena,
-                               "%s[%04u]: ",
-                               error_kind_label(error_info->kind),
-                               error_info->code);
+                                      "%s[%04u]: ",
+                                      error_kind_label(error_info->kind),
+                                      error_info->code);
         styled_prefix = string_format(&temp_arena,
                                       "%s%s[%04u]:%s ",
                                       primary_colour,

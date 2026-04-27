@@ -1797,10 +1797,10 @@ internal bool ast_parse_destructure_pattern(AstParseState* state,
         return ast_emit_pattern(
             state,
             (AstPattern){
-                .kind        = ast_symbol_is_underscore(state->lexer,
+                .kind = ast_symbol_is_underscore(state->lexer,
                                                  token.value.symbol_handle)
-                                   ? APK_Ignore
-                                   : APK_Bind,
+                            ? APK_Ignore
+                            : APK_Bind,
                 .token_index = token.token_index,
                 .a           = token.value.symbol_handle,
                 .b           = U32_MAX,
@@ -2043,18 +2043,18 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     u32        for_token_index = state->token.token_index;
     u32        for_node        = 0;
     AstForInfo for_info        = {
-               .mode                 = AFM_Condition,
-               .first_init           = U32_MAX,
-               .init_count           = 0,
-               .condition_node_index = U32_MAX,
-               .first_update         = U32_MAX,
-               .update_count         = 0,
-               .iterable_node_index  = U32_MAX,
-               .item_symbol          = U32_MAX,
-               .item_token_index     = U32_MAX,
-               .label_symbol         = U32_MAX,
-               .else_block_index     = U32_MAX,
-               .item_is_pointer      = false,
+        .mode                 = AFM_Condition,
+        .first_init           = U32_MAX,
+        .init_count           = 0,
+        .condition_node_index = U32_MAX,
+        .first_update         = U32_MAX,
+        .update_count         = 0,
+        .iterable_node_index  = U32_MAX,
+        .item_symbol          = U32_MAX,
+        .item_token_index     = U32_MAX,
+        .label_symbol         = U32_MAX,
+        .else_block_index     = U32_MAX,
+        .item_is_pointer      = false,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -3157,9 +3157,9 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     }
 
     bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
-    ParsingQuery query       = starts_type
-                                   ? PQ_Invalid
-                                   : ast_parsing_query_for_token(state->token.kind);
+    ParsingQuery query = starts_type
+                             ? PQ_Invalid
+                             : ast_parsing_query_for_token(state->token.kind);
     if (query == PQ_Invalid && !starts_type) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,

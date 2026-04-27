@@ -1,6 +1,8 @@
 default:
     just --list
 
+exe_suffix := if os_family() == "windows" { ".exe" } else { "" }
+
 build *args:
     uv run build/build.py {{args}}
 
@@ -8,10 +10,10 @@ build-release *args:
     uv run build/build.py -r {{args}}
 
 run proj *args: (build proj)
-    _bin/{{proj}}-debug {{args}}
+    ./_bin/{{proj}}-debug{{exe_suffix}} {{args}}
 
 run-release proj *args: (build-release proj)
-    _bin/{{proj}} {{args}}
+    ./_bin/{{proj}}{{exe_suffix}} {{args}}
 
 clean:
     rm -rf _*
@@ -56,7 +58,7 @@ user_bin_dir := "~/.local/bin"
 user_bin_nerd := user_bin_dir + "/nerd"
 user_mods_dir := user_bin_dir + "/mods"
 nvim_src_dir := "syntax/nerd-nvim"
-nvim_config_dir := "~/.config/nvim"
+nvim_config_dir := if os_family() == "windows" { replace(env_var("LOCALAPPDATA"), "\\", "/") + "/nvim" } else { "~/.config/nvim" }
 nvim_plugin_dir := nvim_config_dir + "/lua/plugins"
 nvim_ftdetect_dir := nvim_config_dir + "/ftdetect"
 nvim_syntax_dir := nvim_config_dir + "/syntax"

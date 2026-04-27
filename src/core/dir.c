@@ -17,15 +17,18 @@ bool dir_iter_init(DirIter* iter, cstr path)
 
     Arena arena = {0};
     arena_init(&arena);
-    iter->pattern = (char*)path_join(&arena, path, "*");
-    iter->handle  = FindFirstFileA(iter->pattern, &iter->find_data);
+    cstr pattern  = path_join(&arena, path, "*");
+    iter->pattern = (char*)ALLOC(strlen(pattern) + 1);
+    strcpy(iter->pattern, pattern);
+    iter->handle = FindFirstFileA(iter->pattern, &iter->find_data);
     if (iter->handle == INVALID_HANDLE_VALUE) {
+        FREE(iter->pattern);
         arena_done(&arena);
         return false;
     }
 
     iter->first_ready = true;
-    mem_leak(iter->pattern);
+    arena_done(&arena);
     return true;
 }
 

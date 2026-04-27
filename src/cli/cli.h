@@ -95,7 +95,7 @@ void cli_init(CliParser* parser, const JsonValue* schema);
 void cli_done(CliParser* parser);
 
 JsonValue*
-     cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv);
+cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv);
 void cli_print_help(const CliParser* parser);
 void cli_print_command_help(const CliParser* parser, usize command_index);
 

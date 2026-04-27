@@ -3104,10 +3104,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     next_line_end++;
                 }
 
-                bool next_has_newline = next_line_end < text.count &&
-                                        text.data[next_line_end] == '\n';
+                bool   next_has_newline = next_line_end < text.count &&
+                                          text.data[next_line_end] == '\n';
                 string next_line   = string_from(text.data + block_end,
-                                               next_line_end - block_end);
+                                                 next_line_end - block_end);
                 string next_indent = {0};
                 string next_body   = {0};
 

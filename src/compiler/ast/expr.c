@@ -436,7 +436,8 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
     if (state->token.kind == TK_return) {
         u32 token_index = state->token.token_index;
         u32 payload     = U32_MAX;
-        if (ast_token_starts_expression(ast_expr_cursor_kind(state))) {
+        if (!ast_token_has_newline_before(state, state->token_index) &&
+            ast_token_starts_expression(ast_expr_cursor_kind(state))) {
             if (!ast_next_token(state)) {
                 return false;
             }
@@ -484,6 +485,7 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
             label = state->token.value.symbol_handle;
         }
         if (kind == AK_BreakExpr &&
+            !ast_token_has_newline_before(state, state->token_index) &&
             ast_token_starts_expression(ast_expr_cursor_kind(state))) {
             if (!ast_next_token(state)) {
                 return false;

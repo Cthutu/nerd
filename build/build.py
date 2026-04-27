@@ -23,6 +23,8 @@ CC = os.environ.get("CC", "clang")
 INCLUDE_FLAGS = ["-Isrc"]
 CFLAGS: list[str] = []
 LDFLAGS: list[str] = []
+if os.name == "nt":
+    LDFLAGS.extend(["-Wl,/STACK:8388608"])
 
 # Colour helpers
 RED = "\033[31m"
