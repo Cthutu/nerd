@@ -458,13 +458,17 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
             state->stop_before_on_branch_head =
                 previous_stop_before_on_branch_head;
         }
-        return ast_emit_node(state,
-                             (AstNode){
-                                 .kind        = AK_ReturnExpr,
-                                 .token_index = token_index,
-                                 .a           = payload,
-                             },
-                             out_node);
+        bool emitted = ast_emit_node(state,
+                                     (AstNode){
+                                         .kind        = AK_ReturnExpr,
+                                         .token_index = token_index,
+                                         .a           = payload,
+                                     },
+                                     out_node);
+        if (emitted && state->token.token_index != state->token_index) {
+            ast_peek_token(state);
+        }
+        return emitted;
     }
 
     if (state->token.kind == TK_break || state->token.kind == TK_continue) {
@@ -507,14 +511,18 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
             state->stop_before_on_branch_head =
                 previous_stop_before_on_branch_head;
         }
-        return ast_emit_node(state,
-                             (AstNode){
-                                 .kind        = kind,
-                                 .token_index = token_index,
-                                 .a           = payload,
-                                 .b           = label,
-                             },
-                             out_node);
+        bool emitted = ast_emit_node(state,
+                                     (AstNode){
+                                         .kind        = kind,
+                                         .token_index = token_index,
+                                         .a           = payload,
+                                         .b           = label,
+                                     },
+                                     out_node);
+        if (emitted && state->token.token_index != state->token_index) {
+            ast_peek_token(state);
+        }
+        return emitted;
     }
 
     bool previous_allow_statement_boundary = state->allow_statement_boundary;

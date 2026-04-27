@@ -9,6 +9,7 @@ prn($"Colour = {on colour { RED => "red" GREEN => "green" BLUE => "blue" }}")
 }
 ¬
 use std.print
+
 Colour :: enum { RED GREEN BLUE }
 
 main :: fn () {

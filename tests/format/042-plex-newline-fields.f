@@ -12,6 +12,7 @@ main :: fn () {
 }
 ¬
 use std.print
+
 Person :: plex {
     name string
     age  u8

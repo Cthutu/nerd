@@ -2945,18 +2945,21 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             } else {
                 format_emit_expr(sb, &cst, &lexer, node->a, 0);
             }
+            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }
 
         if (node->kind == CK_FfiDef) {
             format_emit_ffi_def(sb, &cst, &lexer, node->a);
+            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
             first_binding = false;
             continue;
         }
@@ -3145,6 +3148,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
         Arena paragraph_arena = {0};
         arena_init(&paragraph_arena);
         string paragraph = {0};
+        if (indent.count == 0 && sb.size > 0 && !just_emitted_blank_line) {
+            sb_append_char(&sb, '\n');
+            just_emitted_blank_line = true;
+        }
 
         while (true) {
             string body = format_trim_ascii(comment_body);

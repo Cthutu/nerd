@@ -11,6 +11,7 @@ main :: fn () {
 }
 ¬
 use std.print
+
 main :: fn () {
     i :: 2
     ff :: 3.14

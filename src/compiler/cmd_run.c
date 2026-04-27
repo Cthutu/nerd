@@ -130,6 +130,19 @@ int compiler_cmd_run(const NerdRunConfig* config)
         return 1;
     }
 
+#if OS_WINDOWS
+    if (!config->keep_binary) {
+        cstr pdb_path =
+            path_replace_extension(&arena, artifacts.binary_path, ".pdb");
+        if (!path_remove(pdb_path)) {
+            error_runtime("Failed to remove generated debug symbols: %s",
+                          pdb_path);
+            arena_done(&arena);
+            return 1;
+        }
+    }
+#endif
+
     arena_done(&arena);
     return result;
 }

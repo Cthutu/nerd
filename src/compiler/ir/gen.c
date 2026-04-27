@@ -725,6 +725,68 @@ internal const IrLoopTarget* ir_find_loop_target(IrLoopLabels loop,
     return NULL;
 }
 
+internal bool ir_ast_break_targets_loop(const AstNode* node,
+                                        u32            loop_label,
+                                        bool           allow_unlabelled)
+{
+    return node->b == loop_label || (allow_unlabelled && node->b == U32_MAX);
+}
+
+internal bool ir_ast_node_may_break_loop(const Ast* ast,
+                                         u32        node_index,
+                                         u32        loop_label,
+                                         bool       allow_unlabelled)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_Block:
+        for (u32 i = node->a; i < node->b; ++i) {
+            if (ir_ast_node_may_break_loop(
+                    ast, i, loop_label, allow_unlabelled)) {
+                return true;
+            }
+        }
+        return false;
+    case AK_Statement:
+    case AK_Expression:
+        return ir_ast_node_may_break_loop(
+            ast, node->a, loop_label, allow_unlabelled);
+    case AK_On:
+        {
+            const AstOnInfo* on = &ast->ons[node->b];
+            for (u32 i = 0; i < on->branch_count; ++i) {
+                const AstOnBranch* branch =
+                    &ast->on_branches[on->first_branch + i];
+                if (ir_ast_node_may_break_loop(ast,
+                                               branch->expr_node_index,
+                                               loop_label,
+                                               allow_unlabelled)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    case AK_Break:
+    case AK_BreakExpr:
+        return ir_ast_break_targets_loop(node, loop_label, allow_unlabelled);
+    case AK_For:
+        {
+            const AstForInfo* for_info = &ast->fors[node->a];
+            return ir_ast_node_may_break_loop(
+                       ast, node->b, loop_label, false) ||
+                   (for_info->else_block_index != U32_MAX &&
+                    ir_ast_node_may_break_loop(
+                        ast, for_info->else_block_index, loop_label, false));
+        }
+    default:
+        return false;
+    }
+}
+
 void ir_add_equal(Ir*     ir,
                   IrValue lvalue,
                   u32     lvalue_type,
@@ -4029,8 +4091,10 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                               node_values,
                                                               next_value_index,
                                                               ir);
+        bool              body_may_break = ir_ast_node_may_break_loop(
+            ast, node->b, for_info->label_symbol, true);
         if (for_info->condition_node_index == U32_MAX &&
-            body_result == IR_STMT_RETURN) {
+            body_result == IR_STMT_RETURN && !body_may_break) {
             return IR_STMT_RETURN;
         }
         if (body_result != IR_STMT_RETURN) {

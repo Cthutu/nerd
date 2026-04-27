@@ -15,6 +15,7 @@ packed:=Packed{a:1,b:2}
 }
 ¬
 use std.print
+
 Point :: plex #c {
     x    i32
     y    i32

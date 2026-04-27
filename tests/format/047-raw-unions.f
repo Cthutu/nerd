@@ -8,6 +8,7 @@ prn($"{v.i}")
 }
 ¬
 use std.print
+
 Value :: union {
     i     i32
     f     f32

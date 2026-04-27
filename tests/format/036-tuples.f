@@ -12,6 +12,7 @@ prn($"{pair.0} {pair.1} {single.0} {grouped} {from_fn.1}")
 }
 ¬
 use std.print
+
 Pair :: (i32, string)
 
 Single :: (i32,)

@@ -9,6 +9,7 @@ prn($"{p.name} {p.x} {p.y}")
 }
 ¬
 use std.print
+
 Point :: plex {
     x    i32
     y    i32
