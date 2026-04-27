@@ -1477,6 +1477,13 @@ needed earlier.
   - For arrays, return the full aggregate size in bytes, not element count.
   - For slices and strings, return the size of the slice/string header, not
     `count * element_size`.
+  - For dynamic arrays `[..]T`, keep `.count` available as the live element
+    count and keep `.capacity` as the reserved element capacity.
+  - For dynamic arrays `[..]T`, make `.size` return the size of the
+    dynamic-array value/header itself, not `count * element_size`, not
+    `capacity * element_size`, and not header-plus-owned-storage bytes.
+  - If total owned storage size is needed later for dynamic arrays, add a
+    distinct property or method for that rather than overloading `.size`.
   - For `nil`, return `0` when it remains `nil`-typed; once coerced to a
     pointer or slice, `.size` should follow the target runtime representation.
   - `^fn (...)` should report pointer size, because function pointers are
