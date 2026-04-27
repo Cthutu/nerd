@@ -195,11 +195,11 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
             IrCallArg arg = module_ir->call_args[i];
             arg.type      = type_map[arg.type];
             arg.value     = back_end_remap_ir_value(&arg.value,
-                                                    module_ir,
-                                                    type_map,
-                                                    string_map,
-                                                    &merge,
-                                                    &front_end->lexer);
+                                                module_ir,
+                                                type_map,
+                                                string_map,
+                                                &merge,
+                                                &front_end->lexer);
             array_push(merge.ir.call_args, arg);
         }
 
@@ -214,17 +214,17 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         for (u32 i = 0; i < array_count(module_ir->tuple_items); ++i) {
             IrTupleItem item = module_ir->tuple_items[i];
             item.type        = type_map[item.type];
-            item.symbol = item.symbol == U32_MAX
-                              ? U32_MAX
-                              : sema_import_symbol_handle(&merge.lexer,
+            item.symbol      = item.symbol == U32_MAX
+                                   ? U32_MAX
+                                   : sema_import_symbol_handle(&merge.lexer,
                                                           &front_end->lexer,
                                                           item.symbol);
-            item.value  = back_end_remap_ir_value(&item.value,
-                                                  module_ir,
-                                                  type_map,
-                                                  string_map,
-                                                  &merge,
-                                                  &front_end->lexer);
+            item.value       = back_end_remap_ir_value(&item.value,
+                                                 module_ir,
+                                                 type_map,
+                                                 string_map,
+                                                 &merge,
+                                                 &front_end->lexer);
             array_push(merge.ir.tuple_items, item);
         }
 
@@ -246,23 +246,23 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                     ? sema_no_type()
                                     : type_map[slice.end_type];
             slice.target      = back_end_remap_ir_value(&slice.target,
-                                                        module_ir,
-                                                        type_map,
-                                                        string_map,
-                                                        &merge,
-                                                        &front_end->lexer);
+                                                   module_ir,
+                                                   type_map,
+                                                   string_map,
+                                                   &merge,
+                                                   &front_end->lexer);
             slice.start       = back_end_remap_ir_value(&slice.start,
-                                                        module_ir,
-                                                        type_map,
-                                                        string_map,
-                                                        &merge,
-                                                        &front_end->lexer);
+                                                  module_ir,
+                                                  type_map,
+                                                  string_map,
+                                                  &merge,
+                                                  &front_end->lexer);
             slice.end         = back_end_remap_ir_value(&slice.end,
-                                                        module_ir,
-                                                        type_map,
-                                                        string_map,
-                                                        &merge,
-                                                        &front_end->lexer);
+                                                module_ir,
+                                                type_map,
+                                                string_map,
+                                                &merge,
+                                                &front_end->lexer);
             array_push(merge.ir.slices, slice);
         }
 
@@ -319,11 +319,11 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                 continue;
             }
             instr.lvalue    = back_end_remap_ir_value(&instr.lvalue,
-                                                      module_ir,
-                                                      type_map,
-                                                      string_map,
-                                                      &merge,
-                                                      &front_end->lexer);
+                                                   module_ir,
+                                                   type_map,
+                                                   string_map,
+                                                   &merge,
+                                                   &front_end->lexer);
             instr.rvalue[0] = back_end_remap_ir_value(&instr.rvalue[0],
                                                       module_ir,
                                                       type_map,
