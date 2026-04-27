@@ -433,6 +433,27 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
 
 internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
 {
+    if (state->token.kind == TK_LBrace) {
+        u32 block_node = 0;
+        if (!ast_parse_nested_block(state, &block_node)) {
+            return false;
+        }
+        bool emitted = ast_emit_node(state,
+                                     (AstNode){
+                                         .kind        = AK_ExprBlock,
+                                         .token_index =
+                                             state->nodes[block_node]
+                                                 .token_index,
+                                         .a = block_node,
+                                         .b = U32_MAX,
+                                     },
+                                     out_node);
+        if (emitted && state->token.token_index != state->token_index) {
+            ast_peek_token(state);
+        }
+        return emitted;
+    }
+
     if (state->token.kind == TK_return) {
         u32 token_index = state->token.token_index;
         u32 payload     = U32_MAX;
@@ -972,13 +993,22 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                                          state->token.kind);
     }
 
-    if (!ast_next_token(state) || !ast_next_token(state)) {
+    if (state->token.token_index == state->token_index &&
+        !ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->token.source, ast_token_span(state, &state->token), TK_EOF);
+    }
+    if (!ast_next_token(state)) {
         return error_0201_missing_value(
             state->token.source, ast_token_span(state, &state->token), TK_EOF);
     }
 
     u32 false_expr_node = 0;
-    if (!ast_parse_expr_bp(state, 0, &false_expr_node)) {
+    saved_statement_boundary       = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool parsed_false_expr = ast_parse_on_branch_expr(state, &false_expr_node);
+    state->allow_statement_boundary = saved_statement_boundary;
+    if (!parsed_false_expr) {
         return false;
     }
 

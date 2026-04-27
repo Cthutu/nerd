@@ -1966,6 +1966,22 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
 {
+    if (cst_current_token(state).kind == TK_LBrace) {
+        u32 token_index = state->token_index;
+        u32 block       = 0;
+        if (!cst_parse_nested_block(state, &block)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_ExprBlock,
+                                 .token_index = token_index,
+                                 .a           = block,
+                                 .b           = U32_MAX,
+                             },
+                             out_node);
+    }
+
     if (cst_current_token(state).kind == TK_return) {
         u32 token_index = state->token_index;
         u32 expr        = U32_MAX;

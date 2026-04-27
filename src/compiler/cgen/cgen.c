@@ -441,6 +441,26 @@ internal bool cgen_type_is_integer(const CGen* cgen, u32 type_index)
     }
 }
 
+internal bool cgen_type_is_unsigned_integer(const CGen* cgen, u32 type_index)
+{
+    type_index = cgen_materialise_type(cgen, type_index);
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+
+    switch (cgen->ir->types[type_index].kind) {
+    case STK_UntypedInteger:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Usize:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool cgen_type_is_string(const CGen* cgen, u32 type_index)
 {
     type_index = cgen_materialise_type(cgen, type_index);
@@ -511,6 +531,25 @@ cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
     if (value->kind == IR_VALUE_FLOAT) {
         cgen_add_float_literal(cgen, value->value.floating, type_index);
         return;
+    }
+
+    u32 target_type = cgen_materialise_type(cgen, type_index);
+    u32 value_type  = cgen_materialise_type(cgen, value->type);
+    if (target_type != sema_no_type() &&
+        (value_type == sema_no_type() || target_type != value_type)) {
+        SemaTypeKind target_kind = cgen->ir->types[target_type].kind;
+        if (target_kind != STK_String && target_kind != STK_Tuple &&
+            target_kind != STK_Array && target_kind != STK_Slice &&
+            target_kind != STK_DynamicArray && target_kind != STK_Plex &&
+            target_kind != STK_Union && target_kind != STK_Enum &&
+            target_kind != STK_Module && target_kind != STK_Function) {
+            cgen_add(cgen, "((");
+            cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
+            cgen_add(cgen, ")");
+            cgen_add_value(cgen, value);
+            cgen_add(cgen, ")");
+            return;
+        }
     }
 
     cgen_add_value(cgen, value);
@@ -1024,11 +1063,12 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
             cgen_add(cgen, " >= ");
             cgen_add_value(cgen, &instr->rvalue[0]);
             cgen_add(cgen, ".count) { fprintf(stderr, \"fatal: ");
-            cgen_add(cgen, target_type->kind == STK_String
-                               ? "string"
-                               : (target_type->kind == STK_DynamicArray
-                                      ? "dynamic array"
-                                      : "slice"));
+            cgen_add(cgen,
+                     target_type->kind == STK_String
+                         ? "string"
+                         : (target_type->kind == STK_DynamicArray
+                                ? "dynamic array"
+                                : "slice"));
             cgen_add(cgen, " index out of bounds\\n\"); abort(); }");
         }
         cgen_addn(cgen, "");
@@ -1092,11 +1132,11 @@ internal void cgen_add_dynarray_target(CGen*                       cgen,
         cgen_add_value(cgen, &info->target);
         if (info->target_type != sema_no_type() &&
             cgen->ir->types[info->target_type].kind == STK_Pointer &&
-            (cgen->ir
-                     ->types[cgen->ir->types[info->target_type].first_param_type]
+            (cgen->ir->types[cgen->ir->types[info->target_type]
+                                 .first_param_type]
                      .kind == STK_Plex ||
-             cgen->ir
-                     ->types[cgen->ir->types[info->target_type].first_param_type]
+             cgen->ir->types[cgen->ir->types[info->target_type]
+                                 .first_param_type]
                      .kind == STK_Union)) {
             cgen_add(cgen, "->");
         } else {
@@ -1139,9 +1179,10 @@ internal void cgen_add_dynarray_grow(CGen*                       cgen,
     cgen_add(cgen, "void* $dyn_new_data = realloc(");
     cgen_add_dynarray_target(cgen, info);
     cgen_add(cgen, ".data, $dyn_new_cap * sizeof(");
-    cgen_add(cgen, cgen_c_type(cgen->ir,
-                               cgen->ir->types[info->dynarray_type]
-                                   .first_param_type));
+    cgen_add(
+        cgen,
+        cgen_c_type(cgen->ir,
+                    cgen->ir->types[info->dynarray_type].first_param_type));
     cgen_addn(cgen, "));");
     cgen_add_line(cgen,
                   "if ($dyn_new_data == NULL) { fprintf(stderr, "
@@ -1185,7 +1226,9 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_add_dynarray_target(cgen, info);
         cgen_add(cgen, ".count++] = ");
         cgen_add_typed_value(
-            cgen, &info->arg, cgen->ir->types[info->dynarray_type].first_param_type);
+            cgen,
+            &info->arg,
+            cgen->ir->types[info->dynarray_type].first_param_type);
         cgen_addn(cgen, ";");
         break;
     case IR_OP_DYNARRAY_APPEND:
@@ -1208,9 +1251,10 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_add(cgen, ".data, ");
         cgen_add_typed_value(cgen, &info->arg, info->arg_type);
         cgen_add(cgen, ".count * sizeof(");
-        cgen_add(cgen, cgen_c_type(cgen->ir,
-                                   cgen->ir->types[info->dynarray_type]
-                                       .first_param_type));
+        cgen_add(
+            cgen,
+            cgen_c_type(cgen->ir,
+                        cgen->ir->types[info->dynarray_type].first_param_type));
         cgen_addn(cgen, "));");
         cgen_start_line(cgen);
         cgen_add_dynarray_target(cgen, info);
@@ -1543,6 +1587,51 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         }
         return;
     }
+    bool lhs_integer = instr->rvalue[0].type != sema_no_type() &&
+                       cgen_type_is_integer(cgen, instr->rvalue[0].type);
+    bool rhs_integer = instr->rvalue[1].type != sema_no_type() &&
+                       cgen_type_is_integer(cgen, instr->rvalue[1].type);
+    bool integer_compare =
+        (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL ||
+         instr->op == IR_OP_LESS || instr->op == IR_OP_LESS_EQUAL) &&
+        (lhs_integer || rhs_integer);
+    if (integer_compare) {
+        u32 common_type = lhs_integer ? instr->rvalue[0].type
+                                      : instr->rvalue[1].type;
+        SemaTypeKind lhs_kind = lhs_integer
+                                    ? cgen->ir
+                                          ->types[cgen_materialise_type(
+                                              cgen, instr->rvalue[0].type)]
+                                          .kind
+                                    : STK_Void;
+        SemaTypeKind rhs_kind = rhs_integer
+                                    ? cgen->ir
+                                          ->types[cgen_materialise_type(
+                                              cgen, instr->rvalue[1].type)]
+                                          .kind
+                                    : STK_Void;
+        if (lhs_kind == STK_Usize || rhs_kind == STK_Usize) {
+            if (lhs_kind == STK_Usize) {
+                common_type = instr->rvalue[0].type;
+            } else if (rhs_kind == STK_Usize) {
+                common_type = instr->rvalue[1].type;
+            }
+        } else if (lhs_kind == STK_Isize || rhs_kind == STK_Isize) {
+            if (lhs_kind == STK_Isize) {
+                common_type = instr->rvalue[0].type;
+            } else if (rhs_kind == STK_Isize) {
+                common_type = instr->rvalue[1].type;
+            }
+        } else if (cgen_type_is_unsigned_integer(cgen, instr->rvalue[1].type) &&
+                   !cgen_type_is_unsigned_integer(cgen, instr->rvalue[0].type)) {
+            common_type = instr->rvalue[1].type;
+        }
+        cgen_add_typed_value(cgen, &instr->rvalue[0], common_type);
+        cgen_add(cgen, op);
+        cgen_add_typed_value(cgen, &instr->rvalue[1], common_type);
+        cgen_addn(cgen, ";");
+        return;
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[1]);
@@ -1566,8 +1655,8 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
         const SemaType* type = &cgen->ir->types[i];
         if (type->kind != STK_Tuple && type->kind != STK_Array &&
             type->kind != STK_Slice && type->kind != STK_DynamicArray &&
-            type->kind != STK_Plex &&
-            type->kind != STK_Union && type->kind != STK_Enum) {
+            type->kind != STK_Plex && type->kind != STK_Union &&
+            type->kind != STK_Enum) {
             continue;
         }
         if (type->kind == STK_Enum) {
@@ -1892,7 +1981,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_DYNARRAY_APPEND:
         case IR_OP_DYNARRAY_CLEAR:
         case IR_OP_DYNARRAY_FREE:
-            cgen_add_dynarray_op(cgen, instr->op, (u32)instr->lvalue.value.integer);
+            cgen_add_dynarray_op(
+                cgen, instr->op, (u32)instr->lvalue.value.integer);
             break;
         case IR_OP_ADDRESS_OF:
             cgen_add_address_of(cgen, instr);

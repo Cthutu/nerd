@@ -681,13 +681,17 @@ internal void format_emit_expr(StringBuilder* sb,
         }
         break;
     case CK_ExprBlock:
-        sb_append_cstr(sb, "$");
+        if (lexer->tokens[node->token_index].kind != TK_LBrace) {
+            sb_append_cstr(sb, "$");
+        }
         if (node->b != U32_MAX) {
             sb_append_string(sb, lex_symbol(lexer, node->b));
             sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, "{\n");
-        format_emit_block_contents(sb, cst, lexer, node->a, 1);
+        format_emit_block_contents(
+            sb, cst, lexer, node->a, g_format_expr_indent_level + 1);
+        format_emit_indent(sb, g_format_expr_indent_level);
         sb_append_char(sb, '}');
         break;
     case CK_For:
@@ -1232,7 +1236,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
             }
         }
         sb_append_cstr(sb, " => ");
-        format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, branch->expr_node_index, 0, indent_level + 1);
         sb_append_char(sb, '\n');
     }
     format_emit_indent(sb, indent_level);
@@ -2037,8 +2042,19 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
                  cst->fors[owner->a].else_block_index == node_index)) {
                 return true;
             }
-            if (owner->kind == CK_ExprBlock && owner->b == node_index) {
+            if (owner->kind == CK_ExprBlock && owner->a == node_index) {
                 return true;
+            }
+            if (owner->kind == CK_On) {
+                const CstOnInfo* on = &cst->ons[owner->b];
+                for (u32 branch_index = 0; branch_index < on->branch_count;
+                     ++branch_index) {
+                    const CstOnBranch* branch =
+                        &cst->on_branches[on->first_branch + branch_index];
+                    if (branch->expr_node_index == node_index) {
+                        return true;
+                    }
+                }
             }
             if (owner->kind == CK_TopOn &&
                 cst->top_ons[owner->a].body_node_index == node_index) {
@@ -2124,8 +2140,19 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
                     }
                 }
             }
-            if (owner->kind == CK_ExprBlock && owner->b == i) {
+            if (owner->kind == CK_ExprBlock && owner->a == i) {
                 return true;
+            }
+            if (owner->kind == CK_On) {
+                const CstOnInfo* on = &cst->ons[owner->b];
+                for (u32 branch_index = 0; branch_index < on->branch_count;
+                     ++branch_index) {
+                    const CstOnBranch* branch =
+                        &cst->on_branches[on->first_branch + branch_index];
+                    if (branch->expr_node_index == i) {
+                        return true;
+                    }
+                }
             }
             if (owner->kind == CK_TopOn &&
                 cst->top_ons[owner->a].body_node_index == i) {
@@ -2157,9 +2184,22 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             }
             continue;
         }
-        if ((node->kind == CK_For || node->kind == CK_ExprBlock) &&
-            node->b == node_index) {
+        if (node->kind == CK_For && node->b == node_index) {
             return true;
+        }
+        if (node->kind == CK_ExprBlock && node->a == node_index) {
+            return true;
+        }
+        if (node->kind == CK_On) {
+            const CstOnInfo* on = &cst->ons[node->b];
+            for (u32 branch_index = 0; branch_index < on->branch_count;
+                 ++branch_index) {
+                const CstOnBranch* branch =
+                    &cst->on_branches[on->first_branch + branch_index];
+                if (branch->expr_node_index == node_index) {
+                    return true;
+                }
+            }
         }
         if (node->kind == CK_TopOn &&
             cst->top_ons[node->a].body_node_index == node_index) {
