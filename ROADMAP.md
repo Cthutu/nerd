@@ -1457,6 +1457,23 @@ milestone yet.
 - [ ] Add a synthetic diagnostic harness for hard-limit error categories that
   are impractical to trigger through normal source files, including `0102`,
   `0105`, and `0200`.
+- [ ] Add a `.size` postfix operator for value-size queries.
+  - Define `.size` as Nerd's own `sizeof`-style operation, based on Nerd type
+    and layout rules rather than current C backend behaviour.
+  - Allow `.size` on any expression whose type is known.
+  - Return type should be `usize`.
+  - Treat `void.size` as `0`.
+  - Treat untyped integers as materialised runtime integers for `.size`, so
+    `128.size` follows the size of the default materialised integer type.
+  - For arrays, return the full aggregate size in bytes, not element count.
+  - For slices and strings, return the size of the slice/string header, not
+    `count * element_size`.
+  - For `nil`, return `0` when it remains `nil`-typed; once coerced to a
+    pointer or slice, `.size` should follow the target runtime representation.
+  - `^fn (...)` should report pointer size, because function pointers are
+    pointer-sized values.
+  - Keep module values invalid for `.size` unless a concrete runtime
+    representation is later introduced and specified.
 
 ## Semantic Layout Sketch
 
