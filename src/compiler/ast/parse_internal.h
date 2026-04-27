@@ -65,6 +65,7 @@ typedef struct {
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
+    Array(AstCastInfo) casts;
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;

@@ -875,6 +875,8 @@ void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
     if (target_type->kind == STK_Array) {
         cgen_add_value(cgen, &slice->target);
         cgen_add(cgen, ".items");
+    } else if (target_type->kind == STK_Pointer) {
+        cgen_add_value(cgen, &slice->target);
     } else {
         cgen_add_value(cgen, &slice->target);
         cgen_add(cgen, ".data");

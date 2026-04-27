@@ -31,7 +31,6 @@ libm = string:"m"
 end
 ¬
 double sqrt(double);
-double sqrt(double);
 
 string $libm;
 int $main() {

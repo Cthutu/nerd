@@ -1797,15 +1797,36 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             if (!ast_parse_type(state, &type_node)) {
                 return false;
             }
+
+            u32 extra_node = U32_MAX;
+            bool has_comma = state->token.kind == TK_Comma;
+            if (!has_comma && ast_peek_token(state)) {
+                has_comma = state->token.kind == TK_Comma;
+            }
+            if (has_comma) {
+                if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                    return false;
+                }
+                if (!ast_parse_expr(state, &extra_node)) {
+                    return false;
+                }
+            }
             if (!ast_expect_token(state, TK_RParen)) {
                 return false;
             }
+
+            u32 cast_index = (u32)array_count(state->casts);
+            array_push(state->casts,
+                       (AstCastInfo){
+                           .type_node_index  = type_node,
+                           .extra_node_index = extra_node,
+                       });
 
             AstNode node = {
                 .kind        = AK_Cast,
                 .token_index = op.token_index,
                 .a           = left_node,
-                .b           = type_node,
+                .b           = cast_index,
             };
             return ast_emit_node(state, node, out_node);
         }

@@ -2847,16 +2847,33 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             if (cst_current_token(state).kind == TK_as) {
                 cst_advance(state);
                 if (!cst_consume(state, TK_LParen) ||
-                    !cst_parse_type(state, &right) ||
-                    !cst_consume(state, TK_RParen)) {
+                    !cst_parse_type(state, &right)) {
                     return false;
                 }
+
+                u32 extra = CST_NO_VALUE;
+                if (cst_current_token(state).kind == TK_Comma) {
+                    cst_advance(state);
+                    if (!cst_parse_expr_bp(state, 0, &extra)) {
+                        return false;
+                    }
+                }
+                if (!cst_consume(state, TK_RParen)) {
+                    return false;
+                }
+
+                u32 cast_index = (u32)array_count(state->cst.casts);
+                array_push(state->cst.casts,
+                           (CstCastInfo){
+                               .type_node_index  = right,
+                               .extra_node_index = extra,
+                           });
                 if (!cst_emit_node(state,
                                    (CstNode){
                                        .kind        = CK_Cast,
                                        .token_index = token_index,
                                        .a           = left,
-                                       .b           = right,
+                                       .b           = cast_index,
                                    },
                                    &left)) {
                     return false;
@@ -4300,6 +4317,7 @@ void cst_done(Cst* cst)
     array_free(cst->call_args);
     array_free(cst->tuple_items);
     array_free(cst->calls);
+    array_free(cst->casts);
     array_free(cst->slices);
     array_free(cst->plex_fields);
     array_free(cst->plex_types);

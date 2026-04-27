@@ -4,7 +4,7 @@ main :: fn () {
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `pointer type`, found `nil`",
+    "message": "Type mismatch: expected `pointer or slice type`, found `nil`",
     "source_file": "tests/errors/046-nil-pointers.e",
     "primary_location": {
         "line": 2,

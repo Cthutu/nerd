@@ -46,7 +46,7 @@
 // | AK_LogicalAnd      | Ast index of left | Ast index of right              |
 // | AK_LogicalOr       | Ast index of left | Ast index of right              |
 // | AK_Call            | Ast index callee  | Ast call-info index             |
-// | AK_Cast            | Ast index value   | Ast index of target type        |
+// | AK_Cast            | Ast index value   | Ast cast-info index             |
 // | AK_Tuple           | First item index  | Item count                      |
 // | AK_TupleField      | Ast index value   | Zero-based field index          |
 // | AK_Array           | First item index  | Item count                      |
@@ -214,6 +214,11 @@ typedef struct {
 } AstCallInfo;
 
 typedef struct {
+    u32 type_node_index;
+    u32 extra_node_index;
+} AstCastInfo;
+
+typedef struct {
     u32 library_node_index;
     u32 symbol_handle;
     u32 signature_index;
@@ -375,6 +380,7 @@ typedef struct {
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
+    Array(AstCastInfo) casts;
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;

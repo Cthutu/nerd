@@ -44,7 +44,7 @@
 // | CK_LogicalAnd      | Left node index       | Right node index      |
 // | CK_LogicalOr       | Left node index       | Right node index      |
 // | CK_Call            | Callee node index     | Call-info index       |
-// | CK_Cast            | Value node index      | Target type node      |
+// | CK_Cast            | Value node index      | Cast-info index       |
 // | CK_Tuple           | First item index      | Item count            |
 // | CK_TupleField      | Value node index      | Zero-based field      |
 // | CK_Array           | First item index      | Item count            |
@@ -209,6 +209,11 @@ typedef struct {
 } CstCallInfo;
 
 typedef struct {
+    u32 type_node_index;
+    u32 extra_node_index;
+} CstCastInfo;
+
+typedef struct {
     u32 target_node_index;
     u32 start_node_index;
     u32 end_node_index;
@@ -362,6 +367,7 @@ typedef struct {
     Array(u32) call_args;
     Array(u32) tuple_items;
     Array(CstCallInfo) calls;
+    Array(CstCastInfo) casts;
     Array(CstSliceInfo) slices;
     Array(CstPlexField) plex_fields;
     Array(CstPlexTypeInfo) plex_types;

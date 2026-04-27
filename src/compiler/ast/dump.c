@@ -258,8 +258,15 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             }
             break;
         case AK_Cast:
-            row[3] = table_cell_string(string_format(
-                &temp_arena, "value=%u type=%u", node->a, node->b));
+            {
+                const AstCastInfo* cast = &ast->casts[node->b];
+                row[3] = table_cell_string(
+                    string_format(&temp_arena,
+                                  "value=%u type=%u extra=%u",
+                                  node->a,
+                                  cast->type_node_index,
+                                  cast->extra_node_index));
+            }
             break;
         case AK_AddressOf:
         case AK_TypePointer:

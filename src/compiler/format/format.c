@@ -845,7 +845,14 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Cast:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, ".as(");
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        {
+            const CstCastInfo* cast = &cst->casts[node->b];
+            format_emit_expr(sb, cst, lexer, cast->type_node_index, 0);
+            if (cast->extra_node_index != U32_MAX) {
+                sb_append_cstr(sb, ", ");
+                format_emit_expr(sb, cst, lexer, cast->extra_node_index, 0);
+            }
+        }
         sb_append_char(sb, ')');
         break;
     case CK_TupleField:

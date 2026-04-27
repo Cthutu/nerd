@@ -3551,6 +3551,7 @@ Ast ast_parse(Lexer* lexer)
         .call_args           = state.call_args,
         .tuple_items         = state.tuple_items,
         .calls               = state.calls,
+        .casts               = state.casts,
         .slices              = state.slices,
         .plex_fields         = state.plex_fields,
         .plex_types          = state.plex_types,
@@ -3579,6 +3580,7 @@ error:
                     .call_args           = state.call_args,
                     .tuple_items         = state.tuple_items,
                     .calls               = state.calls,
+                    .casts               = state.casts,
                     .slices              = state.slices,
                     .plex_fields         = state.plex_fields,
                     .plex_types          = state.plex_types,
@@ -3612,6 +3614,7 @@ void ast_done(Ast* ast)
     array_free(ast->call_args);
     array_free(ast->tuple_items);
     array_free(ast->calls);
+    array_free(ast->casts);
     array_free(ast->slices);
     array_free(ast->plex_fields);
     array_free(ast->plex_types);
