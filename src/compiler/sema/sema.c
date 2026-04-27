@@ -8731,15 +8731,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
 
                 if (statement_form) {
-                    u32 ignored = sema_no_type();
-                    u32 branch_expected = sema_no_type();
+                    u32            ignored         = sema_no_type();
+                    u32            branch_expected = sema_no_type();
                     const AstNode* branch_expr =
                         &ast->nodes[branch->expr_node_index];
                     if (branch_expr->kind == AK_Return ||
                         branch_expr->kind == AK_ReturnExpr) {
-                        branch_expected =
-                            sema_enclosing_function_return_type(sema,
-                                                                node_index);
+                        branch_expected = sema_enclosing_function_return_type(
+                            sema, node_index);
                     }
                     if (!sema_infer_node_type(lexer,
                                               ast,
@@ -8752,8 +8751,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     continue;
                 }
 
-                u32 current_expected = expected_type;
-                const AstNode* branch_expr = &ast->nodes[branch->expr_node_index];
+                u32            current_expected = expected_type;
+                const AstNode* branch_expr =
+                    &ast->nodes[branch->expr_node_index];
                 if (current_expected == sema_no_type() &&
                     (branch_expr->kind == AK_Return ||
                      branch_expr->kind == AK_ReturnExpr)) {

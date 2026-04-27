@@ -67,8 +67,8 @@ internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
     }
 }
 
-internal bool
-ast_node_can_be_assignment_target(const AstParseState* state, u32 node_index)
+internal bool ast_node_can_be_assignment_target(const AstParseState* state,
+                                                u32                  node_index)
 {
     const AstNode* node = &state->nodes[node_index];
     switch (node->kind) {

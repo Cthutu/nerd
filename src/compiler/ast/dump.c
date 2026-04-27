@@ -260,12 +260,12 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Cast:
             {
                 const AstCastInfo* cast = &ast->casts[node->b];
-                row[3] = table_cell_string(
-                    string_format(&temp_arena,
-                                  "value=%u type=%u extra=%u",
-                                  node->a,
-                                  cast->type_node_index,
-                                  cast->extra_node_index));
+                row[3] =
+                    table_cell_string(string_format(&temp_arena,
+                                                    "value=%u type=%u extra=%u",
+                                                    node->a,
+                                                    cast->type_node_index,
+                                                    cast->extra_node_index));
             }
             break;
         case AK_AddressOf:

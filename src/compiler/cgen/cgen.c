@@ -678,8 +678,7 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
             }
         }
         if (fn_type != NULL && fn_type->kind == STK_Function &&
-            i < fn_type->param_count &&
-            call_arg->type != sema_no_type() &&
+            i < fn_type->param_count && call_arg->type != sema_no_type() &&
             cgen->ir->types[call_arg->type].kind == STK_Nil) {
             u32 param_type =
                 cgen->ir->type_param_types[fn_type->first_param_type + i];

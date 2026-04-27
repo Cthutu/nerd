@@ -1107,7 +1107,8 @@ internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
             const AstCastInfo* cast = &ast->casts[node->b];
             return ir_node_contains_interpolation(ast, node->a) ||
                    (cast->extra_node_index != U32_MAX &&
-                    ir_node_contains_interpolation(ast, cast->extra_node_index));
+                    ir_node_contains_interpolation(ast,
+                                                   cast->extra_node_index));
         }
     case AK_DestructureBind:
     case AK_DestructureVariable:
@@ -2365,20 +2366,20 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_Cast:
         {
-            const AstCastInfo* cast        = &ast->casts[node->b];
-            u32                source_type = ir_node_type_index(ast, sema, node->a);
-            u32                target_type = sema->node_type_indices[node_index];
-            IrValue            source      = ir_lower_node(lex,
-                                                      ast,
-                                                      sema,
-                                                      node->a,
-                                                      loop,
-                                                      node_values,
-                                                      next_value_index,
-                                                      ir);
-            IrValue value = {
-                .kind          = IR_VALUE_VARIABLE,
-                .value.integer = (i64)(*next_value_index)++,
+            const AstCastInfo* cast = &ast->casts[node->b];
+            u32     source_type     = ir_node_type_index(ast, sema, node->a);
+            u32     target_type     = sema->node_type_indices[node_index];
+            IrValue source          = ir_lower_node(lex,
+                                           ast,
+                                           sema,
+                                           node->a,
+                                           loop,
+                                           node_values,
+                                           next_value_index,
+                                           ir);
+            IrValue value           = {
+                          .kind          = IR_VALUE_VARIABLE,
+                          .value.integer = (i64)(*next_value_index)++,
             };
 
             if (cast->extra_node_index != U32_MAX &&
@@ -2392,17 +2393,16 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                              node_values,
                                              next_value_index,
                                              ir);
-                ir_add_slice(ir,
-                             value,
-                             target_type,
-                             source,
-                             source_type,
-                             (IrValue){.kind = IR_VALUE_NONE},
-                             sema_no_type(),
-                             size,
-                             ir_node_type_index(ast,
-                                                sema,
-                                                cast->extra_node_index));
+                ir_add_slice(
+                    ir,
+                    value,
+                    target_type,
+                    source,
+                    source_type,
+                    (IrValue){.kind = IR_VALUE_NONE},
+                    sema_no_type(),
+                    size,
+                    ir_node_type_index(ast, sema, cast->extra_node_index));
             } else {
                 ir_add_cast(ir, value, target_type, source, source_type);
             }
