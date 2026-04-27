@@ -1,0 +1,17 @@
+-- Basic memory utilities that wrap libc's malloc functions.
+
+c_malloc :: ffi "c" malloc (size: usize) -> ^void
+c_realloc :: ffi "c" realloc (ptr: ^void, size: usize) -> ^void
+c_free :: ffi "c" free (ptr: ^void)
+
+pub alloc :: fn (size: usize) -> []u8 {
+    return c_malloc(size).as([]u8, size)
+}
+
+pub realloc :: fn (ptr: []u8, new_size: usize) -> []u8 {
+    return c_realloc(ptr.data, new_size).as([]u8, new_size)
+}
+
+pub free :: fn (ptr: []u8) {
+    c_free(ptr.data)
+}

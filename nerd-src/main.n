@@ -5,7 +5,7 @@ print :: mod std.print
 main :: fn () {
     a := arena.arena_new(1024)
 
-    print.prn($"Arena capacity: {a.capacity}")
+    print.prn($"Arena capacity: {arena.arena_capacity(^a)}")
 
     arena.arena_free(^a)
 }

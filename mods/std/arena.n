@@ -1,17 +1,15 @@
+-- Simple arena implementation
+
+use std.mem
+
 pub Arena :: plex {
-    base     ^void
-    capacity usize
+    base     []u8
     cursor   usize
 }
 
-ffi "c" malloc (size: usize) -> ^void
-ffi "c" realloc (ptr: ^void, size: usize) -> ^void
-ffi "c" free (ptr: ^void)
-
 pub arena_new :: fn (capacity: usize) -> Arena {
     return Arena {
-        base: malloc(capacity)
-        capacity: capacity
+        base: alloc(capacity)
         cursor: 0
     }
 }
@@ -19,6 +17,25 @@ pub arena_new :: fn (capacity: usize) -> Arena {
 pub arena_free :: fn (arena: ^Arena) {
     free(arena.base)
     arena.base = nil
-    arena.capacity = 0
+    arena.cursor = 0
+}
+
+pub arena_capacity :: fn (arena: ^Arena) -> usize {
+    return arena.base.count
+}
+
+pub arena_alloc :: fn (arena: ^Arena, size: usize) -> []u8 {
+    for arena.cursor + size > arena.base.count {
+        new_base := realloc(arena.base, arena.base.count * 2)
+        on new_base == nil => return nil
+        arena.base = new_base
+    }
+
+    result := arena.base[arena.cursor .. arena.cursor + size]
+    arena.cursor += size
+    return result
+}
+
+pub arena_reset :: fn (arena: ^Arena) {
     arena.cursor = 0
 }
