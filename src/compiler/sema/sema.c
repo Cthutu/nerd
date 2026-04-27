@@ -427,6 +427,7 @@ u32 sema_import_type(Lexer*       dst_lexer,
     case STK_Void:
     case STK_UntypedInteger:
     case STK_UntypedFloat:
+    case STK_Nil:
     case STK_String:
     case STK_Bool:
     case STK_I8:
@@ -866,6 +867,8 @@ string sema_type_name(const Lexer* lexer,
         return s("untyped integer");
     case STK_UntypedFloat:
         return s("untyped float");
+    case STK_Nil:
+        return s("nil");
     case STK_String:
         return s("string");
     case STK_Bool:
@@ -5180,6 +5183,12 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
 
+    if ((sema->types[expected_type].kind == STK_Pointer ||
+         sema->types[expected_type].kind == STK_Slice) &&
+        sema->types[actual_type].kind == STK_Nil) {
+        return true;
+    }
+
     return sema_type_is_concrete_float(sema, expected_type) &&
            sema->types[actual_type].kind == STK_UntypedFloat;
 }
@@ -7480,15 +7489,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_NilLiteral:
-        if (expected_type == sema_no_type() ||
-            (sema->types[expected_type].kind != STK_Pointer &&
-             sema->types[expected_type].kind != STK_Slice)) {
-            return error_0304_type_mismatch(lexer->source,
-                                            sema_node_span(lexer, node),
-                                            s("pointer or slice type"),
-                                            s("nil"));
+        if (expected_type != sema_no_type() &&
+            (sema->types[expected_type].kind == STK_Pointer ||
+             sema->types[expected_type].kind == STK_Slice)) {
+            type_index = expected_type;
+        } else {
+            type_index = sema_builtin_type(sema, STK_Nil);
         }
-        type_index = expected_type;
         break;
 
     case AK_StringLiteral:
@@ -10564,6 +10571,7 @@ bool sema_analyse(const Lexer*           lexer,
     sema_builtin_type(&sema, STK_Void);
     sema_builtin_type(&sema, STK_UntypedInteger);
     sema_builtin_type(&sema, STK_UntypedFloat);
+    sema_builtin_type(&sema, STK_Nil);
     sema_builtin_type(&sema, STK_String);
     sema_builtin_type(&sema, STK_Bool);
     sema_builtin_type(&sema, STK_I32);

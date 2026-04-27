@@ -549,7 +549,14 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         cgen_add_symbol_name(cgen, (u32)value->value.integer);
         break;
     case IR_VALUE_INTEGER:
-        arena_format(&cgen->arena, "%lld", value->value.integer);
+        if (cgen->ir->types[value->type].kind == STK_Slice &&
+            value->value.integer == 0) {
+            cgen_add(cgen, "(");
+            cgen_add(cgen, cgen_c_type(cgen->ir, value->type));
+            cgen_add(cgen, "){.data = 0, .count = 0}");
+        } else {
+            arena_format(&cgen->arena, "%lld", value->value.integer);
+        }
         break;
     case IR_VALUE_FLOAT:
         cgen_add_float_literal(cgen, value->value.floating, value->type);
@@ -658,7 +665,8 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
         if (i > 0) {
             cgen_add(cgen, ", ");
         }
-        const IrValue* arg = &cgen->ir->call_args[call->first_arg + i].value;
+        const IrCallArg* call_arg = &cgen->ir->call_args[call->first_arg + i];
+        const IrValue*   arg      = &call_arg->value;
         if (extern_call && fn_type != NULL && fn_type->kind == STK_Function &&
             i < fn_type->param_count) {
             u32 param_type =
@@ -667,6 +675,19 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
                 cgen_add(cgen, "(");
                 cgen_add(cgen, cgen_c_extern_param_type(cgen->ir, param_type));
                 cgen_add(cgen, ")");
+            }
+        }
+        if (fn_type != NULL && fn_type->kind == STK_Function &&
+            i < fn_type->param_count &&
+            call_arg->type != sema_no_type() &&
+            cgen->ir->types[call_arg->type].kind == STK_Nil) {
+            u32 param_type =
+                cgen->ir->type_param_types[fn_type->first_param_type + i];
+            if (cgen->ir->types[param_type].kind == STK_Slice) {
+                cgen_add(cgen, "(");
+                cgen_add(cgen, cgen_c_type(cgen->ir, param_type));
+                cgen_add(cgen, "){.data = 0, .count = 0}");
+                continue;
             }
         }
         cgen_add_value(cgen, arg);

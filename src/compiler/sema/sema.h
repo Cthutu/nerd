@@ -25,6 +25,7 @@ typedef enum : u8 {
     STK_Void,
     STK_UntypedInteger,
     STK_UntypedFloat,
+    STK_Nil,
     STK_String,
     STK_Bool,
     STK_I8,
