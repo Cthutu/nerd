@@ -309,8 +309,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "type=%u", node->a));
             break;
         case AK_TypeDynamicArray:
-            row[3] = table_cell_string(string_format(
-                &temp_arena, "min=%u type=%u", node->a, node->b));
+            row[3] = table_cell_string(
+                string_format(&temp_arena, "min=%u type=%u", node->a, node->b));
             break;
         case AK_RangeExclusive:
         case AK_RangeInclusive:

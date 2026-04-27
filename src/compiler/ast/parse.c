@@ -787,7 +787,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             return false;
         }
         if (state->token.kind == TK_Range) {
-            if (!ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
+            if (!ast_expect_token(state, TK_RBracket) ||
+                !ast_next_token(state)) {
                 return false;
             }
             u32 element_type = 0;
@@ -824,7 +825,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             return false;
         }
         if (state->token.kind == TK_Range) {
-            if (!ast_next_token(state) || !ast_expect_token(state, TK_RBracket) ||
+            if (!ast_next_token(state) ||
+                !ast_expect_token(state, TK_RBracket) ||
                 !ast_next_token(state)) {
                 return false;
             }

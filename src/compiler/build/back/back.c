@@ -51,6 +51,16 @@ internal u32 back_end_import_ir_string(ProgramBackEndMerge* merge, string text)
     return (u32)array_count(merge->ir.strings) - 1;
 }
 
+internal u32 back_end_find_builtin_type(const Sema* sema, SemaTypeKind kind)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == kind) {
+            return i;
+        }
+    }
+    return sema_no_type();
+}
+
 internal bool back_end_symbol_is_runtime_helper(const Lexer* lexer,
                                                 u32          symbol_handle)
 {
@@ -269,21 +279,20 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         u32 first_dynarray_op = (u32)array_count(merge.ir.dynarray_ops);
         for (u32 i = 0; i < array_count(module_ir->dynarray_ops); ++i) {
             IrDynamicArrayOpInfo op_info = module_ir->dynarray_ops[i];
-            op_info.target_type =
-                op_info.target_type == sema_no_type()
-                    ? sema_no_type()
-                    : type_map[op_info.target_type];
-            op_info.arg_type = op_info.arg_type == sema_no_type()
-                                   ? sema_no_type()
-                                   : type_map[op_info.arg_type];
-            op_info.dynarray_type = type_map[op_info.dynarray_type];
+            op_info.target_type          = op_info.target_type == sema_no_type()
+                                               ? sema_no_type()
+                                               : type_map[op_info.target_type];
+            op_info.arg_type             = op_info.arg_type == sema_no_type()
+                                               ? sema_no_type()
+                                               : type_map[op_info.arg_type];
+            op_info.dynarray_type        = type_map[op_info.dynarray_type];
             op_info.target = back_end_remap_ir_value(&op_info.target,
                                                      module_ir,
                                                      type_map,
                                                      string_map,
                                                      &merge,
                                                      &front_end->lexer);
-            op_info.arg = back_end_remap_ir_value(&op_info.arg,
+            op_info.arg    = back_end_remap_ir_value(&op_info.arg,
                                                   module_ir,
                                                   type_map,
                                                   string_map,
@@ -332,7 +341,15 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
             IrLocal local = module_ir->locals[i];
             local.symbol  = sema_import_symbol_handle(
                 &merge.lexer, &front_end->lexer, local.symbol);
-            local.type = type_map[local.type];
+            if (local.type == sema_no_type()) {
+                u32 module_void_type =
+                    back_end_find_builtin_type(&front_end->sema, STK_Void);
+                ASSERT(module_void_type != sema_no_type(),
+                       "Expected builtin void type in module sema");
+                local.type = type_map[module_void_type];
+            } else {
+                local.type = type_map[local.type];
+            }
             local.function_index += first_function;
             array_push(merge.ir.locals, local);
         }

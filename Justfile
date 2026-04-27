@@ -33,7 +33,7 @@ test-release:
     just run-release nerd test
 
 test-build:
-    just run nerd build -v nerd-src/main.n
+    just run nerd build -v examples/text-adventure/adv.n
 
 alias b := build
 alias br := build-release

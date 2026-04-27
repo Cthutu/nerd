@@ -1596,8 +1596,8 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
          instr->op == IR_OP_LESS || instr->op == IR_OP_LESS_EQUAL) &&
         (lhs_integer || rhs_integer);
     if (integer_compare) {
-        u32 common_type = lhs_integer ? instr->rvalue[0].type
-                                      : instr->rvalue[1].type;
+        u32 common_type =
+            lhs_integer ? instr->rvalue[0].type : instr->rvalue[1].type;
         SemaTypeKind lhs_kind = lhs_integer
                                     ? cgen->ir
                                           ->types[cgen_materialise_type(
@@ -1623,7 +1623,8 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
                 common_type = instr->rvalue[1].type;
             }
         } else if (cgen_type_is_unsigned_integer(cgen, instr->rvalue[1].type) &&
-                   !cgen_type_is_unsigned_integer(cgen, instr->rvalue[0].type)) {
+                   !cgen_type_is_unsigned_integer(cgen,
+                                                  instr->rvalue[0].type)) {
             common_type = instr->rvalue[1].type;
         }
         cgen_add_typed_value(cgen, &instr->rvalue[0], common_type);

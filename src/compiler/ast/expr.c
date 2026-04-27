@@ -438,16 +438,15 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
         if (!ast_parse_nested_block(state, &block_node)) {
             return false;
         }
-        bool emitted = ast_emit_node(state,
-                                     (AstNode){
-                                         .kind        = AK_ExprBlock,
-                                         .token_index =
-                                             state->nodes[block_node]
-                                                 .token_index,
-                                         .a = block_node,
-                                         .b = U32_MAX,
-                                     },
-                                     out_node);
+        bool emitted = ast_emit_node(
+            state,
+            (AstNode){
+                .kind        = AK_ExprBlock,
+                .token_index = state->nodes[block_node].token_index,
+                .a           = block_node,
+                .b           = U32_MAX,
+            },
+            out_node);
         if (emitted && state->token.token_index != state->token_index) {
             ast_peek_token(state);
         }
@@ -1003,8 +1002,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             state->token.source, ast_token_span(state, &state->token), TK_EOF);
     }
 
-    u32 false_expr_node = 0;
-    saved_statement_boundary       = state->allow_statement_boundary;
+    u32 false_expr_node             = 0;
+    saved_statement_boundary        = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
     bool parsed_false_expr = ast_parse_on_branch_expr(state, &false_expr_node);
     state->allow_statement_boundary = saved_statement_boundary;

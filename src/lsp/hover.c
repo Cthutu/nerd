@@ -725,13 +725,13 @@ internal string lsp_field_hover_text(const LspDocument* doc,
 
     if (target->kind == STK_Slice || target->kind == STK_String ||
         target->kind == STK_DynamicArray) {
-        string name       = lex_symbol(&doc->front_end.lexer, field->b);
-        string type       = sema_type_name(
+        string name = lex_symbol(&doc->front_end.lexer, field->b);
+        string type = sema_type_name(
             &doc->front_end.lexer,
             &doc->front_end.sema,
             arena,
             doc->front_end.sema.node_type_indices[field_node_index]);
-        string owner      = sema_type_name(
+        string owner = sema_type_name(
             &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
         string kind       = s("");
         bool   recognised = false;
@@ -749,9 +749,11 @@ internal string lsp_field_hover_text(const LspDocument* doc,
                 string_eq(name, s("capacity"))) {
                 kind       = s("dynamic array field");
                 recognised = true;
-            } else if (string_eq(name, s("push")) || string_eq(name, s("append")) ||
+            } else if (string_eq(name, s("push")) ||
+                       string_eq(name, s("append")) ||
                        string_eq(name, s("reserve")) ||
-                       string_eq(name, s("clear")) || string_eq(name, s("free"))) {
+                       string_eq(name, s("clear")) ||
+                       string_eq(name, s("free"))) {
                 kind       = s("dynamic array method");
                 recognised = true;
             }

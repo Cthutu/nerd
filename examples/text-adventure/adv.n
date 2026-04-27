@@ -10,6 +10,11 @@ main :: fn () {
     for {
         input := get_input()
 
+        parts := split(input, " ")
+        for part in parts {
+            io.prn($"You said: {part}")
+        }
+
         on input {
             "quit", "q" => break
             "look", "l" => io.prn("You see nothing but darkness.")

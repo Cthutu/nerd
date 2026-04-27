@@ -1159,9 +1159,9 @@ internal u32 ir_string_append_type(const Sema* sema, u32 node_type_index)
     return sema_materialise_type(sema, node_type_index);
 }
 
-internal u32 ir_value_type_for_local_index(const Ast*   ast,
-                                           const Sema*  sema,
-                                           u32          local_index);
+internal u32 ir_value_type_for_local_index(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         local_index);
 
 internal u32 ir_node_type_index(const Ast*  ast,
                                 const Sema* sema,
@@ -1195,9 +1195,9 @@ internal u32 ir_node_type_index(const Ast*  ast,
     return sema_no_type();
 }
 
-internal u32 ir_value_type_for_local_index(const Ast*   ast,
-                                           const Sema*  sema,
-                                           u32          local_index)
+internal u32 ir_value_type_for_local_index(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         local_index)
 {
     if (local_index == sema_no_local()) {
         return sema_no_type();
@@ -1207,9 +1207,10 @@ internal u32 ir_value_type_for_local_index(const Ast*   ast,
         return type_index;
     }
 
-    const SemaLocal* local = &sema->locals[local_index];
-    u32 type_node = local->type_node_index;
-    if (type_node == sema_no_type() && local->decl_node_index != sema_no_decl() &&
+    const SemaLocal* local     = &sema->locals[local_index];
+    u32              type_node = local->type_node_index;
+    if (type_node == sema_no_type() &&
+        local->decl_node_index != sema_no_decl() &&
         local->decl_node_index < array_count(ast->nodes) &&
         ast->nodes[local->decl_node_index].kind == AK_Variable) {
         u32 payload_node = ast->nodes[local->decl_node_index].b;
@@ -2541,16 +2542,16 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                 AK_DestructureVariable)) {
                     value = (IrValue){
                         .kind = IR_VALUE_LOCAL,
-                        .type =
-                            ir_value_type_for_local_index(ast, sema, local_index),
+                        .type = ir_value_type_for_local_index(
+                            ast, sema, local_index),
                         .value.integer = local->lowered_symbol_handle,
                     };
                 } else if (local->kind == SLK_Binder &&
                            local->value_node_index == sema_no_decl()) {
                     value = (IrValue){
                         .kind = IR_VALUE_LOCAL,
-                        .type =
-                            ir_value_type_for_local_index(ast, sema, local_index),
+                        .type = ir_value_type_for_local_index(
+                            ast, sema, local_index),
                         .value.integer = local->lowered_symbol_handle,
                     };
                 } else if (local->kind == SLK_Binder) {
@@ -2571,8 +2572,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 } else {
                     value = (IrValue){
                         .kind = IR_VALUE_LOCAL,
-                        .type =
-                            ir_value_type_for_local_index(ast, sema, local_index),
+                        .type = ir_value_type_for_local_index(
+                            ast, sema, local_index),
                         .value.integer = local->lowered_symbol_handle,
                     };
                 }
@@ -2580,23 +2581,25 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 u32 decl_index = sema->node_decl_indices[node_index];
                 ASSERT(decl_index != U32_MAX,
                        "Expected resolved symbol reference");
-                const SemaDecl* decl = &sema->decls[decl_index];
-                u32 runtime_symbol   = decl->symbol_handle;
+                const SemaDecl* decl           = &sema->decls[decl_index];
+                u32             runtime_symbol = decl->symbol_handle;
                 if (decl->kind == SK_FfiFunction &&
                     decl->value_node_index != sema_no_decl()) {
-                    const AstNode* ffi_node = &ast->nodes[decl->value_node_index];
+                    const AstNode* ffi_node =
+                        &ast->nodes[decl->value_node_index];
                     if (ffi_node->kind == AK_FfiDef) {
-                        runtime_symbol = ast->ffi_infos[ffi_node->a].symbol_handle;
+                        runtime_symbol =
+                            ast->ffi_infos[ffi_node->a].symbol_handle;
                     }
                 }
 
-                value                = (IrValue){
-                                   .kind          = decl->kind == SK_BuiltinFunction ||
+                value = (IrValue){
+                    .kind          = decl->kind == SK_BuiltinFunction ||
                                     decl->kind == SK_FfiFunction
-                                                        ? IR_VALUE_BUILTIN
-                                                        : IR_VALUE_SYMBOL,
-                                   .type          = decl->type_index,
-                                   .value.integer = runtime_symbol,
+                                         ? IR_VALUE_BUILTIN
+                                         : IR_VALUE_SYMBOL,
+                    .type          = decl->type_index,
+                    .value.integer = runtime_symbol,
                 };
             }
             node_values[node_index] = value;
@@ -3998,11 +4001,11 @@ internal void ir_lower_destructure_assign_pattern(const Ast*  ast,
         u32 local_index = sema->pattern_local_indices[pattern_index];
         ASSERT(local_index != sema_no_local(),
                "Expected destructuring assignment target");
-        u32     target_type = ir_value_type_for_local_index(ast, sema, local_index);
-        IrValue target      = {
-                 .kind          = IR_VALUE_LOCAL,
-                 .type          = target_type,
-                 .value.integer = symbol,
+        u32 target_type = ir_value_type_for_local_index(ast, sema, local_index);
+        IrValue target  = {
+             .kind          = IR_VALUE_LOCAL,
+             .type          = target_type,
+             .value.integer = symbol,
         };
         ir_add_assign(ir, target, target_type, source, source_type);
         if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
