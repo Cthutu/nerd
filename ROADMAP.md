@@ -1464,6 +1464,41 @@ needed earlier.
   - Add language, formatter, LSP, and error coverage before marking the
     milestone complete.
 
+## Milestone 38: `.size` Operator
+
+- [ ] 107. Add a `.size` postfix operator for value-size queries.
+  - Define `.size` as Nerd's own `sizeof`-style operation, based on Nerd type
+    and layout rules rather than current C backend behaviour.
+  - Allow `.size` on any expression whose type is known.
+  - Return type should be `usize`.
+  - Treat `void.size` as `0`.
+  - Treat untyped integers as materialised runtime integers for `.size`, so
+    `128.size` follows the size of the default materialised integer type.
+  - For arrays, return the full aggregate size in bytes, not element count.
+  - For slices and strings, return the size of the slice/string header, not
+    `count * element_size`.
+  - For `nil`, return `0` when it remains `nil`-typed; once coerced to a
+    pointer or slice, `.size` should follow the target runtime representation.
+  - `^fn (...)` should report pointer size, because function pointers are
+    pointer-sized values.
+  - Keep module values invalid for `.size` unless a concrete runtime
+    representation is later introduced and specified.
+
+## Milestone 39: String Surface Follow-through
+
+- [ ] 108. Extend string handling beyond the first runtime-backed interpolated
+  string implementation.
+  - Support top-level interpolated string bindings once the runtime init model
+    is robust enough.
+  - Optimise interpolated strings for constant expressions once the first
+    runtime-based version works.
+  - Extend the formatter to reflow long string literals into consecutive
+    adjacent string literals, and to merge adjacent short literals when that
+    improves readability.
+  - Prefer breaking at spaces so normal prose does not split words where
+    practical.
+  - Keep the emitted literals semantically equivalent to the original source.
+
 ## Remaining Near-Term Work
 
 These are the active unfinished items after the current `undefined` work:
@@ -1486,35 +1521,10 @@ milestone yet.
 - [ ] Extend contextual aggregate construction and collection ergonomics.
   - Keep typed constant bindings valid with an explicit type between the
     colons, for example `rooms : []Room : value`.
-  - [x] Allow contextual unnamed plex literals such as `{ ... }` when the
-    expected type is an unambiguous `plex`, for example inside `[]Room`
-    literals.
-  - [x] Allow implicit full-range array-to-slice coercion when the expected
-    target type is `[]T`, so assigning an array literal to a slice does not
-    require an explicit trailing `[..]`.
   - Keep commas required in array literals. Do not adopt optional-comma syntax,
     because the parser/formatter trade-off is not worth the ambiguity pressure.
-- [ ] Improve plex literal formatting.
-  - [x] For multi-line plex literals, align the `:` tokens so field values
-    begin in the same column.
-  - For consecutive single-line plex literals in the same paragraph or array,
-    align field/value columns vertically across the sibling literals when they
-    all remain single-line.
-  - Do not add commas between fields inside plex literals; commas only separate
-    array elements and other collection items where the language already
-    requires them.
-- [ ] Support top-level interpolated string bindings once the runtime init model
-  is robust enough.
 - [ ] Add a generated initialisation path for more than top-level constants when
   later features require runtime setup before `$main`.
-- [ ] Optimise interpolated strings for constant expressions once the first
-  runtime-based version works.
-- [ ] Extend the formatter to reflow long string literals into consecutive
-  adjacent string literals, and to merge adjacent short literals when that
-  improves readability.
-  - Prefer breaking at spaces so normal prose does not split words where
-    practical.
-  - Keep the emitted literals semantically equivalent to the original source.
 - [ ] Add trait-based conversion and formatting support for user-defined types.
   - Leave this for a later planned milestone; it needs a more deliberate
     design pass than the current language/library work.
@@ -1525,23 +1535,6 @@ milestone yet.
 - [ ] Add a synthetic diagnostic harness for hard-limit error categories that
   are impractical to trigger through normal source files, including `0102`,
   `0105`, and `0200`.
-- [ ] Add a `.size` postfix operator for value-size queries.
-  - Define `.size` as Nerd's own `sizeof`-style operation, based on Nerd type
-    and layout rules rather than current C backend behaviour.
-  - Allow `.size` on any expression whose type is known.
-  - Return type should be `usize`.
-  - Treat `void.size` as `0`.
-  - Treat untyped integers as materialised runtime integers for `.size`, so
-    `128.size` follows the size of the default materialised integer type.
-  - For arrays, return the full aggregate size in bytes, not element count.
-  - For slices and strings, return the size of the slice/string header, not
-    `count * element_size`.
-  - For `nil`, return `0` when it remains `nil`-typed; once coerced to a
-    pointer or slice, `.size` should follow the target runtime representation.
-  - `^fn (...)` should report pointer size, because function pointers are
-    pointer-sized values.
-  - Keep module values invalid for `.size` unless a concrete runtime
-    representation is later introduced and specified.
 
 ## Semantic Layout Sketch
 
