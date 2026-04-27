@@ -206,6 +206,10 @@ internal void ir_render_type_name(StringBuilder* sb,
         sb_append_cstr(sb, "[]");
         ir_render_type_name(sb, ir, lexer, type->first_param_type);
         break;
+    case STK_DynamicArray:
+        sb_append_cstr(sb, "[..]");
+        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        break;
     case STK_Pointer:
         sb_append_char(sb, '^');
         ir_render_type_name(sb, ir, lexer, type->first_param_type);
@@ -496,6 +500,21 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_char(&sb, '[');
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[1]);
             sb_append_char(&sb, ']');
+            break;
+        case IR_OP_DYNARRAY_RESERVE:
+            sb_append_cstr(&sb, "dynarray.reserve");
+            break;
+        case IR_OP_DYNARRAY_PUSH:
+            sb_append_cstr(&sb, "dynarray.push");
+            break;
+        case IR_OP_DYNARRAY_APPEND:
+            sb_append_cstr(&sb, "dynarray.append");
+            break;
+        case IR_OP_DYNARRAY_CLEAR:
+            sb_append_cstr(&sb, "dynarray.clear");
+            break;
+        case IR_OP_DYNARRAY_FREE:
+            sb_append_cstr(&sb, "dynarray.free");
             break;
         case IR_OP_ADDRESS_OF:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

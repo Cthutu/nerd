@@ -65,6 +65,7 @@
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
 // | AK_TypeSlice       | Ast index element type | 0                           |
+// | AK_TypeDynamicArray | Ast index min capacity or U32_MAX | Ast index element type |
 // | AK_TypePointer     | Ast index pointee type | 0                           |
 // | AK_TypePlex        | Ast plex-type index | 0                            |
 // | AK_TypeEnum        | Ast enum-type index | 0                            |
@@ -146,6 +147,7 @@ typedef enum {
     AK_TypeTuple,
     AK_TypeArray,
     AK_TypeSlice,
+    AK_TypeDynamicArray,
     AK_TypePointer,
     AK_TypePlex,
     AK_TypeEnum,

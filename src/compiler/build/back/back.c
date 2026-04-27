@@ -266,6 +266,36 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
             array_push(merge.ir.slices, slice);
         }
 
+        u32 first_dynarray_op = (u32)array_count(merge.ir.dynarray_ops);
+        for (u32 i = 0; i < array_count(module_ir->dynarray_ops); ++i) {
+            IrDynamicArrayOpInfo op_info = module_ir->dynarray_ops[i];
+            op_info.target_type =
+                op_info.target_type == sema_no_type()
+                    ? sema_no_type()
+                    : type_map[op_info.target_type];
+            op_info.arg_type = op_info.arg_type == sema_no_type()
+                                   ? sema_no_type()
+                                   : type_map[op_info.arg_type];
+            op_info.dynarray_type = type_map[op_info.dynarray_type];
+            op_info.target = back_end_remap_ir_value(&op_info.target,
+                                                     module_ir,
+                                                     type_map,
+                                                     string_map,
+                                                     &merge,
+                                                     &front_end->lexer);
+            op_info.arg = back_end_remap_ir_value(&op_info.arg,
+                                                  module_ir,
+                                                  type_map,
+                                                  string_map,
+                                                  &merge,
+                                                  &front_end->lexer);
+            if (op_info.field_symbol != U32_MAX) {
+                op_info.field_symbol = sema_import_symbol_handle(
+                    &merge.lexer, &front_end->lexer, op_info.field_symbol);
+            }
+            array_push(merge.ir.dynarray_ops, op_info);
+        }
+
         for (u32 i = 0; i < array_count(module_ir->globals); ++i) {
             IrGlobal global = module_ir->globals[i];
             global.symbol   = sema_import_symbol_handle(
@@ -348,6 +378,13 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                 break;
             case IR_OP_SLICE:
                 instr.rvalue[0].value.integer += first_slice;
+                break;
+            case IR_OP_DYNARRAY_RESERVE:
+            case IR_OP_DYNARRAY_PUSH:
+            case IR_OP_DYNARRAY_APPEND:
+            case IR_OP_DYNARRAY_CLEAR:
+            case IR_OP_DYNARRAY_FREE:
+                instr.lvalue.value.integer += first_dynarray_op;
                 break;
             case IR_OP_FIELD:
                 instr.rvalue[1].value.integer = sema_import_symbol_handle(

@@ -786,6 +786,23 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         if (!ast_next_token(state)) {
             return false;
         }
+        if (state->token.kind == TK_Range) {
+            if (!ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
+                return false;
+            }
+            u32 element_type = 0;
+            if (!ast_parse_type(state, &element_type)) {
+                return false;
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_TypeDynamicArray,
+                                     .token_index = lbracket.token_index,
+                                     .a           = U32_MAX,
+                                     .b           = element_type,
+                                 },
+                                 out_node);
+        }
         if (state->token.kind == TK_RBracket) {
             if (!ast_next_token(state)) {
                 return false;
@@ -803,8 +820,28 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                                  out_node);
         }
         u32 length_index = 0;
-        if (!ast_parse_expr(state, &length_index) ||
-            !ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
+        if (!ast_parse_expr(state, &length_index)) {
+            return false;
+        }
+        if (state->token.kind == TK_Range) {
+            if (!ast_next_token(state) || !ast_expect_token(state, TK_RBracket) ||
+                !ast_next_token(state)) {
+                return false;
+            }
+            u32 element_type = 0;
+            if (!ast_parse_type(state, &element_type)) {
+                return false;
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_TypeDynamicArray,
+                                     .token_index = lbracket.token_index,
+                                     .a           = length_index,
+                                     .b           = element_type,
+                                 },
+                                 out_node);
+        }
+        if (!ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
             return false;
         }
         u32 element_type = 0;

@@ -1399,7 +1399,7 @@ needed earlier.
 
 ## Milestone 37: Dynamic Arrays
 
-- [ ] 106. Add first-class dynamic arrays using `[..]T`.
+- [X] 106. Add first-class dynamic arrays using `[..]T`.
   - Keep the initial syntax deliberately small:
     - `[N]T` remains fixed-size inline storage
     - `[]T` remains a non-owning slice view
@@ -1463,6 +1463,11 @@ needed earlier.
     logic throughout generated C.
   - Add language, formatter, LSP, and error coverage before marking the
     milestone complete.
+  - Landed coverage:
+    - language: [tests/language/099-dynamic-arrays.t](tests/language/099-dynamic-arrays.t)
+    - errors: [tests/errors/047-dynamic-arrays.e](tests/errors/047-dynamic-arrays.e)
+    - formatter: [tests/format/069-dynamic-arrays.f](tests/format/069-dynamic-arrays.f)
+    - lsp: [tests/lsp/054-dynamic-arrays.lsp](tests/lsp/054-dynamic-arrays.lsp)
 
 ## Milestone 38: `.size` Operator
 

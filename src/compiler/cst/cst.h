@@ -63,6 +63,7 @@
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
 // | CK_TypeSlice       | Element type node     | 0                     |
+// | CK_TypeDynamicArray | Min capacity node or U32_MAX | Element type node |
 // | CK_TypePointer     | Pointee type node     | 0                     |
 // | CK_TypePlex        | Plex-type index       | 0                     |
 // | CK_FnExpr          | Fn-signature index    | Body node index       |
@@ -140,6 +141,7 @@ typedef enum {
     CK_TypeTuple,
     CK_TypeArray,
     CK_TypeSlice,
+    CK_TypeDynamicArray,
     CK_TypePointer,
     CK_TypePlex,
     CK_TypeEnum,

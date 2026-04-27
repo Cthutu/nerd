@@ -98,6 +98,8 @@ string ast_kind_to_string(AstKind kind)
         return s("TypeArray");
     case AK_TypeSlice:
         return s("TypeSlice");
+    case AK_TypeDynamicArray:
+        return s("TypeDynamicArray");
     case AK_TypePointer:
         return s("TypePointer");
     case AK_Expression:
@@ -305,6 +307,10 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_TypeSlice:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "type=%u", node->a));
+            break;
+        case AK_TypeDynamicArray:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "min=%u type=%u", node->a, node->b));
             break;
         case AK_RangeExclusive:
         case AK_RangeInclusive:

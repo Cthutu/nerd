@@ -985,6 +985,24 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
     if (token.kind == TK_LBracket) {
         u32 token_index = state->token_index;
         cst_advance(state);
+        if (cst_current_token(state).kind == TK_Range) {
+            cst_advance(state);
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            u32 element_type = 0;
+            if (!cst_parse_type(state, &element_type)) {
+                return false;
+            }
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_TypeDynamicArray,
+                                     .token_index = token_index,
+                                     .a           = CST_NO_VALUE,
+                                     .b           = element_type,
+                                 },
+                                 out_node);
+        }
         if (cst_current_token(state).kind == TK_RBracket) {
             cst_advance(state);
             u32 element_type = 0;
@@ -1002,6 +1020,24 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32 length = 0;
         if (!cst_parse_expr_bp(state, 0, &length)) {
             return false;
+        }
+        if (cst_current_token(state).kind == TK_Range) {
+            cst_advance(state);
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            u32 element_type = 0;
+            if (!cst_parse_type(state, &element_type)) {
+                return false;
+            }
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_TypeDynamicArray,
+                                     .token_index = token_index,
+                                     .a           = length,
+                                     .b           = element_type,
+                                 },
+                                 out_node);
         }
         if (!cst_consume(state, TK_RBracket)) {
             return false;

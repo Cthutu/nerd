@@ -225,6 +225,7 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     case STK_Tuple:
     case STK_Array:
     case STK_Slice:
+    case STK_DynamicArray:
     case STK_Plex:
     case STK_Union:
     case STK_Enum:
@@ -237,6 +238,8 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                      ir->types[type_index].kind == STK_Tuple   ? "tuple%u"
                      : ir->types[type_index].kind == STK_Array ? "array%u"
                      : ir->types[type_index].kind == STK_Slice ? "slice%u"
+                     : ir->types[type_index].kind == STK_DynamicArray
+                         ? "dynarray%u"
                      : ir->types[type_index].kind == STK_Plex  ? "plex%u"
                      : ir->types[type_index].kind == STK_Union ? "union%u"
                                                                : "enum%u",
@@ -456,6 +459,7 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
     case STK_Tuple:
     case STK_Array:
     case STK_Slice:
+    case STK_DynamicArray:
         cgen_add(cgen, "(");
         cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
         cgen_add(cgen, "){0}");
@@ -555,6 +559,12 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
             cgen_add(cgen, "(");
             cgen_add(cgen, cgen_c_type(cgen->ir, value->type));
             cgen_add(cgen, "){.data = 0, .count = 0}");
+        } else if (value->type != sema_no_type() &&
+                   cgen->ir->types[value->type].kind == STK_DynamicArray &&
+                   value->value.integer == 0) {
+            cgen_add(cgen, "(");
+            cgen_add(cgen, cgen_c_type(cgen->ir, value->type));
+            cgen_add(cgen, "){.data = 0, .count = 0, .capacity = 0}");
         } else {
             arena_format(&cgen->arena, "%lld", value->value.integer);
         }
@@ -687,6 +697,12 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
                 cgen_add(cgen, "(");
                 cgen_add(cgen, cgen_c_type(cgen->ir, param_type));
                 cgen_add(cgen, "){.data = 0, .count = 0}");
+                continue;
+            }
+            if (cgen->ir->types[param_type].kind == STK_DynamicArray) {
+                cgen_add(cgen, "(");
+                cgen_add(cgen, cgen_c_type(cgen->ir, param_type));
+                cgen_add(cgen, "){.data = 0, .count = 0, .capacity = 0}");
                 continue;
             }
         }
@@ -988,6 +1004,7 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
 {
     const SemaType* target_type = &cgen->ir->types[instr->rvalue[0].type];
     if (target_type->kind == STK_Array || target_type->kind == STK_Slice ||
+        target_type->kind == STK_DynamicArray ||
         target_type->kind == STK_String) {
         cgen_start_line(cgen);
         cgen_add(cgen, "#ifndef NDEBUG");
@@ -1007,8 +1024,11 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
             cgen_add(cgen, " >= ");
             cgen_add_value(cgen, &instr->rvalue[0]);
             cgen_add(cgen, ".count) { fprintf(stderr, \"fatal: ");
-            cgen_add(cgen,
-                     target_type->kind == STK_String ? "string" : "slice");
+            cgen_add(cgen, target_type->kind == STK_String
+                               ? "string"
+                               : (target_type->kind == STK_DynamicArray
+                                      ? "dynamic array"
+                                      : "slice"));
             cgen_add(cgen, " index out of bounds\\n\"); abort(); }");
         }
         cgen_addn(cgen, "");
@@ -1025,6 +1045,7 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
              target_type->kind == STK_Array
                  ? ".items["
                  : ((target_type->kind == STK_Slice ||
+                     target_type->kind == STK_DynamicArray ||
                      target_type->kind == STK_String)
                         ? ".data["
                         : "["));
@@ -1052,11 +1073,181 @@ void cgen_add_address_of_index(CGen* cgen, const IrInstruction* instr)
              target_type->kind == STK_Array
                  ? ".items["
                  : ((target_type->kind == STK_Slice ||
+                     target_type->kind == STK_DynamicArray ||
                      target_type->kind == STK_String)
                         ? ".data["
                         : "["));
     cgen_add_value(cgen, &instr->rvalue[1]);
     cgen_addn(cgen, "];");
+}
+
+internal void cgen_add_dynarray_target(CGen*                       cgen,
+                                       const IrDynamicArrayOpInfo* info)
+{
+    switch (info->target_kind) {
+    case IR_DAT_DIRECT:
+        cgen_add_value(cgen, &info->target);
+        return;
+    case IR_DAT_FIELD:
+        cgen_add_value(cgen, &info->target);
+        if (info->target_type != sema_no_type() &&
+            cgen->ir->types[info->target_type].kind == STK_Pointer &&
+            (cgen->ir
+                     ->types[cgen->ir->types[info->target_type].first_param_type]
+                     .kind == STK_Plex ||
+             cgen->ir
+                     ->types[cgen->ir->types[info->target_type].first_param_type]
+                     .kind == STK_Union)) {
+            cgen_add(cgen, "->");
+        } else {
+            cgen_add(cgen, ".");
+        }
+        cgen_add_symbol_name(cgen, info->field_symbol);
+        return;
+    case IR_DAT_DEREF:
+        cgen_add(cgen, "*");
+        cgen_add_value(cgen, &info->target);
+        return;
+    }
+    error_ice("Unsupported dynamic array target kind");
+}
+
+internal void cgen_add_dynarray_grow(CGen*                       cgen,
+                                     const IrDynamicArrayOpInfo* info,
+                                     const char*                 needed_expr)
+{
+    cgen_start_line(cgen);
+    cgen_add(cgen, "if (");
+    cgen_add(cgen, needed_expr);
+    cgen_add(cgen, " > ");
+    cgen_add_dynarray_target(cgen, info);
+    cgen_add(cgen, ".capacity) {");
+    cgen_addn(cgen, "");
+    cgen_indent(cgen);
+    cgen_add_line(cgen, "uintptr_t $dyn_new_cap = 1;");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "if (");
+    cgen_add_dynarray_target(cgen, info);
+    cgen_add(cgen, ".capacity > 0) $dyn_new_cap = ");
+    cgen_add_dynarray_target(cgen, info);
+    cgen_addn(cgen, ".capacity;");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "while ($dyn_new_cap < ");
+    cgen_add(cgen, needed_expr);
+    cgen_addn(cgen, ") $dyn_new_cap *= 2;");
+    cgen_start_line(cgen);
+    cgen_add(cgen, "void* $dyn_new_data = realloc(");
+    cgen_add_dynarray_target(cgen, info);
+    cgen_add(cgen, ".data, $dyn_new_cap * sizeof(");
+    cgen_add(cgen, cgen_c_type(cgen->ir,
+                               cgen->ir->types[info->dynarray_type]
+                                   .first_param_type));
+    cgen_addn(cgen, "));");
+    cgen_add_line(cgen,
+                  "if ($dyn_new_data == NULL) { fprintf(stderr, "
+                  "\"fatal: dynamic array allocation failed\\n\"); abort(); }");
+    cgen_start_line(cgen);
+    cgen_add_dynarray_target(cgen, info);
+    cgen_addn(cgen, ".data = $dyn_new_data;");
+    cgen_start_line(cgen);
+    cgen_add_dynarray_target(cgen, info);
+    cgen_addn(cgen, ".capacity = $dyn_new_cap;");
+    cgen_dedent(cgen);
+    cgen_add_line(cgen, "}");
+}
+
+void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
+{
+    const IrDynamicArrayOpInfo* info = &cgen->ir->dynarray_ops[op_index];
+
+    cgen_start_line(cgen);
+    cgen_addn(cgen, "{");
+    cgen_indent(cgen);
+
+    switch (op) {
+    case IR_OP_DYNARRAY_RESERVE:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_needed = ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ";");
+        cgen_add_dynarray_grow(cgen, info, "$dyn_needed");
+        break;
+    case IR_OP_DYNARRAY_PUSH:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_needed = ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count + 1;");
+        cgen_addn(cgen, "");
+        cgen_add_dynarray_grow(cgen, info, "$dyn_needed");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data[");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count++] = ");
+        cgen_add_typed_value(
+            cgen, &info->arg, cgen->ir->types[info->dynarray_type].first_param_type);
+        cgen_addn(cgen, ";");
+        break;
+    case IR_OP_DYNARRAY_APPEND:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_needed = ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count + ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ".count;");
+        cgen_add_dynarray_grow(cgen, info, "$dyn_needed");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if (");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_add(cgen, ".count > 0) memcpy(");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data + ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count, ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_add(cgen, ".data, ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_add(cgen, ".count * sizeof(");
+        cgen_add(cgen, cgen_c_type(cgen->ir,
+                                   cgen->ir->types[info->dynarray_type]
+                                       .first_param_type));
+        cgen_addn(cgen, "));");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count += ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ".count;");
+        break;
+    case IR_OP_DYNARRAY_CLEAR:
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count = 0;");
+        break;
+    case IR_OP_DYNARRAY_FREE:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "free(");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".data);");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".data = 0;");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count = 0;");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".capacity = 0;");
+        break;
+    default:
+        cgen_dedent(cgen);
+        cgen_start_line(cgen);
+        cgen_addn(cgen, "}");
+        return;
+    }
+
+    cgen_dedent(cgen);
+    cgen_start_line(cgen);
+    cgen_addn(cgen, "}");
 }
 
 internal u32 cgen_record_field_type(const CGen* cgen,
@@ -1162,7 +1353,8 @@ internal void cgen_add_string_append_value(CGen*          cgen,
         return;
     }
     if (type_index != sema_no_type() &&
-        cgen->ir->types[type_index].kind == STK_Slice) {
+        (cgen->ir->types[type_index].kind == STK_Slice ||
+         cgen->ir->types[type_index].kind == STK_DynamicArray)) {
         const SemaType* slice = &cgen->ir->types[type_index];
         cstr suffix = cgen_string_helper_suffix(cgen, slice->first_param_type);
         if (suffix == NULL) {
@@ -1324,6 +1516,33 @@ void cgen_add_binary(CGen* cgen, const IrInstruction* instr, cstr op)
         }
         return;
     }
+    bool dynarray_equality =
+        (instr->op == IR_OP_EQUAL || instr->op == IR_OP_NOT_EQUAL) &&
+        instr->rvalue[0].type != sema_no_type() &&
+        instr->rvalue[1].type != sema_no_type() &&
+        cgen->ir->types[instr->rvalue[0].type].kind == STK_DynamicArray &&
+        cgen->ir->types[instr->rvalue[1].type].kind == STK_DynamicArray;
+    if (dynarray_equality) {
+        cgen_add(cgen, "(");
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
+        cgen_add(cgen, ".data == ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+        cgen_add(cgen, ".data && ");
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
+        cgen_add(cgen, ".count == ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+        cgen_add(cgen, ".count && ");
+        cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
+        cgen_add(cgen, ".capacity == ");
+        cgen_add_typed_value(cgen, &instr->rvalue[1], instr->rvalue[1].type);
+        cgen_add(cgen, ".capacity)");
+        if (instr->op == IR_OP_NOT_EQUAL) {
+            cgen_addn(cgen, " == 0;");
+        } else {
+            cgen_addn(cgen, ";");
+        }
+        return;
+    }
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_add(cgen, op);
     cgen_add_value(cgen, &instr->rvalue[1]);
@@ -1346,7 +1565,8 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
     for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
         const SemaType* type = &cgen->ir->types[i];
         if (type->kind != STK_Tuple && type->kind != STK_Array &&
-            type->kind != STK_Slice && type->kind != STK_Plex &&
+            type->kind != STK_Slice && type->kind != STK_DynamicArray &&
+            type->kind != STK_Plex &&
             type->kind != STK_Union && type->kind != STK_Enum) {
             continue;
         }
@@ -1448,6 +1668,10 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             cgen_addn(cgen, "* data;");
             cgen_start_line(cgen);
             cgen_addn(cgen, "uintptr_t count;");
+            if (type->kind == STK_DynamicArray) {
+                cgen_start_line(cgen);
+                cgen_addn(cgen, "uintptr_t capacity;");
+            }
         }
         cgen_dedent(cgen);
         cgen_start_line(cgen);
@@ -1662,6 +1886,13 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_INDEX:
             cgen_add_index(cgen, instr);
+            break;
+        case IR_OP_DYNARRAY_RESERVE:
+        case IR_OP_DYNARRAY_PUSH:
+        case IR_OP_DYNARRAY_APPEND:
+        case IR_OP_DYNARRAY_CLEAR:
+        case IR_OP_DYNARRAY_FREE:
+            cgen_add_dynarray_op(cgen, instr->op, (u32)instr->lvalue.value.integer);
             break;
         case IR_OP_ADDRESS_OF:
             cgen_add_address_of(cgen, instr);

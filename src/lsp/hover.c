@@ -715,9 +715,58 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         u32 pointee_type = target->first_param_type;
         if (pointee_type < array_count(doc->front_end.sema.types) &&
             (doc->front_end.sema.types[pointee_type].kind == STK_Plex ||
-             doc->front_end.sema.types[pointee_type].kind == STK_Union)) {
+             doc->front_end.sema.types[pointee_type].kind == STK_Union ||
+             doc->front_end.sema.types[pointee_type].kind ==
+                 STK_DynamicArray)) {
             target_type = pointee_type;
             target      = &doc->front_end.sema.types[target_type];
+        }
+    }
+
+    if (target->kind == STK_Slice || target->kind == STK_String ||
+        target->kind == STK_DynamicArray) {
+        string name       = lex_symbol(&doc->front_end.lexer, field->b);
+        string type       = sema_type_name(
+            &doc->front_end.lexer,
+            &doc->front_end.sema,
+            arena,
+            doc->front_end.sema.node_type_indices[field_node_index]);
+        string owner      = sema_type_name(
+            &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
+        string kind       = s("");
+        bool   recognised = false;
+
+        if (target->kind == STK_String || target->kind == STK_Slice) {
+            if (string_eq(name, s("data"))) {
+                kind       = s("slice field");
+                recognised = true;
+            } else if (string_eq(name, s("count"))) {
+                kind       = s("slice field");
+                recognised = true;
+            }
+        } else if (target->kind == STK_DynamicArray) {
+            if (string_eq(name, s("data")) || string_eq(name, s("count")) ||
+                string_eq(name, s("capacity"))) {
+                kind       = s("dynamic array field");
+                recognised = true;
+            } else if (string_eq(name, s("push")) || string_eq(name, s("append")) ||
+                       string_eq(name, s("reserve")) ||
+                       string_eq(name, s("clear")) || string_eq(name, s("free"))) {
+                kind       = s("dynamic array method");
+                recognised = true;
+            }
+        }
+
+        if (recognised) {
+            return string_format(
+                arena,
+                STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
+                        "\n- Owner: `" STRINGP "`",
+                STRINGV(lsp_markdown_code_block(
+                    arena, string_format(arena, STRINGP, STRINGV(name)))),
+                STRINGV(kind),
+                STRINGV(type),
+                STRINGV(owner));
         }
     }
 

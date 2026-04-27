@@ -1049,6 +1049,14 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "[]");
         format_emit_expr(sb, cst, lexer, node->a, 0);
         break;
+    case CK_TypeDynamicArray:
+        sb_append_char(sb, '[');
+        if (node->a != UINT32_MAX) {
+            format_emit_expr(sb, cst, lexer, node->a, 0);
+        }
+        sb_append_cstr(sb, "..]");
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        break;
     case CK_TypePointer:
         sb_append_char(sb, '^');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);

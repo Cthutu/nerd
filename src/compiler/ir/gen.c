@@ -469,6 +469,36 @@ void ir_add_slice(Ir*     ir,
         });
 }
 
+void ir_add_dynarray_op(Ir*                       ir,
+                        IrOperation                op,
+                        IrDynamicArrayTargetKind   target_kind,
+                        IrValue                    target,
+                        u32                        target_type,
+                        u32                        field_symbol,
+                        IrValue                    arg,
+                        u32                        arg_type,
+                        u32                        dynarray_type)
+{
+    target.type = target_type;
+    arg.type    = arg_type;
+    u32 op_index = (u32)array_count(ir->dynarray_ops);
+    array_push(ir->dynarray_ops,
+               (IrDynamicArrayOpInfo){
+                   .target_kind  = target_kind,
+                   .target       = target,
+                   .target_type  = target_type,
+                   .field_symbol = field_symbol,
+                   .arg          = arg,
+                   .arg_type     = arg_type,
+                   .dynarray_type = dynarray_type,
+               });
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = op,
+                   .lvalue = {.kind = IR_VALUE_INTEGER, .value.integer = op_index},
+               });
+}
+
 void ir_add_field(Ir*     ir,
                   IrValue lvalue,
                   u32     lvalue_type,
@@ -1919,6 +1949,126 @@ internal bool ir_try_lower_module_field(const Ast*  ast,
     return true;
 }
 
+internal bool ir_dynarray_method_op(const Lexer* lex,
+                                    u32          method_symbol,
+                                    IrOperation* out_op)
+{
+    string method = lex_symbol(lex, method_symbol);
+    if (string_eq(method, s("push"))) {
+        *out_op = IR_OP_DYNARRAY_PUSH;
+        return true;
+    }
+    if (string_eq(method, s("append"))) {
+        *out_op = IR_OP_DYNARRAY_APPEND;
+        return true;
+    }
+    if (string_eq(method, s("reserve"))) {
+        *out_op = IR_OP_DYNARRAY_RESERVE;
+        return true;
+    }
+    if (string_eq(method, s("clear"))) {
+        *out_op = IR_OP_DYNARRAY_CLEAR;
+        return true;
+    }
+    if (string_eq(method, s("free"))) {
+        *out_op = IR_OP_DYNARRAY_FREE;
+        return true;
+    }
+    return false;
+}
+
+internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
+                                                const Ast*     ast,
+                                                const Sema*    sema,
+                                                const AstNode* call_node,
+                                                IrLoopLabels   loop,
+                                                Array(IrValue) node_values,
+                                                u64*           next_value_index,
+                                                Ir*            ir)
+{
+    const AstNode* callee = &ast->nodes[call_node->a];
+    if (callee->kind != AK_Field) {
+        return false;
+    }
+
+    u32 receiver_type = ir_node_type_index(ast, sema, callee->a);
+    if (receiver_type == sema_no_type() ||
+        sema->types[receiver_type].kind != STK_DynamicArray) {
+        return false;
+    }
+
+    IrOperation op = IR_OP_CALL;
+    if (!ir_dynarray_method_op(lex, callee->b, &op)) {
+        return false;
+    }
+
+    IrDynamicArrayTargetKind target_kind = IR_DAT_DIRECT;
+    IrValue                  target      = ir_unset_value();
+    u32                      target_type = sema_no_type();
+    u32                      field_symbol = U32_MAX;
+    const AstNode*           receiver    = &ast->nodes[callee->a];
+
+    if (receiver->kind == AK_SymbolRef || receiver->kind == AK_Expression) {
+        u32 receiver_node = receiver->kind == AK_Expression ? receiver->a : callee->a;
+        target = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               receiver_node,
+                               loop,
+                               node_values,
+                               next_value_index,
+                               ir);
+        target_type = ir_node_type_index(ast, sema, receiver_node);
+        target_kind = IR_DAT_DIRECT;
+    } else if (receiver->kind == AK_Field) {
+        target = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               receiver->a,
+                               loop,
+                               node_values,
+                               next_value_index,
+                               ir);
+        target_type  = ir_node_type_index(ast, sema, receiver->a);
+        field_symbol = receiver->b;
+        target_kind  = IR_DAT_FIELD;
+    } else if (receiver->kind == AK_Deref) {
+        target = ir_lower_node(lex,
+                               ast,
+                               sema,
+                               receiver->a,
+                               loop,
+                               node_values,
+                               next_value_index,
+                               ir);
+        target_type = ir_node_type_index(ast, sema, receiver->a);
+        target_kind = IR_DAT_DEREF;
+    } else {
+        return false;
+    }
+
+    const AstCallInfo* call = &ast->calls[call_node->b];
+    IrValue            arg = ir_unset_value();
+    u32                arg_type = sema_no_type();
+    if (call->arg_count > 0) {
+        u32 arg_node = ast->call_args[call->first_arg];
+        arg = ir_lower_node(
+            lex, ast, sema, arg_node, loop, node_values, next_value_index, ir);
+        arg_type = ir_node_type_index(ast, sema, arg_node);
+    }
+
+    ir_add_dynarray_op(ir,
+                       op,
+                       target_kind,
+                       target,
+                       target_type,
+                       field_symbol,
+                       arg,
+                       arg_type,
+                       receiver_type);
+    return true;
+}
+
 internal IrValue ir_lower_call(const Lexer*   lex,
                                const Ast*     ast,
                                const Sema*    sema,
@@ -1929,6 +2079,17 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                                Ir*  ir)
 {
     ASSERT(call_node->kind == AK_Call, "Expected call node");
+
+    if (ir_try_lower_dynarray_method_call(lex,
+                                          ast,
+                                          sema,
+                                          call_node,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir)) {
+        return ir_unset_value();
+    }
 
     IrValue callee = ir_unset_value();
     if (!ir_try_lower_module_field(ast, sema, call_node->a, &callee)) {
@@ -3714,6 +3875,25 @@ internal void ir_lower_destructure_assign_pattern(const Ast*  ast,
     }
 }
 
+internal u32 ir_dynarray_min_capacity(const Ast*  ast,
+                                      const Sema* sema,
+                                      u32         type_node_index)
+{
+    if (type_node_index == sema_no_type()) {
+        return 0;
+    }
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind != AK_TypeDynamicArray || type_node->a == U32_MAX) {
+        return 0;
+    }
+    if (type_node->a < array_count(sema->node_const_known) &&
+        sema->node_const_known[type_node->a]) {
+        i64 value = sema->node_const_values[type_node->a];
+        return value > 0 ? (u32)value : 0;
+    }
+    return 0;
+}
+
 internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  const Ast*   ast,
                                                  const Sema*  sema,
@@ -4143,6 +4323,111 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_Variable) {
         u32     local_index = sema->node_local_indices[node_index];
         u32     local_type  = ir_value_type_for_local_index(sema, local_index);
+        const SemaLocal* local = &sema->locals[local_index];
+        if (local_type != sema_no_type() &&
+            sema->types[local_type].kind == STK_DynamicArray) {
+            IrValue target = {
+                .kind          = IR_VALUE_LOCAL,
+                .type          = local_type,
+                .value.integer = sema->locals[local_index].lowered_symbol_handle,
+            };
+            ir_add_local(ir,
+                         function_index,
+                         node->a,
+                         local_type,
+                         (IrValue){
+                             .kind          = IR_VALUE_INTEGER,
+                             .type          = local_type,
+                             .value.integer = 0,
+                         },
+                         local_type);
+
+            u32 init_node = node->b;
+            if (ast->nodes[init_node].kind == AK_AnnotatedValue) {
+                init_node = ast->nodes[init_node].b;
+            }
+            while (ast->nodes[init_node].kind == AK_Expression) {
+                init_node = ast->nodes[init_node].a;
+            }
+
+            u32 min_capacity =
+                ir_dynarray_min_capacity(ast, sema, local->type_node_index);
+            if (min_capacity > 0 &&
+                (ast->nodes[init_node].kind == AK_ZeroInit ||
+                 ast->nodes[init_node].kind == AK_Undefined ||
+                 ast->nodes[init_node].kind == AK_Array)) {
+                ir_add_dynarray_op(ir,
+                                   IR_OP_DYNARRAY_RESERVE,
+                                   IR_DAT_DIRECT,
+                                   target,
+                                   local_type,
+                                   U32_MAX,
+                                   (IrValue){
+                                       .kind          = IR_VALUE_INTEGER,
+                                       .type          = ir_builtin_type(sema, STK_Usize),
+                                       .value.integer = min_capacity,
+                                   },
+                                   ir_builtin_type(sema, STK_Usize),
+                                   local_type);
+            }
+
+            if (ast->nodes[init_node].kind == AK_Array) {
+                u32 literal_count = ast->nodes[init_node].b;
+                if (literal_count > min_capacity) {
+                    ir_add_dynarray_op(ir,
+                                       IR_OP_DYNARRAY_RESERVE,
+                                       IR_DAT_DIRECT,
+                                       target,
+                                       local_type,
+                                       U32_MAX,
+                                       (IrValue){
+                                           .kind          = IR_VALUE_INTEGER,
+                                           .type          = ir_builtin_type(sema, STK_Usize),
+                                           .value.integer = literal_count,
+                                       },
+                                       ir_builtin_type(sema, STK_Usize),
+                                       local_type);
+                }
+                for (u32 i = 0; i < literal_count; ++i) {
+                    u32 item_node = ast->tuple_items[ast->nodes[init_node].a + i];
+                    IrValue item  = ir_lower_node(lex,
+                                                 ast,
+                                                 sema,
+                                                 item_node,
+                                                 loop,
+                                                 node_values,
+                                                 next_value_index,
+                                                 ir);
+                    ir_add_dynarray_op(ir,
+                                       IR_OP_DYNARRAY_PUSH,
+                                       IR_DAT_DIRECT,
+                                       target,
+                                       local_type,
+                                       U32_MAX,
+                                       item,
+                                       ir_node_type_index(ast, sema, item_node),
+                                       local_type);
+                }
+                return IR_STMT_FALLTHROUGH;
+            }
+
+            if (ast->nodes[init_node].kind == AK_Undefined ||
+                ast->nodes[init_node].kind == AK_ZeroInit) {
+                return IR_STMT_FALLTHROUGH;
+            }
+
+            IrValue value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          init_node,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+            ir_add_assign(ir, target, local_type, value, local_type);
+            return IR_STMT_FALLTHROUGH;
+        }
+
         IrValue value       = {
                   .kind = IR_VALUE_INTEGER, .type = local_type, .value.integer = 0};
         if (ast->nodes[node->b].kind == AK_AnnotatedValue) {
@@ -4684,6 +4969,7 @@ void ir_done(Ir* ir)
     array_free(ir->tuple_items);
     array_free(ir->tuples);
     array_free(ir->slices);
+    array_free(ir->dynarray_ops);
     array_free(ir->strings);
     array_free(ir->types);
     array_free(ir->type_param_types);

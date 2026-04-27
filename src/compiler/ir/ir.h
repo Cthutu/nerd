@@ -35,6 +35,11 @@ typedef enum : u8 {
     IR_OP_FIELD,
     IR_OP_STORE_FIELD,
     IR_OP_INDEX,
+    IR_OP_DYNARRAY_RESERVE,
+    IR_OP_DYNARRAY_PUSH,
+    IR_OP_DYNARRAY_APPEND,
+    IR_OP_DYNARRAY_CLEAR,
+    IR_OP_DYNARRAY_FREE,
     IR_OP_ADDRESS_OF,
     IR_OP_ADDRESS_OF_INDEX,
     IR_OP_STRING_RESET,
@@ -150,6 +155,24 @@ typedef struct {
     u32     end_type;
 } IrSliceInfo;
 
+typedef enum : u8 {
+    IR_DAT_DIRECT,
+    IR_DAT_FIELD,
+    IR_DAT_DEREF,
+} IrDynamicArrayTargetKind;
+
+typedef struct {
+    IrDynamicArrayTargetKind target_kind;
+    u8                       _pad0;
+    u16                      _pad1;
+    IrValue                  target;
+    u32                      target_type;
+    u32                      field_symbol;
+    IrValue                  arg;
+    u32                      arg_type;
+    u32                      dynarray_type;
+} IrDynamicArrayOpInfo;
+
 typedef struct {
     Array(IrInstruction) instructions;
     Array(IrGlobal) globals;
@@ -161,6 +184,7 @@ typedef struct {
     Array(IrTupleItem) tuple_items;
     Array(IrTupleInfo) tuples;
     Array(IrSliceInfo) slices;
+    Array(IrDynamicArrayOpInfo) dynarray_ops;
     Array(string) strings;
     Array(SemaType) types;
     Array(u32) type_param_types;
