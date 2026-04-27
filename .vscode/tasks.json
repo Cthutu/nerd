@@ -7,8 +7,8 @@
             "command": "just",
             "args": [
                 // "build"
-                "test"
-                // "install"
+                // "test"
+                "install"
                 // "run",
                 // "nerd",
                 // "build",
