@@ -11,9 +11,14 @@ If you are new to the codebase, read these first:
 3. [error-system.md](/home/matt/nerd/docs/error-system.md)
 4. [type-system.md](/home/matt/nerd/docs/type-system.md)
 5. [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
-6. [lsp.md](/home/matt/nerd/docs/lsp.md)
-7. [editor-support.md](/home/matt/nerd/docs/editor-support.md)
-8. [testing.md](/home/matt/nerd/docs/testing.md)
+6. [stdlib.md](/home/matt/nerd/docs/stdlib.md)
+7. [lsp.md](/home/matt/nerd/docs/lsp.md)
+8. [editor-support.md](/home/matt/nerd/docs/editor-support.md)
+9. [testing.md](/home/matt/nerd/docs/testing.md)
+
+If you are learning the Nerd language rather than the compiler implementation,
+start with [manual/README.md](/home/matt/nerd/docs/manual/README.md). The
+current manual structure is planned in [manual.md](/home/matt/nerd/docs/manual.md).
 
 ## Overviews
 
@@ -36,6 +41,8 @@ If you are new to the codebase, read these first:
   How semantic types are represented and inferred today.
 - [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
   Interpolated-string lowering, IR string ops, and runtime helper model.
+- [stdlib.md](/home/matt/nerd/docs/stdlib.md)
+  Working notes for the evolving standard library surface.
 - [lsp.md](/home/matt/nerd/docs/lsp.md)
   Document lifecycle, analysis flow, and editor-facing features.
 - [editor-support.md](/home/matt/nerd/docs/editor-support.md)
@@ -44,6 +51,10 @@ If you are new to the codebase, read these first:
   Test file formats, runner behaviour, and practical workflow.
 
 ## Language Design Notes
+
+The current learner-facing manual plan lives at:
+
+- [manual.md](/home/matt/nerd/docs/manual.md)
 
 The existing `docs/Nerd` folder contains older language-design material and
 reference notes:

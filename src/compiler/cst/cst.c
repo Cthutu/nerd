@@ -3420,6 +3420,41 @@ internal bool cst_parse_block_statement(CstParseState* state)
         return cst_parse_use(state, NULL);
     }
 
+    if (cst_current_token(state).kind == TK_defer) {
+        u32 defer_node = 0;
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_Defer,
+                               .token_index = token_index,
+                               .a           = U32_MAX,
+                           },
+                           &defer_node)) {
+            return false;
+        }
+        cst_advance(state);
+        u32 first_deferred_node = (u32)array_count(state->cst.nodes);
+        if (!cst_parse_block_statement(state)) {
+            return false;
+        }
+        u32 deferred_statement = first_deferred_node;
+        if (state->cst.nodes[first_deferred_node].kind != CK_Block &&
+            state->cst.nodes[first_deferred_node].kind != CK_For &&
+            state->cst.nodes[first_deferred_node].kind != CK_Return &&
+            state->cst.nodes[first_deferred_node].kind != CK_Break &&
+            state->cst.nodes[first_deferred_node].kind != CK_Continue &&
+            state->cst.nodes[first_deferred_node].kind != CK_Defer) {
+            for (u32 i = first_deferred_node + 1;
+                 i < array_count(state->cst.nodes);
+                 ++i) {
+                if (cst_node_is_block_statement(&state->cst.nodes[i])) {
+                    deferred_statement = i;
+                }
+            }
+        }
+        state->cst.nodes[defer_node].a = deferred_statement;
+        return true;
+    }
+
     if (cst_current_token(state).kind == TK_break ||
         cst_current_token(state).kind == TK_continue) {
         CstKind kind =
@@ -4422,9 +4457,9 @@ bool cst_node_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
-           node->kind == CK_For || node->kind == CK_Break ||
-           node->kind == CK_Continue || node->kind == CK_Variable ||
-           node->kind == CK_DestructureBind ||
+           node->kind == CK_For || node->kind == CK_Defer ||
+           node->kind == CK_Break || node->kind == CK_Continue ||
+           node->kind == CK_Variable || node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
@@ -4445,6 +4480,10 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
     }
     if (node->kind == CK_TopOn) {
         return cst->nodes[cst->top_ons[node->a].body_node_index].b;
+    }
+    if (node->kind == CK_Defer) {
+        u32 end = cst_block_statement_end_exclusive(cst, node->a);
+        return end > node_index + 1 ? end : node_index + 1;
     }
     if (node->kind == CK_Bind || node->kind == CK_Variable ||
         node->kind == CK_DestructureBind ||

@@ -707,17 +707,24 @@ typedef struct {
     i64     break_label;
     IrValue result;
     u32     result_type;
+    u32     defer_count;
 } IrExprBlockTarget;
 
 typedef struct {
     u32 label_symbol;
     i64 break_label;
     i64 continue_label;
+    u32 defer_count;
 } IrLoopTarget;
+
+typedef struct {
+    Array(u32) statements;
+} IrDeferStack;
 
 typedef struct {
     i64               break_label;
     i64               continue_label;
+    IrDeferStack*     defers;
     u32               expr_target_count;
     u32               loop_target_count;
     IrExprBlockTarget expr_targets[IR_MAX_EXPR_BLOCK_TARGETS];
@@ -754,6 +761,76 @@ internal const IrLoopTarget* ir_find_loop_target(IrLoopLabels loop,
         }
     }
     return NULL;
+}
+
+internal IrStatementResult ir_generate_statement(const Lexer* lex,
+                                                 const Ast*   ast,
+                                                 const Sema*  sema,
+                                                 u32          function_index,
+                                                 u32          node_index,
+                                                 IrLoopLabels loop,
+                                                 Array(IrValue) node_values,
+                                                 u64*          next_value_index,
+                                                 IrDeferStack* defers,
+                                                 Ir*           ir);
+internal                   Array(IrValue) ir_make_node_values(const Ast* ast);
+
+internal void ir_emit_defers(const Lexer* lex,
+                             const Ast*   ast,
+                             const Sema*  sema,
+                             u32          function_index,
+                             IrLoopLabels loop,
+                             Array(IrValue) node_values,
+                             u64*          next_value_index,
+                             u32           base_defer_count,
+                             IrDeferStack* defers,
+                             Ir*           ir)
+{
+    UNUSED(node_values);
+    while (array_count(defers->statements) > base_defer_count) {
+        u32 deferred_statement      = array_pop(defers->statements);
+        Array(IrValue) defer_values = ir_make_node_values(ast);
+        (void)ir_generate_statement(lex,
+                                    ast,
+                                    sema,
+                                    function_index,
+                                    deferred_statement,
+                                    loop,
+                                    defer_values,
+                                    next_value_index,
+                                    defers,
+                                    ir);
+        array_free(defer_values);
+    }
+}
+
+internal void ir_emit_defers_no_pop(const Lexer* lex,
+                                    const Ast*   ast,
+                                    const Sema*  sema,
+                                    u32          function_index,
+                                    IrLoopLabels loop,
+                                    Array(IrValue) node_values,
+                                    u64*          next_value_index,
+                                    u32           base_defer_count,
+                                    IrDeferStack* defers,
+                                    Ir*           ir)
+{
+    UNUSED(node_values);
+    for (u32 i = (u32)array_count(defers->statements); i > base_defer_count;
+         --i) {
+        Array(IrValue) defer_values = ir_make_node_values(ast);
+        (void)ir_generate_statement(lex,
+                                    ast,
+                                    sema,
+                                    function_index,
+                                    defers->statements[i - 1],
+                                    loop,
+                                    defer_values,
+                                    next_value_index,
+                                    defers,
+                                    ir);
+        array_free(defer_values);
+    }
 }
 
 internal bool ir_ast_break_targets_loop(const AstNode* node,
@@ -1536,8 +1613,9 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  u32          node_index,
                                                  IrLoopLabels loop,
                                                  Array(IrValue) node_values,
-                                                 u64* next_value_index,
-                                                 Ir*  ir);
+                                                 u64*          next_value_index,
+                                                 IrDeferStack* defers,
+                                                 Ir*           ir);
 
 internal void ir_append_string_node(const Lexer* lex,
                                     const Ast*   ast,
@@ -3431,6 +3509,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
                 if (ast->nodes[branch->expr_node_index].kind == AK_Return ||
                     ast->nodes[branch->expr_node_index].kind == AK_ReturnExpr) {
+                    if (loop.defers != NULL) {
+                        ir_emit_defers_no_pop(lex,
+                                              ast,
+                                              sema,
+                                              ir_current_function_index(ir),
+                                              loop,
+                                              node_values,
+                                              next_value_index,
+                                              0,
+                                              loop.defers,
+                                              ir);
+                    }
                     ir_generate_return_statement(
                         lex,
                         ast,
@@ -3449,6 +3539,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     const IrLoopTarget* loop_target =
                         ir_find_loop_target(loop, branch_node->b);
                     if (loop_target != NULL) {
+                        if (loop.defers != NULL) {
+                            ir_emit_defers_no_pop(lex,
+                                                  ast,
+                                                  sema,
+                                                  ir_current_function_index(ir),
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  loop_target->defer_count,
+                                                  loop.defers,
+                                                  ir);
+                        }
                         ir_add_jump(ir, loop_target->break_label);
                     } else {
                         ASSERT(loop.break_label >= 0,
@@ -3464,6 +3566,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     const IrLoopTarget* loop_target =
                         ir_find_loop_target(loop, branch_node->b);
                     if (loop_target != NULL) {
+                        if (loop.defers != NULL) {
+                            ir_emit_defers_no_pop(lex,
+                                                  ast,
+                                                  sema,
+                                                  ir_current_function_index(ir),
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  loop_target->defer_count,
+                                                  loop.defers,
+                                                  ir);
+                        }
                         ir_add_jump(ir, loop_target->continue_label);
                     } else {
                         ASSERT(loop.continue_label >= 0,
@@ -3523,8 +3637,10 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     .break_label  = end_label,
                     .result       = result,
                     .result_type  = result_type,
+                    .defer_count  = 0,
                 };
 
+            IrDeferStack expr_defers = {0};
             (void)ir_generate_statement(lex,
                                         ast,
                                         sema,
@@ -3533,22 +3649,29 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                         block_control,
                                         node_values,
                                         next_value_index,
+                                        &expr_defers,
                                         ir);
+            array_free(expr_defers.statements);
             ir_add_label(ir, end_label);
             node_values[node_index] = result;
             return result;
         }
 
     case AK_For:
-        (void)ir_generate_statement(lex,
-                                    ast,
-                                    sema,
-                                    U32_MAX,
-                                    node_index,
-                                    loop,
-                                    node_values,
-                                    next_value_index,
-                                    ir);
+        {
+            IrDeferStack expr_defers = {0};
+            (void)ir_generate_statement(lex,
+                                        ast,
+                                        sema,
+                                        U32_MAX,
+                                        node_index,
+                                        loop,
+                                        node_values,
+                                        next_value_index,
+                                        &expr_defers,
+                                        ir);
+            array_free(expr_defers.statements);
+        }
         return node_values[node_index];
 
     case AK_IntegerPlus:
@@ -4116,12 +4239,15 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  u32          node_index,
                                                  IrLoopLabels loop,
                                                  Array(IrValue) node_values,
-                                                 u64* next_value_index,
-                                                 Ir*  ir)
+                                                 u64*          next_value_index,
+                                                 IrDeferStack* defers,
+                                                 Ir*           ir)
 {
     const AstNode* node = &ast->nodes[node_index];
+    loop.defers         = defers;
 
     if (node->kind == AK_Block) {
+        u32 base_defer_count = (u32)array_count(defers->statements);
         ir_add_block_start(ir);
         for (u32 i = node->a; i < node->b; ++i) {
             if (ast->nodes[i].kind == AK_Block &&
@@ -4140,6 +4266,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                              loop,
                                                              node_values,
                                                              next_value_index,
+                                                             defers,
                                                              ir);
             if (result != IR_STMT_FALLTHROUGH) {
                 ir_add_block_end(ir);
@@ -4147,13 +4274,68 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
             }
             i = ast_block_statement_end_exclusive(ast, i) - 1;
         }
+        ir_emit_defers(lex,
+                       ast,
+                       sema,
+                       function_index,
+                       loop,
+                       node_values,
+                       next_value_index,
+                       base_defer_count,
+                       defers,
+                       ir);
         ir_add_block_end(ir);
         return IR_STMT_FALLTHROUGH;
     }
 
+    if (node->kind == AK_Defer) {
+        array_push(defers->statements, node->a);
+        return IR_STMT_FALLTHROUGH;
+    }
+
     if (node->kind == AK_Return) {
-        ir_generate_return_statement(
-            lex, ast, sema, node, loop, node_values, next_value_index, ir);
+        if (node->a == U32_MAX) {
+            ir_emit_defers_no_pop(lex,
+                                  ast,
+                                  sema,
+                                  function_index,
+                                  loop,
+                                  node_values,
+                                  next_value_index,
+                                  0,
+                                  defers,
+                                  ir);
+            ir_generate_return_statement(
+                lex, ast, sema, node, loop, node_values, next_value_index, ir);
+            return IR_STMT_RETURN;
+        }
+        IrValue return_value = ir_unset_value();
+        u32     return_type  = ir_builtin_type(sema, STK_Void);
+        return_value         = ir_lower_node(
+            lex, ast, sema, node->a, loop, node_values, next_value_index, ir);
+        return_type = ir_node_type_index(ast, sema, node->a);
+        if (array_count(defers->statements) > 0) {
+            IrValue saved_return = {
+                .kind          = IR_VALUE_VARIABLE,
+                .type          = return_type,
+                .value.integer = (i64)(*next_value_index)++,
+            };
+            ir_add_temp_local(ir, saved_return, return_type);
+            ir_add_assign(
+                ir, saved_return, return_type, return_value, return_type);
+            return_value = saved_return;
+        }
+        ir_emit_defers_no_pop(lex,
+                              ast,
+                              sema,
+                              function_index,
+                              loop,
+                              node_values,
+                              next_value_index,
+                              0,
+                              defers,
+                              ir);
+        ir_add_return(ir, return_value, return_type);
         return IR_STMT_RETURN;
     }
 
@@ -4180,8 +4362,28 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                               value,
                               ir_node_type_index(ast, sema, node->a));
             }
+            ir_emit_defers_no_pop(lex,
+                                  ast,
+                                  sema,
+                                  function_index,
+                                  loop,
+                                  node_values,
+                                  next_value_index,
+                                  expr_target->defer_count,
+                                  defers,
+                                  ir);
             ir_add_jump(ir, expr_target->break_label);
         } else if (loop_target != NULL) {
+            ir_emit_defers_no_pop(lex,
+                                  ast,
+                                  sema,
+                                  function_index,
+                                  loop,
+                                  node_values,
+                                  next_value_index,
+                                  loop_target->defer_count,
+                                  defers,
+                                  ir);
             ir_add_jump(ir, loop_target->break_label);
         } else {
             ASSERT(loop.break_label >= 0, "Expected loop break label");
@@ -4193,6 +4395,16 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
     if (node->kind == AK_Continue) {
         const IrLoopTarget* loop_target = ir_find_loop_target(loop, node->b);
         if (loop_target != NULL) {
+            ir_emit_defers_no_pop(lex,
+                                  ast,
+                                  sema,
+                                  function_index,
+                                  loop,
+                                  node_values,
+                                  next_value_index,
+                                  loop_target->defer_count,
+                                  defers,
+                                  ir);
             ir_add_jump(ir, loop_target->continue_label);
         } else {
             ASSERT(loop.continue_label >= 0, "Expected loop continue label");
@@ -4347,6 +4559,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                     .label_symbol   = for_info->label_symbol,
                     .break_label    = end_label,
                     .continue_label = continue_label,
+                    .defer_count    = (u32)array_count(defers->statements),
                 };
             if (result_type != ir_builtin_type(sema, STK_Void)) {
                 ASSERT(inner_loop.expr_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
@@ -4357,6 +4570,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                         .break_label  = end_label,
                         .result       = result,
                         .result_type  = result_type,
+                        .defer_count  = (u32)array_count(defers->statements),
                     };
             }
 
@@ -4369,6 +4583,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                       inner_loop,
                                       node_values,
                                       next_value_index,
+                                      defers,
                                       ir);
             if (body_result != IR_STMT_RETURN) {
                 ir_add_label(ir, continue_label);
@@ -4401,6 +4616,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                           inner_loop,
                                           node_values,
                                           next_value_index,
+                                          defers,
                                           ir);
                 if (else_result == IR_STMT_RETURN) {
                     return IR_STMT_RETURN;
@@ -4429,6 +4645,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                   loop,
                                   node_values,
                                   next_value_index,
+                                  defers,
                                   ir);
         }
         i64 start_label    = (i64)(*next_value_index)++;
@@ -4465,6 +4682,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 .label_symbol   = for_info->label_symbol,
                 .break_label    = end_label,
                 .continue_label = continue_label,
+                .defer_count    = (u32)array_count(defers->statements),
             };
         if (result_type != ir_builtin_type(sema, STK_Void)) {
             ASSERT(inner_loop.expr_target_count < IR_MAX_EXPR_BLOCK_TARGETS,
@@ -4475,6 +4693,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                     .break_label  = end_label,
                     .result       = result,
                     .result_type  = result_type,
+                    .defer_count  = (u32)array_count(defers->statements),
                 };
         }
         IrStatementResult body_result    = ir_generate_statement(lex,
@@ -4485,6 +4704,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                               inner_loop,
                                                               node_values,
                                                               next_value_index,
+                                                              defers,
                                                               ir);
         bool              body_may_break = ir_ast_node_may_break_loop(
             ast, node->b, for_info->label_symbol, true);
@@ -4506,6 +4726,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                     loop,
                     node_values,
                     next_value_index,
+                    defers,
                     ir);
             }
             ir_add_jump(ir, start_label);
@@ -4521,6 +4742,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                       inner_loop,
                                       node_values,
                                       next_value_index,
+                                      defers,
                                       ir);
             if (else_result == IR_STMT_RETURN) {
                 return IR_STMT_RETURN;
@@ -4993,7 +5215,8 @@ internal void ir_generate_function_body(const Lexer* lex,
         ir_add_return(
             ir, result, ir_node_type_index(ast, sema, fn_start_node->b - 1));
     } else {
-        bool has_explicit_return = false;
+        bool         has_explicit_return = false;
+        IrDeferStack defers              = {0};
 
         for (u32 i = fn_def_node->a + 1; i < fn_start_node->b; ++i) {
             if (ast->nodes[i].kind == AK_FnStart) {
@@ -5017,6 +5240,7 @@ internal void ir_generate_function_body(const Lexer* lex,
                                       ir_no_control_labels(),
                                       node_values,
                                       &next_value_index,
+                                      &defers,
                                       ir);
             if (result == IR_STMT_RETURN) {
                 has_explicit_return = true;
@@ -5026,6 +5250,16 @@ internal void ir_generate_function_body(const Lexer* lex,
         }
 
         if (!has_explicit_return) {
+            ir_emit_defers(lex,
+                           ast,
+                           sema,
+                           function_index,
+                           ir_no_control_labels(),
+                           node_values,
+                           &next_value_index,
+                           0,
+                           &defers,
+                           ir);
             // Normal block functions currently omit explicit return types, so
             // the first implementation lowers them as i32-returning functions
             // with an implicit zero result.
@@ -5035,6 +5269,7 @@ internal void ir_generate_function_body(const Lexer* lex,
                                     .value.integer = 0},
                           ir_builtin_type(sema, STK_I32));
         }
+        array_free(defers.statements);
     }
 
     ir_add_fn_end(ir);

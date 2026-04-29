@@ -108,6 +108,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Statement");
     case AK_Return:
         return s("Return");
+    case AK_Defer:
+        return s("Defer");
     case AK_ReturnExpr:
         return s("ReturnExpr");
     case AK_BreakExpr:
@@ -342,6 +344,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
                 string_format(&temp_arena, "expr=%u", node->a));
             break;
         case AK_Return:
+        case AK_Defer:
         case AK_ReturnExpr:
             row[3] = table_cell_string(
                 node->a == U32_MAX

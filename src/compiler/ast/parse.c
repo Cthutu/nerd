@@ -2351,6 +2351,47 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_use(state, NULL);
     }
 
+    if (state->token.kind == TK_defer) {
+        u32 defer_token_index = state->token.token_index;
+        u32 defer_node        = 0;
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_Defer,
+                               .token_index = defer_token_index,
+                               .a           = U32_MAX,
+                           },
+                           &defer_node)) {
+            return false;
+        }
+        if (!ast_next_token(state)) {
+            return error_0205_expected_declaration_or_expression(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_EOF,
+                "Expected a statement after `defer`, but found end of file");
+        }
+        u32 first_deferred_node = (u32)array_count(state->nodes);
+        if (!ast_parse_block_statement(state)) {
+            return false;
+        }
+        u32 deferred_statement = first_deferred_node;
+        if (state->nodes[first_deferred_node].kind != AK_Block &&
+            state->nodes[first_deferred_node].kind != AK_For &&
+            state->nodes[first_deferred_node].kind != AK_Return &&
+            state->nodes[first_deferred_node].kind != AK_Break &&
+            state->nodes[first_deferred_node].kind != AK_Continue &&
+            state->nodes[first_deferred_node].kind != AK_Defer) {
+            for (u32 i = first_deferred_node + 1; i < array_count(state->nodes);
+                 ++i) {
+                if (ast_node_is_block_statement(&state->nodes[i])) {
+                    deferred_statement = i;
+                }
+            }
+        }
+        state->nodes[defer_node].a = deferred_statement;
+        return true;
+    }
+
     if (state->token.kind == TK_break || state->token.kind == TK_continue) {
         AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
         u32     token_index = state->token.token_index;

@@ -1,7 +1,9 @@
--- Based on article at https://helderman.github.io/htpataic/htpataic01.html
--- This is used to dogfood the language
+-- Based on article at https://helderman.github.io/htpataic/htpataic01.html This
+-- is used to dogfood the language
 
 io :: mod std.io
+
+str :: mod std.string
 
 main :: fn () {
     io.prn("Welcome to Little Cave Adventure!")
@@ -10,7 +12,11 @@ main :: fn () {
     for {
         input := get_input()
 
-        parts := split(input, " ")
+        parts := str.split(input, " ")
+        defer {
+            parts.free()
+            io.prn("Done with parts")
+        }
         for part in parts {
             io.prn($"You said: {part}")
         }
@@ -26,33 +32,4 @@ main :: fn () {
 
 get_input :: fn () -> string {
     return io.input("--> ")
-}
-
-split :: fn (s: string, sep: string) -> [..]string {
-    parts: [..]string
-
-    on sep.count == 0 => {
-        parts.push(s)
-        return parts
-    }
-
-    start: usize = 0
-    i: usize = 0
-    for i + sep.count <= s.count {
-        matched := yes
-        for j: usize = 0; matched && j < sep.count; j += 1 {
-            on s.data[i + j] != sep.data[j] => matched = no
-        }
-
-        on matched => {
-            parts.push(s[start .. i])
-            i += sep.count
-            start = i
-        } else {
-            i += 1
-        }
-    }
-
-    parts.push(s[start ..])
-    return parts
 }

@@ -128,6 +128,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `on`");
     case TK_else:
         return string_from_cstr("Keyword `else`");
+    case TK_defer:
+        return string_from_cstr("Keyword `defer`");
     case TK_break:
         return string_from_cstr("Keyword `break`");
     case TK_continue:

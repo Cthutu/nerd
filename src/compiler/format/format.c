@@ -1471,10 +1471,14 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return format_node_end_token_index(cst, lexer, node->a);
     case CK_Return:
     case CK_ReturnExpr:
+    case CK_Defer:
     case CK_Break:
     case CK_BreakExpr:
     case CK_Continue:
     case CK_ContinueExpr:
+        if (node->kind == CK_Defer) {
+            return format_node_end_token_index(cst, lexer, node->a);
+        }
         return node->a == U32_MAX
                    ? (node->b == U32_MAX ? node->token_index
                                          : node->token_index + 2)
@@ -2737,6 +2741,52 @@ internal void format_emit_block_statement(StringBuilder* sb,
             }
         }
         sb_append_char(sb, '\n');
+        return;
+    }
+
+    if (stmt->kind == CK_Defer) {
+        const CstNode* deferred = &cst->nodes[stmt->a];
+        sb_append_cstr(sb, "defer");
+        if (deferred->kind == CK_Block) {
+            sb_append_cstr(sb, " {\n");
+            format_emit_block_contents(
+                sb, cst, lexer, stmt->a, indent_level + 1);
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "}\n");
+        } else {
+            sb_append_char(sb, ' ');
+            if (deferred->kind == CK_Statement) {
+                format_emit_expr_with_indent(
+                    sb, cst, lexer, deferred->a, 0, indent_level);
+                sb_append_char(sb, '\n');
+            } else if (deferred->kind == CK_Return) {
+                sb_append_cstr(sb, "return");
+                if (deferred->a != U32_MAX) {
+                    sb_append_char(sb, ' ');
+                    format_emit_expr_with_indent(
+                        sb, cst, lexer, deferred->a, 0, indent_level);
+                }
+                sb_append_char(sb, '\n');
+            } else if (deferred->kind == CK_Break ||
+                       deferred->kind == CK_Continue) {
+                sb_append_cstr(
+                    sb, deferred->kind == CK_Break ? "break" : "continue");
+                if (deferred->b != U32_MAX) {
+                    sb_append_cstr(sb, " $");
+                    sb_append_string(sb, lex_symbol(lexer, deferred->b));
+                }
+                if (deferred->a != U32_MAX) {
+                    sb_append_char(sb, ' ');
+                    format_emit_expr_with_indent(
+                        sb, cst, lexer, deferred->a, 0, indent_level);
+                }
+                sb_append_char(sb, '\n');
+            } else {
+                format_emit_expr_with_indent(
+                    sb, cst, lexer, stmt->a, 0, indent_level);
+                sb_append_char(sb, '\n');
+            }
+        }
         return;
     }
 

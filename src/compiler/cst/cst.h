@@ -74,6 +74,7 @@
 // | CK_TopOn           | Top-on info index     | 0                     |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
+// | CK_Defer           | Deferred statement node index | 0              |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_BreakExpr       | Expr node or U32_MAX  | Symbol or U32_MAX    |
 // | CK_ContinueExpr    | 0                     | Symbol or U32_MAX    |
@@ -153,6 +154,7 @@ typedef enum {
     CK_TopOn,
     CK_Statement,
     CK_Return,
+    CK_Defer,
     CK_ReturnExpr,
     CK_BreakExpr,
     CK_ContinueExpr,

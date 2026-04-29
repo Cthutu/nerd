@@ -6472,6 +6472,17 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
+        if (stmt->kind == AK_Defer) {
+            u32 ignored = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, stmt->a, sema_no_type(), &ignored)) {
+                return false;
+            }
+            sema->node_type_indices[i] = sema_builtin_type(sema, STK_Void);
+            i = ast_block_statement_end_exclusive(ast, i) - 1;
+            continue;
+        }
+
         if (stmt->kind == AK_Statement) {
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
@@ -8335,6 +8346,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         }
         break;
 
+    case AK_Defer:
+        {
+            u32 ignored = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, sema_no_type(), &ignored)) {
+                return false;
+            }
+            type_index = sema_builtin_type(sema, STK_Void);
+        }
+        break;
+
     case AK_Break:
     case AK_BreakExpr:
         if (node->a == U32_MAX) {
@@ -8354,6 +8376,23 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         if (!sema_infer_expr_block_type(
                 lexer, ast, sema, node_index, expected_type, &type_index)) {
             return false;
+        }
+        break;
+
+    case AK_Block:
+        {
+            bool has_return = false;
+            if (!sema_infer_block_statements(lexer,
+                                             ast,
+                                             sema,
+                                             node->a,
+                                             node->b,
+                                             sema_no_type(),
+                                             &type_index,
+                                             &has_return)) {
+                return false;
+            }
+            type_index = sema_builtin_type(sema, STK_Void);
         }
         break;
 
@@ -10511,6 +10550,16 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
         }
         return true;
     case AK_Block:
+    case AK_Defer:
+        if (node->kind == AK_Defer) {
+            return sema_validate_loop_control(lexer,
+                                              ast,
+                                              node->a,
+                                              loop_depth,
+                                              expr_block_depth,
+                                              expr_labels,
+                                              expr_label_count);
+        }
         for (u32 i = node->a; i < node->b; ++i) {
             if (ast->nodes[i].kind == AK_Block &&
                 sema_block_is_expr_block_body(ast, i)) {

@@ -82,6 +82,7 @@ typedef enum {
     TK_for,
     TK_on,
     TK_else,
+    TK_defer,
     TK_break,
     TK_continue,
     TK_return,

@@ -11,13 +11,25 @@ signature:
 ffi "c" abs (i32) -> i32
 ```
 
-You can also bind the foreign symbol to a different local name:
+This declares `abs` as both:
+
+- the Nerd-visible name used in source
+- the foreign symbol name emitted for the C linker
+
+You can also bind the foreign symbol to a different Nerd-visible name:
 
 ```nerd
 seed_rng :: ffi "c" srand (u32)
 ```
 
-The local binding name is `seed_rng`; the foreign symbol name is `srand`.
+The local binding name is `seed_rng`; the foreign symbol name is `srand`. Source
+code calls `seed_rng(...)`, while generated code links against `srand`.
+
+Use the bound form when:
+
+- the C symbol name is unclear or does not match Nerd naming style
+- you want to wrap or reserve the original foreign name
+- several libraries expose similar names and local clarity matters
 
 ## Library Operand
 
