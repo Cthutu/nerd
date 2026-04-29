@@ -6,6 +6,9 @@ This part combines the earlier concepts into a small command-line text
 adventure. The goal is not to build a full game; it is to show how Nerd programs
 fit together.
 
+The examples use `input` from `std.io` and `split` from `std.string`. Those are
+standard library helpers, not new language constructs.
+
 ## Start With A Loop
 
 ```nerd
@@ -100,6 +103,9 @@ handle :: fn (game: ^Game, command: string) {
     }
 }
 ```
+
+`handle` receives `^Game`, a pointer to mutable game state, so assigning through
+`game^` changes the original `Game` value.
 
 ## Grow The Program In Layers
 

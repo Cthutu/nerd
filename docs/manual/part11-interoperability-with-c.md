@@ -2,8 +2,9 @@
 
 [Manual Index](README.md) | Previous: [Modules](part10-modules.md) | Next: [Building A Small Program](part12-building-a-small-program.md)
 
-Nerd's FFI surface is explicit. You declare the library, the foreign symbol,
-and the ABI-safe signature.
+FFI means foreign function interface: the part of Nerd that lets source code
+declare and run C functions. Nerd's FFI surface is explicit. You declare the
+library, the foreign symbol, and the ABI-safe signature.
 
 ## Direct FFI Declarations
 
@@ -28,14 +29,15 @@ Use a binding when the Nerd name should differ from the foreign symbol:
 seed_rng :: ffi "c" srand (u32)
 ```
 
-Source code calls `seed_rng(...)`. Generated code links to `srand`.
+Source code runs `seed_rng(...)`. Generated code links to `srand`.
 
 Use this form when the C name is unclear, conflicts with a better wrapper name,
 or does not fit your source style.
 
 ## Library Operands
 
-The library operand is a compile-time string:
+The library operand is a compile-time string. A compile-time string is a string
+value the compiler can know while building the program:
 
 ```nerd
 ffi "c" puts (^u8) -> i32
@@ -87,6 +89,7 @@ main :: fn () {
 ```
 
 C strings are not Nerd `string` values. Convert deliberately at the boundary.
+They are null-terminated so C functions can read them through `^u8`.
 
 ## Pointer-To-Slice At Boundaries
 

@@ -2,8 +2,9 @@
 
 [Manual Index](README.md) | Previous: [Blocks, Scope, And Cleanup](part05-blocks-scope-and-cleanup.md) | Next: [Loops](part07-loops.md)
 
-`on` is Nerd's main branching construct. It covers simple boolean branches,
-condition chains, and pattern matching.
+`on` is Nerd's main branching construct. Branching means choosing which
+expression or statement to run based on a condition or value. `on` covers simple
+boolean branches, condition chains, and pattern matching.
 
 ## Short Boolean Form
 
@@ -46,7 +47,8 @@ cannot be proven exhaustive.
 
 ## Matching A Scrutinee
 
-Use `on value { ... }` to match one value against patterns:
+Use `on value { ... }` to match one value, called the scrutinee, against
+patterns:
 
 ```nerd
 score :: fn (value: i32) -> i32 {
@@ -62,12 +64,15 @@ score :: fn (value: i32) -> i32 {
 
 Patterns can include:
 
-- literal values
-- comma-separated alternatives
-- ranges
-- explicit comparisons
-- enum variants
-- structural patterns
+| Pattern form | Meaning |
+| --- | --- |
+| `1` | literal value |
+| `1, 2` | alternatives |
+| `0..10` | range, excluding the end |
+| `0..=10` | range, including the end |
+| `< 10` | explicit comparison |
+| enum variants | covered in Part 8 |
+| structural patterns | covered in Part 8 |
 
 ## Ranges
 
@@ -90,36 +95,27 @@ bucket :: fn (value: i32) -> string {
 Patterns can bind values for use in a branch:
 
 ```nerd
-Maybe :: enum {
-    None
-    Some(i32)
-}
-
-value_or_zero :: fn (value: Maybe) -> i32 {
+score :: fn (value: u32) -> u32 {
     return on value {
-        Some(as x) => x
-        None => 0
+        0, 1 as matched => matched + 10
+        2..=4 as ranged => ranged + 20
+        else as other => other + 30
     }
 }
 ```
 
-The binder `x` exists only in the selected branch.
+Each binder exists only in the selected branch.
 
 ## Guards
 
 Use a guard when a pattern needs an extra condition:
 
 ```nerd
-Maybe :: enum {
-    None
-    Some(i32)
-}
-
-describe :: fn (value: Maybe) -> string {
+describe :: fn (value: i32) -> string {
     return on value {
-        Some(as x) on x > 10 => "large"
-        Some(_) => "some"
-        None => "none"
+        0..=10 as small on small % 2 == 0 => "small even"
+        0..=10 => "small"
+        else => "large"
     }
 }
 ```

@@ -2,7 +2,12 @@
 
 [Manual Index](README.md) | Previous: [Primitive Types And Expressions](part03-primitive-types-and-expressions.md) | Next: [Blocks, Scope, And Cleanup](part05-blocks-scope-and-cleanup.md)
 
-Functions are named with `::` and introduced with `fn`.
+Functions are introduced with `fn`. Bindings give functions names:
+
+```nerd
+name :: fn () {
+}
+```
 
 ## Parameters
 
@@ -14,13 +19,16 @@ add :: fn (left: i32, right: i32) -> i32 {
 }
 ```
 
-Call a function with ordinary call syntax:
+Run a function by writing its name followed by parentheses. Values passed inside
+the parentheses become the function's arguments:
 
 ```nerd
 main :: fn () -> i32 {
     return add(20, 22)
 }
 ```
+
+Here `20` becomes `left`, and `22` becomes `right`.
 
 ## Return Types
 
@@ -61,7 +69,8 @@ Function types are written with parameter types and a return type:
 operation: fn (i32, i32) -> i32 = add
 ```
 
-A function can receive another function:
+A function type describes a function value. This means a function can receive
+another function as an argument:
 
 ```nerd
 apply :: fn (f: fn (i32) -> i32, value: i32) -> i32 {

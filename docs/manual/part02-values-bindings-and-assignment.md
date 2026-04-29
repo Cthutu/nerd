@@ -6,6 +6,10 @@ Nerd has a small set of binding forms. The operator you use tells the reader
 whether you are declaring a constant, creating a local, or assigning to an
 existing value.
 
+Some examples in this part use `i32` and `-> i32` so they can return visible
+integer results. Read `i32` as "an integer type" for now; primitive types are
+explained in the next part, and function signatures are explained in Part 4.
+
 ## Constant Bindings
 
 Use `::` for constant bindings.
@@ -73,8 +77,22 @@ main :: fn () -> i32 {
 }
 ```
 
-The left side must be something assignable, such as a local variable, a field,
-an index, or a dereference.
+The left side must be something assignable. For now, that means a local variable.
+Later parts add more assignable targets, such as fields, indexes, and
+dereferences.
+
+Assignments are expressions. The expression's value is the value assigned to the
+target:
+
+```nerd
+main :: fn () -> i32 {
+    value: i32 = 1
+    copy: i32 = value = 9
+    return copy
+}
+```
+
+Here both `value` and `copy` become `9`.
 
 ## Compound Assignment
 
@@ -92,6 +110,25 @@ main :: fn () -> i32 {
 Use compound assignment when the left side is the value being updated. It is
 equivalent in spirit to writing `value = value <op> rhs`, but keeps the target
 clear.
+
+Assignment operators are:
+
+| Operator | Meaning |
+| --- | --- |
+| `=` | assign |
+| `+=` | add, then assign |
+| `-=` | subtract, then assign |
+| `*=` | multiply, then assign |
+| `/=` | divide, then assign |
+| `%=` | modulo, then assign |
+| `&=` | bitwise and, then assign |
+| `^=` | bitwise xor, then assign |
+| `|=` | bitwise or, then assign |
+| `&&=` | logical and, then assign |
+| `||=` | logical or, then assign |
+
+The arithmetic, bitwise, and logical operators used by these assignment forms
+are explained in the next part.
 
 ## `undefined`
 

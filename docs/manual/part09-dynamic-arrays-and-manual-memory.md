@@ -2,8 +2,9 @@
 
 [Manual Index](README.md) | Previous: [Compound Data](part08-compound-data.md) | Next: [Modules](part10-modules.md)
 
-Dynamic arrays are growable arrays. They are useful when the number of items is
-not known at compile time.
+Dynamic arrays are growable arrays. They own their storage and can change size
+while the program runs, which makes them useful when the number of items is not
+known at compile time.
 
 ## Types
 
@@ -39,16 +40,20 @@ main :: fn () {
 
 Common operations:
 
-- `.push(value)`
-- `.append(slice)`
-- `.reserve(capacity)`
-- `.clear()`
-- `.free()`
+| Operation | Meaning |
+| --- | --- |
+| `.push(value)` | add one item |
+| `.append(slice)` | add many items from a slice |
+| `.reserve(capacity)` | ensure storage for at least this many items |
+| `.clear()` | set the count to zero but keep storage |
+| `.free()` | release owned storage |
 
 Dynamic arrays expose:
 
-- `.count`
-- `.capacity`
+| Field | Meaning |
+| --- | --- |
+| `.count` | number of live items |
+| `.capacity` | number of items that fit before growing |
 
 ## Slicing
 

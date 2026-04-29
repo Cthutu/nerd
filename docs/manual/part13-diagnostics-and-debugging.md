@@ -2,8 +2,9 @@
 
 [Manual Index](README.md) | Previous: [Building A Small Program](part12-building-a-small-program.md) | Next: [Syntax Reference](appendix-a-syntax-reference.md)
 
-Compiler diagnostics are meant to point at the source rule that was broken.
-Read them from top to bottom: code, message, primary location, notes, and help.
+Compiler diagnostics are messages produced when the compiler cannot accept a
+program. They are meant to point at the source rule that was broken. Read them
+from top to bottom: code, message, primary location, notes, and help.
 
 ## Diagnostic Ranges
 
@@ -59,11 +60,13 @@ Common causes:
 
 A diagnostic has:
 
-- a code
-- a main message
-- a primary source location
-- optional notes
-- optional help
+| Part | Meaning |
+| --- | --- |
+| code | stable category, such as `0304` |
+| main message | short description of what failed |
+| primary source location | where the compiler found the problem |
+| notes | extra context about the rule |
+| help | suggested source change |
 
 The primary message says what failed. Notes explain the rule. Help suggests a
 change.

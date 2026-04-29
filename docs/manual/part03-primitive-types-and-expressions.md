@@ -9,12 +9,14 @@ forms familiar, while requiring explicit casts when the type changes.
 
 Common primitive types include:
 
-- `void`
-- `bool`
-- `string`
-- signed integers such as `i8`, `i16`, `i32`, `i64`, and `isize`
-- unsigned integers such as `u8`, `u16`, `u32`, `u64`, and `usize`
-- floats `f32` and `f64`
+| Type family | Types |
+| --- | --- |
+| no value | `void` |
+| truth values | `bool` |
+| text | `string` |
+| signed integers | `i8`, `i16`, `i32`, `i64`, `isize` |
+| unsigned integers | `u8`, `u16`, `u32`, `u64`, `usize` |
+| floats | `f32`, `f64` |
 
 Boolean literals are:
 
@@ -43,42 +45,43 @@ main :: fn () -> i32 {
 
 ## Operators
 
-Arithmetic:
+Arithmetic operators work with matching numeric operands:
 
-```nerd
-a + b
-a - b
-a * b
-a / b
-a % b
-```
+| Operator | Meaning |
+| --- | --- |
+| `+` | add |
+| `-` | subtract |
+| `*` | multiply |
+| `/` | divide |
+| `%` | modulo |
+| unary `-` | negate |
 
-Comparison:
+Comparison operators produce `bool`:
 
-```nerd
-a == b
-a != b
-a < b
-a <= b
-a > b
-a >= b
-```
+| Operator | Meaning |
+| --- | --- |
+| `==` | equal |
+| `!=` | not equal |
+| `<` | less than |
+| `<=` | less than or equal |
+| `>` | greater than |
+| `>=` | greater than or equal |
 
 Logical operators work with `bool`:
 
-```nerd
-ready && allowed
-ready || allowed
-!ready
-```
+| Operator | Meaning |
+| --- | --- |
+| `&&` | and |
+| `||` | or |
+| `!` | not |
 
-Bitwise operators work with integer values:
+Bitwise operators work with matching integer operands:
 
-```nerd
-mask & flag
-mask | flag
-mask ^ flag
-```
+| Operator | Meaning |
+| --- | --- |
+| `&` | bitwise and |
+| `^` | bitwise xor |
+| `|` | bitwise or |
 
 ## Casts
 
@@ -95,6 +98,10 @@ Nerd does not silently insert broad implicit casts. If a type conversion matters
 write it down.
 
 ## Pointer-To-Slice Casts
+
+Pointers and slices are compound data concepts explained in Part 8. The cast
+form is shown here because it uses the same `.as(...)` syntax as primitive
+casts.
 
 A pointer can be converted to a slice when you provide the element type and the
 element count:
@@ -145,7 +152,8 @@ C strings use the `c"..."` prefix:
 c"%.*s"
 ```
 
-They are mainly for FFI. A C string is not the same thing as a Nerd `string`.
+They are null-terminated byte strings, mainly for FFI. A C string is not the
+same thing as a Nerd `string`. FFI is covered in Part 11.
 
 ## Untyped Literals
 

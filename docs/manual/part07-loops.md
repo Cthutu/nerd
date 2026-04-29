@@ -48,9 +48,11 @@ main :: fn () -> i32 {
 
 The three parts are:
 
-- initialisation
-- condition
-- update
+| Part | Role |
+| --- | --- |
+| initialisation | runs once before the loop starts |
+| condition | checked before each iteration |
+| update | runs after each iteration |
 
 ## `continue`
 
@@ -72,6 +74,9 @@ main :: fn () -> i32 {
 Use `for item in collection` to iterate arrays, slices, strings, and dynamic
 arrays.
 
+Arrays and slices are introduced in Part 8, and dynamic arrays in Part 9. For
+now, read `words` as a fixed list of strings.
+
 ```nerd
 use std.io
 
@@ -85,6 +90,9 @@ main :: fn () {
 
 When you need to mutate items in place, iterate pointers when the collection
 supports it:
+
+Pointer syntax is introduced in Part 8; here `^value` means the loop item is a
+pointer to an element rather than a copy of the element.
 
 ```nerd
 main :: fn () -> i32 {
@@ -119,15 +127,16 @@ without hitting a value-producing `break`.
 
 ## Labels
 
-Labels disambiguate nested loops:
+Loops can also use labels when nested control flow needs an explicit target.
+Loop labels use the same `$name` spelling as expression-block labels:
 
 ```nerd
 main :: fn () -> i32 {
     count := 0
-    outer: for {
+    for $outer {
         for {
             count += 1
-            break outer
+            break $outer
         }
     }
     return count

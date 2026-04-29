@@ -5,6 +5,9 @@
 Modules organise code across files and control which names are visible outside a
 file.
 
+A module path such as `std.io` names a module by its dotted path. The compiler
+resolves that path to a source file in the configured module roots.
+
 ## `use`
 
 `use` imports public names from a module into the current scope:
@@ -20,8 +23,12 @@ main :: fn () {
 Grouped `use` imports are available when a module exposes multiple names:
 
 ```nerd
-use std.io.{pr, prn}
+use std { io }
+use app { commands rooms }
 ```
+
+The first line imports `std.io`. The second imports `app.commands` and
+`app.rooms`.
 
 Use imports sparingly in larger files so readers can tell where names come from.
 
@@ -56,6 +63,12 @@ Declarations without `pub` are private to the module.
 
 A module can re-export public names from another module. Use this when building
 a small public surface over several internal files.
+
+```nerd
+pub io :: mod std.io
+```
+
+Code that imports this module can then access the public `io` module binding.
 
 ## Choosing `use` Or `mod`
 

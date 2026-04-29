@@ -2,8 +2,9 @@
 
 [Manual Index](README.md) | Previous: [Functions](part04-functions.md) | Next: [Branching With `on`](part06-branching-with-on.md)
 
-Blocks group statements and introduce scope. They also define where deferred
-cleanup runs.
+Blocks group statements. A statement is a piece of code that performs an action,
+such as creating a local binding, assigning a value, or returning from a
+function. Blocks also introduce scope and define where deferred cleanup runs.
 
 ## Nested Blocks
 
@@ -23,11 +24,12 @@ The inner `value` is a different local. It exists only inside the inner block.
 
 ## Expression Blocks
 
-Some blocks can produce values by using `break <expr>`:
+An ordinary block groups statements. An expression block starts with `$` and can
+produce a value by using `break <expr>`:
 
 ```nerd
 main :: fn () -> i32 {
-    value := {
+    value := ${
         break 42
     }
     return value
@@ -38,15 +40,16 @@ This is useful when computing a value needs several statements.
 
 ## Labels
 
-Labels disambiguate nested expression blocks and loops:
+Labels disambiguate nested expression blocks. A labelled expression block starts
+with `$name`, and labelled breaks name the target with the same `$name`:
 
 ```nerd
 main :: fn () -> i32 {
-    value := outer: {
-        {
-            break outer 42
+    value := $outer {
+        $inner {
+            break $outer 42
         }
-        break 0
+        break $outer 0
     }
     return value
 }
@@ -153,5 +156,6 @@ main :: fn () {
 }
 ```
 
-The cleanup is written next to the acquisition. Later `return`, `break`, or
-`continue` paths still run it.
+This example uses a dynamic array, which is introduced in Part 9. The important
+point here is the cleanup shape: write the cleanup next to the acquisition.
+Later `return`, `break`, or `continue` paths still run it.

@@ -5,6 +5,18 @@
 Compound data types let values carry structure: positions, names, fields,
 variants, and views into memory.
 
+This part introduces several forms. The table gives the shape before the details:
+
+| Form | Use |
+| --- | --- |
+| tuple | fixed positional group |
+| fixed array | fixed-length indexed group |
+| slice | borrowed view into contiguous storage |
+| pointer | address of another value |
+| plex | named-field value |
+| union | overlapping low-level storage |
+| enum | one active case from a set |
+
 ## Tuples
 
 Tuples group values by position:
@@ -20,7 +32,7 @@ Use tuples for small, positional groupings. Use plexes when field names matter.
 
 ## Fixed Arrays
 
-Fixed arrays carry their length in the type:
+Fixed arrays carry their length in the type. Indexing uses square brackets:
 
 ```nerd
 main :: fn () -> i32 {
@@ -38,6 +50,7 @@ values: [3]i32 = [1, 2, 3]
 ## Slices
 
 A slice is a view into contiguous storage. Slice types are written `[]T`.
+Slicing with `[..]` creates a view over the whole array or slice:
 
 ```nerd
 use std.io
@@ -120,7 +133,8 @@ main :: fn () -> i32 {
 }
 ```
 
-Fields are read with dot syntax and can be assigned when the value is mutable:
+Fields are read with dot syntax and can be assigned when the value is mutable.
+These are partial snippets, not complete programs:
 
 ```nerd
 p.x = 10

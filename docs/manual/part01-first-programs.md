@@ -9,7 +9,11 @@ extension and can be run with:
 nerd run hello.n
 ```
 
-Every program starts at `main`.
+Every program starts by running the function bound to the name `main`. A
+function is a piece of code that can be run. Functions do not have to be named
+by themselves; like other values in Nerd, they get names through bindings.
+
+The first example binds `main` to a simple function:
 
 ```nerd
 use std.io
@@ -20,11 +24,24 @@ main :: fn () {
 ```
 
 This program imports `std.io`, declares a function named `main`, and prints one
-line.
+line of text. `std.io` is a module from the standard library. A module is a file
+of code that exports names for other files to use. Modules are covered later;
+for now, `use std.io` makes the printing functions `pr` and `prn` available.
+`pr` prints text without adding a newline. `prn` prints text and then moves to
+the next line.
+
+| Form            | Meaning                               |
+| --------------- | ------------------------------------- |
+| `use std.io`    | import the public names from `std.io` |
+| `main :: ...`   | bind the top-level name `main`        |
+| `fn () { ... }` | define a function with no parameters  |
+| `prn("text")`   | print text followed by a newline      |
 
 ## Comments
 
-Line comments start with `--`.
+Line comments start with `--`. Comments are for readers of the source file:
+they can explain intent, leave notes, or temporarily remove code from a
+program. The compiler ignores them.
 
 ```nerd
 -- This is ignored by the compiler.
@@ -34,49 +51,55 @@ main :: fn () {
 
 ## Top-Level Bindings
 
-Top-level names are introduced with `::`.
+Names are introduced with binding forms. At the top level, the first binding
+form to learn is `::`. It creates a constant binding: the name on the left is
+bound to the value on the right.
 
 ```nerd
 answer :: 42
 
-main :: fn () -> i32 {
-    return answer
+main :: fn () {
 }
 ```
 
-At the top level, `::` is used for constants, functions, type aliases, modules,
-and other declarations. The name on the left becomes available elsewhere in the
-program.
+Here `answer` names the value `42`. The same binding form can name functions,
+types, modules, and other top-level declarations. Variable bindings are covered
+in the next part.
 
 ## Block Functions
 
-A block function uses braces:
+Functions group code so it can be run later. A function can receive input
+values, called parameters, and it can return an output value. This part only
+uses simple functions; later parts explain parameters and return types in
+detail.
 
-```nerd
-add :: fn (a: i32, b: i32) -> i32 {
-    return a + b
-}
-```
+There are two common source forms:
 
-When a block function returns a value, use `return <expr>`.
+| Form                       | Best for           |
+| -------------------------- | ------------------ |
+| block function             | several statements |
+| expression-bodied function | one expression     |
 
-```nerd
-main :: fn () -> i32 {
-    return add(20, 22)
-}
-```
+A block function uses braces and contains statements:
 
-Functions returning `void` can end naturally:
+To run a function from another part of the program, write its name followed by
+parentheses. For a function with no inputs, the parentheses are empty:
 
 ```nerd
 use std.io
 
+show :: fn () {
+    prn("inside show")
+}
+
 main :: fn () {
-    prn("done")
+    show()
 }
 ```
 
-You may also write an explicit bare `return` in a `void` function:
+Functions that do not return a value can end naturally.
+
+You may also write an explicit bare `return`:
 
 ```nerd
 main :: fn () {
@@ -84,16 +107,21 @@ main :: fn () {
 }
 ```
 
+Functions that return values and functions with parameters are covered later,
+after values and types have been introduced.
+
 ## Expression-Bodied Functions
 
-Short functions can use `=>`:
+An expression-bodied function uses `=>` when the whole function is one
+expression:
 
 ```nerd
-double :: fn (value: i32) => value * 2
+answer :: fn () => 42
+
+main :: fn () => answer()
 ```
 
 Expression-bodied functions infer their return type from the expression body.
-Block functions use `-> Type` when they return a value.
 
 ## Printing
 
@@ -109,5 +137,7 @@ main :: fn () {
 ```
 
 `pr` prints text without a newline. `prn` prints text followed by a newline.
-The exact standard library API is documented separately; here it is just a
-convenient way to see program behaviour.
+They come from the standard library, which is a set of useful modules shipped
+with the compiler. The standard library is documented separately because it is
+still growing. In this manual, its exact API is not important at first; `std.io`
+is mainly a convenient way to see program behaviour.
