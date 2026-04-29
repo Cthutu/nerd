@@ -47,6 +47,13 @@ target -= expr
 target *= expr
 target /= expr
 target %= expr
+target &= expr
+target ^= expr
+target |= expr
+target &&= expr
+target ||= expr
+(left, right) = expr
+{ field, other: name } = expr
 ```
 
 ## Functions
@@ -64,9 +71,10 @@ return
 return expr
 break
 break expr
-break label expr
+break $label
+break $label expr
 continue
-continue label
+continue $label
 defer statement
 defer { statements }
 ```
@@ -95,7 +103,6 @@ for condition { ... }
 for init; condition; update { ... }
 for item in collection { ... }
 for ^item in collection { ... }
-label: for { ... }
 ```
 
 ## Types
@@ -114,6 +121,11 @@ f32 f64
 [N..]T
 (T1, T2)
 fn (T1, T2) -> R
+plex { field Type }
+plex #c { field Type }
+plex #packed { field Type }
+union { field Type }
+enum { Variant Payload(Type) }
 ```
 
 ## Casts
@@ -125,22 +137,21 @@ pointer.as([]T, count)
 
 ## Literals
 
-```nerd
-123
-1.5
-yes
-no
-nil
-undefined
-"string"
-c"c string"
-$"interpolated {value}"
-[1, 2, 3]
-(1, "two")
-Type { field: value }
-Enum.Variant
-Enum.Payload(value)
-```
+| Literal form | Type |
+| --- | --- |
+| `123` | `untyped integer`; materialises to `i32` without other context |
+| `1.5` | `untyped float`; materialises to `f64` without other context |
+| `yes`, `no` | `bool` |
+| `ptr: ^i32 = nil` | `^i32` |
+| `value: i32 = undefined` | `i32` |
+| `"string"` | `string` |
+| `c"c string"` | `^u8` to null-terminated bytes |
+| `$"interpolated {value}"` | `string` |
+| `[1, 2, 3]` | `[3]i32` |
+| `(1, "two")` | `(i32, string)` |
+| `Point { x: 1, y: 2 }` | `Point` |
+| `Colour.Red` | `Colour` |
+| `Maybe.Some(42)` | `Maybe` |
 
 ## Patterns
 
@@ -153,12 +164,7 @@ Variant(name)
 left, right
 start..end
 start..=end
-== value
-!= value
-< value
-<= value
-> value
->= value
+<conditional-op> value
 pattern as name
 pattern on condition
 pattern as name on condition
