@@ -9,14 +9,24 @@ forms familiar, while requiring explicit casts when the type changes.
 
 Common primitive types include:
 
-| Type family | Types |
-| --- | --- |
-| no value | `void` |
-| truth values | `bool` |
-| text | `string` |
-| signed integers | `i8`, `i16`, `i32`, `i64`, `isize` |
-| unsigned integers | `u8`, `u16`, `u32`, `u64`, `usize` |
-| floats | `f32`, `f64` |
+| Type family       | Types                                      | Notes                                      |
+| ----------------- | ------------------------------------------ | ------------------------------------------ |
+| no value          | `void`                                     | used when no value is produced             |
+| truth values      | `bool`                                     | exactly two values: `yes` and `no`         |
+| text              | `string`                                   | immutable text value                       |
+| signed integers   | `i8`, `i16`, `i32`, `i64`, `isize`         | whole numbers, including negative numbers  |
+| unsigned integers | `u8`, `u16`, `u32`, `u64`, `usize`         | whole numbers, zero or positive            |
+| floats            | `f32`, `f64`                               | fractional numbers                         |
+
+The number in an integer or float type is its size in bits. For example, `i32`
+is a signed 32-bit integer, `u8` is an unsigned 8-bit integer, and `f64` is a
+64-bit floating-point value. The `isize` and `usize` types are pointer-sized
+integer types.
+
+Use `usize` for counts, indexes, byte sizes, and capacities: values that must be
+large enough to describe memory on the target platform. Use `isize` when you
+need a signed integer with the same platform-sized range, such as an offset that
+may be negative.
 
 Boolean literals are:
 
@@ -25,11 +35,14 @@ yes
 no
 ```
 
+Use `bool` for answers to yes/no questions: comparisons, loop conditions,
+branch conditions, and flags.
+
 ## Numeric Expressions
 
 ```nerd
 main :: fn () -> i32 {
-    value := 2 + 3 * 4
+    value := 2 + 3 * 4  -- multiplication happens before addition
     return value
 }
 ```
@@ -39,7 +52,7 @@ tightly than addition and subtraction. Parentheses make grouping explicit:
 
 ```nerd
 main :: fn () -> i32 {
-    return (2 + 3) * 4
+    return (2 + 3) * 4  -- parentheses force addition first
 }
 ```
 
@@ -47,121 +60,191 @@ main :: fn () -> i32 {
 
 Arithmetic operators work with matching numeric operands:
 
-| Operator | Meaning |
-| --- | --- |
-| `+` | add |
-| `-` | subtract |
-| `*` | multiply |
-| `/` | divide |
-| `%` | modulo |
-| unary `-` | negate |
+| Operator  | Meaning  |
+| --------- | -------- |
+| `+`       | add      |
+| `-`       | subtract |
+| `*`       | multiply |
+| `/`       | divide   |
+| `%`       | modulo   |
+| unary `-` | negate   |
 
 Comparison operators produce `bool`:
 
-| Operator | Meaning |
-| --- | --- |
-| `==` | equal |
-| `!=` | not equal |
-| `<` | less than |
-| `<=` | less than or equal |
-| `>` | greater than |
-| `>=` | greater than or equal |
+| Operator | Meaning               |
+| -------- | --------------------- |
+| `==`     | equal                 |
+| `!=`     | not equal             |
+| `<`      | less than             |
+| `<=`     | less than or equal    |
+| `>`      | greater than          |
+| `>=`     | greater than or equal |
 
 Logical operators work with `bool`:
 
-| Operator | Meaning |
-| --- | --- |
-| `&&` | and |
-| `||` | or |
-| `!` | not |
+| Operator                  | Meaning |
+| ------------------------- | ------- |
+| `&&`                      | and     |
+| <code>&#124;&#124;</code> | or      |
+| `!`                       | not     |
 
 Bitwise operators work with matching integer operands:
 
-| Operator | Meaning |
-| --- | --- |
-| `&` | bitwise and |
-| `^` | bitwise xor |
-| `|` | bitwise or |
+| Operator            | Meaning     |
+| ------------------- | ----------- |
+| `&`                 | bitwise and |
+| `^`                 | bitwise xor |
+| <code>&#124;</code> | bitwise or  |
 
 ## Casts
 
-Use `.as(Type)` for explicit casts.
+A cast is an explicit request to treat a value as another type. Use `.as(Type)`
+when the conversion is part of the program's meaning.
 
 ```nerd
 main :: fn () -> i32 {
     count: usize = 10
-    return count.as(i32)
+    return count.as(i32)  -- convert a usize value to an i32 value
 }
 ```
 
-Nerd does not silently insert broad implicit casts. If a type conversion matters,
-write it down.
+Numeric values can be cast between concrete numeric types, such as `usize` to
+`i32` or `f64` to `f32`. Pointer and slice casts are more restricted and are
+introduced below, then covered again in Part 8.
+
+Casts between integers and floats are explicit because they can change the
+value. Integer-to-float casts produce the nearest representable floating-point
+value. Float-to-integer casts discard the fractional part by truncating toward
+zero:
+
+```nerd
+whole: i32 = 3.9.as(i32)   -- becomes 3
+below: i32 = -3.9.as(i32)  -- becomes -3
+```
+
+Nerd does not silently insert broad implicit casts between concrete types. If a
+type conversion matters, write it down. Untyped integer and float literals are
+the main exception: they can become a concrete type from context, such as a
+binding annotation or function parameter type. Untyped literals are explained at
+the end of this part.
 
 ## Pointer-To-Slice Casts
 
-Pointers and slices are compound data concepts explained in Part 8. The cast
-form is shown here because it uses the same `.as(...)` syntax as primitive
-casts.
+A pointer is a value that stores the address of another value. A plain pointer
+does not carry a length.
+
+A slice is a view over a run of elements in memory. It is represented as a
+pointer plus a count, so it knows where the elements start and how many elements
+the view contains. This kind of two-part view is often called a fat pointer.
+
+Pointers and slices are covered properly in Part 8. The cast form is shown here
+because it uses the same `.as(...)` syntax as primitive casts.
 
 A pointer can be converted to a slice when you provide the element type and the
 element count:
 
 ```nerd
-view := pointer.as([]u8, size)
+view := pointer.as([]u8, size)  -- make a []u8 slice from pointer and count
 ```
 
 The result is a slice view. It does not own the pointed-to storage. The program
 must still know where the pointer came from and how long it remains valid.
 
-This form is common at FFI boundaries, where C APIs often return a pointer and a
-separate length.
+This form is common at foreign function interface (FFI) boundaries, where C APIs
+often return a pointer and a separate length. FFI is the part of Nerd that lets
+code declare and run functions from another language.
 
 ## Strings
 
-String literals produce `string` values:
+String literals produce `string` values. A Nerd string is an immutable sequence
+of Unicode scalar values. It is not null-terminated.
+
+At runtime, a `string` has the same broad shape as a slice: data plus count.
+This makes it a fat pointer rather than a single address. A `string` is still a
+distinct type, not just `[]u8`.
 
 ```nerd
-message := "hello"
+message := "hello"  -- string literal produces a string value
 ```
 
-Adjacent string literals are combined:
+Adjacent string literals are joined into one string value:
 
 ```nerd
 message := "hello, "
-           "world"
+           "world"  -- adjacent literal is joined to the previous one
 ```
 
-Interpolated strings start with `$`:
+This is equivalent to:
+
+```nerd
+message := "hello, world"
+```
+
+An interpolated string is a string built from literal text and embedded
+expressions. Interpolated strings start with `$`:
 
 ```nerd
 use std.io
 
 main :: fn () {
     value := 42
-    prn($"value={value}")
+    prn($"value={value}")  -- insert value's text at {value}
 }
 ```
 
-Expressions inside `{...}` are evaluated and appended to the produced string.
+Each expression inside `{...}` is evaluated, converted to text, and inserted at
+that position in the produced string. In the example, the result is the string
+`"value=42"`.
 
 ## C Strings
 
-C strings use the `c"..."` prefix:
+A C string is a pointer to bytes ending with a zero byte. C functions use that
+zero byte, called the null terminator, to find the end of the text.
+
+C string literals use the `c"..."` prefix:
 
 ```nerd
-c"%.*s"
+c"hello"  -- null-terminated C string literal
 ```
 
-They are null-terminated byte strings, mainly for FFI. A C string is not the
-same thing as a Nerd `string`. FFI is covered in Part 11.
+They are mainly for FFI. A C string is not the same thing as a Nerd `string`:
+it is null-terminated, does not carry a count, and is passed as a pointer. FFI
+is covered in Part 11.
 
 ## Untyped Literals
 
-Integer and float literals can begin as untyped values. Context decides their
-concrete type when possible:
+Integer and float literals can begin as untyped values. An untyped literal is a
+number that has not yet been fixed to a concrete storage type. Context decides
+its concrete type when possible:
 
 ```nerd
-value: i32 = 10
+value: i32 = 10     -- untyped integer literal becomes i32
+whole_pi: f64 = 3   -- untyped integer literal becomes f64
 ```
 
-Here `10` becomes an `i32` because the annotation gives it context.
+Here `10` becomes an `i32` because the annotation gives it context. Likewise,
+`3` becomes an `f64` because the annotation's type is `f64`. The same untyped
+literal can become different types in different contexts:
+
+```nerd
+base_value :: 5                  -- base_value is an untyped integer
+int_version: i32 = base_value    -- base_value becomes i32 here
+float_version: f64 = base_value  -- base_value becomes f64 here
+```
+
+The same rule applies to floats:
+
+```nerd
+pi: f32 = 3.14        -- untyped float literal becomes f32
+whole_pi: i64 = 3.14  -- untyped float literal becomes i64 (truncated to 3)
+```
+
+Here `3.14` becomes either `3.14` or `3` depending on the context.
+
+Without other context, an integer literal materialises as `i32`, and a float
+literal materialises as `f64`.
+
+```nerd
+default_int   := 42    -- default_int is an i32
+default_float := 3.14  -- default_float is an f64
+```
