@@ -31,6 +31,7 @@ typedef struct {
     string expected_stdout;
     string expected_ir;
     string expected_c;
+    string stdin_text;
 } LanguageTest;
 
 typedef struct {
@@ -307,7 +308,8 @@ internal bool testing_parse_language_test(Arena*        arena,
         }
     }
 
-    if (section_count != 5 || cursor <= file_text.count) {
+    if ((section_count != 5 && section_count != 6) ||
+        cursor <= file_text.count) {
         eprn(
             "%sInvalid language test format:%s %s", ANSI_RED, ANSI_RESET, path);
         return false;
@@ -324,6 +326,10 @@ internal bool testing_parse_language_test(Arena*        arena,
             arena, testing_strip_section_edges(sections[3])),
         .expected_c = testing_copy_string(
             arena, testing_strip_section_edges(sections[4])),
+        .stdin_text = section_count == 6
+                          ? testing_copy_string(
+                                arena, testing_strip_section_edges(sections[5]))
+                          : (string){0},
     };
     return true;
 }
@@ -1501,7 +1507,24 @@ internal bool testing_run_language_test(const LanguageTest* test)
 #else
     cstr exe_path = artifacts.binary_path;
 #endif
-    string      run_command = string_format(&output_arena, "\"%s\"", exe_path);
+    cstr stdin_path = NULL;
+    if (test->stdin_text.count > 0) {
+        stdin_path = testing_generated_sidecar_path(
+            &artifact_arena, artifact_root, ".stdin");
+        if (!testing_write_file(stdin_path, test->stdin_text)) {
+            back_end_results_done(&back_results);
+            program_info_done(&program);
+            arena_done(&output_arena);
+            arena_done(&artifact_arena);
+            return false;
+        }
+    }
+
+    string run_command =
+        stdin_path != NULL
+            ? string_format(
+                  &output_arena, "\"%s\" < \"%s\"", exe_path, stdin_path)
+            : string_format(&output_arena, "\"%s\"", exe_path);
     ShellResult run_result =
         shell_capture((cstr)run_command.data, &output_arena);
 
@@ -1542,6 +1565,9 @@ internal bool testing_run_language_test(const LanguageTest* test)
 
     if (passed) {
         testing_cleanup_generated_files(artifact_root);
+        if (stdin_path != NULL) {
+            path_remove(stdin_path);
+        }
     }
 
     arena_done(&output_arena);

@@ -129,11 +129,11 @@ main :: fn () {
             "uri": "file:///home/matt/nerd/_bin/mods/std/io.n",
             "range": {
                 "start": {
-                    "line": 16,
+                    "line": 17,
                     "character": 4
                 },
                 "end": {
-                    "line": 16,
+                    "line": 17,
                     "character": 7
                 }
             }

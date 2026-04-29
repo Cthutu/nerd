@@ -5,6 +5,7 @@
 ffi "c" printf (^u8, ...) -> i32
 ffi "c" scanf (^u8, ...) -> i32
 ffi "c" strlen (^u8) -> usize
+ffi "c" getchar () -> i32
 
 input_buf: [256]u8
 input_len: usize
@@ -22,7 +23,12 @@ pub prn :: fn(text: string) -> void {
 
 pub input :: fn(prompt: string) -> string {
     pr(prompt)
-    read_count := scanf(c"%255s", input_buf[..].data)
+    read_count := scanf(c"%255[^\n]", input_buf[..].data)
+    ch := getchar()
+    for ch != 10 && ch != -1 {
+        ch = getchar()
+    }
+
     input_len := on read_count == 1 => strlen(input_buf[..].data) else 0
     return input_buf[0..input_len].as(string)
 }
