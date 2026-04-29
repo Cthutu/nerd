@@ -16,10 +16,10 @@ by themselves; like other values in Nerd, they get names through bindings.
 The first example binds `main` to a simple function:
 
 ```nerd
-use std.io
+use std.io  -- import public names from the std.io module
 
 main :: fn () {
-    prn("hello, Nerd")
+    prn("hello, Nerd")  -- print a line of text
 }
 ```
 
@@ -56,7 +56,7 @@ form to learn is `::`. It creates a constant binding: the name on the left is
 bound to the value on the right.
 
 ```nerd
-answer :: 42
+answer :: 42  -- bind the name answer to the value 42
 
 main :: fn () {
 }
@@ -93,7 +93,7 @@ show :: fn () {
 }
 
 main :: fn () {
-    show()
+    show()  -- run the function named show
 }
 ```
 
@@ -103,7 +103,7 @@ You may also write an explicit bare `return`:
 
 ```nerd
 main :: fn () {
-    return
+    return  -- leave the function explicitly
 }
 ```
 
@@ -116,9 +116,9 @@ An expression-bodied function uses `=>` when the whole function is one
 expression:
 
 ```nerd
-answer :: fn () => 42
+answer :: fn () => 42  -- the expression after => is the function body
 
-main :: fn () => answer()
+main :: fn () => answer()  -- run answer and return its result
 ```
 
 Expression-bodied functions infer their return type from the expression body.
@@ -131,8 +131,8 @@ Most examples in this manual use `std.io`:
 use std.io
 
 main :: fn () {
-    pr("same line")
-    prn(" then newline")
+    pr("same line")       -- print without a newline
+    prn(" then newline")  -- print, then add a newline
 }
 ```
 

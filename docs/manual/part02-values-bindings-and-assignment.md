@@ -32,7 +32,7 @@ read "scope" as the region of code where a name can be used.
 Use `::` when a constant's type can be inferred from its value.
 
 ```nerd
-limit :: 10
+limit :: 10  -- constant binding with inferred type
 
 main :: fn () -> i32 {
     return limit
@@ -43,14 +43,14 @@ Constants can refer to other top-level declarations, even declarations that
 appear later in the file:
 
 ```nerd
-answer :: base + 2
+answer :: base + 2  -- can refer to base before it appears
 base :: 40
 ```
 
 Use `name: Type: value` when a constant should have an explicit type.
 
 ```nerd
-answer: i32: 42
+answer: i32: 42  -- constant binding with explicit type
 ```
 
 ## Mutable Bindings
@@ -60,7 +60,7 @@ initialiser.
 
 ```nerd
 main :: fn () -> i32 {
-    value := 21
+    value := 21  -- mutable binding with inferred type
     return value * 2
 }
 ```
@@ -69,7 +69,7 @@ Use `name: Type = value` when a mutable binding should have an explicit type.
 
 ```nerd
 main :: fn () -> i32 {
-    value: i32 = 42
+    value: i32 = 42  -- mutable binding with explicit type
     return value
 }
 ```
@@ -79,8 +79,8 @@ storage for the value and fills it with the type's default storage value.
 
 ```nerd
 main :: fn () -> i32 {
-    total: i32
-    total = 5
+    total: i32  -- starts with i32's default storage value
+    total = 5   -- assign a new value before returning it
     return total
 }
 ```
@@ -104,7 +104,7 @@ Use `=` to assign to an existing mutable target.
 ```nerd
 main :: fn () -> i32 {
     total := 0
-    total = total + 10
+    total = total + 10  -- assign to an existing mutable target
     return total
 }
 ```
@@ -128,7 +128,7 @@ target:
 ```nerd
 main :: fn () -> i32 {
     value: i32 = 1
-    copy: i32 = value = 9
+    copy: i32 = value = 9  -- value = 9 evaluates to 9
     return copy
 }
 ```
@@ -143,8 +143,8 @@ Compound assignments update an existing value in place:
 ```nerd
 main :: fn () -> i32 {
     value := 10
-    value += 5
-    value *= 2
+    value += 5  -- same kind of update as value = value + 5
+    value *= 2  -- then multiply the current value by 2
     return value
 }
 ```
@@ -155,19 +155,19 @@ example, `value += 5` means the same kind of update as `value = value + 5`.
 
 Assignment operators are:
 
-| Operator | Meaning                  |
-| -------- | ------------------------ |
-| `=`      | assign                   |
-| `+=`     | add, then assign         |
-| `-=`     | subtract, then assign    |
-| `*=`     | multiply, then assign    |
-| `/=`     | divide, then assign      |
-| `%=`     | modulo, then assign      |
-| `&=`     | bitwise and, then assign |
-| `^=`     | bitwise xor, then assign |
-| `|=`     | bitwise or, then assign  |
-| `&&=`    | logical and, then assign |
-| `||=`    | logical or, then assign  |
+| Operator                   | Meaning                  |
+| -------------------------- | ------------------------ |
+| `=`                        | assign                   |
+| `+=`                       | add, then assign         |
+| `-=`                       | subtract, then assign    |
+| `*=`                       | multiply, then assign    |
+| `/=`                       | divide, then assign      |
+| `%=`                       | modulo, then assign      |
+| `&=`                       | bitwise and, then assign |
+| `^=`                       | bitwise xor, then assign |
+| <code>&#124;=</code>       | bitwise or, then assign  |
+| `&&=`                      | logical and, then assign |
+| <code>&#124;&#124;=</code> | logical or, then assign  |
 
 The arithmetic, bitwise, and logical operators used by these assignment forms
 are explained in the next part.
@@ -180,8 +180,8 @@ default storage value".
 
 ```nerd
 main :: fn () -> i32 {
-    value: i32 = undefined
-    value = 42
+    value: i32 = undefined  -- skip the default storage value
+    value = 42              -- assign before reading value
     return value
 }
 ```

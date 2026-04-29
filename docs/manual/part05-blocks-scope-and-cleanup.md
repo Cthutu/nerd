@@ -13,8 +13,8 @@ Use braces to create a nested scope:
 ```nerd
 main :: fn () -> i32 {
     value := 1
-    {
-        value := 2
+    {           -- nested block starts a new scope
+        value := 2  -- different local from the outer value
     }
     return value
 }
@@ -29,8 +29,8 @@ produce a value by using `break <expr>`:
 
 ```nerd
 main :: fn () -> i32 {
-    value := ${
-        break 42
+    value := ${  -- expression block produces a value
+        break 42 -- leave the block with value 42
     }
     return value
 }
@@ -47,7 +47,7 @@ with `$name`, and labelled breaks name the target with the same `$name`:
 main :: fn () -> i32 {
     value := $outer {
         $inner {
-            break $outer 42
+            break $outer 42  -- leave the outer expression block
         }
         break $outer 0
     }
@@ -65,7 +65,7 @@ Use labels when a `break` target would otherwise be unclear.
 use std.io
 
 main :: fn () {
-    defer prn("leaving main")
+    defer prn("leaving main")  -- run when main exits
     prn("inside main")
 }
 ```
@@ -80,15 +80,15 @@ leaving main
 The syntax is either:
 
 ```nerd
-defer statement
+defer statement  -- run statement when this scope exits
 ```
 
 or:
 
 ```nerd
 defer {
-    statement_one()
-    statement_two()
+    statement_one()  -- first deferred statement
+    statement_two()  -- second deferred statement
 }
 ```
 
@@ -100,8 +100,8 @@ Defers run in last-in, first-out order:
 use std.io
 
 main :: fn () {
-    defer prn("first")
-    defer prn("second")
+    defer prn("first")   -- runs second
+    defer prn("second")  -- runs first
     prn("body")
 }
 ```
@@ -124,7 +124,7 @@ use std.io
 
 main :: fn () {
     {
-        defer prn("leaving block")
+        defer prn("leaving block")  -- runs at the closing brace
         prn("inside block")
     }
     prn("after block")
@@ -148,7 +148,7 @@ use std.io
 
 main :: fn () {
     names: [..]string
-    defer names.free()
+    defer names.free()  -- release owned storage on scope exit
 
     names.push("north")
     names.push("south")

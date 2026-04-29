@@ -12,10 +12,10 @@ The simplest form declares a foreign function with the same Nerd-visible name
 as the C symbol:
 
 ```nerd
-ffi "c" abs (i32) -> i32
+ffi "c" abs (i32) -> i32  -- declare the C function abs
 
 main :: fn () -> i32 {
-    return abs(-7)
+    return abs(-7)  -- run the foreign function
 }
 ```
 
@@ -26,7 +26,7 @@ Here `abs` is both the Nerd name and the foreign symbol name.
 Use a binding when the Nerd name should differ from the foreign symbol:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)
+seed_rng :: ffi "c" srand (u32)  -- Nerd name differs from C symbol
 ```
 
 Source code runs `seed_rng(...)`. Generated code links to `srand`.
@@ -40,20 +40,20 @@ The library operand is a compile-time string. A compile-time string is a string
 value the compiler can know while building the program:
 
 ```nerd
-ffi "c" puts (^u8) -> i32
+ffi "c" puts (^u8) -> i32  -- "c" names the C library
 ```
 
 It can also come from a compile-time binding:
 
 ```nerd
 libc :: "c"
-write_line :: ffi libc puts (^u8) -> i32
+write_line :: ffi libc puts (^u8) -> i32  -- use a compile-time binding
 ```
 
 Parenthesised compile-time expressions are allowed:
 
 ```nerd
-sqrt_fn :: ffi ("m") sqrt (f64) -> f64
+sqrt_fn :: ffi ("m") sqrt (f64) -> f64  -- parenthesised library expression
 ```
 
 ## Return Types
@@ -61,7 +61,7 @@ sqrt_fn :: ffi ("m") sqrt (f64) -> f64
 If the return type is omitted, the foreign function returns `void`:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)
+seed_rng :: ffi "c" srand (u32)  -- no -> Type means void
 ```
 
 Write `-> Type` when the function returns a value.
@@ -71,7 +71,7 @@ Write `-> Type` when the function returns a value.
 Use `...` for C variadic functions:
 
 ```nerd
-ffi "c" printf (^u8, ...) -> i32
+ffi "c" printf (^u8, ...) -> i32  -- ... accepts C variadic arguments
 ```
 
 Variadic syntax is only for FFI signatures.
@@ -84,7 +84,7 @@ C string literals use `c"..."`:
 ffi "c" puts (^u8) -> i32
 
 main :: fn () {
-    puts(c"hello")
+    puts(c"hello")  -- pass a null-terminated C string
 }
 ```
 
@@ -97,7 +97,7 @@ C APIs often return a pointer plus a size. Convert that pair to a Nerd slice
 view with:
 
 ```nerd
-view := ptr.as([]u8, size)
+view := ptr.as([]u8, size)  -- pointer plus size becomes a Nerd slice
 ```
 
 The slice borrows memory. It does not free or own the pointer.
@@ -107,10 +107,10 @@ The slice borrows memory. It does not free or own the pointer.
 Prefer wrapping raw FFI in Nerd functions:
 
 ```nerd
-c_realloc :: ffi "c" realloc (^void, usize) -> ^void
+c_realloc :: ffi "c" realloc (^void, usize) -> ^void  -- raw C binding
 
 realloc :: fn (ptr: ^void, size: usize) -> ^void {
-    return c_realloc(ptr, size)
+    return c_realloc(ptr, size)  -- wrapper controls the public name
 }
 ```
 

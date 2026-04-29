@@ -17,9 +17,9 @@ use std.io
 main :: fn () {
     prn("Welcome to Little Cave Adventure!")
 
-    for {
+    for {  -- main command loop
         command := input("--> ")
-        on command {
+        on command {  -- dispatch by command text
             "quit", "q" => break
             "look", "l" => prn("You see nothing but darkness.")
             else => prn("I don't understand.")
@@ -37,7 +37,7 @@ The program loops until the user enters `quit` or `q`.
 For a larger file, qualified modules make dependencies clearer:
 
 ```nerd
-io :: mod std.io
+io :: mod std.io  -- keep standard I/O names qualified
 
 main :: fn () {
     io.prn("Welcome!")
@@ -54,8 +54,8 @@ str :: mod std.string
 
 main :: fn () {
     input := io.input("--> ")
-    parts := str.split(input, " ")
-    defer parts.free()
+    parts := str.split(input, " ")  -- split returns a dynamic array
+    defer parts.free()              -- free it before leaving the scope
 
     for part in parts {
         io.prn($"word: {part}")
@@ -72,7 +72,7 @@ Use enums for state with distinct cases:
 
 ```nerd
 Room :: enum {
-    Cave
+    Cave    -- one possible room
     Tunnel
 }
 ```
@@ -81,7 +81,7 @@ Use plexes for named fields:
 
 ```nerd
 Game :: plex {
-    room Room
+    room Room  -- named field storing current room
     turns i32
 }
 ```
@@ -90,7 +90,7 @@ Then dispatch commands with `on`:
 
 ```nerd
 describe :: fn (game: Game) {
-    on game.room {
+    on game.room {  -- branch on the current room
         Cave => io.prn("It is very dark in here.")
         Tunnel => io.prn("The tunnel narrows to the north.")
     }
@@ -99,7 +99,7 @@ describe :: fn (game: Game) {
 handle :: fn (game: ^Game, command: string) {
     on command {
         "look", "l" => describe(game^)
-        "north", "n" => game^.room = Room.Tunnel
+        "north", "n" => game^.room = Room.Tunnel  -- mutate original state
     }
 }
 ```

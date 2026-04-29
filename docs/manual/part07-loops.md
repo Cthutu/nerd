@@ -10,9 +10,9 @@ loops, C-style loops, and iteration over collections.
 ```nerd
 main :: fn () -> i32 {
     value := 0
-    for {
+    for {  -- loop until a break runs
         value += 1
-        on value == 3 => break
+        on value == 3 => break  -- leave the loop
     }
     return value
 }
@@ -25,7 +25,7 @@ Use `break` to leave a loop.
 ```nerd
 main :: fn () -> i32 {
     value := 0
-    for value < 3 {
+    for value < 3 {  -- repeat while this condition is true
         value += 1
     }
     return value
@@ -39,7 +39,7 @@ The loop continues while the condition is true.
 ```nerd
 main :: fn () -> i32 {
     total := 0
-    for i := 0; i < 5; i += 1 {
+    for i := 0; i < 5; i += 1 {  -- init; condition; update
         total += i
     }
     return total
@@ -62,7 +62,7 @@ The three parts are:
 main :: fn () -> i32 {
     total := 0
     for i := 0; i < 5; i += 1 {
-        on i == 2 => continue
+        on i == 2 => continue  -- skip the rest of this iteration
         total += i
     }
     return total
@@ -82,7 +82,7 @@ use std.io
 
 main :: fn () {
     words :: ["north", "south", "east"]
-    for word in words {
+    for word in words {  -- bind each item to word in turn
         prn(word)
     }
 }
@@ -97,8 +97,8 @@ pointer to an element rather than a copy of the element.
 ```nerd
 main :: fn () -> i32 {
     values := [1, 2, 3]
-    for ^value in values {
-        value^ += 1
+    for ^value in values {  -- iterate pointers to the elements
+        value^ += 1         -- update the element through the pointer
     }
     return values[0]
 }
@@ -112,10 +112,10 @@ Loops can produce values through `break <expr>`:
 
 ```nerd
 main :: fn () -> i32 {
-    found := for i := 0; i < 10; i += 1 {
-        on i == 4 => break i
+    found := for i := 0; i < 10; i += 1 {  -- loop produces a value
+        on i == 4 => break i               -- value for found
     } else {
-        break -1
+        break -1                           -- fallback value
     }
 
     return found
@@ -133,10 +133,10 @@ Loop labels use the same `$name` spelling as expression-block labels:
 ```nerd
 main :: fn () -> i32 {
     count := 0
-    for $outer {
+    for $outer {  -- labelled loop
         for {
             count += 1
-            break $outer
+            break $outer  -- leave the labelled loop
         }
     }
     return count

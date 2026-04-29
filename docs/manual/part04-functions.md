@@ -5,7 +5,7 @@
 Functions are introduced with `fn`. Bindings give functions names:
 
 ```nerd
-name :: fn () {
+name :: fn () {  -- bind name to a function with no parameters
 }
 ```
 
@@ -15,7 +15,7 @@ Parameters are written inside parentheses:
 
 ```nerd
 add :: fn (left: i32, right: i32) -> i32 {
-    return left + right
+    return left + right  -- return a value matching -> i32
 }
 ```
 
@@ -24,7 +24,7 @@ the parentheses become the function's arguments:
 
 ```nerd
 main :: fn () -> i32 {
-    return add(20, 22)
+    return add(20, 22)  -- pass 20 as left and 22 as right
 }
 ```
 
@@ -36,7 +36,7 @@ Block functions that return values use `-> Type`:
 
 ```nerd
 is_large :: fn (value: i32) -> bool {
-    return value > 100
+    return value > 100  -- return a bool value
 }
 ```
 
@@ -46,7 +46,7 @@ is_large :: fn (value: i32) -> bool {
 use std.io
 
 show :: fn (value: i32) -> void {
-    prn($"value={value}")
+    prn($"value={value}")  -- no return value is needed
 }
 ```
 
@@ -55,7 +55,7 @@ show :: fn (value: i32) -> void {
 Use `=>` when the whole function is one expression:
 
 ```nerd
-triple :: fn (value: i32) => value * 3
+triple :: fn (value: i32) => value * 3  -- expression body
 ```
 
 Expression-bodied functions infer their return type from the expression. They
@@ -66,7 +66,7 @@ are useful for small helpers.
 Function types are written with parameter types and a return type:
 
 ```nerd
-operation: fn (i32, i32) -> i32 = add
+operation: fn (i32, i32) -> i32 = add  -- store a function value
 ```
 
 A function type describes a function value. This means a function can receive
@@ -74,10 +74,10 @@ another function as an argument:
 
 ```nerd
 apply :: fn (f: fn (i32) -> i32, value: i32) -> i32 {
-    return f(value)
+    return f(value)  -- run the function passed as f
 }
 
-double :: fn (value: i32) => value * 2
+double :: fn (value: i32) => value * 2  -- function value passed to apply
 
 main :: fn () -> i32 {
     return apply(double, 21)
@@ -90,7 +90,7 @@ Functions can be declared inside block bodies:
 
 ```nerd
 main :: fn () -> i32 {
-    helper :: fn () -> i32 {
+    helper :: fn () -> i32 {  -- nested function local to main
         return 42
     }
 
@@ -107,7 +107,7 @@ Top-level functions can refer to functions declared later:
 
 ```nerd
 main :: fn () -> i32 {
-    return answer()
+    return answer()  -- answer is declared later
 }
 
 answer :: fn () -> i32 {

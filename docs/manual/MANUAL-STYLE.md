@@ -91,6 +91,13 @@ Avoid examples that introduce future concepts accidentally. If a section is
 about bindings, do not also require the reader to understand slices, pointers,
 modules, and FFI unless those are explicitly introduced or deferred.
 
+Do not add comments to every line of an example. Prefer prose before or after
+the block for the overall explanation, but comment the line that demonstrates
+the nearby teaching point when that makes the example easier to scan. Use source
+comments for the important line, for lines that would otherwise be easy to
+misread, or when the comment is part of the teaching point. Put short comments
+on the same line; put longer comments on the line before the code they explain.
+
 ## Tables
 
 Use tables when a concept is a set of parallel forms:

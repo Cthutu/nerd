@@ -11,13 +11,13 @@ known at compile time.
 An initially empty dynamic array type is written:
 
 ```nerd
-[..]string
+[..]string  -- growable array of string values
 ```
 
 A dynamic array with inline capacity is written:
 
 ```nerd
-[4..]string
+[4..]string  -- starts with room for four strings inline
 ```
 
 The inline capacity gives the array room before it needs heap allocation.
@@ -29,12 +29,12 @@ use std.io
 
 main :: fn () {
     names: [..]string
-    defer names.free()
+    defer names.free()  -- release owned storage on scope exit
 
-    names.push("north")
+    names.push("north")  -- add one item
     names.push("south")
 
-    prn($"{names.count}")
+    prn($"{names.count}")  -- number of live items
 }
 ```
 
@@ -60,7 +60,7 @@ Dynamic arrays expose:
 A dynamic array can be viewed as a slice:
 
 ```nerd
-view := names[..]
+view := names[..]  -- borrow the dynamic array as a slice
 ```
 
 The slice borrows the array storage. It does not own the contents.
@@ -70,13 +70,13 @@ The slice borrows the array storage. It does not own the contents.
 `.clear()` resets the count but keeps capacity:
 
 ```nerd
-names.clear()
+names.clear()  -- remove items but keep allocated storage
 ```
 
 `.free()` releases owned storage and resets the array to nil:
 
 ```nerd
-names.free()
+names.free()  -- release owned storage
 ```
 
 Call `.free()` when a dynamic array owns heap storage and you are done with it.
@@ -88,7 +88,7 @@ Prefer writing cleanup next to ownership:
 ```nerd
 main :: fn () {
     parts: [..]string
-    defer parts.free()
+    defer parts.free()  -- cleanup stays next to ownership
 
     parts.push("look")
     parts.push("north")
@@ -99,7 +99,7 @@ If the cleanup has multiple statements, use a deferred block:
 
 ```nerd
 defer {
-    parts.free()
+    parts.free()  -- deferred block can contain several cleanup steps
 }
 ```
 
@@ -115,7 +115,7 @@ make_words :: fn () -> [..]string {
     words: [..]string
     words.push("look")
     words.push("north")
-    return words
+    return words  -- ownership moves to the caller
 }
 ```
 
@@ -124,7 +124,7 @@ The caller owns the returned array and should free it:
 ```nerd
 main :: fn () {
     words := make_words()
-    defer words.free()
+    defer words.free()  -- caller releases the returned array
 }
 ```
 

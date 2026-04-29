@@ -23,8 +23,8 @@ Tuples group values by position:
 
 ```nerd
 main :: fn () -> i32 {
-    pair := (20, 22)
-    return pair.0 + pair.1
+    pair := (20, 22)       -- tuple with two values
+    return pair.0 + pair.1 -- read tuple fields by position
 }
 ```
 
@@ -36,15 +36,15 @@ Fixed arrays carry their length in the type. Indexing uses square brackets:
 
 ```nerd
 main :: fn () -> i32 {
-    values := [1, 2, 3]
-    return values[0]
+    values := [1, 2, 3]  -- fixed array literal
+    return values[0]     -- indexes start at zero
 }
 ```
 
 An explicit fixed array type is written `[N]T`:
 
 ```nerd
-values: [3]i32 = [1, 2, 3]
+values: [3]i32 = [1, 2, 3]  -- array length is part of the type
 ```
 
 ## Slices
@@ -57,8 +57,8 @@ use std.io
 
 main :: fn () {
     values := [10, 20, 30]
-    view := values[..]
-    prn($"{view.count}")
+    view := values[..]       -- slice over the whole array
+    prn($"{view.count}")     -- slices carry a count
 }
 ```
 
@@ -69,7 +69,7 @@ Slices have `.data` and `.count`. They do not own storage.
 When you have a pointer and a count, build a slice view with:
 
 ```nerd
-view := pointer.as([]u8, count)
+view := pointer.as([]u8, count)  -- pointer plus count becomes a slice
 ```
 
 The cast requires the element type and count. The resulting slice borrows the
@@ -82,7 +82,7 @@ memory behind the pointer.
 ```nerd
 main :: fn () -> string {
     text := "north"
-    return text[0..2]
+    return text[0..2]  -- string slice from index 0 up to 2
 }
 ```
 
@@ -95,8 +95,8 @@ Pointer types are written `^T`.
 ```nerd
 main :: fn () -> i32 {
     value := 41
-    ptr := ^value
-    ptr^ += 1
+    ptr := ^value  -- take the address of value
+    ptr^ += 1      -- assign through the pointer
     return value
 }
 ```
@@ -110,7 +110,7 @@ Pointers, slices, and dynamic arrays can be `nil` where the type supports it:
 ```nerd
 main :: fn () -> i32 {
     ptr: ^i32 = nil
-    on ptr == nil => return 0
+    on ptr == nil => return 0  -- check before dereferencing
     return ptr^
 }
 ```
@@ -123,13 +123,13 @@ A plex is a named-field product type:
 
 ```nerd
 Point :: plex {
-    x i32
+    x i32  -- named field
     y i32
 }
 
 main :: fn () -> i32 {
-    p := Point { x: 20, y: 22 }
-    return p.x + p.y
+    p := Point { x: 20, y: 22 }  -- construct by field name
+    return p.x + p.y             -- read fields with dot syntax
 }
 ```
 
@@ -137,8 +137,8 @@ Fields are read with dot syntax and can be assigned when the value is mutable.
 These are partial snippets, not complete programs:
 
 ```nerd
-p.x = 10
-p.y += 5
+p.x = 10  -- assign a field
+p.y += 5  -- compound-assign a field
 ```
 
 ## Destructuring
@@ -147,7 +147,7 @@ Destructuring binds parts of compound values:
 
 ```nerd
 main :: fn () -> i32 {
-    (left, right) := (20, 22)
+    (left, right) := (20, 22)  -- bind tuple parts by position
     return left + right
 }
 ```
@@ -155,7 +155,7 @@ main :: fn () -> i32 {
 Use `_` to ignore a value:
 
 ```nerd
-(first, _) := (1, 2)
+(first, _) := (1, 2)  -- ignore the second value
 ```
 
 ## Raw Unions
@@ -164,7 +164,7 @@ Raw unions overlap storage:
 
 ```nerd
 Value :: union {
-    i i32
+    i i32  -- shares storage with f
     f f32
 }
 ```
@@ -177,13 +177,13 @@ Enums are tagged values:
 
 ```nerd
 Maybe :: enum {
-    None
-    Some(i32)
+    None       -- case with no payload
+    Some(i32)  -- case carrying an i32
 }
 
 value_or_zero :: fn (value: Maybe) -> i32 {
     return on value {
-        Some(as x) => x
+        Some(as x) => x  -- bind the payload
         None => 0
     }
 }
