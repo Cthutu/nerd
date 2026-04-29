@@ -181,6 +181,15 @@ formatter, LSP, or testing surfaces is knowingly behind.
   formatting, or install packaging, update both editor integrations in the same
   commit unless one is explicitly out of scope.
 
+### Definite Assignment Diagnostics
+
+- Add semantic read-before-assignment checks for mutable storage that can be
+  declared without an initial value or with `undefined`.
+- Keep the language rule simple for users: a value must be assigned before it
+  is read, and assignments must match the variable's type.
+- Cover the feature with error tests for invalid reads, plus language tests for
+  valid assignment-before-read paths.
+
 ## Deferred Work
 
 These items are worth keeping visible, but they should not be treated as

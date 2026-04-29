@@ -18,8 +18,8 @@ intended exit code.
 
 ## Names And Scope
 
-- Top-level names use `::`.
-- Local inferred bindings use `:=`.
+- Constant bindings use `::`.
+- Mutable inferred bindings use `:=`.
 - Local scopes are created by blocks.
 - `pub` exports a module-level declaration.
 - `use` imports public names.

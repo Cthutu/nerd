@@ -45,6 +45,9 @@ when `call` has not been explained yet.
 - Define source-level terms from the reader's point of view.
 - Avoid compiler-internal terms unless they affect how source code behaves.
 - If a word has a precise Nerd meaning, do not use it loosely.
+- Use British spelling in manual text. Prefer forms such as `initialise`,
+  `initialiser`, `uninitialised`, `behaviour`, and `optimisation`. Do not
+  rewrite source syntax, API names, quoted output, or external names.
 
 Examples:
 

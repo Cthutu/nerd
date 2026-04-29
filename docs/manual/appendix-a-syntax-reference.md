@@ -29,7 +29,7 @@ alias :: mod module.path
 use module.path
 ```
 
-## Local Bindings
+## Mutable Bindings
 
 ```nerd
 name := expr
