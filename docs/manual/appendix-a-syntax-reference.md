@@ -17,10 +17,12 @@ ideas in more detail.
 name :: value
 name :: fn (...) -> Type { ... }
 name :: fn (...) => expr
+Name :: Type
 Name :: plex { field Type }
 Name :: union { field Type }
 Name :: enum { Variant Payload(Type) }
 pub name :: value
+pub Name :: Type
 ffi "lib" foreign_name (...) -> Type
 local_name :: ffi "lib" foreign_name (...) -> Type
 alias :: mod module.path
