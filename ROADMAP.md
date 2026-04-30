@@ -213,6 +213,20 @@ formatter, LSP, or testing surfaces is knowingly behind.
 - Cover the feature with error tests for invalid reads, plus language tests for
   valid assignment-before-read paths.
 
+### Unused Local Diagnostics
+
+- Add semantic unused-local diagnostics for local variables and parameters.
+- Treat unused locals as Nerd source errors rather than relying on generated C
+  compiler warnings.
+- Suppress generated C warnings for unused and set-but-unused variables until
+  Nerd owns this diagnostic path.
+- Use a leading underscore on a binding name, such as `_future`, to mark a
+  temporarily unused local or parameter deliberately.
+- Keep bare `_` as the ignore pattern for destructuring and pattern matching,
+  not as a normal readable local binding.
+- Cover the feature with semantic error tests, formatter snapshots if naming
+  rules affect formatting, LSP diagnostics, and manual guidance.
+
 ## Deferred Work
 
 These items are worth keeping visible, but they should not be treated as

@@ -17,7 +17,7 @@
 
 #define GENERATED_C_WARNINGS                                                   \
     "-Wall -Wextra -Werror -Wno-unused-function -Wno-unused-label "            \
-    "-Wno-unused-variable -Wno-format-security"
+    "-Wno-unused-variable -Wno-unused-but-set-variable -Wno-format-security"
 
 typedef struct {
     const FrontEndState*      front_end_results;
