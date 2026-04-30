@@ -411,8 +411,8 @@ internal bool testing_parse_format_test(Arena*      arena,
     }
 
     *out_test = (FormatTest){
-        .path          = testing_copy_cstr(arena, path),
-        .source        = testing_copy_string(arena,
+        .path   = testing_copy_cstr(arena, path),
+        .source = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .expected_text = testing_copy_string(
             arena, testing_strip_section_edges(sections[1])),
@@ -447,8 +447,8 @@ internal bool testing_parse_lsp_test(Arena*   arena,
     }
 
     *out_test = (LspTest){
-        .path          = testing_copy_cstr(arena, path),
-        .source        = testing_copy_string(arena,
+        .path   = testing_copy_cstr(arena, path),
+        .source = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .requests_json = testing_copy_string(
             arena, testing_strip_section_edges(sections[1])),
@@ -525,8 +525,8 @@ internal bool testing_parse_command_test(Arena*       arena,
                       (cstr)string_format(arena, STRINGP, STRINGV(cli_args))
                           .data)
                 : "",
-        .path                  = testing_copy_cstr(arena, path),
-        .source                = testing_copy_string(arena,
+        .path   = testing_copy_cstr(arena, path),
+        .source = testing_copy_string(arena,
                                       testing_strip_section_edges(sections[0])),
         .expected_return_value = testing_copy_string(
             arena, testing_trim_ascii_whitespace(sections[1])),
@@ -1687,8 +1687,8 @@ internal bool testing_run_error_test(const ErrorTest* test)
     ProgramInfo program  = {0};
     bool        front_ok = front_end_program(
         (NerdSource){
-                   .source      = test->source,
-                   .source_path = s(test->path),
+            .source      = test->source,
+            .source_path = s(test->path),
         },
         &options,
         NULL,
@@ -2014,10 +2014,10 @@ internal bool testing_run_command_test(const CommandTest* test)
     string input_name   = path_filename(s(input_path));
     cstr   input_arg =
         (cstr)string_format(&artifact_arena, STRINGP, STRINGV(input_name)).data;
-    bool command_is_run = strcmp(test->command_name, "run") == 0 ||
-                          strcmp(test->command_name, "r") == 0;
-    bool command_is_build = strcmp(test->command_name, "build") == 0 ||
-                            strcmp(test->command_name, "b") == 0;
+    bool command_is_run     = strcmp(test->command_name, "run") == 0 ||
+                              strcmp(test->command_name, "r") == 0;
+    bool command_is_build   = strcmp(test->command_name, "build") == 0 ||
+                              strcmp(test->command_name, "b") == 0;
     bool command_is_explain = strcmp(test->command_name, "explain") == 0;
 
     bool passed             = true;

@@ -140,13 +140,13 @@ internal bool program_front_end_finish(ProgramInfo*           program,
     module_options.require_entry_point  = require_entry_point;
 
     ProgramFrontEndContext ctx          = {
-                 .source =
+        .source =
             {
-                         .source      = module->front_end.lexer.source.source,
-                         .source_path = module->front_end.lexer.source.source_path,
+                .source      = module->front_end.lexer.source.source,
+                .source_path = module->front_end.lexer.source.source_path,
             },
-                 .options   = module_options,
-                 .front_end = &module->front_end,
+        .options   = module_options,
+        .front_end = &module->front_end,
     };
 
     bool result = program_run_timed(

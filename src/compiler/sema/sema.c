@@ -3293,7 +3293,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         u32           lowered_symbol_handle =
             kind == SLK_Function ? sema_mangle_nested_function_symbol(
                                        lexer, current_function_symbol, node->a)
-                                           : node->a;
+                                 : node->a;
 
         if (type_node_index != sema_no_type()) {
             sema_mark_type_expr_nodes(ast, sema, type_node_index);
@@ -7870,8 +7870,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             bool target_is_union = target_type != sema_no_type() &&
                                    sema->types[target_type].kind == STK_Union;
-            bool target_is_plex = target_type != sema_no_type() &&
-                                  sema->types[target_type].kind == STK_Plex;
+            bool target_is_plex  = target_type != sema_no_type() &&
+                                   sema->types[target_type].kind == STK_Plex;
             if (!target_is_plex && !target_is_union) {
                 return error_0304_type_mismatch(
                     lexer->source,
@@ -8773,8 +8773,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 u32  source_item = sema->types[source_type].first_param_type;
                 u32  target_item = sema->types[target_type].first_param_type;
                 bool item_match  = source_item == target_item ||
-                                  sema->types[source_item].kind == STK_Void ||
-                                  sema->types[target_item].kind == STK_Void;
+                                   sema->types[source_item].kind == STK_Void ||
+                                   sema->types[target_item].kind == STK_Void;
                 if (!item_match) {
                     return error_0307_invalid_cast(
                         lexer->source,
@@ -10201,7 +10201,7 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
             i64 lhs = 0;
             i64 rhs = 0;
             ok      = sema_try_get_constant(ast, out_sema, node->a, &lhs) &&
-                 sema_try_get_constant(ast, out_sema, node->b, &rhs);
+                      sema_try_get_constant(ast, out_sema, node->b, &rhs);
             if (!ok) {
                 break;
             }
