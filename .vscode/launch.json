@@ -7,12 +7,14 @@
             "request": "launch",
             "program": "${workspaceFolder}/_bin/nerd-debug",
             "args": [
-                "build",
-                "-v",
-                "nerd-src/main.n"
+                "run",
+                "examples/text-adventure/adv.n"
             ],
+            "env": {
+                "NERD_LIB_PATH": "c:\\users\\matt\\nerd\\mods"
+            },
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "Compile"
+            // "preLaunchTask": "Compile"
         },
     ]
 }
