@@ -5659,8 +5659,8 @@ internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
     }
 }
 
-internal bool sema_on_covers_all_enum_variants(const Ast* ast,
-                                               Sema*      sema,
+internal bool sema_on_covers_all_enum_variants(const Ast*  ast,
+                                               const Sema* sema,
                                                u32        on_index,
                                                u32        enum_type)
 {
@@ -10535,6 +10535,45 @@ internal bool sema_local_starts_unassigned(const Ast*        ast,
     return payload->kind == AK_Undefined;
 }
 
+internal bool sema_assignment_on_covers_all_bool_values(const Ast* ast,
+                                                        u32        on_index)
+{
+    const AstOnInfo* on        = &ast->ons[on_index];
+    bool             has_true  = false;
+    bool             has_false = false;
+
+    for (u32 branch_index = 0; branch_index < on->branch_count; ++branch_index) {
+        const AstOnBranch* branch =
+            &ast->on_branches[on->first_branch + branch_index];
+        if ((branch->flags & AOBF_Else) ||
+            branch->guard_node_index != U32_MAX) {
+            continue;
+        }
+
+        for (u32 pattern = 0; pattern < branch->pattern_count; ++pattern) {
+            const AstPattern* ast_pattern =
+                &ast->patterns[ast->pattern_items[branch->pattern_index +
+                                                  pattern]];
+            if (ast_pattern->kind != APK_Value ||
+                ast_pattern->a >= array_count(ast->nodes)) {
+                continue;
+            }
+
+            const AstNode* pattern_node = &ast->nodes[ast_pattern->a];
+            if (pattern_node->kind != AK_BoolLiteral) {
+                continue;
+            }
+            if (pattern_node->a) {
+                has_true = true;
+            } else {
+                has_false = true;
+            }
+        }
+    }
+
+    return has_true && has_false;
+}
+
 internal bool sema_validate_assignment_node(const Lexer*      lexer,
                                             const Ast*        ast,
                                             const Sema*       sema,
@@ -10940,10 +10979,11 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                 return false;
             }
 
-            SemaAssignState merged = sema_assign_state_copy(state);
-            merged.reachable       = false;
-            bool any_reachable     = false;
-            bool has_else          = false;
+            SemaAssignState incoming = sema_assign_state_copy(state);
+            SemaAssignState merged   = sema_assign_state_copy(state);
+            merged.reachable         = false;
+            bool any_reachable       = false;
+            bool has_else            = false;
 
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
@@ -10951,6 +10991,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                 if (branch->flags & AOBF_Else) {
                     has_else = true;
                 }
+
                 SemaAssignState branch_state = sema_assign_state_copy(state);
                 if (!(branch->flags & AOBF_Else)) {
                     for (u32 pattern = 0; pattern < branch->pattern_count;
@@ -10964,11 +11005,13 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                                 &branch_state,
                                 true)) {
                             sema_assign_state_done(&branch_state);
+                            sema_assign_state_done(&incoming);
                             sema_assign_state_done(&merged);
                             return false;
                         }
                     }
                 }
+
                 if (branch->guard_node_index != U32_MAX &&
                     !sema_validate_assignment_node(lexer,
                                                    ast,
@@ -10976,6 +11019,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                                                    branch->guard_node_index,
                                                    &branch_state)) {
                     sema_assign_state_done(&branch_state);
+                    sema_assign_state_done(&incoming);
                     sema_assign_state_done(&merged);
                     return false;
                 }
@@ -10985,6 +11029,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                                                    branch->expr_node_index,
                                                    &branch_state)) {
                     sema_assign_state_done(&branch_state);
+                    sema_assign_state_done(&incoming);
                     sema_assign_state_done(&merged);
                     return false;
                 }
@@ -10993,12 +11038,31 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                 sema_assign_state_done(&branch_state);
             }
 
-            if (has_else) {
-                for (u32 i = 0; i < array_count(state->assigned); ++i) {
-                    state->assigned[i] = merged.assigned[i];
+            bool exhaustive = has_else;
+            if (!exhaustive && on->kind != AOK_Condition &&
+                node->a < array_count(sema->node_type_indices)) {
+                u32 scrutinee_type = sema->node_type_indices[node->a];
+                if (scrutinee_type < array_count(sema->types) &&
+                    sema->types[scrutinee_type].kind == STK_Bool) {
+                    exhaustive =
+                        sema_assignment_on_covers_all_bool_values(ast, node->b);
+                } else {
+                    exhaustive =
+                        sema_on_covers_all_enum_variants(ast,
+                                                          sema,
+                                                          node->b,
+                                                          scrutinee_type);
                 }
-                state->reachable = any_reachable;
             }
+            if (!exhaustive) {
+                sema_assign_state_merge_reachable(
+                    &merged, &incoming, &any_reachable);
+            }
+            for (u32 i = 0; i < array_count(state->assigned); ++i) {
+                state->assigned[i] = merged.assigned[i];
+            }
+            state->reachable = any_reachable;
+            sema_assign_state_done(&incoming);
             sema_assign_state_done(&merged);
             return true;
         }
