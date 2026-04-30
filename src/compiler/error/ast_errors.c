@@ -101,11 +101,11 @@ bool error_0203_expected_token_ex(NerdSource source,
     string    expected = token_kind_to_string(expected_kind);
     string    actual   = token_kind_to_string(actual_kind);
     ErrorInfo error    = error_init(203,
-                                 source,
-                                 span,
-                                 "Expected %.*s but found %.*s",
-                                 STRINGV(expected),
-                                 STRINGV(actual));
+                                    source,
+                                    span,
+                                    "Expected %.*s but found %.*s",
+                                    STRINGV(expected),
+                                    STRINGV(actual));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
     if (note) {
@@ -175,12 +175,12 @@ bool error_0204_unexpected_token(
     sb_formatv(&sb, format, args);
     va_end(args);
     string help = sb_to_string(&sb);
-    bool   ok   = error_0204_unexpected_token_ex(source,
+    bool ok = error_0204_unexpected_token_ex(source,
                                              span,
                                              actual_kind,
                                              NULL,
                                              help.count == 0 ? NULL
-                                                                 : (cstr)help.data);
+                                                             : (cstr)help.data);
     arena_done(&scratch);
     return ok;
 }

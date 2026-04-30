@@ -7,7 +7,7 @@ The repository test runner lives in
 
 ## Test Families
 
-The repository currently has four main test families:
+The repository currently has five main test families:
 
 - `tests/language`
   End-to-end compiler tests with expected runtime result, stdout, IR, and C.
@@ -65,7 +65,10 @@ Command tests use `.cmd` files with three sections:
 
 1. source code
 2. expected process return value
-3. currently reserved stdout section
+3. expected stdout
+
+They may also include optional sections for run mode, extra CLI arguments, and
+command name. The parser accepts three to six sections.
 
 The runner writes the source into a generated `.input.n` file next to the test
 case and invokes the relevant compiler command against that file. This covers

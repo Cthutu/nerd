@@ -1,7 +1,8 @@
 # String Runtime
 
-This document describes the first interpolated-string runtime introduced for
-Milestone 6.
+This document describes the first interpolated-string runtime. Source-level
+string rules belong in the manual; this note is for lowering and runtime
+implementation details.
 
 ## Scope
 

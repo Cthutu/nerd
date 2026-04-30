@@ -172,6 +172,29 @@ formatter, LSP, or testing surfaces is knowingly behind.
   practical.
 - Keep emitted literals semantically equivalent to the original source.
 
+### Numeric Literal Surface
+
+- Support prefixed integer literals for common bases:
+  - hexadecimal with `0x`
+  - binary with `0b`
+  - octal with `0o`
+- Keep diagnostics clear for malformed digits in each base.
+- Cover the feature across lexer/parser handling, semantic typing, formatting,
+  language tests, error tests, LSP/editor surfaces where relevant, and the
+  manual.
+
+### Assertion Statement
+
+- Add an `assert` keyword with the form
+  `assert <condition> [, "<message string>"]`.
+- Require the condition to be boolean.
+- Keep the optional message restricted to a string literal at first, unless a
+  broader expression form is deliberately designed.
+- Define lowering/runtime behaviour for failed assertions, including source
+  location reporting.
+- Cover valid and invalid forms with parser, semantic, language, error,
+  formatter, LSP/editor, and manual updates.
+
 ### Formatter And LSP Follow-through
 
 - Keep extending formatter support as syntax lands.
@@ -189,6 +212,20 @@ formatter, LSP, or testing surfaces is knowingly behind.
   is read, and assignments must match the variable's type.
 - Cover the feature with error tests for invalid reads, plus language tests for
   valid assignment-before-read paths.
+
+### Unused Local Diagnostics
+
+- Add semantic unused-local diagnostics for local variables and parameters.
+- Treat unused locals as Nerd source errors rather than relying on generated C
+  compiler warnings.
+- Suppress generated C warnings for unused and set-but-unused variables until
+  Nerd owns this diagnostic path.
+- Use a leading underscore on a binding name, such as `_future`, to mark a
+  temporarily unused local or parameter deliberately.
+- Keep bare `_` as the ignore pattern for destructuring and pattern matching,
+  not as a normal readable local binding.
+- Cover the feature with semantic error tests, formatter snapshots if naming
+  rules affect formatting, LSP diagnostics, and manual guidance.
 
 ## Deferred Work
 

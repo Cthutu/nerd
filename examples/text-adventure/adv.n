@@ -6,25 +6,10 @@ io :: mod std.io
 str :: mod std.string
 
 main :: fn () {
-    io.prn("Welcome to Little Cave Adventure!")
-    io.prn("It is very dark in here.")
+    input := "look around"
 
-    for {
-        input := get_input()
-
-        parts := str.split(input, " ")
-        defer {
-            parts.free()
-            io.prn("Done with parts")
-        }
-        for part in parts {
-            io.prn($"You said: {part}")
-        }
-
-        on input {
-            "quit", "q" => break
-            "look", "l" => io.prn("You see nothing but darkness.")
-        }
+    for parse_and_execute(input) {
+        input = get_input()
     }
 
     io.prn("\nBye!")
@@ -32,4 +17,69 @@ main :: fn () {
 
 get_input :: fn () -> string {
     return io.input("--> ")
+}
+
+parse_and_execute :: fn (input: string) -> bool {
+    parts := str.split(input, " ")
+    defer parts.free()
+    for ^part in parts {
+        part^ = str.trim_whitespace(part^)
+    }
+
+    verb : string
+    noun : string
+
+    on parts.count {
+        0 => return yes
+        1 => verb = parts[0]
+        else => {
+            verb = parts[0]
+            noun = parts[1]
+        }
+    }
+
+    on verb {
+        "quit", "q" => return no
+        "look", "l" => execute_look(noun)
+        "go" => execute_go(noun)
+        else => io.prn($"I don't know how to '{verb}'.")
+    }
+
+    return yes
+}
+
+Location :: plex {
+    description string
+    tag         string
+}
+
+locs: []Location = [
+    { description : "an open field", tag : "field" },
+    { description : "a little cave", tag : "cave" },
+]
+
+player_loc: usize = 0
+
+execute_look :: fn (noun: string) {
+    on noun {
+        "", "around" => {
+            io.prn($"You are in {locs[player_loc].description}.")
+        }
+        else => io.prn("I don't understand what you want to look at.")
+    }
+}
+
+execute_go :: fn (noun: string) {
+    for i, loc in locs {
+        on noun == loc.tag => {
+            on {
+                i == player_loc => io.prn("You can't get much closer than this.")
+                else => {
+                    player_loc = i
+                    execute_look("around")
+                }
+            }
+            return
+        }
+    }
 }

@@ -372,7 +372,7 @@ internal void error_print_snippet(const ErrorInfo* error_info)
     for (u32 line = display_start; line <= display_end; line++) {
         ErrorSpan line_span = error_find_line_span(source_text, line);
         string    line_text = string_from(source_text.data + line_span.start,
-                                       line_span.end - line_span.start);
+                                          line_span.end - line_span.start);
         error_print_source_line(gutter_width, line + 1, line_text);
 
         for (usize i = 0; i < array_count(error_info->references); i++) {
@@ -435,9 +435,9 @@ internal void error_normal_render(const ErrorInfo* error_info)
                                       ANSI_RESET);
     } else {
         prefix        = string_format(&temp_arena,
-                               "%s[%04u]: ",
-                               error_kind_label(error_info->kind),
-                               error_info->code);
+                                      "%s[%04u]: ",
+                                      error_kind_label(error_info->kind),
+                                      error_info->code);
         styled_prefix = string_format(&temp_arena,
                                       "%s%s[%04u]:%s ",
                                       primary_colour,

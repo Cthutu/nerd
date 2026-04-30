@@ -523,9 +523,8 @@ Authoring references:
 
 ## Appendix A: Syntax Reference
 
-This appendix should be compact and complete. It should link to
-[overviews/SYNTAX.md](/home/matt/nerd/docs/overviews/SYNTAX.md) until the
-manual grows its own polished reference section.
+This appendix should be compact and complete. It is now the source-level syntax
+reference for the project.
 
 Suggested subsections:
 
