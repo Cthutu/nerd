@@ -1,7 +1,7 @@
 main :: fn () {
     items: [4..]string = ["north", "south"]
     items.push("east")
-    cap := items.capacity
+    _cap := items.capacity
 }
 ¬
 [
@@ -29,7 +29,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 17
+                "character": 18
             }
         }
     },
@@ -43,7 +43,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 11
+                "character": 12
             }
         }
     }

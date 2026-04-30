@@ -16,7 +16,7 @@ main :: fn () {
     q := p with { y: 7, name: "second" }
     pp := ^q
     prn($"{pp.name} {pp.x} {pp.y}")
-    packed := Packed { a: 1, b: 2 }
+    _packed := Packed { a: 1, b: 2 }
 }
 ¬
 [
@@ -408,11 +408,11 @@ main :: fn () {
                 0,
                 1,
                 4,
-                6,
-                0,
-                0,
-                0,
                 7,
+                0,
+                0,
+                0,
+                8,
                 1,
                 4,
                 0,

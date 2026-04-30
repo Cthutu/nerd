@@ -201,6 +201,33 @@ main :: fn () -> i32 {
 
 Assign to the binding before any read.
 
+## Unused Locals
+
+Local variables, parameters, and pattern binders should be read at least once.
+Nerd reports a compile-time error for a local binding that is declared but never
+used:
+
+```nerd
+main :: fn () -> i32 {
+    value := 1  -- error: value is never read
+    return 0
+}
+```
+
+Assignments do not count as reads. If a binding is intentionally unused for now,
+prefix its name with `_`:
+
+```nerd
+helper :: fn (_unused: i32) -> i32 {
+    _scratch := 10  -- deliberate placeholder
+    return 7
+}
+```
+
+Bare `_` is reserved for ignore patterns in destructuring and pattern matching.
+Use a descriptive leading-underscore name, such as `_future`, when you still
+want a normal local binding.
+
 ## Choosing A Form
 
 | Need                                  | Form                       |

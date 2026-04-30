@@ -3,7 +3,7 @@ use std.io
 main :: fn () -> i32 {
     values: [3]i32 = [1, 2, 3]
 
-    for item in values[..] {
+    for _item in values[..] {
     }
 
     total := 0
@@ -43,7 +43,7 @@ $7 = []i32:$2.count
 $8 = $3 < $7
 branch.false bool:$8, L6
 $9 = []i32:$2[$3]
-local main$item$for28 = i32:$9
+local main$_item$for28 = i32:$9
 block
 end
 label L5
@@ -143,7 +143,7 @@ int $main() {
     if ((long long)$3 < 0 || (size_t)$3 >= $2.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
     #endif
     int $9 = $2.data[$3];
-    int $main$item$for28 = $9;
+    int $main$_item$for28 = $9;
     {
     }
     L5: ;

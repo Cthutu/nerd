@@ -1,8 +1,8 @@
 use std.io
 
 main :: fn () {
-    total := 0
-    for i := 0, step := 1; i < 5; total += step, i += 1 {
+    _total := 0
+    for i := 0, step := 1; i < 5; _total += step, i += 1 {
         prn($"C {i}")
     }
 }

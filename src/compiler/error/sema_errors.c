@@ -892,3 +892,33 @@ bool error_0334_read_before_assignment(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report an unused function-local binding.
+
+bool error_0335_unused_local(NerdSource source,
+                             ErrorSpan  span,
+                             string     symbol,
+                             string     binding_kind)
+{
+    ErrorInfo error =
+        error_init(335,
+                   source,
+                   span,
+                   "Unused " STRINGP " `" STRINGP "`",
+                   STRINGV(binding_kind),
+                   STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This " STRINGP " is never read",
+                        STRINGV(binding_kind));
+    error_add_note(&error,
+                   "Assigning to a variable does not count as using it.");
+    error_add_help(&error,
+                   "Remove `" STRINGP
+                   "` or prefix the name with `_` if it is deliberately unused.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

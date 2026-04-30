@@ -52,6 +52,7 @@ Common causes:
 - type mismatches
 - invalid assignment targets
 - reads of `undefined` bindings before assignment
+- unused local variables, parameters, or pattern binders
 - invalid `break` or `continue`
 - non-exhaustive value-producing `on`
 - private module members
@@ -109,6 +110,22 @@ main :: fn () -> i32 {
 When control flow branches, every reachable path to the read must assign the
 binding first. Add an initial value, assign in all branches, or avoid
 `undefined` when the default storage value is acceptable.
+
+## Unused Locals
+
+Unused local diagnostics mean a local variable, parameter, or pattern binder is
+never read.
+
+```nerd
+main :: fn () -> i32 {
+    _future := 1  -- leading underscore marks deliberate non-use
+    return 0
+}
+```
+
+Remove the binding if it is not needed. Use a leading underscore only when the
+binding is intentionally present for documentation, future work, or shape
+matching.
 
 ## Control Flow Errors
 

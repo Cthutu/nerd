@@ -1,9 +1,9 @@
 use test.lsp_types
 
 main :: fn () {
-    p : Point  = Point { x: 1, y: 2 }
-    c : Colour = Colour.RED
-    v : Value  = Value { i: 1 }
+    _p : Point  = Point { x: 1, y: 2 }
+    _c : Colour = Colour.RED
+    _v : Value  = Value { i: 1 }
 }
 ¬
 [
@@ -17,7 +17,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 8
+                "character": 9
             }
         }
     },
@@ -31,7 +31,7 @@ main :: fn () {
             },
             "position": {
                 "line": 4,
-                "character": 8
+                "character": 9
             }
         }
     },
@@ -45,7 +45,7 @@ main :: fn () {
             },
             "position": {
                 "line": 5,
-                "character": 8
+                "character": 9
             }
         }
     }

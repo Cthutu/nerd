@@ -1,5 +1,5 @@
 main :: fn () {
-    value := 10
+    _value := 10
     {
         value := 32
         return value

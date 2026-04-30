@@ -275,6 +275,10 @@ bool error_0334_read_before_assignment(NerdSource source,
                                        ErrorSpan  span,
                                        string     symbol,
                                        ErrorSpan  decl_span);
+bool error_0335_unused_local(NerdSource source,
+                             ErrorSpan  span,
+                             string     symbol,
+                             string     binding_kind);
 
 //------------------------------------------------------------------------------
 // Low-level error system

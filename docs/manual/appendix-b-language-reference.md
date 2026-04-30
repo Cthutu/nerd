@@ -32,6 +32,8 @@ intended exit code.
 - `undefined` is intentionally uninitialised and must be assigned before it is
   read.
 - `nil` is available for pointer-like and slice-like values where supported.
+- Local variables, parameters, and pattern binders must be read unless their
+  names start with `_`.
 
 ## Type Conversion
 

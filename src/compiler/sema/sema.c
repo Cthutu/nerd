@@ -3692,7 +3692,7 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                        .owner_decl_index      = owner_decl_index,
                        .scope_index           = scope_index,
                        .decl_node_index       = sema_no_decl(),
-                       .decl_token_index      = U32_MAX,
+                       .decl_token_index      = param->token_index,
                        .type_node_index       = param->type_node_index,
                        .value_node_index      = sema_no_decl(),
                        .type_index            = param_type,
@@ -11174,6 +11174,106 @@ internal bool sema_validate_definite_assignment(const Lexer* lexer,
     return true;
 }
 
+//------------------------------------------------------------------------------
+// Validate that function-local runtime bindings are read at least once.
+
+internal bool sema_symbol_is_deliberately_unused(string symbol)
+{
+    return symbol.count > 0 && symbol.data[0] == '_';
+}
+
+internal string sema_unused_local_kind_name(const SemaLocal* local)
+{
+    switch (local->kind) {
+    case SLK_Param:
+        return s("parameter");
+    case SLK_Binder:
+        return s("pattern binder");
+    case SLK_Variable:
+        return s("local variable");
+    case SLK_Constant:
+    case SLK_Function:
+    case SLK_TypeAlias:
+        return s("local binding");
+    }
+    return s("local binding");
+}
+
+internal void sema_count_local_ref(const Sema* sema,
+                                   u32         local_index,
+                                   Array(u32)  read_counts,
+                                   i32         delta)
+{
+    if (local_index == sema_no_local() ||
+        local_index >= array_count(read_counts) ||
+        !sema_local_is_runtime_value(&sema->locals[local_index])) {
+        return;
+    }
+    if (delta < 0) {
+        read_counts[local_index] -=
+            read_counts[local_index] > 0 ? (u32)-delta : 0;
+        return;
+    }
+    read_counts[local_index] += (u32)delta;
+}
+
+internal bool sema_validate_unused_locals(const Lexer* lexer,
+                                          const Ast*   ast,
+                                          const Sema*  sema)
+{
+    Array(u32) read_counts = NULL;
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        array_push(read_counts, 0);
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_SymbolRef &&
+            !(i < array_count(sema->node_is_type_expr) &&
+              sema->node_is_type_expr[i])) {
+            sema_count_local_ref(sema,
+                                 sema->node_local_indices[i],
+                                 read_counts,
+                                 1);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Assign) {
+            continue;
+        }
+        const AstNode* target = &ast->nodes[node->a];
+        if (target->kind == AK_SymbolRef) {
+            sema_count_local_ref(sema,
+                                 sema->node_local_indices[node->a],
+                                 read_counts,
+                                 -1);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        if (!sema_local_is_runtime_value(local) ||
+            sema_symbol_is_deliberately_unused(
+                lex_symbol(lexer, local->symbol_handle)) ||
+            read_counts[i] > 0) {
+            continue;
+        }
+        string symbol       = lex_symbol(lexer, local->symbol_handle);
+        string binding_kind = sema_unused_local_kind_name(local);
+        bool ok = error_0335_unused_local(lexer->source,
+                                          sema_local_span(lexer, ast, local),
+                                          symbol,
+                                          binding_kind);
+        array_free(read_counts);
+        return ok;
+    }
+
+    array_free(read_counts);
+    return true;
+}
+
 internal bool
 sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
@@ -11804,6 +11904,10 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_validate_definite_assignment(lexer, ast, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_validate_unused_locals(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

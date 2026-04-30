@@ -2,7 +2,7 @@ use std.io
 
 Colour :: enum { Red Green Blue }
 main :: fn () {
-    colour: Colour = Green
+    _colour: Colour = Green
     prn("enum")
 }
 ¬
@@ -68,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\ncolour\n```\n\n- Kind: local variable\n- Type: `enum { Red, Green, Blue }`"
+                "value": "```nerd\n_colour\n```\n\n- Kind: local variable\n- Type: `enum { Red, Green, Blue }`"
             }
         }
     },

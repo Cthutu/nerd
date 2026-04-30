@@ -2,7 +2,7 @@ use std.io
 
 Maybe :: enum { None Some(i32) }
 main :: fn () {
-    value: Maybe = Some(1)
+    _value: Maybe = Some(1)
     prn("enum payload")
 }
 ¬
@@ -68,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nvalue\n```\n\n- Kind: local variable\n- Type: `enum { None, Some(i32) }`"
+                "value": "```nerd\n_value\n```\n\n- Kind: local variable\n- Type: `enum { None, Some(i32) }`"
             }
         }
     },

@@ -2,10 +2,10 @@ Point :: plex { x i32 y i32 }
 
 main :: fn () {
     p : Point = { x: 1, y: 2 }
-    show([{ x: 3, y: 4 }])
+    show([p, { x: 3, y: 4 }])
 }
 
-show :: fn (items: []Point) {
+show :: fn (_items: []Point) {
     return
 }
 ¬
