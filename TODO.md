@@ -1,3 +1,14 @@
+# Historical Notes
+
+This file is older design material. It is not the current source of truth for
+project direction or language behaviour. Use [ROADMAP.md](ROADMAP.md) for active
+work and [docs/manual/README.md](docs/manual/README.md) for source-level
+language rules.
+
+The roadmap deliberately keeps retiring this file as deferred work, so leave it
+visible until its useful ideas have been moved into active roadmap items or
+discarded.
+
 # Compound data types
 
 ## Tuples

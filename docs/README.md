@@ -2,6 +2,19 @@
 
 This folder contains developer-facing documentation for the repository.
 
+## Source Of Truth
+
+Use [../ROADMAP.md](/home/matt/nerd/ROADMAP.md) for current project direction,
+active work, and cross-cutting engineering rules. Use
+[manual/README.md](/home/matt/nerd/docs/manual/README.md) and the manual
+appendices for source-level language behaviour.
+
+The other documents in this folder are implementation notes. Keep them when
+they describe compiler structure, subsystem ownership, diagnostics, tooling, or
+standard-library surface that is not already covered by the manual. When one of
+these notes disagrees with the roadmap, the manual, tests, or the implementation,
+verify against the implementation and update the note before relying on it.
+
 ## Reading Order
 
 If you are new to the codebase, read these first:
@@ -17,8 +30,7 @@ If you are new to the codebase, read these first:
 9. [testing.md](/home/matt/nerd/docs/testing.md)
 
 If you are learning the Nerd language rather than the compiler implementation,
-start with [manual/README.md](/home/matt/nerd/docs/manual/README.md). The
-current manual structure is planned in [manual.md](/home/matt/nerd/docs/manual.md).
+start with [manual/README.md](/home/matt/nerd/docs/manual/README.md).
 
 ## Overviews
 
@@ -26,8 +38,6 @@ current manual structure is planned in [manual.md](/home/matt/nerd/docs/manual.m
   High-level architecture and subsystem map.
 - [overviews/FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md)
   Current formatter rules and behaviour.
-- [overviews/SYNTAX.md](/home/matt/nerd/docs/overviews/SYNTAX.md)
-  Short syntax reference for the currently implemented language surface.
 - [overviews/build-directives.md](/home/matt/nerd/docs/overviews/build-directives.md)
   Build/module directive rules used by the build system.
 
@@ -52,13 +62,18 @@ current manual structure is planned in [manual.md](/home/matt/nerd/docs/manual.m
 
 ## Language Design Notes
 
-The current learner-facing manual plan lives at:
+The learner-facing manual lives under:
+
+- [manual/README.md](/home/matt/nerd/docs/manual/README.md)
+
+The manual planning document is retained as an authoring map:
 
 - [manual.md](/home/matt/nerd/docs/manual.md)
 
-The existing `docs/Nerd` folder contains older language-design material and
-reference notes:
+Use the manual appendix for source-level syntax reference:
 
-- [Nerd/Overview.md](/home/matt/nerd/docs/Nerd/Overview.md)
-- [Nerd/Specifications.md](/home/matt/nerd/docs/Nerd/Specifications.md)
-- [Nerd/Grammar.md](/home/matt/nerd/docs/Nerd/Grammar.md)
+- [manual/appendix-a-syntax-reference.md](/home/matt/nerd/docs/manual/appendix-a-syntax-reference.md)
+
+Older language-design notes should not be added here unless they are still
+actively maintained. Retain outdated planning material only when the roadmap
+explicitly keeps it visible, such as [../TODO.md](/home/matt/nerd/TODO.md).

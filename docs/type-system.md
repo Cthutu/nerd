@@ -1,7 +1,9 @@
 # Type System
 
-This document describes the current implementation of type information in the
-semantic layer for Milestone 5.
+This document describes implementation details for type information in the
+semantic layer. Source-level type rules belong in the manual; this note is for
+the compiler representation and should be checked against the code and tests
+when it is used for implementation work.
 
 The main code is in
 [src/compiler/sema/sema.h](/home/matt/nerd/src/compiler/sema/sema.h) and

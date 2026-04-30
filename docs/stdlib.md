@@ -21,6 +21,10 @@ The current standard modules live under [mods/std](/home/matt/nerd/mods/std).
 - `std.string`
   String utilities.
 
+The repository also contains early `std.random` source work. Treat it as
+experimental until its dependencies and syntax surface are covered by the
+roadmap's horizontal feature policy.
+
 ## Documentation Policy
 
 - Keep core language rules in [manual.md](/home/matt/nerd/docs/manual.md).
@@ -67,3 +71,10 @@ Arena helpers built on top of `std.mem`.
 
 `split` returns a dynamic array and the caller is responsible for freeing that
 array when it is no longer needed.
+
+### Experimental `std.random`
+
+The tracked `mods/std/random.n` file is not part of the stable standard-library
+inventory yet. Before documenting it as supported, make sure the module builds
+through the normal module pipeline and that its required language features,
+supporting modules, tests, and manual notes have landed together.

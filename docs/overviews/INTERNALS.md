@@ -121,5 +121,6 @@ The back end currently runs:
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules
-- [SYNTAX.md](/home/matt/nerd/docs/overviews/SYNTAX.md) for the current syntax surface
+- [../manual/appendix-a-syntax-reference.md](/home/matt/nerd/docs/manual/appendix-a-syntax-reference.md)
+  for the source-level syntax reference
 - [build-directives.md](/home/matt/nerd/docs/overviews/build-directives.md) for build-system metadata
