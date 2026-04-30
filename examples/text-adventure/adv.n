@@ -40,10 +40,46 @@ parse_and_execute :: fn (input: string) -> bool {
 
     on verb {
         "quit", "q" => return no
-        "look", "l" => io.prn("It is very dark in here.")
-        "go" => io.prn("It's too dark to go anywhere.")
+        "look", "l" => execute_look(noun)
+        "go" => execute_go(noun)
         else => io.prn($"I don't know how to '{verb}'.")
     }
 
     return yes
+}
+
+Location :: plex {
+    description string
+    tag         string
+}
+
+locs: []Location = [
+    { description : "an open field", tag : "field" },
+    { description : "a little cave", tag : "cave" },
+]
+
+player_loc: usize = 0
+
+execute_look :: fn (noun: string) {
+    on noun {
+        "", "around" => {
+            io.prn($"You are in {locs[player_loc].description}.")
+        }
+        else => io.prn("I don't understand what you want to look at.")
+    }
+}
+
+execute_go :: fn (noun: string) {
+    for i, loc in locs {
+        on noun == loc.tag => {
+            on {
+                i == player_loc => io.prn("You can't get much closer than this.")
+                else => {
+                    player_loc = i
+                    execute_look("around")
+                }
+            }
+            return
+        }
+    }
 }

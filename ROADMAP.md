@@ -195,6 +195,20 @@ formatter, LSP, or testing surfaces is knowingly behind.
 - Cover valid and invalid forms with parser, semantic, language, error,
   formatter, LSP/editor, and manual updates.
 
+### Indexed `for in` Iteration
+
+- Add indexed iteration syntax:
+  - `for index, element in elements { ... }`
+  - `for index, ^element in elements { ... }`
+- Bind `index` as a `usize` loop-local that starts at zero and increments once
+  per visited element.
+- Keep existing `for element in elements` and `for ^element in elements`
+  behaviour unchanged.
+- Define whether the index is assignable. Prefer a non-assignable loop binding
+  unless a later design needs mutation.
+- Cover parser, semantic analysis, IR/C generation, formatter, LSP/editor
+  surfaces, language tests, error tests, and manual syntax/reference updates.
+
 ### Formatter And LSP Follow-through
 
 - Keep extending formatter support as syntax lands.
