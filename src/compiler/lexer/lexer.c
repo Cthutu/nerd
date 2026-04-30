@@ -34,6 +34,86 @@ internal bool lexer_lex_one_token(NerdSource source,
                                   Lexer*     lexer,
                                   bool       allow_interpolation_start);
 
+internal bool lexer_is_decimal_digit(u8 c)
+{
+    return c >= '0' && c <= '9';
+}
+
+internal bool lexer_is_ascii_letter(u8 c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+internal bool lexer_is_number_tail(u8 c)
+{
+    return lexer_is_decimal_digit(c) || lexer_is_ascii_letter(c);
+}
+
+internal bool lexer_digit_value(u8 c, u32 base, u32* out_digit)
+{
+    u32 digit;
+    if (c >= '0' && c <= '9') {
+        digit = (u32)(c - '0');
+    } else if (c >= 'a' && c <= 'f') {
+        digit = 10 + (u32)(c - 'a');
+    } else if (c >= 'A' && c <= 'F') {
+        digit = 10 + (u32)(c - 'A');
+    } else {
+        return false;
+    }
+
+    if (digit >= base) {
+        return false;
+    }
+
+    *out_digit = digit;
+    return true;
+}
+
+internal bool lexer_lex_integer_digits(NerdSource source,
+                                       string     source_code,
+                                       usize      start,
+                                       usize*     io_index,
+                                       u32        base,
+                                       u64*       out_value)
+{
+    usize i         = *io_index;
+    u64   total     = 0;
+    bool  has_digit = false;
+
+    while (i < source_code.count) {
+        u32 digit;
+        if (!lexer_digit_value(source_code.data[i], base, &digit)) {
+            break;
+        }
+
+        if (total > (U64_MAX - digit) / base) {
+            return error_0101_integer_literal_too_large(
+                source, (ErrorSpan){.start = start, .end = i + 1});
+        }
+
+        total = total * base + digit;
+        i++;
+        has_digit = true;
+    }
+
+    if (!has_digit) {
+        char invalid_char = source_code.data[i - 1];
+        if (i < source_code.count && lexer_is_number_tail(source_code.data[i])) {
+            invalid_char = source_code.data[i];
+            i++;
+        }
+        return error_0103_invalid_number_literal(
+            source,
+            (ErrorSpan){.start = start, .end = i},
+            invalid_char);
+    }
+
+    *io_index  = i;
+    *out_value = total;
+    return true;
+}
+
 internal bool lexer_lex_string_literal(NerdSource source,
                                        string     source_code,
                                        usize*     io_index,
@@ -377,30 +457,37 @@ internal bool lexer_lex_one_token(NerdSource source,
             source, source_code, i - 2, io_index, lexer);
     }
 
-    if (c >= '0' && c <= '9') {
-        usize start      = i;
-        u64   total      = 0;
-        u64   last_total = 0;
+    if (lexer_is_decimal_digit(c)) {
+        usize start = i;
+        u64   total = 0;
+        u32   base  = 10;
 
-        while (i < source_code.count && source_code.data[i] >= '0' &&
-               source_code.data[i] <= '9') {
-            last_total = total;
-            total      = total * 10 + (source_code.data[i] - '0');
-            if (total < last_total) {
-                ErrorSpan span = {.start = start, .end = i + 1};
-                return error_0101_integer_literal_too_large(source, span);
+        if (c == '0' && i + 1 < source_code.count) {
+            if (source_code.data[i + 1] == 'x') {
+                base = 16;
+                i += 2;
+            } else if (source_code.data[i + 1] == 'b') {
+                base = 2;
+                i += 2;
+            } else if (source_code.data[i + 1] == 'o') {
+                base = 8;
+                i += 2;
             }
+        }
 
-            i++;
+        if (!lexer_lex_integer_digits(
+                source, source_code, start, &i, base, &total)) {
+            return false;
         }
 
         bool is_float =
+            base == 10 &&
             i + 1 < source_code.count && source_code.data[i] == '.' &&
-            source_code.data[i + 1] >= '0' && source_code.data[i + 1] <= '9';
+            lexer_is_decimal_digit(source_code.data[i + 1]);
         if (is_float) {
             i += 2;
-            while (i < source_code.count && source_code.data[i] >= '0' &&
-                   source_code.data[i] <= '9') {
+            while (i < source_code.count &&
+                   lexer_is_decimal_digit(source_code.data[i])) {
                 i++;
             }
 
@@ -432,9 +519,7 @@ internal bool lexer_lex_one_token(NerdSource source,
             array_push(lexer->integers, total);
         }
 
-        if (i < source_code.count &&
-            ((source_code.data[i] >= 'a' && source_code.data[i] <= 'z') ||
-             (source_code.data[i] >= 'A' && source_code.data[i] <= 'Z'))) {
+        if (i < source_code.count && lexer_is_number_tail(source_code.data[i])) {
             return error_0103_invalid_number_literal(
                 source,
                 (ErrorSpan){.start = start, .end = i + 1},
@@ -854,9 +939,27 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
             }
 
             usize index = token->offset;
-            while (index < lexer->source.source.count &&
-                   lexer->source.source.data[index] >= '0' &&
-                   lexer->source.source.data[index] <= '9') {
+            u32   base  = 10;
+            if (index + 1 < lexer->source.source.count &&
+                lexer->source.source.data[index] == '0') {
+                if (lexer->source.source.data[index + 1] == 'x') {
+                    base = 16;
+                    index += 2;
+                } else if (lexer->source.source.data[index + 1] == 'b') {
+                    base = 2;
+                    index += 2;
+                } else if (lexer->source.source.data[index + 1] == 'o') {
+                    base = 8;
+                    index += 2;
+                }
+            }
+
+            while (index < lexer->source.source.count) {
+                u32 digit;
+                if (!lexer_digit_value(
+                        lexer->source.source.data[index], base, &digit)) {
+                    break;
+                }
                 index++;
             }
             return index;

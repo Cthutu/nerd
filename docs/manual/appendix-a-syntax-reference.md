@@ -140,6 +140,9 @@ pointer.as([]T, count)
 | Literal form | Type |
 | --- | --- |
 | `123` | `untyped integer`; materialises to `i32` without other context |
+| `0xff` | `untyped integer`; hexadecimal literal |
+| `0b1010` | `untyped integer`; binary literal |
+| `0o755` | `untyped integer`; octal literal |
 | `1.5` | `untyped float`; materialises to `f64` without other context |
 | `yes`, `no` | `bool` |
 | `ptr: ^i32 = nil` | `^i32` |
