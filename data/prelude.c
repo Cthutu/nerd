@@ -15,6 +15,16 @@ typedef uint8_t u8;
 
 DEF_SLICE(u8) string;
 
+static void
+nerd_assert(bool condition, const char* source_path, unsigned line, const char* message)
+{
+    if (condition) {
+        return;
+    }
+    fprintf(stderr, "assertion failed at %s:%u: %s\n", source_path, line, message);
+    exit(127);
+}
+
 static bool string_eq(string lhs, string rhs)
 {
     if (lhs.count != rhs.count) {

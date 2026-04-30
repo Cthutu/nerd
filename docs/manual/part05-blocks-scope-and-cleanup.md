@@ -69,7 +69,7 @@ main :: fn () {
 ```
 
 The condition must have type `bool`. If the condition is false, the program
-prints an assertion failure with the source location and stops.
+prints an assertion failure with the source location and exits with status 127.
 
 An assertion can include a string literal message:
 

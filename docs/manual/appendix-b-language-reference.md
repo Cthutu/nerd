@@ -47,8 +47,8 @@ intended exit code.
 ## Control Flow
 
 - `return` exits the current function.
-- `assert` checks a `bool` condition at runtime and stops the program if it is
-  false.
+- `assert` checks a `bool` condition at runtime and exits with status 127 if it
+  is false.
 - `break` exits a loop or expression block.
 - `continue` resumes a loop.
 - Labels make nested targets explicit.

@@ -115,6 +115,23 @@ def headers_for_source(src: Path) -> list[Path]:
     return sorted(set(headers))
 
 
+def embedded_files_for_source(src: Path) -> list[Path]:
+    """Return files referenced by C23 #embed directives in one source."""
+    if src.suffix != ".c" or not src.exists():
+        return []
+
+    deps: list[Path] = []
+    text = src.read_text(encoding="utf-8", errors="ignore")
+    for match in re.finditer(r'^\s*#\s*embed\s+"([^"]+)"', text, re.MULTILINE):
+        dep = (src.parent / match.group(1)).resolve()
+        try:
+            dep = dep.relative_to(ROOT)
+        except ValueError:
+            continue
+        deps.append(ROOT / dep)
+    return deps
+
+
 def obj_path(src: Path) -> Path:
     relative = src.relative_to(SRC_DIR)
     return (OBJ_DIR / relative).with_suffix(".o")
@@ -517,7 +534,10 @@ def main(argv: list[str] | None = None) -> None:
             module_define_cache[module_dir] = defines
         defines = module_define_cache[module_dir]
         extra_flags_by_source[src] = [f"-D{define}" for define in defines]
-        header_deps_by_source[src] = headers_for_source(src)
+        header_deps_by_source[src] = [
+            *headers_for_source(src),
+            *embedded_files_for_source(src),
+        ]
 
     for project in projects:
         root_src = SRC_DIR / f"{project}.c"

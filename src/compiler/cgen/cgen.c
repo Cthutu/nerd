@@ -691,9 +691,9 @@ void cgen_add_return(CGen* cgen, const IrInstruction* instr)
 void cgen_add_assert(CGen* cgen, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
-    cgen_add(cgen, "if (!(");
+    cgen_add(cgen, "nerd_assert(");
     cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
-    cgen_add(cgen, ")) { fprintf(stderr, \"assertion failed at %s:%u: %s\\n\", ");
+    cgen_add(cgen, ", ");
     cgen_add_c_string_literal(cgen, cgen->lexer->source.source_path);
     arena_format(&cgen->arena, ", %u, ", (u32)instr->rvalue[1].value.integer);
     if (instr->lvalue.kind == IR_VALUE_STRING) {
@@ -702,7 +702,7 @@ void cgen_add_assert(CGen* cgen, const IrInstruction* instr)
     } else {
         cgen_add(cgen, "\"assertion failed\"");
     }
-    cgen_addn(cgen, "); abort(); }");
+    cgen_addn(cgen, ");");
 }
 
 //------------------------------------------------------------------------------

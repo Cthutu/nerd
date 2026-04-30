@@ -19,8 +19,8 @@ end
 void init() {}
 int $main() {
     bool $0 = 2 < 3;
-    if (!($0)) { fprintf(stderr, "assertion failed at %s:%u: %s\n", "tests/language/107-assert-statements.t", 3, "assertion failed"); abort(); }
+    nerd_assert($0, "tests/language/107-assert-statements.t", 3, "assertion failed");
     bool $1 = 4 == 4;
-    if (!($1)) { fprintf(stderr, "assertion failed at %s:%u: %s\n", "tests/language/107-assert-statements.t", 4, "math still works"); abort(); }
+    nerd_assert($1, "tests/language/107-assert-statements.t", 4, "math still works");
     return 0;
 }
