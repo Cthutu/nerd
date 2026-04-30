@@ -110,6 +110,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Return");
     case AK_Defer:
         return s("Defer");
+    case AK_Assert:
+        return s("Assert");
     case AK_ReturnExpr:
         return s("ReturnExpr");
     case AK_BreakExpr:
@@ -345,11 +347,20 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_Return:
         case AK_Defer:
+        case AK_Assert:
         case AK_ReturnExpr:
-            row[3] = table_cell_string(
-                node->a == U32_MAX
-                    ? s("expr=<none>")
-                    : string_format(&temp_arena, "expr=%u", node->a));
+            if (node->kind == AK_Assert) {
+                row[3] = table_cell_string(
+                    string_format(&temp_arena,
+                                  "condition=%u message=%u",
+                                  node->a,
+                                  node->b));
+            } else {
+                row[3] = table_cell_string(
+                    node->a == U32_MAX
+                        ? s("expr=<none>")
+                        : string_format(&temp_arena, "expr=%u", node->a));
+            }
             break;
         case AK_Block:
             row[3] = table_cell_string(

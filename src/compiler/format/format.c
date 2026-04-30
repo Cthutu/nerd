@@ -1472,12 +1472,18 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Return:
     case CK_ReturnExpr:
     case CK_Defer:
+    case CK_Assert:
     case CK_Break:
     case CK_BreakExpr:
     case CK_Continue:
     case CK_ContinueExpr:
         if (node->kind == CK_Defer) {
             return format_node_end_token_index(cst, lexer, node->a);
+        }
+        if (node->kind == CK_Assert) {
+            return node->b == U32_MAX
+                       ? format_node_end_token_index(cst, lexer, node->a)
+                       : format_node_end_token_index(cst, lexer, node->b);
         }
         return node->a == U32_MAX
                    ? (node->b == U32_MAX ? node->token_index
@@ -2787,6 +2793,18 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 sb_append_char(sb, '\n');
             }
         }
+        return;
+    }
+
+    if (stmt->kind == CK_Assert) {
+        sb_append_cstr(sb, "assert ");
+        format_emit_expr_with_indent(sb, cst, lexer, stmt->a, 0, indent_level);
+        if (stmt->b != U32_MAX) {
+            sb_append_cstr(sb, ", ");
+            format_emit_expr_with_indent(
+                sb, cst, lexer, stmt->b, 0, indent_level);
+        }
+        sb_append_char(sb, '\n');
         return;
     }
 

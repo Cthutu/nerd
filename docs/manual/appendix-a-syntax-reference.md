@@ -69,6 +69,8 @@ fn (Type, Type) -> ReturnType
 ```nerd
 return
 return expr
+assert expr
+assert expr, "message"
 break
 break expr
 break $label

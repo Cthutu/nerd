@@ -46,6 +46,7 @@ typedef enum : u8 {
     IR_OP_STRING_START,
     IR_OP_STRING_APPEND,
     IR_OP_STRING_FINISH,
+    IR_OP_ASSERT,
     IR_OP_BRANCH_FALSE,
     IR_OP_JUMP,
     IR_OP_LABEL,

@@ -3455,6 +3455,43 @@ internal bool cst_parse_block_statement(CstParseState* state)
         return true;
     }
 
+    if (cst_current_token(state).kind == TK_assert) {
+        cst_advance(state);
+        u32 condition = 0;
+        u32 message   = U32_MAX;
+        if (!cst_parse_expr_bp(state, 0, &condition)) {
+            return false;
+        }
+        if (cst_current_token(state).kind == TK_Comma) {
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_String) {
+                return false;
+            }
+            u32 string_index = cst_current_string_index(state);
+            if (string_index == CST_NO_VALUE) {
+                return false;
+            }
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_StringLiteral,
+                                   .token_index = state->token_index,
+                                   .a           = string_index,
+                               },
+                               &message)) {
+                return false;
+            }
+            cst_advance(state);
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_Assert,
+                                 .token_index = token_index,
+                                 .a           = condition,
+                                 .b           = message,
+                             },
+                             NULL);
+    }
+
     if (cst_current_token(state).kind == TK_break ||
         cst_current_token(state).kind == TK_continue) {
         CstKind kind =
@@ -4458,6 +4495,7 @@ bool cst_node_is_block_statement(const CstNode* node)
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_For || node->kind == CK_Defer ||
+           node->kind == CK_Assert ||
            node->kind == CK_Break || node->kind == CK_Continue ||
            node->kind == CK_Variable || node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||

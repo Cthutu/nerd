@@ -2392,6 +2392,66 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return true;
     }
 
+    if (state->token.kind == TK_assert) {
+        u32 assert_token_index = state->token.token_index;
+        u32 condition_node     = 0;
+        u32 message_node       = U32_MAX;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind);
+        }
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        if (!ast_parse_expr(state, &condition_node)) {
+            state->allow_statement_boundary = previous_boundary;
+            return false;
+        }
+        state->allow_statement_boundary = previous_boundary;
+
+        bool has_message = state->token.kind == TK_Comma;
+        if (!has_message && ast_peek_kind_at(state, 0) == TK_Comma) {
+            if (!ast_expect_token(state, TK_Comma)) {
+                return false;
+            }
+            has_message = true;
+        }
+        if (has_message) {
+            while (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+            }
+            if (state->token.kind != TK_String) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_String,
+                    state->token.kind);
+            }
+            AstToken message_token = state->token;
+            if (!ast_emit_node(state,
+                               (AstNode){
+                                   .kind        = AK_StringLiteral,
+                                   .token_index = message_token.token_index,
+                                   .a = message_token.value.string_index,
+                               },
+                               &message_node)) {
+                return false;
+            }
+        }
+
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_Assert,
+                                 .token_index = assert_token_index,
+                                 .a           = condition_node,
+                                 .b           = message_node,
+                             },
+                             NULL);
+    }
+
     if (state->token.kind == TK_break || state->token.kind == TK_continue) {
         AstKind kind = state->token.kind == TK_break ? AK_Break : AK_Continue;
         u32     token_index = state->token.token_index;

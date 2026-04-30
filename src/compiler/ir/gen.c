@@ -659,6 +659,24 @@ void ir_add_return(Ir* ir, IrValue rvalue, u32 rvalue_type)
                });
 }
 
+void ir_add_assert(Ir*     ir,
+                   IrValue condition,
+                   u32     condition_type,
+                   u32     message,
+                   u32     line)
+{
+    condition.type = condition_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ASSERT,
+                   .lvalue = {.kind          = IR_VALUE_STRING,
+                              .value.integer = message},
+                   .rvalue = {condition,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = line}},
+               });
+}
+
 void ir_add_branch_false(Ir*     ir,
                          IrValue condition,
                          u32     condition_type,
@@ -4290,6 +4308,22 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
 
     if (node->kind == AK_Defer) {
         array_push(defers->statements, node->a);
+        return IR_STMT_FALLTHROUGH;
+    }
+
+    if (node->kind == AK_Assert) {
+        IrValue condition = ir_lower_node(
+            lex, ast, sema, node->a, loop, node_values, next_value_index, ir);
+        u32 message = node->b == U32_MAX
+                          ? ir_add_string_literal(ir, s("assertion failed"))
+                          : ir_add_string_literal(
+                                ir, ast_get_string(lex, &ast->nodes[node->b]));
+        u32 line = 0;
+        u32 col  = 0;
+        lex_offset_to_line_col(
+            lex->source, lex->tokens[node->token_index].offset, &line, &col);
+        ir_add_assert(
+            ir, condition, ir_builtin_type(sema, STK_Bool), message, line + 1);
         return IR_STMT_FALLTHROUGH;
     }
 

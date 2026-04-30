@@ -74,6 +74,7 @@ bool ast_node_is_block_statement(const AstNode* node)
     return node->kind == AK_Block || node->kind == AK_For ||
            node->kind == AK_Break || node->kind == AK_Continue ||
            node->kind == AK_Return || node->kind == AK_Defer ||
+           node->kind == AK_Assert ||
            node->kind == AK_Statement || node->kind == AK_Bind ||
            node->kind == AK_Variable || node->kind == AK_DestructureBind ||
            node->kind == AK_DestructureVariable ||

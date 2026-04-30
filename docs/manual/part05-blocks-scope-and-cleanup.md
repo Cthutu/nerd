@@ -57,6 +57,30 @@ main :: fn () -> i32 {
 
 Use labels when a `break` target would otherwise be unclear.
 
+## `assert`
+
+`assert` checks that a condition is true at runtime:
+
+```nerd
+main :: fn () {
+    value := 42
+    assert value > 0  -- fail if value is not positive
+}
+```
+
+The condition must have type `bool`. If the condition is false, the program
+prints an assertion failure with the source location and stops.
+
+An assertion can include a string literal message:
+
+```nerd
+assert value < 100, "value must stay below 100"  -- print message on failure
+```
+
+Use assertions for rules that should always hold if the program is correct.
+They are not a substitute for normal input validation or recoverable error
+handling.
+
 ## `defer`
 
 `defer` schedules a statement to run when the current scope exits.

@@ -6483,6 +6483,15 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
+        if (stmt->kind == AK_Assert) {
+            u32 ignored = sema_no_type();
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, i, sema_no_type(), &ignored)) {
+                return false;
+            }
+            continue;
+        }
+
         if (stmt->kind == AK_Statement) {
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
@@ -8352,6 +8361,36 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->a, sema_no_type(), &ignored)) {
                 return false;
+            }
+            type_index = sema_builtin_type(sema, STK_Void);
+        }
+        break;
+
+    case AK_Assert:
+        {
+            u32 condition_type = sema_no_type();
+            u32 bool_type      = sema_builtin_type(sema, STK_Bool);
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, node->a, bool_type, &condition_type)) {
+                return false;
+            }
+            if (condition_type != bool_type) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->a]),
+                    sema_type_name(lexer, sema, &temp_arena, bool_type),
+                    sema_type_name(lexer, sema, &temp_arena, condition_type));
+            }
+            if (node->b != U32_MAX &&
+                ast->nodes[node->b].kind != AK_StringLiteral) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[node->b]),
+                    s("string literal"),
+                    sema_type_name(lexer,
+                                   sema,
+                                   &temp_arena,
+                                   sema->node_type_indices[node->b]));
             }
             type_index = sema_builtin_type(sema, STK_Void);
         }

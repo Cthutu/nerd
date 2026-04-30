@@ -172,18 +172,6 @@ formatter, LSP, or testing surfaces is knowingly behind.
   practical.
 - Keep emitted literals semantically equivalent to the original source.
 
-### Assertion Statement
-
-- Add an `assert` keyword with the form
-  `assert <condition> [, "<message string>"]`.
-- Require the condition to be boolean.
-- Keep the optional message restricted to a string literal at first, unless a
-  broader expression form is deliberately designed.
-- Define lowering/runtime behaviour for failed assertions, including source
-  location reporting.
-- Cover valid and invalid forms with parser, semantic, language, error,
-  formatter, LSP/editor, and manual updates.
-
 ### Formatter And LSP Follow-through
 
 - Keep extending formatter support as syntax lands.
