@@ -32,3 +32,18 @@ pub split :: fn (s: string, sep: string) -> [..]string {
     parts.push(s[start ..])
     return parts
 }
+
+pub trim_whitespace :: fn (s: string) -> string {
+    start: usize = 0
+    end: usize = s.count
+
+    for start < end && (s.data[start] == ' ' || s.data[start] == '\t') {
+        start += 1
+    }
+
+    for end > start && (s.data[end - 1] == ' ' || s.data[end - 1] == '\t') {
+        end -= 1
+    }
+
+    return s[start .. end]
+}
