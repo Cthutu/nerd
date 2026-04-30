@@ -32,6 +32,7 @@ typedef enum : u8 {
     IR_OP_TUPLE_FIELD,
     IR_OP_ARRAY,
     IR_OP_SLICE,
+    IR_OP_SIZE,
     IR_OP_FIELD,
     IR_OP_STORE_FIELD,
     IR_OP_INDEX,

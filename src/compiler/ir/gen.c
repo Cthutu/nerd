@@ -469,6 +469,19 @@ void ir_add_slice(Ir*     ir,
         });
 }
 
+void ir_add_size(Ir* ir, IrValue lvalue, u32 lvalue_type, u32 source_type)
+{
+    lvalue.type = lvalue_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_SIZE,
+                   .lvalue = lvalue,
+                   .rvalue = {{.kind          = IR_VALUE_INTEGER,
+                               .value.integer = source_type},
+                              {0}},
+               });
+}
+
 void ir_add_dynarray_op(Ir*                      ir,
                         IrOperation              op,
                         IrDynamicArrayTargetKind target_kind,
@@ -1275,6 +1288,22 @@ internal u32 ir_node_type_index(const Ast*  ast,
 
     if (node->kind == AK_InterpPartExpr || node->kind == AK_Expression) {
         return ir_node_type_index(ast, sema, node->a);
+    }
+
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        return ir_builtin_type(sema, STK_UntypedInteger);
+    case AK_FloatLiteral:
+        return ir_builtin_type(sema, STK_UntypedFloat);
+    case AK_BoolLiteral:
+        return ir_builtin_type(sema, STK_Bool);
+    case AK_NilLiteral:
+        return ir_builtin_type(sema, STK_Nil);
+    case AK_StringLiteral:
+    case AK_StringConcat:
+        return ir_builtin_type(sema, STK_String);
+    default:
+        break;
     }
 
     if (node->kind == AK_SymbolRef) {
@@ -3102,6 +3131,30 @@ internal IrValue ir_lower_node(const Lexer* lex,
     case AK_Field:
         {
             u32 type_index = ir_node_type_index(ast, sema, node_index);
+            string field_name = lex_symbol(lex, node->b);
+            if (string_eq(field_name, s("size"))) {
+                u32 source_type = ir_node_type_index(ast, sema, node->a);
+                if (source_type == sema_no_type()) {
+                    IrValue source = ir_lower_node(lex,
+                                                   ast,
+                                                   sema,
+                                                   node->a,
+                                                   loop,
+                                                   node_values,
+                                                   next_value_index,
+                                                   ir);
+                    source_type = source.type;
+                }
+                source_type = sema_materialise_type(sema, source_type);
+                IrValue value = {
+                    .kind          = IR_VALUE_VARIABLE,
+                    .type          = type_index,
+                    .value.integer = (i64)(*next_value_index)++,
+                };
+                ir_add_size(ir, value, type_index, source_type);
+                node_values[node_index] = value;
+                return value;
+            }
             u32 variant    = ir_enum_variant_index(sema, type_index, node->b);
             if (variant != U32_MAX) {
                 IrValue value = {
@@ -3133,7 +3186,6 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 target_type = target.type;
             }
             if (target_type != sema_no_type()) {
-                string field_name = lex_symbol(lex, node->b);
                 if (string_eq(field_name, s("data")) &&
                     (sema->types[target_type].kind == STK_String ||
                      sema->types[target_type].kind == STK_Slice ||

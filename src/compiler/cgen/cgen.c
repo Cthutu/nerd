@@ -1007,6 +1007,31 @@ void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "};");
 }
 
+void cgen_add_size(CGen* cgen, const IrInstruction* instr)
+{
+    u32 source_type = (u32)instr->rvalue[0].value.integer;
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = ");
+    if (source_type == sema_no_type()) {
+        cgen_add(cgen, "0");
+    } else {
+        const SemaType* type = &cgen->ir->types[source_type];
+        if (type->kind == STK_Void || type->kind == STK_Nil) {
+            cgen_add(cgen, "0");
+        } else if (type->kind == STK_Function) {
+            cgen_add(cgen, "sizeof(void*)");
+        } else if (type->kind == STK_Module) {
+            error_ice("Module values do not have a runtime size");
+        } else {
+            cgen_add(cgen, "sizeof(");
+            cgen_add(cgen, cgen_c_type(cgen->ir, source_type));
+            cgen_add(cgen, ")");
+        }
+    }
+    cgen_addn(cgen, ";");
+}
+
 void cgen_add_field(CGen* cgen, const Lexer* lexer, const IrInstruction* instr)
 {
     cgen_start_line(cgen);
@@ -1987,6 +2012,9 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_SLICE:
             cgen_add_slice(cgen, instr);
+            break;
+        case IR_OP_SIZE:
+            cgen_add_size(cgen, instr);
             break;
         case IR_OP_FIELD:
             cgen_add_field(cgen, cgen->lexer, instr);

@@ -114,6 +114,25 @@ Bitwise operators work with matching integer operands:
 | `^`                 | bitwise xor |
 | <code>&#124;</code> | bitwise or  |
 
+## Value Size
+
+Use `.size` to ask for the runtime size of a type or value in bytes. The result
+has type `usize`:
+
+```nerd
+i32_bytes := i32.size    -- size of an i32 value
+ptr_bytes := nil.size    -- nil itself has size 0
+text_bytes := "hi".size  -- size of a string value, not its character count
+```
+
+For fixed arrays, `.size` is the size of the whole array value. For strings,
+slices, and dynamic arrays, `.size` is the size of the value header. Use
+`.count` when you want the number of live elements.
+
+Untyped integer literals use the default materialised integer type for `.size`,
+so `128.size` is the same as `i32.size` unless context gives the literal a
+different concrete type.
+
 ## Casts
 
 A cast is an explicit request to treat a value as another type. Use `.as(Type)`

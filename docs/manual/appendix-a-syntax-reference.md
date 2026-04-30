@@ -135,6 +135,8 @@ enum { Variant Payload(Type) }
 ```nerd
 value.as(Type)
 pointer.as([]T, count)
+value.size
+Type.size
 ```
 
 ## Literals

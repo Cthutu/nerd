@@ -115,6 +115,9 @@ internal void ir_render_type_name(StringBuilder* sb,
     case STK_UntypedFloat:
         sb_append_cstr(sb, "untyped-float");
         break;
+    case STK_Nil:
+        sb_append_cstr(sb, "nil");
+        break;
     case STK_String:
         sb_append_cstr(sb, "string");
         break;
@@ -457,6 +460,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                 }
                 sb_append_char(&sb, ']');
             }
+            break;
+        case IR_OP_SIZE:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = size ");
+            ir_render_type_name(
+                &sb, ir, lexer, (u32)instr->rvalue[0].value.integer);
             break;
         case IR_OP_ENUM:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);

@@ -7970,9 +7970,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Field:
         {
+            string field = lex_symbol(lexer, node->b);
             u32 qualified_type = sema_no_type();
             if (sema_try_resolve_type_symbol(
                     lexer, ast, sema, node->a, &qualified_type)) {
+                if (string_eq(field, s("size"))) {
+                    type_index = sema_builtin_type(sema, STK_Usize);
+                    break;
+                }
                 if (sema->types[qualified_type].kind == STK_Enum) {
                     if (sema_enum_variant_index(
                             sema, qualified_type, node->b) == U32_MAX) {
@@ -8000,6 +8005,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema->types[pointee_type].kind == STK_Union) {
                     field_target_type = pointee_type;
                 }
+            }
+            if (string_eq(field, s("size"))) {
+                if (target_type != sema_no_type() &&
+                    sema->types[target_type].kind == STK_Module) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("runtime-sized value"),
+                        s("module"));
+                }
+                type_index = sema_builtin_type(sema, STK_Usize);
+                break;
             }
             if (field_target_type != sema_no_type() &&
                 (sema->types[field_target_type].kind == STK_Plex ||
@@ -8084,7 +8101,6 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                       "pointer to plex/union"),
                     sema_type_name(lexer, sema, &temp_arena, target_type));
             }
-            string field = lex_symbol(lexer, node->b);
             if (string_eq(field, s("data"))) {
                 u32 item_type = sema->types[target_type].kind == STK_String
                                     ? sema_builtin_type(sema, STK_U8)
