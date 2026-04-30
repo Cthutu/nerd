@@ -271,6 +271,10 @@ bool error_0332_missing_loop_else(NerdSource source,
                                   ErrorSpan  span,
                                   string     type_name);
 bool error_0333_invalid_loop_else(NerdSource source, ErrorSpan span);
+bool error_0334_read_before_assignment(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     symbol,
+                                       ErrorSpan  decl_span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

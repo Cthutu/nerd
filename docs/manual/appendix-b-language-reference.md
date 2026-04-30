@@ -29,7 +29,8 @@ intended exit code.
 
 - `::` creates a constant binding.
 - `=` assigns to an existing mutable target.
-- `undefined` is intentionally uninitialised and should be assigned before use.
+- `undefined` is intentionally uninitialised and must be assigned before it is
+  read.
 - `nil` is available for pointer-like and slice-like values where supported.
 
 ## Type Conversion

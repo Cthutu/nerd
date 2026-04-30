@@ -116,11 +116,9 @@ dereferences.
 The assigned value must match the target's type. Nerd is statically typed, so
 type mismatches are compile-time errors rather than surprises at runtime.
 
-A mutable binding must also have a meaningful value before it is read. The
-compiler's read-before-assignment diagnostics are future work; until then,
-prefer giving a binding an initial value, assigning it before first use, or
-using `undefined` only when you are deliberately choosing to skip default
-initialisation.
+A mutable binding must also have a meaningful value before it is read. A binding
+declared with `undefined` deliberately skips default initialisation, so Nerd
+requires an assignment to that binding before any read.
 
 Assignments are expressions. The expression's value is the value assigned to the
 target:
@@ -191,8 +189,17 @@ are definitely assigned before meaningful use.
 
 Reading an uninitialised value is not meaningful program behaviour. The stored
 bits are whatever happened to be in that storage location, so the result should
-not be treated as a real value of the type. Assign to the binding before any
-read.
+not be treated as a real value of the type. Nerd reports a compile-time error
+when it can see a read of an `undefined` binding before assignment:
+
+```nerd
+main :: fn () -> i32 {
+    value: i32 = undefined  -- storage exists, but no i32 value exists yet
+    return value            -- error: value has not been assigned
+}
+```
+
+Assign to the binding before any read.
 
 ## Choosing A Form
 

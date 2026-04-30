@@ -856,3 +856,39 @@ bool error_0333_invalid_loop_else(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report reading mutable storage before every path has assigned it.
+
+bool error_0334_read_before_assignment(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     symbol,
+                                       ErrorSpan  decl_span)
+{
+    ErrorInfo error = error_init(334,
+                                 source,
+                                 span,
+                                 "Cannot read `" STRINGP
+                                 "` before it has been assigned",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is read here",
+                        STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        decl_span,
+                        "`" STRINGP "` is declared with `undefined` here",
+                        STRINGV(symbol));
+    error_add_note(
+        &error,
+        "Variables declared with `undefined` must be assigned before they are "
+        "read.");
+    error_add_help(&error,
+                   "Assign to `" STRINGP
+                   "` on every path before using its value.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -133,32 +133,6 @@ formatter, LSP, or testing surfaces is knowingly behind.
 - Keep `docs/stdlib.md` as a separate standard-library document; the language
   manual should reference the standard library only for small examples.
 
-### `.size` Operator
-
-- Add a `.size` postfix operator for value-size queries.
-- Define `.size` as Nerd's own `sizeof`-style operation, based on Nerd type and
-  layout rules rather than current C backend behaviour.
-- Allow `.size` on any expression whose type is known.
-- Return type should be `usize`.
-- Treat `void.size` as `0`.
-- Treat untyped integers as materialised runtime integers for `.size`, so
-  `128.size` follows the size of the default materialised integer type.
-- For arrays, return the full aggregate size in bytes, not element count.
-- For slices and strings, return the size of the slice/string header, not
-  `count * element_size`.
-- For dynamic arrays `[..]T`, keep `.count` as the live element count and
-  `.capacity` as the reserved element capacity.
-- For dynamic arrays `[..]T`, make `.size` return the size of the dynamic-array
-  value/header itself, not `count * element_size`, not `capacity * element_size`,
-  and not header-plus-owned-storage bytes.
-- If total owned storage size is needed later for dynamic arrays, add a distinct
-  property or method rather than overloading `.size`.
-- For `nil`, return `0` while it remains `nil`-typed; once coerced to a pointer
-  or slice, `.size` should follow the target runtime representation.
-- Function values should report pointer size.
-- Keep module values invalid for `.size` unless a concrete runtime
-  representation is later introduced and specified.
-
 ### String Surface Follow-through
 
 - Support top-level interpolated string bindings once the runtime init model is
@@ -183,10 +157,10 @@ formatter, LSP, or testing surfaces is knowingly behind.
 
 ### Definite Assignment Diagnostics
 
-- Add semantic read-before-assignment checks for mutable storage that can be
-  declared without an initial value or with `undefined`.
-- Keep the language rule simple for users: a value must be assigned before it
-  is read, and assignments must match the variable's type.
+- Add semantic read-before-assignment checks for mutable storage explicitly
+  declared with `undefined`.
+- Keep the language rule simple for users: an `undefined` binding must be
+  assigned before it is read, and assignments must match the variable's type.
 - Cover the feature with error tests for invalid reads, plus language tests for
   valid assignment-before-read paths.
 

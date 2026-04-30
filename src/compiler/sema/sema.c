@@ -10470,6 +10470,710 @@ internal void sema_fold_constants(const Lexer* lex, Ast* ast, Sema* sema)
     }
 }
 
+//------------------------------------------------------------------------------
+// Definite assignment validation for function-local mutable storage.
+
+typedef struct {
+    Array(bool) assigned;
+    bool        reachable;
+} SemaAssignState;
+
+internal SemaAssignState sema_assign_state_copy(const SemaAssignState* state)
+{
+    SemaAssignState copy = {.reachable = state->reachable};
+    for (u32 i = 0; i < array_count(state->assigned); ++i) {
+        array_push(copy.assigned, state->assigned[i]);
+    }
+    return copy;
+}
+
+internal void sema_assign_state_done(SemaAssignState* state)
+{
+    array_free(state->assigned);
+    state->assigned  = NULL;
+    state->reachable = false;
+}
+
+internal void sema_assign_state_merge_reachable(SemaAssignState*       out,
+                                                const SemaAssignState* branch,
+                                                bool*                  any)
+{
+    if (!branch->reachable) {
+        return;
+    }
+    if (!*any) {
+        for (u32 i = 0; i < array_count(out->assigned); ++i) {
+            out->assigned[i] = branch->assigned[i];
+        }
+        out->reachable = true;
+        *any           = true;
+        return;
+    }
+    for (u32 i = 0; i < array_count(out->assigned); ++i) {
+        out->assigned[i] = out->assigned[i] && branch->assigned[i];
+    }
+}
+
+internal bool sema_local_starts_unassigned(const Ast*        ast,
+                                           const SemaLocal*  local)
+{
+    if (local->kind != SLK_Variable ||
+        local->decl_node_index == sema_no_decl() ||
+        local->decl_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* decl = &ast->nodes[local->decl_node_index];
+    if (decl->kind != AK_Variable && decl->kind != AK_DestructureVariable) {
+        return false;
+    }
+
+    const AstNode* payload = &ast->nodes[decl->b];
+    if (payload->kind == AK_AnnotatedValue) {
+        payload = &ast->nodes[payload->b];
+    }
+    return payload->kind == AK_Undefined;
+}
+
+internal bool sema_validate_assignment_node(const Lexer*      lexer,
+                                            const Ast*        ast,
+                                            const Sema*       sema,
+                                            u32               node_index,
+                                            SemaAssignState*  state);
+
+internal bool sema_validate_assignment_pattern(const Lexer*     lexer,
+                                               const Ast*       ast,
+                                               const Sema*      sema,
+                                               u32              pattern_index,
+                                               SemaAssignState* state,
+                                               bool             mark_assigned)
+{
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    u32 local_index = pattern_index < array_count(sema->pattern_local_indices)
+                          ? sema->pattern_local_indices[pattern_index]
+                          : sema_no_local();
+    if (local_index != sema_no_local() &&
+        local_index < array_count(state->assigned)) {
+        if (mark_assigned) {
+            state->assigned[local_index] = true;
+        }
+        return true;
+    }
+
+    switch (pattern->kind) {
+    case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
+        return sema_validate_assignment_node(
+            lexer, ast, sema, pattern->a, state);
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return sema_validate_assignment_node(
+                   lexer, ast, sema, pattern->a, state) &&
+               sema_validate_assignment_node(
+                   lexer, ast, sema, pattern->b, state);
+    case APK_Bind:
+        return pattern->b == U32_MAX ||
+               sema_validate_assignment_pattern(
+                   lexer, ast, sema, pattern->b, state, mark_assigned);
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_validate_assignment_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->pattern_items[pattern->a + i],
+                    state,
+                    mark_assigned)) {
+                return false;
+            }
+        }
+        return true;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (!sema_validate_assignment_pattern(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->pattern_fields[pattern->a + i].pattern_index,
+                    state,
+                    mark_assigned)) {
+                return false;
+            }
+        }
+        return true;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                if (!sema_validate_assignment_pattern(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern + i],
+                        state,
+                        mark_assigned)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    case APK_Ignore:
+        return true;
+    }
+    return true;
+}
+
+internal bool sema_validate_assignment_read(const Lexer*     lexer,
+                                            const Ast*       ast,
+                                            const Sema*      sema,
+                                            u32              node_index,
+                                            SemaAssignState* state)
+{
+    u32 local_index = node_index < array_count(sema->node_local_indices)
+                          ? sema->node_local_indices[node_index]
+                          : sema_no_local();
+    if (local_index == sema_no_local() ||
+        local_index >= array_count(state->assigned) ||
+        state->assigned[local_index]) {
+        return true;
+    }
+
+    const SemaLocal* local = &sema->locals[local_index];
+    if (!sema_local_is_runtime_value(local)) {
+        return true;
+    }
+
+    return error_0334_read_before_assignment(
+        lexer->source,
+        sema_node_span(lexer, &ast->nodes[node_index]),
+        lex_symbol(lexer, local->symbol_handle),
+        sema_local_span(lexer, ast, local));
+}
+
+internal bool sema_validate_assignment_block(const Lexer*     lexer,
+                                             const Ast*       ast,
+                                             const Sema*      sema,
+                                             u32              first_node,
+                                             u32              end_node,
+                                             SemaAssignState* state)
+{
+    for (u32 i = first_node; i < end_node && state->reachable; ++i) {
+        if (!ast_node_is_block_statement(&ast->nodes[i])) {
+            continue;
+        }
+        if (!sema_validate_assignment_node(lexer, ast, sema, i, state)) {
+            return false;
+        }
+        i = ast_block_statement_end_exclusive(ast, i) - 1;
+    }
+    return true;
+}
+
+internal bool sema_validate_assignment_node(const Lexer*     lexer,
+                                            const Ast*       ast,
+                                            const Sema*      sema,
+                                            u32              node_index,
+                                            SemaAssignState* state)
+{
+    if (!state->reachable || node_index >= array_count(ast->nodes)) {
+        return true;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+    case AK_FloatLiteral:
+    case AK_StringLiteral:
+    case AK_BoolLiteral:
+    case AK_NilLiteral:
+    case AK_EnumVariant:
+    case AK_ZeroInit:
+    case AK_Undefined:
+    case AK_FnDef:
+    case AK_FnStart:
+    case AK_FnEnd:
+    case AK_FfiDef:
+    case AK_ModRef:
+    case AK_Use:
+        return true;
+
+    case AK_SymbolRef:
+        if (node_index < array_count(sema->node_is_type_expr) &&
+            sema->node_is_type_expr[node_index]) {
+            return true;
+        }
+        return sema_validate_assignment_read(
+            lexer, ast, sema, node_index, state);
+
+    case AK_Expression:
+    case AK_Statement:
+    case AK_InterpPartExpr:
+    case AK_IntegerNegate:
+    case AK_LogicalNot:
+    case AK_Deref:
+        return sema_validate_assignment_node(
+            lexer, ast, sema, node->a, state);
+
+    case AK_AddressOf:
+        {
+            const AstNode* target = &ast->nodes[node->a];
+            if (target->kind == AK_SymbolRef) {
+                return true;
+            }
+            return sema_validate_assignment_node(
+                lexer, ast, sema, node->a, state);
+        }
+
+    case AK_Field:
+        if (string_eq(lex_symbol(lexer, node->b), s("size"))) {
+            return true;
+        }
+        return sema_validate_assignment_node(
+            lexer, ast, sema, node->a, state);
+
+    case AK_TupleField:
+        return sema_validate_assignment_node(
+            lexer, ast, sema, node->a, state);
+
+    case AK_Index:
+    case AK_TypeArray:
+    case AK_StringConcat:
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
+    case AK_RangeExclusive:
+    case AK_RangeInclusive:
+        return sema_validate_assignment_node(
+                   lexer, ast, sema, node->a, state) &&
+               sema_validate_assignment_node(
+                   lexer, ast, sema, node->b, state);
+
+    case AK_Cast:
+        {
+            const AstCastInfo* cast = sema_cast_info(ast, node);
+            return sema_validate_assignment_node(
+                       lexer, ast, sema, node->a, state) &&
+                   (cast->extra_node_index == U32_MAX ||
+                    sema_validate_assignment_node(lexer,
+                                                  ast,
+                                                  sema,
+                                                  cast->extra_node_index,
+                                                  state));
+        }
+
+    case AK_Call:
+        {
+            if (!sema_validate_assignment_node(
+                    lexer, ast, sema, node->a, state)) {
+                return false;
+            }
+            const AstCallInfo* call = &ast->calls[node->b];
+            for (u32 i = 0; i < call->arg_count; ++i) {
+                if (!sema_validate_assignment_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->call_args[call->first_arg + i],
+                        state)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    case AK_Tuple:
+    case AK_Array:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (!sema_validate_assignment_node(
+                    lexer, ast, sema, ast->tuple_items[node->a + i], state)) {
+                return false;
+            }
+        }
+        return true;
+
+    case AK_Plex:
+    case AK_PlexUpdate:
+        {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            if (node->kind == AK_PlexUpdate &&
+                !sema_validate_assignment_node(lexer,
+                                               ast,
+                                               sema,
+                                               literal->target_node_index,
+                                               state)) {
+                return false;
+            }
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                if (!sema_validate_assignment_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->plex_literal_fields[literal->first_field + i]
+                            .value_node_index,
+                        state)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    case AK_Slice:
+        {
+            const AstSliceInfo* slice = &ast->slices[node->a];
+            if (!sema_validate_assignment_node(
+                    lexer, ast, sema, slice->target_node_index, state)) {
+                return false;
+            }
+            if (slice->start_node_index != U32_MAX &&
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, slice->start_node_index, state)) {
+                return false;
+            }
+            return slice->end_node_index == U32_MAX ||
+                   sema_validate_assignment_node(
+                       lexer, ast, sema, slice->end_node_index, state);
+        }
+
+    case AK_InterpolatedString:
+        for (u32 i = node->a; i < node->b; ++i) {
+            if (!sema_validate_assignment_node(lexer, ast, sema, i, state)) {
+                return false;
+            }
+        }
+        return true;
+
+    case AK_Variable:
+        {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index == sema_no_local()) {
+                return true;
+            }
+            const SemaLocal* local = &sema->locals[local_index];
+            if (local->value_node_index != sema_no_decl() &&
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, local->value_node_index, state)) {
+                return false;
+            }
+            state->assigned[local_index] =
+                !sema_local_starts_unassigned(ast, local);
+            return true;
+        }
+
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+        if (!sema_validate_assignment_node(
+                lexer, ast, sema, node->b, state)) {
+            return false;
+        }
+        return sema_validate_assignment_pattern(
+            lexer,
+            ast,
+            sema,
+            node->a,
+            state,
+            node->kind == AK_DestructureVariable);
+
+    case AK_DestructureAssign:
+        if (!sema_validate_assignment_node(
+                lexer, ast, sema, node->b, state)) {
+            return false;
+        }
+        return sema_validate_assignment_pattern(
+            lexer, ast, sema, node->a, state, true);
+
+    case AK_Assign:
+        {
+            if (!sema_validate_assignment_node(
+                    lexer, ast, sema, node->b, state)) {
+                return false;
+            }
+            const AstNode* target = &ast->nodes[node->a];
+            if (target->kind == AK_SymbolRef) {
+                u32 local_index = sema->node_local_indices[node_index];
+                if (local_index != sema_no_local() &&
+                    local_index < array_count(state->assigned)) {
+                    state->assigned[local_index] = true;
+                }
+                return true;
+            }
+            return sema_validate_assignment_node(
+                lexer, ast, sema, node->a, state);
+        }
+
+    case AK_Block:
+        return sema_validate_assignment_block(
+            lexer, ast, sema, node->a, node->b, state);
+
+    case AK_ExprBlock:
+        {
+            const AstNode* block = &ast->nodes[node->a];
+            ASSERT(block->kind == AK_Block, "Expected expression block");
+            return sema_validate_assignment_block(
+                lexer, ast, sema, block->a, block->b, state);
+        }
+
+    case AK_On:
+        {
+            const AstOnInfo* on = &ast->ons[node->b];
+            if (node->a != U32_MAX &&
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, node->a, state)) {
+                return false;
+            }
+
+            SemaAssignState merged = sema_assign_state_copy(state);
+            merged.reachable       = false;
+            bool any_reachable     = false;
+            bool has_else          = false;
+
+            for (u32 i = 0; i < on->branch_count; ++i) {
+                const AstOnBranch* branch =
+                    &ast->on_branches[on->first_branch + i];
+                if (branch->flags & AOBF_Else) {
+                    has_else = true;
+                }
+                SemaAssignState branch_state = sema_assign_state_copy(state);
+                if (!(branch->flags & AOBF_Else)) {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        if (!sema_validate_assignment_pattern(
+                                lexer,
+                                ast,
+                                sema,
+                                ast->pattern_items[branch->pattern_index +
+                                                   pattern],
+                                &branch_state,
+                                true)) {
+                            sema_assign_state_done(&branch_state);
+                            sema_assign_state_done(&merged);
+                            return false;
+                        }
+                    }
+                }
+                if (branch->guard_node_index != U32_MAX &&
+                    !sema_validate_assignment_node(lexer,
+                                                   ast,
+                                                   sema,
+                                                   branch->guard_node_index,
+                                                   &branch_state)) {
+                    sema_assign_state_done(&branch_state);
+                    sema_assign_state_done(&merged);
+                    return false;
+                }
+                if (!sema_validate_assignment_node(lexer,
+                                                   ast,
+                                                   sema,
+                                                   branch->expr_node_index,
+                                                   &branch_state)) {
+                    sema_assign_state_done(&branch_state);
+                    sema_assign_state_done(&merged);
+                    return false;
+                }
+                sema_assign_state_merge_reachable(
+                    &merged, &branch_state, &any_reachable);
+                sema_assign_state_done(&branch_state);
+            }
+
+            if (has_else) {
+                for (u32 i = 0; i < array_count(state->assigned); ++i) {
+                    state->assigned[i] = merged.assigned[i];
+                }
+                state->reachable = any_reachable;
+            }
+            sema_assign_state_done(&merged);
+            return true;
+        }
+
+    case AK_For:
+        {
+            const AstForInfo* for_info = &ast->fors[node->a];
+            for (u32 i = 0; i < for_info->init_count; ++i) {
+                if (!sema_validate_assignment_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->for_items[for_info->first_init + i],
+                        state)) {
+                    return false;
+                }
+            }
+            if (for_info->iterable_node_index != U32_MAX &&
+                !sema_validate_assignment_node(lexer,
+                                               ast,
+                                               sema,
+                                               for_info->iterable_node_index,
+                                               state)) {
+                return false;
+            }
+            if (for_info->condition_node_index != U32_MAX &&
+                !sema_validate_assignment_node(lexer,
+                                               ast,
+                                               sema,
+                                               for_info->condition_node_index,
+                                               state)) {
+                return false;
+            }
+            SemaAssignState loop_state = sema_assign_state_copy(state);
+            u32             for_scope  = sema->node_scope_indices[node_index];
+            if (for_info->iterable_node_index != U32_MAX &&
+                for_scope != sema_no_scope()) {
+                u32 item_local =
+                    sema_lookup_local(sema, for_scope, for_info->item_symbol);
+                if (item_local != sema_no_local() &&
+                    item_local < array_count(loop_state.assigned)) {
+                    loop_state.assigned[item_local] = true;
+                }
+            }
+            const AstNode* body = &ast->nodes[node->b];
+            ASSERT(body->kind == AK_Block, "Expected for body block");
+            if (!sema_validate_assignment_block(
+                    lexer, ast, sema, body->a, body->b, &loop_state)) {
+                sema_assign_state_done(&loop_state);
+                return false;
+            }
+            for (u32 i = 0; i < for_info->update_count; ++i) {
+                if (!sema_validate_assignment_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->for_items[for_info->first_update + i],
+                        &loop_state)) {
+                    sema_assign_state_done(&loop_state);
+                    return false;
+                }
+            }
+            sema_assign_state_done(&loop_state);
+            if (for_info->else_block_index != U32_MAX) {
+                const AstNode* else_block =
+                    &ast->nodes[for_info->else_block_index];
+                SemaAssignState else_state = sema_assign_state_copy(state);
+                if (!sema_validate_assignment_block(lexer,
+                                                    ast,
+                                                    sema,
+                                                    else_block->a,
+                                                    else_block->b,
+                                                    &else_state)) {
+                    sema_assign_state_done(&else_state);
+                    return false;
+                }
+                sema_assign_state_done(&else_state);
+            }
+            return true;
+        }
+
+    case AK_Return:
+    case AK_ReturnExpr:
+        if (node->a != U32_MAX &&
+            !sema_validate_assignment_node(
+                lexer, ast, sema, node->a, state)) {
+            return false;
+        }
+        state->reachable = false;
+        return true;
+
+    case AK_Break:
+    case AK_BreakExpr:
+        if (node->a != U32_MAX &&
+            !sema_validate_assignment_node(
+                lexer, ast, sema, node->a, state)) {
+            return false;
+        }
+        state->reachable = false;
+        return true;
+
+    case AK_Continue:
+    case AK_ContinueExpr:
+        state->reachable = false;
+        return true;
+
+    case AK_Defer:
+        return sema_validate_assignment_node(
+            lexer, ast, sema, node->a, state);
+
+    case AK_Assert:
+        return sema_validate_assignment_node(
+            lexer, ast, sema, node->a, state);
+
+    case AK_TypePointer:
+    case AK_TypeSlice:
+    case AK_TypeDynamicArray:
+    case AK_TypeTuple:
+    case AK_TypeFn:
+    case AK_TypeEnum:
+    case AK_TypePlex:
+    case AK_AnnotatedValue:
+        return true;
+
+    case AK_Bind:
+    case AK_TopOn:
+        return true;
+    }
+    return true;
+}
+
+internal bool sema_validate_definite_assignment_function(const Lexer* lexer,
+                                                         const Ast*   ast,
+                                                         const Sema*  sema,
+                                                         u32 fn_node_index)
+{
+    const AstNode* fn_def = &ast->nodes[fn_node_index];
+    if (fn_def->kind != AK_FnDef || fn_def->b != AFK_Block) {
+        return true;
+    }
+    u32 scope_index = sema->node_scope_indices[fn_node_index];
+    if (scope_index == sema_no_scope()) {
+        return true;
+    }
+
+    SemaAssignState state = {.reachable = true};
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        bool assigned = !sema_local_starts_unassigned(ast, local);
+        if (local->kind == SLK_Param || local->kind == SLK_Binder) {
+            assigned = true;
+        }
+        array_push(state.assigned, assigned);
+    }
+
+    const AstNode* fn_start = &ast->nodes[fn_def->a];
+    bool ok = sema_validate_assignment_block(
+        lexer, ast, sema, fn_def->a + 1, fn_start->b, &state);
+    sema_assign_state_done(&state);
+    return ok;
+}
+
+internal bool sema_validate_definite_assignment(const Lexer* lexer,
+                                                const Ast*   ast,
+                                                const Sema*  sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        if (ast->nodes[i].kind == AK_FnDef &&
+            !sema_validate_definite_assignment_function(lexer, ast, sema, i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool
 sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
@@ -11096,6 +11800,10 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_assign_local_types(lexer, ast, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_validate_definite_assignment(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

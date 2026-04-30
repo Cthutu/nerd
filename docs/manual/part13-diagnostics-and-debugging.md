@@ -51,6 +51,7 @@ Common causes:
 - unknown symbols
 - type mismatches
 - invalid assignment targets
+- reads of `undefined` bindings before assignment
 - invalid `break` or `continue`
 - non-exhaustive value-producing `on`
 - private module members
@@ -91,6 +92,23 @@ Common fixes:
 - use `.as(Type)` when a cast is intended
 - update one branch of an expression so all paths produce the same type
 - use `else` when a value-producing branch must be exhaustive
+
+## Read Before Assignment
+
+`undefined` creates storage without a default value. If you read that binding
+before assigning to it, the compiler reports a semantic error.
+
+```nerd
+main :: fn () -> i32 {
+    value: i32 = undefined  -- no meaningful i32 value yet
+    value = 42              -- assignment makes value readable
+    return value
+}
+```
+
+When control flow branches, every reachable path to the read must assign the
+binding first. Add an initial value, assign in all branches, or avoid
+`undefined` when the default storage value is acceptable.
 
 ## Control Flow Errors
 
