@@ -102,7 +102,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     FrontEndOptions options = {
         .verbose             = false,
         .release             = false,
-        .require_entry_point = true,
+        .require_entry_point = false,
     };
     bool ok = lsp_front_end_document(
         (NerdSource){
