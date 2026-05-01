@@ -4457,6 +4457,12 @@ internal void sema_collect_node_deps(const Ast*  ast,
                                      u32         node_index,
                                      Sema*       out_sema);
 
+internal void sema_collect_address_deps(const Ast*  ast,
+                                        const Sema* sema,
+                                        u32         owner_decl_index,
+                                        u32         node_index,
+                                        Sema*       out_sema);
+
 internal void sema_collect_pattern_deps(const Ast*  ast,
                                         const Sema* sema,
                                         u32         owner_decl_index,
@@ -4674,6 +4680,9 @@ internal void sema_collect_node_deps(const Ast*  ast,
             return;
         }
     case AK_AddressOf:
+        sema_collect_address_deps(
+            ast, sema, owner_decl_index, node->a, out_sema);
+        return;
     case AK_TypeSlice:
     case AK_TypePointer:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
@@ -4850,6 +4859,48 @@ internal void sema_collect_node_deps(const Ast*  ast,
             return;
         }
     default:
+        return;
+    }
+}
+
+internal void sema_collect_address_deps(const Ast*  ast,
+                                        const Sema* sema,
+                                        u32         owner_decl_index,
+                                        u32         node_index,
+                                        Sema*       out_sema)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        {
+            if (sema->node_is_type_expr[node_index]) {
+                return;
+            }
+            if (sema->node_local_indices[node_index] != sema_no_local()) {
+                return;
+            }
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index == owner_decl_index) {
+                return;
+            }
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, node_index, out_sema);
+            return;
+        }
+    case AK_TupleField:
+    case AK_Field:
+        sema_collect_address_deps(
+            ast, sema, owner_decl_index, node->a, out_sema);
+        return;
+    case AK_Index:
+        sema_collect_address_deps(
+            ast, sema, owner_decl_index, node->a, out_sema);
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->b, out_sema);
+        return;
+    default:
+        sema_collect_node_deps(
+            ast, sema, owner_decl_index, node_index, out_sema);
         return;
     }
 }
@@ -10179,6 +10230,10 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
             !sema_resolve_type_node(
                 lexer, ast, sema, decl->type_node_index, &annotated)) {
             return false;
+        }
+
+        if (annotated != sema_no_type()) {
+            decl->type_index = annotated;
         }
 
         if (decl->value_node_index != sema_no_decl()) {

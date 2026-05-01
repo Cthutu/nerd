@@ -50,10 +50,10 @@ label L4
 return i32:0
 end
 init
-$0 = plex(description: string:"d", tag: string:"a")
-$1 = array[plex{description:string,tag:string}:$0]
-locs$backing = [1]plex{description:string,tag:string}:$1
-$2 = [1]plex{description:string,tag:string}:locs$backing[..]
-locs = []plex{description:string,tag:string}:$2
+$0 = [1]plex{description:string,tag:string}:locs$backing[..]
+locs = []plex{description:string,tag:string}:$0
+$1 = plex(description: string:"d", tag: string:"a")
+$2 = array[plex{description:string,tag:string}:$1]
+locs$backing = [1]plex{description:string,tag:string}:$2
 end
 ¬

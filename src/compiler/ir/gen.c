@@ -5191,6 +5191,31 @@ internal void ir_generate_global_init(const Lexer*    lex,
         }
         ASSERT(array_node->kind == AK_Array,
                "Expected implicit slice backing to come from array literal");
+
+        IrValue slice_value = {
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = decl->type_index,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        ir_add_slice(ir,
+                     slice_value,
+                     decl->type_index,
+                     (IrValue){.kind          = IR_VALUE_SYMBOL,
+                               .type          = backing_type,
+                               .value.integer = backing_symbol},
+                     backing_type,
+                     ir_unset_value(),
+                     sema_no_type(),
+                     ir_unset_value(),
+                     sema_no_type());
+        ir_add_assign(ir,
+                      (IrValue){.kind          = IR_VALUE_SYMBOL,
+                                .type          = decl->type_index,
+                                .value.integer = decl->symbol_handle},
+                      decl->type_index,
+                      slice_value,
+                      decl->type_index);
+
         Array(IrValue) items = NULL;
         for (u32 i = 0; i < array_node->b; ++i) {
             array_push(items,
@@ -5217,30 +5242,6 @@ internal void ir_generate_global_init(const Lexer*    lex,
                       backing_type,
                       backing_value,
                       backing_type);
-
-        IrValue slice_value = {
-            .kind          = IR_VALUE_VARIABLE,
-            .type          = decl->type_index,
-            .value.integer = (i64)(*next_value_index)++,
-        };
-        ir_add_slice(ir,
-                     slice_value,
-                     decl->type_index,
-                     (IrValue){.kind          = IR_VALUE_SYMBOL,
-                               .type          = backing_type,
-                               .value.integer = backing_symbol},
-                     backing_type,
-                     ir_unset_value(),
-                     sema_no_type(),
-                     ir_unset_value(),
-                     sema_no_type());
-        ir_add_assign(ir,
-                      (IrValue){.kind          = IR_VALUE_SYMBOL,
-                                .type          = decl->type_index,
-                                .value.integer = decl->symbol_handle},
-                      decl->type_index,
-                      slice_value,
-                      decl->type_index);
         array_free(node_values);
         return;
     }
