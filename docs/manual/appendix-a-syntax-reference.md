@@ -24,6 +24,9 @@ Name :: enum { Variant Payload(Type) }
 pub name :: value
 pub Name :: Type
 ffi "lib" foreign_name (...) -> Type
+ffi "lib" {
+    foreign_name (...) -> Type
+}
 local_name :: ffi "lib" foreign_name (...) -> Type
 alias :: mod module.path
 use module.path
@@ -143,10 +146,10 @@ Type.size
 
 | Literal form | Type |
 | --- | --- |
-| `123` | `untyped integer`; materialises to `i32` without other context |
-| `0xff` | `untyped integer`; hexadecimal literal |
-| `0b1010` | `untyped integer`; binary literal |
-| `0o755` | `untyped integer`; octal literal |
+| `123`, `1_000_000` | `untyped integer`; materialises to `i32` without other context |
+| `0xff`, `0xff_ff` | `untyped integer`; hexadecimal literal |
+| `0b1010`, `0b1010_0101` | `untyped integer`; binary literal |
+| `0o755`, `0o7_55` | `untyped integer`; octal literal |
 | `1.5` | `untyped float`; materialises to `f64` without other context |
 | `yes`, `no` | `bool` |
 | `ptr: ^i32 = nil` | `^i32` |

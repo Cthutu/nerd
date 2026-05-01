@@ -21,6 +21,19 @@ main :: fn () -> i32 {
 
 Here `abs` is both the Nerd name and the foreign symbol name.
 
+When several functions come from the same library, group them in an FFI block:
+
+```nerd
+ffi "c" {
+    abs (i32) -> i32      -- declares the C function abs
+    strlen (^u8) -> usize -- declares the C function strlen
+}
+```
+
+Each entry inside the block has the same form as the part after the library in a
+direct declaration. FFI block entries do not have separate Nerd binding names;
+the Nerd-visible name is the foreign symbol name.
+
 ## Bound FFI Declarations
 
 Use a binding when the Nerd name should differ from the foreign symbol:

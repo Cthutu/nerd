@@ -16,6 +16,18 @@ This declares `abs` as both:
 - the Nerd-visible name used in source
 - the foreign symbol name emitted for the C linker
 
+Several declarations that use the same library can be grouped in an FFI block:
+
+```nerd
+ffi "c" {
+    abs (i32) -> i32
+    strlen (^u8) -> usize
+}
+```
+
+Entries in a block do not allow local binding names. Use the bound form outside
+the block when the Nerd-visible name should differ from the foreign symbol.
+
 You can also bind the foreign symbol to a different Nerd-visible name:
 
 ```nerd

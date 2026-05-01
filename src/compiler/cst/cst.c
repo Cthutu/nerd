@@ -770,7 +770,7 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
-internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node);
+internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
@@ -2576,6 +2576,9 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             cst_peek_kind_at(state, 1) == TK_LParen) {
             break;
         }
+        if (state->stop_before_ffi_name && token.kind == TK_LBrace) {
+            break;
+        }
 
         if (state->stop_before_block_lbrace && token.kind == TK_LBrace) {
             break;
@@ -3413,7 +3416,7 @@ internal bool cst_parse_block_statement(CstParseState* state)
     u32 token_index = state->token_index;
 
     if (cst_current_token(state).kind == TK_ffi) {
-        return cst_parse_ffi_def(state, NULL);
+        return cst_parse_ffi_def(state, NULL, true);
     }
 
     if (cst_current_token(state).kind == TK_use) {
@@ -3724,7 +3727,7 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_ffi) {
-        return cst_parse_ffi_def(state, out_node);
+        return cst_parse_ffi_def(state, out_node, false);
     }
 
     if (cst_current_token(state).kind == TK_mod) {
@@ -3777,7 +3780,7 @@ internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node)
                          out_node);
 }
 
-internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
+internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
@@ -3789,6 +3792,59 @@ internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node)
     state->stop_before_ffi_name = old_stop_before_ffi_name;
     if (!parsed_library) {
         return false;
+    }
+
+    if (cst_current_token(state).kind == TK_LBrace) {
+        if (!allow_block) {
+            return false;
+        }
+
+        u32 first_ffi_info = (u32)array_count(state->cst.ffi_infos);
+        u32 ffi_info_count = 0;
+        cst_advance(state);
+
+        while (cst_current_token(state).kind != TK_RBrace) {
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            cst_advance(state);
+
+            u32 signature_index = 0;
+            if (!cst_parse_callable_signature(
+                    state, TK_EOF, true, false, &signature_index)) {
+                return false;
+            }
+
+            array_push(state->cst.ffi_infos,
+                       (CstFfiInfo){
+                           .library_node_index = library_node_index,
+                           .symbol_handle      = symbol_handle,
+                           .signature_index    = signature_index,
+                       });
+            ffi_info_count++;
+        }
+
+        cst_advance(state);
+
+        u32 ffi_block_info_index = (u32)array_count(state->cst.ffi_block_infos);
+        array_push(state->cst.ffi_block_infos,
+                   (CstFfiBlockInfo){
+                       .library_node_index = library_node_index,
+                       .first_ffi_info     = first_ffi_info,
+                       .ffi_info_count     = ffi_info_count,
+                   });
+
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_FfiBlock,
+                                 .token_index = token_index,
+                                 .a           = ffi_block_info_index,
+                             },
+                             out_node);
     }
 
     if (cst_current_token(state).kind != TK_Symbol) {
@@ -4291,7 +4347,7 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
         if (is_public) {
             return false;
         }
-        return cst_parse_ffi_def(state, out_node);
+        return cst_parse_ffi_def(state, out_node, true);
     }
 
     if (cst_current_token(state).kind == TK_use) {
@@ -4436,6 +4492,7 @@ void cst_done(Cst* cst)
     array_free(cst->params);
     array_free(cst->fn_signatures);
     array_free(cst->ffi_infos);
+    array_free(cst->ffi_block_infos);
     array_free(cst->module_paths);
     array_free(cst->module_path_symbols);
     array_free(cst->call_args);
@@ -4501,6 +4558,7 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
+           node->kind == CK_FfiBlock ||
            node->kind == CK_TopOn;
 }
 

@@ -46,7 +46,7 @@ internal bool lexer_is_ascii_letter(u8 c)
 
 internal bool lexer_is_number_tail(u8 c)
 {
-    return lexer_is_decimal_digit(c) || lexer_is_ascii_letter(c);
+    return lexer_is_decimal_digit(c) || lexer_is_ascii_letter(c) || c == '_';
 }
 
 internal bool lexer_digit_value(u8 c, u32 base, u32* out_digit)
@@ -75,15 +75,37 @@ internal bool lexer_lex_integer_digits(NerdSource source,
                                        usize      start,
                                        usize*     io_index,
                                        u32        base,
-                                       u64*       out_value)
+                                       u64*       out_value,
+                                       bool*      out_had_separator)
 {
-    usize i         = *io_index;
-    u64   total     = 0;
-    bool  has_digit = false;
+    usize i                  = *io_index;
+    u64   total              = 0;
+    bool  has_digit          = false;
+    bool  last_was_separator = false;
+    bool  had_separator      = false;
 
     while (i < source_code.count) {
+        if (source_code.data[i] == '_') {
+            if (!has_digit || last_was_separator) {
+                return error_0103_invalid_number_literal(
+                    source,
+                    (ErrorSpan){.start = start, .end = i + 1},
+                    '_');
+            }
+            i++;
+            last_was_separator = true;
+            had_separator      = true;
+            continue;
+        }
+
         u32 digit;
         if (!lexer_digit_value(source_code.data[i], base, &digit)) {
+            if (lexer_is_number_tail(source_code.data[i])) {
+                return error_0103_invalid_number_literal(
+                    source,
+                    (ErrorSpan){.start = start, .end = i + 1},
+                    source_code.data[i]);
+            }
             break;
         }
 
@@ -94,23 +116,21 @@ internal bool lexer_lex_integer_digits(NerdSource source,
 
         total = total * base + digit;
         i++;
-        has_digit = true;
+        has_digit          = true;
+        last_was_separator = false;
     }
 
-    if (!has_digit) {
-        char invalid_char = source_code.data[i - 1];
-        if (i < source_code.count && lexer_is_number_tail(source_code.data[i])) {
-            invalid_char = source_code.data[i];
-            i++;
-        }
+    if (!has_digit || last_was_separator) {
+        char invalid_char = last_was_separator ? '_' : source_code.data[i - 1];
         return error_0103_invalid_number_literal(
             source,
             (ErrorSpan){.start = start, .end = i},
             invalid_char);
     }
 
-    *io_index  = i;
-    *out_value = total;
+    *io_index          = i;
+    *out_value         = total;
+    *out_had_separator = had_separator;
     return true;
 }
 
@@ -458,9 +478,10 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (lexer_is_decimal_digit(c)) {
-        usize start = i;
-        u64   total = 0;
-        u32   base  = 10;
+        usize start         = i;
+        u64   total         = 0;
+        u32   base          = 10;
+        bool  had_separator = false;
 
         if (c == '0' && i + 1 < source_code.count) {
             if (source_code.data[i + 1] == 'x') {
@@ -476,7 +497,7 @@ internal bool lexer_lex_one_token(NerdSource source,
         }
 
         if (!lexer_lex_integer_digits(
-                source, source_code, start, &i, base, &total)) {
+                source, source_code, start, &i, base, &total, &had_separator)) {
             return false;
         }
 
@@ -484,6 +505,12 @@ internal bool lexer_lex_one_token(NerdSource source,
             base == 10 &&
             i + 1 < source_code.count && source_code.data[i] == '.' &&
             lexer_is_decimal_digit(source_code.data[i + 1]);
+        if (is_float && had_separator) {
+            return error_0103_invalid_number_literal(
+                source,
+                (ErrorSpan){.start = start, .end = i + 2},
+                '_');
+        }
         if (is_float) {
             i += 2;
             while (i < source_code.count &&
@@ -956,6 +983,11 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
             }
 
             while (index < lexer->source.source.count) {
+                if (lexer->source.source.data[index] == '_') {
+                    index++;
+                    continue;
+                }
+
                 u32 digit;
                 if (!lexer_digit_value(
                         lexer->source.source.data[index], base, &digit)) {

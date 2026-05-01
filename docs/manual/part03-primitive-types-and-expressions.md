@@ -60,18 +60,20 @@ Integer literals can be written in decimal, hexadecimal, binary, or octal:
 
 | Form          | Base        | Example | Value |
 | ------------- | ----------- | ------- | ----- |
-| no prefix     | decimal     | `42`    | 42    |
+| no prefix     | decimal     | `1_000_000` | 1000000 |
 | `0x` prefix   | hexadecimal | `0x2a`  | 42    |
 | `0b` prefix   | binary      | `0b101010` | 42 |
 | `0o` prefix   | octal       | `0o52`  | 42    |
 
 The prefix is part of the literal's spelling. It changes how the digits are
-read, not the eventual type:
+read, not the eventual type. Underscores may be used between integer digits to
+make large values easier to read; they do not change the value:
 
 ```nerd
-mask: u64 = 0xff  -- hexadecimal literal becomes a u64 from context
-bits := 0b1010    -- binary literal materialises as i32 without other context
-mode := 0o755     -- octal literal materialises as i32 without other context
+mask: u64 = 0xff_ff      -- hexadecimal literal becomes a u64 from context
+bits := 0b1010_0101      -- underscores are ignored in integer literals
+mode := 0o755            -- octal literal materialises as i32 without context
+million := 1_000_000     -- decimal literal with digit separators
 ```
 
 ## Operators

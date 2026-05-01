@@ -1424,7 +1424,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                                  out_node);
         }
     case TK_fn:
-        return ast_parse_declaration(state, out_node);
+        return ast_parse_declaration(state, out_node, false);
     case TK_on:
         return ast_parse_on_expr(state, token, out_node);
     case TK_for:
@@ -2002,6 +2002,9 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 
         if (state->stop_before_ffi_name && next.kind == TK_Symbol &&
             ast_peek_kind_at(state, 0) == TK_LParen) {
+            break;
+        }
+        if (state->stop_before_ffi_name && next.kind == TK_LBrace) {
             break;
         }
 

@@ -309,6 +309,11 @@ internal void   format_emit_ffi_def(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
                                     u32            ffi_info_index);
+internal void   format_emit_ffi_block(StringBuilder* sb,
+                                      const Cst*     cst,
+                                      const Lexer*   lexer,
+                                      u32            ffi_block_info_index,
+                                      u32            indent_level);
 internal void   format_emit_mod_ref(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
@@ -1101,6 +1106,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_FfiDef:
         format_emit_ffi_def(sb, cst, lexer, node->a);
         break;
+    case CK_FfiBlock:
+        format_emit_ffi_block(sb, cst, lexer, node->a, 0);
+        break;
     case CK_ModRef:
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
@@ -1579,6 +1587,9 @@ internal u32 format_node_end_token_index(const Cst*   cst,
             lexer,
             node->token_index,
             cst->ffi_infos[node->a].signature_index);
+    case CK_FfiBlock:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_ModRef:
         {
             const CstModulePath* path = &cst->module_paths[node->a];
@@ -2019,9 +2030,9 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
-            payload->kind == CK_FfiDef || payload->kind == CK_ModRef ||
-            payload->kind == CK_For || payload->kind == CK_ExprBlock ||
-            payload->kind == CK_TypePlex) {
+            payload->kind == CK_FfiDef || payload->kind == CK_FfiBlock ||
+            payload->kind == CK_ModRef || payload->kind == CK_For ||
+            payload->kind == CK_ExprBlock || payload->kind == CK_TypePlex) {
             return false;
         }
 
@@ -2349,17 +2360,14 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     }
 }
 
-internal void format_emit_ffi_def(StringBuilder* sb,
-                                  const Cst*     cst,
-                                  const Lexer*   lexer,
-                                  u32            ffi_info_index)
+internal void format_emit_ffi_entry(StringBuilder* sb,
+                                    const Cst*     cst,
+                                    const Lexer*   lexer,
+                                    u32            ffi_info_index)
 {
     const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
     const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
 
-    sb_append_cstr(sb, "ffi ");
-    format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
-    sb_append_char(sb, ' ');
     sb_append_string(sb, lex_symbol(lexer, ffi->symbol_handle));
     sb_append_cstr(sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
@@ -2384,6 +2392,40 @@ internal void format_emit_ffi_def(StringBuilder* sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
+}
+
+internal void format_emit_ffi_def(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            ffi_info_index)
+{
+    const CstFfiInfo* ffi = &cst->ffi_infos[ffi_info_index];
+
+    sb_append_cstr(sb, "ffi ");
+    format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
+    sb_append_char(sb, ' ');
+    format_emit_ffi_entry(sb, cst, lexer, ffi_info_index);
+}
+
+internal void format_emit_ffi_block(StringBuilder* sb,
+                                    const Cst*     cst,
+                                    const Lexer*   lexer,
+                                    u32            ffi_block_info_index,
+                                    u32            indent_level)
+{
+    const CstFfiBlockInfo* block =
+        &cst->ffi_block_infos[ffi_block_info_index];
+
+    sb_append_cstr(sb, "ffi ");
+    format_emit_expr(sb, cst, lexer, block->library_node_index, 0);
+    sb_append_cstr(sb, " {\n");
+    for (u32 i = 0; i < block->ffi_info_count; ++i) {
+        format_emit_indent(sb, indent_level + 1);
+        format_emit_ffi_entry(sb, cst, lexer, block->first_ffi_info + i);
+        sb_append_char(sb, '\n');
+    }
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
 }
 
 internal void format_emit_mod_ref(StringBuilder* sb,
@@ -2916,6 +2958,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_FfiBlock) {
+        format_emit_ffi_block(sb, cst, lexer, stmt->a, indent_level);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_TopOn) {
         format_emit_top_on(sb, cst, lexer, stmt->a, indent_level);
         sb_append_char(sb, '\n');
@@ -2987,6 +3035,9 @@ internal void format_emit_value(StringBuilder* sb,
     case CK_FfiDef:
         format_emit_ffi_def(sb, cst, lexer, node->a);
         break;
+    case CK_FfiBlock:
+        format_emit_ffi_block(sb, cst, lexer, node->a, g_format_value_indent_level);
+        break;
     case CK_ModRef:
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
@@ -3045,13 +3096,17 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     Arena align_arena = {0};
     arena_init(&align_arena);
 
-    bool first_binding = true;
+    bool first_binding          = true;
+    u32  previous_binding_index = U32_MAX;
     for (u32 i = 0; i < array_count(cst.bindings); ++i) {
         u32            node_index = cst.bindings[i];
         const CstNode* node       = &cst.nodes[node_index];
 
         if (!first_binding) {
-            sb_append_char(sb, '\n');
+            const CstNode* previous = &cst.nodes[previous_binding_index];
+            if (previous->kind != CK_Use || node->kind != CK_Use) {
+                sb_append_char(sb, '\n');
+            }
         }
 
         if (node->kind == CK_Use) {
@@ -3062,21 +3117,32 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 format_emit_expr(sb, &cst, &lexer, node->a, 0);
             }
             sb_append_char(sb, '\n');
-            first_binding = false;
+            first_binding          = false;
+            previous_binding_index = node_index;
             continue;
         }
 
         if (node->kind == CK_FfiDef) {
             format_emit_ffi_def(sb, &cst, &lexer, node->a);
             sb_append_char(sb, '\n');
-            first_binding = false;
+            first_binding          = false;
+            previous_binding_index = node_index;
+            continue;
+        }
+
+        if (node->kind == CK_FfiBlock) {
+            format_emit_ffi_block(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            first_binding          = false;
+            previous_binding_index = node_index;
             continue;
         }
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
-            first_binding = false;
+            first_binding          = false;
+            previous_binding_index = node_index;
             continue;
         }
 
@@ -3116,8 +3182,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             if (array_count(aligned) > 1 && !aligned[0].is_bind) {
                 format_emit_aligned_statement_group(
                     sb, aligned, (u32)array_count(aligned), 0);
-                i             = last_aligned_binding;
-                first_binding = false;
+                i                      = last_aligned_binding;
+                first_binding          = false;
+                previous_binding_index = cst.bindings[last_aligned_binding];
                 array_free(aligned);
                 continue;
             }
@@ -3151,7 +3218,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             }
         }
         sb_append_char(sb, '\n');
-        first_binding = false;
+        first_binding          = false;
+        previous_binding_index = node_index;
     }
 
     arena_done(&align_arena);

@@ -2,6 +2,7 @@ use std.io
 
 libc::"c"
 ffi libc abs(i32)->i32
+ffi "c"{strlen(^u8)->usize puts(^u8)->i32}
 puts :: ffi "c" puts(^u8)
 fcntl::ffi"c" fcntl(i32,i32,...)->i32
 
@@ -15,6 +16,11 @@ use std.io
 libc :: "c"
 
 ffi libc abs (i32) -> i32
+
+ffi "c" {
+    strlen (^u8) -> usize
+    puts (^u8) -> i32
+}
 
 puts :: ffi "c" puts (^u8)
 

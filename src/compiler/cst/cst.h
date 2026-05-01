@@ -69,6 +69,7 @@
 // | CK_FnExpr          | Fn-signature index    | Body node index       |
 // | CK_FnBlock         | Fn-signature index    | Block node index      |
 // | CK_FfiDef          | FFI-info index        | 0                     |
+// | CK_FfiBlock        | FFI-block info index  | 0                     |
 // | CK_ModRef          | Module path index     | 0                     |
 // | CK_Use             | Module node index     | 0                     |
 // | CK_TopOn           | Top-on info index     | 0                     |
@@ -150,6 +151,7 @@ typedef enum {
     CK_FnExpr,
     CK_FnBlock,
     CK_FfiDef,
+    CK_FfiBlock,
     CK_ModRef,
     CK_Use,
     CK_TopOn,
@@ -203,6 +205,12 @@ typedef struct {
     u32 symbol_handle;
     u32 signature_index;
 } CstFfiInfo;
+
+typedef struct {
+    u32 library_node_index;
+    u32 first_ffi_info;
+    u32 ffi_info_count;
+} CstFfiBlockInfo;
 
 typedef struct {
     u32 first_symbol;
@@ -368,6 +376,7 @@ typedef struct {
     Array(CstParam) params;
     Array(CstFnSignature) fn_signatures;
     Array(CstFfiInfo) ffi_infos;
+    Array(CstFfiBlockInfo) ffi_block_infos;
     Array(CstModulePath) module_paths;
     Array(u32) module_path_symbols;
     Array(u32) call_args;
