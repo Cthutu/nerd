@@ -373,6 +373,8 @@ typedef struct {
     u32  first_update;
     u32  update_count;
     u32  iterable_node_index;
+    u32  index_symbol;
+    u32  index_token_index;
     u32  item_symbol;
     u32  item_token_index;
     u32  label_symbol;

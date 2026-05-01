@@ -3198,6 +3198,30 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 } else if (string_eq(field_name, s("count")) ||
                            string_eq(field_name, s("capacity"))) {
                     type_index = ir_builtin_type(sema, STK_Usize);
+                } else {
+                    u32 field_target_type = target_type;
+                    if (sema->types[target_type].kind == STK_Pointer) {
+                        u32 pointee_type = sema->types[target_type].first_param_type;
+                        if (sema->types[pointee_type].kind == STK_Plex ||
+                            sema->types[pointee_type].kind == STK_Union) {
+                            field_target_type = pointee_type;
+                        }
+                    }
+                    if (sema->types[field_target_type].kind == STK_Plex ||
+                        sema->types[field_target_type].kind == STK_Union) {
+                        const SemaType* record = &sema->types[field_target_type];
+                        for (u32 i = 0; i < record->param_count; ++i) {
+                            u32 candidate = sema->type_param_symbols
+                                [record->first_param_type + i];
+                            if (candidate == node->b ||
+                                string_eq(lex_symbol(lex, candidate),
+                                          field_name)) {
+                                type_index = sema->type_param_types
+                                    [record->first_param_type + i];
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             IrValue value = {
@@ -4512,6 +4536,13 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
             u32 usize_type = ir_builtin_type(sema, STK_Usize);
             u32 bool_type  = ir_builtin_type(sema, STK_Bool);
             u32 for_scope  = sema->node_scope_indices[node_index];
+            u32 index_local_index = sema_no_local();
+            if (for_info->index_symbol != U32_MAX) {
+                index_local_index = ir_find_scope_local(
+                    sema, for_scope, for_info->index_symbol);
+                ASSERT(index_local_index != sema_no_local(),
+                       "Expected resolved for-in index local");
+            }
             u32 item_local_index =
                 ir_find_scope_local(sema, for_scope, for_info->item_symbol);
             ASSERT(item_local_index != sema_no_local(),
@@ -4609,6 +4640,16 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                         count_value,
                         usize_type);
             ir_add_branch_false(ir, condition, bool_type, else_label);
+
+            if (index_local_index != sema_no_local()) {
+                ir_add_local(
+                    ir,
+                    function_index,
+                    sema->locals[index_local_index].lowered_symbol_handle,
+                    usize_type,
+                    index_temp,
+                    usize_type);
+            }
 
             IrValue item_value = {
                 .kind          = IR_VALUE_VARIABLE,

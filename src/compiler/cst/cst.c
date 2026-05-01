@@ -3254,6 +3254,8 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         .first_update         = U32_MAX,
         .update_count         = 0,
         .iterable_node_index  = U32_MAX,
+        .index_symbol         = U32_MAX,
+        .index_token_index    = U32_MAX,
         .item_symbol          = U32_MAX,
         .item_token_index     = U32_MAX,
         .label_symbol         = U32_MAX,
@@ -3269,8 +3271,12 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         return false;
     }
     cst_advance(state);
-    bool starts_for_in = cst_current_token(state).kind == TK_Symbol &&
-                         cst_peek_kind_at(state, 1) == TK_in;
+    bool starts_for_in =
+        cst_current_token(state).kind == TK_Symbol &&
+        (cst_peek_kind_at(state, 1) == TK_in ||
+         (cst_peek_kind_at(state, 1) == TK_Comma &&
+          (cst_peek_kind_at(state, 2) == TK_Symbol ||
+           cst_peek_kind_at(state, 2) == TK_Caret)));
     if (cst_current_token(state).kind == TK_Caret &&
         cst_peek_kind_at(state, 1) == TK_Symbol &&
         cst_peek_kind_at(state, 2) == TK_in) {
@@ -3282,6 +3288,22 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         if (cst_current_token(state).kind == TK_Caret) {
             for_info.item_is_pointer = true;
             cst_advance(state);
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+        }
+        if (cst_current_token(state).kind == TK_Symbol &&
+            cst_peek_kind_at(state, 1) == TK_Comma) {
+            for_info.index_symbol      = cst_current_symbol_handle(state);
+            for_info.index_token_index = state->token_index;
+            cst_advance(state);
+            if (!cst_consume(state, TK_Comma)) {
+                return false;
+            }
+            if (cst_current_token(state).kind == TK_Caret) {
+                for_info.item_is_pointer = true;
+                cst_advance(state);
+            }
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }

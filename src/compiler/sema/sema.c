@@ -3389,6 +3389,39 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                 sema_add_scope(sema, owner_decl_index, scope_index);
             sema->node_scope_indices[i] = child_scope;
             if (for_info->iterable_node_index != U32_MAX) {
+                if (for_info->index_symbol != U32_MAX) {
+                    u32 duplicate_index = sema_find_local_in_scope(
+                        sema, child_scope, for_info->index_symbol);
+                    if (duplicate_index != sema_no_local()) {
+                        const SemaLocal* previous =
+                            &sema->locals[duplicate_index];
+                        return error_0301_duplicate_binding(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            lex_symbol(lexer, for_info->index_symbol),
+                            sema_local_span(lexer, ast, previous));
+                    }
+                    array_push(
+                        sema->locals,
+                        (SemaLocal){
+                            .kind                  = SLK_Variable,
+                            .symbol_handle         = for_info->index_symbol,
+                            .owner_decl_index      = owner_decl_index,
+                            .scope_index           = child_scope,
+                            .decl_node_index       = i,
+                            .decl_token_index      = for_info->index_token_index,
+                            .type_node_index       = sema_no_type(),
+                            .value_node_index      = sema_no_decl(),
+                            .type_index = sema_builtin_type(sema, STK_Usize),
+                            .lowered_symbol_handle =
+                                sema_mangle_for_item_symbol(
+                                    lexer,
+                                    current_function_symbol,
+                                    for_info->index_symbol,
+                                    for_info->index_token_index),
+                        });
+                    sema->scopes[child_scope].local_count++;
+                }
                 u32 duplicate_index = sema_find_local_in_scope(
                     sema, child_scope, for_info->item_symbol);
                 if (duplicate_index != sema_no_local()) {
@@ -11149,6 +11182,14 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
             u32             for_scope  = sema->node_scope_indices[node_index];
             if (for_info->iterable_node_index != U32_MAX &&
                 for_scope != sema_no_scope()) {
+                if (for_info->index_symbol != U32_MAX) {
+                    u32 index_local = sema_lookup_local(
+                        sema, for_scope, for_info->index_symbol);
+                    if (index_local != sema_no_local() &&
+                        index_local < array_count(loop_state.assigned)) {
+                        loop_state.assigned[index_local] = true;
+                    }
+                }
                 u32 item_local =
                     sema_lookup_local(sema, for_scope, for_info->item_symbol);
                 if (item_local != sema_no_local() &&
