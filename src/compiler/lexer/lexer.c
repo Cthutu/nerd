@@ -829,7 +829,18 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '<') {
-        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+        if (i + 2 < source_code.count && source_code.data[i + 1] == '<' &&
+            source_code.data[i + 2] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_ShiftLeftEqual, .offset = (u32)i});
+            *io_index = i + 3;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '<') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_ShiftLeft, .offset = (u32)i});
+            *io_index = i + 2;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '=') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_LessEqual, .offset = (u32)i});
             *io_index = i + 2;
@@ -842,7 +853,18 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '>') {
-        if (i + 1 < source_code.count && source_code.data[i + 1] == '=') {
+        if (i + 2 < source_code.count && source_code.data[i + 1] == '>' &&
+            source_code.data[i + 2] == '=') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_ShiftRightEqual, .offset = (u32)i});
+            *io_index = i + 3;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '>') {
+            array_push(lexer->tokens,
+                       (Token){.kind = TK_ShiftRight, .offset = (u32)i});
+            *io_index = i + 2;
+        } else if (i + 1 < source_code.count &&
+                   source_code.data[i + 1] == '=') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_GreaterEqual, .offset = (u32)i});
             *io_index = i + 2;
@@ -1061,10 +1083,14 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_PipePipe:
     case TK_LessEqual:
     case TK_GreaterEqual:
+    case TK_ShiftLeft:
+    case TK_ShiftRight:
     case TK_Range:
         return token->offset + 2;
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
     case TK_Ellipsis:
     case TK_RangeInclusive:
         return token->offset + 3;

@@ -58,6 +58,8 @@ typedef enum : u8 {
     IR_OP_BITWISE_AND,
     IR_OP_BITWISE_XOR,
     IR_OP_BITWISE_OR,
+    IR_OP_SHIFT_LEFT,
+    IR_OP_SHIFT_RIGHT,
     IR_OP_LOGICAL_NOT,
     IR_OP_NEGATE,
     IR_OP_ADD,

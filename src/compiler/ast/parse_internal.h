@@ -20,10 +20,11 @@
 #define AST_BP_BITWISE_AND 60
 #define AST_BP_EQUALITY 70
 #define AST_BP_COMPARISON 80
-#define AST_BP_ADDITIVE 90
-#define AST_BP_MULTIPLICATIVE 100
-#define AST_BP_PREFIX 110
-#define AST_BP_POSTFIX 120
+#define AST_BP_SHIFT 90
+#define AST_BP_ADDITIVE 100
+#define AST_BP_MULTIPLICATIVE 110
+#define AST_BP_PREFIX 120
+#define AST_BP_POSTFIX 130
 
 typedef struct {
     TokenKind  kind;

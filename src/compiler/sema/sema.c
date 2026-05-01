@@ -1631,6 +1631,8 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
         return sema_expr_is_constantish(ast, sema, node->a) &&
                sema_expr_is_constantish(ast, sema, node->b);
     default:
@@ -1684,6 +1686,8 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
         {
             i64 lhs = 0;
             i64 rhs = 0;
@@ -1724,6 +1728,18 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
                 return true;
             case AK_BitwiseOr:
                 *out_value = lhs | rhs;
+                return true;
+            case AK_ShiftLeft:
+                if (rhs < 0 || rhs >= 64) {
+                    return false;
+                }
+                *out_value = lhs << rhs;
+                return true;
+            case AK_ShiftRight:
+                if (rhs < 0 || rhs >= 64) {
+                    return false;
+                }
+                *out_value = lhs >> rhs;
                 return true;
             default:
                 return false;
@@ -3293,7 +3309,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         u32           lowered_symbol_handle =
             kind == SLK_Function ? sema_mangle_nested_function_symbol(
                                        lexer, current_function_symbol, node->a)
-                                           : node->a;
+                                 : node->a;
 
         if (type_node_index != sema_no_type()) {
             sema_mark_type_expr_nodes(ast, sema, type_node_index);
@@ -3987,6 +4003,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -4762,6 +4780,8 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -6700,6 +6720,8 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -6902,6 +6924,8 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -7225,6 +7249,8 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -7879,8 +7905,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             bool target_is_union = target_type != sema_no_type() &&
                                    sema->types[target_type].kind == STK_Union;
-            bool target_is_plex = target_type != sema_no_type() &&
-                                  sema->types[target_type].kind == STK_Plex;
+            bool target_is_plex  = target_type != sema_no_type() &&
+                                   sema->types[target_type].kind == STK_Plex;
             if (!target_is_plex && !target_is_union) {
                 return error_0304_type_mismatch(
                     lexer->source,
@@ -8827,8 +8853,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 u32  source_item = sema->types[source_type].first_param_type;
                 u32  target_item = sema->types[target_type].first_param_type;
                 bool item_match  = source_item == target_item ||
-                                  sema->types[source_item].kind == STK_Void ||
-                                  sema->types[target_item].kind == STK_Void;
+                                   sema->types[source_item].kind == STK_Void ||
+                                   sema->types[target_item].kind == STK_Void;
                 if (!item_match) {
                     return error_0307_invalid_cast(
                         lexer->source,
@@ -9132,6 +9158,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -9239,16 +9267,36 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             case AK_BitwiseAnd:
             case AK_BitwiseXor:
             case AK_BitwiseOr:
+            case AK_ShiftLeft:
+            case AK_ShiftRight:
                 if (!sema_type_is_integer(sema, lhs_type)) {
+                    string op = s("|");
+                    switch (node->kind) {
+                    case AK_IntegerModulo:
+                        op = s("%");
+                        break;
+                    case AK_BitwiseAnd:
+                        op = s("&");
+                        break;
+                    case AK_BitwiseXor:
+                        op = s("^");
+                        break;
+                    case AK_BitwiseOr:
+                        op = s("|");
+                        break;
+                    case AK_ShiftLeft:
+                        op = s("<<");
+                        break;
+                    case AK_ShiftRight:
+                        op = s(">>");
+                        break;
+                    default:
+                        break;
+                    }
                     return error_0326_invalid_binary_operands(
                         lexer->source,
                         sema_node_span(lexer, node),
-                        node->kind == AK_IntegerModulo
-                            ? s("%")
-                            : (node->kind == AK_BitwiseAnd
-                                   ? s("&")
-                                   : (node->kind == AK_BitwiseXor ? s("^")
-                                                                  : s("|"))),
+                        op,
                         s("matching integer operands"),
                         sema_type_name(lexer, sema, &temp_arena, lhs_type),
                         sema_type_name(lexer, sema, &temp_arena, rhs_type));
@@ -10251,11 +10299,13 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
         {
             i64 lhs = 0;
             i64 rhs = 0;
             ok      = sema_try_get_constant(ast, out_sema, node->a, &lhs) &&
-                 sema_try_get_constant(ast, out_sema, node->b, &rhs);
+                      sema_try_get_constant(ast, out_sema, node->b, &rhs);
             if (!ok) {
                 break;
             }
@@ -10292,6 +10342,20 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
                 break;
             case AK_BitwiseOr:
                 value = lhs | rhs;
+                break;
+            case AK_ShiftLeft:
+                if (rhs < 0 || rhs >= 64) {
+                    ok = false;
+                    break;
+                }
+                value = lhs << rhs;
+                break;
+            case AK_ShiftRight:
+                if (rhs < 0 || rhs >= 64) {
+                    ok = false;
+                    break;
+                }
+                value = lhs >> rhs;
                 break;
             default:
                 ok = false;
@@ -10434,6 +10498,11 @@ internal bool sema_fold_node(const Lexer* lex,
             case AK_IntegerMultiply:
             case AK_IntegerDivide:
             case AK_IntegerModulo:
+            case AK_BitwiseAnd:
+            case AK_BitwiseXor:
+            case AK_BitwiseOr:
+            case AK_ShiftLeft:
+            case AK_ShiftRight:
             case AK_RangeExclusive:
             case AK_RangeInclusive:
                 sema_push_fold_frame(&stack, node->b);
@@ -10788,6 +10857,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:
@@ -11296,10 +11367,10 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         }
         string symbol       = lex_symbol(lexer, local->symbol_handle);
         string binding_kind = sema_unused_local_kind_name(local);
-        bool   ok           = error_0335_unused_local(lexer->source,
-                                          sema_local_span(lexer, ast, local),
-                                          symbol,
-                                          binding_kind);
+        bool   ok = error_0335_unused_local(lexer->source,
+                                            sema_local_span(lexer, ast, local),
+                                            symbol,
+                                            binding_kind);
         array_free(read_counts);
         return ok;
     }
@@ -11753,6 +11824,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_BitwiseAnd:
     case AK_BitwiseXor:
     case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
     case AK_Equal:
     case AK_NotEqual:
     case AK_Less:

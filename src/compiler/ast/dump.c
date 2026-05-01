@@ -52,6 +52,10 @@ string ast_kind_to_string(AstKind kind)
         return s("BitwiseXor");
     case AK_BitwiseOr:
         return s("BitwiseOr");
+    case AK_ShiftLeft:
+        return s("ShiftLeft");
+    case AK_ShiftRight:
+        return s("ShiftRight");
     case AK_Equal:
         return s("Equal");
     case AK_NotEqual:
@@ -241,6 +245,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_BitwiseAnd:
         case AK_BitwiseXor:
         case AK_BitwiseOr:
+        case AK_ShiftLeft:
+        case AK_ShiftRight:
         case AK_Equal:
         case AK_NotEqual:
         case AK_Less:

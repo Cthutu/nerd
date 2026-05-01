@@ -583,6 +583,8 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_BITWISE_AND:
         case IR_OP_BITWISE_XOR:
         case IR_OP_BITWISE_OR:
+        case IR_OP_SHIFT_LEFT:
+        case IR_OP_SHIFT_RIGHT:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
@@ -607,6 +609,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
                 break;
             case IR_OP_BITWISE_OR:
                 sb_append_cstr(&sb, " | ");
+                break;
+            case IR_OP_SHIFT_LEFT:
+                sb_append_cstr(&sb, " << ");
+                break;
+            case IR_OP_SHIFT_RIGHT:
+                sb_append_cstr(&sb, " >> ");
                 break;
             default:
                 break;

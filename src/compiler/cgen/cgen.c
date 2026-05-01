@@ -2084,6 +2084,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_BITWISE_OR:
             cgen_add_binary(cgen, instr, " | ");
             break;
+        case IR_OP_SHIFT_LEFT:
+            cgen_add_binary(cgen, instr, " << ");
+            break;
+        case IR_OP_SHIFT_RIGHT:
+            cgen_add_binary(cgen, instr, " >> ");
+            break;
         case IR_OP_LOGICAL_NOT:
             cgen_add_unary(cgen, instr, "!");
             break;

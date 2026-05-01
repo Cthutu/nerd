@@ -28,6 +28,10 @@ internal AstKind ast_binary_kind_from_token(TokenKind kind)
         return AK_BitwiseXor;
     case TK_Pipe:
         return AK_BitwiseOr;
+    case TK_ShiftLeft:
+        return AK_ShiftLeft;
+    case TK_ShiftRight:
+        return AK_ShiftRight;
     case TK_EqualEqual:
         return AK_Equal;
     case TK_BangEqual:
@@ -156,6 +160,8 @@ internal bool ast_token_is_assignment_operator(TokenKind kind)
     case TK_AmpEqual:
     case TK_CaretEqual:
     case TK_PipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
         return true;
@@ -231,6 +237,8 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_AmpEqual:
     case TK_CaretEqual:
     case TK_PipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
         *out_left_bp  = AST_BP_ASSIGNMENT;
@@ -251,6 +259,11 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_Minus:
         *out_left_bp  = AST_BP_ADDITIVE;
         *out_right_bp = AST_BP_ADDITIVE + 1;
+        return true;
+    case TK_ShiftLeft:
+    case TK_ShiftRight:
+        *out_left_bp  = AST_BP_SHIFT;
+        *out_right_bp = AST_BP_SHIFT + 1;
         return true;
     case TK_Less:
     case TK_LessEqual:

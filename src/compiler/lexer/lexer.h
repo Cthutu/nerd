@@ -72,8 +72,12 @@ typedef enum {
     TK_CaretEqual,
     TK_Less,
     TK_LessEqual,
+    TK_ShiftLeft,
+    TK_ShiftLeftEqual,
     TK_Greater,
     TK_GreaterEqual,
+    TK_ShiftRight,
+    TK_ShiftRightEqual,
     TK_FatArrow,
     TK_ThinArrow,
 

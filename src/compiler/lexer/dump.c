@@ -112,10 +112,18 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Less `<`");
     case TK_LessEqual:
         return string_from_cstr("LessEqual `<=`");
+    case TK_ShiftLeft:
+        return string_from_cstr("ShiftLeft `<<`");
+    case TK_ShiftLeftEqual:
+        return string_from_cstr("ShiftLeftEqual `<<=`");
     case TK_Greater:
         return string_from_cstr("Greater `>`");
     case TK_GreaterEqual:
         return string_from_cstr("GreaterEqual `>=`");
+    case TK_ShiftRight:
+        return string_from_cstr("ShiftRight `>>`");
+    case TK_ShiftRightEqual:
+        return string_from_cstr("ShiftRightEqual `>>=`");
     case TK_FatArrow:
         return string_from_cstr("FatArrow `=>`");
     case TK_ThinArrow:

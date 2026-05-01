@@ -187,6 +187,9 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_Greater:
     case CK_GreaterEqual:
         return 40;
+    case CK_ShiftLeft:
+    case CK_ShiftRight:
+        return 45;
     case CK_IntegerPlus:
     case CK_IntegerMinus:
         return 50;
@@ -796,6 +799,16 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, " | ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
+    case CK_ShiftLeft:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " << ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_ShiftRight:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " >> ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
     case CK_Equal:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " == ");
@@ -1334,6 +1347,8 @@ internal string format_assignment_operator(const Lexer*   lexer,
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
         break;
     default:
         op_index = stmt->token_index + 1;
@@ -1361,6 +1376,10 @@ internal string format_assignment_operator(const Lexer*   lexer,
         return s("^=");
     case TK_PipeEqual:
         return s("|=");
+    case TK_ShiftLeftEqual:
+        return s("<<=");
+    case TK_ShiftRightEqual:
+        return s(">>=");
     case TK_AmpAmpEqual:
         return s("&&=");
     case TK_PipePipeEqual:
@@ -1504,6 +1523,11 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_IntegerMultiply:
     case CK_IntegerDivide:
     case CK_IntegerModulo:
+    case CK_BitwiseAnd:
+    case CK_BitwiseXor:
+    case CK_BitwiseOr:
+    case CK_ShiftLeft:
+    case CK_ShiftRight:
     case CK_StringConcat:
     case CK_RangeExclusive:
     case CK_RangeInclusive:
@@ -3291,10 +3315,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     next_line_end++;
                 }
 
-                bool next_has_newline = next_line_end < text.count &&
-                                        text.data[next_line_end] == '\n';
+                bool   next_has_newline = next_line_end < text.count &&
+                                          text.data[next_line_end] == '\n';
                 string next_line   = string_from(text.data + block_end,
-                                               next_line_end - block_end);
+                                                 next_line_end - block_end);
                 string next_indent = {0};
                 string next_body   = {0};
 

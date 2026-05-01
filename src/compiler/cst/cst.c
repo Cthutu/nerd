@@ -16,9 +16,10 @@
 #define CST_BP_BITWISE_AND 50
 #define CST_BP_EQUALITY 60
 #define CST_BP_COMPARISON 70
-#define CST_BP_ADDITIVE 80
-#define CST_BP_MULTIPLICATIVE 90
-#define CST_BP_PREFIX 100
+#define CST_BP_SHIFT 80
+#define CST_BP_ADDITIVE 90
+#define CST_BP_MULTIPLICATIVE 100
+#define CST_BP_PREFIX 110
 
 typedef struct {
     const Lexer* lexer;
@@ -590,6 +591,8 @@ internal bool cst_starts_assignment(const CstParseState* state)
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
         return true;
     default:
         return false;
@@ -610,6 +613,8 @@ internal bool cst_token_is_assignment_operator(TokenKind kind)
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
         return true;
     default:
         return false;
@@ -650,6 +655,8 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
+    case TK_ShiftLeftEqual:
+    case TK_ShiftRightEqual:
         *out_left_bp  = 5;
         *out_right_bp = 5;
         return true;
@@ -668,6 +675,11 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_Minus:
         *out_left_bp  = CST_BP_ADDITIVE;
         *out_right_bp = CST_BP_ADDITIVE + 1;
+        return true;
+    case TK_ShiftLeft:
+    case TK_ShiftRight:
+        *out_left_bp  = CST_BP_SHIFT;
+        *out_right_bp = CST_BP_SHIFT + 1;
         return true;
     case TK_Less:
     case TK_LessEqual:
@@ -2998,6 +3010,12 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         case TK_Pipe:
             kind = CK_BitwiseOr;
             break;
+        case TK_ShiftLeft:
+            kind = CK_ShiftLeft;
+            break;
+        case TK_ShiftRight:
+            kind = CK_ShiftRight;
+            break;
         case TK_EqualEqual:
             kind = CK_Equal;
             break;
@@ -3229,18 +3247,18 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
     u32        for_node    = 0;
     u32        body        = 0;
     CstForInfo for_info    = {
-           .mode                 = CFM_Condition,
-           .first_init           = U32_MAX,
-           .init_count           = 0,
-           .condition_node_index = U32_MAX,
-           .first_update         = U32_MAX,
-           .update_count         = 0,
-           .iterable_node_index  = U32_MAX,
-           .item_symbol          = U32_MAX,
-           .item_token_index     = U32_MAX,
-           .label_symbol         = U32_MAX,
-           .else_block_index     = U32_MAX,
-           .item_is_pointer      = false,
+        .mode                 = CFM_Condition,
+        .first_init           = U32_MAX,
+        .init_count           = 0,
+        .condition_node_index = U32_MAX,
+        .first_update         = U32_MAX,
+        .update_count         = 0,
+        .iterable_node_index  = U32_MAX,
+        .item_symbol          = U32_MAX,
+        .item_token_index     = U32_MAX,
+        .label_symbol         = U32_MAX,
+        .else_block_index     = U32_MAX,
+        .item_is_pointer      = false,
     };
     if (!cst_emit_node(state,
                        (CstNode){

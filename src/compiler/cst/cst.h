@@ -35,6 +35,8 @@
 // | CK_BitwiseAnd      | Left node index       | Right node index      |
 // | CK_BitwiseXor      | Left node index       | Right node index      |
 // | CK_BitwiseOr       | Left node index       | Right node index      |
+// | CK_ShiftLeft       | Left node index       | Right node index      |
+// | CK_ShiftRight      | Left node index       | Right node index      |
 // | CK_Equal           | Left node index       | Right node index      |
 // | CK_NotEqual        | Left node index       | Right node index      |
 // | CK_Less            | Left node index       | Right node index      |
@@ -116,6 +118,8 @@ typedef enum {
     CK_BitwiseAnd,
     CK_BitwiseXor,
     CK_BitwiseOr,
+    CK_ShiftLeft,
+    CK_ShiftRight,
     CK_Equal,
     CK_NotEqual,
     CK_Less,

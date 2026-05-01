@@ -37,6 +37,8 @@
 // | AK_BitwiseAnd      | Ast index of left | Ast index of right              |
 // | AK_BitwiseXor      | Ast index of left | Ast index of right              |
 // | AK_BitwiseOr       | Ast index of left | Ast index of right              |
+// | AK_ShiftLeft       | Ast index of left | Ast index of right              |
+// | AK_ShiftRight      | Ast index of left | Ast index of right              |
 // | AK_Equal           | Ast index of left | Ast index of right              |
 // | AK_NotEqual        | Ast index of left | Ast index of right              |
 // | AK_Less            | Ast index of left | Ast index of right              |
@@ -121,6 +123,8 @@ typedef enum {
     AK_BitwiseAnd,
     AK_BitwiseXor,
     AK_BitwiseOr,
+    AK_ShiftLeft,
+    AK_ShiftRight,
     AK_Equal,
     AK_NotEqual,
     AK_Less,
