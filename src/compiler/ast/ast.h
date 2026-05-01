@@ -282,10 +282,16 @@ typedef struct {
     u32 value_node_index;
 } AstPlexLiteralField;
 
+typedef enum : u32 {
+    APLF_None        = 0,
+    APLF_ZeroMissing = 1 << 0,
+} AstPlexLiteralFlag;
+
 typedef struct {
     u32 target_node_index;
     u32 first_field;
     u32 field_count;
+    u32 flags;
 } AstPlexLiteralInfo;
 
 typedef enum : u32 {

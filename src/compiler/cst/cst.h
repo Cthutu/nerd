@@ -274,10 +274,16 @@ typedef struct {
     u32 value_node_index;
 } CstPlexLiteralField;
 
+typedef enum : u32 {
+    CPLF_None        = 0,
+    CPLF_ZeroMissing = 1 << 0,
+} CstPlexLiteralFlag;
+
 typedef struct {
     u32 target_node_index;
     u32 first_field;
     u32 field_count;
+    u32 flags;
 } CstPlexLiteralInfo;
 
 typedef enum : u32 {

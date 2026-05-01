@@ -1596,7 +1596,16 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
             cst_advance(state);
             u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
             u32 field_count = 0;
+            u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    flags |= CPLF_ZeroMissing;
+                    cst_advance(state);
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                    }
+                    break;
+                }
                 if (cst_current_token(state).kind != TK_Symbol) {
                     return false;
                 }
@@ -1639,6 +1648,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                            .target_node_index = U32_MAX,
                            .first_field       = first_field,
                            .field_count       = field_count,
+                           .flags             = flags,
                        });
             return cst_emit_node(state,
                                  (CstNode){
@@ -2819,7 +2829,16 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         if (token.kind == TK_LBrace) {
             u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
             u32 field_count = 0;
+            u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    flags |= CPLF_ZeroMissing;
+                    cst_advance(state);
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                    }
+                    break;
+                }
                 if (cst_current_token(state).kind != TK_Symbol) {
                     return false;
                 }
@@ -2858,6 +2877,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                            .target_node_index = left,
                            .first_field       = first_field,
                            .field_count       = field_count,
+                           .flags             = flags,
                        });
             if (!cst_emit_node(state,
                                (CstNode){
@@ -2876,7 +2896,16 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             }
             u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
             u32 field_count = 0;
+            u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    flags |= CPLF_ZeroMissing;
+                    cst_advance(state);
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                    }
+                    break;
+                }
                 if (cst_current_token(state).kind != TK_Symbol) {
                     return false;
                 }
@@ -2915,6 +2944,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                            .target_node_index = left,
                            .first_field       = first_field,
                            .field_count       = field_count,
+                           .flags             = flags,
                        });
             if (!cst_emit_node(state,
                                (CstNode){

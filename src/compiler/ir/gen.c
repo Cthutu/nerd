@@ -2936,31 +2936,69 @@ internal IrValue ir_lower_node(const Lexer* lex,
         {
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
             Array(IrValue) values             = NULL;
-            for (u32 i = 0; i < literal->field_count; ++i) {
-                array_push(
-                    values,
-                    ir_lower_node(
-                        lex,
-                        ast,
-                        sema,
-                        ast->plex_literal_fields[literal->first_field + i]
-                            .value_node_index,
-                        loop,
-                        node_values,
-                        next_value_index,
-                        ir));
-            }
-            IrValue value = {
+            IrValue value                     = {
                 .kind          = IR_VALUE_VARIABLE,
                 .type          = ir_node_type_index(ast, sema, node_index),
                 .value.integer = (i64)(*next_value_index)++,
             };
-            ir_add_plex(ir,
-                        value,
-                        ir_node_type_index(ast, sema, node_index),
-                        ast,
-                        literal,
-                        values);
+            u32 type_index = ir_node_type_index(ast, sema, node_index);
+            if (literal->flags & APLF_ZeroMissing) {
+                Array(u32) symbols   = NULL;
+                const SemaType* plex = &ir->types[type_index];
+                for (u32 field_index = 0; field_index < plex->param_count;
+                     ++field_index) {
+                    u32 field_symbol =
+                        ir->type_param_symbols[plex->first_param_type +
+                                               field_index];
+                    u32 field_type =
+                        ir->type_param_types[plex->first_param_type +
+                                             field_index];
+                    u32 value_node = U32_MAX;
+                    for (u32 field = 0; field < literal->field_count; ++field) {
+                        const AstPlexLiteralField* literal_field =
+                            &ast->plex_literal_fields[literal->first_field +
+                                                      field];
+                        if (literal_field->symbol_handle == field_symbol) {
+                            value_node = literal_field->value_node_index;
+                            break;
+                        }
+                    }
+                    IrValue field_value = value_node != U32_MAX
+                                              ? ir_lower_node(lex,
+                                                              ast,
+                                                              sema,
+                                                              value_node,
+                                                              loop,
+                                                              node_values,
+                                                              next_value_index,
+                                                              ir)
+                                              : (IrValue){
+                                                    .kind = IR_VALUE_INTEGER,
+                                                    .type = field_type,
+                                                    .value.integer = 0,
+                                                };
+                    array_push(values, field_value);
+                    array_push(symbols, field_symbol);
+                }
+                ir_add_plex_items(ir, value, type_index, symbols, values);
+                array_free(symbols);
+            } else {
+                for (u32 i = 0; i < literal->field_count; ++i) {
+                    array_push(
+                        values,
+                        ir_lower_node(
+                            lex,
+                            ast,
+                            sema,
+                            ast->plex_literal_fields[literal->first_field + i]
+                                .value_node_index,
+                            loop,
+                            node_values,
+                            next_value_index,
+                            ir));
+                }
+                ir_add_plex(ir, value, type_index, ast, literal, values);
+            }
             array_free(values);
             node_values[node_index] = value;
             return value;
@@ -3096,6 +3134,12 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                                 node_values,
                                                 next_value_index,
                                                 ir);
+                } else if (literal->flags & APLF_ZeroMissing) {
+                    field_value = (IrValue){
+                        .kind          = IR_VALUE_INTEGER,
+                        .type          = field_type,
+                        .value.integer = 0,
+                    };
                 } else {
                     field_value = (IrValue){
                         .kind          = IR_VALUE_VARIABLE,

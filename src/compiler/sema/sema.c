@@ -8003,7 +8003,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 seen[field_index] = true;
             }
             if (target_is_plex && node->kind == AK_Plex &&
-                literal->field_count != record->param_count) {
+                literal->field_count != record->param_count &&
+                !(literal->flags & APLF_ZeroMissing)) {
                 StringBuilder missing = {0};
                 sb_init(&missing, &temp_arena);
                 u32 missing_count = 0;
@@ -8068,6 +8069,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             for (u32 i = 0; i < record->param_count; ++i) {
                 if (target_is_plex && node->kind == AK_Plex && !seen[i]) {
+                    if (literal->flags & APLF_ZeroMissing) {
+                        continue;
+                    }
                     return error_0304_type_mismatch(lexer->source,
                                                     sema_node_span(lexer, node),
                                                     s("all plex fields"),

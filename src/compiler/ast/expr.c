@@ -1369,12 +1369,24 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         {
             u32 first_field = (u32)array_count(state->plex_literal_fields);
             u32 field_count = 0;
+            u32 flags       = APLF_None;
             if (!ast_next_token(state)) {
                 return error_0201_missing_value(state->token.source,
                                                 ast_token_span(state, &token),
                                                 TK_RBrace);
             }
             while (state->token.kind != TK_RBrace) {
+                if (state->token.kind == TK_Ellipsis) {
+                    flags |= APLF_ZeroMissing;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    if (state->token.kind == TK_Comma &&
+                        !ast_expect_token(state, TK_Comma)) {
+                        return false;
+                    }
+                    break;
+                }
                 if (state->token.kind != TK_Symbol) {
                     return error_0203_expected_token(
                         state->lexer->source,
@@ -1442,6 +1454,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                            .target_node_index = U32_MAX,
                            .first_field       = first_field,
                            .field_count       = field_count,
+                           .flags             = flags,
                        });
             return ast_emit_node(state,
                                  (AstNode){
@@ -1706,7 +1719,19 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         }
         u32 first_field = (u32)array_count(state->plex_literal_fields);
         u32 field_count = 0;
+        u32 flags       = APLF_None;
         while (state->token.kind != TK_RBrace) {
+            if (state->token.kind == TK_Ellipsis) {
+                flags |= APLF_ZeroMissing;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_Comma &&
+                    !ast_expect_token(state, TK_Comma)) {
+                    return false;
+                }
+                break;
+            }
             if (state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(
                     state->lexer->source,
@@ -1773,6 +1798,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                        .target_node_index = left_node,
                        .first_field       = first_field,
                        .field_count       = field_count,
+                       .flags             = flags,
                    });
         return ast_emit_node(state,
                              (AstNode){
@@ -1798,7 +1824,19 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         }
         u32 first_field = (u32)array_count(state->plex_literal_fields);
         u32 field_count = 0;
+        u32 flags       = APLF_None;
         while (state->token.kind != TK_RBrace) {
+            if (state->token.kind == TK_Ellipsis) {
+                flags |= APLF_ZeroMissing;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_Comma &&
+                    !ast_expect_token(state, TK_Comma)) {
+                    return false;
+                }
+                break;
+            }
             if (state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(
                     state->lexer->source,
@@ -1863,6 +1901,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                        .target_node_index = left_node,
                        .first_field       = first_field,
                        .field_count       = field_count,
+                       .flags             = flags,
                    });
         return ast_emit_node(state,
                              (AstNode){
