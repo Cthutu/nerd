@@ -312,6 +312,16 @@ Plex aliases may be recursively linked through pointer fields:
 The recursive edge must be boxed behind a pointer. Direct recursive storage such
 as `Node :: plex { next Node }` is rejected as a type-alias cycle.
 
+Top-level constant pointer aliases can point into a top-level collection and be
+used by that collection's initializer:
+
+- `first :: ^nodes[0]`
+
+Dependency analysis treats that shape as an address constant rather than an
+ordinary value edge from the collection to the pointer alias. IR lowering then
+inlines the address expression while generating the collection initializer, so
+the collection does not read the alias before it has been initialized.
+
 Plex layout annotations are written after `plex`:
 
 - `WirePoint :: plex #c { x i32 y i32 }`

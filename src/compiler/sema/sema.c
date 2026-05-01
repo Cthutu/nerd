@@ -4558,6 +4558,65 @@ internal void sema_collect_address_deps(const Ast*  ast,
                                         u32         node_index,
                                         Sema*       out_sema);
 
+internal u32 sema_unwrap_expr_node(const Ast* ast, u32 node_index)
+{
+    while (node_index < array_count(ast->nodes) &&
+           (ast->nodes[node_index].kind == AK_Expression ||
+            ast->nodes[node_index].kind == AK_Statement)) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
+internal bool sema_address_path_targets_decl(const Ast*  ast,
+                                             const Sema* sema,
+                                             u32         node_index,
+                                             u32         target_decl_index)
+{
+    node_index           = sema_unwrap_expr_node(ast, node_index);
+    const AstNode* node  = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        return sema->node_local_indices[node_index] == sema_no_local() &&
+               sema->node_decl_indices[node_index] == target_decl_index;
+    case AK_Field:
+    case AK_TupleField:
+        return sema_address_path_targets_decl(
+            ast, sema, node->a, target_decl_index);
+    case AK_Index:
+        if (!sema_expr_is_constantish(ast, sema, node->b)) {
+            return false;
+        }
+        return sema_address_path_targets_decl(
+            ast, sema, node->a, target_decl_index);
+    default:
+        return false;
+    }
+}
+
+internal bool sema_decl_is_pointer_alias_to_decl(const Ast*  ast,
+                                                 const Sema* sema,
+                                                 u32         decl_index,
+                                                 u32         target_decl_index)
+{
+    if (decl_index == sema_no_decl() || decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+    const SemaDecl* decl = &sema->decls[decl_index];
+    if (decl->kind != SK_Constant || decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    u32 value_node_index = sema_unwrap_expr_node(ast, decl->value_node_index);
+    if (value_node_index >= array_count(ast->nodes) ||
+        ast->nodes[value_node_index].kind != AK_AddressOf) {
+        return false;
+    }
+    return sema_address_path_targets_decl(
+        ast, sema, ast->nodes[value_node_index].a, target_decl_index);
+}
+
 internal void sema_collect_pattern_deps(const Ast*  ast,
                                         const Sema* sema,
                                         u32         owner_decl_index,
@@ -4807,6 +4866,10 @@ internal void sema_collect_node_deps(const Ast*  ast,
             if (sema->decls[decl_index].kind == SK_BuiltinFunction ||
                 sema->decls[decl_index].kind == SK_FfiFunction ||
                 sema->decls[decl_index].kind == SK_Module) {
+                return;
+            }
+            if (sema_decl_is_pointer_alias_to_decl(
+                    ast, sema, decl_index, owner_decl_index)) {
                 return;
             }
             sema_add_dep(out_sema, owner_decl_index, decl_index);

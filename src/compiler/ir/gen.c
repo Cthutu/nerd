@@ -10,6 +10,64 @@
 //------------------------------------------------------------------------------
 // AST ownership helpers.
 
+internal u32 g_ir_current_global_init_decl = U32_MAX;
+
+internal u32 ir_unwrap_expr_node(const Ast* ast, u32 node_index)
+{
+    while (node_index < array_count(ast->nodes) &&
+           (ast->nodes[node_index].kind == AK_Expression ||
+            ast->nodes[node_index].kind == AK_Statement)) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
+internal bool ir_address_path_targets_decl(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         node_index,
+                                           u32         target_decl_index)
+{
+    node_index          = ir_unwrap_expr_node(ast, node_index);
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        return sema->node_local_indices[node_index] == sema_no_local() &&
+               sema->node_decl_indices[node_index] == target_decl_index;
+    case AK_Field:
+    case AK_TupleField:
+        return ir_address_path_targets_decl(
+            ast, sema, node->a, target_decl_index);
+    case AK_Index:
+        return ir_address_path_targets_decl(
+            ast, sema, node->a, target_decl_index);
+    default:
+        return false;
+    }
+}
+
+internal bool ir_decl_is_pointer_alias_to_decl(const Ast*  ast,
+                                               const Sema* sema,
+                                               u32         decl_index,
+                                               u32         target_decl_index)
+{
+    if (decl_index == sema_no_decl() || decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+    const SemaDecl* decl = &sema->decls[decl_index];
+    if (decl->kind != SK_Constant || decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    u32 value_node_index = ir_unwrap_expr_node(ast, decl->value_node_index);
+    if (value_node_index >= array_count(ast->nodes) ||
+        ast->nodes[value_node_index].kind != AK_AddressOf) {
+        return false;
+    }
+    return ir_address_path_targets_decl(
+        ast, sema, ast->nodes[value_node_index].a, target_decl_index);
+}
+
 internal bool ir_block_is_expr_block_body(const Ast* ast, u32 block_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -2704,6 +2762,20 @@ internal IrValue ir_lower_node(const Lexer* lex,
                        "Expected resolved symbol reference");
                 const SemaDecl* decl           = &sema->decls[decl_index];
                 u32             runtime_symbol = decl->symbol_handle;
+                if (g_ir_current_global_init_decl != U32_MAX &&
+                    ir_decl_is_pointer_alias_to_decl(
+                        ast, sema, decl_index, g_ir_current_global_init_decl)) {
+                    value = ir_lower_node(lex,
+                                          ast,
+                                          sema,
+                                          decl->value_node_index,
+                                          loop,
+                                          node_values,
+                                          next_value_index,
+                                          ir);
+                    node_values[node_index] = value;
+                    return value;
+                }
                 if (decl->kind == SK_FfiFunction &&
                     decl->value_node_index != sema_no_decl()) {
                     const AstNode* ffi_node =
@@ -5174,11 +5246,14 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
 internal void ir_generate_global_init(const Lexer*    lex,
                                       const Ast*      ast,
                                       const Sema*     sema,
+                                      u32             decl_index,
                                       const SemaDecl* decl,
                                       u64*            next_value_index,
                                       Ir*             ir)
 {
     Array(IrValue) node_values = ir_make_node_values(ast);
+    u32 previous_global_init_decl = g_ir_current_global_init_decl;
+    g_ir_current_global_init_decl = decl_index;
     if (ir_decl_uses_implicit_array_slice(ast, sema, decl)) {
         u32 backing_type = ir_decl_implicit_array_slice_type(ast, sema, decl);
         u32 backing_symbol =
@@ -5243,6 +5318,7 @@ internal void ir_generate_global_init(const Lexer*    lex,
                       backing_value,
                       backing_type);
         array_free(node_values);
+        g_ir_current_global_init_decl = previous_global_init_decl;
         return;
     }
     IrValue result = {
@@ -5265,6 +5341,7 @@ internal void ir_generate_global_init(const Lexer*    lex,
                   result,
                   decl->type_index);
     array_free(node_values);
+    g_ir_current_global_init_decl = previous_global_init_decl;
 }
 
 internal u32 ir_decl_implicit_array_slice_node_index(const Ast*      ast,
@@ -5601,8 +5678,13 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
             const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
             if (ir_decl_requires_runtime(sema, decl)) {
-                ir_generate_global_init(
-                    lex, ast, sema, decl, &next_global_value_index, &ir);
+                ir_generate_global_init(lex,
+                                        ast,
+                                        sema,
+                                        sema->ordered_decl_indices[i],
+                                        decl,
+                                        &next_global_value_index,
+                                        &ir);
             }
         }
         ir_add_init_end(&ir);

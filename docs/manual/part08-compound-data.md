@@ -151,6 +151,20 @@ Node :: plex {
 }
 ```
 
+Top-level pointer aliases can point into a top-level collection and be used by
+that collection's initializer. The alias is treated as an address constant, not
+as an ordinary value dependency:
+
+```nerd
+nodes: []Node = [
+    { value: 1, next: second },
+    { value: 2, next: first },
+]
+
+first  :: ^nodes[0]
+second :: ^nodes[1]
+```
+
 A plex may not contain itself directly by value, because that would require an
 infinite amount of storage:
 
