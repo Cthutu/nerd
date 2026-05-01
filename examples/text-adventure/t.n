@@ -1,6 +1,7 @@
 --
 
-use std.random
+random :: mod std.random
+
 use std.io
 
 main :: fn () {

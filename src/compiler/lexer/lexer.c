@@ -567,8 +567,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             }
             buffer[sanitized_len] = '\0';
 
-            errno               = 0;
-            f64 value           = strtod(buffer, NULL);
+            errno                 = 0;
+            f64 value             = strtod(buffer, NULL);
             if (errno == ERANGE) {
                 return error_0103_invalid_number_literal(
                     source,

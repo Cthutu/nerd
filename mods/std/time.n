@@ -8,6 +8,53 @@ pub Instant :: u64
 
 pub Duration :: u64
 
+pub elapsed :: fn (start: Instant, finish: Instant) -> Duration {
+    on finish < start => {
+        assert no, "elapsed: end time must be greater than or equal to start time"
+    }
+    return (finish - start).as(Duration)
+}
+
+pub add_duration :: fn (time: Instant, duration: Duration) -> Instant {
+    return (time + duration).as(Instant)
+}
+
+pub duration_to_secs :: fn (duration: Duration) -> u64 {
+    return duration / 1_000_000_000
+}
+
+pub duration_to_ms :: fn (duration: Duration) -> u64 {
+    return duration / 1_000_000
+}
+
+pub duration_to_us :: fn (duration: Duration) -> u64 {
+    return duration / 1_000
+}
+
+pub duration_to_ns :: fn (duration: Duration) -> u64 {
+    return duration
+}
+
+pub secs :: fn (duration: Duration) -> f64 {
+    return duration.as(f64) / 1_000_000_000.0
+}
+
+pub from_secs :: fn (secs: u64) -> Duration {
+    return secs * 1_000_000_000
+}
+
+pub from_ms :: fn (ms: u64) -> Duration {
+    return ms * 1_000_000
+}
+
+pub from_us :: fn (us: u64) -> Duration {
+    return us * 1_000
+}
+
+pub from_ns :: fn (ns: u64) -> Duration {
+    return ns
+}
+
 on linux {
     timespec :: plex {
         tv_sec  i64
@@ -31,55 +78,43 @@ on linux {
         return _time_now_raw()
     }
 
-    elapsed :: fn (start: Instant, end: Instant) -> Duration {
-        assert end >= start, "elapsed: end time must be greater than or equal to start time"
-        return (end - start).as(Duration)
-    }
-
-    add_duration :: fn (time: Instant, duration: Duration) -> Instant {
-        return (time + duration).as(Instant)
-    }
-
-    sleep_ms :: fn (ms: u64) {
+    pub sleep_ms :: fn (ms: u64) {
         ts: timespec
         ts.tv_sec = (ms / 1000).as(i64)
         ts.tv_nsec = ((ms % 1000) * 1_000_000).as(i64)
         nanosleep(^ts, nil)
     }
-
-    duration_to_secs :: fn (duration: Duration) -> u64 {
-        return duration / 1_000_000_000
-    }
-
-    duration_to_ms :: fn (duration: Duration) -> u64 {
-        return duration / 1_000_000
-    }
-
-    duration_to_us :: fn (duration: Duration) -> u64 {
-        return duration / 1_000
-    }
-
-    duration_to_ns :: fn (duration: Duration) -> u64 {
-        return duration
-    }
-
-    secs :: fn (duration: Duration) -> f64 {
-        return duration.as(f64) / 1_000_000_000.0
-    }
-
-    from_secs :: fn (secs: u64) -> Duration {
-        return secs * 1_000_000_000
-    }
-
-    from_ms :: fn (ms: u64) -> Duration {
-        return ms * 1_000_000
-    }
-
-    from_us :: fn (us: u64) -> Duration {
-        return us * 1_000
-    }
-
-    from_ns :: fn (ns: u64) -> Duration {
-        return ns
-    }
 } -- on linux
+
+on windows {
+    ffi "kernel32" {
+        QueryPerformanceFrequency (value: ^i64) -> i32
+        QueryPerformanceCounter (value: ^i64) -> i32
+        Sleep (milliseconds: u32)
+    }
+
+    g_time_frequency: u64
+
+    _time_frequency :: fn () -> u64 {
+        on g_time_frequency == 0 => {
+            value: i64
+            QueryPerformanceFrequency(^value)
+            g_time_frequency = value.as(u64)
+        }
+        return g_time_frequency
+    }
+
+    _time_qpc_to_ns :: fn (counter: u64) -> u64 {
+        return (counter * 1_000_000_000) / _time_frequency()
+    }
+
+    pub now :: fn () -> Instant {
+        counter: i64
+        QueryPerformanceCounter(^counter)
+        return _time_qpc_to_ns(counter.as(u64)).as(Instant)
+    }
+
+    pub sleep_ms :: fn (ms: u64) {
+        Sleep(ms.as(u32))
+    }
+} -- on windows

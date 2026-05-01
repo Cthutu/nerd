@@ -21,27 +21,31 @@ random_step :: fn () -> u64 {
     return x * 0x2545F4914F6CDD1D
 }
 
-random_seed :: fn(seed: u64) {
+random_seed :: fn (seed: u64) {
     on seed == 0 => seed = 0x9E3779B97F4A7C15
     g_random_state = seed
 }
 
-pub random_u64 :: fn() -> u64 {
+pub random_u64 :: fn () -> u64 {
     return random_step()
 }
 
-pub random_range_u64 :: fn(min: u64, max: u64) -> u64 {
-    assert min <= max, "random_range_u64: min must be less than or equal to max"
+pub random_range_u64 :: fn (min: u64, max: u64) -> u64 {
+    on min > max => {
+        assert no, "random_range_u64: min must be less than or equal to max"
+    }
 
     span :: max - min + 1
 
     return min + (random_step() % span)
 }
 
-pub random_range_i64 :: fn(min: i64, max: i64) -> i64 {
-    assert min <= max, "random_range_i64: min must be less than or equal to max"
+pub random_range_i64 :: fn (min: i64, max: i64) -> i64 {
+    on min > max => {
+        assert no, "random_range_i64: min must be less than or equal to max"
+    }
 
     span :: (max - min + 1).as(u64)
 
-    return (min + (random_step() % span)).as(i64)
+    return min + (random_step() % span).as(i64)
 }
