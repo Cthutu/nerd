@@ -887,6 +887,16 @@ string sema_type_name(const Lexer* lexer,
     }
 
     const SemaType* type = &sema->types[type_index];
+    if (type->kind == STK_Plex || type->kind == STK_Union ||
+        type->kind == STK_Enum) {
+        for (u32 i = 0; i < array_count(sema->decls); ++i) {
+            const SemaDecl* decl = &sema->decls[i];
+            if (decl->kind == SK_TypeAlias && decl->type_index == type_index) {
+                return lex_symbol(lexer, decl->symbol_handle);
+            }
+        }
+    }
+
     switch (type->kind) {
     case STK_Void:
         return s("void");
