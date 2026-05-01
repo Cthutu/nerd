@@ -577,8 +577,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             state->token.source, ast_token_span(state, &on_token), TK_FatArrow);
     }
 
-    u32 first_branch = (u32)array_count(state->on_branches);
     if (state->token.kind == TK_LBrace) {
+        Array(AstOnBranch) branches = NULL;
         if (!ast_next_token(state)) {
             return error_0201_missing_value(
                 state->token.source,
@@ -657,7 +657,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             if (!parsed_branch_expr) {
                 return false;
             }
-            array_push(state->on_branches, branch);
+            array_push(branches, branch);
 
             if (branch.flags & AOBF_Else) {
                 break;
@@ -672,16 +672,22 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 state->token.kind);
         }
         if (!ast_expect_token(state, TK_RBrace)) {
+            array_free(branches);
             return false;
         }
 
-        u32 on_index = (u32)array_count(state->ons);
+        u32 on_index     = (u32)array_count(state->ons);
+        u32 first_branch = (u32)array_count(state->on_branches);
+        u32 branch_count = (u32)array_count(branches);
+        for (u32 i = 0; i < branch_count; ++i) {
+            array_push(state->on_branches, branches[i]);
+        }
+        array_free(branches);
         array_push(state->ons,
                    (AstOnInfo){
                        .kind         = AOK_Condition,
                        .first_branch = first_branch,
-                       .branch_count =
-                           (u32)array_count(state->on_branches) - first_branch,
+                       .branch_count = branch_count,
                    });
 
         return ast_emit_node(state,
@@ -700,6 +706,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     }
 
     if (state->token.kind == TK_LBrace) {
+        Array(AstOnBranch) branches = NULL;
         if (!ast_next_token(state) || !ast_next_token(state)) {
             return error_0201_missing_value(
                 state->token.source,
@@ -886,7 +893,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 return false;
             }
 
-            array_push(state->on_branches, branch);
+            array_push(branches, branch);
 
             if (branch.flags & AOBF_Else) {
                 break;
@@ -901,16 +908,22 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 state->token.kind);
         }
         if (!ast_expect_token(state, TK_RBrace)) {
+            array_free(branches);
             return false;
         }
 
-        u32 on_index = (u32)array_count(state->ons);
+        u32 on_index     = (u32)array_count(state->ons);
+        u32 first_branch = (u32)array_count(state->on_branches);
+        u32 branch_count = (u32)array_count(branches);
+        for (u32 i = 0; i < branch_count; ++i) {
+            array_push(state->on_branches, branches[i]);
+        }
+        array_free(branches);
         array_push(state->ons,
                    (AstOnInfo){
                        .kind         = AOK_Value,
                        .first_branch = first_branch,
-                       .branch_count =
-                           (u32)array_count(state->on_branches) - first_branch,
+                       .branch_count = branch_count,
                    });
 
         return ast_emit_node(state,
@@ -971,6 +984,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                        });
             u32 first_pattern = (u32)array_count(state->pattern_items);
             array_push(state->pattern_items, true_pattern);
+            u32 first_branch = (u32)array_count(state->on_branches);
             array_push(state->on_branches,
                        (AstOnBranch){
                            .pattern_index        = first_pattern,
@@ -1044,6 +1058,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                });
     u32 first_pattern = (u32)array_count(state->pattern_items);
     array_push(state->pattern_items, true_pattern);
+    u32 first_branch = (u32)array_count(state->on_branches);
     array_push(state->on_branches,
                (AstOnBranch){
                    .pattern_index        = first_pattern,
