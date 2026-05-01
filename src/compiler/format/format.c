@@ -1773,10 +1773,11 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         string field_name = lex_symbol(lexer, field->symbol_handle);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
-        for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+        sb_append_char(sb, ':');
+        for (usize pad = field_name.count; pad < max_field_width; ++pad) {
             sb_append_char(sb, ' ');
         }
-        sb_append_cstr(sb, ": ");
+        sb_append_char(sb, ' ');
         format_emit_expr_with_indent(
             sb, cst, lexer, field->value_node_index, 0, indent_level + 1);
         sb_append_char(sb, '\n');
@@ -1839,10 +1840,11 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
             &cst->plex_literal_fields[plex->first_field + i];
         string field_name = lex_symbol(lexer, field->symbol_handle);
         sb_append_string(sb, field_name);
-        for (usize pad = field_name.count; pad <= field_name_widths[i]; ++pad) {
+        sb_append_char(sb, ':');
+        for (usize pad = field_name.count; pad < field_name_widths[i]; ++pad) {
             sb_append_char(sb, ' ');
         }
-        sb_append_cstr(sb, ": ");
+        sb_append_char(sb, ' ');
         format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
         if (i + 1 < plex->field_count) {
             usize value_width = format_rendered_expr_width(
