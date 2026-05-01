@@ -1690,11 +1690,12 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
-    u32 first_branch = (u32)array_count(state->cst.on_branches);
     if (cst_current_token(state).kind == TK_LBrace) {
+        Array(CstOnBranch) branches = NULL;
         cst_advance(state);
         while (cst_current_token(state).kind != TK_RBrace) {
             if (cst_current_token(state).kind == TK_EOF) {
+                array_free(branches);
                 return false;
             }
 
@@ -1708,17 +1709,20 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                 branch.flags = COBF_Else;
                 cst_advance(state);
             } else if (!cst_parse_expr_bp(state, 0, &branch.guard_node_index)) {
+                array_free(branches);
                 return false;
             }
 
             if (!cst_consume(state, TK_FatArrow)) {
+                array_free(branches);
                 return false;
             }
 
             if (!cst_parse_on_branch_expr(state, &branch.expr_node_index)) {
+                array_free(branches);
                 return false;
             }
-            array_push(state->cst.on_branches, branch);
+            array_push(branches, branch);
 
             if (branch.flags & COBF_Else) {
                 break;
@@ -1726,18 +1730,24 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         }
 
         if (!cst_consume(state, TK_RBrace)) {
+            array_free(branches);
             return false;
         }
 
+        u32 first_branch = (u32)array_count(state->cst.on_branches);
+        u32 branch_count = (u32)array_count(branches);
+        for (u32 i = 0; i < branch_count; ++i) {
+            array_push(state->cst.on_branches, branches[i]);
+        }
+        array_free(branches);
+
         u32 on_index = (u32)array_count(state->cst.ons);
-        array_push(
-            state->cst.ons,
-            (CstOnInfo){
-                .kind         = COK_Condition,
-                .first_branch = first_branch,
-                .branch_count =
-                    (u32)array_count(state->cst.on_branches) - first_branch,
-            });
+        array_push(state->cst.ons,
+                   (CstOnInfo){
+                       .kind         = COK_Condition,
+                       .first_branch = first_branch,
+                       .branch_count = branch_count,
+                   });
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = CK_On,
@@ -1754,9 +1764,11 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_LBrace) {
+        Array(CstOnBranch) branches = NULL;
         cst_advance(state);
         while (cst_current_token(state).kind != TK_RBrace) {
             if (cst_current_token(state).kind == TK_EOF) {
+                array_free(branches);
                 return false;
             }
 
@@ -1770,6 +1782,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                 if (cst_current_token(state).kind == TK_as) {
                     cst_advance(state);
                     if (cst_current_token(state).kind != TK_Symbol) {
+                        array_free(branches);
                         return false;
                     }
                     branch.binder_symbol_handle =
@@ -1778,6 +1791,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     cst_advance(state);
                 }
                 if (!cst_consume(state, TK_FatArrow)) {
+                    array_free(branches);
                     return false;
                 }
             } else {
@@ -1786,6 +1800,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     u32 pattern_root = 0;
                     if (!cst_parse_pattern(state, &pattern_root)) {
                         array_free(branch_patterns);
+                        array_free(branches);
                         return false;
                     }
                     array_push(branch_patterns, pattern_root);
@@ -1806,6 +1821,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                 if (cst_current_token(state).kind == TK_as) {
                     cst_advance(state);
                     if (cst_current_token(state).kind != TK_Symbol) {
+                        array_free(branches);
                         return false;
                     }
                     branch.binder_symbol_handle =
@@ -1817,18 +1833,21 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     cst_advance(state);
                     if (!cst_parse_expr_bp(
                             state, 0, &branch.guard_node_index)) {
+                        array_free(branches);
                         return false;
                     }
                 }
                 if (!cst_consume(state, TK_FatArrow)) {
+                    array_free(branches);
                     return false;
                 }
             }
 
             if (!cst_parse_on_branch_expr(state, &branch.expr_node_index)) {
+                array_free(branches);
                 return false;
             }
-            array_push(state->cst.on_branches, branch);
+            array_push(branches, branch);
 
             if (branch.flags & COBF_Else) {
                 break;
@@ -1836,18 +1855,24 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         }
 
         if (!cst_consume(state, TK_RBrace)) {
+            array_free(branches);
             return false;
         }
 
+        u32 first_branch = (u32)array_count(state->cst.on_branches);
+        u32 branch_count = (u32)array_count(branches);
+        for (u32 i = 0; i < branch_count; ++i) {
+            array_push(state->cst.on_branches, branches[i]);
+        }
+        array_free(branches);
+
         u32 on_index = (u32)array_count(state->cst.ons);
-        array_push(
-            state->cst.ons,
-            (CstOnInfo){
-                .kind         = COK_Value,
-                .first_branch = first_branch,
-                .branch_count =
-                    (u32)array_count(state->cst.on_branches) - first_branch,
-            });
+        array_push(state->cst.ons,
+                   (CstOnInfo){
+                       .kind         = COK_Value,
+                       .first_branch = first_branch,
+                       .branch_count = branch_count,
+                   });
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = CK_On,
@@ -1887,6 +1912,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                    });
         u32 first_pattern = (u32)array_count(state->cst.pattern_items);
         array_push(state->cst.pattern_items, true_pattern);
+        u32 first_branch = (u32)array_count(state->cst.on_branches);
         array_push(state->cst.on_branches,
                    (CstOnBranch){
                        .pattern_index        = first_pattern,
@@ -1942,6 +1968,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                });
     u32 first_pattern = (u32)array_count(state->cst.pattern_items);
     array_push(state->cst.pattern_items, true_pattern);
+    u32 first_branch = (u32)array_count(state->cst.on_branches);
     array_push(state->cst.on_branches,
                (CstOnBranch){
                    .pattern_index        = first_pattern,
@@ -2003,8 +2030,12 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
             !cst_token_has_newline_before(state, state->token_index)) {
             bool previous_stop_before_on_branch_head =
                 state->stop_before_on_branch_head;
+            bool previous_allow_statement_boundary =
+                state->allow_statement_boundary;
+            state->allow_statement_boundary   = true;
             state->stop_before_on_branch_head = true;
             bool parsed = cst_parse_expr_bp(state, 0, &expr);
+            state->allow_statement_boundary = previous_allow_statement_boundary;
             state->stop_before_on_branch_head =
                 previous_stop_before_on_branch_head;
             if (!parsed) {
@@ -2042,8 +2073,12 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
             !cst_token_has_newline_before(state, state->token_index)) {
             bool previous_stop_before_on_branch_head =
                 state->stop_before_on_branch_head;
+            bool previous_allow_statement_boundary =
+                state->allow_statement_boundary;
+            state->allow_statement_boundary   = true;
             state->stop_before_on_branch_head = true;
             bool parsed = cst_parse_expr_bp(state, 0, &expr);
+            state->allow_statement_boundary = previous_allow_statement_boundary;
             state->stop_before_on_branch_head =
                 previous_stop_before_on_branch_head;
             if (!parsed) {
@@ -2062,8 +2097,11 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
 
     bool previous_stop_before_on_branch_head =
         state->stop_before_on_branch_head;
-    state->stop_before_on_branch_head = true;
+    bool previous_allow_statement_boundary = state->allow_statement_boundary;
+    state->allow_statement_boundary        = true;
+    state->stop_before_on_branch_head      = true;
     bool parsed                       = cst_parse_expr_bp(state, 0, out_node);
+    state->allow_statement_boundary   = previous_allow_statement_boundary;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     return parsed;
 }
@@ -3567,9 +3605,11 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_return) {
-        u32 expr = 0;
+        u32 expr = U32_MAX;
         cst_advance(state);
-        if (!cst_parse_expr_bp(state, 0, &expr)) {
+        if (cst_token_starts_expression(cst_current_token(state).kind) &&
+            !cst_token_has_newline_before(state, state->token_index) &&
+            !cst_parse_expr_bp(state, 0, &expr)) {
             return false;
         }
         return cst_emit_node(state,
