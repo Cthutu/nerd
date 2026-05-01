@@ -79,6 +79,8 @@ intended exit code.
 
 - Tuples are positional.
 - Plexes are named-field product types.
+- Plexes may refer to themselves through pointer fields, such as `next ^Node`;
+  direct by-value self-recursion is invalid.
 - Raw unions overlap storage and are low-level.
 - Enums are tagged variants.
 - Fixed arrays own their elements and carry length in the type.

@@ -141,6 +141,25 @@ p.x = 10  -- assign a field
 p.y += 5  -- compound-assign a field
 ```
 
+Plexes may refer to themselves through pointers. This is useful for linked
+structures and object graphs because the field has pointer size:
+
+```nerd
+Node :: plex {
+    value i32
+    next  ^Node
+}
+```
+
+A plex may not contain itself directly by value, because that would require an
+infinite amount of storage:
+
+```nerd
+BadNode :: plex {
+    next BadNode  -- invalid
+}
+```
+
 ## Destructuring
 
 Destructuring binds parts of compound values:

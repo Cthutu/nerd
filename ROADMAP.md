@@ -58,14 +58,17 @@ New language features should land across the toolchain together:
 - language tests
 - error tests for invalid source
 - format/LSP/command tests where the feature affects those surfaces
-- user-facing docs when the language surface changes
+- user-facing docs when the language surface changes, including the manual and
+  syntax/language-reference appendices where relevant
 
 Prefer dense language regression tests that exercise related runtime cases in
 one file. Use `std.io` for visible runtime output rather than adding many tiny
 happy-path tests.
 
 Do not move on from a language feature while one of the agreed compiler,
-formatter, LSP, or testing surfaces is knowingly behind.
+formatter, LSP, testing, or manual/documentation surfaces is knowingly behind.
+If a documentation update is intentionally deferred, record that explicitly in
+the roadmap before committing the implementation.
 
 ## Diagnostic Policy
 

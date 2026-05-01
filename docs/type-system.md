@@ -227,8 +227,10 @@ still records a normal binding shape and semantic analysis decides whether the
 binding names a runtime value or a type alias.
 
 Alias cycles are diagnosed during type classification before normal dependency
-ordering. They now have a dedicated semantic error so alias cycles are kept
-distinct from value dependency cycles.
+ordering. They have a dedicated semantic error so alias cycles are kept distinct
+from value dependency cycles. A record alias may refer to itself through a
+pointer field, because the field has pointer-sized storage. Direct unboxed
+cycles, such as a plex field whose type is the same plex, remain invalid.
 
 ## Variables And Storage
 
@@ -302,6 +304,13 @@ Plex fields are accessed with dot syntax:
 Field access on `^Plex` automatically dereferences the pointer for the field
 lookup. Generated C lowers this through `->`, while direct plex values continue
 to lower through `.`.
+
+Plex aliases may be recursively linked through pointer fields:
+
+- `Node :: plex { value i32 next ^Node }`
+
+The recursive edge must be boxed behind a pointer. Direct recursive storage such
+as `Node :: plex { next Node }` is rejected as a type-alias cycle.
 
 Plex layout annotations are written after `plex`:
 
