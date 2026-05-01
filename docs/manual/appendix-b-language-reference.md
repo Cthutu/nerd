@@ -22,8 +22,8 @@ intended exit code.
 - Mutable inferred bindings use `:=`.
 - Local scopes are created by blocks.
 - `pub` exports a module-level declaration.
-- `use` imports public names.
-- `mod` binds a module for qualified access.
+- `use path` imports public names.
+- `name :: use path` binds a module for qualified access.
 
 ## Values
 

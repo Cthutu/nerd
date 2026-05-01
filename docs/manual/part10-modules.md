@@ -34,10 +34,10 @@ Use imports sparingly in larger files so readers can tell where names come from.
 
 ## Module Bindings
 
-Bind a module to a local top-level name with `mod`:
+Bind a module to a local top-level name with `use` as the binding value:
 
 ```nerd
-io :: mod std.io  -- bind the module to the name io
+io :: use std.io  -- bind the module to the name io
 
 main :: fn () {
     io.prn("hello")  -- qualified access through io
@@ -65,12 +65,12 @@ A module can re-export public names from another module. Use this when building
 a small public surface over several internal files.
 
 ```nerd
-pub io :: mod std.io  -- re-export std.io through this module
+pub io :: use std.io  -- re-export std.io through this module
 ```
 
 Code that imports this module can then access the public `io` module binding.
 
-## Choosing `use` Or `mod`
+## Choosing A Use Form
 
 Use `use` for simple examples and small programs:
 
@@ -78,10 +78,10 @@ Use `use` for simple examples and small programs:
 use std.io  -- import names directly
 ```
 
-Use `mod` when clarity matters:
+Use a named module binding when clarity matters:
 
 ```nerd
-io :: mod std.io  -- keep names qualified
+io :: use std.io  -- keep names qualified
 ```
 
 Qualified names such as `io.prn` make dependencies explicit.

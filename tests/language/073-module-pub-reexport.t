@@ -1,4 +1,4 @@
-wrapper :: mod test.reexport
+wrapper :: use test.reexport
 
 main :: fn() {
     wrapper.printer.prn("reexport")

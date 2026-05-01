@@ -643,7 +643,6 @@ internal bool lexer_lex_one_token(NerdSource source,
             {"union", 5, TK_union},
             {"enum", 4, TK_enum},
             {"ffi", 3, TK_ffi},
-            {"mod", 3, TK_mod},
             {"use", 3, TK_use},
             {"pub", 3, TK_pub},
             {"with", 4, TK_with},
@@ -1152,7 +1151,6 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         return token->offset + 2;
     case TK_for:
     case TK_ffi:
-    case TK_mod:
     case TK_use:
     case TK_pub:
     case TK_yes:

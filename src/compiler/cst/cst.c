@@ -3770,7 +3770,7 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
         return cst_parse_ffi_def(state, out_node, false);
     }
 
-    if (cst_current_token(state).kind == TK_mod) {
+    if (cst_current_token(state).kind == TK_use) {
         return cst_parse_mod_ref(state, out_node);
     }
 
@@ -4167,11 +4167,7 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
     }
 
     u32 module_node = 0;
-    if (cst_current_token(state).kind == TK_mod) {
-        if (!cst_parse_mod_ref(state, &module_node)) {
-            return false;
-        }
-    } else if (!cst_parse_expr_bp(state, 0, &module_node)) {
+    if (!cst_parse_expr_bp(state, 0, &module_node)) {
         return false;
     }
 

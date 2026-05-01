@@ -155,15 +155,6 @@ formatter, LSP, or testing surfaces is knowingly behind.
   formatting, or install packaging, update both editor integrations in the same
   commit unless one is explicitly out of scope.
 
-### Module Syntax Cleanup
-
-- Merge `use` and `mod` syntax so `use module.path` imports public names into
-  scope, and `name :: use module.path` binds the module to a named scope for
-  qualified access.
-- Deprecate and then remove `name :: mod module.path` once parser, semantic
-  analysis, formatter, LSP, tests, examples, and manual coverage all support
-  the unified `use` forms.
-
 ## Deferred Work
 
 These items are worth keeping visible, but they should not be treated as

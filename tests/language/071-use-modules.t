@@ -3,7 +3,7 @@ use std.io
 main :: fn() {
     prn("top")
 
-    p :: mod std.io
+    p :: use std.io
     use p
 
     prn("local")

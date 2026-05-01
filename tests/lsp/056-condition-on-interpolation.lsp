@@ -1,4 +1,4 @@
-io :: mod std.io
+io :: use std.io
 
 Location :: plex {
     description string

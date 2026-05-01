@@ -28,7 +28,7 @@ ffi "lib" {
     foreign_name (...) -> Type
 }
 local_name :: ffi "lib" foreign_name (...) -> Type
-alias :: mod module.path
+name :: use module.path
 use module.path
 ```
 

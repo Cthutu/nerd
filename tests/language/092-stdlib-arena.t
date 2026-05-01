@@ -1,4 +1,4 @@
-arena :: mod std.arena
+arena :: use std.arena
 
 main :: fn () -> i32 {
     a := arena.arena_new(16)

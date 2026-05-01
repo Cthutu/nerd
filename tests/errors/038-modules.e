@@ -1,4 +1,4 @@
-bad :: mod std.missing
+bad :: use std.missing
 
 main :: fn() {}
 ¬

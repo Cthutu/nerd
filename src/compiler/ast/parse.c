@@ -1136,7 +1136,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
-    if (kind == TK_fn || kind == TK_ffi || kind == TK_mod) {
+    if (kind == TK_fn || kind == TK_ffi || kind == TK_use) {
         return PQ_Declaration;
     }
 
@@ -2654,6 +2654,49 @@ internal bool ast_parse_block_statement(AstParseState* state)
                          NULL);
 }
 
+internal bool ast_parse_module_ref_after_use(AstParseState* state,
+                                             u32*           out_node)
+{
+    ASSERT(state->token.kind == TK_use, "Expected 'use' token");
+    AstToken use_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0205_expected_declaration_or_expression(
+            state->lexer->source,
+            ast_token_span(state, &use_token),
+            TK_EOF,
+            "Expected a module expression after 'use', but found end of file");
+    }
+
+    AstToken path_token = state->token;
+    Array(u32) symbols  = NULL;
+    if (!ast_parse_module_path_symbols(state, &symbols)) {
+        array_free(symbols);
+        return false;
+    }
+
+    u32 first_symbol = (u32)array_count(state->module_path_symbols);
+    for (u32 i = 0; i < array_count(symbols); ++i) {
+        array_push(state->module_path_symbols, symbols[i]);
+    }
+
+    u32 module_path_index = (u32)array_count(state->module_paths);
+    array_push(state->module_paths,
+               (AstModulePath){
+                   .first_symbol = first_symbol,
+                   .symbol_count = (u32)array_count(symbols),
+               });
+    array_free(symbols);
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_ModRef,
+                             .token_index = path_token.token_index,
+                             .a           = module_path_index,
+                         },
+                         out_node);
+}
+
 internal bool ast_parse_use(AstParseState* state, u32* out_node)
 {
     ASSERT(state->token.kind == TK_use, "Expected 'use' token");
@@ -3120,49 +3163,8 @@ bool ast_parse_declaration(AstParseState* state,
                            u32*           out_node,
                            bool           allow_ffi_block)
 {
-    if (state->token.kind == TK_mod) {
-        AstToken mod_token    = state->token;
-        u32      first_symbol = (u32)array_count(state->module_path_symbols);
-        u32      symbol_count = 0;
-
-        if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_Symbol,
-                state->token.kind);
-        }
-
-        for (;;) {
-            array_push(state->module_path_symbols,
-                       state->token.value.symbol_handle);
-            ++symbol_count;
-            if (ast_peek_kind_at(state, 0) != TK_Dot) {
-                break;
-            }
-            if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state) ||
-                state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_Symbol,
-                    state->token.kind);
-            }
-        }
-
-        u32 module_path_index = (u32)array_count(state->module_paths);
-        array_push(state->module_paths,
-                   (AstModulePath){
-                       .first_symbol = first_symbol,
-                       .symbol_count = symbol_count,
-                   });
-        return ast_emit_node(state,
-                             (AstNode){
-                                 .kind        = AK_ModRef,
-                                 .token_index = mod_token.token_index,
-                                 .a           = module_path_index,
-                             },
-                             out_node);
+    if (state->token.kind == TK_use) {
+        return ast_parse_module_ref_after_use(state, out_node);
     }
 
     if (state->token.kind == TK_ffi) {

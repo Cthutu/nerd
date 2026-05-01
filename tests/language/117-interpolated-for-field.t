@@ -1,5 +1,5 @@
 -- Interpolates a field read from an indexed for-in item.
-io :: mod std.io
+io :: use std.io
 
 Location :: plex {
     description string

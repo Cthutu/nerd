@@ -1,4 +1,4 @@
-boxmod :: mod test.imported_plex
+boxmod :: use test.imported_plex
 
 consume :: fn (text: string) {
     on text.count == 0 => return

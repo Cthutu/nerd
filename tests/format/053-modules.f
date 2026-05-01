@@ -1,16 +1,16 @@
-pub print::mod std.io
+pub print:: use std.io
 
 main::fn(){
-local_print::mod std.io
+local_print:: use std.io
 local_print.prn("Local")
 print.prn("Hello")
 print.pr("same")
 }
 ¬
-pub print :: mod std.io
+pub print :: use std.io
 
 main :: fn () {
-    local_print :: mod std.io
+    local_print :: use std.io
     local_print.prn("Local")
     print.prn("Hello")
     print.pr("same")

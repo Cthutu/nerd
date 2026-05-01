@@ -1,6 +1,6 @@
 use std.io
 
-io :: mod std.io
+io :: use std.io
 
 cleanup_return :: fn () -> i32 {
     value := 1

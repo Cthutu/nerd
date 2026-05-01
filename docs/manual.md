@@ -70,7 +70,7 @@ main :: fn () {
 When a feature depends on module qualification, use:
 
 ```nerd
-io :: mod std.io
+io :: use std.io
 
 main :: fn () {
     io.prn("hello")
@@ -413,7 +413,7 @@ Concepts:
 
 - `use std.io`
 - grouped `use`
-- module bindings with `alias :: mod path`
+- module bindings with `name :: use module.path`
 - public exports with `pub`
 - qualified access with `module.name`
 - re-exporting
@@ -421,8 +421,8 @@ Concepts:
 Rules to teach:
 
 - `use` imports public names into the current scope.
-- `alias :: mod path` binds the module value, and public members are accessed
-  through fields.
+- `name :: use module.path` binds the module value, and public members are
+  accessed through fields.
 - Only `pub` declarations are visible outside a module.
 - Qualified module access is useful when avoiding local namespace pollution.
 - The standard library is still in development and should be documented

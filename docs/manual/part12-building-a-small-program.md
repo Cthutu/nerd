@@ -37,7 +37,7 @@ The program loops until the user enters `quit` or `q`.
 For a larger file, qualified modules make dependencies clearer:
 
 ```nerd
-io :: mod std.io  -- keep standard I/O names qualified
+io :: use std.io  -- keep standard I/O names qualified
 
 main :: fn () {
     io.prn("Welcome!")
@@ -49,8 +49,8 @@ main :: fn () {
 When a command needs words, split the input into a dynamic array:
 
 ```nerd
-io :: mod std.io
-str :: mod std.string
+io :: use std.io
+str :: use std.string
 
 main :: fn () {
     input := io.input("--> ")

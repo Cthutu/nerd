@@ -1,6 +1,6 @@
 --
 
-random :: mod std.random
+random :: use std.random
 
 use std.io
 

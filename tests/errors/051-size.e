@@ -1,4 +1,4 @@
-io :: mod std.io
+io :: use std.io
 value :: io.size
 main :: fn () {}
 ¬

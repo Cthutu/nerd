@@ -1,7 +1,7 @@
 use   std.io
 
 main::fn(){
-p::mod std.io
+p:: use std.io
 use p
 prn("Hello")
 }
@@ -9,7 +9,7 @@ prn("Hello")
 use std.io
 
 main :: fn () {
-    p :: mod std.io
+    p :: use std.io
     use p
     prn("Hello")
 }

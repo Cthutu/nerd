@@ -123,6 +123,7 @@ internal u32 lsp_find_modref_node_at_token(const Lexer* lexer,
                                            const Ast*   ast,
                                            u32          token_index)
 {
+    UNUSED(lexer);
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind != AK_ModRef ||
@@ -132,10 +133,6 @@ internal u32 lsp_find_modref_node_at_token(const Lexer* lexer,
 
         const AstModulePath* path          = &ast->module_paths[node->a];
         u32                  current_token = node->token_index;
-        if (current_token < array_count(lexer->tokens) &&
-            lexer->tokens[current_token].kind == TK_mod) {
-            current_token += 1;
-        }
         for (u32 j = 0; j < path->symbol_count; ++j) {
             if (current_token == token_index) {
                 return i;

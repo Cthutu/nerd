@@ -1,4 +1,4 @@
-box :: mod test.reexport
+box :: use test.reexport
 
 main :: fn() {
     box.secret()

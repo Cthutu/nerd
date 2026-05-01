@@ -1,4 +1,4 @@
-print :: mod std.io
+print :: use std.io
 
 main :: fn () {
     print.prn("Hello")

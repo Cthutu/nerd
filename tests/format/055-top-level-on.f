@@ -2,7 +2,7 @@ on   debug{
 answer::7
 
 on !feature{
-use  mod std.io
+use  std.io
 fallback::9
 }
 }

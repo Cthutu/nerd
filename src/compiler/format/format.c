@@ -1622,7 +1622,10 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_ModRef:
         {
             const CstModulePath* path = &cst->module_paths[node->a];
-            return node->token_index + path->symbol_count * 2 - 1;
+            u32                  keyword_width =
+                lexer->tokens[node->token_index].kind == TK_use ? 1 : 0;
+            return node->token_index + keyword_width + path->symbol_count * 2 -
+                   2;
         }
     case CK_ExprBlock:
         return format_node_end_token_index(cst, lexer, node->a);
@@ -2461,7 +2464,7 @@ internal void format_emit_mod_ref(StringBuilder* sb,
                                   const Lexer*   lexer,
                                   u32            module_path_index)
 {
-    sb_append_cstr(sb, "mod ");
+    sb_append_cstr(sb, "use ");
     format_emit_module_path(sb, cst, lexer, module_path_index);
 }
 
