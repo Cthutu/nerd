@@ -6,6 +6,8 @@
 
 #include <core/core.h>
 
+#include <stdio.h>
+
 //------------------------------------------------------------------------------
 
 typedef struct MemoryHeader_t {
@@ -34,7 +36,7 @@ void* mem_alloc(usize size, const char* file, int line)
 {
     MemoryHeader* header = (MemoryHeader*)malloc(sizeof(MemoryHeader) + size);
     if (!header) {
-        eprn("Memory allocation failed at %s:%d", file, line);
+        fprintf(stderr, "Memory allocation failed at %s:%d\n", file, line);
         abort();
     }
 
@@ -92,7 +94,7 @@ void* mem_realloc(void* ptr, usize size, const char* file, int line)
     MemoryHeader* header =
         (MemoryHeader*)realloc(old_header, sizeof(MemoryHeader) + size);
     if (!header) {
-        eprn("Memory reallocation failed at %s:%d", file, line);
+        fprintf(stderr, "Memory reallocation failed at %s:%d\n", file, line);
         abort();
     }
 
