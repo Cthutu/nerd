@@ -97,10 +97,20 @@ internal void ir_render_value(StringBuilder* sb,
 internal void ir_render_type_name(StringBuilder* sb,
                                   const Ir*      ir,
                                   const Lexer*   lexer,
-                                  u32            type_index)
+                                  u32            type_index);
+
+internal void ir_render_type_name_depth(StringBuilder* sb,
+                                        const Ir*      ir,
+                                        const Lexer*   lexer,
+                                        u32            type_index,
+                                        u32            depth)
 {
     if (type_index == U32_MAX || type_index >= array_count(ir->types)) {
         sb_append_cstr(sb, "<unknown>");
+        return;
+    }
+    if (depth > 16) {
+        sb_format(sb, "type%u", type_index);
         return;
     }
 
@@ -166,11 +176,12 @@ internal void ir_render_type_name(StringBuilder* sb,
             if (i > 0) {
                 sb_append_cstr(sb, ",");
             }
-            ir_render_type_name(
+            ir_render_type_name_depth(
                 sb,
                 ir,
                 lexer,
-                ir->type_param_types[type->first_param_type + i]);
+                ir->type_param_types[type->first_param_type + i],
+                depth + 1);
         }
         if (type->flags & STF_FunctionVarargs) {
             if (type->param_count > 0) {
@@ -179,7 +190,7 @@ internal void ir_render_type_name(StringBuilder* sb,
             sb_append_cstr(sb, "...");
         }
         sb_append_cstr(sb, ")->");
-        ir_render_type_name(sb, ir, lexer, type->return_type);
+        ir_render_type_name_depth(sb, ir, lexer, type->return_type, depth + 1);
         break;
     case STK_Module:
         sb_append_cstr(sb, "module");
@@ -190,11 +201,12 @@ internal void ir_render_type_name(StringBuilder* sb,
             if (i > 0) {
                 sb_append_cstr(sb, ",");
             }
-            ir_render_type_name(
+            ir_render_type_name_depth(
                 sb,
                 ir,
                 lexer,
-                ir->type_param_types[type->first_param_type + i]);
+                ir->type_param_types[type->first_param_type + i],
+                depth + 1);
         }
         if (type->param_count == 1) {
             sb_append_cstr(sb, ",");
@@ -203,19 +215,23 @@ internal void ir_render_type_name(StringBuilder* sb,
         break;
     case STK_Array:
         sb_format(sb, "[%u]", type->return_type);
-        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        ir_render_type_name_depth(
+            sb, ir, lexer, type->first_param_type, depth + 1);
         break;
     case STK_Slice:
         sb_append_cstr(sb, "[]");
-        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        ir_render_type_name_depth(
+            sb, ir, lexer, type->first_param_type, depth + 1);
         break;
     case STK_DynamicArray:
         sb_append_cstr(sb, "[..]");
-        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        ir_render_type_name_depth(
+            sb, ir, lexer, type->first_param_type, depth + 1);
         break;
     case STK_Pointer:
         sb_append_char(sb, '^');
-        ir_render_type_name(sb, ir, lexer, type->first_param_type);
+        ir_render_type_name_depth(
+            sb, ir, lexer, type->first_param_type, depth + 1);
         break;
     case STK_Plex:
     case STK_Union:
@@ -229,11 +245,12 @@ internal void ir_render_type_name(StringBuilder* sb,
                 lex_symbol(lexer,
                            ir->type_param_symbols[type->first_param_type + i]));
             sb_append_char(sb, ':');
-            ir_render_type_name(
+            ir_render_type_name_depth(
                 sb,
                 ir,
                 lexer,
-                ir->type_param_types[type->first_param_type + i]);
+                ir->type_param_types[type->first_param_type + i],
+                depth + 1);
         }
         sb_append_cstr(sb, "}");
         break;
@@ -250,7 +267,8 @@ internal void ir_render_type_name(StringBuilder* sb,
             u32 payload_type = ir->type_param_types[type->first_param_type + i];
             if (payload_type != sema_no_type()) {
                 sb_append_char(sb, '(');
-                ir_render_type_name(sb, ir, lexer, payload_type);
+                ir_render_type_name_depth(
+                    sb, ir, lexer, payload_type, depth + 1);
                 sb_append_char(sb, ')');
             }
         }
@@ -260,6 +278,14 @@ internal void ir_render_type_name(StringBuilder* sb,
         sb_append_cstr(sb, "<unknown>");
         break;
     }
+}
+
+internal void ir_render_type_name(StringBuilder* sb,
+                                  const Ir*      ir,
+                                  const Lexer*   lexer,
+                                  u32            type_index)
+{
+    ir_render_type_name_depth(sb, ir, lexer, type_index, 0);
 }
 
 internal void ir_render_typed_value(StringBuilder* sb,

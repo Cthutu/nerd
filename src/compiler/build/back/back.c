@@ -145,6 +145,78 @@ internal void back_end_collect_module_postorder(const ProgramInfo* program,
     array_push(*out_order, module_index);
 }
 
+internal void back_end_copy_module_types(ProgramBackEndMerge* merge,
+                                         const Lexer*         module_lexer,
+                                         const Sema*          module_sema,
+                                         Array(u32) *         out_type_map)
+{
+    for (u32 i = 0; i < array_count(module_sema->types); ++i) {
+        array_push(*out_type_map, (u32)array_count(merge->sema.types));
+        array_push(merge->sema.types, module_sema->types[i]);
+    }
+
+    for (u32 i = 0; i < array_count(module_sema->types); ++i) {
+        SemaType*       dst = &merge->sema.types[(*out_type_map)[i]];
+        const SemaType* src = &module_sema->types[i];
+
+        switch (src->kind) {
+        case STK_Array:
+        case STK_Slice:
+        case STK_DynamicArray:
+        case STK_Pointer:
+            dst->first_param_type = (*out_type_map)[src->first_param_type];
+            break;
+        case STK_Function:
+            {
+                u32 first = (u32)array_count(merge->sema.type_param_types);
+                for (u32 param = 0; param < src->param_count; ++param) {
+                    array_push(
+                        merge->sema.type_param_types,
+                        (*out_type_map)
+                            [module_sema->type_param_types
+                                 [src->first_param_type + param]]);
+                    array_push(merge->sema.type_param_symbols, U32_MAX);
+                    array_push(merge->sema.type_param_values, 0);
+                }
+                dst->first_param_type = first;
+                dst->return_type      = (*out_type_map)[src->return_type];
+            }
+            break;
+        case STK_Module:
+        case STK_Tuple:
+        case STK_Plex:
+        case STK_Union:
+        case STK_Enum:
+            {
+                u32 first = (u32)array_count(merge->sema.type_param_types);
+                for (u32 param = 0; param < src->param_count; ++param) {
+                    u32 param_type =
+                        module_sema
+                            ->type_param_types[src->first_param_type + param];
+                    array_push(merge->sema.type_param_types,
+                               param_type == sema_no_type()
+                                   ? sema_no_type()
+                                   : (*out_type_map)[param_type]);
+                    u32 symbol = module_sema->type_param_symbols
+                        [src->first_param_type + param];
+                    array_push(merge->sema.type_param_symbols,
+                               symbol == U32_MAX
+                                   ? U32_MAX
+                                   : sema_import_symbol_handle(
+                                         &merge->lexer, module_lexer, symbol));
+                    array_push(merge->sema.type_param_values,
+                               module_sema->type_param_values
+                                   [src->first_param_type + param]);
+                }
+                dst->first_param_type = first;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 internal void back_end_merge_program_done(ProgramBackEndMerge* merge)
 {
     ir_done(&merge->ir);
@@ -185,14 +257,8 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         const Ir*            module_ir    = &front_end->ir;
 
         Array(u32) type_map               = NULL;
-        for (u32 i = 0; i < array_count(front_end->sema.types); ++i) {
-            array_push(type_map,
-                       sema_import_type(&merge.lexer,
-                                        &merge.sema,
-                                        &front_end->lexer,
-                                        &front_end->sema,
-                                        i));
-        }
+        back_end_copy_module_types(
+            &merge, &front_end->lexer, &front_end->sema, &type_map);
 
         Array(u32) string_map = NULL;
         for (u32 i = 0; i < array_count(module_ir->strings); ++i) {

@@ -251,10 +251,23 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
             static char names[8][64];
             static u32  next = 0;
             char*       name = names[next++ % 8];
-            snprintf(name,
-                     64,
-                     "%s*",
-                     cgen_c_type(ir, ir->types[type_index].first_param_type));
+            u32 pointee_type = ir->types[type_index].first_param_type;
+            if (pointee_type != sema_no_type() &&
+                pointee_type < array_count(ir->types) &&
+                (ir->types[pointee_type].kind == STK_Plex ||
+                 ir->types[pointee_type].kind == STK_Tuple ||
+                 ir->types[pointee_type].kind == STK_Array ||
+                 ir->types[pointee_type].kind == STK_Slice ||
+                 ir->types[pointee_type].kind == STK_DynamicArray ||
+                 ir->types[pointee_type].kind == STK_Enum)) {
+                snprintf(name, 64, "struct %s*", cgen_c_type(ir, pointee_type));
+            } else if (pointee_type != sema_no_type() &&
+                       pointee_type < array_count(ir->types) &&
+                       ir->types[pointee_type].kind == STK_Union) {
+                snprintf(name, 64, "union %s*", cgen_c_type(ir, pointee_type));
+            } else {
+                snprintf(name, 64, "%s*", cgen_c_type(ir, pointee_type));
+            }
             return name;
         }
     case STK_String:

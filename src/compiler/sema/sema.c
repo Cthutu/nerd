@@ -87,6 +87,13 @@ internal u32 sema_add_type(Sema* sema, SemaType type)
     return index;
 }
 
+internal u32 sema_reserve_type(Sema* sema, SemaType type)
+{
+    u32 index = (u32)array_count(sema->types);
+    array_push(sema->types, type);
+    return index;
+}
+
 internal u32 sema_add_function_type_ex(Sema* sema,
                                        Array(u32) param_types,
                                        u32 return_type,
@@ -792,10 +799,7 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
     }
 
     if (sema->types[type_index].kind == STK_Pointer) {
-        const SemaType* pointer = &sema->types[type_index];
-        return sema_add_pointer_type(
-            (Sema*)sema,
-            sema_materialise_type(sema, pointer->first_param_type));
+        return type_index;
     }
 
     if (sema->types[type_index].kind == STK_Plex ||
@@ -1902,6 +1906,40 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
                                            bool* out_is_type,
                                            u32*  out_type_index);
 
+internal bool sema_type_contains_unboxed_type(const Sema* sema,
+                                              u32         type_index,
+                                              u32         target_type)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+    if (type_index == target_type) {
+        return true;
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    switch (type->kind) {
+    case STK_Array:
+        return sema_type_contains_unboxed_type(
+            sema, type->first_param_type, target_type);
+    case STK_Tuple:
+    case STK_Plex:
+    case STK_Union:
+    case STK_Enum:
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (sema_type_contains_unboxed_type(
+                    sema,
+                    sema->type_param_types[type->first_param_type + i],
+                    target_type)) {
+                return true;
+            }
+        }
+        return false;
+    default:
+        return false;
+    }
+}
+
 //------------------------------------------------------------------------------
 // Record a dependency edge if it is not already present.
 
@@ -2415,6 +2453,11 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
         *out_type_index = decl->type_index;
         return true;
     case SEMA_ALIAS_RESOLVING:
+        if (decl->type_index != sema_no_type()) {
+            *out_is_type    = true;
+            *out_type_index = decl->type_index;
+            return true;
+        }
         return error_0309_type_alias_cycle(
             lexer->source,
             sema_decl_span(lexer, ast, &sema->decls[owner_decl_index]),
@@ -2423,6 +2466,28 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
             lex_symbol(lexer, decl->symbol_handle));
     case SEMA_ALIAS_UNSEEN:
         break;
+    }
+
+    u32 value_node_index = decl->value_node_index;
+    while (ast->nodes[value_node_index].kind == AK_Expression ||
+           ast->nodes[value_node_index].kind == AK_Statement) {
+        value_node_index = ast->nodes[value_node_index].a;
+    }
+
+    u32 reserved_type = sema_no_type();
+    if (ast->nodes[value_node_index].kind == AK_TypePlex) {
+        const AstPlexTypeInfo* plex =
+            &ast->plex_types[ast->nodes[value_node_index].a];
+        reserved_type = sema_reserve_type(
+            sema,
+            (SemaType){
+                .kind = (plex->flags & APTF_Union) ? STK_Union : STK_Plex,
+                .param_count      = 0,
+                .flags            = plex->flags,
+                .first_param_type = 0,
+                .return_type      = sema_no_type(),
+            });
+        decl->type_index = reserved_type;
     }
 
     alias_states[decl_index] = SEMA_ALIAS_RESOLVING;
@@ -2440,8 +2505,28 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
     }
 
     if (rhs_is_type) {
+        if (reserved_type != sema_no_type()) {
+            sema->types[reserved_type] = sema->types[rhs_type];
+            rhs_type                   = reserved_type;
+            const SemaType* type       = &sema->types[rhs_type];
+            for (u32 i = 0; i < type->param_count; ++i) {
+                if (sema_type_contains_unboxed_type(
+                        sema,
+                        sema->type_param_types[type->first_param_type + i],
+                        rhs_type)) {
+                    return error_0309_type_alias_cycle(
+                        lexer->source,
+                        sema_decl_span(lexer, ast, decl),
+                        lex_symbol(lexer, decl->symbol_handle),
+                        sema_decl_span(lexer, ast, decl),
+                        lex_symbol(lexer, decl->symbol_handle));
+                }
+            }
+        }
         decl->kind       = SK_TypeAlias;
         decl->type_index = rhs_type;
+    } else if (reserved_type != sema_no_type()) {
+        decl->type_index = sema_no_type();
     }
 
     alias_states[decl_index] = SEMA_ALIAS_DONE;
