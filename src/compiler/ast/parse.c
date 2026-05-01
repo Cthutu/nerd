@@ -622,6 +622,33 @@ bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index)
     return ast_parse_fn_signature(state, false, true, out_signature_index);
 }
 
+internal bool ast_reject_fn_definition_after_type_annotation(AstParseState* state,
+                                                            u32 type_node_index,
+                                                            TokenKind expected_kind)
+{
+    if (type_node_index >= array_count(state->nodes) ||
+        state->nodes[type_node_index].kind != AK_TypeFn) {
+        return true;
+    }
+
+    if (!ast_peek_token(state)) {
+        return true;
+    }
+
+    if (state->token.kind != TK_LBrace && state->token.kind != TK_FatArrow) {
+        return true;
+    }
+
+    return error_0203_expected_token_ex(
+        state->lexer->source,
+        ast_token_span(state, &state->token),
+        expected_kind,
+        state->token.kind,
+        "A function type annotation cannot include a function body.",
+        "Function definitions use `::`; did you mean to write `::` instead of "
+        "`:`?");
+}
+
 //------------------------------------------------------------------------------
 // Parse an FFI function signature after `ffi "<library>"`.
 
@@ -3376,6 +3403,10 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
         if (!ast_parse_type(state, &type_index)) {
             return false;
         }
+        if (!ast_reject_fn_definition_after_type_annotation(
+                state, type_index, TK_Colon)) {
+            return false;
+        }
 
         if (!ast_expect_token(state, TK_Colon)) {
             return false;
@@ -3479,6 +3510,10 @@ internal bool ast_parse_variable_payload(AstParseState* state,
     }
 
     if (!ast_parse_type(state, &type_index)) {
+        return false;
+    }
+    if (!ast_reject_fn_definition_after_type_annotation(
+            state, type_index, TK_Equal)) {
         return false;
     }
 
