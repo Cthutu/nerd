@@ -8,8 +8,8 @@ use std.time
 
 g_random_state: u64
 
-random_step : fn() -> u64 {
-    on g_random_state == 0 {
+random_step :: fn () -> u64 {
+    on g_random_state == 0 => {
         g_random_state = now() | 1
     }
 
@@ -45,4 +45,3 @@ pub random_range_i64 :: fn(min: i64, max: i64) -> i64 {
 
     return (min + (random_step() % span)).as(i64)
 }
-
