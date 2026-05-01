@@ -186,6 +186,12 @@ bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,
                               string     actual_type);
+bool error_0304_type_mismatch_with_note(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type,
+                                        cstr       note_format,
+                                        ...);
 bool error_0305_invalid_assignment_target(NerdSource source,
                                           ErrorSpan  span,
                                           string     symbol);
@@ -318,6 +324,7 @@ ErrorInfo warning_init(
     u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...);
 void error_add_reference(
     ErrorInfo* error_info, ErrorRefKind kind, ErrorSpan span, cstr format, ...);
+void error_add_notev(ErrorInfo* error_info, cstr format, va_list args);
 void error_add_note(ErrorInfo* error_info, cstr format, ...);
 void error_add_helpv(ErrorInfo* error_info, cstr format, va_list args);
 void error_add_help(ErrorInfo* error_info, cstr format, ...);

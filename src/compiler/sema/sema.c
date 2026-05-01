@@ -7962,13 +7962,6 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             const SemaType* record = &sema->types[target_type];
-            if (target_is_plex && node->kind == AK_Plex &&
-                literal->field_count != record->param_count) {
-                return error_0304_type_mismatch(lexer->source,
-                                                sema_node_span(lexer, node),
-                                                s("all plex fields"),
-                                                s("different field count"));
-            }
             if (target_is_union && literal->field_count != 1) {
                 return error_0304_type_mismatch(lexer->source,
                                                 sema_node_span(lexer, node),
@@ -8008,6 +8001,58 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         lex_symbol(lexer, field->symbol_handle));
                 }
                 seen[field_index] = true;
+            }
+            if (target_is_plex && node->kind == AK_Plex &&
+                literal->field_count != record->param_count) {
+                StringBuilder missing = {0};
+                sb_init(&missing, &temp_arena);
+                u32 missing_count = 0;
+                for (u32 i = 0; i < record->param_count; ++i) {
+                    if (seen[i]) {
+                        continue;
+                    }
+                    if (missing_count > 0) {
+                        sb_append_cstr(&missing, ", ");
+                    }
+                    sb_append_char(&missing, '`');
+                    sb_append_string(
+                        &missing,
+                        lex_symbol(
+                            lexer,
+                            sema->type_param_symbols[record->first_param_type +
+                                                     i]));
+                    sb_append_char(&missing, '`');
+                    missing_count++;
+                }
+
+                if (missing_count > 0) {
+                    return error_0304_type_mismatch_with_note(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("all plex fields"),
+                        s("different field count"),
+                        "Missing field%s: " STRINGP,
+                        missing_count == 1 ? "" : "s",
+                        STRINGV(sb_to_string(&missing)));
+                }
+
+                return error_0304_type_mismatch(lexer->source,
+                                                sema_node_span(lexer, node),
+                                                s("all plex fields"),
+                                                s("different field count"));
+            }
+
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                const AstPlexLiteralField* field =
+                    &ast->plex_literal_fields[literal->first_field + i];
+                u32 field_index = U32_MAX;
+                for (u32 j = 0; j < record->param_count; ++j) {
+                    if (sema->type_param_symbols[record->first_param_type +
+                                                 j] == field->symbol_handle) {
+                        field_index = j;
+                        break;
+                    }
+                }
                 u32 expected_field =
                     sema->type_param_types[record->first_param_type +
                                            field_index];

@@ -62,7 +62,9 @@ main :: fn () {
             "message": "This expression has type `different field count`"
         }
     ],
-    "notes": [],
+    "notes": [
+        "Missing field: `y`"
+    ],
     "help": [
         "Change the expression or annotation so both sides use the same type."
     ]

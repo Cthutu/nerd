@@ -127,6 +127,36 @@ bool error_0304_type_mismatch(NerdSource source,
     return false;
 }
 
+bool error_0304_type_mismatch_with_note(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type,
+                                        cstr       note_format,
+                                        ...)
+{
+    ErrorInfo error =
+        error_init(304,
+                   source,
+                   span,
+                   "Type mismatch: expected `" STRINGP "`, found `" STRINGP "`",
+                   STRINGV(expected_type),
+                   STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    va_list args;
+    va_start(args, note_format);
+    error_add_notev(&error, note_format, args);
+    va_end(args);
+    error_add_help(&error,
+                   "Change the expression or annotation so both sides use the "
+                   "same type.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Report assignment to a non-variable symbol.
 

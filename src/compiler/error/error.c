@@ -151,14 +151,19 @@ void error_add_reference(
                });
 }
 
+void error_add_notev(ErrorInfo* error_info, cstr format, va_list args)
+{
+    string note = string_formatv(&g_error_arena, format, args);
+
+    array_push(error_info->notes, note);
+}
+
 void error_add_note(ErrorInfo* error_info, cstr format, ...)
 {
     va_list args;
     va_start(args, format);
-    string note = string_formatv(&g_error_arena, format, args);
+    error_add_notev(error_info, format, args);
     va_end(args);
-
-    array_push(error_info->notes, note);
 }
 
 void error_add_helpv(ErrorInfo* error_info, cstr format, va_list args)
