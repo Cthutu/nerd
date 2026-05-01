@@ -2,7 +2,9 @@
 -- assignments properly.
 
 top::1
+
 longer_top::2
+
 typed_top:i32:3
 
 Callable :: fn () {
@@ -32,7 +34,9 @@ main :: fn () {
 
 bind_values :: fn () {
     first::1
+
     longer::2
+
     typed:i32:3
 }
 

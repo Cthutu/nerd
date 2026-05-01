@@ -2581,12 +2581,12 @@ internal void format_emit_block_contents(StringBuilder* sb,
             while (true) {
                 u32 next_statement = format_next_block_statement(
                     cst, cursor, block->b, block_node_index);
-                if (next_statement == U32_MAX ||
-                    format_has_blank_line_between_statements(
-                        cst, lexer, last_aligned_index, next_statement)) {
+                if (next_statement == U32_MAX) {
                     break;
                 }
 
+                bool has_blank_line = format_has_blank_line_between_statements(
+                    cst, lexer, last_aligned_index, next_statement);
                 FormatAlignedStatement next_aligned = {0};
                 if (!format_collect_aligned_statement(&align_arena,
                                                       cst,
@@ -2597,6 +2597,9 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 }
                 if (!format_aligned_statements_same_family(first_aligned,
                                                            next_aligned)) {
+                    break;
+                }
+                if (has_blank_line && !first_aligned.is_bind) {
                     break;
                 }
 
@@ -3224,15 +3227,12 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             u32 last_aligned_binding = i;
             for (u32 cursor = i + 1; cursor < array_count(cst.bindings);
                  ++cursor) {
-                u32 next_index = cst.bindings[cursor];
-                if (format_has_blank_line_between_statements(
-                        &cst,
-                        &lexer,
-                        cst.bindings[last_aligned_binding],
-                        next_index)) {
-                    break;
-                }
-
+                u32  next_index     = cst.bindings[cursor];
+                bool has_blank_line = format_has_blank_line_between_statements(
+                    &cst,
+                    &lexer,
+                    cst.bindings[last_aligned_binding],
+                    next_index);
                 FormatAlignedStatement next_aligned = {0};
                 if (!format_collect_aligned_statement(&align_arena,
                                                       &cst,
@@ -3241,6 +3241,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                                                       &next_aligned) ||
                     !format_aligned_statements_same_family(first_aligned,
                                                            next_aligned)) {
+                    break;
+                }
+                if (has_blank_line && !first_aligned.is_bind) {
                     break;
                 }
 
