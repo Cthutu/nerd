@@ -3271,12 +3271,11 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         return false;
     }
     cst_advance(state);
-    bool starts_for_in =
-        cst_current_token(state).kind == TK_Symbol &&
-        (cst_peek_kind_at(state, 1) == TK_in ||
-         (cst_peek_kind_at(state, 1) == TK_Comma &&
-          (cst_peek_kind_at(state, 2) == TK_Symbol ||
-           cst_peek_kind_at(state, 2) == TK_Caret)));
+    bool starts_for_in = cst_current_token(state).kind == TK_Symbol &&
+                         (cst_peek_kind_at(state, 1) == TK_in ||
+                          (cst_peek_kind_at(state, 1) == TK_Comma &&
+                           (cst_peek_kind_at(state, 2) == TK_Symbol ||
+                            cst_peek_kind_at(state, 2) == TK_Caret)));
     if (cst_current_token(state).kind == TK_Caret &&
         cst_peek_kind_at(state, 1) == TK_Symbol &&
         cst_peek_kind_at(state, 2) == TK_in) {

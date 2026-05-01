@@ -709,8 +709,8 @@ internal void format_emit_expr(StringBuilder* sb,
             if (for_info->iterable_node_index != U32_MAX) {
                 sb_append_char(sb, ' ');
                 if (for_info->index_symbol != U32_MAX) {
-                    sb_append_string(
-                        sb, lex_symbol(lexer, for_info->index_symbol));
+                    sb_append_string(sb,
+                                     lex_symbol(lexer, for_info->index_symbol));
                     sb_append_cstr(sb, ", ");
                 }
                 if (for_info->item_is_pointer) {

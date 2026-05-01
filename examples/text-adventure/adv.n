@@ -75,6 +75,7 @@ execute_go :: fn (noun: string) {
             on {
                 i == player_loc => io.prn("You can't get much closer than this.")
                 else => {
+                    io.prn($"You go to {loc.description}.")
                     player_loc = i
                     execute_look("around")
                 }
