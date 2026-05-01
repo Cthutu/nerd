@@ -6154,7 +6154,10 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
                 return false;
             }
             return sema->types[target_type].kind == STK_Array ||
-                   sema->types[target_type].kind == STK_Pointer;
+                   sema->types[target_type].kind == STK_Pointer ||
+                   sema->types[target_type].kind == STK_Slice ||
+                   sema->types[target_type].kind == STK_DynamicArray ||
+                   sema->types[target_type].kind == STK_String;
         }
     default:
         return false;
