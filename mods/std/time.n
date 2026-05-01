@@ -1,0 +1,85 @@
+--
+-- Time API
+--
+-- Copyright (C)2026, Matt Davies, all rights reserved
+--
+
+pub Instant :: u64
+
+pub Duration :: u64
+
+on linux {
+    timespec :: plex {
+        tv_sec  i64
+        tv_nsec i64
+    }
+
+    ffi "rt" {
+        clock_gettime (clock_id: i32, tp: ^timespec) -> i32
+        nanosleep (rqtp: ^timespec, rmtp: ^timespec) -> i32
+    }
+
+    CLOCK_MONOTONIC ::  1
+
+    _time_now_raw :: fn () -> Instant {
+        ts: timespec
+        clock_gettime(CLOCK_MONOTONIC, ^ts)
+        return (ts.tv_sec.as(u64) * 1_000_000_000) + ts.tv_nsec.as(u64)
+    }
+
+    pub now :: fn () -> Instant {
+        return _time_now_raw()
+    }
+
+    elapsed :: fn (start: Instant, end: Instant) -> Duration {
+        assert end >= start, "elapsed: end time must be greater than or equal to start time"
+        return (end - start).as(Duration)
+    }
+
+    add_duration :: fn (time: Instant, duration: Duration) -> Instant {
+        return (time + duration).as(Instant)
+    }
+
+    sleep_ms :: fn (ms: u64) {
+        ts: timespec
+        ts.tv_sec = (ms / 1000).as(i64)
+        ts.tv_nsec = ((ms % 1000) * 1_000_000).as(i64)
+        nanosleep(^ts, nil)
+    }
+
+    duration_to_secs :: fn (duration: Duration) -> u64 {
+        return duration / 1_000_000_000
+    }
+
+    duration_to_ms :: fn (duration: Duration) -> u64 {
+        return duration / 1_000_000
+    }
+
+    duration_to_us :: fn (duration: Duration) -> u64 {
+        return duration / 1_000
+    }
+
+    duration_to_ns :: fn (duration: Duration) -> u64 {
+        return duration
+    }
+
+    secs :: fn (duration: Duration) -> f64 {
+        return duration.as(f64) / 1_000_000_000.0
+    }
+
+    from_secs :: fn (secs: u64) -> Duration {
+        return secs * 1_000_000_000
+    }
+
+    from_ms :: fn (ms: u64) -> Duration {
+        return ms * 1_000_000
+    }
+
+    from_us :: fn (us: u64) -> Duration {
+        return us * 1_000
+    }
+
+    from_ns :: fn (ns: u64) -> Duration {
+        return ns
+    }
+} -- on linux

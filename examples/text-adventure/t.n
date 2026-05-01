@@ -1,0 +1,9 @@
+--
+
+use std.random
+use std.io
+
+main :: fn () {
+    random_number := random.random_u64()
+    prn($"Random number: {random_number}")
+}
