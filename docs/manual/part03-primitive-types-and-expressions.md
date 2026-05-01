@@ -66,14 +66,16 @@ Integer literals can be written in decimal, hexadecimal, binary, or octal:
 | `0o` prefix   | octal       | `0o52`  | 42    |
 
 The prefix is part of the literal's spelling. It changes how the digits are
-read, not the eventual type. Underscores may be used between integer digits to
-make large values easier to read; they do not change the value:
+read, not the eventual type. Underscores may be used between digits in integer
+and float literals to make large values easier to read; they do not change the
+value:
 
 ```nerd
 mask: u64 = 0xff_ff      -- hexadecimal literal becomes a u64 from context
 bits := 0b1010_0101      -- underscores are ignored in integer literals
 mode := 0o755            -- octal literal materialises as i32 without context
 million := 1_000_000     -- decimal literal with digit separators
+seconds := 86_400.0      -- float literal with digit separators
 ```
 
 ## Operators
@@ -110,11 +112,16 @@ Logical operators work with `bool`:
 
 Bitwise operators work with matching integer operands:
 
-| Operator            | Meaning     |
-| ------------------- | ----------- |
-| `&`                 | bitwise and |
-| `^`                 | bitwise xor |
-| <code>&#124;</code> | bitwise or  |
+| Operator            | Meaning             |
+| ------------------- | ------------------- |
+| `&`                 | bitwise and         |
+| `^`                 | bitwise xor         |
+| <code>&#124;</code> | bitwise or          |
+| `<<`                | shift left          |
+| `>>`                | shift right         |
+
+Shift operators require integer operands. Use an explicit cast if the shift
+count or shifted value comes from another numeric type.
 
 ## Value Size
 

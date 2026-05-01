@@ -1,9 +1,8 @@
 -- Based on article at https://helderman.github.io/htpataic/htpataic01.html This
 -- is used to dogfood the language
 
-io :: mod std.io
-
-str :: mod std.string
+use std.io
+use std.string
 
 main :: fn () {
     input := "look around"
@@ -12,18 +11,18 @@ main :: fn () {
         input = get_input()
     }
 
-    io.prn("\nBye!")
+    prn("\nBye!")
 }
 
 get_input :: fn () -> string {
-    return io.input("--> ")
+    return input("--> ")
 }
 
 parse_and_execute :: fn (input: string) -> bool {
-    parts := str.split(input, " ")
+    parts := split(input, " ")
     defer parts.free()
     for ^part in parts {
-        part^ = str.trim_whitespace(part^)
+        part^ = trim_whitespace(part^)
     }
 
     verb : string
@@ -42,7 +41,7 @@ parse_and_execute :: fn (input: string) -> bool {
         "quit", "q" => return no
         "look", "l" => execute_look(noun)
         "go" => execute_go(noun)
-        else => io.prn($"I don't know how to '{verb}'.")
+        else => prn($"I don't know how to '{verb}'.")
     }
 
     return yes
@@ -63,19 +62,20 @@ player_loc: usize = 0
 execute_look :: fn (noun: string) {
     on noun {
         "", "around" => {
-            io.prn($"You are in {locs[player_loc].description}.")
+            prn($"You are in {locs[player_loc].description}.")
         }
-        else => io.prn("I don't understand what you want to look at.")
+        else => prn("I don't understand what you want to look at.")
     }
 }
 
 execute_go :: fn (noun: string) {
     for i, loc in locs {
+        prn($"Checking if '{noun}' matches {i}:'{loc.tag}'")
         on noun == loc.tag => {
             on {
-                i == player_loc => io.prn("You can't get much closer than this.")
+                i == player_loc => prn("You can't get much closer than this.")
                 else => {
-                    io.prn($"You go to {loc.description}.")
+                    prn($"You go to {loc.description}.")
                     player_loc = i
                     execute_look("around")
                 }

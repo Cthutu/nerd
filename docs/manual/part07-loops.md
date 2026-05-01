@@ -106,6 +106,28 @@ main :: fn () -> i32 {
 
 The item variable is a pointer, so use postfix `^` to read or assign through it.
 
+When both the collection index and item are needed, bind both names:
+
+```nerd
+use std.io
+
+main :: fn () {
+    words :: ["north", "south", "east"]
+    for i, word in words {
+        prn($"{i}: {word}")
+    }
+}
+```
+
+The index binding has type `usize`. Pointer item iteration can also include an
+index:
+
+```nerd
+for i, ^value in values {
+    value^ += i.as(i32)
+}
+```
+
 ## Loop Values
 
 Loops can produce values through `break <expr>`:

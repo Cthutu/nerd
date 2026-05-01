@@ -72,6 +72,8 @@ intended exit code.
 - `for init; condition; update { ... }` supports C-style iteration.
 - `for item in collection { ... }` iterates collection values.
 - `for ^item in collection { ... }` iterates mutable item pointers where valid.
+- `for index, item in collection { ... }` also binds the current index as
+  `usize`.
 
 ## Data
 

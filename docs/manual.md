@@ -153,6 +153,7 @@ Concepts:
 - casts with `.as(Type)`
 - pointer-to-slice casts with `.as([]T, count)`
 - packed integer literals
+- digit separators in integer and float literals
 - string interpolation with `$"..."`
 - adjacent string literals
 
@@ -292,6 +293,7 @@ Concepts:
 - condition loops
 - C-style `for init; condition; update`
 - `for in`
+- indexed `for index, item in collection`
 - item pointer iteration
 - `break`
 - `continue`
@@ -305,6 +307,7 @@ Rules to teach:
 - `continue` resumes a loop.
 - A value-producing finite loop needs an `else` branch for normal exhaustion.
 - Labels disambiguate nested loop and expression-block targets.
+- Indexed `for in` binds the index as `usize`.
 
 Authoring coverage:
 

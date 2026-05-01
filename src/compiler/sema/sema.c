@@ -6970,8 +6970,8 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
-            const AstOnInfo* on = &ast->ons[node->b];
-            u32 found = sema_no_decl();
+            const AstOnInfo* on    = &ast->ons[node->b];
+            u32              found = sema_no_decl();
             if (node->a != U32_MAX) {
                 found = sema_find_interpolated_string_node(ast, node->a);
                 if (found != sema_no_decl()) {
@@ -7299,9 +7299,8 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (node->a != U32_MAX &&
-                !sema_validate_interpolated_strings(
-                    lexer, ast, sema, node->a)) {
+            if (node->a != U32_MAX && !sema_validate_interpolated_strings(
+                                          lexer, ast, sema, node->a)) {
                 return false;
             }
             for (u32 i = 0; i < on->branch_count; ++i) {
