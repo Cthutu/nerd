@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 typedef uint8_t u8;
@@ -15,13 +16,30 @@ typedef uint8_t u8;
 
 DEF_SLICE(u8) string;
 
+static void epr(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+}
+
+static void eprn(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    epr("\n");
+}
+
 static void
 nerd_assert(bool condition, const char* source_path, unsigned line, const char* message)
 {
     if (condition) {
         return;
     }
-    fprintf(stderr, "assertion failed at %s:%u: %s\n", source_path, line, message);
+    eprn("assertion failed at %s:%u: %s", source_path, line, message);
     exit(127);
 }
 
@@ -49,7 +67,7 @@ static string string_slice(string value, size_t start, size_t end)
     if (start > end || end > value.count ||
         !string_is_utf8_boundary(value, start) ||
         !string_is_utf8_boundary(value, end)) {
-        fprintf(stderr, "fatal: string slice out of bounds\n");
+        eprn("fatal: string slice out of bounds");
         abort();
     }
 
@@ -68,7 +86,7 @@ size_t string_builder_mark(void) { return g_string_arena_cursor; }
 void string_builder_append_string(string str)
 {
     if (g_string_arena_cursor + str.count > NERD_STRING_ARENA_CAPACITY) {
-        fprintf(stderr, "fatal: string arena overflow\n");
+        eprn("fatal: string arena overflow");
         abort();
     }
 

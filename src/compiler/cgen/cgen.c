@@ -1101,20 +1101,20 @@ void cgen_add_index(CGen* cgen, const IrInstruction* instr)
         if (target_type->kind == STK_Array) {
             arena_format(
                 &cgen->arena,
-                " >= %u) { fprintf(stderr, \"fatal: array index out of "
-                "bounds\\n\"); abort(); }",
+                " >= %u) { eprn(\"fatal: array index out of bounds\"); "
+                "abort(); }",
                 target_type->return_type);
         } else {
             cgen_add(cgen, " >= ");
             cgen_add_value(cgen, &instr->rvalue[0]);
-            cgen_add(cgen, ".count) { fprintf(stderr, \"fatal: ");
+            cgen_add(cgen, ".count) { eprn(\"fatal: ");
             cgen_add(cgen,
                      target_type->kind == STK_String
                          ? "string"
                          : (target_type->kind == STK_DynamicArray
                                 ? "dynamic array"
                                 : "slice"));
-            cgen_add(cgen, " index out of bounds\\n\"); abort(); }");
+            cgen_add(cgen, " index out of bounds\"); abort(); }");
         }
         cgen_addn(cgen, "");
         cgen_start_line(cgen);
@@ -1230,8 +1230,9 @@ internal void cgen_add_dynarray_grow(CGen*                       cgen,
                     cgen->ir->types[info->dynarray_type].first_param_type));
     cgen_addn(cgen, "));");
     cgen_add_line(cgen,
-                  "if ($dyn_new_data == NULL) { fprintf(stderr, "
-                  "\"fatal: dynamic array allocation failed\\n\"); abort(); }");
+                  "if ($dyn_new_data == NULL) { "
+                  "eprn(\"fatal: dynamic array allocation failed\"); "
+                  "abort(); }");
     cgen_start_line(cgen);
     cgen_add_dynarray_target(cgen, info);
     cgen_addn(cgen, ".data = $dyn_new_data;");
