@@ -151,7 +151,7 @@ internal bool program_front_end_finish(ProgramInfo*           program,
 
     bool result = program_run_timed(
         timing, COMPILER_PHASE_SEMA, program_front_end_sema, &ctx);
-    if (result) {
+    if (result && !module_options.skip_ir_generation) {
         result = program_run_timed(
             timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx);
         if (result && module_options.verbose) {

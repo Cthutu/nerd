@@ -1,4 +1,6 @@
-answer :: 42
+Thing :: plex {
+    value i32
+}
 ¬
 []
 ¬
