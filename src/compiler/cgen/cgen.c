@@ -249,9 +249,9 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
     case STK_Pointer:
         {
             static char names[8][64];
-            static u32  next = 0;
-            char*       name = names[next++ % 8];
-            u32 pointee_type = ir->types[type_index].first_param_type;
+            static u32  next         = 0;
+            char*       name         = names[next++ % 8];
+            u32         pointee_type = ir->types[type_index].first_param_type;
             if (pointee_type != sema_no_type() &&
                 pointee_type < array_count(ir->types) &&
                 (ir->types[pointee_type].kind == STK_Plex ||

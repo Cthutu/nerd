@@ -8,12 +8,14 @@
             "args": [
                 // "build"
                 // "test"
-                "install"
-                // "run",
-                // "nerd",
+                // "install"
+                "run",
+                "nerd",
+                "run",
                 // "build",
                 // "-v",
                 // "nerd-src/main.n"
+                "examples/text-adventure/adv.n"
             ],
             "group": {
                 "kind": "build",

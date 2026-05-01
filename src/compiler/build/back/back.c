@@ -148,7 +148,7 @@ internal void back_end_collect_module_postorder(const ProgramInfo* program,
 internal void back_end_copy_module_types(ProgramBackEndMerge* merge,
                                          const Lexer*         module_lexer,
                                          const Sema*          module_sema,
-                                         Array(u32) *         out_type_map)
+                                         Array(u32) * out_type_map)
 {
     for (u32 i = 0; i < array_count(module_sema->types); ++i) {
         array_push(*out_type_map, (u32)array_count(merge->sema.types));
@@ -172,9 +172,8 @@ internal void back_end_copy_module_types(ProgramBackEndMerge* merge,
                 for (u32 param = 0; param < src->param_count; ++param) {
                     array_push(
                         merge->sema.type_param_types,
-                        (*out_type_map)
-                            [module_sema->type_param_types
-                                 [src->first_param_type + param]]);
+                        (*out_type_map)[module_sema->type_param_types
+                                            [src->first_param_type + param]]);
                     array_push(merge->sema.type_param_symbols, U32_MAX);
                     array_push(merge->sema.type_param_values, 0);
                 }
@@ -197,16 +196,18 @@ internal void back_end_copy_module_types(ProgramBackEndMerge* merge,
                                param_type == sema_no_type()
                                    ? sema_no_type()
                                    : (*out_type_map)[param_type]);
-                    u32 symbol = module_sema->type_param_symbols
-                        [src->first_param_type + param];
+                    u32 symbol =
+                        module_sema
+                            ->type_param_symbols[src->first_param_type + param];
                     array_push(merge->sema.type_param_symbols,
                                symbol == U32_MAX
                                    ? U32_MAX
                                    : sema_import_symbol_handle(
                                          &merge->lexer, module_lexer, symbol));
-                    array_push(merge->sema.type_param_values,
-                               module_sema->type_param_values
-                                   [src->first_param_type + param]);
+                    array_push(
+                        merge->sema.type_param_values,
+                        module_sema
+                            ->type_param_values[src->first_param_type + param]);
                 }
                 dst->first_param_type = first;
             }

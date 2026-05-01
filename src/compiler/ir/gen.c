@@ -51,7 +51,8 @@ internal bool ir_decl_is_pointer_alias_to_decl(const Ast*  ast,
                                                u32         decl_index,
                                                u32         target_decl_index)
 {
-    if (decl_index == sema_no_decl() || decl_index >= array_count(sema->decls)) {
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
         return false;
     }
     const SemaDecl* decl = &sema->decls[decl_index];
@@ -5251,7 +5252,7 @@ internal void ir_generate_global_init(const Lexer*    lex,
                                       u64*            next_value_index,
                                       Ir*             ir)
 {
-    Array(IrValue) node_values = ir_make_node_values(ast);
+    Array(IrValue) node_values    = ir_make_node_values(ast);
     u32 previous_global_init_decl = g_ir_current_global_init_decl;
     g_ir_current_global_init_decl = decl_index;
     if (ir_decl_uses_implicit_array_slice(ast, sema, decl)) {

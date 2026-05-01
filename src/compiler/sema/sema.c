@@ -4573,8 +4573,8 @@ internal bool sema_address_path_targets_decl(const Ast*  ast,
                                              u32         node_index,
                                              u32         target_decl_index)
 {
-    node_index           = sema_unwrap_expr_node(ast, node_index);
-    const AstNode* node  = &ast->nodes[node_index];
+    node_index          = sema_unwrap_expr_node(ast, node_index);
+    const AstNode* node = &ast->nodes[node_index];
 
     switch (node->kind) {
     case AK_SymbolRef:
@@ -4600,7 +4600,8 @@ internal bool sema_decl_is_pointer_alias_to_decl(const Ast*  ast,
                                                  u32         decl_index,
                                                  u32         target_decl_index)
 {
-    if (decl_index == sema_no_decl() || decl_index >= array_count(sema->decls)) {
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
         return false;
     }
     const SemaDecl* decl = &sema->decls[decl_index];

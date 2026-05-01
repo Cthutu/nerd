@@ -7,6 +7,8 @@ use std.string
 main :: fn () {
     input := "look around"
 
+    prn($"{field.description}")
+
     prn("Welcome to Little Cave Adventure!")
 
     for parse_and_execute(input) {
@@ -49,27 +51,26 @@ parse_and_execute :: fn (input: string) -> bool {
     return yes
 }
 
-Location :: plex {
-    description string
-    tag         string
-}
-
 Object :: plex {
     description string
     tag         string
-    location    ^Location
+    location    ^Object
 }
 
-locs: []Location = [
-    { description : "an open field", tag : "field" },
-    { description : "a little cave", tag : "cave" },
+objs: []Object = [
+    { description: "an open field", tag: "field", ... },
+    { description: "a little cave", tag: "cave",  ... },
+    { description: "a silver coin", tag: "silver",   location: field },
+    { description: "a gold coint",  tag: "gold",     location: cave },
+    { description: "a burly guard", tag: "guard",    location: field },
+    { description: "yourself",      tag: "yourself", location: field },
 ]
 
-objs: []Object = [
-    { description : "a silver coin", tag : "silver", location : ^locs[0] },
-    { description : "a gold coint",  tag : "gold",   location : ^locs[1] },
-    { description : "a burly guard", tag : "guard",  location : ^locs[0] },
-]
+field  :: ^objs[0]
+cave   :: ^objs[1]
+silver :: ^objs[2]
+gold   :: ^objs[3]
+guard  :: ^objs[4]
 
 player_loc: usize = 0
 
