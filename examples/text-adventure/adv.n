@@ -70,12 +70,10 @@ execute_look :: fn (noun: string) {
 
 execute_go :: fn (noun: string) {
     for i, loc in locs {
-        prn($"Checking if '{noun}' matches {i}:'{loc.tag}'")
         on noun == loc.tag => {
             on {
                 i == player_loc => prn("You can't get much closer than this.")
                 else => {
-                    prn($"You go to {loc.description}.")
                     player_loc = i
                     execute_look("around")
                 }
