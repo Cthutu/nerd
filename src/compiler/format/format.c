@@ -1331,6 +1331,15 @@ internal bool format_node_is_function_value(const Cst* cst, u32 node_index)
     return node->kind == CK_FnExpr || node->kind == CK_FnBlock;
 }
 
+internal bool format_node_is_value_constant_payload(const CstNode* node)
+{
+    return node->kind != CK_FnExpr && node->kind != CK_FnBlock &&
+           node->kind != CK_FfiDef && node->kind != CK_FfiBlock &&
+           node->kind != CK_ModRef && node->kind != CK_For &&
+           node->kind != CK_ExprBlock && node->kind != CK_TypePlex &&
+           node->kind != CK_TypeEnum;
+}
+
 internal string format_assignment_operator(const Lexer*   lexer,
                                            const CstNode* stmt)
 {
@@ -2047,9 +2056,10 @@ internal bool format_collect_aligned_statement(Arena*       arena,
     }
 
     if (node->kind == CK_Bind) {
-        const CstNode* payload = &cst->nodes[node->b];
-        string         type    = {0};
-        string         value   = {0};
+        const CstNode* payload       = &cst->nodes[node->b];
+        string         type          = {0};
+        string         value         = {0};
+        const CstNode* value_payload = payload;
         if (!format_statement_is_single_line(cst, lexer, node_index)) {
             return false;
         }
@@ -2058,15 +2068,14 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
-            payload = &cst->nodes[payload->b];
+            value_payload = &cst->nodes[payload->b];
+        } else if (format_node_is_value_constant_payload(payload)) {
+            value = format_render_value_to_string(arena, cst, lexer, node->b);
         } else {
             return false;
         }
 
-        if (payload->kind == CK_FnExpr || payload->kind == CK_FnBlock ||
-            payload->kind == CK_FfiDef || payload->kind == CK_FfiBlock ||
-            payload->kind == CK_ModRef || payload->kind == CK_For ||
-            payload->kind == CK_ExprBlock || payload->kind == CK_TypePlex) {
+        if (!format_node_is_value_constant_payload(value_payload)) {
             return false;
         }
 
@@ -2319,7 +2328,41 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             sb_append_char(sb, ' ');
         }
 
-        if (!stmts[i].is_bind || has_type_column) {
+        if (stmts[i].is_bind) {
+            if (has_type_column && stmts[i].type.count > 0) {
+                sb_append_cstr(sb, " : ");
+                sb_append_string(sb, stmts[i].type);
+                for (usize pad = stmts[i].type.count; pad <= max_type_width;
+                     ++pad) {
+                    sb_append_char(sb, ' ');
+                }
+                usize value_start_width = (usize)indent_level * 4 +
+                                          max_symbol_width + max_type_width + 6;
+                if (value_start_width + stmts[i].value.count <=
+                    FORMAT_WRAP_WIDTH) {
+                    sb_append_cstr(sb, ": ");
+                    sb_append_string(sb, stmts[i].value);
+                } else {
+                    sb_append_char(sb, ':');
+                    sb_append_char(sb, '\n');
+                    format_emit_indent(sb, indent_level + 1);
+                    sb_append_string(sb, stmts[i].value);
+                }
+            } else {
+                usize value_start_width =
+                    (usize)indent_level * 4 + max_symbol_width + 4;
+                if (value_start_width + stmts[i].value.count <=
+                    FORMAT_WRAP_WIDTH) {
+                    sb_append_cstr(sb, " :: ");
+                    sb_append_string(sb, stmts[i].value);
+                } else {
+                    sb_append_cstr(sb, " ::");
+                    sb_append_char(sb, '\n');
+                    format_emit_indent(sb, indent_level + 1);
+                    sb_append_string(sb, stmts[i].value);
+                }
+            }
+        } else {
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
             if (!stmts[i].has_value) {
@@ -2338,18 +2381,6 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 sb_append_string(sb, stmts[i].value);
             } else {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
-                sb_append_char(sb, '\n');
-                format_emit_indent(sb, indent_level + 1);
-                sb_append_string(sb, stmts[i].value);
-            }
-        } else {
-            usize value_start_width =
-                (usize)indent_level * 4 + max_symbol_width + 4;
-            if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
-                sb_append_cstr(sb, " :: ");
-                sb_append_string(sb, stmts[i].value);
-            } else {
-                sb_append_cstr(sb, " ::");
                 sb_append_char(sb, '\n');
                 format_emit_indent(sb, indent_level + 1);
                 sb_append_string(sb, stmts[i].value);
@@ -3217,7 +3248,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 last_aligned_binding = cursor;
             }
 
-            if (array_count(aligned) > 1 && !aligned[0].is_bind) {
+            if (array_count(aligned) > 1) {
                 format_emit_aligned_statement_group(
                     sb, aligned, (u32)array_count(aligned), 0);
                 i                      = last_aligned_binding;
