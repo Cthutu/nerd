@@ -2413,8 +2413,7 @@ internal void format_emit_ffi_block(StringBuilder* sb,
                                     u32            ffi_block_info_index,
                                     u32            indent_level)
 {
-    const CstFfiBlockInfo* block =
-        &cst->ffi_block_infos[ffi_block_info_index];
+    const CstFfiBlockInfo* block = &cst->ffi_block_infos[ffi_block_info_index];
 
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, block->library_node_index, 0);
@@ -3036,7 +3035,8 @@ internal void format_emit_value(StringBuilder* sb,
         format_emit_ffi_def(sb, cst, lexer, node->a);
         break;
     case CK_FfiBlock:
-        format_emit_ffi_block(sb, cst, lexer, node->a, g_format_value_indent_level);
+        format_emit_ffi_block(
+            sb, cst, lexer, node->a, g_format_value_indent_level);
         break;
     case CK_ModRef:
         format_emit_mod_ref(sb, cst, lexer, node->a);
@@ -3291,10 +3291,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     next_line_end++;
                 }
 
-                bool   next_has_newline = next_line_end < text.count &&
-                                          text.data[next_line_end] == '\n';
+                bool next_has_newline = next_line_end < text.count &&
+                                        text.data[next_line_end] == '\n';
                 string next_line   = string_from(text.data + block_end,
-                                                 next_line_end - block_end);
+                                               next_line_end - block_end);
                 string next_indent = {0};
                 string next_body   = {0};
 

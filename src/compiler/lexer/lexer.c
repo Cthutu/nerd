@@ -34,10 +34,7 @@ internal bool lexer_lex_one_token(NerdSource source,
                                   Lexer*     lexer,
                                   bool       allow_interpolation_start);
 
-internal bool lexer_is_decimal_digit(u8 c)
-{
-    return c >= '0' && c <= '9';
-}
+internal bool lexer_is_decimal_digit(u8 c) { return c >= '0' && c <= '9'; }
 
 internal bool lexer_is_ascii_letter(u8 c)
 {
@@ -88,9 +85,7 @@ internal bool lexer_lex_integer_digits(NerdSource source,
         if (source_code.data[i] == '_') {
             if (!has_digit || last_was_separator) {
                 return error_0103_invalid_number_literal(
-                    source,
-                    (ErrorSpan){.start = start, .end = i + 1},
-                    '_');
+                    source, (ErrorSpan){.start = start, .end = i + 1}, '_');
             }
             i++;
             last_was_separator = true;
@@ -123,9 +118,7 @@ internal bool lexer_lex_integer_digits(NerdSource source,
     if (!has_digit || last_was_separator) {
         char invalid_char = last_was_separator ? '_' : source_code.data[i - 1];
         return error_0103_invalid_number_literal(
-            source,
-            (ErrorSpan){.start = start, .end = i},
-            invalid_char);
+            source, (ErrorSpan){.start = start, .end = i}, invalid_char);
     }
 
     *io_index          = i;
@@ -501,15 +494,12 @@ internal bool lexer_lex_one_token(NerdSource source,
             return false;
         }
 
-        bool is_float =
-            base == 10 &&
-            i + 1 < source_code.count && source_code.data[i] == '.' &&
-            lexer_is_decimal_digit(source_code.data[i + 1]);
+        bool is_float = base == 10 && i + 1 < source_code.count &&
+                        source_code.data[i] == '.' &&
+                        lexer_is_decimal_digit(source_code.data[i + 1]);
         if (is_float && had_separator) {
             return error_0103_invalid_number_literal(
-                source,
-                (ErrorSpan){.start = start, .end = i + 2},
-                '_');
+                source, (ErrorSpan){.start = start, .end = i + 2}, '_');
         }
         if (is_float) {
             i += 2;
@@ -546,7 +536,8 @@ internal bool lexer_lex_one_token(NerdSource source,
             array_push(lexer->integers, total);
         }
 
-        if (i < source_code.count && lexer_is_number_tail(source_code.data[i])) {
+        if (i < source_code.count &&
+            lexer_is_number_tail(source_code.data[i])) {
             return error_0103_invalid_number_literal(
                 source,
                 (ErrorSpan){.start = start, .end = i + 1},

@@ -3293,7 +3293,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         u32           lowered_symbol_handle =
             kind == SLK_Function ? sema_mangle_nested_function_symbol(
                                        lexer, current_function_symbol, node->a)
-                                 : node->a;
+                                           : node->a;
 
         if (type_node_index != sema_no_type()) {
             sema_mark_type_expr_nodes(ast, sema, type_node_index);
@@ -5661,8 +5661,8 @@ internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
 
 internal bool sema_on_covers_all_enum_variants(const Ast*  ast,
                                                const Sema* sema,
-                                               u32        on_index,
-                                               u32        enum_type)
+                                               u32         on_index,
+                                               u32         enum_type)
 {
     if (enum_type == sema_no_type() ||
         sema->types[enum_type].kind != STK_Enum) {
@@ -7879,8 +7879,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             bool target_is_union = target_type != sema_no_type() &&
                                    sema->types[target_type].kind == STK_Union;
-            bool target_is_plex  = target_type != sema_no_type() &&
-                                   sema->types[target_type].kind == STK_Plex;
+            bool target_is_plex = target_type != sema_no_type() &&
+                                  sema->types[target_type].kind == STK_Plex;
             if (!target_is_plex && !target_is_union) {
                 return error_0304_type_mismatch(
                     lexer->source,
@@ -7970,8 +7970,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Field:
         {
-            string field = lex_symbol(lexer, node->b);
-            u32 qualified_type = sema_no_type();
+            string field          = lex_symbol(lexer, node->b);
+            u32    qualified_type = sema_no_type();
             if (sema_try_resolve_type_symbol(
                     lexer, ast, sema, node->a, &qualified_type)) {
                 if (string_eq(field, s("size"))) {
@@ -8009,11 +8009,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (string_eq(field, s("size"))) {
                 if (target_type != sema_no_type() &&
                     sema->types[target_type].kind == STK_Module) {
-                    return error_0304_type_mismatch(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        s("runtime-sized value"),
-                        s("module"));
+                    return error_0304_type_mismatch(lexer->source,
+                                                    sema_node_span(lexer, node),
+                                                    s("runtime-sized value"),
+                                                    s("module"));
                 }
                 type_index = sema_builtin_type(sema, STK_Usize);
                 break;
@@ -8828,8 +8827,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 u32  source_item = sema->types[source_type].first_param_type;
                 u32  target_item = sema->types[target_type].first_param_type;
                 bool item_match  = source_item == target_item ||
-                                   sema->types[source_item].kind == STK_Void ||
-                                   sema->types[target_item].kind == STK_Void;
+                                  sema->types[source_item].kind == STK_Void ||
+                                  sema->types[target_item].kind == STK_Void;
                 if (!item_match) {
                     return error_0307_invalid_cast(
                         lexer->source,
@@ -10256,7 +10255,7 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
             i64 lhs = 0;
             i64 rhs = 0;
             ok      = sema_try_get_constant(ast, out_sema, node->a, &lhs) &&
-                      sema_try_get_constant(ast, out_sema, node->b, &rhs);
+                 sema_try_get_constant(ast, out_sema, node->b, &rhs);
             if (!ok) {
                 break;
             }
@@ -10475,7 +10474,7 @@ internal void sema_fold_constants(const Lexer* lex, Ast* ast, Sema* sema)
 
 typedef struct {
     Array(bool) assigned;
-    bool        reachable;
+    bool reachable;
 } SemaAssignState;
 
 internal SemaAssignState sema_assign_state_copy(const SemaAssignState* state)
@@ -10514,8 +10513,8 @@ internal void sema_assign_state_merge_reachable(SemaAssignState*       out,
     }
 }
 
-internal bool sema_local_starts_unassigned(const Ast*        ast,
-                                           const SemaLocal*  local)
+internal bool sema_local_starts_unassigned(const Ast*       ast,
+                                           const SemaLocal* local)
 {
     if (local->kind != SLK_Variable ||
         local->decl_node_index == sema_no_decl() ||
@@ -10542,7 +10541,8 @@ internal bool sema_assignment_on_covers_all_bool_values(const Ast* ast,
     bool             has_true  = false;
     bool             has_false = false;
 
-    for (u32 branch_index = 0; branch_index < on->branch_count; ++branch_index) {
+    for (u32 branch_index = 0; branch_index < on->branch_count;
+         ++branch_index) {
         const AstOnBranch* branch =
             &ast->on_branches[on->first_branch + branch_index];
         if ((branch->flags & AOBF_Else) ||
@@ -10574,11 +10574,11 @@ internal bool sema_assignment_on_covers_all_bool_values(const Ast* ast,
     return has_true && has_false;
 }
 
-internal bool sema_validate_assignment_node(const Lexer*      lexer,
-                                            const Ast*        ast,
-                                            const Sema*       sema,
-                                            u32               node_index,
-                                            SemaAssignState*  state);
+internal bool sema_validate_assignment_node(const Lexer*     lexer,
+                                            const Ast*       ast,
+                                            const Sema*      sema,
+                                            u32              node_index,
+                                            SemaAssignState* state);
 
 internal bool sema_validate_assignment_pattern(const Lexer*     lexer,
                                                const Ast*       ast,
@@ -10756,8 +10756,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_IntegerNegate:
     case AK_LogicalNot:
     case AK_Deref:
-        return sema_validate_assignment_node(
-            lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_AddressOf:
         {
@@ -10773,12 +10772,10 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
         if (string_eq(lex_symbol(lexer, node->b), s("size"))) {
             return true;
         }
-        return sema_validate_assignment_node(
-            lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_TupleField:
-        return sema_validate_assignment_node(
-            lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_Index:
     case AK_TypeArray:
@@ -10803,8 +10800,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_RangeInclusive:
         return sema_validate_assignment_node(
                    lexer, ast, sema, node->a, state) &&
-               sema_validate_assignment_node(
-                   lexer, ast, sema, node->b, state);
+               sema_validate_assignment_node(lexer, ast, sema, node->b, state);
 
     case AK_Cast:
         {
@@ -10812,11 +10808,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
             return sema_validate_assignment_node(
                        lexer, ast, sema, node->a, state) &&
                    (cast->extra_node_index == U32_MAX ||
-                    sema_validate_assignment_node(lexer,
-                                                  ast,
-                                                  sema,
-                                                  cast->extra_node_index,
-                                                  state));
+                    sema_validate_assignment_node(
+                        lexer, ast, sema, cast->extra_node_index, state));
         }
 
     case AK_Call:
@@ -10854,11 +10847,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
         {
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
             if (node->kind == AK_PlexUpdate &&
-                !sema_validate_assignment_node(lexer,
-                                               ast,
-                                               sema,
-                                               literal->target_node_index,
-                                               state)) {
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, literal->target_node_index, state)) {
                 return false;
             }
             for (u32 i = 0; i < literal->field_count; ++i) {
@@ -10919,21 +10909,19 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
 
     case AK_DestructureBind:
     case AK_DestructureVariable:
-        if (!sema_validate_assignment_node(
-                lexer, ast, sema, node->b, state)) {
+        if (!sema_validate_assignment_node(lexer, ast, sema, node->b, state)) {
             return false;
         }
-        return sema_validate_assignment_pattern(
-            lexer,
-            ast,
-            sema,
-            node->a,
-            state,
-            node->kind == AK_DestructureVariable);
+        return sema_validate_assignment_pattern(lexer,
+                                                ast,
+                                                sema,
+                                                node->a,
+                                                state,
+                                                node->kind ==
+                                                    AK_DestructureVariable);
 
     case AK_DestructureAssign:
-        if (!sema_validate_assignment_node(
-                lexer, ast, sema, node->b, state)) {
+        if (!sema_validate_assignment_node(lexer, ast, sema, node->b, state)) {
             return false;
         }
         return sema_validate_assignment_pattern(
@@ -10973,9 +10961,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_On:
         {
             const AstOnInfo* on = &ast->ons[node->b];
-            if (node->a != U32_MAX &&
-                !sema_validate_assignment_node(
-                    lexer, ast, sema, node->a, state)) {
+            if (node->a != U32_MAX && !sema_validate_assignment_node(
+                                          lexer, ast, sema, node->a, state)) {
                 return false;
             }
 
@@ -11047,11 +11034,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                     exhaustive =
                         sema_assignment_on_covers_all_bool_values(ast, node->b);
                 } else {
-                    exhaustive =
-                        sema_on_covers_all_enum_variants(ast,
-                                                          sema,
-                                                          node->b,
-                                                          scrutinee_type);
+                    exhaustive = sema_on_covers_all_enum_variants(
+                        ast, sema, node->b, scrutinee_type);
                 }
             }
             if (!exhaustive) {
@@ -11081,19 +11065,13 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
                 }
             }
             if (for_info->iterable_node_index != U32_MAX &&
-                !sema_validate_assignment_node(lexer,
-                                               ast,
-                                               sema,
-                                               for_info->iterable_node_index,
-                                               state)) {
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, for_info->iterable_node_index, state)) {
                 return false;
             }
             if (for_info->condition_node_index != U32_MAX &&
-                !sema_validate_assignment_node(lexer,
-                                               ast,
-                                               sema,
-                                               for_info->condition_node_index,
-                                               state)) {
+                !sema_validate_assignment_node(
+                    lexer, ast, sema, for_info->condition_node_index, state)) {
                 return false;
             }
             SemaAssignState loop_state = sema_assign_state_copy(state);
@@ -11147,8 +11125,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_Return:
     case AK_ReturnExpr:
         if (node->a != U32_MAX &&
-            !sema_validate_assignment_node(
-                lexer, ast, sema, node->a, state)) {
+            !sema_validate_assignment_node(lexer, ast, sema, node->a, state)) {
             return false;
         }
         state->reachable = false;
@@ -11157,8 +11134,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_Break:
     case AK_BreakExpr:
         if (node->a != U32_MAX &&
-            !sema_validate_assignment_node(
-                lexer, ast, sema, node->a, state)) {
+            !sema_validate_assignment_node(lexer, ast, sema, node->a, state)) {
             return false;
         }
         state->reachable = false;
@@ -11170,12 +11146,10 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
         return true;
 
     case AK_Defer:
-        return sema_validate_assignment_node(
-            lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_Assert:
-        return sema_validate_assignment_node(
-            lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_TypePointer:
     case AK_TypeSlice:
@@ -11210,8 +11184,8 @@ internal bool sema_validate_definite_assignment_function(const Lexer* lexer,
 
     SemaAssignState state = {.reachable = true};
     for (u32 i = 0; i < array_count(sema->locals); ++i) {
-        const SemaLocal* local = &sema->locals[i];
-        bool assigned = !sema_local_starts_unassigned(ast, local);
+        const SemaLocal* local    = &sema->locals[i];
+        bool             assigned = !sema_local_starts_unassigned(ast, local);
         if (local->kind == SLK_Param || local->kind == SLK_Binder) {
             assigned = true;
         }
@@ -11219,7 +11193,7 @@ internal bool sema_validate_definite_assignment_function(const Lexer* lexer,
     }
 
     const AstNode* fn_start = &ast->nodes[fn_def->a];
-    bool ok = sema_validate_assignment_block(
+    bool           ok       = sema_validate_assignment_block(
         lexer, ast, sema, fn_def->a + 1, fn_start->b, &state);
     sema_assign_state_done(&state);
     return ok;
@@ -11265,8 +11239,8 @@ internal string sema_unused_local_kind_name(const SemaLocal* local)
 
 internal void sema_count_local_ref(const Sema* sema,
                                    u32         local_index,
-                                   Array(u32)  read_counts,
-                                   i32         delta)
+                                   Array(u32) read_counts,
+                                   i32 delta)
 {
     if (local_index == sema_no_local() ||
         local_index >= array_count(read_counts) ||
@@ -11295,10 +11269,8 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         if (node->kind == AK_SymbolRef &&
             !(i < array_count(sema->node_is_type_expr) &&
               sema->node_is_type_expr[i])) {
-            sema_count_local_ref(sema,
-                                 sema->node_local_indices[i],
-                                 read_counts,
-                                 1);
+            sema_count_local_ref(
+                sema, sema->node_local_indices[i], read_counts, 1);
         }
     }
 
@@ -11309,10 +11281,8 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         }
         const AstNode* target = &ast->nodes[node->a];
         if (target->kind == AK_SymbolRef) {
-            sema_count_local_ref(sema,
-                                 sema->node_local_indices[node->a],
-                                 read_counts,
-                                 -1);
+            sema_count_local_ref(
+                sema, sema->node_local_indices[node->a], read_counts, -1);
         }
     }
 
@@ -11326,7 +11296,7 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         }
         string symbol       = lex_symbol(lexer, local->symbol_handle);
         string binding_kind = sema_unused_local_kind_name(local);
-        bool ok = error_0335_unused_local(lexer->source,
+        bool   ok           = error_0335_unused_local(lexer->source,
                                           sema_local_span(lexer, ast, local),
                                           symbol,
                                           binding_kind);

@@ -770,7 +770,8 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
-internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block);
+internal bool
+cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
@@ -3228,18 +3229,18 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
     u32        for_node    = 0;
     u32        body        = 0;
     CstForInfo for_info    = {
-        .mode                 = CFM_Condition,
-        .first_init           = U32_MAX,
-        .init_count           = 0,
-        .condition_node_index = U32_MAX,
-        .first_update         = U32_MAX,
-        .update_count         = 0,
-        .iterable_node_index  = U32_MAX,
-        .item_symbol          = U32_MAX,
-        .item_token_index     = U32_MAX,
-        .label_symbol         = U32_MAX,
-        .else_block_index     = U32_MAX,
-        .item_is_pointer      = false,
+           .mode                 = CFM_Condition,
+           .first_init           = U32_MAX,
+           .init_count           = 0,
+           .condition_node_index = U32_MAX,
+           .first_update         = U32_MAX,
+           .update_count         = 0,
+           .iterable_node_index  = U32_MAX,
+           .item_symbol          = U32_MAX,
+           .item_token_index     = U32_MAX,
+           .label_symbol         = U32_MAX,
+           .else_block_index     = U32_MAX,
+           .item_is_pointer      = false,
     };
     if (!cst_emit_node(state,
                        (CstNode){
@@ -3780,7 +3781,8 @@ internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node)
                          out_node);
 }
 
-internal bool cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
+internal bool
+cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
@@ -4552,14 +4554,13 @@ bool cst_node_is_block_statement(const CstNode* node)
     return node->kind == CK_Block || node->kind == CK_Statement ||
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_For || node->kind == CK_Defer ||
-           node->kind == CK_Assert ||
-           node->kind == CK_Break || node->kind == CK_Continue ||
-           node->kind == CK_Variable || node->kind == CK_DestructureBind ||
+           node->kind == CK_Assert || node->kind == CK_Break ||
+           node->kind == CK_Continue || node->kind == CK_Variable ||
+           node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
-           node->kind == CK_FfiBlock ||
-           node->kind == CK_TopOn;
+           node->kind == CK_FfiBlock || node->kind == CK_TopOn;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)

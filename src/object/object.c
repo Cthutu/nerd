@@ -732,10 +732,10 @@ JsonValue* json_parse(Arena* arena, string json, JsonParseResult* out_result)
     *result                 = local_result;
 
     JsonParser parser       = {
-        .arena = arena,
-        .cur   = json.data,
-        .end   = json.data + json.count,
-        .start = json.data,
+              .arena = arena,
+              .cur   = json.data,
+              .end   = json.data + json.count,
+              .start = json.data,
     };
 
     JsonValue* value = json_parser_value(&parser, result);

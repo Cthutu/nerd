@@ -622,9 +622,8 @@ bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index)
     return ast_parse_fn_signature(state, false, true, out_signature_index);
 }
 
-internal bool ast_reject_fn_definition_after_type_annotation(AstParseState* state,
-                                                            u32 type_node_index,
-                                                            TokenKind expected_kind)
+internal bool ast_reject_fn_definition_after_type_annotation(
+    AstParseState* state, u32 type_node_index, TokenKind expected_kind)
 {
     if (type_node_index >= array_count(state->nodes) ||
         state->nodes[type_node_index].kind != AK_TypeFn) {
@@ -1863,10 +1862,10 @@ internal bool ast_parse_destructure_pattern(AstParseState* state,
         return ast_emit_pattern(
             state,
             (AstPattern){
-                .kind = ast_symbol_is_underscore(state->lexer,
+                .kind        = ast_symbol_is_underscore(state->lexer,
                                                  token.value.symbol_handle)
-                            ? APK_Ignore
-                            : APK_Bind,
+                                   ? APK_Ignore
+                                   : APK_Bind,
                 .token_index = token.token_index,
                 .a           = token.value.symbol_handle,
                 .b           = U32_MAX,
@@ -2109,18 +2108,18 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     u32        for_token_index = state->token.token_index;
     u32        for_node        = 0;
     AstForInfo for_info        = {
-        .mode                 = AFM_Condition,
-        .first_init           = U32_MAX,
-        .init_count           = 0,
-        .condition_node_index = U32_MAX,
-        .first_update         = U32_MAX,
-        .update_count         = 0,
-        .iterable_node_index  = U32_MAX,
-        .item_symbol          = U32_MAX,
-        .item_token_index     = U32_MAX,
-        .label_symbol         = U32_MAX,
-        .else_block_index     = U32_MAX,
-        .item_is_pointer      = false,
+               .mode                 = AFM_Condition,
+               .first_init           = U32_MAX,
+               .init_count           = 0,
+               .condition_node_index = U32_MAX,
+               .first_update         = U32_MAX,
+               .update_count         = 0,
+               .iterable_node_index  = U32_MAX,
+               .item_symbol          = U32_MAX,
+               .item_token_index     = U32_MAX,
+               .label_symbol         = U32_MAX,
+               .else_block_index     = U32_MAX,
+               .item_is_pointer      = false,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -2437,7 +2436,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
         }
         state->allow_statement_boundary = previous_boundary;
 
-        bool has_message = state->token.kind == TK_Comma;
+        bool has_message                = state->token.kind == TK_Comma;
         if (!has_message && ast_peek_kind_at(state, 0) == TK_Comma) {
             if (!ast_expect_token(state, TK_Comma)) {
                 return false;
@@ -3077,7 +3076,9 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 //      g -> AK_FnEnd(d,f)
 //      d -> AK_FnDef(f,0)
 //
-bool ast_parse_declaration(AstParseState* state, u32* out_node, bool allow_ffi_block)
+bool ast_parse_declaration(AstParseState* state,
+                           u32*           out_node,
+                           bool           allow_ffi_block)
 {
     if (state->token.kind == TK_mod) {
         AstToken mod_token    = state->token;
@@ -3217,11 +3218,12 @@ bool ast_parse_declaration(AstParseState* state, u32* out_node, bool allow_ffi_b
                                  .symbol_handle      = symbol_handle,
                                  .signature_index    = signature_index});
 
-                if (!ast_emit_node(state,
-                                   (AstNode){.kind        = AK_FfiDef,
-                                             .token_index = ffi_token.token_index,
-                                             .a           = ffi_index},
-                                   NULL)) {
+                if (!ast_emit_node(
+                        state,
+                        (AstNode){.kind        = AK_FfiDef,
+                                  .token_index = ffi_token.token_index,
+                                  .a           = ffi_index},
+                        NULL)) {
                     return false;
                 }
 
@@ -3423,9 +3425,9 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     }
 
     bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
-    ParsingQuery query = starts_type
-                             ? PQ_Invalid
-                             : ast_parsing_query_for_token(state->token.kind);
+    ParsingQuery query       = starts_type
+                                   ? PQ_Invalid
+                                   : ast_parsing_query_for_token(state->token.kind);
     if (query == PQ_Invalid && !starts_type) {
         return error_0205_expected_declaration_or_expression(
             state->token.source,

@@ -350,11 +350,8 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_Assert:
         case AK_ReturnExpr:
             if (node->kind == AK_Assert) {
-                row[3] = table_cell_string(
-                    string_format(&temp_arena,
-                                  "condition=%u message=%u",
-                                  node->a,
-                                  node->b));
+                row[3] = table_cell_string(string_format(
+                    &temp_arena, "condition=%u message=%u", node->a, node->b));
             } else {
                 row[3] = table_cell_string(
                     node->a == U32_MAX

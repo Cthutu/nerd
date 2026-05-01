@@ -863,12 +863,12 @@ bool error_0334_read_before_assignment(NerdSource source,
                                        string     symbol,
                                        ErrorSpan  decl_span)
 {
-    ErrorInfo error = error_init(334,
-                                 source,
-                                 span,
-                                 "Cannot read `" STRINGP
-                                 "` before it has been assigned",
-                                 STRINGV(symbol));
+    ErrorInfo error =
+        error_init(334,
+                   source,
+                   span,
+                   "Cannot read `" STRINGP "` before it has been assigned",
+                   STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -899,13 +899,12 @@ bool error_0335_unused_local(NerdSource source,
                              string     symbol,
                              string     binding_kind)
 {
-    ErrorInfo error =
-        error_init(335,
-                   source,
-                   span,
-                   "Unused " STRINGP " `" STRINGP "`",
-                   STRINGV(binding_kind),
-                   STRINGV(symbol));
+    ErrorInfo error = error_init(335,
+                                 source,
+                                 span,
+                                 "Unused " STRINGP " `" STRINGP "`",
+                                 STRINGV(binding_kind),
+                                 STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -913,10 +912,11 @@ bool error_0335_unused_local(NerdSource source,
                         STRINGV(binding_kind));
     error_add_note(&error,
                    "Assigning to a variable does not count as using it.");
-    error_add_help(&error,
-                   "Remove `" STRINGP
-                   "` or prefix the name with `_` if it is deliberately unused.",
-                   STRINGV(symbol));
+    error_add_help(
+        &error,
+        "Remove `" STRINGP
+        "` or prefix the name with `_` if it is deliberately unused.",
+        STRINGV(symbol));
     error_render(&error);
     return false;
 }

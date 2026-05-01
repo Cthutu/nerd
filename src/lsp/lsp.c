@@ -164,10 +164,10 @@ int lsp_run(void)
 
         string     method_str = json_string(method);
         LspMessage msg        = {
-            .id      = id,
-            .method  = method_str,
-            .message = message,
-            .arena   = &message_arena,
+                   .id      = id,
+                   .method  = method_str,
+                   .message = message,
+                   .arena   = &message_arena,
         };
 
         if (method && string_eq_cstr(method_str, "shutdown")) {
