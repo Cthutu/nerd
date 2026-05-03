@@ -104,33 +104,42 @@ return i32:$31
 end
 ¬
 void init() {}
-typedef struct array11 {
+#ifndef NERD_TYPE_arrayc7844f0f
+#define NERD_TYPE_arrayc7844f0f
+typedef struct arrayc7844f0f {
     int items[5];
-} array11;
-typedef struct slice12 {
+} arrayc7844f0f;
+#endif
+#ifndef NERD_TYPE_slice3087b0d5
+#define NERD_TYPE_slice3087b0d5
+typedef struct slice3087b0d5 {
     int* data;
     uintptr_t count;
-} slice12;
-typedef struct array13 {
+} slice3087b0d5;
+#endif
+#ifndef NERD_TYPE_arrayc02222e1
+#define NERD_TYPE_arrayc02222e1
+typedef struct arrayc02222e1 {
     int items[3];
-} array13;
+} arrayc02222e1;
+#endif
 int $main() {
     string_builder_reset();
-    array11 $0 = (array11){.items = {10, 20, 30, 40, 50}};
-    array11 $values = $0;
-    slice12 $1 = (slice12){.data = $values.items, .count = 5};
-    slice12 $all = $1;
-    slice12 $2 = (slice12){.data = $values.items + 1, .count = (4) - (1)};
-    slice12 $middle = $2;
-    slice12 $3 = (slice12){.data = $values.items, .count = (3) - (0)};
-    slice12 $from_start = $3;
-    slice12 $4 = (slice12){.data = $values.items + 2, .count = 5 - 2};
-    slice12 $to_end = $4;
-    array13 $5 = (array13){.items = {1, 2, 3}};
-    slice12 $6 = (slice12){.data = $5.items, .count = 3};
-    slice12 $literal = $6;
-    slice12 $7 = (slice12){.data = $all.data + 1, .count = (3) - (1)};
-    slice12 $reslice = $7;
+    arrayc7844f0f $0 = (arrayc7844f0f){.items = {10, 20, 30, 40, 50}};
+    arrayc7844f0f $values = $0;
+    slice3087b0d5 $1 = (slice3087b0d5){.data = $values.items, .count = 5};
+    slice3087b0d5 $all = $1;
+    slice3087b0d5 $2 = (slice3087b0d5){.data = $values.items + 1, .count = (4) - (1)};
+    slice3087b0d5 $middle = $2;
+    slice3087b0d5 $3 = (slice3087b0d5){.data = $values.items, .count = (3) - (0)};
+    slice3087b0d5 $from_start = $3;
+    slice3087b0d5 $4 = (slice3087b0d5){.data = $values.items + 2, .count = 5 - 2};
+    slice3087b0d5 $to_end = $4;
+    arrayc02222e1 $5 = (arrayc02222e1){.items = {1, 2, 3}};
+    slice3087b0d5 $6 = (slice3087b0d5){.data = $5.items, .count = 3};
+    slice3087b0d5 $literal = $6;
+    slice3087b0d5 $7 = (slice3087b0d5){.data = $all.data + 1, .count = (3) - (1)};
+    slice3087b0d5 $reslice = $7;
     size_t $8 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"all = ", .count = 6}));
     string_builder_append_string((string){.data = (u8*)"[", .count = 1});
@@ -202,21 +211,21 @@ int $main() {
     prn($22);
     string_builder_reset();
     #ifndef NDEBUG
-    if ((long long)1 < 0 || (size_t)1 >= $middle.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)1 < 0 || (size_t)1 >= $middle.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $25 = $middle.data[1];
     #ifndef NDEBUG
-    if ((long long)2 < 0 || (size_t)2 >= $from_start.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)2 < 0 || (size_t)2 >= $from_start.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $26 = $from_start.data[2];
     int $27 = $25 + $26;
     #ifndef NDEBUG
-    if ((long long)0 < 0 || (size_t)0 >= $to_end.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)0 < 0 || (size_t)0 >= $to_end.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $28 = $to_end.data[0];
     int $29 = $27 + $28;
     #ifndef NDEBUG
-    if ((long long)2 < 0 || (size_t)2 >= $literal.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)2 < 0 || (size_t)2 >= $literal.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $30 = $literal.data[2];
     int $31 = $29 + $30;

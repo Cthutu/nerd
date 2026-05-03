@@ -13,9 +13,9 @@ main :: fn () {
 use std.io
 
 main :: fn () {
-    i :: 2
+    i  :: 2
     ff :: 3.14
-    s :: "Hello, world!"
+    s  :: "Hello, world!"
 
     prn($"{s}  i = {i} and f = {ff}!")
 

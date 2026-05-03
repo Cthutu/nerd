@@ -37,11 +37,14 @@ $0 = plex(name: string:"Matt", age: u8:53)
 matt = plex{name:string,age:u8}:$0
 end
 ¬
-typedef struct plex9 {
+#ifndef NERD_TYPE_plex008635ad
+#define NERD_TYPE_plex008635ad
+typedef struct plex008635ad {
     string $name;
     uint8_t $age;
-} plex9;
-plex9 $matt;
+} plex008635ad;
+#endif
+plex008635ad $matt;
 int $main() {
     string_builder_reset();
     size_t $0 = string_builder_mark();
@@ -58,6 +61,6 @@ int $main() {
     return 0;
 }
 void init() {
-    plex9 $0 = (plex9){.$name = (string){.data = (u8*)"Matt", .count = 4}, .$age = 53};
+    plex008635ad $0 = (plex008635ad){.$name = (string){.data = (u8*)"Matt", .count = 4}, .$age = 53};
     $matt = $0;
 }

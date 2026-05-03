@@ -18,15 +18,15 @@ objs: []Object = [
     "message": "Type mismatch: expected `^Location`, found `^Object`",
     "source_file": "tests/errors/036-named-record-type-mismatch.e",
     "primary_location": {
-        "line": 12,
+        "line": 13,
         "column": 45
     },
     "references": [
         {
             "kind": "primary",
-            "line": 12,
+            "line": 13,
             "column": 45,
-            "length": 8,
+            "length": 1,
             "message": "This expression has type `^Object`"
         }
     ],
@@ -35,4 +35,3 @@ objs: []Object = [
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬

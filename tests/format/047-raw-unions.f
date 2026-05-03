@@ -16,6 +16,6 @@ Value :: union {
 }
 
 main :: fn () {
-    v : Value = Value { i : 42 }
+    v : Value = Value { i: 42 }
     prn($"{v.i}")
 }

@@ -107,7 +107,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\np\n```\n\n- Kind: local variable\n- Type: `plex { i32 x, i32 y }`"
+                "value": "```nerd\np\n```\n\n- Kind: local variable\n- Type: `Point`"
             }
         }
     },
@@ -117,7 +117,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nx\n```\n\n- Kind: plex field\n- Type: `i32`\n- Owner: `plex { i32 x, i32 y }`"
+                "value": "```nerd\nx\n```\n\n- Kind: plex field\n- Type: `i32`\n- Owner: `Point`"
             }
         }
     },
@@ -143,6 +143,11 @@ main :: fn () {
         "id": 5,
         "result": {
             "data": [
+                0,
+                0,
+                3,
+                2,
+                0,
                 0,
                 4,
                 3,

@@ -91,30 +91,36 @@ return i32:$21
 end
 ¬
 void init() {}
-typedef struct array12 {
+#ifndef NERD_TYPE_arrayc02222e1
+#define NERD_TYPE_arrayc02222e1
+typedef struct arrayc02222e1 {
     int items[3];
-} array12;
-typedef struct slice13 {
+} arrayc02222e1;
+#endif
+#ifndef NERD_TYPE_slice3087b0d5
+#define NERD_TYPE_slice3087b0d5
+typedef struct slice3087b0d5 {
     int* data;
     uintptr_t count;
-} slice13;
+} slice3087b0d5;
+#endif
 int $helper() {
     return 0;
 }
 int $main() {
     string_builder_reset();
-    array12 $0 = (array12){.items = {1, 2, 3}};
-    array12 $nums = $0;
-    slice13 $1 = (slice13){.data = $nums.items, .count = 3};
-    slice13 $view = $1;
+    arrayc02222e1 $0 = (arrayc02222e1){.items = {1, 2, 3}};
+    arrayc02222e1 $nums = $0;
+    slice3087b0d5 $1 = (slice3087b0d5){.data = $nums.items, .count = 3};
+    slice3087b0d5 $view = $1;
     int* $ptr = NULL;
     uintptr_t $2 = sizeof(int);
     uintptr_t $i32_size = $2;
     uintptr_t $3 = sizeof(int);
     uintptr_t $literal_size = $3;
-    uintptr_t $4 = sizeof(array12);
+    uintptr_t $4 = sizeof(arrayc02222e1);
     uintptr_t $array_size = $4;
-    uintptr_t $5 = sizeof(slice13);
+    uintptr_t $5 = sizeof(slice3087b0d5);
     uintptr_t $slice_size = $5;
     uintptr_t $6 = sizeof(string);
     uintptr_t $string_size = $6;

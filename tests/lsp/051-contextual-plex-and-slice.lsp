@@ -71,7 +71,7 @@ show :: fn (_items: []Point) {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\np\n```\n\n- Kind: local variable\n- Type: `plex { i32 x, i32 y }`"
+                "value": "```nerd\np\n```\n\n- Kind: local variable\n- Type: `Point`"
             }
         }
     },

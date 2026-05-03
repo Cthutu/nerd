@@ -1,8 +1,7 @@
 Value :: union { i i32 f f32 }
 main :: fn () {
     v: Value = Value { i: 1, f: 2.0 }
-}
-¬
+}¬
 {
     "code": "0304",
     "message": "Type mismatch: expected `one union field`, found `different field count`",
@@ -25,18 +24,16 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬
-Value :: union { i i32 f f32 }
+¬Value :: union { i i32 f f32 }
 main :: fn () -> i32 {
     v: Value = Value { i: 1 }
     return on v {
         else => 0
     }
-}
-¬
+}¬
 {
     "code": "0321",
-    "message": "Block-form `on` does not support values of type `union { i32 i, f32 f }`",
+    "message": "Block-form `on` does not support values of type `Value`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 4,
@@ -56,12 +53,10 @@ main :: fn () -> i32 {
         "For this milestone, block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
     ]
 }
-¬
-Value :: union { i i32 f f32 }
+¬Value :: union { i i32 f f32 }
 main :: fn () {
     v: Value = Value {}
-}
-¬
+}¬
 {
     "code": "0304",
     "message": "Type mismatch: expected `one union field`, found `different field count`",
@@ -84,12 +79,10 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬
-Value :: union { i i32 f f32 }
+¬Value :: union { i i32 f f32 }
 main :: fn () {
     v: Value = Value { text: "bad" }
-}
-¬
+}¬
 {
     "code": "0304",
     "message": "Type mismatch: expected `known union field`, found `text`",
@@ -112,16 +105,14 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬
-Value :: union { i i32 f f32 }
+¬Value :: union { i i32 f f32 }
 main :: fn () {
     v: Value = Value { i: 1 }
     w := v with { f: 2.0 }
-}
-¬
+}¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `plex value`, found `union { i32 i, f32 f }`",
+    "message": "Type mismatch: expected `plex value`, found `Value`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 4,
@@ -133,7 +124,7 @@ main :: fn () {
             "line": 4,
             "column": 12,
             "length": 4,
-            "message": "This expression has type `union { i32 i, f32 f }`"
+            "message": "This expression has type `Value`"
         }
     ],
     "notes": [],

@@ -68,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\n_value\n```\n\n- Kind: local variable\n- Type: `enum { None, Some(i32) }`"
+                "value": "```nerd\n_value\n```\n\n- Kind: local variable\n- Type: `Maybe`"
             }
         }
     },

@@ -4,11 +4,10 @@ Point :: plex {
 
 bad_point_local :: ffi "c" bad_point (Point)
 
-main :: fn() {}
-¬
+main :: fn() {}¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `FFI-safe parameter type`, found `plex { i32 x }`",
+    "message": "Type mismatch: expected `FFI-safe parameter type`, found `Point`",
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
         "line": 5,
@@ -20,7 +19,7 @@ main :: fn() {}
             "line": 5,
             "column": 39,
             "length": 5,
-            "message": "This expression has type `plex { i32 x }`"
+            "message": "This expression has type `Point`"
         }
     ],
     "notes": [],
@@ -28,19 +27,17 @@ main :: fn() {}
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬
-Mode :: enum {
+¬Mode :: enum {
     A
     B
 }
 
 bad_mode_local :: ffi "c" bad_mode () -> Mode
 
-main :: fn() {}
-¬
+main :: fn() {}¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `FFI-safe return type`, found `enum { A, B }`",
+    "message": "Type mismatch: expected `FFI-safe return type`, found `Mode`",
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
         "line": 6,
@@ -52,7 +49,7 @@ main :: fn() {}
             "line": 6,
             "column": 42,
             "length": 4,
-            "message": "This expression has type `enum { A, B }`"
+            "message": "This expression has type `Mode`"
         }
     ],
     "notes": [],
@@ -60,11 +57,9 @@ main :: fn() {}
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬
-bad_tuple_local :: ffi "c" bad_tuple ((i32, i32))
+¬bad_tuple_local :: ffi "c" bad_tuple ((i32, i32))
 
-main :: fn() {}
-¬
+main :: fn() {}¬
 {
     "code": "0304",
     "message": "Type mismatch: expected `FFI-safe parameter type`, found `(i32, i32)`",

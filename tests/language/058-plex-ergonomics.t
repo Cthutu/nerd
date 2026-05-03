@@ -71,24 +71,30 @@ return i32:$19
 end
 ¬
 void init() {}
-typedef struct plex8 {
+#ifndef NERD_TYPE_plexa7899fed
+#define NERD_TYPE_plexa7899fed
+typedef struct plexa7899fed {
     int $x;
     int $y;
     string $name;
-} plex8;
-typedef struct __attribute__((packed)) plex10 {
+} plexa7899fed;
+#endif
+#ifndef NERD_TYPE_plex1ee601f8
+#define NERD_TYPE_plex1ee601f8
+typedef struct __attribute__((packed)) plex1ee601f8 {
     uint8_t $a;
     int $b;
-} plex10;
+} plex1ee601f8;
+#endif
 int $main() {
     string_builder_reset();
-    plex8 $0 = (plex8){.$x = 1, .$y = 2, .$name = (string){.data = (u8*)"first", .count = 5}};
-    plex8 $p = $0;
+    plexa7899fed $0 = (plexa7899fed){.$x = 1, .$y = 2, .$name = (string){.data = (u8*)"first", .count = 5}};
+    plexa7899fed $p = $0;
     int $1 = $p.$x;
-    plex8 $2 = (plex8){.$x = $1, .$y = 7, .$name = (string){.data = (u8*)"second", .count = 6}};
-    plex8 $q = $2;
-    plex8* $3 = &$q;
-    plex8* $pp = $3;
+    plexa7899fed $2 = (plexa7899fed){.$x = $1, .$y = 7, .$name = (string){.data = (u8*)"second", .count = 6}};
+    plexa7899fed $q = $2;
+    struct plexa7899fed* $3 = &$q;
+    struct plexa7899fed* $pp = $3;
     size_t $4 = string_builder_mark();
     string $6 = $p.$name;
     string_builder_append_string(to_string$string($6));
@@ -113,8 +119,8 @@ int $main() {
     string $10 = string_builder_finish($9);
     prn($10);
     string_builder_reset();
-    plex10 $14 = (plex10){.$a = 1, .$b = 2};
-    plex10 $packed = $14;
+    plex1ee601f8 $14 = (plex1ee601f8){.$a = 1, .$b = 2};
+    plex1ee601f8 $packed = $14;
     int $15 = $q.$x;
     int $16 = $q.$y;
     int $17 = $15 + $16;

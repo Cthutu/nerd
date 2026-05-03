@@ -68,7 +68,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nv\n```\n\n- Kind: local variable\n- Type: `union { i32 i, f32 f }`"
+                "value": "```nerd\nv\n```\n\n- Kind: local variable\n- Type: `Value`"
             }
         }
     },

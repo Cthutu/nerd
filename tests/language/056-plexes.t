@@ -63,17 +63,20 @@ return i32:$18
 end
 ¬
 void init() {}
-typedef struct plex8 {
+#ifndef NERD_TYPE_plexb1448fbc
+#define NERD_TYPE_plexb1448fbc
+typedef struct plexb1448fbc {
     int $x;
     int $y;
     string $name;
-} plex8;
+} plexb1448fbc;
+#endif
 int $main() {
     string_builder_reset();
-    plex8 $0 = (plex8){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
-    plex8 $p = $0;
-    plex8 $1 = (plex8){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
-    plex8 $q = $1;
+    plexb1448fbc $0 = (plexb1448fbc){.$x = 3, .$y = 4, .$name = (string){.data = (u8*)"origin", .count = 6}};
+    plexb1448fbc $p = $0;
+    plexb1448fbc $1 = (plexb1448fbc){.$name = (string){.data = (u8*)"other", .count = 5}, .$x = 5, .$y = 6};
+    plexb1448fbc $q = $1;
     size_t $2 = string_builder_mark();
     string_builder_append_string(to_string$string((string){.data = (u8*)"p ", .count = 2}));
     string $4 = $p.$name;

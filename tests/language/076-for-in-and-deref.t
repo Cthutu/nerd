@@ -119,19 +119,25 @@ return i32:$41
 end
 ¬
 void init() {}
-typedef struct array11 {
+#ifndef NERD_TYPE_arrayc02222e1
+#define NERD_TYPE_arrayc02222e1
+typedef struct arrayc02222e1 {
     int items[3];
-} array11;
-typedef struct slice12 {
+} arrayc02222e1;
+#endif
+#ifndef NERD_TYPE_slice3087b0d5
+#define NERD_TYPE_slice3087b0d5
+typedef struct slice3087b0d5 {
     int* data;
     uintptr_t count;
-} slice12;
+} slice3087b0d5;
+#endif
 int $main() {
     string_builder_reset();
-    array11 $0 = (array11){.items = {1, 2, 3}};
-    array11 $values = $0;
-    slice12 $1 = (slice12){.data = $values.items, .count = 3};
-    slice12 $2 = (slice12){0};
+    arrayc02222e1 $0 = (arrayc02222e1){.items = {1, 2, 3}};
+    arrayc02222e1 $values = $0;
+    slice3087b0d5 $1 = (slice3087b0d5){.data = $values.items, .count = 3};
+    slice3087b0d5 $2 = (slice3087b0d5){0};
     $2 = $1;
     int $3 = 0;
     $3 = 0;
@@ -140,7 +146,7 @@ int $main() {
     bool $8 = $3 < $7;
     if (!$8) goto L6;
     #ifndef NDEBUG
-    if ((long long)$3 < 0 || (size_t)$3 >= $2.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)$3 < 0 || (size_t)$3 >= $2.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $9 = $2.data[$3];
     int $main$_item$for28 = $9;
@@ -152,8 +158,8 @@ int $main() {
     goto L4;
     L6: ;
     int $total = 0;
-    slice12 $11 = (slice12){.data = $values.items, .count = 3};
-    slice12 $12 = (slice12){0};
+    slice3087b0d5 $11 = (slice3087b0d5){.data = $values.items, .count = 3};
+    slice3087b0d5 $12 = (slice3087b0d5){0};
     $12 = $11;
     int $13 = 0;
     $13 = 0;
@@ -162,7 +168,7 @@ int $main() {
     bool $18 = $13 < $17;
     if (!$18) goto L16;
     #ifndef NDEBUG
-    if ((long long)$13 < 0 || (size_t)$13 >= $12.count) { fprintf(stderr, "fatal: slice index out of bounds\n"); abort(); }
+    if ((long long)$13 < 0 || (size_t)$13 >= $12.count) { eprn("fatal: slice index out of bounds"); abort(); }
     #endif
     int $19 = $12.data[$13];
     int $main$item$for41 = $19;
