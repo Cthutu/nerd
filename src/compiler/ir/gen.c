@@ -14,6 +14,13 @@
 
 internal u32 g_ir_current_global_init_decl = U32_MAX;
 
+typedef struct {
+    u32     local_index;
+    IrValue value;
+} IrLocalSubstitution;
+
+internal Array(IrLocalSubstitution) g_ir_local_substitutions = NULL;
+
 internal u32 ir_unwrap_expr_node(const Ast* ast, u32 node_index)
 {
     while (node_index < array_count(ast->nodes) &&
@@ -1098,6 +1105,71 @@ internal IrValue ir_make_bool_literal(u32 bool_type, bool value)
 internal IrValue ir_unset_value(void)
 {
     return (IrValue){.kind = IR_VALUE_NONE};
+}
+
+internal bool ir_find_local_substitution(u32 local_index, IrValue* out_value)
+{
+    for (u32 i = array_count(g_ir_local_substitutions); i > 0; --i) {
+        const IrLocalSubstitution* substitution =
+            &g_ir_local_substitutions[i - 1];
+        if (substitution->local_index == local_index) {
+            *out_value = substitution->value;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal u32 ir_signature_required_param_count(const Ast* ast,
+                                               const AstFnSignature* signature)
+{
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        const AstParam* param = &ast->params[signature->first_param + i];
+        if (param->default_node_index != U32_MAX) {
+            return i;
+        }
+    }
+    return signature->param_count;
+}
+
+internal bool ir_known_call_fn_node(const Ast* ast,
+                                    const Sema* sema,
+                                    u32         callee_node_index,
+                                    u32*        out_fn_node_index)
+{
+    callee_node_index = ir_unwrap_expr_node(ast, callee_node_index);
+    const AstNode* callee = &ast->nodes[callee_node_index];
+    if (callee->kind != AK_SymbolRef) {
+        return false;
+    }
+
+    if (callee_node_index < array_count(sema->node_local_indices)) {
+        u32 local_index = sema->node_local_indices[callee_node_index];
+        if (local_index != sema_no_local()) {
+            const SemaLocal* local = &sema->locals[local_index];
+            if (local->kind == SLK_Function &&
+                local->value_node_index != sema_no_decl() &&
+                ast->nodes[local->value_node_index].kind == AK_FnDef) {
+                *out_fn_node_index = local->value_node_index;
+                return true;
+            }
+        }
+    }
+
+    if (callee_node_index < array_count(sema->node_decl_indices)) {
+        u32 decl_index = sema->node_decl_indices[callee_node_index];
+        if (decl_index != sema_no_decl()) {
+            const SemaDecl* decl = &sema->decls[decl_index];
+            if (decl->kind == SK_Function &&
+                decl->value_node_index != sema_no_decl() &&
+                ast->nodes[decl->value_node_index].kind == AK_FnDef) {
+                *out_fn_node_index = decl->value_node_index;
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 internal u32 ir_enum_variant_index(const Sema* sema,
@@ -2558,6 +2630,16 @@ internal IrValue ir_lower_call(const Lexer*   lex,
     const AstCallInfo* call = &ast->calls[call_node->b];
     Array(IrValue) args     = NULL;
     Array(u32) arg_types    = NULL;
+
+    u32 known_fn_node = U32_MAX;
+    const AstFnSignature* known_signature = NULL;
+    u32 param_scope_index = sema_no_decl();
+    if (ir_known_call_fn_node(ast, sema, call_node->a, &known_fn_node)) {
+        const AstNode* fn_start = &ast->nodes[ast->nodes[known_fn_node].a];
+        known_signature         = &ast->fn_signatures[fn_start->a];
+        param_scope_index       = sema->node_scope_indices[known_fn_node];
+    }
+
     for (u32 i = 0; i < call->arg_count; ++i) {
         u32 arg_node = ast->call_args[call->first_arg + i];
         array_push(args,
@@ -2570,6 +2652,53 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                                  next_value_index,
                                  ir));
         array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
+    }
+
+    u32 substitution_count = (u32)array_count(g_ir_local_substitutions);
+    if (known_signature != NULL &&
+        call->arg_count <
+            ir_signature_required_param_count(ast, known_signature)) {
+        known_signature = NULL;
+    }
+    if (known_signature != NULL &&
+        call->arg_count < known_signature->param_count) {
+        ASSERT(param_scope_index != sema_no_decl(),
+               "Expected known function parameter scope");
+        const SemaScope* param_scope = &sema->scopes[param_scope_index];
+        for (u32 i = 0; i < call->arg_count; ++i) {
+            array_push(g_ir_local_substitutions,
+                       (IrLocalSubstitution){
+                           .local_index = param_scope->first_local + i,
+                           .value       = args[i],
+                       });
+        }
+        for (u32 i = call->arg_count; i < known_signature->param_count; ++i) {
+            const AstParam* param =
+                &ast->params[known_signature->first_param + i];
+            ASSERT(param->default_node_index != U32_MAX,
+                   "Expected omitted parameter default");
+            IrValue default_value =
+                ir_lower_node(lex,
+                              ast,
+                              sema,
+                              param->default_node_index,
+                              loop,
+                              node_values,
+                              next_value_index,
+                              ir);
+            u32 default_type =
+                ir_node_type_index(ast, sema, param->default_node_index);
+            array_push(args, default_value);
+            array_push(arg_types, default_type);
+            array_push(g_ir_local_substitutions,
+                       (IrLocalSubstitution){
+                           .local_index = param_scope->first_local + i,
+                           .value       = default_value,
+                       });
+        }
+    }
+    while (array_count(g_ir_local_substitutions) > substitution_count) {
+        (void)array_pop(g_ir_local_substitutions);
     }
 
     u32     result_type = ir_node_type_index(ast, sema, call_node - ast->nodes);
@@ -2864,6 +2993,10 @@ internal IrValue ir_lower_node(const Lexer* lex,
             }
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 u32 local_index        = sema->node_local_indices[node_index];
+                if (ir_find_local_substitution(local_index, &value)) {
+                    node_values[node_index] = value;
+                    return value;
+                }
                 const SemaLocal* local = &sema->locals[local_index];
                 if (local->kind == SLK_Constant &&
                     local->value_node_index != sema_no_decl()) {
@@ -5862,6 +5995,7 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         }
         ir_add_init_end(&ir);
     }
+    array_free(g_ir_local_substitutions);
     return ir;
 }
 

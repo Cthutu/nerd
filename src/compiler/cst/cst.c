@@ -870,10 +870,18 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                 if (!cst_parse_type(state, &type_node)) {
                     return false;
                 }
+                u32 default_node = CST_NO_VALUE;
+                if (cst_current_token(state).kind == TK_Equal) {
+                    cst_advance(state);
+                    if (!cst_parse_expr_bp(state, 0, &default_node)) {
+                        return false;
+                    }
+                }
                 array_push(state->cst.params,
                            (CstParam){
                                .symbol_handle   = symbol_handle,
                                .type_node_index = type_node,
+                               .default_node_index = default_node,
                            });
             } else {
                 u32 type_node = 0;
@@ -884,6 +892,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                            (CstParam){
                                .symbol_handle   = CST_NO_VALUE,
                                .type_node_index = type_node,
+                               .default_node_index = CST_NO_VALUE,
                            });
             }
             ++param_count;

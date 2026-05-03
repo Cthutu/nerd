@@ -558,11 +558,31 @@ bool ast_parse_fn_signature(AstParseState* state,
                     return false;
                 }
 
+                u32 default_node = U32_MAX;
+                if (state->token.kind == TK_Equal ||
+                    ast_peek_kind_at(state, 0) == TK_Equal) {
+                    if (state->token.kind != TK_Equal &&
+                        !ast_expect_token(state, TK_Equal)) {
+                        return false;
+                    }
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    bool previous_boundary = state->allow_statement_boundary;
+                    state->allow_statement_boundary = true;
+                    bool parsed = ast_parse_expr(state, &default_node);
+                    state->allow_statement_boundary = previous_boundary;
+                    if (!parsed) {
+                        return false;
+                    }
+                }
+
                 array_push(state->params,
                            (AstParam){
                                .token_index   = param_token.token_index,
                                .symbol_handle = param_token.value.symbol_handle,
                                .type_node_index = type_node,
+                               .default_node_index = default_node,
                            });
             } else {
                 AstToken type_token = state->token;
@@ -576,10 +596,20 @@ bool ast_parse_fn_signature(AstParseState* state,
                                .token_index     = type_token.token_index,
                                .symbol_handle   = U32_MAX,
                                .type_node_index = type_node,
+                               .default_node_index = U32_MAX,
                            });
             }
 
             ++param_count;
+            if (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state) || !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen);
+                }
+                continue;
+            }
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
                 if (!ast_expect_token(state, TK_Comma) ||
                     !ast_next_token(state)) {
@@ -696,14 +726,47 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                 return false;
             }
 
+            u32 default_node = U32_MAX;
+            if (state->token.kind == TK_Equal ||
+                ast_peek_kind_at(state, 0) == TK_Equal) {
+                if (state->token.kind != TK_Equal &&
+                    !ast_expect_token(state, TK_Equal)) {
+                    return false;
+                }
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                bool previous_boundary = state->allow_statement_boundary;
+                state->allow_statement_boundary = true;
+                bool parsed = ast_parse_expr(state, &default_node);
+                state->allow_statement_boundary = previous_boundary;
+                if (!parsed) {
+                    return false;
+                }
+            }
+
             array_push(state->params,
                        (AstParam){
                            .token_index     = param_token.token_index,
                            .symbol_handle   = symbol,
                            .type_node_index = type_node,
+                           .default_node_index = default_node,
                        });
             ++param_count;
 
+            if (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state) || !ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen);
+                }
+                if (state->token.kind == TK_Ellipsis) {
+                    is_varargs = true;
+                    break;
+                }
+                continue;
+            }
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
                 if (!ast_expect_token(state, TK_Comma) ||
                     !ast_next_token(state)) {

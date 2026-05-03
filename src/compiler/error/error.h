@@ -285,6 +285,15 @@ bool error_0335_unused_local(NerdSource source,
                              ErrorSpan  span,
                              string     symbol,
                              string     binding_kind);
+bool error_0336_required_param_after_default(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     symbol);
+bool error_0337_default_param_on_ffi(NerdSource source,
+                                     ErrorSpan  span,
+                                     string     symbol);
+bool error_0338_default_param_later_reference(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

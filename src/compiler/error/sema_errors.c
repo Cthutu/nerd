@@ -953,3 +953,90 @@ bool error_0335_unused_local(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a required parameter appearing after a parameter with a default value.
+
+bool error_0336_required_param_after_default(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     symbol)
+{
+    ErrorInfo error =
+        error_init(336,
+                   source,
+                   span,
+                   "Required parameter `" STRINGP
+                   "` cannot follow a defaulted parameter",
+                   STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This parameter has no default value");
+    error_add_note(&error,
+                   "Parameters with defaults must be the trailing parameters "
+                   "in the signature.");
+    error_add_help(&error,
+                   "Move `" STRINGP
+                   "` before the defaulted parameters or give it a default "
+                   "value.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a default parameter on an FFI declaration.
+
+bool error_0337_default_param_on_ffi(NerdSource source,
+                                     ErrorSpan  span,
+                                     string     symbol)
+{
+    ErrorInfo error =
+        error_init(337,
+                   source,
+                   span,
+                   "FFI parameter `" STRINGP "` cannot have a default value",
+                   STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This default value belongs to an FFI declaration");
+    error_add_note(&error,
+                   "FFI declarations describe the external function's exact C "
+                   "signature.");
+    error_add_help(&error,
+                   "Remove the default value or wrap the FFI function in a "
+                   "normal Nerd function with defaults.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a default parameter expression that references a later parameter.
+
+bool error_0338_default_param_later_reference(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     symbol)
+{
+    ErrorInfo error =
+        error_init(338,
+                   source,
+                   span,
+                   "Default parameter cannot reference later parameter `"
+                   STRINGP "`",
+                   STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP
+                        "` is not available while this default is evaluated",
+                        STRINGV(symbol));
+    error_add_note(&error,
+                   "Default arguments are evaluated at the call site from left "
+                   "to right.");
+    error_add_help(&error,
+                   "Only reference parameters that appear earlier in the "
+                   "signature.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
