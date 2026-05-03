@@ -64,6 +64,7 @@
 // | AK_DestructureVariable | Ast pattern index | Ast index of value          |
 // | AK_DestructureAssign | Ast pattern index | Ast index of value            |
 // | AK_TypeFn          | Ast fn-signature index | 0                           |
+// | AK_TypeApply       | Ast type-apply info index | 0                         |
 // | AK_TypeTuple       | First item index  | Item count                      |
 // | AK_TypeArray       | Ast index length  | Ast index element type          |
 // | AK_TypeSlice       | Ast index element type | 0                           |
@@ -150,6 +151,7 @@ typedef enum {
     AK_DestructureVariable,
     AK_DestructureAssign,
     AK_TypeFn,
+    AK_TypeApply,
     AK_TypeTuple,
     AK_TypeArray,
     AK_TypeSlice,
@@ -213,9 +215,15 @@ typedef struct {
 } AstParam;
 
 typedef struct {
+    u32 first_symbol;
+    u32 symbol_count;
+} AstGenericParams;
+
+typedef struct {
     u32  first_param;
     u32  param_count;
     u32  return_type_node_index;
+    u32  generic_params_index;
     bool is_varargs;
 } AstFnSignature;
 
@@ -228,6 +236,12 @@ typedef struct {
     u32 type_node_index;
     u32 extra_node_index;
 } AstCastInfo;
+
+typedef struct {
+    u32 target_node_index;
+    u32 first_arg;
+    u32 arg_count;
+} AstTypeApplyInfo;
 
 typedef struct {
     u32 library_node_index;
@@ -255,6 +269,7 @@ typedef struct {
 typedef struct {
     u32 first_field;
     u32 field_count;
+    u32 generic_params_index;
     u32 flags;
 } AstPlexTypeInfo;
 
@@ -268,6 +283,7 @@ typedef struct {
 typedef struct {
     u32 first_variant;
     u32 variant_count;
+    u32 generic_params_index;
 } AstEnumTypeInfo;
 
 typedef enum : u32 {
@@ -391,6 +407,8 @@ typedef struct {
 
 typedef struct {
     Array(AstNode) nodes;
+    Array(AstGenericParams) generic_params;
+    Array(u32) generic_param_symbols;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;
@@ -400,6 +418,7 @@ typedef struct {
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
     Array(AstCastInfo) casts;
+    Array(AstTypeApplyInfo) type_applications;
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;

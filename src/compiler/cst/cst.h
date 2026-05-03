@@ -62,6 +62,7 @@
 // | CK_DestructureVariable | Pattern index      | Value node index      |
 // | CK_DestructureAssign | Pattern index        | Value node index      |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
+// | CK_TypeApply       | Type-apply info index | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
 // | CK_TypeArray       | Length node index     | Element type node     |
 // | CK_TypeSlice       | Element type node     | 0                     |
@@ -145,6 +146,7 @@ typedef enum {
     CK_DestructureVariable,
     CK_DestructureAssign,
     CK_TypeFn,
+    CK_TypeApply,
     CK_TypeTuple,
     CK_TypeArray,
     CK_TypeSlice,
@@ -193,6 +195,11 @@ typedef enum : u8 {
 } CstNodeFlag;
 
 typedef struct {
+    u32 first_symbol;
+    u32 symbol_count;
+} CstGenericParams;
+
+typedef struct {
     u32 symbol_handle;
     u32 type_node_index;
     u32 default_node_index;
@@ -202,6 +209,7 @@ typedef struct {
     u32  first_param;
     u32  param_count;
     u32  return_type_node_index;
+    u32  generic_params_index;
     bool is_varargs;
 } CstFnSignature;
 
@@ -234,6 +242,12 @@ typedef struct {
 
 typedef struct {
     u32 target_node_index;
+    u32 first_arg;
+    u32 arg_count;
+} CstTypeApplyInfo;
+
+typedef struct {
+    u32 target_node_index;
     u32 start_node_index;
     u32 end_node_index;
 } CstSliceInfo;
@@ -247,6 +261,7 @@ typedef struct {
 typedef struct {
     u32 first_field;
     u32 field_count;
+    u32 generic_params_index;
     u32 flags;
 } CstPlexTypeInfo;
 
@@ -260,6 +275,7 @@ typedef struct {
 typedef struct {
     u32 first_variant;
     u32 variant_count;
+    u32 generic_params_index;
 } CstEnumTypeInfo;
 
 typedef enum : u32 {
@@ -383,6 +399,8 @@ typedef struct {
 
 typedef struct {
     Array(CstNode) nodes;
+    Array(CstGenericParams) generic_params;
+    Array(u32) generic_param_symbols;
     Array(u64) integers;
     Array(f64) floats;
     Array(u32) bindings;
@@ -396,6 +414,7 @@ typedef struct {
     Array(u32) tuple_items;
     Array(CstCallInfo) calls;
     Array(CstCastInfo) casts;
+    Array(CstTypeApplyInfo) type_applications;
     Array(CstSliceInfo) slices;
     Array(CstPlexField) plex_fields;
     Array(CstPlexTypeInfo) plex_types;

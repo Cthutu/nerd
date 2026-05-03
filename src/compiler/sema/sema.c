@@ -11503,6 +11503,26 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
             return true;
         }
 
+    case AK_TypeApply:
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            if (!sema_validate_assignment_node(
+                    lexer, ast, sema, apply->target_node_index, state)) {
+                return false;
+            }
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                if (!sema_validate_assignment_node(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->tuple_items[apply->first_arg + i],
+                        state)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
     case AK_Tuple:
     case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {

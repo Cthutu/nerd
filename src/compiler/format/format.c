@@ -1025,7 +1025,25 @@ internal void format_emit_expr(StringBuilder* sb,
                     break;
                 }
             }
-            sb_append_cstr(sb, "enum {");
+            sb_append_cstr(sb, "enum");
+            if (enum_type->generic_params_index != U32_MAX) {
+                const CstGenericParams* generic =
+                    &cst->generic_params[enum_type->generic_params_index];
+                sb_append_cstr(sb, " [");
+                for (u32 i = 0; i < generic->symbol_count; ++i) {
+                    if (i > 0) {
+                        sb_append_cstr(sb, ", ");
+                    }
+                    sb_append_string(
+                        sb,
+                        lex_symbol(
+                            lexer,
+                            cst->generic_param_symbols[generic->first_symbol +
+                                                       i]));
+                }
+                sb_append_char(sb, ']');
+            }
+            sb_append_cstr(sb, " {");
             for (u32 i = 0; i < enum_type->variant_count; ++i) {
                 const CstEnumVariant* variant =
                     &cst->enum_variants[enum_type->first_variant + i];
@@ -1075,6 +1093,21 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
         break;
+    case CK_TypeApply:
+        {
+            const CstTypeApplyInfo* apply = &cst->type_applications[node->a];
+            format_emit_expr(sb, cst, lexer, apply->target_node_index, 0);
+            sb_append_char(sb, '[');
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                format_emit_expr(
+                    sb, cst, lexer, cst->tuple_items[apply->first_arg + i], 0);
+            }
+            sb_append_char(sb, ']');
+        }
+        break;
     case CK_TypeTuple:
         sb_append_char(sb, '(');
         for (u32 i = 0; i < node->b; ++i) {
@@ -1115,6 +1148,23 @@ internal void format_emit_expr(StringBuilder* sb,
             const CstPlexTypeInfo* plex     = &cst->plex_types[node->a];
             bool                   is_union = (plex->flags & CPTF_Union) != 0;
             sb_append_cstr(sb, is_union ? "union" : "plex");
+            if (plex->generic_params_index != U32_MAX) {
+                const CstGenericParams* generic =
+                    &cst->generic_params[plex->generic_params_index];
+                sb_append_cstr(sb, " [");
+                for (u32 i = 0; i < generic->symbol_count; ++i) {
+                    if (i > 0) {
+                        sb_append_cstr(sb, ", ");
+                    }
+                    sb_append_string(
+                        sb,
+                        lex_symbol(
+                            lexer,
+                            cst->generic_param_symbols[generic->first_symbol +
+                                                       i]));
+                }
+                sb_append_char(sb, ']');
+            }
             if (!is_union && (plex->flags & CPTF_Packed)) {
                 sb_append_cstr(sb, " #packed");
             } else if (!is_union && (plex->flags & CPTF_C)) {
@@ -1607,6 +1657,9 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_TypeEnum:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
+    case CK_TypeApply:
+        return format_find_matching_close_token_index(
+            lexer, node->token_index, TK_LBracket, TK_RBracket);
     case CK_TupleField:
     case CK_Field:
         return node->token_index;
@@ -2110,6 +2163,22 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
 
     bool is_union = (plex->flags & CPTF_Union) != 0;
     sb_append_cstr(sb, is_union ? "union" : "plex");
+    if (plex->generic_params_index != U32_MAX) {
+        const CstGenericParams* generic =
+            &cst->generic_params[plex->generic_params_index];
+        sb_append_cstr(sb, " [");
+        for (u32 i = 0; i < generic->symbol_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(
+                    lexer,
+                    cst->generic_param_symbols[generic->first_symbol + i]));
+        }
+        sb_append_char(sb, ']');
+    }
     if (!is_union && (plex->flags & CPTF_Packed)) {
         sb_append_cstr(sb, " #packed");
     } else if (!is_union && (plex->flags & CPTF_C)) {
@@ -2510,7 +2579,24 @@ internal void format_emit_fn_signature(StringBuilder* sb,
 {
     const CstFnSignature* signature = &cst->fn_signatures[signature_index];
 
-    sb_append_cstr(sb, "fn (");
+    sb_append_cstr(sb, "fn");
+    if (signature->generic_params_index != U32_MAX) {
+        const CstGenericParams* generic =
+            &cst->generic_params[signature->generic_params_index];
+        sb_append_cstr(sb, " [");
+        for (u32 i = 0; i < generic->symbol_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(
+                    lexer,
+                    cst->generic_param_symbols[generic->first_symbol + i]));
+        }
+        sb_append_char(sb, ']');
+    }
+    sb_append_cstr(sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ", ");

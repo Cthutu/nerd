@@ -405,6 +405,28 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     TokenKind kind = cst_kind_at_stream_index(state, *io_index);
     if (kind == TK_Symbol) {
         (*io_index)++;
+        while (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
+            (*io_index)++;
+            if (cst_kind_at_stream_index(state, *io_index) == TK_RBracket) {
+                return false;
+            }
+            for (;;) {
+                if (!cst_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+                if (cst_kind_at_stream_index(state, *io_index) != TK_Comma) {
+                    break;
+                }
+                (*io_index)++;
+                if (cst_kind_at_stream_index(state, *io_index) == TK_RBracket) {
+                    return false;
+                }
+            }
+            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+                return false;
+            }
+            (*io_index)++;
+        }
         return true;
     }
     if (kind == TK_Caret) {
@@ -413,6 +435,17 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     }
     if (kind == TK_plex || kind == TK_union) {
         (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
+            (*io_index)++;
+            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket &&
+                !cst_skip_until_matching_rbracket(state, io_index)) {
+                return false;
+            }
+            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+                return false;
+            }
+            (*io_index)++;
+        }
         while (kind == TK_plex &&
                cst_kind_at_stream_index(state, *io_index) == TK_Hash) {
             (*io_index)++;
@@ -446,6 +479,17 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     }
     if (kind == TK_enum) {
         (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
+            (*io_index)++;
+            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket &&
+                !cst_skip_until_matching_rbracket(state, io_index)) {
+                return false;
+            }
+            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+                return false;
+            }
+            (*io_index)++;
+        }
         if (cst_kind_at_stream_index(state, *io_index) != TK_LBrace) {
             return false;
         }
@@ -515,6 +559,17 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     }
 
     (*io_index)++;
+    if (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
+        (*io_index)++;
+        if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket &&
+            !cst_skip_until_matching_rbracket(state, io_index)) {
+            return false;
+        }
+        if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+            return false;
+        }
+        (*io_index)++;
+    }
     if (cst_kind_at_stream_index(state, *io_index) != TK_LParen) {
         return false;
     }
@@ -840,6 +895,36 @@ internal bool cst_parse_callable_signature(CstParseState* state,
     if (introducer != TK_EOF && !cst_consume(state, introducer)) {
         return false;
     }
+    u32 generic_params_index = CST_NO_VALUE;
+    if (cst_current_token(state).kind == TK_LBracket) {
+        cst_advance(state);
+        u32 first_symbol = (u32)array_count(state->cst.generic_param_symbols);
+        u32 symbol_count = 0;
+        if (cst_current_token(state).kind != TK_RBracket) {
+            for (;;) {
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                array_push(state->cst.generic_param_symbols,
+                           cst_current_symbol_handle(state));
+                symbol_count++;
+                cst_advance(state);
+                if (cst_current_token(state).kind != TK_Comma) {
+                    break;
+                }
+                cst_advance(state);
+            }
+        }
+        if (!cst_consume(state, TK_RBracket)) {
+            return false;
+        }
+        generic_params_index = (u32)array_count(state->cst.generic_params);
+        array_push(state->cst.generic_params,
+                   (CstGenericParams){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+    }
     if (!cst_consume(state, TK_LParen)) {
         return false;
     }
@@ -930,6 +1015,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                    .first_param            = first_param,
                    .param_count            = param_count,
                    .return_type_node_index = return_type,
+                   .generic_params_index   = generic_params_index,
                    .is_varargs             = is_varargs,
                });
     *out_signature_index = signature_index;
@@ -946,14 +1032,59 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             return false;
         }
 
+        u32 target_node = 0;
         cst_advance(state);
-        return cst_emit_node(state,
-                             (CstNode){
-                                 .kind        = CK_SymbolRef,
-                                 .token_index = state->token_index - 1,
-                                 .a           = symbol_handle,
-                             },
-                             out_node);
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_SymbolRef,
+                               .token_index = state->token_index - 1,
+                               .a           = symbol_handle,
+                           },
+                           &target_node)) {
+            return false;
+        }
+
+        while (cst_current_token(state).kind == TK_LBracket) {
+            u32 lbracket = state->token_index;
+            cst_advance(state);
+            u32 first_arg = (u32)array_count(state->cst.tuple_items);
+            u32 arg_count = 0;
+            if (cst_current_token(state).kind != TK_RBracket) {
+                for (;;) {
+                    u32 arg_node = 0;
+                    if (!cst_parse_type(state, &arg_node)) {
+                        return false;
+                    }
+                    array_push(state->cst.tuple_items, arg_node);
+                    arg_count++;
+                    if (cst_current_token(state).kind != TK_Comma) {
+                        break;
+                    }
+                    cst_advance(state);
+                }
+            }
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            u32 apply_index = (u32)array_count(state->cst.type_applications);
+            array_push(state->cst.type_applications,
+                       (CstTypeApplyInfo){
+                           .target_node_index = target_node,
+                           .first_arg         = first_arg,
+                           .arg_count         = arg_count,
+                       });
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = CK_TypeApply,
+                                   .token_index = lbracket,
+                                   .a           = apply_index,
+                               },
+                               &target_node)) {
+                return false;
+            }
+        }
+        *out_node = target_node;
+        return true;
     }
 
     if (token.kind == TK_LParen) {
@@ -1098,6 +1229,37 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32  token_index = state->token_index;
         bool is_union    = token.kind == TK_union;
         cst_advance(state);
+        u32 generic_params_index = CST_NO_VALUE;
+        if (cst_current_token(state).kind == TK_LBracket) {
+            cst_advance(state);
+            u32 first_symbol =
+                (u32)array_count(state->cst.generic_param_symbols);
+            u32 symbol_count = 0;
+            if (cst_current_token(state).kind != TK_RBracket) {
+                for (;;) {
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    array_push(state->cst.generic_param_symbols,
+                               cst_current_symbol_handle(state));
+                    symbol_count++;
+                    cst_advance(state);
+                    if (cst_current_token(state).kind != TK_Comma) {
+                        break;
+                    }
+                    cst_advance(state);
+                }
+            }
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            generic_params_index = (u32)array_count(state->cst.generic_params);
+            array_push(state->cst.generic_params,
+                       (CstGenericParams){
+                           .first_symbol = first_symbol,
+                           .symbol_count = symbol_count,
+                       });
+        }
         u32 flags = is_union ? CPTF_Union : CPTF_None;
         while (!is_union && cst_current_token(state).kind == TK_Hash) {
             cst_advance(state);
@@ -1147,6 +1309,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                    (CstPlexTypeInfo){
                        .first_field = first_field,
                        .field_count = field_count,
+                       .generic_params_index = generic_params_index,
                        .flags       = flags,
                    });
         return cst_emit_node(state,
@@ -1161,6 +1324,37 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
     if (token.kind == TK_enum) {
         u32 token_index = state->token_index;
         cst_advance(state);
+        u32 generic_params_index = CST_NO_VALUE;
+        if (cst_current_token(state).kind == TK_LBracket) {
+            cst_advance(state);
+            u32 first_symbol =
+                (u32)array_count(state->cst.generic_param_symbols);
+            u32 symbol_count = 0;
+            if (cst_current_token(state).kind != TK_RBracket) {
+                for (;;) {
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    array_push(state->cst.generic_param_symbols,
+                               cst_current_symbol_handle(state));
+                    symbol_count++;
+                    cst_advance(state);
+                    if (cst_current_token(state).kind != TK_Comma) {
+                        break;
+                    }
+                    cst_advance(state);
+                }
+            }
+            if (!cst_consume(state, TK_RBracket)) {
+                return false;
+            }
+            generic_params_index = (u32)array_count(state->cst.generic_params);
+            array_push(state->cst.generic_params,
+                       (CstGenericParams){
+                           .first_symbol = first_symbol,
+                           .symbol_count = symbol_count,
+                       });
+        }
         if (!cst_consume(state, TK_LBrace)) {
             return false;
         }
@@ -1246,6 +1440,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                    (CstEnumTypeInfo){
                        .first_variant = first_variant,
                        .variant_count = variant_count,
+                       .generic_params_index = generic_params_index,
                    });
         return cst_emit_node(state,
                              (CstNode){
@@ -4602,6 +4797,8 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
 void cst_done(Cst* cst)
 {
     array_free(cst->nodes);
+    array_free(cst->generic_params);
+    array_free(cst->generic_param_symbols);
     array_free(cst->integers);
     array_free(cst->floats);
     array_free(cst->bindings);
@@ -4615,6 +4812,7 @@ void cst_done(Cst* cst)
     array_free(cst->tuple_items);
     array_free(cst->calls);
     array_free(cst->casts);
+    array_free(cst->type_applications);
     array_free(cst->slices);
     array_free(cst->plex_fields);
     array_free(cst->plex_types);

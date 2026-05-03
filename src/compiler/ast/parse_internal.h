@@ -58,6 +58,8 @@ typedef struct {
 
     // Output
     Array(AstNode) nodes;
+    Array(AstGenericParams) generic_params;
+    Array(u32) generic_param_symbols;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;
@@ -67,6 +69,7 @@ typedef struct {
     Array(u32) tuple_items;
     Array(AstCallInfo) calls;
     Array(AstCastInfo) casts;
+    Array(AstTypeApplyInfo) type_applications;
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
     Array(AstPlexTypeInfo) plex_types;
