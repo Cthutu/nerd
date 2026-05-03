@@ -224,18 +224,18 @@ internal bool cgen_type_needs_decl(const Ir* ir, u32 type_index)
 
     SemaTypeKind kind = ir->types[type_index].kind;
     return kind == STK_Tuple || kind == STK_Array || kind == STK_Slice ||
-           kind == STK_DynamicArray || kind == STK_Plex ||
-           kind == STK_Union || kind == STK_Enum;
+           kind == STK_DynamicArray || kind == STK_Plex || kind == STK_Union ||
+           kind == STK_Enum;
 }
 
 internal u32 cgen_canonical_type_index_depth(const Ir* ir,
                                              u32       type_index,
                                              u32       depth);
 
-internal bool cgen_type_params_match_canonically(const Ir*      ir,
+internal bool cgen_type_params_match_canonically(const Ir*       ir,
                                                  const SemaType* lhs,
                                                  const SemaType* rhs,
-                                                 bool            compare_symbols,
+                                                 bool compare_symbols,
                                                  bool compare_values,
                                                  u32  depth)
 {
@@ -288,9 +288,9 @@ internal u32 cgen_canonical_type_index_depth(const Ir* ir,
                 const SemaType* existing = &ir->types[i];
                 if (existing->kind == type->kind &&
                     existing->return_type == type->return_type &&
-                    cgen_canonical_type_index_depth(
-                        ir, existing->first_param_type, depth + 1) ==
-                        item_type) {
+                    cgen_canonical_type_index_depth(ir,
+                                                    existing->first_param_type,
+                                                    depth + 1) == item_type) {
                     return i;
                 }
             }
@@ -311,7 +311,7 @@ internal u32 cgen_canonical_type_index_depth(const Ir* ir,
             bool compare_symbols = type->kind == STK_Plex ||
                                    type->kind == STK_Union ||
                                    type->kind == STK_Enum;
-            bool compare_values = type->kind == STK_Enum;
+            bool compare_values  = type->kind == STK_Enum;
             if (cgen_type_params_match_canonically(ir,
                                                    type,
                                                    existing,
@@ -354,11 +354,11 @@ internal u64 cgen_type_hash_depth(const CGen* cgen, u32 type_index, u32 depth)
     }
 
     const SemaType* type = &cgen->ir->types[type_index];
-    u64 hash = 1469598103934665603ull;
-    hash     = cgen_hash_u32(hash, (u32)type->kind);
-    hash     = cgen_hash_u32(hash, type->flags);
-    hash     = cgen_hash_u32(hash, type->param_count);
-    hash     = cgen_hash_u32(hash, type->return_type);
+    u64             hash = 1469598103934665603ull;
+    hash                 = cgen_hash_u32(hash, (u32)type->kind);
+    hash                 = cgen_hash_u32(hash, type->flags);
+    hash                 = cgen_hash_u32(hash, type->param_count);
+    hash                 = cgen_hash_u32(hash, type->return_type);
 
     if (type->kind == STK_Array || type->kind == STK_Slice ||
         type->kind == STK_DynamicArray || type->kind == STK_Pointer) {
@@ -376,7 +376,8 @@ internal u64 cgen_type_hash_depth(const CGen* cgen, u32 type_index, u32 depth)
                 cgen, cgen->ir->type_param_types[param_index], depth + 1);
             hash = cgen_hash_bytes(
                 hash, (const u8*)&param_hash, sizeof(param_hash));
-            hash = cgen_hash_u32(hash, cgen->ir->type_param_values[param_index]);
+            hash =
+                cgen_hash_u32(hash, cgen->ir->type_param_values[param_index]);
             u32 symbol = cgen->ir->type_param_symbols[param_index];
             if (symbol != U32_MAX) {
                 string name = lex_symbol(cgen->lexer, symbol);
@@ -436,11 +437,13 @@ internal cstr cgen_c_type(const CGen* cgen, u32 type_index)
                  ir->types[pointee_type].kind == STK_Slice ||
                  ir->types[pointee_type].kind == STK_DynamicArray ||
                  ir->types[pointee_type].kind == STK_Enum)) {
-                snprintf(name, 64, "struct %s*", cgen_c_type(cgen, pointee_type));
+                snprintf(
+                    name, 64, "struct %s*", cgen_c_type(cgen, pointee_type));
             } else if (pointee_type != sema_no_type() &&
                        pointee_type < array_count(ir->types) &&
                        ir->types[pointee_type].kind == STK_Union) {
-                snprintf(name, 64, "union %s*", cgen_c_type(cgen, pointee_type));
+                snprintf(
+                    name, 64, "union %s*", cgen_c_type(cgen, pointee_type));
             } else {
                 snprintf(name, 64, "%s*", cgen_c_type(cgen, pointee_type));
             }
@@ -1414,10 +1417,9 @@ internal void cgen_add_dynarray_grow(CGen*                       cgen,
     cgen_add(cgen, "void* $dyn_new_data = realloc(");
     cgen_add_dynarray_target(cgen, info);
     cgen_add(cgen, ".data, $dyn_new_cap * sizeof(");
-    cgen_add(
-        cgen,
-        cgen_c_type(cgen,
-                    cgen->ir->types[info->dynarray_type].first_param_type));
+    cgen_add(cgen,
+             cgen_c_type(
+                 cgen, cgen->ir->types[info->dynarray_type].first_param_type));
     cgen_addn(cgen, "));");
     cgen_add_line(cgen,
                   "if ($dyn_new_data == NULL) { "
@@ -1886,10 +1888,8 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
-internal void cgen_add_type_decl(CGen* cgen,
-                                 u32   type_index,
-                                 bool* emitted,
-                                 bool* emitting)
+internal void
+cgen_add_type_decl(CGen* cgen, u32 type_index, bool* emitted, bool* emitting)
 {
     type_index = cgen_canonical_type_index(cgen->ir, type_index);
     if (!cgen_type_needs_decl(cgen->ir, type_index) || emitted[type_index] ||
@@ -1908,8 +1908,7 @@ internal void cgen_add_type_decl(CGen* cgen,
             cgen_add_type_decl(cgen, field_type, emitted, emitting);
         }
     } else {
-        cgen_add_type_decl(
-            cgen, type->first_param_type, emitted, emitting);
+        cgen_add_type_decl(cgen, type->first_param_type, emitted, emitting);
     }
 
     cstr type_name = cgen_c_type(cgen, type_index);
@@ -1920,129 +1919,118 @@ internal void cgen_add_type_decl(CGen* cgen,
     arena_format(&cgen->arena, "#define NERD_TYPE_%s", type_name);
     cgen_addn(cgen, "");
 
-        if (type->kind == STK_Enum) {
-            cgen_start_line(cgen);
-            arena_format(
-                &cgen->arena,
-                "typedef struct %s {",
-                type_name);
-            cgen_addn(cgen, "");
-            cgen_indent(cgen);
-            cgen_start_line(cgen);
-            arena_format(
-                &cgen->arena,
-                "%s tag;\n",
-                cgen_enum_tag_type(cgen->ir, type_index));
-            bool has_payload = false;
-            for (u32 variant = 0; variant < type->param_count; ++variant) {
-                if (cgen->ir->type_param_types[type->first_param_type +
-                                               variant] != sema_no_type()) {
-                    has_payload = true;
-                    break;
-                }
+    if (type->kind == STK_Enum) {
+        cgen_start_line(cgen);
+        arena_format(&cgen->arena, "typedef struct %s {", type_name);
+        cgen_addn(cgen, "");
+        cgen_indent(cgen);
+        cgen_start_line(cgen);
+        arena_format(&cgen->arena,
+                     "%s tag;\n",
+                     cgen_enum_tag_type(cgen->ir, type_index));
+        bool has_payload = false;
+        for (u32 variant = 0; variant < type->param_count; ++variant) {
+            if (cgen->ir->type_param_types[type->first_param_type + variant] !=
+                sema_no_type()) {
+                has_payload = true;
+                break;
             }
-            if (!has_payload) {
-                cgen_add_line(cgen, "union { uint8_t unit; } data;");
-                cgen_dedent(cgen);
-                cgen_start_line(cgen);
-                arena_format(&cgen->arena,
-                             "} %s;",
-                             type_name);
-                cgen_addn(cgen, "");
-                cgen_add_line(cgen, "#endif");
-                emitting[type_index] = false;
-                emitted[type_index]  = true;
-                return;
-            }
-            cgen_add_line(cgen, "union {");
-            cgen_indent(cgen);
-            for (u32 variant = 0; variant < type->param_count; ++variant) {
-                u32 payload_type =
-                    cgen->ir
-                        ->type_param_types[type->first_param_type + variant];
-                if (payload_type == sema_no_type()) {
-                    continue;
-                }
-                cgen_start_line(cgen);
-                cgen_add(cgen, cgen_c_type(cgen, payload_type));
-                cgen_add(cgen, " ");
-                cgen_add_symbol_name(
-                    cgen,
-                    cgen->ir
-                        ->type_param_symbols[type->first_param_type + variant]);
-                cgen_addn(cgen, ";");
-            }
-            cgen_dedent(cgen);
-            cgen_add_line(cgen, "} data;");
+        }
+        if (!has_payload) {
+            cgen_add_line(cgen, "union { uint8_t unit; } data;");
             cgen_dedent(cgen);
             cgen_start_line(cgen);
-            arena_format(&cgen->arena,
-                         "} %s;",
-                         type_name);
+            arena_format(&cgen->arena, "} %s;", type_name);
             cgen_addn(cgen, "");
             cgen_add_line(cgen, "#endif");
             emitting[type_index] = false;
             emitted[type_index]  = true;
             return;
         }
-
-        cgen_start_line(cgen);
-        arena_format(&cgen->arena,
-                     "typedef %s%s %s {",
-                     type->kind == STK_Union ? "union" : "struct",
-                     type->kind == STK_Plex && (type->flags & STF_PlexPacked)
-                         ? " __attribute__((packed))"
-                         : "",
-                     type_name);
-        cgen_addn(cgen, "");
+        cgen_add_line(cgen, "union {");
         cgen_indent(cgen);
-        if (type->kind == STK_Tuple) {
-            for (u32 field = 0; field < type->param_count; ++field) {
-                cgen_start_line(cgen);
-                cgen_add(cgen,
-                         cgen_c_type(cgen,
-                             cgen->ir->type_param_types[type->first_param_type +
-                                                        field]));
-                arena_format(&cgen->arena, " _%u;", field);
-                cgen_addn(cgen, "");
+        for (u32 variant = 0; variant < type->param_count; ++variant) {
+            u32 payload_type =
+                cgen->ir->type_param_types[type->first_param_type + variant];
+            if (payload_type == sema_no_type()) {
+                continue;
             }
-        } else if (type->kind == STK_Plex || type->kind == STK_Union) {
-            for (u32 field = 0; field < type->param_count; ++field) {
-                cgen_start_line(cgen);
-                cgen_add(cgen,
-                         cgen_c_type(cgen,
-                             cgen->ir->type_param_types[type->first_param_type +
-                                                        field]));
-                cgen_add(cgen, " ");
-                cgen_add_symbol_name(
-                    cgen,
-                    cgen->ir
-                        ->type_param_symbols[type->first_param_type + field]);
-                cgen_addn(cgen, ";");
-            }
-        } else if (type->kind == STK_Array) {
             cgen_start_line(cgen);
-            cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
-            arena_format(&cgen->arena, " items[%u];", type->return_type);
-            cgen_addn(cgen, "");
-        } else {
-            cgen_start_line(cgen);
-            cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
-            cgen_addn(cgen, "* data;");
-            cgen_start_line(cgen);
-            cgen_addn(cgen, "uintptr_t count;");
-            if (type->kind == STK_DynamicArray) {
-                cgen_start_line(cgen);
-                cgen_addn(cgen, "uintptr_t capacity;");
-            }
+            cgen_add(cgen, cgen_c_type(cgen, payload_type));
+            cgen_add(cgen, " ");
+            cgen_add_symbol_name(
+                cgen,
+                cgen->ir->type_param_symbols[type->first_param_type + variant]);
+            cgen_addn(cgen, ";");
         }
         cgen_dedent(cgen);
+        cgen_add_line(cgen, "} data;");
+        cgen_dedent(cgen);
         cgen_start_line(cgen);
-        arena_format(&cgen->arena,
-                     "} %s;",
-                     type_name);
+        arena_format(&cgen->arena, "} %s;", type_name);
         cgen_addn(cgen, "");
         cgen_add_line(cgen, "#endif");
+        emitting[type_index] = false;
+        emitted[type_index]  = true;
+        return;
+    }
+
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena,
+                 "typedef %s%s %s {",
+                 type->kind == STK_Union ? "union" : "struct",
+                 type->kind == STK_Plex && (type->flags & STF_PlexPacked)
+                     ? " __attribute__((packed))"
+                     : "",
+                 type_name);
+    cgen_addn(cgen, "");
+    cgen_indent(cgen);
+    if (type->kind == STK_Tuple) {
+        for (u32 field = 0; field < type->param_count; ++field) {
+            cgen_start_line(cgen);
+            cgen_add(
+                cgen,
+                cgen_c_type(cgen,
+                            cgen->ir->type_param_types[type->first_param_type +
+                                                       field]));
+            arena_format(&cgen->arena, " _%u;", field);
+            cgen_addn(cgen, "");
+        }
+    } else if (type->kind == STK_Plex || type->kind == STK_Union) {
+        for (u32 field = 0; field < type->param_count; ++field) {
+            cgen_start_line(cgen);
+            cgen_add(
+                cgen,
+                cgen_c_type(cgen,
+                            cgen->ir->type_param_types[type->first_param_type +
+                                                       field]));
+            cgen_add(cgen, " ");
+            cgen_add_symbol_name(
+                cgen,
+                cgen->ir->type_param_symbols[type->first_param_type + field]);
+            cgen_addn(cgen, ";");
+        }
+    } else if (type->kind == STK_Array) {
+        cgen_start_line(cgen);
+        cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
+        arena_format(&cgen->arena, " items[%u];", type->return_type);
+        cgen_addn(cgen, "");
+    } else {
+        cgen_start_line(cgen);
+        cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
+        cgen_addn(cgen, "* data;");
+        cgen_start_line(cgen);
+        cgen_addn(cgen, "uintptr_t count;");
+        if (type->kind == STK_DynamicArray) {
+            cgen_start_line(cgen);
+            cgen_addn(cgen, "uintptr_t capacity;");
+        }
+    }
+    cgen_dedent(cgen);
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena, "} %s;", type_name);
+    cgen_addn(cgen, "");
+    cgen_add_line(cgen, "#endif");
 
     emitting[type_index] = false;
     emitted[type_index]  = true;
