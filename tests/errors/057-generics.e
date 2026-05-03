@@ -1,27 +1,25 @@
-id :: fn [T] (value: T) => value
-main :: fn () => id(1)
+pair :: fn [A, B] (a: A, b: B) => a
+main :: fn () => pair[i32](1, "two")
 ¬
 {
-    "code": "0339",
-    "message": "Generics are not implemented for `generic function` yet",
+    "code": "0313",
+    "message": "Argument count mismatch: expected 2, found 1",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {
         "line": 1,
-        "column": 7
+        "column": 9
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 7,
+            "column": 9,
             "length": 2,
-            "message": "This generic syntax is recognised but not lowered"
+            "message": "This call uses the wrong arity"
         }
     ],
-    "notes": [
-        "The parser and formatter understand the square-bracket generic syntax, but semantic instantiation is still in progress."
-    ],
+    "notes": [],
     "help": [
-        "Use a concrete non-generic declaration for now, or keep this source until the generics milestone is completed."
+        "Pass exactly 2 arguments to match the function signature."
     ]
 }

@@ -2092,6 +2092,75 @@ internal void cgen_add_extern_decls(CGen* cgen)
     }
 }
 
+internal void cgen_add_function_header(CGen*              cgen,
+                                       const IrInstruction* instr,
+                                       const IrFunction*    function)
+{
+    cgen_start_line(cgen);
+    u32 return_type = sema_no_type();
+    u32 fn_type     = instr->lvalue.type;
+    if (fn_type != sema_no_type() &&
+        cgen->ir->types[fn_type].kind == STK_Function) {
+        return_type = cgen->ir->types[fn_type].return_type;
+    }
+    cgen_add(cgen, cgen_c_type(cgen, return_type));
+    cgen_add(cgen, " ");
+    cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
+    cgen_add(cgen, "(");
+    for (u32 i = 0; i < function->param_count; ++i) {
+        if (i > 0) {
+            cgen_add(cgen, ", ");
+        }
+        const IrLocal* param =
+            &cgen->ir->locals[function->first_local + i];
+        ASSERT(param->is_param, "Expected function params first in local table");
+        cgen_add_decl_type_and_name(
+            cgen,
+            param->type,
+            &(IrValue){.kind          = IR_VALUE_LOCAL,
+                       .type          = param->type,
+                       .value.integer = param->symbol});
+    }
+    cgen_add(cgen, ")");
+}
+
+internal bool cgen_has_generic_instantiation(const CGen* cgen)
+{
+    for (u32 i = 0; i < array_count(cgen->ir->functions); ++i) {
+        string symbol = lex_symbol(cgen->lexer, cgen->ir->functions[i].symbol);
+        for (usize j = 0; j + 3 <= symbol.count; ++j) {
+            if (symbol.data[j] == '_' && symbol.data[j + 1] == 'g' &&
+                symbol.data[j + 2] == '_') {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal void cgen_add_function_prototypes(CGen* cgen)
+{
+    if (!cgen_has_generic_instantiation(cgen)) {
+        return;
+    }
+
+    u32 function_index = 0;
+    for (usize i = 0; i < array_count(cgen->ir->instructions); ++i) {
+        const IrInstruction* instr = &cgen->ir->instructions[i];
+        if (instr->op != IR_OP_FN_START) {
+            continue;
+        }
+        ASSERT(function_index < array_count(cgen->ir->functions),
+               "Expected function record for fn.start");
+        const IrFunction* function = &cgen->ir->functions[function_index++];
+        cgen_add_function_header(cgen, instr, function);
+        cgen_addn(cgen, ";");
+    }
+    if (function_index > 0) {
+        cgen_addn(cgen, "");
+    }
+}
+
 void cgen_add_local(CGen* cgen, const IrInstruction* instr)
 {
     ASSERT(instr->lvalue.kind == IR_VALUE_LOCAL ||
@@ -2153,6 +2222,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
 
     cgen_add_tuple_type_decls(cgen);
     cgen_add_extern_decls(cgen);
+    cgen_add_function_prototypes(cgen);
 
     for (usize i = 0; i < array_count(ir->instructions); ++i) {
         const IrInstruction* instr = &ir->instructions[i];
@@ -2172,33 +2242,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             ASSERT(function_index < array_count(ir->functions),
                    "Expected function record for fn.start");
             const IrFunction* function = &ir->functions[function_index++];
-            cgen_start_line(cgen);
-            u32 return_type = sema_no_type();
-            u32 fn_type     = instr->lvalue.type;
-            if (fn_type != sema_no_type() &&
-                cgen->ir->types[fn_type].kind == STK_Function) {
-                return_type = cgen->ir->types[fn_type].return_type;
-            }
-            cgen_add(cgen, cgen_c_type(cgen, return_type));
-            cgen_add(cgen, " ");
-            cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
-            cgen_add(cgen, "(");
-            for (u32 i = 0; i < function->param_count; ++i) {
-                if (i > 0) {
-                    cgen_add(cgen, ", ");
-                }
-                const IrLocal* param =
-                    &cgen->ir->locals[function->first_local + i];
-                ASSERT(param->is_param,
-                       "Expected function params first in local table");
-                cgen_add_decl_type_and_name(
-                    cgen,
-                    param->type,
-                    &(IrValue){.kind          = IR_VALUE_LOCAL,
-                               .type          = param->type,
-                               .value.integer = param->symbol});
-            }
-            cgen_addn(cgen, ") {");
+            cgen_add_function_header(cgen, instr, function);
+            cgen_addn(cgen, " {");
             cgen_indent(cgen);
             break;
         case IR_OP_FN_END:

@@ -560,13 +560,105 @@ internal string lsp_default_param_source(const LspDocument* doc,
     return raw;
 }
 
+internal string lsp_trim_source(const LspDocument* doc, usize start, usize end)
+{
+    const string source = doc->front_end.lexer.source.source;
+    while (start < end &&
+           (source.data[start] == ' ' || source.data[start] == '\t' ||
+            source.data[start] == '\n' || source.data[start] == '\r')) {
+        start++;
+    }
+    while (end > start &&
+           (source.data[end - 1] == ' ' || source.data[end - 1] == '\t' ||
+            source.data[end - 1] == '\n' || source.data[end - 1] == '\r')) {
+        end--;
+    }
+    return (string){.data = source.data + start, .count = end - start};
+}
+
+internal string lsp_param_type_source(const LspDocument* doc,
+                                      const AstParam*    param)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    u32          colon = U32_MAX;
+    for (u32 i = param->token_index; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == TK_Colon) {
+            colon = i;
+            break;
+        }
+        if (kind == TK_Comma || kind == TK_RParen) {
+            break;
+        }
+    }
+    if (colon == U32_MAX) {
+        return s("<unknown>");
+    }
+
+    usize start = lex_token_end_offset(lexer, &lexer->tokens[colon]);
+    usize end   = start;
+    u32   depth = 0;
+    for (u32 i = colon + 1; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (depth == 0 &&
+            (kind == TK_Comma || kind == TK_RParen || kind == TK_Equal)) {
+            end = lexer->tokens[i].offset;
+            break;
+        }
+        if (kind == TK_LParen || kind == TK_LBracket) {
+            depth++;
+        } else if (kind == TK_RParen || kind == TK_RBracket) {
+            if (depth == 0) {
+                end = lexer->tokens[i].offset;
+                break;
+            }
+            depth--;
+        }
+        end = lex_token_end_offset(lexer, &lexer->tokens[i]);
+    }
+    return lsp_trim_source(doc, start, end);
+}
+
+internal string lsp_return_type_source(const LspDocument* doc,
+                                       u32                return_type_node_index)
+{
+    if (return_type_node_index == U32_MAX) {
+        return s("");
+    }
+
+    const Lexer* lexer = &doc->front_end.lexer;
+    const AstNode* node = &doc->front_end.ast.nodes[return_type_node_index];
+    usize start = lexer->tokens[node->token_index].offset;
+    usize end   = start;
+    u32   depth = 0;
+    for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (depth == 0 && (kind == TK_LBrace || kind == TK_FatArrow)) {
+            end = lexer->tokens[i].offset;
+            break;
+        }
+        if (kind == TK_LParen || kind == TK_LBracket) {
+            depth++;
+        } else if (kind == TK_RParen || kind == TK_RBracket) {
+            if (depth == 0) {
+                end = lexer->tokens[i].offset;
+                break;
+            }
+            depth--;
+        }
+        end = lex_token_end_offset(lexer, &lexer->tokens[i]);
+    }
+    return lsp_trim_source(doc, start, end);
+}
+
 internal bool lsp_decl_ast_signature(const LspDocument* doc,
                                      Arena*             arena,
                                      const SemaDecl*    decl,
                                      string*            out_signature)
 {
     if (decl->value_node_index == sema_no_decl() ||
-        decl->type_index >= array_count(doc->front_end.sema.types)) {
+        (decl->kind != SK_GenericFunction &&
+         decl->type_index >= array_count(doc->front_end.sema.types))) {
         return false;
     }
 
@@ -584,10 +676,14 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         return false;
     }
 
-    const SemaType* type = &doc->front_end.sema.types[decl->type_index];
-    if (type->kind != STK_Function) {
+    const SemaType* type =
+        decl->kind == SK_GenericFunction
+            ? NULL
+            : &doc->front_end.sema.types[decl->type_index];
+    if (decl->kind != SK_GenericFunction && type->kind != STK_Function) {
         return false;
     }
+    bool has_generic = signature->generic_params_index != U32_MAX;
     bool has_default = false;
     for (u32 i = 0; i < signature->param_count; ++i) {
         const AstParam* param = &ast->params[signature->first_param + i];
@@ -596,7 +692,7 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
             break;
         }
     }
-    if (!has_default) {
+    if (!has_default && !has_generic) {
         return false;
     }
 
@@ -607,7 +703,23 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
 
     StringBuilder sb = {0};
     sb_init(&sb, &build_arena);
-    sb_append_cstr(&sb, "fn (");
+    sb_append_cstr(&sb, "fn");
+    if (has_generic) {
+        const AstGenericParams* generic =
+            &ast->generic_params[signature->generic_params_index];
+        sb_append_cstr(&sb, " [");
+        for (u32 i = 0; i < generic->symbol_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(&sb, ", ");
+            }
+            sb_append_string(
+                &sb,
+                lex_symbol(&doc->front_end.lexer,
+                           ast->generic_param_symbols[generic->first_symbol + i]));
+        }
+        sb_append_cstr(&sb, "]");
+    }
+    sb_append_cstr(&sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(&sb, ", ");
@@ -619,16 +731,20 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
                                         param->symbol_handle));
             sb_append_cstr(&sb, ": ");
         }
-        u32 param_type =
-            i < type->param_count
-                ? doc->front_end.sema
-                      .type_param_types[type->first_param_type + i]
-                : sema_no_type();
-        sb_append_string(&sb,
-                         sema_type_name(&doc->front_end.lexer,
-                                        &doc->front_end.sema,
-                                        &text_arena,
-                                        param_type));
+        if (has_generic) {
+            sb_append_string(&sb, lsp_param_type_source(doc, param));
+        } else {
+            u32 param_type =
+                i < type->param_count
+                    ? doc->front_end.sema
+                          .type_param_types[type->first_param_type + i]
+                    : sema_no_type();
+            sb_append_string(&sb,
+                             sema_type_name(&doc->front_end.lexer,
+                                            &doc->front_end.sema,
+                                            &text_arena,
+                                            param_type));
+        }
         if (param->default_node_index != U32_MAX) {
             sb_append_cstr(&sb, " = ");
             sb_append_string(&sb, lsp_default_param_source(doc, param));
@@ -641,7 +757,11 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         sb_append_cstr(&sb, "...");
     }
     sb_append_char(&sb, ')');
-    if (type->return_type != sema_no_type()) {
+    if (has_generic && signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(&sb, " -> ");
+        sb_append_string(
+            &sb, lsp_return_type_source(doc, signature->return_type_node_index));
+    } else if (!has_generic && type->return_type != sema_no_type()) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
                          sema_type_name(&doc->front_end.lexer,
@@ -661,8 +781,8 @@ internal string lsp_decl_signature(const LspDocument* doc,
                                    Arena*             arena,
                                    const SemaDecl*    decl)
 {
-    if (decl->kind != SK_Function && decl->kind != SK_FfiFunction &&
-        decl->kind != SK_BuiltinFunction) {
+    if (decl->kind != SK_Function && decl->kind != SK_GenericFunction &&
+        decl->kind != SK_FfiFunction && decl->kind != SK_BuiltinFunction) {
         return s("<unknown>");
     }
     if (decl->kind == SK_BuiltinFunction) {
@@ -791,8 +911,8 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         inferred_type = lsp_decl_signature(doc, arena, decl);
     }
 
-    if (decl->kind == SK_Function || decl->kind == SK_FfiFunction ||
-        decl->kind == SK_BuiltinFunction) {
+    if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
+        decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
         return string_format(arena,
                              STRINGP "\n\n- Kind: " STRINGP,
                              STRINGV(lsp_markdown_code_block(
@@ -1394,7 +1514,8 @@ internal bool lsp_get_request_context(LspState*         state,
 
 internal int lsp_decl_symbol_kind(const SemaDecl* decl)
 {
-    return decl->kind == SK_Function || decl->kind == SK_FfiFunction
+    return decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
+                   decl->kind == SK_FfiFunction
                ? LSP_SYMBOL_KIND_FUNCTION
                : LSP_SYMBOL_KIND_CONSTANT;
 }

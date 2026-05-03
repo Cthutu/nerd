@@ -20,6 +20,7 @@ typedef enum : u8 {
     SK_Module,
     SK_BuiltinFunction,
     SK_GenericTypeAlias,
+    SK_GenericFunction,
 } SemaDeclKind;
 
 typedef enum : u8 {
@@ -124,6 +125,21 @@ typedef struct {
     u32 to_decl_index;
 } SemaDeclDep;
 
+typedef struct {
+    u32 symbol_handle;
+    u32 template_decl_index;
+    u32 fn_node_index;
+    u32 root_scope_index;
+    u32 type_index;
+    u32 first_arg_type;
+    u32 arg_count;
+    Array(u32) node_decl_indices;
+    Array(u32) node_local_indices;
+    Array(u32) node_scope_indices;
+    Array(u32) node_lowered_symbol_handles;
+    Array(u32) node_type_indices;
+} SemaGenericFnInstantiation;
+
 //------------------------------------------------------------------------------
 // Compact semantic side tables keyed by declaration and AST node index.
 
@@ -134,6 +150,7 @@ typedef struct {
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;
     Array(SemaDecl) decls;
+    Array(SemaGenericFnInstantiation) generic_fn_instantiations;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;
     Array(SemaDeclDep) deps;

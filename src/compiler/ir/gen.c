@@ -2991,6 +2991,18 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 node_values[node_index] = value;
                 return value;
             }
+            if (sema->node_lowered_symbol_handles[node_index] != U32_MAX &&
+                node_type != sema_no_type() &&
+                sema->types[node_type].kind == STK_Function) {
+                value = (IrValue){
+                    .kind          = IR_VALUE_SYMBOL,
+                    .type          = node_type,
+                    .value.integer =
+                        sema->node_lowered_symbol_handles[node_index],
+                };
+                node_values[node_index] = value;
+                return value;
+            }
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 u32 local_index        = sema->node_local_indices[node_index];
                 if (ir_find_local_substitution(local_index, &value)) {
@@ -3792,6 +3804,16 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_Index:
         {
+            if (sema->node_lowered_symbol_handles[node_index] != U32_MAX) {
+                IrValue value = {
+                    .kind          = IR_VALUE_SYMBOL,
+                    .type          = ir_node_type_index(ast, sema, node_index),
+                    .value.integer = sema->node_lowered_symbol_handles[node_index],
+                };
+                node_values[node_index] = value;
+                return value;
+            }
+
             IrValue array      = ir_lower_node(lex,
                                                ast,
                                                sema,
@@ -5917,6 +5939,26 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         array_push(ir.type_param_values, sema->type_param_values[i]);
     }
 
+    for (u32 i = 0; i < array_count(sema->generic_fn_instantiations); ++i) {
+        const SemaGenericFnInstantiation* inst =
+            &sema->generic_fn_instantiations[i];
+        Sema inst_sema                       = *sema;
+        inst_sema.node_decl_indices          = inst->node_decl_indices;
+        inst_sema.node_local_indices         = inst->node_local_indices;
+        inst_sema.node_scope_indices         = inst->node_scope_indices;
+        inst_sema.node_lowered_symbol_handles =
+            inst->node_lowered_symbol_handles;
+        inst_sema.node_type_indices = inst->node_type_indices;
+        ir_generate_function_body(lex,
+                                  ast,
+                                  &inst_sema,
+                                  inst->symbol_handle,
+                                  inst->type_index,
+                                  inst->fn_node_index,
+                                  inst->root_scope_index,
+                                  &ir);
+    }
+
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
         if (decl->kind == SK_FfiFunction) {
@@ -5959,7 +6001,8 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
             fn_value_node = ast->nodes[fn_value_node].a;
         }
 
-        if (decl->kind != SK_Function && fn_value_node != sema_no_decl() &&
+        if (decl->kind != SK_Function && decl->kind != SK_GenericFunction &&
+            fn_value_node != sema_no_decl() &&
             ast->nodes[fn_value_node].kind == AK_FnDef &&
             sema->node_lowered_symbol_handles[fn_value_node] != U32_MAX) {
             ir_generate_function_body(
