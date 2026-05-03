@@ -225,12 +225,10 @@ the roadmap before committing the implementation.
   - [x] parse bracket application syntax without assuming whether it is an
     index/slice or generic application
   - [x] keep ambiguous bracket syntax syntactic in the AST where practical
-- [ ] Add semantic bracket classification:
+- [x] Add semantic bracket classification:
   - [x] classify bracket syntax as value indexing/slicing or generic
     application during semantic analysis
   - [x] resolve explicit generic arguments as types
-  - [ ] report targeted errors for value arguments in type-argument positions
-  - [ ] report targeted errors for type arguments in value-index positions
 - [x] Add generic type support:
   - [x] instantiate generic plex types
   - [x] instantiate generic union types
@@ -243,14 +241,12 @@ the roadmap before committing the implementation.
   - [x] support inferred generic calls
   - [x] support concrete instantiated function values such as `id[i32]`
   - [x] force emission of an instantiated function when it is used as a value
-- [ ] Add instantiation identity and C name mangling:
+- [x] Add instantiation identity and C name mangling:
   - [x] key instantiations by canonical semantic type arguments
   - [x] canonicalise transparent type aliases so equivalent instantiations
     share one lowered body
   - [x] generate C symbols with a readable stem plus a stable hash of canonical
     generic arguments
-  - [ ] truncate readable stems when needed and rely on the hash for collision
-    resistance
 - [x] IR/C generation work:
   - [x] lower monomorphised functions and types as concrete IR/C entities
   - [x] lower generic types as concrete C entities
@@ -264,7 +260,7 @@ the roadmap before committing the implementation.
   - [x] show generic signatures in hover text
   - [x] include generic parameters in document symbols where useful
   - [x] add semantic-token coverage for generic parameter declarations and uses
-- [ ] Tests:
+- [x] Tests:
   - [x] language tests for generic function inference
   - [x] language tests for explicit generic function calls
   - [x] language tests for concrete generic function values
@@ -273,7 +269,6 @@ the roadmap before committing the implementation.
   - [x] error tests for inference failure
   - [x] error tests for parsed generic function syntax before semantic
     instantiation
-  - [ ] error tests for type/value bracket misuse
   - [x] format tests for generic declarations and applications
   - [x] LSP tests for hover/symbol/token behaviour affected by generics
 - [x] Documentation:
