@@ -615,7 +615,7 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             cstr   option       = arg + 2;
             cstr   option_value = NULL;
             string option_name  = s(option);
-            char*  equals       = strchr(option, '=');
+            cstr   equals       = strchr(option, '=');
             if (equals) {
                 option_name =
                     string_from((u8*)option, (usize)(equals - option));

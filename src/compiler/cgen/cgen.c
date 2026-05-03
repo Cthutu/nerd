@@ -7,6 +7,7 @@
 #include <compiler/cgen/cgen.h>
 #include <compiler/error/error.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static const char g_cgen_prelude[] = {
 #embed "../../../data/prelude.c"
@@ -215,11 +216,185 @@ internal cstr cgen_c_integer_type(const Ir* ir, u32 type_index)
     }
 }
 
-internal cstr cgen_c_type(const Ir* ir, u32 type_index)
+internal bool cgen_type_needs_decl(const Ir* ir, u32 type_index)
 {
+    if (type_index == sema_no_type() || type_index >= array_count(ir->types)) {
+        return false;
+    }
+
+    SemaTypeKind kind = ir->types[type_index].kind;
+    return kind == STK_Tuple || kind == STK_Array || kind == STK_Slice ||
+           kind == STK_DynamicArray || kind == STK_Plex ||
+           kind == STK_Union || kind == STK_Enum;
+}
+
+internal u32 cgen_canonical_type_index_depth(const Ir* ir,
+                                             u32       type_index,
+                                             u32       depth);
+
+internal bool cgen_type_params_match_canonically(const Ir*      ir,
+                                                 const SemaType* lhs,
+                                                 const SemaType* rhs,
+                                                 bool            compare_symbols,
+                                                 bool compare_values,
+                                                 u32  depth)
+{
+    for (u32 i = 0; i < lhs->param_count; ++i) {
+        u32 lhs_param = ir->type_param_types[lhs->first_param_type + i];
+        u32 rhs_param = ir->type_param_types[rhs->first_param_type + i];
+        if (lhs_param != sema_no_type()) {
+            lhs_param =
+                cgen_canonical_type_index_depth(ir, lhs_param, depth + 1);
+        }
+        if (rhs_param != sema_no_type()) {
+            rhs_param =
+                cgen_canonical_type_index_depth(ir, rhs_param, depth + 1);
+        }
+        if (lhs_param != rhs_param) {
+            return false;
+        }
+        if (compare_symbols &&
+            ir->type_param_symbols[lhs->first_param_type + i] !=
+                ir->type_param_symbols[rhs->first_param_type + i]) {
+            return false;
+        }
+        if (compare_values &&
+            ir->type_param_values[lhs->first_param_type + i] !=
+                ir->type_param_values[rhs->first_param_type + i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal u32 cgen_canonical_type_index_depth(const Ir* ir,
+                                             u32       type_index,
+                                             u32       depth)
+{
+    if (type_index == sema_no_type() || type_index >= array_count(ir->types) ||
+        depth > 64) {
+        return type_index;
+    }
+
+    const SemaType* type = &ir->types[type_index];
+    switch (type->kind) {
+    case STK_Array:
+    case STK_Slice:
+    case STK_DynamicArray:
+        {
+            u32 item_type = cgen_canonical_type_index_depth(
+                ir, type->first_param_type, depth + 1);
+            for (u32 i = 0; i < type_index; ++i) {
+                const SemaType* existing = &ir->types[i];
+                if (existing->kind == type->kind &&
+                    existing->return_type == type->return_type &&
+                    cgen_canonical_type_index_depth(
+                        ir, existing->first_param_type, depth + 1) ==
+                        item_type) {
+                    return i;
+                }
+            }
+            return type_index;
+        }
+    case STK_Tuple:
+    case STK_Plex:
+    case STK_Union:
+    case STK_Enum:
+        for (u32 i = 0; i < type_index; ++i) {
+            const SemaType* existing = &ir->types[i];
+            if (existing->kind != type->kind ||
+                existing->param_count != type->param_count ||
+                existing->flags != type->flags ||
+                existing->return_type != type->return_type) {
+                continue;
+            }
+            bool compare_symbols = type->kind == STK_Plex ||
+                                   type->kind == STK_Union ||
+                                   type->kind == STK_Enum;
+            bool compare_values = type->kind == STK_Enum;
+            if (cgen_type_params_match_canonically(ir,
+                                                   type,
+                                                   existing,
+                                                   compare_symbols,
+                                                   compare_values,
+                                                   depth + 1)) {
+                return i;
+            }
+        }
+        return type_index;
+    default:
+        return type_index;
+    }
+}
+
+internal u32 cgen_canonical_type_index(const Ir* ir, u32 type_index)
+{
+    return cgen_canonical_type_index_depth(ir, type_index, 0);
+}
+
+internal u64 cgen_hash_bytes(u64 hash, const u8* data, usize count)
+{
+    for (usize i = 0; i < count; ++i) {
+        hash ^= data[i];
+        hash *= 1099511628211ull;
+    }
+    return hash;
+}
+
+internal u64 cgen_hash_u32(u64 hash, u32 value)
+{
+    return cgen_hash_bytes(hash, (const u8*)&value, sizeof(value));
+}
+
+internal u64 cgen_type_hash_depth(const CGen* cgen, u32 type_index, u32 depth)
+{
+    if (type_index == sema_no_type() ||
+        type_index >= array_count(cgen->ir->types) || depth > 64) {
+        return 1469598103934665603ull;
+    }
+
+    const SemaType* type = &cgen->ir->types[type_index];
+    u64 hash = 1469598103934665603ull;
+    hash     = cgen_hash_u32(hash, (u32)type->kind);
+    hash     = cgen_hash_u32(hash, type->flags);
+    hash     = cgen_hash_u32(hash, type->param_count);
+    hash     = cgen_hash_u32(hash, type->return_type);
+
+    if (type->kind == STK_Array || type->kind == STK_Slice ||
+        type->kind == STK_DynamicArray || type->kind == STK_Pointer) {
+        u64 item_hash =
+            cgen_type_hash_depth(cgen, type->first_param_type, depth + 1);
+        return cgen_hash_bytes(hash, (const u8*)&item_hash, sizeof(item_hash));
+    }
+
+    if (type->kind == STK_Tuple || type->kind == STK_Plex ||
+        type->kind == STK_Union || type->kind == STK_Enum ||
+        type->kind == STK_Function || type->kind == STK_Module) {
+        for (u32 i = 0; i < type->param_count; ++i) {
+            u32 param_index = type->first_param_type + i;
+            u64 param_hash  = cgen_type_hash_depth(
+                cgen, cgen->ir->type_param_types[param_index], depth + 1);
+            hash = cgen_hash_bytes(
+                hash, (const u8*)&param_hash, sizeof(param_hash));
+            hash = cgen_hash_u32(hash, cgen->ir->type_param_values[param_index]);
+            u32 symbol = cgen->ir->type_param_symbols[param_index];
+            if (symbol != U32_MAX) {
+                string name = lex_symbol(cgen->lexer, symbol);
+                hash        = cgen_hash_bytes(hash, name.data, name.count);
+            }
+        }
+    }
+
+    return hash;
+}
+
+internal cstr cgen_c_type(const CGen* cgen, u32 type_index)
+{
+    const Ir* ir = cgen->ir;
     if (type_index == sema_no_type()) {
         return "int";
     }
+    type_index = cgen_canonical_type_index(ir, type_index);
 
     switch (ir->types[type_index].kind) {
     case STK_Tuple:
@@ -233,17 +408,18 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
             static char names[8][32];
             static u32  next = 0;
             char*       name = names[next++ % 8];
+            u64         hash = cgen_type_hash_depth(cgen, type_index, 0);
             snprintf(name,
                      32,
-                     ir->types[type_index].kind == STK_Tuple   ? "tuple%u"
-                     : ir->types[type_index].kind == STK_Array ? "array%u"
-                     : ir->types[type_index].kind == STK_Slice ? "slice%u"
+                     ir->types[type_index].kind == STK_Tuple   ? "tuple%08llx"
+                     : ir->types[type_index].kind == STK_Array ? "array%08llx"
+                     : ir->types[type_index].kind == STK_Slice ? "slice%08llx"
                      : ir->types[type_index].kind == STK_DynamicArray
-                         ? "dynarray%u"
-                     : ir->types[type_index].kind == STK_Plex  ? "plex%u"
-                     : ir->types[type_index].kind == STK_Union ? "union%u"
-                                                               : "enum%u",
-                     type_index);
+                         ? "dynarray%08llx"
+                     : ir->types[type_index].kind == STK_Plex  ? "plex%08llx"
+                     : ir->types[type_index].kind == STK_Union ? "union%08llx"
+                                                               : "enum%08llx",
+                     (unsigned long long)(hash & 0xffffffffull));
             return name;
         }
     case STK_Pointer:
@@ -260,13 +436,13 @@ internal cstr cgen_c_type(const Ir* ir, u32 type_index)
                  ir->types[pointee_type].kind == STK_Slice ||
                  ir->types[pointee_type].kind == STK_DynamicArray ||
                  ir->types[pointee_type].kind == STK_Enum)) {
-                snprintf(name, 64, "struct %s*", cgen_c_type(ir, pointee_type));
+                snprintf(name, 64, "struct %s*", cgen_c_type(cgen, pointee_type));
             } else if (pointee_type != sema_no_type() &&
                        pointee_type < array_count(ir->types) &&
                        ir->types[pointee_type].kind == STK_Union) {
-                snprintf(name, 64, "union %s*", cgen_c_type(ir, pointee_type));
+                snprintf(name, 64, "union %s*", cgen_c_type(cgen, pointee_type));
             } else {
-                snprintf(name, 64, "%s*", cgen_c_type(ir, pointee_type));
+                snprintf(name, 64, "%s*", cgen_c_type(cgen, pointee_type));
             }
             return name;
         }
@@ -307,12 +483,13 @@ internal bool cgen_type_is_c_string_pointer(const Ir* ir, u32 type_index)
     return pointee_kind == STK_U8 || pointee_kind == STK_I8;
 }
 
-internal cstr cgen_c_extern_param_type(const Ir* ir, u32 type_index)
+internal cstr cgen_c_extern_param_type(const CGen* cgen, u32 type_index)
 {
+    const Ir* ir = cgen->ir;
     if (cgen_type_is_c_string_pointer(ir, type_index)) {
         return "const char*";
     }
-    return cgen_c_type(ir, type_index);
+    return cgen_c_type(cgen, type_index);
 }
 
 internal cstr cgen_enum_tag_type(const Ir* ir, u32 type_index)
@@ -341,7 +518,7 @@ cgen_add_decl_type_and_name(CGen* cgen, u32 type_index, const IrValue* value)
     if (type_index != sema_no_type() &&
         cgen->ir->types[type_index].kind == STK_Function) {
         const SemaType* fn_type = &cgen->ir->types[type_index];
-        cgen_add(cgen, cgen_c_type(cgen->ir, fn_type->return_type));
+        cgen_add(cgen, cgen_c_type(cgen, fn_type->return_type));
         cgen_add(cgen, " (*");
         cgen_add_value(cgen, value);
         cgen_add(cgen, ")(");
@@ -352,14 +529,14 @@ cgen_add_decl_type_and_name(CGen* cgen, u32 type_index, const IrValue* value)
             cgen_add(
                 cgen,
                 cgen_c_type(
-                    cgen->ir,
+                    cgen,
                     cgen->ir->type_param_types[fn_type->first_param_type + i]));
         }
         cgen_add(cgen, ")");
         return;
     }
 
-    cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+    cgen_add(cgen, cgen_c_type(cgen, type_index));
     cgen_add(cgen, " ");
     cgen_add_value(cgen, value);
 }
@@ -494,7 +671,7 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
     case STK_Slice:
     case STK_DynamicArray:
         cgen_add(cgen, "(");
-        cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+        cgen_add(cgen, cgen_c_type(cgen, type_index));
         cgen_add(cgen, "){0}");
         break;
     case STK_Pointer:
@@ -530,7 +707,7 @@ cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
     if (value->kind == IR_VALUE_INTEGER && type_index != sema_no_type() &&
         cgen->ir->types[type_index].kind == STK_Enum) {
         cgen_add(cgen, "(");
-        cgen_add(cgen, cgen_c_type(cgen->ir, type_index));
+        cgen_add(cgen, cgen_c_type(cgen, type_index));
         arena_format(&cgen->arena, "){.tag = %lld}", value->value.integer);
         return;
     }
@@ -557,7 +734,7 @@ cgen_add_typed_value(CGen* cgen, const IrValue* value, u32 type_index)
             target_kind != STK_Union && target_kind != STK_Enum &&
             target_kind != STK_Module && target_kind != STK_Function) {
             cgen_add(cgen, "((");
-            cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
+            cgen_add(cgen, cgen_c_type(cgen, target_type));
             cgen_add(cgen, ")");
             cgen_add_value(cgen, value);
             cgen_add(cgen, ")");
@@ -609,13 +786,13 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
             cgen->ir->types[value->type].kind == STK_Slice &&
             value->value.integer == 0) {
             cgen_add(cgen, "(");
-            cgen_add(cgen, cgen_c_type(cgen->ir, value->type));
+            cgen_add(cgen, cgen_c_type(cgen, value->type));
             cgen_add(cgen, "){.data = 0, .count = 0}");
         } else if (value->type != sema_no_type() &&
                    cgen->ir->types[value->type].kind == STK_DynamicArray &&
                    value->value.integer == 0) {
             cgen_add(cgen, "(");
-            cgen_add(cgen, cgen_c_type(cgen->ir, value->type));
+            cgen_add(cgen, cgen_c_type(cgen, value->type));
             cgen_add(cgen, "){.data = 0, .count = 0, .capacity = 0}");
         } else {
             arena_format(&cgen->arena, "%lld", value->value.integer);
@@ -756,7 +933,7 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
                 cgen->ir->type_param_types[fn_type->first_param_type + i];
             if (cgen_type_is_c_string_pointer(cgen->ir, param_type)) {
                 cgen_add(cgen, "(");
-                cgen_add(cgen, cgen_c_extern_param_type(cgen->ir, param_type));
+                cgen_add(cgen, cgen_c_extern_param_type(cgen, param_type));
                 cgen_add(cgen, ")");
             }
         }
@@ -767,13 +944,13 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
                 cgen->ir->type_param_types[fn_type->first_param_type + i];
             if (cgen->ir->types[param_type].kind == STK_Slice) {
                 cgen_add(cgen, "(");
-                cgen_add(cgen, cgen_c_type(cgen->ir, param_type));
+                cgen_add(cgen, cgen_c_type(cgen, param_type));
                 cgen_add(cgen, "){.data = 0, .count = 0}");
                 continue;
             }
             if (cgen->ir->types[param_type].kind == STK_DynamicArray) {
                 cgen_add(cgen, "(");
-                cgen_add(cgen, cgen_c_type(cgen->ir, param_type));
+                cgen_add(cgen, cgen_c_type(cgen, param_type));
                 cgen_add(cgen, "){.data = 0, .count = 0, .capacity = 0}");
                 continue;
             }
@@ -822,7 +999,7 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     if ((target_is_string && source_is_u8_slice) ||
         (target_is_u8_slice && source_is_string)) {
         cgen_add(cgen, " = (");
-        cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
+        cgen_add(cgen, cgen_c_type(cgen, target_type));
         cgen_add(cgen, "){.data = ");
         cgen_add_value(cgen, &instr->rvalue[0]);
         cgen_add(cgen, ".data, .count = ");
@@ -833,7 +1010,7 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
     }
 
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, target_type));
+    cgen_add(cgen, cgen_c_type(cgen, target_type));
     cgen_add(cgen, ")");
     cgen_add_value(cgen, &instr->rvalue[0]);
     cgen_addn(cgen, ";");
@@ -844,7 +1021,7 @@ void cgen_add_tuple(CGen* cgen, const IrInstruction* instr)
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, cgen_c_type(cgen, instr->lvalue.type));
     cgen_add(cgen, "){");
     const IrTupleInfo* tuple =
         &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
@@ -874,7 +1051,7 @@ void cgen_add_array(CGen* cgen, const IrInstruction* instr)
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, cgen_c_type(cgen, instr->lvalue.type));
     cgen_add(cgen, "){.items = {");
     const IrTupleInfo* array =
         &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
@@ -893,7 +1070,7 @@ void cgen_add_plex(CGen* cgen, const IrInstruction* instr)
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, cgen_c_type(cgen, instr->lvalue.type));
     cgen_add(cgen, "){");
     const IrTupleInfo* plex =
         &cgen->ir->tuples[(u32)instr->rvalue[0].value.integer];
@@ -920,7 +1097,7 @@ void cgen_add_enum(CGen* cgen, const IrInstruction* instr)
     cgen_start_line(cgen);
     cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, cgen_c_type(cgen, instr->lvalue.type));
     arena_format(&cgen->arena, "){.tag = %lld", tag_value);
     if (instr->rvalue[1].kind != IR_VALUE_NONE) {
         u32 symbol =
@@ -978,7 +1155,7 @@ void cgen_add_slice(CGen* cgen, const IrInstruction* instr)
         return;
     }
     cgen_add(cgen, " = (");
-    cgen_add(cgen, cgen_c_type(cgen->ir, instr->lvalue.type));
+    cgen_add(cgen, cgen_c_type(cgen, instr->lvalue.type));
     cgen_add(cgen, ")");
     cgen_add(cgen, "{.data = ");
     if (target_type->kind == STK_Array) {
@@ -1038,7 +1215,7 @@ void cgen_add_size(CGen* cgen, const IrInstruction* instr)
             error_ice("Module values do not have a runtime size");
         } else {
             cgen_add(cgen, "sizeof(");
-            cgen_add(cgen, cgen_c_type(cgen->ir, source_type));
+            cgen_add(cgen, cgen_c_type(cgen, source_type));
             cgen_add(cgen, ")");
         }
     }
@@ -1239,7 +1416,7 @@ internal void cgen_add_dynarray_grow(CGen*                       cgen,
     cgen_add(cgen, ".data, $dyn_new_cap * sizeof(");
     cgen_add(
         cgen,
-        cgen_c_type(cgen->ir,
+        cgen_c_type(cgen,
                     cgen->ir->types[info->dynarray_type].first_param_type));
     cgen_addn(cgen, "));");
     cgen_add_line(cgen,
@@ -1312,7 +1489,7 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_add(cgen, ".count * sizeof(");
         cgen_add(
             cgen,
-            cgen_c_type(cgen->ir,
+            cgen_c_type(cgen,
                         cgen->ir->types[info->dynarray_type].first_param_type));
         cgen_addn(cgen, "));");
         cgen_start_line(cgen);
@@ -1709,25 +1886,53 @@ void cgen_add_global(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, ";");
 }
 
-internal void cgen_add_tuple_type_decls(CGen* cgen)
+internal void cgen_add_type_decl(CGen* cgen,
+                                 u32   type_index,
+                                 bool* emitted,
+                                 bool* emitting)
 {
-    for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
-        const SemaType* type = &cgen->ir->types[i];
-        if (type->kind != STK_Tuple && type->kind != STK_Array &&
-            type->kind != STK_Slice && type->kind != STK_DynamicArray &&
-            type->kind != STK_Plex && type->kind != STK_Union &&
-            type->kind != STK_Enum) {
-            continue;
+    type_index = cgen_canonical_type_index(cgen->ir, type_index);
+    if (!cgen_type_needs_decl(cgen->ir, type_index) || emitted[type_index] ||
+        emitting[type_index]) {
+        return;
+    }
+
+    emitting[type_index] = true;
+
+    const SemaType* type = &cgen->ir->types[type_index];
+    if (type->kind == STK_Tuple || type->kind == STK_Plex ||
+        type->kind == STK_Union || type->kind == STK_Enum) {
+        for (u32 field = 0; field < type->param_count; ++field) {
+            u32 field_type =
+                cgen->ir->type_param_types[type->first_param_type + field];
+            cgen_add_type_decl(cgen, field_type, emitted, emitting);
         }
+    } else {
+        cgen_add_type_decl(
+            cgen, type->first_param_type, emitted, emitting);
+    }
+
+    cstr type_name = cgen_c_type(cgen, type_index);
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena, "#ifndef NERD_TYPE_%s", type_name);
+    cgen_addn(cgen, "");
+    cgen_start_line(cgen);
+    arena_format(&cgen->arena, "#define NERD_TYPE_%s", type_name);
+    cgen_addn(cgen, "");
+
         if (type->kind == STK_Enum) {
             cgen_start_line(cgen);
             arena_format(
-                &cgen->arena, "typedef struct %s {", cgen_c_type(cgen->ir, i));
+                &cgen->arena,
+                "typedef struct %s {",
+                type_name);
             cgen_addn(cgen, "");
             cgen_indent(cgen);
             cgen_start_line(cgen);
             arena_format(
-                &cgen->arena, "%s tag;\n", cgen_enum_tag_type(cgen->ir, i));
+                &cgen->arena,
+                "%s tag;\n",
+                cgen_enum_tag_type(cgen->ir, type_index));
             bool has_payload = false;
             for (u32 variant = 0; variant < type->param_count; ++variant) {
                 if (cgen->ir->type_param_types[type->first_param_type +
@@ -1740,9 +1945,14 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                 cgen_add_line(cgen, "union { uint8_t unit; } data;");
                 cgen_dedent(cgen);
                 cgen_start_line(cgen);
-                arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+                arena_format(&cgen->arena,
+                             "} %s;",
+                             type_name);
                 cgen_addn(cgen, "");
-                continue;
+                cgen_add_line(cgen, "#endif");
+                emitting[type_index] = false;
+                emitted[type_index]  = true;
+                return;
             }
             cgen_add_line(cgen, "union {");
             cgen_indent(cgen);
@@ -1754,7 +1964,7 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                     continue;
                 }
                 cgen_start_line(cgen);
-                cgen_add(cgen, cgen_c_type(cgen->ir, payload_type));
+                cgen_add(cgen, cgen_c_type(cgen, payload_type));
                 cgen_add(cgen, " ");
                 cgen_add_symbol_name(
                     cgen,
@@ -1766,10 +1976,16 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             cgen_add_line(cgen, "} data;");
             cgen_dedent(cgen);
             cgen_start_line(cgen);
-            arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+            arena_format(&cgen->arena,
+                         "} %s;",
+                         type_name);
             cgen_addn(cgen, "");
-            continue;
+            cgen_add_line(cgen, "#endif");
+            emitting[type_index] = false;
+            emitted[type_index]  = true;
+            return;
         }
+
         cgen_start_line(cgen);
         arena_format(&cgen->arena,
                      "typedef %s%s %s {",
@@ -1777,15 +1993,14 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
                      type->kind == STK_Plex && (type->flags & STF_PlexPacked)
                          ? " __attribute__((packed))"
                          : "",
-                     cgen_c_type(cgen->ir, i));
+                     type_name);
         cgen_addn(cgen, "");
         cgen_indent(cgen);
         if (type->kind == STK_Tuple) {
             for (u32 field = 0; field < type->param_count; ++field) {
                 cgen_start_line(cgen);
                 cgen_add(cgen,
-                         cgen_c_type(
-                             cgen->ir,
+                         cgen_c_type(cgen,
                              cgen->ir->type_param_types[type->first_param_type +
                                                         field]));
                 arena_format(&cgen->arena, " _%u;", field);
@@ -1795,8 +2010,7 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             for (u32 field = 0; field < type->param_count; ++field) {
                 cgen_start_line(cgen);
                 cgen_add(cgen,
-                         cgen_c_type(
-                             cgen->ir,
+                         cgen_c_type(cgen,
                              cgen->ir->type_param_types[type->first_param_type +
                                                         field]));
                 cgen_add(cgen, " ");
@@ -1808,12 +2022,12 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
             }
         } else if (type->kind == STK_Array) {
             cgen_start_line(cgen);
-            cgen_add(cgen, cgen_c_type(cgen->ir, type->first_param_type));
+            cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
             arena_format(&cgen->arena, " items[%u];", type->return_type);
             cgen_addn(cgen, "");
         } else {
             cgen_start_line(cgen);
-            cgen_add(cgen, cgen_c_type(cgen->ir, type->first_param_type));
+            cgen_add(cgen, cgen_c_type(cgen, type->first_param_type));
             cgen_addn(cgen, "* data;");
             cgen_start_line(cgen);
             cgen_addn(cgen, "uintptr_t count;");
@@ -1824,9 +2038,29 @@ internal void cgen_add_tuple_type_decls(CGen* cgen)
         }
         cgen_dedent(cgen);
         cgen_start_line(cgen);
-        arena_format(&cgen->arena, "} %s;", cgen_c_type(cgen->ir, i));
+        arena_format(&cgen->arena,
+                     "} %s;",
+                     type_name);
         cgen_addn(cgen, "");
+        cgen_add_line(cgen, "#endif");
+
+    emitting[type_index] = false;
+    emitted[type_index]  = true;
+}
+
+internal void cgen_add_tuple_type_decls(CGen* cgen)
+{
+    u32   type_count = (u32)array_count(cgen->ir->types);
+    bool* emitted    = calloc(type_count, sizeof(bool));
+    bool* emitting   = calloc(type_count, sizeof(bool));
+    ASSERT(emitted != NULL && emitting != NULL,
+           "Failed to allocate C type emission state");
+
+    for (u32 i = 0; i < type_count; ++i) {
+        cgen_add_type_decl(cgen, i, emitted, emitting);
     }
+    free(emitted);
+    free(emitting);
 }
 
 internal void cgen_add_extern_decls(CGen* cgen)
@@ -1837,7 +2071,7 @@ internal void cgen_add_extern_decls(CGen* cgen)
         ASSERT(fn_type->kind == STK_Function, "Expected FFI function type");
 
         cgen_start_line(cgen);
-        cgen_add(cgen, cgen_c_type(cgen->ir, fn_type->return_type));
+        cgen_add(cgen, cgen_c_type(cgen, fn_type->return_type));
         cgen_add(cgen, " ");
         cgen_add_builtin_name(cgen, extern_decl->symbol);
         cgen_add(cgen, "(");
@@ -1847,7 +2081,7 @@ internal void cgen_add_extern_decls(CGen* cgen)
             }
             cgen_add(cgen,
                      cgen_c_extern_param_type(
-                         cgen->ir,
+                         cgen,
                          cgen->ir->type_param_types[fn_type->first_param_type +
                                                     param]));
         }
@@ -1955,7 +2189,7 @@ void cgen_generate(CGen* cgen, const Ir* ir)
                 cgen->ir->types[fn_type].kind == STK_Function) {
                 return_type = cgen->ir->types[fn_type].return_type;
             }
-            cgen_add(cgen, cgen_c_type(cgen->ir, return_type));
+            cgen_add(cgen, cgen_c_type(cgen, return_type));
             cgen_add(cgen, " ");
             cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);
             cgen_add(cgen, "(");
