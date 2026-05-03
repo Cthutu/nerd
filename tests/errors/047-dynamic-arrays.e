@@ -53,3 +53,31 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+main :: fn () {
+    names: [..]string
+    names.pop("bad")
+}
+¬
+{
+    "code": "0313",
+    "message": "Argument count mismatch: expected 0, found 1",
+    "source_file": "tests/errors/047-dynamic-arrays.e",
+    "primary_location": {
+        "line": 3,
+        "column": 14
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 14,
+            "length": 1,
+            "message": "This call uses the wrong arity"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Pass exactly 0 arguments to match the function signature."
+    ]
+}

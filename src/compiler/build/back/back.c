@@ -471,6 +471,9 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
             case IR_OP_DYNARRAY_FREE:
                 instr.lvalue.value.integer += first_dynarray_op;
                 break;
+            case IR_OP_DYNARRAY_POP:
+                instr.rvalue[0].value.integer += first_dynarray_op;
+                break;
             case IR_OP_SIZE:
                 if (module_ir->instructions[i].rvalue[0].value.integer !=
                     sema_no_type()) {

@@ -1441,6 +1441,12 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
 {
     const IrDynamicArrayOpInfo* info = &cgen->ir->dynarray_ops[op_index];
 
+    if (op == IR_OP_DYNARRAY_POP) {
+        cgen_start_line(cgen);
+        cgen_add_decl_type_and_name(cgen, info->arg_type, &info->arg);
+        cgen_addn(cgen, ";");
+    }
+
     cgen_start_line(cgen);
     cgen_addn(cgen, "{");
     cgen_indent(cgen);
@@ -1521,6 +1527,21 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_start_line(cgen);
         cgen_add_dynarray_target(cgen, info);
         cgen_addn(cgen, ".capacity = 0;");
+        break;
+    case IR_OP_DYNARRAY_POP:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if (");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen,
+                  ".count == 0) { eprn(\"fatal: dynamic array pop from empty "
+                  "array\"); abort(); }");
+        cgen_start_line(cgen);
+        cgen_add_value(cgen, &info->arg);
+        cgen_add(cgen, " = ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data[--");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count];");
         break;
     default:
         cgen_dedent(cgen);
@@ -2313,8 +2334,13 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_DYNARRAY_APPEND:
         case IR_OP_DYNARRAY_CLEAR:
         case IR_OP_DYNARRAY_FREE:
+        case IR_OP_DYNARRAY_POP:
             cgen_add_dynarray_op(
-                cgen, instr->op, (u32)instr->lvalue.value.integer);
+                cgen,
+                instr->op,
+                (u32)(instr->op == IR_OP_DYNARRAY_POP
+                          ? instr->rvalue[0].value.integer
+                          : instr->lvalue.value.integer));
             break;
         case IR_OP_ADDRESS_OF:
             cgen_add_address_of(cgen, instr);

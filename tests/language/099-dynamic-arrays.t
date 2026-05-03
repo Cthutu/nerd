@@ -24,23 +24,28 @@ main :: fn () -> i32 {
     names.append(extra[..])
     on names.count != 5 => return 7
 
+    last := names.pop()
+    on last != "up" => return 8
+    on names.count != 4 => return 9
+    names.push(last)
+
     view := names[..]
-    on view.count != 5 => return 8
+    on view.count != 5 => return 10
 
     prn($"{view[0]} {view[1]} {view[2]} {view[3]} {view[4]}")
 
     names.reserve(10)
-    on names.capacity < 10 => return 9
+    on names.capacity < 10 => return 11
 
     words := make_words()
-    on words.count != 2 => return 10
+    on words.count != 2 => return 12
     prn($"{words[0]} {words[1]}")
     words.free()
 
     names.clear()
-    on names.count != 0 => return 11
+    on names.count != 0 => return 13
     names.free()
-    on names != nil => return 12
+    on names != nil => return 14
     return 0
 }
 ¬

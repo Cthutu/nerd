@@ -2498,6 +2498,10 @@ ir_dynarray_method_op(const Lexer* lex, u32 method_symbol, IrOperation* out_op)
         *out_op = IR_OP_DYNARRAY_FREE;
         return true;
     }
+    if (string_eq(method, s("pop"))) {
+        *out_op = IR_OP_DYNARRAY_POP;
+        return true;
+    }
     return false;
 }
 
@@ -2508,6 +2512,7 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
                                                 IrLoopLabels   loop,
                                                 Array(IrValue) node_values,
                                                 u64* next_value_index,
+                                                IrValue* out_value,
                                                 Ir*  ir)
 {
     const AstNode* callee = &ast->nodes[call_node->a];
@@ -2582,6 +2587,8 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
         arg_type = ir_node_type_index(ast, sema, arg_node);
     }
 
+    IrValue result = ir_unset_value();
+    u32     result_type = ir_node_type_index(ast, sema, call_node - ast->nodes);
     ir_add_dynarray_op(ir,
                        op,
                        target_kind,
@@ -2591,6 +2598,21 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
                        arg,
                        arg_type,
                        receiver_type);
+    if (op == IR_OP_DYNARRAY_POP) {
+        u32 op_index = (u32)array_count(ir->dynarray_ops) - 1;
+        result = (IrValue){
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = result_type,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        u32 instr_index = (u32)array_count(ir->instructions) - 1;
+        ir->dynarray_ops[op_index].arg      = result;
+        ir->dynarray_ops[op_index].arg_type = result_type;
+        ir->instructions[instr_index].lvalue = result;
+        ir->instructions[instr_index].rvalue[0] =
+            (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = op_index};
+    }
+    *out_value = result;
     return true;
 }
 
@@ -2605,6 +2627,7 @@ internal IrValue ir_lower_call(const Lexer*   lex,
 {
     ASSERT(call_node->kind == AK_Call, "Expected call node");
 
+    IrValue dynarray_result = ir_unset_value();
     if (ir_try_lower_dynarray_method_call(lex,
                                           ast,
                                           sema,
@@ -2612,8 +2635,9 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                                           loop,
                                           node_values,
                                           next_value_index,
+                                          &dynarray_result,
                                           ir)) {
-        return ir_unset_value();
+        return dynarray_result;
     }
 
     IrValue callee = ir_unset_value();

@@ -551,6 +551,10 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
         case IR_OP_DYNARRAY_FREE:
             sb_append_cstr(&sb, "dynarray.free");
             break;
+        case IR_OP_DYNARRAY_POP:
+            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            sb_append_cstr(&sb, " = dynarray.pop");
+            break;
         case IR_OP_ADDRESS_OF:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ^");

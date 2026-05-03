@@ -43,6 +43,7 @@ Common operations:
 | Operation | Meaning |
 | --- | --- |
 | `.push(value)` | add one item |
+| `.pop()` | remove and return the last item |
 | `.append(slice)` | add many items from a slice |
 | `.reserve(capacity)` | ensure storage for at least this many items |
 | `.clear()` | set the count to zero but keep storage |
@@ -72,6 +73,14 @@ The slice borrows the array storage. It does not own the contents.
 ```nerd
 names.clear()  -- remove items but keep allocated storage
 ```
+
+`.pop()` removes the last item and returns it:
+
+```nerd
+last := names.pop()  -- count decreases by one
+```
+
+Popping an empty dynamic array is a runtime error.
 
 `.free()` releases owned storage and resets the array to nil:
 

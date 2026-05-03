@@ -6283,6 +6283,8 @@ internal bool sema_dynarray_method_signature(Sema*        sema,
         array_push(params, sema_add_slice_type(sema, item_type));
     } else if (string_eq(method, s("reserve"))) {
         array_push(params, sema_builtin_type(sema, STK_Usize));
+    } else if (string_eq(method, s("pop"))) {
+        result = item_type;
     } else if (string_eq(method, s("clear")) || string_eq(method, s("free"))) {
         // No params.
     } else {
@@ -10727,6 +10729,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 sema_type_name(
                                     lexer, sema, &temp_arena, arg_type));
                         }
+                    } else if (string_eq(method, s("pop"))) {
+                        if (call->arg_count != 0) {
+                            return error_0313_argument_count_mismatch(
+                                lexer->source,
+                                sema_node_span(lexer, node),
+                                0,
+                                call->arg_count);
+                        }
                     } else if (string_eq(method, s("clear")) ||
                                string_eq(method, s("free"))) {
                         if (call->arg_count != 0) {
@@ -10739,7 +10749,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
 
                     sema->node_type_indices[node->a] = method_type;
-                    type_index = sema_builtin_type(sema, STK_Void);
+                    type_index = string_eq(method, s("pop"))
+                                     ? item_type
+                                     : sema_builtin_type(sema, STK_Void);
                     break;
                 }
             }
