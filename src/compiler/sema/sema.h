@@ -117,6 +117,15 @@ typedef struct {
     u32 local_count;
 } SemaScope;
 
+typedef struct {
+    u32  symbol_handle;
+    u32  decl_index;
+    u32  impl_node_index;
+    u32  target_type_node_index;
+    u32  generic_params_index;
+    bool is_public;
+} SemaMethod;
+
 //------------------------------------------------------------------------------
 // A dependency edge between two top-level declarations.
 
@@ -138,6 +147,8 @@ typedef struct {
     Array(u32) node_scope_indices;
     Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
+    Array(u32) node_method_call_decl_indices;
+    Array(bool) node_method_call_receiver_refs;
 } SemaGenericFnInstantiation;
 
 //------------------------------------------------------------------------------
@@ -151,6 +162,7 @@ typedef struct {
     Array(i64) type_param_values;
     Array(SemaDecl) decls;
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;
+    Array(SemaMethod) methods;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;
     Array(SemaDeclDep) deps;
@@ -160,6 +172,8 @@ typedef struct {
     Array(u32) node_scope_indices;
     Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
+    Array(u32) node_method_call_decl_indices;
+    Array(bool) node_method_call_receiver_refs;
     Array(u32) node_implicit_array_type_indices;
     Array(u32) on_branch_local_indices;
     Array(u32) pattern_local_indices;

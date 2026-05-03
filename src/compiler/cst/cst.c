@@ -607,6 +607,10 @@ cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
 
     TokenKind next_kind = cst_kind_at_stream_index(state, token_index);
     return next_kind == TK_EOF ||
+           (cst_token_has_newline_before(state, token_index) &&
+            (next_kind == TK_impl || next_kind == TK_pub ||
+             next_kind == TK_use || next_kind == TK_on ||
+             next_kind == TK_ffi)) ||
            (next_kind == TK_Symbol &&
             cst_kind_at_stream_index(state, token_index + 1) == TK_Colon);
 }
@@ -4646,6 +4650,104 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
     return true;
 }
 
+internal u32 cst_impl_generic_params_index(CstParseState* state,
+                                           u32            target_type_node)
+{
+    if (target_type_node >= array_count(state->cst.nodes) ||
+        state->cst.nodes[target_type_node].kind != CK_TypeApply) {
+        return U32_MAX;
+    }
+
+    const CstTypeApplyInfo* apply =
+        &state->cst.type_applications[state->cst.nodes[target_type_node].a];
+    u32 first_symbol = (u32)array_count(state->cst.generic_param_symbols);
+    for (u32 i = 0; i < apply->arg_count; ++i) {
+        u32 arg_node = state->cst.tuple_items[apply->first_arg + i];
+        if (arg_node < array_count(state->cst.nodes) &&
+            state->cst.nodes[arg_node].kind == CK_SymbolRef) {
+            array_push(state->cst.generic_param_symbols,
+                       state->cst.nodes[arg_node].a);
+        }
+    }
+
+    u32 symbol_count =
+        (u32)array_count(state->cst.generic_param_symbols) - first_symbol;
+    if (symbol_count == 0) {
+        return U32_MAX;
+    }
+
+    u32 index = (u32)array_count(state->cst.generic_params);
+    array_push(state->cst.generic_params,
+               (CstGenericParams){
+                   .first_symbol = first_symbol,
+                   .symbol_count = symbol_count,
+               });
+    return index;
+}
+
+internal bool cst_parse_impl(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    u32 target_type = 0;
+    if (!cst_parse_type(state, &target_type)) {
+        return false;
+    }
+    if (!cst_consume(state, TK_LBrace)) {
+        return false;
+    }
+
+    u32 impl_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Impl,
+                           .token_index = token_index,
+                       },
+                       &impl_node)) {
+        return false;
+    }
+
+    u32 block_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Block,
+                           .token_index = state->token_index - 1,
+                       },
+                       &block_node)) {
+        return false;
+    }
+    u32 first_item = (u32)array_count(state->cst.nodes);
+
+    while (cst_current_token(state).kind != TK_RBrace) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = cst_parse_top_level_item(state, NULL);
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
+            return false;
+        }
+    }
+    cst_advance(state);
+
+    u32 generic_params_index =
+        cst_impl_generic_params_index(state, target_type);
+    u32 impl_index = (u32)array_count(state->cst.impls);
+    array_push(state->cst.impls,
+               (CstImplInfo){
+                   .target_type_node_index = target_type,
+                   .body_node_index        = block_node,
+                   .generic_params_index   = generic_params_index,
+               });
+    state->cst.nodes[impl_node].a = impl_index;
+    state->cst.nodes[block_node].a = first_item;
+    state->cst.nodes[block_node].b = (u32)array_count(state->cst.nodes);
+    if (out_node != NULL) {
+        *out_node = impl_node;
+    }
+    return true;
+}
+
 internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
 {
     bool is_public = false;
@@ -4673,6 +4775,13 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
             return false;
         }
         return cst_parse_top_level_on(state, out_node);
+    }
+
+    if (cst_current_token(state).kind == TK_impl) {
+        if (is_public) {
+            return false;
+        }
+        return cst_parse_impl(state, out_node);
     }
 
     if (!cst_starts_binding(state)) {
@@ -4827,6 +4936,7 @@ void cst_done(Cst* cst)
     array_free(cst->on_branches);
     array_free(cst->ons);
     array_free(cst->top_ons);
+    array_free(cst->impls);
     array_free(cst->for_items);
     array_free(cst->fors);
     *cst = (Cst){0};

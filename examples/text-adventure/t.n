@@ -10,9 +10,9 @@ main :: fn () {
 
     stack : Stack[i32]
 
-    stack_push(^stack, 42)
-    stack_push(^stack, 13)
+    stack.push(42)
+    stack.push(13)
 
-    prn($"Popped: {stack_pop(^stack)}")
-    prn($"Popped: {stack_pop(^stack)}")
+    prn($"Popped: {stack.pop()}")
+    prn($"Popped: {stack.pop()}")
 }

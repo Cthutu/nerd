@@ -8,10 +8,12 @@ pub Stack :: plex [T] {
     data [..]T
 }
 
-pub stack_push :: fn [T] (stack: ^Stack[T], elem: T) {
-    stack.data.push(elem)
-}
+impl Stack[T] {
+    pub push :: fn (self: ^Stack[T], elem: T) {
+        self.data.push(elem)
+    }
 
-pub stack_pop :: fn [T] (stack: ^Stack[T]) -> T {
-    return stack.data.pop()
+    pub pop :: fn (self: ^Stack[T]) -> T {
+        return self.data.pop()
+    }
 }

@@ -75,6 +75,7 @@
 // | CK_FfiBlock        | FFI-block info index  | 0                     |
 // | CK_ModRef          | Module path index     | 0                     |
 // | CK_Use             | Module node index     | 0                     |
+// | CK_Impl            | Impl-info index       | 0                     |
 // | CK_TopOn           | Top-on info index     | 0                     |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
@@ -160,6 +161,7 @@ typedef enum {
     CK_FfiBlock,
     CK_ModRef,
     CK_Use,
+    CK_Impl,
     CK_TopOn,
     CK_Statement,
     CK_Return,
@@ -374,6 +376,12 @@ typedef struct {
     bool is_negated;
 } CstTopOnInfo;
 
+typedef struct {
+    u32 target_type_node_index;
+    u32 body_node_index;
+    u32 generic_params_index;
+} CstImplInfo;
+
 typedef enum : u32 {
     CFM_Condition,
     CFM_CStyle,
@@ -429,6 +437,7 @@ typedef struct {
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
     Array(CstTopOnInfo) top_ons;
+    Array(CstImplInfo) impls;
     Array(u32) for_items;
     Array(CstForInfo) fors;
 } Cst;

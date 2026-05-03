@@ -97,6 +97,7 @@
 // | AK_FfiDef          | Ast ffi-info index | 0                              |
 // | AK_ModRef          | Ast module path index | 0                            |
 // | AK_Use             | Ast index of module expression | 0                  |
+// | AK_Impl            | Ast impl-info index | 0                             |
 // | AK_TopOn           | Ast top-on info index | 0                           |
 //
 // clang-format on
@@ -184,6 +185,7 @@ typedef enum {
     AK_FfiDef,
     AK_ModRef,
     AK_Use,
+    AK_Impl,
     AK_TopOn,
 } AstKind;
 
@@ -382,6 +384,12 @@ typedef struct {
     bool is_negated;
 } AstTopOnInfo;
 
+typedef struct {
+    u32 target_type_node_index;
+    u32 body_node_index;
+    u32 generic_params_index;
+} AstImplInfo;
+
 typedef enum : u32 {
     AFM_Condition,
     AFM_CStyle,
@@ -433,6 +441,7 @@ typedef struct {
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(AstTopOnInfo) top_ons;
+    Array(AstImplInfo) impls;
     Array(u32) for_items;
     Array(AstForInfo) fors;
 } Ast;

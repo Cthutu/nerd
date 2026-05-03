@@ -3261,6 +3261,126 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
     return true;
 }
 
+internal u32 ast_impl_generic_params_index(AstParseState* state,
+                                           u32            target_type_node)
+{
+    if (target_type_node >= array_count(state->nodes) ||
+        state->nodes[target_type_node].kind != AK_TypeApply) {
+        return U32_MAX;
+    }
+
+    const AstTypeApplyInfo* apply =
+        &state->type_applications[state->nodes[target_type_node].a];
+    u32 first_symbol = (u32)array_count(state->generic_param_symbols);
+    for (u32 i = 0; i < apply->arg_count; ++i) {
+        u32 arg_node = state->tuple_items[apply->first_arg + i];
+        if (arg_node < array_count(state->nodes) &&
+            state->nodes[arg_node].kind == AK_SymbolRef) {
+            array_push(state->generic_param_symbols, state->nodes[arg_node].a);
+        }
+    }
+
+    u32 symbol_count =
+        (u32)array_count(state->generic_param_symbols) - first_symbol;
+    if (symbol_count == 0) {
+        return U32_MAX;
+    }
+
+    u32 index = (u32)array_count(state->generic_params);
+    array_push(state->generic_params,
+               (AstGenericParams){
+                   .first_symbol = first_symbol,
+                   .symbol_count = symbol_count,
+               });
+    return index;
+}
+
+internal bool ast_parse_impl(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_impl, "Expected 'impl' token");
+    AstToken impl_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(
+            state->lexer->source, ast_token_span(state, &impl_token), TK_impl);
+    }
+
+    u32 target_type = 0;
+    if (!ast_parse_type(state, &target_type)) {
+        return false;
+    }
+
+    if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+
+    u32 impl_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_Impl,
+                           .token_index = impl_token.token_index,
+                       },
+                       &impl_node)) {
+        return false;
+    }
+
+    u32 block_index = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_Block,
+                           .token_index = state->token.token_index,
+                       },
+                       &block_index)) {
+        return false;
+    }
+    u32 first_item = (u32)array_count(state->nodes);
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_RBrace,
+                                         TK_EOF);
+    }
+
+    while (state->token.kind != TK_RBrace) {
+        bool previous_boundary          = state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool ok                         = ast_parse_top_level_item(state);
+        state->allow_statement_boundary = previous_boundary;
+        if (!ok) {
+            return false;
+        }
+
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                TK_EOF);
+        }
+    }
+
+    u32 generic_params_index =
+        ast_impl_generic_params_index(state, target_type);
+    u32 impl_index = (u32)array_count(state->impls);
+    array_push(state->impls,
+               (AstImplInfo){
+                   .target_type_node_index = target_type,
+                   .body_node_index        = block_index,
+                   .generic_params_index   = generic_params_index,
+               });
+    state->nodes[impl_node].a = impl_index;
+    state->nodes[block_index].a = first_item;
+    state->nodes[block_index].b = (u32)array_count(state->nodes);
+    if (out_node) {
+        *out_node = impl_node;
+    }
+    return true;
+}
+
 internal bool ast_parse_top_level_item(AstParseState* state)
 {
     bool is_public = false;
@@ -3307,6 +3427,15 @@ internal bool ast_parse_top_level_item(AstParseState* state)
                 "public binding");
         }
         return ast_parse_top_level_on(state, NULL);
+    case TK_impl:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected a symbol to start a public binding");
+        }
+        return ast_parse_impl(state, NULL);
     case TK_Symbol:
         if (ast_peek_kind_at(state, 0) != TK_Colon) {
             break;
@@ -4153,6 +4282,7 @@ Ast ast_parse(Lexer* lexer)
         .on_branches           = state.on_branches,
         .ons                   = state.ons,
         .top_ons               = state.top_ons,
+        .impls                 = state.impls,
         .for_items             = state.for_items,
         .fors                  = state.fors,
     };
@@ -4185,6 +4315,7 @@ error:
                     .on_branches           = state.on_branches,
                     .ons                   = state.ons,
                     .top_ons               = state.top_ons,
+                    .impls                 = state.impls,
                     .for_items             = state.for_items,
                     .fors                  = state.fors});
     return (Ast){0};
@@ -4222,6 +4353,7 @@ void ast_done(Ast* ast)
     array_free(ast->on_branches);
     array_free(ast->ons);
     array_free(ast->top_ons);
+    array_free(ast->impls);
     array_free(ast->for_items);
     array_free(ast->fors);
     *ast = (Ast){0};

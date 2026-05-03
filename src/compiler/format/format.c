@@ -24,6 +24,11 @@ internal void  format_emit_top_on(StringBuilder* sb,
                                   const Lexer*   lexer,
                                   u32            top_on_index,
                                   u32            indent_level);
+internal void  format_emit_impl(StringBuilder* sb,
+                                const Cst*     cst,
+                                const Lexer*   lexer,
+                                u32            impl_index,
+                                u32            indent_level);
 internal bool  format_node_is_block_form_on(const Cst* cst, u32 node_index);
 internal void  format_emit_on_block_multiline(StringBuilder* sb,
                                               const Cst*     cst,
@@ -1626,6 +1631,20 @@ internal u32 format_find_interpolated_string_end_token_index(const Lexer* lexer,
     return token_index;
 }
 
+internal u32 format_find_matching_close_after_token(const Lexer* lexer,
+                                                    u32          token_index,
+                                                    TokenKind    open_kind,
+                                                    TokenKind    close_kind)
+{
+    for (u32 i = token_index; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind == open_kind) {
+            return format_find_matching_close_token_index(
+                lexer, i, open_kind, close_kind);
+        }
+    }
+    return token_index;
+}
+
 internal u32 format_node_end_token_index(const Cst*   cst,
                                          const Lexer* lexer,
                                          u32          node_index)
@@ -1652,7 +1671,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_PlexUpdate:
     case CK_TypePlex:
     case CK_TypeEnum:
-        return format_find_matching_close_token_index(
+        return format_find_matching_close_after_token(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_TypeApply:
         return format_find_matching_close_token_index(
@@ -1792,6 +1811,11 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         }
     case CK_ExprBlock:
         return format_node_end_token_index(cst, lexer, node->a);
+    case CK_Impl:
+        {
+            const CstImplInfo* impl = &cst->impls[node->a];
+            return format_node_end_token_index(cst, lexer, impl->body_node_index);
+        }
     case CK_Block:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
@@ -2742,6 +2766,24 @@ internal void format_emit_top_on(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal void format_emit_impl(StringBuilder* sb,
+                               const Cst*     cst,
+                               const Lexer*   lexer,
+                               u32            impl_index,
+                               u32            indent_level)
+{
+    const CstImplInfo* impl = &cst->impls[impl_index];
+
+    format_emit_indent(sb, indent_level);
+    sb_append_cstr(sb, "impl ");
+    format_emit_expr(sb, cst, lexer, impl->target_type_node_index, 0);
+    sb_append_cstr(sb, " {\n");
+    format_emit_block_contents(
+        sb, cst, lexer, impl->body_node_index, indent_level + 1);
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
+}
+
 internal void format_emit_block_contents(StringBuilder* sb,
                                          const Cst*     cst,
                                          const Lexer*   lexer,
@@ -3244,6 +3286,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_Impl) {
+        format_emit_impl(sb, cst, lexer, stmt->a, indent_level);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_Statement) {
         if (format_node_is_block_form_on(cst, stmt->a)) {
             format_emit_on_block_multiline(
@@ -3415,6 +3463,14 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            first_binding          = false;
+            previous_binding_index = node_index;
+            continue;
+        }
+
+        if (node->kind == CK_Impl) {
+            format_emit_impl(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
             first_binding          = false;
             previous_binding_index = node_index;

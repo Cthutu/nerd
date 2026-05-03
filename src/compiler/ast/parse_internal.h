@@ -84,6 +84,7 @@ typedef struct {
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(AstTopOnInfo) top_ons;
+    Array(AstImplInfo) impls;
     Array(u32) for_items;
     Array(AstForInfo) fors;
 

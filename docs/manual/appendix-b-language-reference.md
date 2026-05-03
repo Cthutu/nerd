@@ -105,6 +105,10 @@ intended exit code.
 - Generic raw unions are written as `union [T] { ... }`.
 - Enums are tagged variants.
 - Generic enums are written as `enum [T] { ... }`.
+- Inherent methods are grouped with `impl Type { ... }`.
+- The first method parameter is the receiver. A receiver of type `^T` lets
+  `value.method(...)` mutate `value`.
+- Public methods inside an impl block are imported with their type's module.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

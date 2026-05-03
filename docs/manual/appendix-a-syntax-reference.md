@@ -28,6 +28,13 @@ Name :: enum { Variant Payload(Type) }
 Name :: enum [T, U] { Variant Payload(Type) }
 pub name :: value
 pub Name :: Type
+impl Type {
+    name :: fn (self: Type, ...) -> ReturnType { ... }
+    pub name :: fn (self: ^Type, ...) { ... }
+}
+impl Name[T] {
+    name :: fn (self: ^Name[T], value: T) { ... }
+}
 ffi "lib" foreign_name (...) -> Type
 ffi "lib" {
     foreign_name (...) -> Type

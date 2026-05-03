@@ -211,6 +211,70 @@ Maybe :: enum [T] {
 Generic types are templates. A use such as `Box[i32]` creates a concrete type
 that can be stored, passed, and returned like any other type.
 
+## Inherent Methods
+
+An `impl Type { ... }` block groups functions with a compound type. These are
+inherent methods: they belong to the type directly, not to a trait.
+
+The first parameter is the receiver. It is usually called `self` by convention:
+
+```nerd
+Counter :: plex {
+    value i32
+}
+
+impl Counter {
+    inc :: fn (self: ^Counter, amount: i32) {  -- mutating receiver
+        self.value += amount
+    }
+
+    get :: fn (self: Counter) -> i32 {  -- value receiver
+        return self.value
+    }
+}
+```
+
+Call a method with dot syntax. The value before the dot is passed as the first
+parameter:
+
+```nerd
+main :: fn () -> i32 {
+    counter: Counter
+    counter.inc(7)        -- same receiver role as ^counter
+    return counter.get()  -- returns the current value
+}
+```
+
+Use a pointer receiver, such as `^Counter`, when the method mutates the value.
+The call site still writes `counter.inc(7)`; the compiler passes the receiver
+as a pointer when the receiver parameter requires it.
+
+Generic compound types can have generic impl blocks:
+
+```nerd
+Stack :: plex [T] {
+    data [..]T
+}
+
+impl Stack[T] {
+    push :: fn (self: ^Stack[T], item: T) {
+        self.data.push(item)
+    }
+}
+```
+
+Methods can be public inside a module:
+
+```nerd
+impl Stack[T] {
+    pub push :: fn (self: ^Stack[T], item: T) {
+        self.data.push(item)
+    }
+}
+```
+
+Public methods are available when another module imports the type.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:

@@ -2620,6 +2620,90 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
     return true;
 }
 
+internal bool ir_try_lower_method_call(const Ast*      ast,
+                                       const Sema*     sema,
+                                       const AstNode*  call_node,
+                                       IrLoopLabels    loop,
+                                       Array(IrValue) node_values,
+                                       u64*            next_value_index,
+                                       IrValue*        out_value,
+                                       Ir*             ir,
+                                       const Lexer*    lex)
+{
+    u32 call_node_index = (u32)(call_node - ast->nodes);
+    if (call_node_index >= array_count(sema->node_method_call_decl_indices) ||
+        sema->node_method_call_decl_indices[call_node_index] ==
+            sema_no_decl()) {
+        return false;
+    }
+
+    const AstNode* callee_node = &ast->nodes[call_node->a];
+    ASSERT(callee_node->kind == AK_Field, "Expected method field callee");
+
+    u32 lowered_symbol = sema->node_lowered_symbol_handles[call_node->a];
+    ASSERT(lowered_symbol != U32_MAX, "Expected lowered method symbol");
+    IrValue callee = {
+        .kind          = IR_VALUE_SYMBOL,
+        .type          = ir_node_type_index(ast, sema, call_node->a),
+        .value.integer = lowered_symbol,
+    };
+
+    const AstCallInfo* call      = &ast->calls[call_node->b];
+    Array(IrValue)     args      = NULL;
+    Array(u32)         arg_types = NULL;
+
+    IrValue receiver = ir_lower_node(lex,
+                                     ast,
+                                     sema,
+                                     callee_node->a,
+                                     loop,
+                                     node_values,
+                                     next_value_index,
+                                     ir);
+    u32 receiver_type = ir_node_type_index(ast, sema, callee_node->a);
+    if (sema->node_method_call_receiver_refs[call_node_index]) {
+        IrValue receiver_ref = {
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = ir_add_pointer_type((Sema*)sema, receiver_type),
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        ir_add_address_of(ir, receiver_ref, receiver_ref.type, receiver);
+        receiver      = receiver_ref;
+        receiver_type = receiver_ref.type;
+    }
+    array_push(args, receiver);
+    array_push(arg_types, receiver_type);
+
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        u32 arg_node = ast->call_args[call->first_arg + i];
+        array_push(args,
+                   ir_lower_node(lex,
+                                 ast,
+                                 sema,
+                                 arg_node,
+                                 loop,
+                                 node_values,
+                                 next_value_index,
+                                 ir));
+        array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
+    }
+
+    u32     result_type = ir_node_type_index(ast, sema, call_node_index);
+    IrValue result      = {.kind = IR_VALUE_NONE};
+    if (result_type != ir_builtin_type(sema, STK_Void)) {
+        result = (IrValue){
+            .kind          = IR_VALUE_VARIABLE,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+    }
+
+    ir_add_call(ir, result, result_type, callee, callee.type, args, arg_types);
+    array_free(args);
+    array_free(arg_types);
+    *out_value = result;
+    return true;
+}
+
 internal IrValue ir_lower_call(const Lexer*   lex,
                                const Ast*     ast,
                                const Sema*    sema,
@@ -2642,6 +2726,19 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                                           &dynarray_result,
                                           ir)) {
         return dynarray_result;
+    }
+
+    IrValue method_result = ir_unset_value();
+    if (ir_try_lower_method_call(ast,
+                                 sema,
+                                 call_node,
+                                 loop,
+                                 node_values,
+                                 next_value_index,
+                                 &method_result,
+                                 ir,
+                                 lex)) {
+        return method_result;
     }
 
     IrValue callee = ir_unset_value();
@@ -5977,6 +6074,10 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
         inst_sema.node_lowered_symbol_handles =
             inst->node_lowered_symbol_handles;
         inst_sema.node_type_indices = inst->node_type_indices;
+        inst_sema.node_method_call_decl_indices =
+            inst->node_method_call_decl_indices;
+        inst_sema.node_method_call_receiver_refs =
+            inst->node_method_call_receiver_refs;
         ir_generate_function_body(lex,
                                   ast,
                                   &inst_sema,

@@ -277,6 +277,39 @@ the roadmap before committing the implementation.
   - [x] language-reference appendix rules
   - [x] note that constraints are deferred to a future traits milestone
 
+### Inherent Impl Methods Milestone
+
+- [x] Add inherent impl syntax for compound types:
+  - [x] parse `impl Type { ... }`
+  - [x] parse generic impl targets such as `impl Stack[T] { ... }`
+  - [x] allow `pub` on method bindings inside an impl block
+  - [x] reject non-function bindings inside impl blocks
+- [x] Add method resolution:
+  - [x] resolve `value.method(args...)` to a matching inherent method
+  - [x] infer generic impl parameters from the receiver type
+  - [x] require all generic method parameters to be inferred
+  - [x] keep dynamic-array built-in methods working
+  - [x] import public methods across modules
+- [x] Add lowering:
+  - [x] lower method calls as ordinary function calls with the receiver inserted
+  - [x] pass value receivers by value
+  - [x] pass pointer receivers by address from `value.method(...)`
+  - [x] preserve generic monomorphisation for methods
+- [x] Formatter/editor support:
+  - [x] format impl blocks
+  - [x] lex `impl` as a keyword for editor token streams
+- [x] Tests:
+  - [x] language tests for local inherent methods
+  - [x] language tests for imported generic inherent methods
+  - [x] error tests for invalid impl members
+- [x] Documentation:
+  - [x] manual section for inherent methods
+  - [x] syntax-reference appendix entries
+  - [x] language-reference appendix rules
+- [x] Standard library migration:
+  - [x] convert `std.collections.Stack` helpers to inherent methods
+  - [x] update examples that use `Stack`
+
 ### Traits Milestone
 
 - [ ] Add traits as a simple interface mechanism for types.
