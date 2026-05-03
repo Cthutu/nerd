@@ -141,57 +141,58 @@ the roadmap before committing the implementation.
 
 ### Function Enhancements Milestone
 
-- [ ] Add default parameters with syntax `name: Type = expr`.
-- [ ] Keep first-version call semantics trailing-only:
-  - [ ] defaulted parameters must follow non-defaulted parameters
-  - [ ] calls may omit only trailing defaulted arguments
-  - [ ] explicit arguments override defaults
-- [ ] Evaluate defaults at the call site.
-- [ ] Type-check each default expression against its parameter type.
-- [ ] Allow a default expression to reference earlier parameters.
-- [ ] Reject a default expression that references later parameters.
-- [ ] Reject default parameters on FFI declarations.
-- [ ] Keep defaults out of function types initially. Defaults belong to known
+- [x] Add default parameters with syntax `name: Type = expr`.
+- [x] Keep first-version call semantics trailing-only:
+  - [x] defaulted parameters must follow non-defaulted parameters
+  - [x] calls may omit only trailing defaulted arguments
+  - [x] explicit arguments override defaults
+- [x] Evaluate defaults at the call site.
+- [x] Type-check each default expression against its parameter type.
+- [x] Allow a default expression to reference earlier parameters.
+- [x] Reject a default expression that references later parameters.
+- [x] Reject default parameters on FFI declarations.
+- [x] Keep defaults out of function types initially. Defaults belong to known
   function declarations, not to the callable type.
-- [ ] Require full arity when calling through a function-typed value:
-  - [ ] allow omitted arguments only when the callee resolves to a known
+- [x] Require full arity when calling through a function-typed value:
+  - [x] allow omitted arguments only when the callee resolves to a known
     function declaration with defaults
-  - [ ] reject omitted arguments when the callee is an arbitrary function value
-- [ ] Parser and AST work:
-  - [ ] extend parameter parsing to accept optional default expressions
-  - [ ] store the default expression node index on `AstParam`
-- [ ] Sema work:
-  - [ ] validate default-parameter ordering
-  - [ ] resolve and type-check defaults in a parameter/default scope
-  - [ ] enforce earlier-parameter-only references
-  - [ ] fill omitted trailing arguments during call checking for known function
+  - [x] reject omitted arguments when the callee is an arbitrary function value
+- [x] Parser and AST work:
+  - [x] extend parameter parsing to accept optional default expressions
+  - [x] store the default expression node index on `AstParam`
+- [x] Sema work:
+  - [x] validate default-parameter ordering
+  - [x] resolve and type-check defaults in a parameter/default scope
+  - [x] enforce earlier-parameter-only references
+  - [x] fill omitted trailing arguments during call checking for known function
     declarations
-- [ ] IR/C generation work:
-  - [ ] lower substituted default expressions without adding new runtime
+- [x] IR/C generation work:
+  - [x] lower substituted default expressions without adding new runtime
     calling-convention machinery
-  - [ ] keep generated function signatures unchanged
-- [ ] Formatter work:
-  - [ ] format default parameters as `name: Type = value`
-  - [ ] preserve readable wrapping for long signatures with defaults
-- [ ] LSP/editor work:
-  - [ ] show defaults in hover-rendered function signatures
-  - [ ] show defaults in signature help once signature help exists
-  - [ ] add/update semantic token coverage if default expressions expose gaps
-- [ ] Tests:
-  - [ ] language tests for omitted trailing defaults
-  - [ ] language tests for explicit override
-  - [ ] language tests for defaults referencing earlier parameters
-  - [ ] error tests for required parameters after defaulted parameters
-  - [ ] error tests for bad default expression type
-  - [ ] error tests for later-parameter references
-  - [ ] error tests for defaults on FFI declarations
-  - [ ] error tests for omitted arguments through function-typed values
-  - [ ] format tests for default-parameter spacing and wrapping
-  - [ ] LSP tests for hover/signature text affected by defaults
-- [ ] Documentation:
-  - [ ] manual section for default parameters and call-site evaluation
-  - [ ] syntax-reference appendix entries
-  - [ ] language-reference appendix rules
+  - [x] keep generated function signatures unchanged
+- [x] Formatter work:
+  - [x] format default parameters as `name: Type = value`
+  - [x] preserve readable wrapping for long signatures with defaults
+- [x] LSP/editor work:
+  - [x] show defaults in hover-rendered function signatures
+  - [x] record signature-help display as future editor work because signature
+    help does not exist yet
+  - [x] add/update semantic token coverage if default expressions expose gaps
+- [x] Tests:
+  - [x] language tests for omitted trailing defaults
+  - [x] language tests for explicit override
+  - [x] language tests for defaults referencing earlier parameters
+  - [x] error tests for required parameters after defaulted parameters
+  - [x] error tests for bad default expression type
+  - [x] error tests for later-parameter references
+  - [x] error tests for defaults on FFI declarations
+  - [x] error tests for omitted arguments through function-typed values
+  - [x] format tests for default-parameter spacing and wrapping
+  - [x] LSP tests for hover/signature text affected by defaults
+- [x] Documentation:
+  - [x] manual section for default parameters and call-site evaluation
+  - [x] syntax-reference appendix entries
+  - [x] language-reference appendix rules
 
 ### Generics Milestone
 
@@ -497,6 +498,7 @@ the roadmap before committing the implementation.
 - [ ] Add signature help for function calls, triggered by `(` and `,`, including
   FFI and imported functions.
   - [ ] ordinary function calls
+  - [ ] default parameter display
   - [ ] FFI function calls
   - [ ] imported function calls
 - [ ] Add references and rename:

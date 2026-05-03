@@ -63,6 +63,7 @@ target ||= expr
 
 ```nerd
 fn (a: Type, b: Type) -> ReturnType { ... }
+fn (a: Type, b: Type = expr) -> ReturnType { ... }
 fn (a: Type) => expr
 fn (Type, Type) -> ReturnType
 ```

@@ -35,6 +35,18 @@ intended exit code.
 - Local variables, parameters, and pattern binders must be read unless their
   names start with `_`.
 
+## Functions
+
+- Function parameters are written as `name: Type`.
+- Default parameters are written as `name: Type = expr`.
+- Defaulted parameters must be trailing parameters.
+- Default expressions are evaluated at the call site.
+- A default expression can reference earlier parameters, but not itself or later
+  parameters.
+- Function types do not include defaults. Calling through a function value
+  requires every argument.
+- FFI declarations cannot have default parameters.
+
 ## Type Conversion
 
 - Use `.as(Type)` for explicit casts.

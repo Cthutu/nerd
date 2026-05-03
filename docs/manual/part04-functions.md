@@ -30,6 +30,40 @@ main :: fn () -> i32 {
 
 Here `20` becomes `left`, and `22` becomes `right`.
 
+## Default Parameters
+
+Trailing parameters can have default values:
+
+```nerd
+add :: fn (left: i32, right: i32 = 1) -> i32 {
+    return left + right  -- right is 1 when the call omits it
+}
+
+main :: fn () -> i32 {
+    return add(20)  -- same as add(20, 1)
+}
+```
+
+All parameters after the first defaulted parameter must also have defaults. A
+default expression is checked against the parameter type, and it can use
+parameters that appear earlier in the signature:
+
+```nerd
+grow :: fn (base: i32, amount: i32 = base + 1) => base + amount
+```
+
+Defaults are evaluated at the call site. They belong to the function
+declaration, not to the function type, so a function value must still receive
+all arguments:
+
+```nerd
+add_one := add
+return add_one(20, 1)  -- function values use the full function type
+```
+
+FFI declarations cannot have default parameters. Wrap an FFI function in a
+normal Nerd function when a default is useful.
+
 ## Return Types
 
 Block functions that return values use `-> Type`:
