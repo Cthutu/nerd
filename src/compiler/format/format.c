@@ -349,9 +349,8 @@ internal string format_assignment_operator(const Lexer*   lexer,
                                            const CstNode* stmt);
 internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index);
-internal void format_emit_string_literal(StringBuilder* sb,
-                                         string         text,
-                                         bool           is_c_string);
+internal void
+format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string);
 internal bool format_collect_plain_string_concat(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
@@ -519,10 +518,10 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "nil");
         break;
     case CK_StringLiteral:
-        format_emit_string_literal(
-            sb,
-            lexer->strings[node->a],
-            lexer->tokens[node->token_index].kind == TK_CString);
+        format_emit_string_literal(sb,
+                                   lexer->strings[node->a],
+                                   lexer->tokens[node->token_index].kind ==
+                                       TK_CString);
         break;
     case CK_StringConcat:
         {
@@ -530,8 +529,7 @@ internal void format_emit_expr(StringBuilder* sb,
             sb_init(&concat, &temp_arena);
             if (format_collect_plain_string_concat(
                     &concat, cst, lexer, node_index)) {
-                format_emit_string_literal(
-                    sb, sb_to_string(&concat), false);
+                format_emit_string_literal(sb, sb_to_string(&concat), false);
             } else {
                 format_emit_expr(sb, cst, lexer, node->a, node_precedence);
                 sb_append_char(sb, ' ');
@@ -1403,9 +1401,8 @@ internal usize format_find_string_split(string text, usize start, usize max_end)
     return max_end < text.count ? max_end : text.count;
 }
 
-internal void format_emit_string_literal(StringBuilder* sb,
-                                         string         text,
-                                         bool           is_c_string)
+internal void
+format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
 {
     if (is_c_string || text.count + 2 <= FORMAT_WRAP_WIDTH ||
         format_string_has_newline(text)) {
@@ -1429,8 +1426,8 @@ internal void format_emit_string_literal(StringBuilder* sb,
         }
 
         sb_append_char(sb, '"');
-        format_emit_string_text(
-            sb, string_from(text.data + start, end - start));
+        format_emit_string_text(sb,
+                                string_from(text.data + start, end - start));
         sb_append_char(sb, '"');
 
         start = end;

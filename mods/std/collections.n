@@ -1,0 +1,17 @@
+--
+-- Generic collections
+--
+-- Copyright (C)2026 Matt Davies, all rights reserved
+--
+
+pub Stack :: plex [T] {
+    data [..]T
+}
+
+pub stack_push :: fn [T] (stack: ^Stack[T], elem: T) {
+    stack.data.push(elem)
+}
+
+pub stack_pop :: fn [T] (stack: ^Stack[T]) -> T {
+    return stack.data.pop()
+}

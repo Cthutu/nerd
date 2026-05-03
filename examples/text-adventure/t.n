@@ -1,10 +1,18 @@
 --
 
-random :: use std.random
-
+use std.random
+use std.collections
 use std.io
 
 main :: fn () {
-    random_number := random.random_u64()
+    random_number := random_u64()
     prn($"Random number: {random_number}")
+
+    stack : Stack[i32]
+
+    stack_push(^stack, 42)
+    stack_push(^stack, 13)
+
+    prn($"Popped: {stack_pop(^stack)}")
+    prn($"Popped: {stack_pop(^stack)}")
 }

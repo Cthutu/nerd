@@ -959,17 +959,14 @@ bool error_0336_required_param_after_default(NerdSource source,
                                              ErrorSpan  span,
                                              string     symbol)
 {
-    ErrorInfo error =
-        error_init(336,
-                   source,
-                   span,
-                   "Required parameter `" STRINGP
-                   "` cannot follow a defaulted parameter",
-                   STRINGV(symbol));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This parameter has no default value");
+    ErrorInfo error = error_init(336,
+                                 source,
+                                 span,
+                                 "Required parameter `" STRINGP
+                                 "` cannot follow a defaulted parameter",
+                                 STRINGV(symbol));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This parameter has no default value");
     error_add_note(&error,
                    "Parameters with defaults must be the trailing parameters "
                    "in the signature.");
@@ -1016,13 +1013,12 @@ bool error_0338_default_param_later_reference(NerdSource source,
                                               ErrorSpan  span,
                                               string     symbol)
 {
-    ErrorInfo error =
-        error_init(338,
-                   source,
-                   span,
-                   "Default parameter cannot reference later parameter `"
-                   STRINGP "`",
-                   STRINGV(symbol));
+    ErrorInfo error = error_init(
+        338,
+        source,
+        span,
+        "Default parameter cannot reference later parameter `" STRINGP "`",
+        STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,

@@ -1120,7 +1120,7 @@ internal bool ir_find_local_substitution(u32 local_index, IrValue* out_value)
     return false;
 }
 
-internal u32 ir_signature_required_param_count(const Ast* ast,
+internal u32 ir_signature_required_param_count(const Ast*            ast,
                                                const AstFnSignature* signature)
 {
     for (u32 i = 0; i < signature->param_count; ++i) {
@@ -1132,12 +1132,12 @@ internal u32 ir_signature_required_param_count(const Ast* ast,
     return signature->param_count;
 }
 
-internal bool ir_known_call_fn_node(const Ast* ast,
+internal bool ir_known_call_fn_node(const Ast*  ast,
                                     const Sema* sema,
                                     u32         callee_node_index,
                                     u32*        out_fn_node_index)
 {
-    callee_node_index = ir_unwrap_expr_node(ast, callee_node_index);
+    callee_node_index     = ir_unwrap_expr_node(ast, callee_node_index);
     const AstNode* callee = &ast->nodes[callee_node_index];
     if (callee->kind != AK_SymbolRef) {
         return false;
@@ -1247,11 +1247,11 @@ internal bool ir_type_kind_is_float(SemaTypeKind kind)
     return kind == STK_UntypedFloat || kind == STK_F32 || kind == STK_F64;
 }
 
-internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
-                                                  const Ast*   ast,
-                                                  const Sema*  sema,
-                                                  Ir*          ir,
-                                                  u32          node_index,
+internal bool ir_eval_interpolation_part_constant(const Lexer*   lex,
+                                                  const Ast*     ast,
+                                                  const Sema*    sema,
+                                                  Ir*            ir,
+                                                  u32            node_index,
                                                   StringBuilder* sb);
 
 internal bool ir_eval_string_constant(const Lexer* lex,
@@ -1345,11 +1345,11 @@ internal bool ir_eval_string_constant(const Lexer* lex,
     }
 }
 
-internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
-                                                  const Ast*   ast,
-                                                  const Sema*  sema,
-                                                  Ir*          ir,
-                                                  u32          node_index,
+internal bool ir_eval_interpolation_part_constant(const Lexer*   lex,
+                                                  const Ast*     ast,
+                                                  const Sema*    sema,
+                                                  Ir*            ir,
+                                                  u32            node_index,
                                                   StringBuilder* sb)
 {
     const AstNode* node = &ast->nodes[node_index];
@@ -1360,15 +1360,19 @@ internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
     case AK_InterpPartExpr:
     case AK_AnnotatedValue:
         return ir_eval_interpolation_part_constant(
-            lex, ast, sema, ir, node->kind == AK_AnnotatedValue ? node->b
-                                                                : node->a,
+            lex,
+            ast,
+            sema,
+            ir,
+            node->kind == AK_AnnotatedValue ? node->b : node->a,
             sb);
     case AK_StringLiteral:
     case AK_StringConcat:
     case AK_InterpolatedString:
         {
             string text = {0};
-            if (!ir_eval_string_constant(lex, ast, sema, ir, node_index, &text)) {
+            if (!ir_eval_string_constant(
+                    lex, ast, sema, ir, node_index, &text)) {
                 return false;
             }
             sb_append_string(sb, text);
@@ -1411,19 +1415,19 @@ internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
         break;
     }
 
-    u32 type_index =
-        node_index < array_count(sema->node_type_indices)
-            ? sema->node_type_indices[node_index]
-            : sema_no_type();
+    u32          type_index = node_index < array_count(sema->node_type_indices)
+                                  ? sema->node_type_indices[node_index]
+                                  : sema_no_type();
     SemaTypeKind type_kind =
         type_index != sema_no_type() && type_index < array_count(sema->types)
             ? sema->types[type_index].kind
             : STK_Void;
 
-    if (type_kind == STK_Bool && node_index < array_count(sema->node_const_known) &&
+    if (type_kind == STK_Bool &&
+        node_index < array_count(sema->node_const_known) &&
         sema->node_const_known[node_index]) {
-        sb_append_cstr(sb, sema->node_const_values[node_index] != 0 ? "yes"
-                                                                    : "no");
+        sb_append_cstr(sb,
+                       sema->node_const_values[node_index] != 0 ? "yes" : "no");
         return true;
     }
 
@@ -2511,9 +2515,9 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
                                                 const AstNode* call_node,
                                                 IrLoopLabels   loop,
                                                 Array(IrValue) node_values,
-                                                u64* next_value_index,
+                                                u64*     next_value_index,
                                                 IrValue* out_value,
-                                                Ir*  ir)
+                                                Ir*      ir)
 {
     const AstNode* callee = &ast->nodes[call_node->a];
     if (callee->kind != AK_Field) {
@@ -2587,7 +2591,7 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
         arg_type = ir_node_type_index(ast, sema, arg_node);
     }
 
-    IrValue result = ir_unset_value();
+    IrValue result      = ir_unset_value();
     u32     result_type = ir_node_type_index(ast, sema, call_node - ast->nodes);
     ir_add_dynarray_op(ir,
                        op,
@@ -2600,14 +2604,14 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
                        receiver_type);
     if (op == IR_OP_DYNARRAY_POP) {
         u32 op_index = (u32)array_count(ir->dynarray_ops) - 1;
-        result = (IrValue){
+        result       = (IrValue){
             .kind          = IR_VALUE_VARIABLE,
             .type          = result_type,
             .value.integer = (i64)(*next_value_index)++,
         };
-        u32 instr_index = (u32)array_count(ir->instructions) - 1;
-        ir->dynarray_ops[op_index].arg      = result;
-        ir->dynarray_ops[op_index].arg_type = result_type;
+        u32 instr_index                = (u32)array_count(ir->instructions) - 1;
+        ir->dynarray_ops[op_index].arg = result;
+        ir->dynarray_ops[op_index].arg_type  = result_type;
         ir->instructions[instr_index].lvalue = result;
         ir->instructions[instr_index].rvalue[0] =
             (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = op_index};
@@ -2651,13 +2655,13 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                                next_value_index,
                                ir);
     }
-    const AstCallInfo* call = &ast->calls[call_node->b];
-    Array(IrValue) args     = NULL;
-    Array(u32) arg_types    = NULL;
+    const AstCallInfo* call                 = &ast->calls[call_node->b];
+    Array(IrValue) args                     = NULL;
+    Array(u32) arg_types                    = NULL;
 
-    u32 known_fn_node = U32_MAX;
-    const AstFnSignature* known_signature = NULL;
-    u32 param_scope_index = sema_no_decl();
+    u32                   known_fn_node     = U32_MAX;
+    const AstFnSignature* known_signature   = NULL;
+    u32                   param_scope_index = sema_no_decl();
     if (ir_known_call_fn_node(ast, sema, call_node->a, &known_fn_node)) {
         const AstNode* fn_start = &ast->nodes[ast->nodes[known_fn_node].a];
         known_signature         = &ast->fn_signatures[fn_start->a];
@@ -2701,16 +2705,15 @@ internal IrValue ir_lower_call(const Lexer*   lex,
                 &ast->params[known_signature->first_param + i];
             ASSERT(param->default_node_index != U32_MAX,
                    "Expected omitted parameter default");
-            IrValue default_value =
-                ir_lower_node(lex,
-                              ast,
-                              sema,
-                              param->default_node_index,
-                              loop,
-                              node_values,
-                              next_value_index,
-                              ir);
-            u32 default_type =
+            IrValue default_value = ir_lower_node(lex,
+                                                  ast,
+                                                  sema,
+                                                  param->default_node_index,
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  ir);
+            u32     default_type =
                 ir_node_type_index(ast, sema, param->default_node_index);
             array_push(args, default_value);
             array_push(arg_types, default_type);
@@ -2955,8 +2958,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
             if (ir_eval_string_constant(
                     lex, ast, sema, ir, node_index, &literal)) {
                 value = (IrValue){
-                    .kind = IR_VALUE_STRING,
-                    .type = ir_node_type_index(ast, sema, node_index),
+                    .kind          = IR_VALUE_STRING,
+                    .type          = ir_node_type_index(ast, sema, node_index),
                     .value.integer = ir_add_string_literal(ir, literal),
                 };
             } else {
@@ -3019,8 +3022,8 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 node_type != sema_no_type() &&
                 sema->types[node_type].kind == STK_Function) {
                 value = (IrValue){
-                    .kind          = IR_VALUE_SYMBOL,
-                    .type          = node_type,
+                    .kind = IR_VALUE_SYMBOL,
+                    .type = node_type,
                     .value.integer =
                         sema->node_lowered_symbol_handles[node_index],
                 };
@@ -3028,7 +3031,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
                 return value;
             }
             if (sema->node_local_indices[node_index] != sema_no_local()) {
-                u32 local_index        = sema->node_local_indices[node_index];
+                u32 local_index = sema->node_local_indices[node_index];
                 if (ir_find_local_substitution(local_index, &value)) {
                     node_values[node_index] = value;
                     return value;
@@ -3830,9 +3833,10 @@ internal IrValue ir_lower_node(const Lexer* lex,
         {
             if (sema->node_lowered_symbol_handles[node_index] != U32_MAX) {
                 IrValue value = {
-                    .kind          = IR_VALUE_SYMBOL,
-                    .type          = ir_node_type_index(ast, sema, node_index),
-                    .value.integer = sema->node_lowered_symbol_handles[node_index],
+                    .kind = IR_VALUE_SYMBOL,
+                    .type = ir_node_type_index(ast, sema, node_index),
+                    .value.integer =
+                        sema->node_lowered_symbol_handles[node_index],
                 };
                 node_values[node_index] = value;
                 return value;
@@ -5966,10 +5970,10 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(sema->generic_fn_instantiations); ++i) {
         const SemaGenericFnInstantiation* inst =
             &sema->generic_fn_instantiations[i];
-        Sema inst_sema                       = *sema;
-        inst_sema.node_decl_indices          = inst->node_decl_indices;
-        inst_sema.node_local_indices         = inst->node_local_indices;
-        inst_sema.node_scope_indices         = inst->node_scope_indices;
+        Sema inst_sema               = *sema;
+        inst_sema.node_decl_indices  = inst->node_decl_indices;
+        inst_sema.node_local_indices = inst->node_local_indices;
+        inst_sema.node_scope_indices = inst->node_scope_indices;
         inst_sema.node_lowered_symbol_handles =
             inst->node_lowered_symbol_handles;
         inst_sema.node_type_indices = inst->node_type_indices;

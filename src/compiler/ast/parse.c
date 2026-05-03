@@ -593,11 +593,11 @@ internal bool ast_parse_optional_generic_params(AstParseState* state,
     if (state->token.kind != TK_RBracket) {
         for (;;) {
             if (state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(state->lexer->source,
-                                                 ast_token_span(state,
-                                                                &state->token),
-                                                 TK_Symbol,
-                                                 state->token.kind);
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
             }
             array_push(state->generic_param_symbols,
                        state->token.value.symbol_handle);
@@ -695,7 +695,7 @@ bool ast_parse_fn_signature(AstParseState* state,
                            (AstParam){
                                .token_index   = param_token.token_index,
                                .symbol_handle = param_token.value.symbol_handle,
-                               .type_node_index = type_node,
+                               .type_node_index    = type_node,
                                .default_node_index = default_node,
                            });
             } else {
@@ -707,9 +707,9 @@ bool ast_parse_fn_signature(AstParseState* state,
 
                 array_push(state->params,
                            (AstParam){
-                               .token_index     = type_token.token_index,
-                               .symbol_handle   = U32_MAX,
-                               .type_node_index = type_node,
+                               .token_index        = type_token.token_index,
+                               .symbol_handle      = U32_MAX,
+                               .type_node_index    = type_node,
                                .default_node_index = U32_MAX,
                            });
             }
@@ -862,9 +862,9 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
 
             array_push(state->params,
                        (AstParam){
-                           .token_index     = param_token.token_index,
-                           .symbol_handle   = symbol,
-                           .type_node_index = type_node,
+                           .token_index        = param_token.token_index,
+                           .symbol_handle      = symbol,
+                           .type_node_index    = type_node,
                            .default_node_index = default_node,
                        });
             ++param_count;
@@ -1226,10 +1226,10 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         u32 plex_type_index = (u32)array_count(state->plex_types);
         array_push(state->plex_types,
                    (AstPlexTypeInfo){
-                       .first_field = first_field,
-                       .field_count = field_count,
+                       .first_field          = first_field,
+                       .field_count          = field_count,
                        .generic_params_index = generic_params_index,
-                       .flags       = flags,
+                       .flags                = flags,
                    });
         return ast_emit_node(state,
                              (AstNode){
@@ -1346,8 +1346,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         u32 enum_type_index = (u32)array_count(state->enum_types);
         array_push(state->enum_types,
                    (AstEnumTypeInfo){
-                       .first_variant = first_variant,
-                       .variant_count = variant_count,
+                       .first_variant        = first_variant,
+                       .variant_count        = variant_count,
                        .generic_params_index = generic_params_index,
                    });
         return ast_emit_node(state,
@@ -4126,67 +4126,67 @@ Ast ast_parse(Lexer* lexer)
     }
 
     return (Ast){
-        .nodes               = state.nodes,
-        .generic_params      = state.generic_params,
+        .nodes                 = state.nodes,
+        .generic_params        = state.generic_params,
         .generic_param_symbols = state.generic_param_symbols,
-        .params              = state.params,
-        .fn_signatures       = state.fn_signatures,
-        .ffi_infos           = state.ffi_infos,
-        .module_paths        = state.module_paths,
-        .module_path_symbols = state.module_path_symbols,
-        .call_args           = state.call_args,
-        .tuple_items         = state.tuple_items,
-        .calls               = state.calls,
-        .casts               = state.casts,
-        .type_applications   = state.type_applications,
-        .slices              = state.slices,
-        .plex_fields         = state.plex_fields,
-        .plex_types          = state.plex_types,
-        .enum_variants       = state.enum_variants,
-        .enum_types          = state.enum_types,
-        .plex_literal_fields = state.plex_literal_fields,
-        .plex_literals       = state.plex_literals,
-        .patterns            = state.patterns,
-        .pattern_items       = state.pattern_items,
-        .pattern_fields      = state.pattern_fields,
-        .enum_patterns       = state.enum_patterns,
-        .on_branches         = state.on_branches,
-        .ons                 = state.ons,
-        .top_ons             = state.top_ons,
-        .for_items           = state.for_items,
-        .fors                = state.fors,
+        .params                = state.params,
+        .fn_signatures         = state.fn_signatures,
+        .ffi_infos             = state.ffi_infos,
+        .module_paths          = state.module_paths,
+        .module_path_symbols   = state.module_path_symbols,
+        .call_args             = state.call_args,
+        .tuple_items           = state.tuple_items,
+        .calls                 = state.calls,
+        .casts                 = state.casts,
+        .type_applications     = state.type_applications,
+        .slices                = state.slices,
+        .plex_fields           = state.plex_fields,
+        .plex_types            = state.plex_types,
+        .enum_variants         = state.enum_variants,
+        .enum_types            = state.enum_types,
+        .plex_literal_fields   = state.plex_literal_fields,
+        .plex_literals         = state.plex_literals,
+        .patterns              = state.patterns,
+        .pattern_items         = state.pattern_items,
+        .pattern_fields        = state.pattern_fields,
+        .enum_patterns         = state.enum_patterns,
+        .on_branches           = state.on_branches,
+        .ons                   = state.ons,
+        .top_ons               = state.top_ons,
+        .for_items             = state.for_items,
+        .fors                  = state.fors,
     };
 
 error:
-    ast_done(&(Ast){.nodes               = state.nodes,
-                    .generic_params      = state.generic_params,
+    ast_done(&(Ast){.nodes                 = state.nodes,
+                    .generic_params        = state.generic_params,
                     .generic_param_symbols = state.generic_param_symbols,
-                    .params              = state.params,
-                    .fn_signatures       = state.fn_signatures,
-                    .ffi_infos           = state.ffi_infos,
-                    .module_paths        = state.module_paths,
-                    .module_path_symbols = state.module_path_symbols,
-                    .call_args           = state.call_args,
-                    .tuple_items         = state.tuple_items,
-                    .calls               = state.calls,
-                    .casts               = state.casts,
-                    .type_applications   = state.type_applications,
-                    .slices              = state.slices,
-                    .plex_fields         = state.plex_fields,
-                    .plex_types          = state.plex_types,
-                    .enum_variants       = state.enum_variants,
-                    .enum_types          = state.enum_types,
-                    .plex_literal_fields = state.plex_literal_fields,
-                    .plex_literals       = state.plex_literals,
-                    .patterns            = state.patterns,
-                    .pattern_items       = state.pattern_items,
-                    .pattern_fields      = state.pattern_fields,
-                    .enum_patterns       = state.enum_patterns,
-                    .on_branches         = state.on_branches,
-                    .ons                 = state.ons,
-                    .top_ons             = state.top_ons,
-                    .for_items           = state.for_items,
-                    .fors                = state.fors});
+                    .params                = state.params,
+                    .fn_signatures         = state.fn_signatures,
+                    .ffi_infos             = state.ffi_infos,
+                    .module_paths          = state.module_paths,
+                    .module_path_symbols   = state.module_path_symbols,
+                    .call_args             = state.call_args,
+                    .tuple_items           = state.tuple_items,
+                    .calls                 = state.calls,
+                    .casts                 = state.casts,
+                    .type_applications     = state.type_applications,
+                    .slices                = state.slices,
+                    .plex_fields           = state.plex_fields,
+                    .plex_types            = state.plex_types,
+                    .enum_variants         = state.enum_variants,
+                    .enum_types            = state.enum_types,
+                    .plex_literal_fields   = state.plex_literal_fields,
+                    .plex_literals         = state.plex_literals,
+                    .patterns              = state.patterns,
+                    .pattern_items         = state.pattern_items,
+                    .pattern_fields        = state.pattern_fields,
+                    .enum_patterns         = state.enum_patterns,
+                    .on_branches           = state.on_branches,
+                    .ons                   = state.ons,
+                    .top_ons               = state.top_ons,
+                    .for_items             = state.for_items,
+                    .fors                  = state.fors});
     return (Ast){0};
 }
 

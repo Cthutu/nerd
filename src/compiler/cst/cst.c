@@ -964,8 +964,8 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                 }
                 array_push(state->cst.params,
                            (CstParam){
-                               .symbol_handle   = symbol_handle,
-                               .type_node_index = type_node,
+                               .symbol_handle      = symbol_handle,
+                               .type_node_index    = type_node,
                                .default_node_index = default_node,
                            });
             } else {
@@ -975,8 +975,8 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                 }
                 array_push(state->cst.params,
                            (CstParam){
-                               .symbol_handle   = CST_NO_VALUE,
-                               .type_node_index = type_node,
+                               .symbol_handle      = CST_NO_VALUE,
+                               .type_node_index    = type_node,
                                .default_node_index = CST_NO_VALUE,
                            });
             }
@@ -1307,10 +1307,10 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32 plex_type_index = (u32)array_count(state->cst.plex_types);
         array_push(state->cst.plex_types,
                    (CstPlexTypeInfo){
-                       .first_field = first_field,
-                       .field_count = field_count,
+                       .first_field          = first_field,
+                       .field_count          = field_count,
                        .generic_params_index = generic_params_index,
-                       .flags       = flags,
+                       .flags                = flags,
                    });
         return cst_emit_node(state,
                              (CstNode){
@@ -1438,8 +1438,8 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32 enum_type_index = (u32)array_count(state->cst.enum_types);
         array_push(state->cst.enum_types,
                    (CstEnumTypeInfo){
-                       .first_variant = first_variant,
-                       .variant_count = variant_count,
+                       .first_variant        = first_variant,
+                       .variant_count        = variant_count,
                        .generic_params_index = generic_params_index,
                    });
         return cst_emit_node(state,

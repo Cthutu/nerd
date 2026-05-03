@@ -2113,7 +2113,7 @@ internal void cgen_add_extern_decls(CGen* cgen)
     }
 }
 
-internal void cgen_add_function_header(CGen*              cgen,
+internal void cgen_add_function_header(CGen*                cgen,
                                        const IrInstruction* instr,
                                        const IrFunction*    function)
 {
@@ -2132,15 +2132,14 @@ internal void cgen_add_function_header(CGen*              cgen,
         if (i > 0) {
             cgen_add(cgen, ", ");
         }
-        const IrLocal* param =
-            &cgen->ir->locals[function->first_local + i];
-        ASSERT(param->is_param, "Expected function params first in local table");
-        cgen_add_decl_type_and_name(
-            cgen,
-            param->type,
-            &(IrValue){.kind          = IR_VALUE_LOCAL,
-                       .type          = param->type,
-                       .value.integer = param->symbol});
+        const IrLocal* param = &cgen->ir->locals[function->first_local + i];
+        ASSERT(param->is_param,
+               "Expected function params first in local table");
+        cgen_add_decl_type_and_name(cgen,
+                                    param->type,
+                                    &(IrValue){.kind          = IR_VALUE_LOCAL,
+                                               .type          = param->type,
+                                               .value.integer = param->symbol});
     }
     cgen_add(cgen, ")");
 }
@@ -2335,12 +2334,11 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_DYNARRAY_CLEAR:
         case IR_OP_DYNARRAY_FREE:
         case IR_OP_DYNARRAY_POP:
-            cgen_add_dynarray_op(
-                cgen,
-                instr->op,
-                (u32)(instr->op == IR_OP_DYNARRAY_POP
-                          ? instr->rvalue[0].value.integer
-                          : instr->lvalue.value.integer));
+            cgen_add_dynarray_op(cgen,
+                                 instr->op,
+                                 (u32)(instr->op == IR_OP_DYNARRAY_POP
+                                           ? instr->rvalue[0].value.integer
+                                           : instr->lvalue.value.integer));
             break;
         case IR_OP_ADDRESS_OF:
             cgen_add_address_of(cgen, instr);

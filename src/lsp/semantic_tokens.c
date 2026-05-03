@@ -94,8 +94,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
             &doc->front_end.sema, doc->front_end.ast.nodes[bind_node_index].a);
         if (decl_index != U32_MAX &&
             (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_GenericFunction ||
+             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
              doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
              doc->front_end.sema.decls[decl_index].kind ==
                  SK_BuiltinFunction)) {
@@ -111,8 +110,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
         u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
         if (decl_index != U32_MAX &&
             (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_GenericFunction ||
+             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
              doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
              doc->front_end.sema.decls[decl_index].kind ==
                  SK_BuiltinFunction)) {
@@ -128,8 +126,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
             doc->front_end.sema.node_decl_indices[field_node_index];
         if (decl_index != U32_MAX &&
             (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_GenericFunction ||
+             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
              doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
              doc->front_end.sema.decls[decl_index].kind ==
                  SK_BuiltinFunction)) {

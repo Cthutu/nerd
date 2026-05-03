@@ -165,13 +165,12 @@ internal bool program_front_end_generate_ir(ProgramInfo*           program,
     }
 
     for (u32 i = 0; i < array_count(program->modules); ++i) {
-        ModuleInfo* module = &program->modules[i];
-        ProgramFrontEndContext ctx = {
+        ModuleInfo*            module = &program->modules[i];
+        ProgramFrontEndContext ctx    = {
             .source =
                 {
-                    .source = module->front_end.lexer.source.source,
-                    .source_path =
-                        module->front_end.lexer.source.source_path,
+                    .source      = module->front_end.lexer.source.source,
+                    .source_path = module->front_end.lexer.source.source_path,
                 },
             .options   = effective_options,
             .front_end = &module->front_end,
@@ -500,8 +499,7 @@ bool front_end_program(NerdSource             source,
     program_collect_module_exports(&program.modules[program.root_module_index]);
     program.modules[program.root_module_index].state = MODULE_Loaded;
 
-    if (!program_front_end_generate_ir(
-            &program, &effective_options, timing)) {
+    if (!program_front_end_generate_ir(&program, &effective_options, timing)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;

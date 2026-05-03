@@ -488,7 +488,7 @@ internal string lsp_default_param_source(const LspDocument* doc,
         return s("...");
     }
 
-    const Lexer*   lexer = &doc->front_end.lexer;
+    const Lexer* lexer = &doc->front_end.lexer;
     if (param->token_index >= array_count(lexer->tokens)) {
         return s("...");
     }
@@ -539,18 +539,16 @@ internal string lsp_default_param_source(const LspDocument* doc,
         end = lex_token_end_offset(lexer, &lexer->tokens[i]);
     }
 
-    while (start < end &&
-           (lexer->source.source.data[start] == ' ' ||
-            lexer->source.source.data[start] == '\t' ||
-            lexer->source.source.data[start] == '\n' ||
-            lexer->source.source.data[start] == '\r')) {
+    while (start < end && (lexer->source.source.data[start] == ' ' ||
+                           lexer->source.source.data[start] == '\t' ||
+                           lexer->source.source.data[start] == '\n' ||
+                           lexer->source.source.data[start] == '\r')) {
         start++;
     }
-    while (end > start &&
-           (lexer->source.source.data[end - 1] == ' ' ||
-            lexer->source.source.data[end - 1] == '\t' ||
-            lexer->source.source.data[end - 1] == '\n' ||
-            lexer->source.source.data[end - 1] == '\r')) {
+    while (end > start && (lexer->source.source.data[end - 1] == ' ' ||
+                           lexer->source.source.data[end - 1] == '\t' ||
+                           lexer->source.source.data[end - 1] == '\n' ||
+                           lexer->source.source.data[end - 1] == '\r')) {
         end--;
     }
     string raw = {
@@ -620,17 +618,17 @@ internal string lsp_param_type_source(const LspDocument* doc,
 }
 
 internal string lsp_return_type_source(const LspDocument* doc,
-                                       u32                return_type_node_index)
+                                       u32 return_type_node_index)
 {
     if (return_type_node_index == U32_MAX) {
         return s("");
     }
 
-    const Lexer* lexer = &doc->front_end.lexer;
-    const AstNode* node = &doc->front_end.ast.nodes[return_type_node_index];
-    usize start = lexer->tokens[node->token_index].offset;
-    usize end   = start;
-    u32   depth = 0;
+    const Lexer*   lexer = &doc->front_end.lexer;
+    const AstNode* node  = &doc->front_end.ast.nodes[return_type_node_index];
+    usize          start = lexer->tokens[node->token_index].offset;
+    usize          end   = start;
+    u32            depth = 0;
     for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
         if (depth == 0 && (kind == TK_LBrace || kind == TK_FatArrow)) {
@@ -662,24 +660,23 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         return false;
     }
 
-    const Ast* ast            = &doc->front_end.ast;
-    const AstNode* value_node = &ast->nodes[decl->value_node_index];
-    const AstFnSignature* signature = NULL;
+    const Ast*            ast        = &doc->front_end.ast;
+    const AstNode*        value_node = &ast->nodes[decl->value_node_index];
+    const AstFnSignature* signature  = NULL;
 
     if (value_node->kind == AK_FnDef) {
         const AstNode* fn_start = &ast->nodes[value_node->a];
         signature               = &ast->fn_signatures[fn_start->a];
     } else if (value_node->kind == AK_FfiDef) {
         const AstFfiInfo* ffi = &ast->ffi_infos[value_node->a];
-        signature            = &ast->fn_signatures[ffi->signature_index];
+        signature             = &ast->fn_signatures[ffi->signature_index];
     } else {
         return false;
     }
 
-    const SemaType* type =
-        decl->kind == SK_GenericFunction
-            ? NULL
-            : &doc->front_end.sema.types[decl->type_index];
+    const SemaType* type = decl->kind == SK_GenericFunction
+                               ? NULL
+                               : &doc->front_end.sema.types[decl->type_index];
     if (decl->kind != SK_GenericFunction && type->kind != STK_Function) {
         return false;
     }
@@ -714,8 +711,9 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
             }
             sb_append_string(
                 &sb,
-                lex_symbol(&doc->front_end.lexer,
-                           ast->generic_param_symbols[generic->first_symbol + i]));
+                lex_symbol(
+                    &doc->front_end.lexer,
+                    ast->generic_param_symbols[generic->first_symbol + i]));
         }
         sb_append_cstr(&sb, "]");
     }
@@ -726,9 +724,8 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         }
         const AstParam* param = &ast->params[signature->first_param + i];
         if (param->symbol_handle != U32_MAX) {
-            sb_append_string(&sb,
-                             lex_symbol(&doc->front_end.lexer,
-                                        param->symbol_handle));
+            sb_append_string(
+                &sb, lex_symbol(&doc->front_end.lexer, param->symbol_handle));
             sb_append_cstr(&sb, ": ");
         }
         if (has_generic) {
@@ -760,7 +757,8 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
     if (has_generic && signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(
-            &sb, lsp_return_type_source(doc, signature->return_type_node_index));
+            &sb,
+            lsp_return_type_source(doc, signature->return_type_node_index));
     } else if (!has_generic && type->return_type != sema_no_type()) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
