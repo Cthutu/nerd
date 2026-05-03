@@ -196,31 +196,31 @@ the roadmap before committing the implementation.
 
 ### Generics Milestone
 
-- [ ] Add generic syntax using square brackets:
+- [x] Add generic syntax using square brackets:
   - [x] generic functions as `fn [T] (...) -> R`
   - [x] generic type declarations as `plex [T]`, `union [T]`, and `enum [T]`
   - [x] generic type application as `Name[T]`
-  - [ ] explicit generic function calls as `name[T](...)`
-  - [ ] concrete generic function values as `f := name[T]`
-- [ ] Keep the first generics version type-parameter-only:
-  - [ ] no constraints until the traits milestone
-  - [ ] no numeric/value generic parameters in this milestone
-  - [ ] no partial generic application
-- [ ] Enforce all-or-nothing generic argument rules:
-  - [ ] calls may use full inference with no explicit generic arguments
-  - [ ] calls may use a complete explicit generic argument list
-  - [ ] reject partially explicit generic argument lists
-  - [ ] require all generic type arguments for standalone concrete function
+  - [x] explicit generic function calls as `name[T](...)`
+  - [x] concrete generic function values as `f := name[T]`
+- [x] Keep the first generics version type-parameter-only:
+  - [x] no constraints until the traits milestone
+  - [x] no numeric/value generic parameters in this milestone
+  - [x] no partial generic application
+- [x] Enforce all-or-nothing generic argument rules:
+  - [x] calls may use full inference with no explicit generic arguments
+  - [x] calls may use a complete explicit generic argument list
+  - [x] reject partially explicit generic argument lists
+  - [x] require all generic type arguments for standalone concrete function
     values such as `id[i32]`
-- [ ] Add type inference for generic function calls:
-  - [ ] infer type parameters from call arguments
-  - [ ] type-check explicit generic calls against supplied type arguments
-  - [ ] produce clear diagnostics when inference cannot determine a type
+- [x] Add type inference for generic function calls:
+  - [x] infer type parameters from call arguments
+  - [x] type-check explicit generic calls against supplied type arguments
+  - [x] produce clear diagnostics when inference cannot determine a type
     parameter
-  - [ ] include `help` text for missing or non-inferable generic arguments,
+  - [x] include `help` text for missing or non-inferable generic arguments,
     explaining when to omit the whole generic argument list or provide every
     type explicitly
-- [ ] Add parser and AST support:
+- [x] Add parser and AST support:
   - [x] parse generic parameter lists on function and type declarations
   - [x] parse bracket application syntax without assuming whether it is an
     index/slice or generic application
@@ -231,56 +231,56 @@ the roadmap before committing the implementation.
   - [x] resolve explicit generic arguments as types
   - [ ] report targeted errors for value arguments in type-argument positions
   - [ ] report targeted errors for type arguments in value-index positions
-- [ ] Add generic type support:
+- [x] Add generic type support:
   - [x] instantiate generic plex types
   - [x] instantiate generic union types
   - [x] instantiate generic enum types
   - [x] allow generic type aliases if they fit the same representation cleanly
-- [ ] Add generic function support:
-  - [ ] monomorphise generic functions per canonical concrete type argument
+- [x] Add generic function support:
+  - [x] monomorphise generic functions per canonical concrete type argument
     list
-  - [ ] support direct generic calls
-  - [ ] support inferred generic calls
-  - [ ] support concrete instantiated function values such as `id[i32]`
-  - [ ] force emission of an instantiated function when it is used as a value
+  - [x] support direct generic calls
+  - [x] support inferred generic calls
+  - [x] support concrete instantiated function values such as `id[i32]`
+  - [x] force emission of an instantiated function when it is used as a value
 - [ ] Add instantiation identity and C name mangling:
-  - [ ] key instantiations by canonical semantic type arguments
-  - [ ] canonicalise transparent type aliases so equivalent instantiations
+  - [x] key instantiations by canonical semantic type arguments
+  - [x] canonicalise transparent type aliases so equivalent instantiations
     share one lowered body
-  - [ ] generate C symbols with a readable stem plus a stable hash of canonical
+  - [x] generate C symbols with a readable stem plus a stable hash of canonical
     generic arguments
   - [ ] truncate readable stems when needed and rely on the hash for collision
     resistance
-- [ ] IR/C generation work:
-  - [ ] lower monomorphised functions and types as concrete IR/C entities
+- [x] IR/C generation work:
+  - [x] lower monomorphised functions and types as concrete IR/C entities
   - [x] lower generic types as concrete C entities
   - [x] keep generic type templates out of generated C output
-  - [ ] preserve stable generated C across rebuilds
-- [ ] Formatter work:
+  - [x] preserve stable generated C across rebuilds
+- [x] Formatter work:
   - [x] format generic parameter lists
   - [x] format generic type applications
-  - [ ] format explicit generic calls and concrete generic function values
-- [ ] LSP/editor work:
-  - [ ] show generic signatures in hover text
-  - [ ] include generic parameters in document symbols where useful
-  - [ ] add semantic-token coverage for generic parameter declarations and uses
+  - [x] format explicit generic calls and concrete generic function values
+- [x] LSP/editor work:
+  - [x] show generic signatures in hover text
+  - [x] include generic parameters in document symbols where useful
+  - [x] add semantic-token coverage for generic parameter declarations and uses
 - [ ] Tests:
-  - [ ] language tests for generic function inference
-  - [ ] language tests for explicit generic function calls
-  - [ ] language tests for concrete generic function values
+  - [x] language tests for generic function inference
+  - [x] language tests for explicit generic function calls
+  - [x] language tests for concrete generic function values
   - [x] language tests for generic plex/union/enum instantiation
-  - [ ] error tests for partial explicit generic arguments
-  - [ ] error tests for inference failure
+  - [x] error tests for partial explicit generic arguments
+  - [x] error tests for inference failure
   - [x] error tests for parsed generic function syntax before semantic
     instantiation
   - [ ] error tests for type/value bracket misuse
   - [x] format tests for generic declarations and applications
-  - [ ] LSP tests for hover/symbol/token behaviour affected by generics
-- [ ] Documentation:
-  - [ ] manual section for generics
-  - [ ] syntax-reference appendix entries
-  - [ ] language-reference appendix rules
-  - [ ] note that constraints are deferred to a future traits milestone
+  - [x] LSP tests for hover/symbol/token behaviour affected by generics
+- [x] Documentation:
+  - [x] manual section for generics
+  - [x] syntax-reference appendix entries
+  - [x] language-reference appendix rules
+  - [x] note that constraints are deferred to a future traits milestone
 
 ### Traits Milestone
 
@@ -536,6 +536,10 @@ near-term tasks without a fresh design pass.
   call-site argument ordering.
 - Numeric generic parameters, such as `[T, N: usize]`, including canonical
   value identity and constant-evaluation rules.
+- Targeted diagnostics for value arguments in generic type-argument positions
+  and type arguments in value-index positions.
+- Truncating readable generic C symbol stems while keeping the hash suffix for
+  collision resistance.
 - Interpolation formatting specifiers such as `{expr; format}`.
 - Operator traits for arithmetic, bitwise, comparison, and assignment
   operators.

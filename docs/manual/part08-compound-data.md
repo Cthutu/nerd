@@ -174,6 +174,43 @@ BadNode :: plex {
 }
 ```
 
+## Generic Compound Types
+
+Plexes, raw unions, and enums can take type parameters. The parameters are
+written after the type form:
+
+```nerd
+Box :: plex [T] {
+    value T  -- T is supplied when Box is used
+}
+
+IntBox :: Box[i32]  -- concrete alias for Box with T as i32
+```
+
+Generic type arguments are written in square brackets. All type parameters must
+be supplied:
+
+```nerd
+Pair :: plex [A, B] {
+    first  A
+    second B
+}
+
+pair: Pair[i32, string]  -- A is i32, B is string
+```
+
+Enums can be generic too:
+
+```nerd
+Maybe :: enum [T] {
+    None
+    Some(T)  -- payload type is chosen by Maybe[T]
+}
+```
+
+Generic types are templates. A use such as `Box[i32]` creates a concrete type
+that can be stored, passed, and returned like any other type.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:

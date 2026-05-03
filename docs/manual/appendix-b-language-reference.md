@@ -46,6 +46,11 @@ intended exit code.
 - Function types do not include defaults. Calling through a function value
   requires every argument.
 - FFI declarations cannot have default parameters.
+- Generic functions are written as `fn [T] (...) -> R`.
+- Generic calls can infer all type arguments, as in `id(1)`.
+- Generic calls can provide all type arguments, as in `id[i32](1)`.
+- Concrete generic function values are written as `name[T]`.
+- Partial explicit generic argument lists are invalid.
 
 ## Type Conversion
 
@@ -91,15 +96,26 @@ intended exit code.
 
 - Tuples are positional.
 - Plexes are named-field product types.
+- Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.
 - Plexes may refer to themselves through pointer fields, such as `next ^Node`;
   direct by-value self-recursion is invalid.
 - Top-level pointer aliases into a top-level collection may be used by that
   collection's initializer.
 - Raw unions overlap storage and are low-level.
+- Generic raw unions are written as `union [T] { ... }`.
 - Enums are tagged variants.
+- Generic enums are written as `enum [T] { ... }`.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.
+
+## Generics
+
+- The current generic system supports type parameters only.
+- Numeric or value generic parameters are future work.
+- Constraints are future work and are expected to build on traits.
+- Every explicit generic use must provide all type arguments.
+- Generic instantiations are compiled as concrete functions and types.
 
 ## FFI
 

@@ -17,10 +17,15 @@ ideas in more detail.
 name :: value
 name :: fn (...) -> Type { ... }
 name :: fn (...) => expr
+name :: fn [T, U] (...) -> Type { ... }
+name :: fn [T, U] (...) => expr
 Name :: Type
 Name :: plex { field Type }
+Name :: plex [T, U] { field Type }
 Name :: union { field Type }
+Name :: union [T, U] { field Type }
 Name :: enum { Variant Payload(Type) }
+Name :: enum [T, U] { Variant Payload(Type) }
 pub name :: value
 pub Name :: Type
 ffi "lib" foreign_name (...) -> Type
@@ -63,8 +68,10 @@ target ||= expr
 
 ```nerd
 fn (a: Type, b: Type) -> ReturnType { ... }
+fn [T, U] (a: T, b: U) -> T { ... }
 fn (a: Type, b: Type = expr) -> ReturnType { ... }
 fn (a: Type) => expr
+fn [T] (a: T) => expr
 fn (Type, Type) -> ReturnType
 ```
 
@@ -130,10 +137,15 @@ f32 f64
 (T1, T2)
 fn (T1, T2) -> R
 plex { field Type }
+plex [T] { field T }
 plex #c { field Type }
 plex #packed { field Type }
 union { field Type }
+union [T] { field T }
 enum { Variant Payload(Type) }
+enum [T] { Variant(T) }
+Name[T]
+Name[T, U]
 ```
 
 ## Casts

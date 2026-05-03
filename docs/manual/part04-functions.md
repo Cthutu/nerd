@@ -118,6 +118,47 @@ main :: fn () -> i32 {
 }
 ```
 
+## Generic Functions
+
+A generic function has type parameters after `fn`. Type parameters are names
+for types that are chosen when the function is used:
+
+```nerd
+id :: fn [T] (value: T) -> T {  -- T is chosen for each concrete use
+    return value                -- return the same type that came in
+}
+```
+
+Most calls infer the type parameters from the arguments:
+
+```nerd
+main :: fn () -> i32 {
+    return id(42)  -- infers T as i32
+}
+```
+
+You can also provide every type argument explicitly:
+
+```nerd
+main :: fn () -> i32 {
+    return id[i32](42)  -- explicitly use the i32 version of id
+}
+```
+
+Explicit generic arguments are all-or-nothing. If a function has `[A, B]`, a
+call must either let both types be inferred or provide both types explicitly.
+
+A concrete instantiation can be stored as a function value:
+
+```nerd
+int_id := id[i32]  -- choose the i32 version as a function value
+return int_id(42)  -- function values are called normally
+```
+
+The first version of generics accepts type parameters only. Constraints are
+future work; for now, a generic body must be valid for each concrete use that
+the program asks the compiler to build.
+
 ## Nested Functions
 
 Functions can be declared inside block bodies:
