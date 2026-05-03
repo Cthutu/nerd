@@ -137,6 +137,10 @@ main :: fn () -> i32 {
 }
 ```
 
+Inference can look through pointers, slices, arrays, dynamic arrays, and generic
+type aliases used in parameter types. For example, a parameter of type
+`^Stack[T]` can infer `T` from an argument of type `^Stack[i32]`.
+
 You can also provide every type argument explicitly:
 
 ```nerd

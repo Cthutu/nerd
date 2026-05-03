@@ -59,6 +59,17 @@ pub answer :: fn () -> i32 {  -- exported from this module
 
 Declarations without `pub` are private to the module.
 
+Public generic functions and generic type aliases can be imported like other
+public declarations. The concrete versions are still created only when another
+module uses them:
+
+```nerd
+use app.collections
+
+stack: Stack[i32]       -- use an imported generic type alias
+stack_push(^stack, 42)  -- infer the imported generic function as stack_push[i32]
+```
+
 ## Re-Exports
 
 A module can re-export public names from another module. Use this when building

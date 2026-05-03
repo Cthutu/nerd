@@ -1,0 +1,21 @@
+pub Stack :: plex [T] {
+    data [..]T
+}
+
+pub stack_push :: fn [T] (stack: ^Stack[T], elem: T) {
+    stack.data.push(elem)
+}
+
+pub stack_pop :: fn [T] (stack: ^Stack[T]) -> T {
+    return stack.data.pop()
+}
+
+pub Box :: plex [T] {
+    value T
+}
+
+pub make_box :: fn [T] (value: T) -> Box[T] {
+    box: Box[T]
+    box.value = value
+    return box
+}

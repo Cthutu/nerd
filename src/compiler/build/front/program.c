@@ -151,14 +151,41 @@ internal bool program_front_end_finish(ProgramInfo*           program,
 
     bool result = program_run_timed(
         timing, COMPILER_PHASE_SEMA, program_front_end_sema, &ctx);
-    if (result && !module_options.skip_ir_generation) {
-        result = program_run_timed(
-            timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx);
-        if (result && module_options.verbose) {
+    return result;
+}
+
+internal bool program_front_end_generate_ir(ProgramInfo*           program,
+                                            const FrontEndOptions* options,
+                                            Timing*                timing)
+{
+    FrontEndOptions effective_options =
+        options ? *options : (FrontEndOptions){0};
+    if (effective_options.skip_ir_generation) {
+        return true;
+    }
+
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        ModuleInfo* module = &program->modules[i];
+        ProgramFrontEndContext ctx = {
+            .source =
+                {
+                    .source = module->front_end.lexer.source.source,
+                    .source_path =
+                        module->front_end.lexer.source.source_path,
+                },
+            .options   = effective_options,
+            .front_end = &module->front_end,
+        };
+        if (!program_run_timed(
+                timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx)) {
+            return false;
+        }
+        if (effective_options.verbose) {
             ir_dump(&module->front_end.ir, &module->front_end.lexer);
         }
     }
-    return result;
+
+    return true;
 }
 
 internal bool program_keyword_is_defined(const FrontEndOptions* options,
@@ -472,6 +499,13 @@ bool front_end_program(NerdSource             source,
 
     program_collect_module_exports(&program.modules[program.root_module_index]);
     program.modules[program.root_module_index].state = MODULE_Loaded;
+
+    if (!program_front_end_generate_ir(
+            &program, &effective_options, timing)) {
+        program.modules[program.root_module_index].state = MODULE_Failed;
+        program_info_done(&program);
+        return false;
+    }
 
     if (out_program != NULL) {
         *out_program = program;
