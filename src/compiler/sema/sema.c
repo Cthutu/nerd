@@ -2096,13 +2096,23 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                                                 decl_index,
                                                 alias_states,
                                                 out_is_type,
-                                                out_type_index);
+                out_type_index);
         }
+
+    case AK_TypeApply:
+        return error_0339_generics_not_implemented(
+            lexer->source, sema_node_span(lexer, node), s("generic type application"));
 
     case AK_TypeFn:
         {
             const AstFnSignature* signature = sema_ast_signature(ast, node);
             Array(u32) param_types          = NULL;
+            if (signature->generic_params_index != U32_MAX) {
+                return error_0339_generics_not_implemented(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("generic function type"));
+            }
 
             for (u32 i = 0; i < signature->param_count; ++i) {
                 bool param_is_type = false;
@@ -2358,6 +2368,13 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
         {
             const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
             Array(u32) field_types      = NULL;
+            if (plex->generic_params_index != U32_MAX) {
+                return error_0339_generics_not_implemented(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    (plex->flags & APTF_Union) ? s("generic union")
+                                               : s("generic plex"));
+            }
             for (u32 i = 0; i < plex->field_count; ++i) {
                 bool field_is_type = false;
                 u32  field_type    = sema_no_type();
@@ -2403,6 +2420,10 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             Array(u32) payload_types         = NULL;
             Array(i64) discriminants         = NULL;
             i64 next_discriminant            = 0;
+            if (enum_type->generic_params_index != U32_MAX) {
+                return error_0339_generics_not_implemented(
+                    lexer->source, sema_node_span(lexer, node), s("generic enum"));
+            }
             for (u32 i = 0; i < enum_type->variant_count; ++i) {
                 const AstEnumVariant* variant =
                     &ast->enum_variants[enum_type->first_variant + i];
@@ -2875,6 +2896,16 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
     const AstNode* node                 = &ast->nodes[node_index];
 
     switch (node->kind) {
+    case AK_TypeApply:
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            sema_mark_type_expr_nodes(ast, sema, apply->target_node_index);
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                sema_mark_type_expr_nodes(
+                    ast, sema, ast->tuple_items[apply->first_arg + i]);
+            }
+        }
+        break;
     case AK_TypeFn:
         {
             const AstFnSignature* signature = &ast->fn_signatures[node->a];
@@ -3962,6 +3993,10 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
             current_function_symbol;
     }
     const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+    if (signature->generic_params_index != U32_MAX) {
+        return error_0339_generics_not_implemented(
+            lexer->source, sema_node_span(lexer, fn_def), s("generic function"));
+    }
 
     bool seen_default = false;
     for (u32 i = 0; i < signature->param_count; ++i) {
@@ -5570,10 +5605,20 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeApply:
+        return error_0339_generics_not_implemented(
+            lexer->source, sema_node_span(lexer, node), s("generic type application"));
+
     case AK_TypeFn:
         {
             const AstFnSignature* signature = sema_ast_signature(ast, node);
             Array(u32) param_types          = NULL;
+            if (signature->generic_params_index != U32_MAX) {
+                return error_0339_generics_not_implemented(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("generic function type"));
+            }
 
             for (u32 i = 0; i < signature->param_count; ++i) {
                 u32 param_type = sema_no_type();
@@ -5710,6 +5755,13 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
         {
             const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
             Array(u32) field_types      = NULL;
+            if (plex->generic_params_index != U32_MAX) {
+                return error_0339_generics_not_implemented(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    (plex->flags & APTF_Union) ? s("generic union")
+                                               : s("generic plex"));
+            }
             for (u32 i = 0; i < plex->field_count; ++i) {
                 u32 field_type = sema_no_type();
                 if (!sema_resolve_type_node(

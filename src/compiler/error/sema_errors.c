@@ -1040,3 +1040,31 @@ bool error_0338_default_param_later_reference(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report generic syntax that is parsed before semantic support is complete.
+
+bool error_0339_generics_not_implemented(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     construct)
+{
+    ErrorInfo error =
+        error_init(339,
+                   source,
+                   span,
+                   "Generics are not implemented for `" STRINGP "` yet",
+                   STRINGV(construct));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This generic syntax is recognised but not lowered");
+    error_add_note(&error,
+                   "The parser and formatter understand the square-bracket "
+                   "generic syntax, but semantic instantiation is still in "
+                   "progress.");
+    error_add_help(&error,
+                   "Use a concrete non-generic declaration for now, or keep "
+                   "this source until the generics milestone is completed.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -197,9 +197,9 @@ the roadmap before committing the implementation.
 ### Generics Milestone
 
 - [ ] Add generic syntax using square brackets:
-  - [ ] generic functions as `fn [T] (...) -> R`
-  - [ ] generic type declarations as `plex [T]`, `union [T]`, and `enum [T]`
-  - [ ] generic type application as `Name[T]`
+  - [x] generic functions as `fn [T] (...) -> R`
+  - [x] generic type declarations as `plex [T]`, `union [T]`, and `enum [T]`
+  - [x] generic type application as `Name[T]`
   - [ ] explicit generic function calls as `name[T](...)`
   - [ ] concrete generic function values as `f := name[T]`
 - [ ] Keep the first generics version type-parameter-only:
@@ -221,10 +221,10 @@ the roadmap before committing the implementation.
     explaining when to omit the whole generic argument list or provide every
     type explicitly
 - [ ] Add parser and AST support:
-  - [ ] parse generic parameter lists on function and type declarations
-  - [ ] parse bracket application syntax without assuming whether it is an
+  - [x] parse generic parameter lists on function and type declarations
+  - [x] parse bracket application syntax without assuming whether it is an
     index/slice or generic application
-  - [ ] keep ambiguous bracket syntax syntactic in the AST where practical
+  - [x] keep ambiguous bracket syntax syntactic in the AST where practical
 - [ ] Add semantic bracket classification:
   - [ ] classify bracket syntax as value indexing/slicing or generic
     application during semantic analysis
@@ -256,8 +256,8 @@ the roadmap before committing the implementation.
   - [ ] keep generic templates out of generated C output
   - [ ] preserve stable generated C across rebuilds
 - [ ] Formatter work:
-  - [ ] format generic parameter lists
-  - [ ] format generic type applications
+  - [x] format generic parameter lists
+  - [x] format generic type applications
   - [ ] format explicit generic calls and concrete generic function values
 - [ ] LSP/editor work:
   - [ ] show generic signatures in hover text
@@ -270,8 +270,9 @@ the roadmap before committing the implementation.
   - [ ] language tests for generic plex/union/enum instantiation
   - [ ] error tests for partial explicit generic arguments
   - [ ] error tests for inference failure
+  - [x] error tests for parsed generic syntax before semantic instantiation
   - [ ] error tests for type/value bracket misuse
-  - [ ] format tests for generic declarations and applications
+  - [x] format tests for generic declarations and applications
   - [ ] LSP tests for hover/symbol/token behaviour affected by generics
 - [ ] Documentation:
   - [ ] manual section for generics

@@ -294,6 +294,9 @@ bool error_0337_default_param_on_ffi(NerdSource source,
 bool error_0338_default_param_later_reference(NerdSource source,
                                               ErrorSpan  span,
                                               string     symbol);
+bool error_0339_generics_not_implemented(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     construct);
 
 //------------------------------------------------------------------------------
 // Low-level error system
