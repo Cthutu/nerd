@@ -1,25 +1,26 @@
-message: string = $"Hello"
+count := 3
+message := $"count={count}"
 ¬
 {
     "code": "0310",
-    "message": "Interpolated strings are only supported inside functions",
+    "message": "Runtime interpolated strings must be statement-local",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
-        "line": 1,
-        "column": 19
+        "line": 2,
+        "column": 12
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
-            "column": 19,
+            "line": 2,
+            "column": 12,
             "length": 2,
-            "message": "This interpolated string appears at top level"
+            "message": "This interpolation needs runtime string building"
         }
     ],
     "notes": [],
     "help": [
-        "Move the interpolation inside a function body for the current milestone."
+        "Use only compile-time values in top-level interpolated strings, or move the interpolation into a statement-local function context."
     ]
 }
 ¬
@@ -53,20 +54,21 @@ main :: fn () {
     ]
 }
 ¬
-main :: fn () => $"Hello"
+value := 1
+main :: fn () => $"value={value}"
 ¬
 {
     "code": "0312",
     "message": "Interpolated string cannot escape statement scope",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
-        "line": 1,
+        "line": 2,
         "column": 18
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
+            "line": 2,
             "column": 18,
             "length": 2,
             "message": "This value would outlive the temporary string arena"

@@ -136,19 +136,6 @@ the roadmap before committing the implementation.
 - Keep `docs/stdlib.md` as a separate standard-library document; the language
   manual should reference the standard library only for small examples.
 
-### String Surface Follow-through
-
-- Support top-level interpolated string bindings once the runtime init model is
-  robust enough.
-- Optimise interpolated strings for constant expressions once the runtime-based
-  implementation has settled.
-- Extend the formatter to reflow long string literals into consecutive adjacent
-  string literals, and to merge adjacent short literals when that improves
-  readability.
-- Prefer breaking strings at spaces so normal prose does not split words where
-  practical.
-- Keep emitted literals semantically equivalent to the original source.
-
 ### Formatter And LSP Follow-through
 
 - Keep extending formatter support as syntax lands.

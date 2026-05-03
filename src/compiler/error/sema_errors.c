@@ -279,7 +279,7 @@ bool error_0309_type_alias_cycle(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report use of interpolation outside a supported function-local context.
+// Report use of runtime interpolation outside a supported local context.
 
 bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
 {
@@ -287,14 +287,15 @@ bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
         error_init(310,
                    source,
                    span,
-                   "Interpolated strings are only supported inside functions");
+                   "Runtime interpolated strings must be statement-local");
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
-                        "This interpolated string appears at top level");
+                        "This interpolation needs runtime string building");
     error_add_help(&error,
-                   "Move the interpolation inside a function body for the "
-                   "current milestone.");
+                   "Use only compile-time values in top-level interpolated "
+                   "strings, or move the interpolation into a statement-local "
+                   "function context.");
     error_render(&error);
     return false;
 }

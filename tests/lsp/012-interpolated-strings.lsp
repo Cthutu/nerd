@@ -1,4 +1,5 @@
-message: string = $"Hello"
+count := 3
+message := $"count={count}"
 ¬
 []
 ¬
@@ -42,34 +43,34 @@ message: string = $"Hello"
                 {
                     "range": {
                         "start": {
-                            "line": 0,
-                            "character": 18
+                            "line": 1,
+                            "character": 11
                         },
                         "end": {
-                            "line": 0,
-                            "character": 20
+                            "line": 1,
+                            "character": 13
                         }
                     },
                     "severity": 1,
                     "code": "0310",
                     "source": "nerd",
-                    "message": "Interpolated strings are only supported inside functions",
+                    "message": "Runtime interpolated strings must be statement-local",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 0,
-                                        "character": 18
+                                        "line": 1,
+                                        "character": 11
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "character": 20
+                                        "line": 1,
+                                        "character": 13
                                     }
                                 }
                             },
-                            "message": "help: Move the interpolation inside a function body for the current milestone."
+                            "message": "help: Use only compile-time values in top-level interpolated strings, or move the interpolation into a statement-local function context."
                         }
                     ]
                 }

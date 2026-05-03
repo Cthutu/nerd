@@ -349,6 +349,13 @@ internal string format_assignment_operator(const Lexer*   lexer,
                                            const CstNode* stmt);
 internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index);
+internal void format_emit_string_literal(StringBuilder* sb,
+                                         string         text,
+                                         bool           is_c_string);
+internal bool format_collect_plain_string_concat(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index);
 internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
@@ -512,17 +519,25 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "nil");
         break;
     case CK_StringLiteral:
-        if (lexer->tokens[node->token_index].kind == TK_CString) {
-            sb_append_char(sb, 'c');
-        }
-        sb_append_char(sb, '"');
-        format_emit_string_text(sb, lexer->strings[node->a]);
-        sb_append_char(sb, '"');
+        format_emit_string_literal(
+            sb,
+            lexer->strings[node->a],
+            lexer->tokens[node->token_index].kind == TK_CString);
         break;
     case CK_StringConcat:
-        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
-        sb_append_char(sb, ' ');
-        format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+        {
+            StringBuilder concat = {0};
+            sb_init(&concat, &temp_arena);
+            if (format_collect_plain_string_concat(
+                    &concat, cst, lexer, node_index)) {
+                format_emit_string_literal(
+                    sb, sb_to_string(&concat), false);
+            } else {
+                format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                sb_append_char(sb, ' ');
+                format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+            }
+        }
         break;
     case CK_InterpolatedString:
         sb_append_cstr(sb, "$\"");
@@ -1312,6 +1327,88 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
     for (u32 i = 0; i < indent_level; ++i) {
         sb_append_cstr(sb, "    ");
     }
+}
+
+internal bool format_string_has_newline(string text)
+{
+    for (usize i = 0; i < text.count; ++i) {
+        if (text.data[i] == '\n' || text.data[i] == '\r') {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal usize format_find_string_split(string text, usize start, usize max_end)
+{
+    usize best = U32_MAX;
+    for (usize i = start; i < max_end && i < text.count; ++i) {
+        if (text.data[i] == ' ') {
+            best = i + 1;
+        }
+    }
+    if (best != U32_MAX && best > start) {
+        return best;
+    }
+    return max_end < text.count ? max_end : text.count;
+}
+
+internal void format_emit_string_literal(StringBuilder* sb,
+                                         string         text,
+                                         bool           is_c_string)
+{
+    if (is_c_string || text.count + 2 <= FORMAT_WRAP_WIDTH ||
+        format_string_has_newline(text)) {
+        if (is_c_string) {
+            sb_append_char(sb, 'c');
+        }
+        sb_append_char(sb, '"');
+        format_emit_string_text(sb, text);
+        sb_append_char(sb, '"');
+        return;
+    }
+
+    usize start        = 0;
+    usize segment_size = FORMAT_WRAP_WIDTH - 2;
+    while (start < text.count) {
+        usize end = start + segment_size;
+        if (end > text.count) {
+            end = text.count;
+        } else {
+            end = format_find_string_split(text, start, end);
+        }
+
+        sb_append_char(sb, '"');
+        format_emit_string_text(
+            sb, string_from(text.data + start, end - start));
+        sb_append_char(sb, '"');
+
+        start = end;
+        if (start < text.count) {
+            sb_append_char(sb, '\n');
+            format_emit_indent(sb, g_format_expr_indent_level + 1);
+        }
+    }
+}
+
+internal bool format_collect_plain_string_concat(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_StringLiteral) {
+        if (lexer->tokens[node->token_index].kind == TK_CString) {
+            return false;
+        }
+        sb_append_string(sb, lexer->strings[node->a]);
+        return true;
+    }
+    if (node->kind != CK_StringConcat) {
+        return false;
+    }
+    return format_collect_plain_string_concat(sb, cst, lexer, node->a) &&
+           format_collect_plain_string_concat(sb, cst, lexer, node->b);
 }
 
 internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)

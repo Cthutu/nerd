@@ -242,6 +242,19 @@ Each expression inside `{...}` is evaluated, converted to text, and inserted at
 that position in the produced string. In the example, the result is the string
 `"value=42"`.
 
+When every expression inside the interpolation is a compile-time value, the
+compiler can produce the string at compile time:
+
+```nerd
+name :: "world"
+message :: $"hello {name}"  -- compile-time interpolation
+```
+
+This is useful for top-level bindings. Runtime interpolated strings use a
+temporary string builder and must be used in statement-local positions, such as
+function call arguments. A top-level interpolated binding must therefore use
+only compile-time values inside `{...}`.
+
 ## C Strings
 
 A C string is a pointer to bytes ending with a zero byte. C functions use that

@@ -8,8 +8,8 @@ implementation details.
 
 The current implementation is intentionally simple:
 
-- interpolated strings are only allowed inside functions
-- interpolated strings are temporary values only
+- interpolated strings with only compile-time parts lower to string literals
+- runtime interpolated strings are temporary values only
 - lowering is explicit in IR
 - generated C uses a global append-only arena-backed builder
 - conversion support is limited to built-in primitive types and `string`
@@ -57,7 +57,12 @@ builder after a statement that uses interpolation completes.
 That keeps the runtime simple and avoids exposing manual reset operations in the
 language, but it also means interpolated strings may not escape statement
 scope. Returning them, assigning them to variables, or storing them in other
-bindings is rejected in sema for now.
+bindings is rejected in sema for now unless the interpolation is fully
+compile-time and lowers to an ordinary string literal.
+
+Top-level interpolated bindings are allowed when all interpolation parts are
+compile-time values. Top-level interpolations that need runtime string building
+are still rejected.
 
 ## Semantic Rules
 

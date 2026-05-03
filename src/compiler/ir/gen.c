@@ -7,6 +7,8 @@
 #include "compiler/ir/ir.h"
 #include <compiler/error/error.h>
 
+#include <stdio.h>
+
 //------------------------------------------------------------------------------
 // AST ownership helpers.
 
@@ -1160,6 +1162,26 @@ internal u32 ir_add_concat_string(Ir* ir, string lhs, string rhs)
     return ir_add_string_literal(ir, string_from(data, lhs.count + rhs.count));
 }
 
+internal bool ir_type_kind_is_integer(SemaTypeKind kind)
+{
+    return kind == STK_UntypedInteger || kind == STK_I8 || kind == STK_I16 ||
+           kind == STK_I32 || kind == STK_I64 || kind == STK_U8 ||
+           kind == STK_U16 || kind == STK_U32 || kind == STK_U64 ||
+           kind == STK_Isize || kind == STK_Usize;
+}
+
+internal bool ir_type_kind_is_float(SemaTypeKind kind)
+{
+    return kind == STK_UntypedFloat || kind == STK_F32 || kind == STK_F64;
+}
+
+internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
+                                                  const Ast*   ast,
+                                                  const Sema*  sema,
+                                                  Ir*          ir,
+                                                  u32          node_index,
+                                                  StringBuilder* sb);
+
 internal bool ir_eval_string_constant(const Lexer* lex,
                                       const Ast*   ast,
                                       const Sema*  sema,
@@ -1184,6 +1206,30 @@ internal bool ir_eval_string_constant(const Lexer* lex,
 
             u32 string_index = ir_add_concat_string(ir, lhs, rhs);
             *out             = ir->strings[string_index];
+            return true;
+        }
+    case AK_InterpolatedString:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, &ir->arena);
+
+            for (u32 i = node->a; i < node->b; ++i) {
+                const AstNode* part = &ast->nodes[i];
+                if (part->kind == AK_StringLiteral) {
+                    sb_append_string(&sb, ast_get_string(lex, part));
+                    continue;
+                }
+
+                ASSERT(part->kind == AK_InterpPartExpr,
+                       "Expected interpolated string part expression");
+                if (!ir_eval_interpolation_part_constant(
+                        lex, ast, sema, ir, part->a, &sb)) {
+                    return false;
+                }
+            }
+
+            *out = sb_to_string(&sb);
+            ir_add_string_literal(ir, *out);
             return true;
         }
     case AK_Expression:
@@ -1225,6 +1271,103 @@ internal bool ir_eval_string_constant(const Lexer* lex,
     default:
         return false;
     }
+}
+
+internal bool ir_eval_interpolation_part_constant(const Lexer* lex,
+                                                  const Ast*   ast,
+                                                  const Sema*  sema,
+                                                  Ir*          ir,
+                                                  u32          node_index,
+                                                  StringBuilder* sb)
+{
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_Expression:
+    case AK_Statement:
+    case AK_InterpPartExpr:
+    case AK_AnnotatedValue:
+        return ir_eval_interpolation_part_constant(
+            lex, ast, sema, ir, node->kind == AK_AnnotatedValue ? node->b
+                                                                : node->a,
+            sb);
+    case AK_StringLiteral:
+    case AK_StringConcat:
+    case AK_InterpolatedString:
+        {
+            string text = {0};
+            if (!ir_eval_string_constant(lex, ast, sema, ir, node_index, &text)) {
+                return false;
+            }
+            sb_append_string(sb, text);
+            return true;
+        }
+    case AK_SymbolRef:
+        if (node_index < array_count(sema->node_local_indices)) {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index != sema_no_local() &&
+                sema->locals[local_index].kind == SLK_Constant &&
+                sema->locals[local_index].value_node_index != sema_no_decl()) {
+                return ir_eval_interpolation_part_constant(
+                    lex,
+                    ast,
+                    sema,
+                    ir,
+                    sema->locals[local_index].value_node_index,
+                    sb);
+            }
+        }
+        if (node_index < array_count(sema->node_decl_indices)) {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant &&
+                sema->decls[decl_index].value_node_index != sema_no_decl()) {
+                return ir_eval_interpolation_part_constant(
+                    lex,
+                    ast,
+                    sema,
+                    ir,
+                    sema->decls[decl_index].value_node_index,
+                    sb);
+            }
+        }
+        return false;
+    case AK_FloatLiteral:
+        sb_format(sb, "%g", ast_get_float(lex, node));
+        return true;
+    default:
+        break;
+    }
+
+    u32 type_index =
+        node_index < array_count(sema->node_type_indices)
+            ? sema->node_type_indices[node_index]
+            : sema_no_type();
+    SemaTypeKind type_kind =
+        type_index != sema_no_type() && type_index < array_count(sema->types)
+            ? sema->types[type_index].kind
+            : STK_Void;
+
+    if (type_kind == STK_Bool && node_index < array_count(sema->node_const_known) &&
+        sema->node_const_known[node_index]) {
+        sb_append_cstr(sb, sema->node_const_values[node_index] != 0 ? "yes"
+                                                                    : "no");
+        return true;
+    }
+
+    if (ir_type_kind_is_integer(type_kind) &&
+        node_index < array_count(sema->node_const_known) &&
+        sema->node_const_known[node_index]) {
+        sb_format(sb, "%lld", (long long)sema->node_const_values[node_index]);
+        return true;
+    }
+
+    if (ir_type_kind_is_float(type_kind) && node->kind == AK_FloatLiteral) {
+        sb_format(sb, "%g", ast_get_float(lex, node));
+        return true;
+    }
+
+    return false;
 }
 
 internal u32 ir_builtin_string_type(const Sema* sema)
@@ -1478,6 +1621,19 @@ internal u32 ir_find_scope_local(const Sema* sema,
 
 internal bool ir_pattern_contains_interpolation(const Ast* ast,
                                                 u32        pattern_index);
+
+internal bool ir_instructions_include_runtime_string(const Ir* ir,
+                                                     u32       first_index)
+{
+    for (u32 i = first_index; i < array_count(ir->instructions); ++i) {
+        IrOperation op = ir->instructions[i].op;
+        if (op == IR_OP_STRING_START || op == IR_OP_STRING_APPEND ||
+            op == IR_OP_STRING_FINISH) {
+            return true;
+        }
+    }
+    return false;
+}
 
 internal bool ir_node_contains_interpolation(const Ast* ast, u32 node_index)
 {
@@ -2641,14 +2797,25 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_InterpolatedString:
         {
-            IrValue value           = ir_build_runtime_string(lex,
-                                                              ast,
-                                                              sema,
-                                                              node_index,
-                                                              loop,
-                                                              node_values,
-                                                              next_value_index,
-                                                              ir);
+            string  literal = {0};
+            IrValue value   = ir_unset_value();
+            if (ir_eval_string_constant(
+                    lex, ast, sema, ir, node_index, &literal)) {
+                value = (IrValue){
+                    .kind = IR_VALUE_STRING,
+                    .type = ir_node_type_index(ast, sema, node_index),
+                    .value.integer = ir_add_string_literal(ir, literal),
+                };
+            } else {
+                value = ir_build_runtime_string(lex,
+                                                ast,
+                                                sema,
+                                                node_index,
+                                                loop,
+                                                node_values,
+                                                next_value_index,
+                                                ir);
+            }
             node_values[node_index] = value;
             return value;
         }
@@ -5220,6 +5387,8 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
         expr            = &ast->nodes[expr_root_index];
     }
 
+    u32 first_instruction = (u32)array_count(ir->instructions);
+
     if (expr->kind == AK_Call) {
         ir_generate_call_statement(
             lex, ast, sema, expr, loop, node_values, next_value_index, ir);
@@ -5234,7 +5403,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                             ir);
     }
 
-    if (ir_node_contains_interpolation(ast, expr_root_index)) {
+    if (ir_instructions_include_runtime_string(ir, first_instruction)) {
         ir_add_string_reset(ir);
     }
 
@@ -5446,8 +5615,11 @@ internal void ir_generate_function_body(const Lexer* lex,
     bool needs_string_runtime = false;
     for (u32 i = fn_def_node->a; i < fn_start_node->b; ++i) {
         if (ast->nodes[i].kind == AK_InterpolatedString) {
-            needs_string_runtime = true;
-            break;
+            string ignored = {0};
+            if (!ir_eval_string_constant(lex, ast, sema, ir, i, &ignored)) {
+                needs_string_runtime = true;
+                break;
+            }
         }
     }
     if (needs_string_runtime) {
