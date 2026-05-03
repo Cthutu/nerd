@@ -26,6 +26,12 @@ u32 sema_no_type(void) { return U32_MAX; }
 //------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
 
+typedef struct {
+    const u32* param_symbols;
+    const u32* arg_types;
+    u32        count;
+} SemaTypeSubstitution;
+
 internal u32                sema_builtin_type(Sema* sema, SemaTypeKind kind);
 internal u32                sema_type_index_for_name(Sema* sema, string name);
 internal u32                sema_find_decl(const Sema* sema, u32 symbol_handle);
@@ -34,6 +40,12 @@ internal bool               sema_resolve_type_node(const Lexer* lexer,
                                                    Sema*        sema,
                                                    u32          node_index,
                                                    u32*         out_type_index);
+internal bool               sema_resolve_type_node_ex(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      Sema*        sema,
+                                                      u32          node_index,
+                                                      SemaTypeSubstitution subst,
+                                                      u32* out_type_index);
 internal bool               sema_try_resolve_type_symbol(const Lexer* lexer,
                                                          const Ast*   ast,
                                                          Sema*        sema,
@@ -2060,6 +2072,31 @@ internal bool sema_node_is_inside_function_body(const Ast* ast, u32 node_index)
     return false;
 }
 
+internal u32 sema_type_node_generic_params_index(const Ast* ast, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_TypePlex) {
+        return ast->plex_types[node->a].generic_params_index;
+    }
+    if (node->kind == AK_TypeEnum) {
+        return ast->enum_types[node->a].generic_params_index;
+    }
+    if (node->kind == AK_TypeFn) {
+        return ast->fn_signatures[node->a].generic_params_index;
+    }
+    return U32_MAX;
+}
+
+internal u32 sema_unwrap_type_candidate_node(const Ast* ast, u32 node_index)
+{
+    while (node_index < array_count(ast->nodes) &&
+           (ast->nodes[node_index].kind == AK_Expression ||
+            ast->nodes[node_index].kind == AK_Statement)) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
 internal bool sema_try_classify_type_node(const Lexer* lexer,
                                           const Ast*   ast,
                                           Sema*        sema,
@@ -2100,8 +2137,71 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
         }
 
     case AK_TypeApply:
-        return error_0339_generics_not_implemented(
-            lexer->source, sema_node_span(lexer, node), s("generic type application"));
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            const AstNode* target = &ast->nodes[apply->target_node_index];
+            if (target->kind != AK_SymbolRef) {
+                return error_0303_unknown_type(
+                    lexer->source, sema_node_span(lexer, target), s("<generic>"));
+            }
+
+            u32 decl_index = sema_find_decl(sema, target->a);
+            if (decl_index == sema_no_decl() ||
+                sema->decls[decl_index].kind != SK_GenericTypeAlias) {
+                return error_0303_unknown_type(lexer->source,
+                                               sema_node_span(lexer, target),
+                                               lex_symbol(lexer, target->a));
+            }
+
+            const SemaDecl* decl = &sema->decls[decl_index];
+            u32 template_node = sema_unwrap_type_candidate_node(
+                ast, decl->value_node_index);
+            u32 generic_params_index =
+                sema_type_node_generic_params_index(ast, template_node);
+            ASSERT(generic_params_index != U32_MAX,
+                   "Expected generic type alias template");
+            const AstGenericParams* generic =
+                &ast->generic_params[generic_params_index];
+            if (apply->arg_count != generic->symbol_count) {
+                return error_0313_argument_count_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    generic->symbol_count,
+                    apply->arg_count);
+            }
+
+            Array(u32) arg_types = NULL;
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                u32 arg_type = sema_no_type();
+                if (!sema_resolve_type_node_ex(lexer,
+                                               ast,
+                                               sema,
+                                               ast->tuple_items[apply->first_arg + i],
+                                               (SemaTypeSubstitution){0},
+                                               &arg_type)) {
+                    array_free(arg_types);
+                    return false;
+                }
+                array_push(arg_types, arg_type);
+            }
+
+            SemaTypeSubstitution template_subst = {
+                .param_symbols =
+                    &ast->generic_param_symbols[generic->first_symbol],
+                .arg_types = arg_types,
+                .count     = generic->symbol_count,
+            };
+            u32 type_index = sema_no_type();
+            bool ok = sema_resolve_type_node_ex(
+                lexer, ast, sema, template_node, template_subst, &type_index);
+            array_free(arg_types);
+            if (!ok) {
+                return false;
+            }
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
 
     case AK_TypeFn:
         {
@@ -2529,6 +2629,11 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
                                            u32*  out_type_index)
 {
     SemaDecl* decl = &sema->decls[decl_index];
+    if (decl->kind == SK_GenericTypeAlias) {
+        *out_is_type    = false;
+        *out_type_index = sema_no_type();
+        return true;
+    }
     if (decl->kind == SK_TypeAlias) {
         *out_is_type    = true;
         *out_type_index = decl->type_index;
@@ -2570,9 +2675,17 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
     }
 
     u32 value_node_index = decl->value_node_index;
-    while (ast->nodes[value_node_index].kind == AK_Expression ||
-           ast->nodes[value_node_index].kind == AK_Statement) {
-        value_node_index = ast->nodes[value_node_index].a;
+    value_node_index = sema_unwrap_type_candidate_node(ast, value_node_index);
+
+    u32 generic_params_index =
+        sema_type_node_generic_params_index(ast, value_node_index);
+    if (generic_params_index != U32_MAX) {
+        decl->kind                = SK_GenericTypeAlias;
+        decl->type_index          = sema_no_type();
+        alias_states[decl_index]  = SEMA_ALIAS_DONE;
+        *out_is_type              = false;
+        *out_type_index           = sema_no_type();
+        return true;
     }
 
     u32 reserved_type = sema_no_type();
@@ -3130,11 +3243,12 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
                                         u32          scope_index,
                                         u32          pattern_index,
                                         Sema*        sema);
-internal bool sema_resolve_type_node(const Lexer* lexer,
-                                     const Ast*   ast,
-                                     Sema*        sema,
-                                     u32          node_index,
-                                     u32*         out_type_index);
+internal bool sema_resolve_type_node_ex(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        Sema*        sema,
+                                        u32          node_index,
+                                        SemaTypeSubstitution subst,
+                                        u32*         out_type_index);
 internal bool sema_try_resolve_type_symbol(const Lexer* lexer,
                                            const Ast*   ast,
                                            Sema*        sema,
@@ -4753,7 +4867,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 }
                 return true;
             }
-            if (sema->decls[decl_index].kind == SK_TypeAlias) {
+            if (sema->decls[decl_index].kind == SK_TypeAlias ||
+                sema->decls[decl_index].kind == SK_GenericTypeAlias) {
                 return error_0308_type_used_as_value(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -5312,7 +5427,8 @@ internal void
 sema_collect_deps(const Ast* ast, const Sema* sema, Sema* out_sema)
 {
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
-        if (sema->decls[i].kind == SK_TypeAlias) {
+        if (sema->decls[i].kind == SK_TypeAlias ||
+            sema->decls[i].kind == SK_GenericTypeAlias) {
             continue;
         }
         if (sema->decls[i].value_node_index == sema_no_decl()) {
@@ -5421,6 +5537,9 @@ sema_resolve_symbol_refs(const Lexer* lexer, const Ast* ast, Sema* sema)
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
         const SemaDecl* decl = &sema->decls[i];
         if (decl->value_node_index == sema_no_decl()) {
+            continue;
+        }
+        if (decl->kind == SK_GenericTypeAlias) {
             continue;
         }
         if (decl->kind == SK_Function) {
@@ -5575,17 +5694,27 @@ internal u32 sema_type_index_for_name(Sema* sema, string name)
 //------------------------------------------------------------------------------
 // Resolve one parsed type node into a semantic type row.
 
-internal bool sema_resolve_type_node(const Lexer* lexer,
-                                     const Ast*   ast,
-                                     Sema*        sema,
-                                     u32          node_index,
-                                     u32*         out_type_index)
+internal bool sema_resolve_type_node_ex(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        Sema*        sema,
+                                        u32          node_index,
+                                        SemaTypeSubstitution subst,
+                                        u32*         out_type_index)
 {
     const AstNode* node = &ast->nodes[node_index];
 
     switch (node->kind) {
     case AK_SymbolRef:
         {
+            for (u32 i = 0; i < subst.count; ++i) {
+                if (subst.param_symbols[i] == node->a) {
+                    u32 type_index = subst.arg_types[i];
+                    sema->node_type_indices[node_index] = type_index;
+                    *out_type_index                     = type_index;
+                    return true;
+                }
+            }
+
             u32 type_index =
                 sema_type_index_for_name(sema, lex_symbol(lexer, node->a));
             if (type_index == sema_no_type()) {
@@ -5606,8 +5735,71 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
         }
 
     case AK_TypeApply:
-        return error_0339_generics_not_implemented(
-            lexer->source, sema_node_span(lexer, node), s("generic type application"));
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            const AstNode* target = &ast->nodes[apply->target_node_index];
+            if (target->kind != AK_SymbolRef) {
+                return error_0303_unknown_type(
+                    lexer->source, sema_node_span(lexer, target), s("<generic>"));
+            }
+
+            u32 decl_index = sema_find_decl(sema, target->a);
+            if (decl_index == sema_no_decl() ||
+                sema->decls[decl_index].kind != SK_GenericTypeAlias) {
+                return error_0303_unknown_type(lexer->source,
+                                               sema_node_span(lexer, target),
+                                               lex_symbol(lexer, target->a));
+            }
+
+            const SemaDecl* decl = &sema->decls[decl_index];
+            u32 template_node = sema_unwrap_type_candidate_node(
+                ast, decl->value_node_index);
+            u32 generic_params_index =
+                sema_type_node_generic_params_index(ast, template_node);
+            ASSERT(generic_params_index != U32_MAX,
+                   "Expected generic type alias template");
+            const AstGenericParams* generic =
+                &ast->generic_params[generic_params_index];
+            if (apply->arg_count != generic->symbol_count) {
+                return error_0313_argument_count_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    generic->symbol_count,
+                    apply->arg_count);
+            }
+
+            Array(u32) arg_types = NULL;
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                u32 arg_type = sema_no_type();
+                if (!sema_resolve_type_node_ex(lexer,
+                                               ast,
+                                               sema,
+                                               ast->tuple_items[apply->first_arg + i],
+                                               subst,
+                                               &arg_type)) {
+                    array_free(arg_types);
+                    return false;
+                }
+                array_push(arg_types, arg_type);
+            }
+
+            SemaTypeSubstitution template_subst = {
+                .param_symbols =
+                    &ast->generic_param_symbols[generic->first_symbol],
+                .arg_types = arg_types,
+                .count     = generic->symbol_count,
+            };
+            u32 type_index = sema_no_type();
+            bool ok = sema_resolve_type_node_ex(
+                lexer, ast, sema, template_node, template_subst, &type_index);
+            array_free(arg_types);
+            if (!ok) {
+                return false;
+            }
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
 
     case AK_TypeFn:
         {
@@ -5622,11 +5814,12 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
 
             for (u32 i = 0; i < signature->param_count; ++i) {
                 u32 param_type = sema_no_type();
-                if (!sema_resolve_type_node(
+                if (!sema_resolve_type_node_ex(
                         lexer,
                         ast,
                         sema,
                         ast->params[signature->first_param + i].type_node_index,
+                        subst,
                         &param_type)) {
                     array_free(param_types);
                     return false;
@@ -5635,11 +5828,12 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             }
 
             u32 return_type = sema_no_type();
-            if (!sema_resolve_type_node(lexer,
-                                        ast,
-                                        sema,
-                                        signature->return_type_node_index,
-                                        &return_type)) {
+            if (!sema_resolve_type_node_ex(lexer,
+                                           ast,
+                                           sema,
+                                           signature->return_type_node_index,
+                                           subst,
+                                           &return_type)) {
                 array_free(param_types);
                 return false;
             }
@@ -5657,11 +5851,12 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             Array(u32) item_types = NULL;
             for (u32 i = 0; i < node->b; ++i) {
                 u32 item_type = sema_no_type();
-                if (!sema_resolve_type_node(lexer,
-                                            ast,
-                                            sema,
-                                            ast->tuple_items[node->a + i],
-                                            &item_type)) {
+                if (!sema_resolve_type_node_ex(lexer,
+                                               ast,
+                                               sema,
+                                               ast->tuple_items[node->a + i],
+                                               subst,
+                                               &item_type)) {
                     array_free(item_types);
                     return false;
                 }
@@ -5686,8 +5881,8 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             }
 
             u32 item_type = sema_no_type();
-            if (!sema_resolve_type_node(
-                    lexer, ast, sema, node->b, &item_type)) {
+            if (!sema_resolve_type_node_ex(
+                    lexer, ast, sema, node->b, subst, &item_type)) {
                 return false;
             }
 
@@ -5701,8 +5896,8 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
     case AK_TypeSlice:
         {
             u32 item_type = sema_no_type();
-            if (!sema_resolve_type_node(
-                    lexer, ast, sema, node->a, &item_type)) {
+            if (!sema_resolve_type_node_ex(
+                    lexer, ast, sema, node->a, subst, &item_type)) {
                 return false;
             }
 
@@ -5726,8 +5921,8 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             }
 
             u32 item_type = sema_no_type();
-            if (!sema_resolve_type_node(
-                    lexer, ast, sema, node->b, &item_type)) {
+            if (!sema_resolve_type_node_ex(
+                    lexer, ast, sema, node->b, subst, &item_type)) {
                 return false;
             }
 
@@ -5740,8 +5935,8 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
     case AK_TypePointer:
         {
             u32 pointee_type = sema_no_type();
-            if (!sema_resolve_type_node(
-                    lexer, ast, sema, node->a, &pointee_type)) {
+            if (!sema_resolve_type_node_ex(
+                    lexer, ast, sema, node->a, subst, &pointee_type)) {
                 return false;
             }
 
@@ -5755,7 +5950,7 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
         {
             const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
             Array(u32) field_types      = NULL;
-            if (plex->generic_params_index != U32_MAX) {
+            if (plex->generic_params_index != U32_MAX && subst.count == 0) {
                 return error_0339_generics_not_implemented(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -5764,11 +5959,12 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             }
             for (u32 i = 0; i < plex->field_count; ++i) {
                 u32 field_type = sema_no_type();
-                if (!sema_resolve_type_node(
+                if (!sema_resolve_type_node_ex(
                         lexer,
                         ast,
                         sema,
                         ast->plex_fields[plex->first_field + i].type_node_index,
+                        subst,
                         &field_type)) {
                     array_free(field_types);
                     return false;
@@ -5792,10 +5988,85 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
             return true;
         }
 
+    case AK_TypeEnum:
+        {
+            const AstEnumTypeInfo* enum_type = &ast->enum_types[node->a];
+            if (enum_type->generic_params_index != U32_MAX &&
+                subst.count == 0) {
+                return error_0339_generics_not_implemented(
+                    lexer->source, sema_node_span(lexer, node), s("generic enum"));
+            }
+
+            Array(u32) payload_types = NULL;
+            Array(i64) discriminants = NULL;
+            i64 next_discriminant    = 0;
+            for (u32 i = 0; i < enum_type->variant_count; ++i) {
+                const AstEnumVariant* variant =
+                    &ast->enum_variants[enum_type->first_variant + i];
+                u32 payload_type = sema_no_type();
+                if (variant->type_node_index != U32_MAX &&
+                    !sema_resolve_type_node_ex(lexer,
+                                               ast,
+                                               sema,
+                                               variant->type_node_index,
+                                               subst,
+                                               &payload_type)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return false;
+                }
+                array_push(payload_types, payload_type);
+
+                i64 discriminant = next_discriminant;
+                if (variant->value_node_index != U32_MAX &&
+                    !sema_try_eval_integer_constant(lexer,
+                                                    ast,
+                                                    sema,
+                                                    variant->value_node_index,
+                                                    &discriminant)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return error_0303_unknown_type(
+                        lexer->source,
+                        sema_node_span(
+                            lexer, &ast->nodes[variant->value_node_index]),
+                        s("<enum discriminant>"));
+                }
+                array_push(discriminants, discriminant);
+                next_discriminant = discriminant + 1;
+            }
+
+            u32 type_index = sema_add_enum_type(
+                sema,
+                &ast->enum_variants[enum_type->first_variant],
+                payload_types,
+                discriminants,
+                enum_type->variant_count);
+            array_free(payload_types);
+            array_free(discriminants);
+            sema->node_type_indices[node_index] = type_index;
+            *out_type_index                     = type_index;
+            return true;
+        }
+
     default:
         return error_0303_unknown_type(
             lexer->source, sema_node_span(lexer, node), s("<expression>"));
     }
+}
+
+internal bool sema_resolve_type_node(const Lexer* lexer,
+                                     const Ast*   ast,
+                                     Sema*        sema,
+                                     u32          node_index,
+                                     u32*         out_type_index)
+{
+    return sema_resolve_type_node_ex(lexer,
+                                     ast,
+                                     sema,
+                                     node_index,
+                                     (SemaTypeSubstitution){0},
+                                     out_type_index);
 }
 
 //------------------------------------------------------------------------------
@@ -10704,7 +10975,7 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
         u32       annotated     = sema_no_type();
         u32       inferred_type = sema_no_type();
 
-        if (decl->kind == SK_TypeAlias) {
+        if (decl->kind == SK_TypeAlias || decl->kind == SK_GenericTypeAlias) {
             if (decl->bind_node_index != sema_no_decl()) {
                 sema->node_type_indices[decl->bind_node_index] =
                     decl->type_index;

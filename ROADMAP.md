@@ -226,16 +226,16 @@ the roadmap before committing the implementation.
     index/slice or generic application
   - [x] keep ambiguous bracket syntax syntactic in the AST where practical
 - [ ] Add semantic bracket classification:
-  - [ ] classify bracket syntax as value indexing/slicing or generic
+  - [x] classify bracket syntax as value indexing/slicing or generic
     application during semantic analysis
-  - [ ] resolve explicit generic arguments as types
+  - [x] resolve explicit generic arguments as types
   - [ ] report targeted errors for value arguments in type-argument positions
   - [ ] report targeted errors for type arguments in value-index positions
 - [ ] Add generic type support:
-  - [ ] instantiate generic plex types
-  - [ ] instantiate generic union types
-  - [ ] instantiate generic enum types
-  - [ ] allow generic type aliases if they fit the same representation cleanly
+  - [x] instantiate generic plex types
+  - [x] instantiate generic union types
+  - [x] instantiate generic enum types
+  - [x] allow generic type aliases if they fit the same representation cleanly
 - [ ] Add generic function support:
   - [ ] monomorphise generic functions per canonical concrete type argument
     list
@@ -253,7 +253,8 @@ the roadmap before committing the implementation.
     resistance
 - [ ] IR/C generation work:
   - [ ] lower monomorphised functions and types as concrete IR/C entities
-  - [ ] keep generic templates out of generated C output
+  - [x] lower generic types as concrete C entities
+  - [x] keep generic type templates out of generated C output
   - [ ] preserve stable generated C across rebuilds
 - [ ] Formatter work:
   - [x] format generic parameter lists
@@ -267,10 +268,11 @@ the roadmap before committing the implementation.
   - [ ] language tests for generic function inference
   - [ ] language tests for explicit generic function calls
   - [ ] language tests for concrete generic function values
-  - [ ] language tests for generic plex/union/enum instantiation
+  - [x] language tests for generic plex/union/enum instantiation
   - [ ] error tests for partial explicit generic arguments
   - [ ] error tests for inference failure
-  - [x] error tests for parsed generic syntax before semantic instantiation
+  - [x] error tests for parsed generic function syntax before semantic
+    instantiation
   - [ ] error tests for type/value bracket misuse
   - [x] format tests for generic declarations and applications
   - [ ] LSP tests for hover/symbol/token behaviour affected by generics

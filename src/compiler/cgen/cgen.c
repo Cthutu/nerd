@@ -673,6 +673,8 @@ internal void cgen_add_zero_value(CGen* cgen, u32 type_index)
     case STK_Array:
     case STK_Slice:
     case STK_DynamicArray:
+    case STK_Plex:
+    case STK_Union:
         cgen_add(cgen, "(");
         cgen_add(cgen, cgen_c_type(cgen, type_index));
         cgen_add(cgen, "){0}");
