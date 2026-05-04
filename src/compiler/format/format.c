@@ -2750,6 +2750,47 @@ internal void format_emit_fn_param(StringBuilder*  sb,
     }
 }
 
+internal usize format_fn_signature_param_name_width(
+    const Cst* cst, const Lexer* lexer, const CstFnSignature* signature)
+{
+    usize name_width = 0;
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        const CstParam* param = &cst->params[signature->first_param + i];
+        if (param->symbol_handle == U32_MAX) {
+            continue;
+        }
+        usize name_count = lex_symbol(lexer, param->symbol_handle).count;
+        if (name_count > name_width) {
+            name_width = name_count;
+        }
+    }
+    return name_width;
+}
+
+internal void format_emit_fn_param_aligned(StringBuilder*  sb,
+                                           const Cst*      cst,
+                                           const Lexer*    lexer,
+                                           const CstParam* param,
+                                           usize           name_width)
+{
+    if (param->symbol_handle == U32_MAX || name_width == 0) {
+        format_emit_fn_param(sb, cst, lexer, param);
+        return;
+    }
+
+    string name = lex_symbol(lexer, param->symbol_handle);
+    sb_append_string(sb, name);
+    for (usize pad = name.count; pad < name_width; ++pad) {
+        sb_append_char(sb, ' ');
+    }
+    sb_append_cstr(sb, ": ");
+    format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
+    if (param->default_node_index != U32_MAX) {
+        sb_append_cstr(sb, " = ");
+        format_emit_expr(sb, cst, lexer, param->default_node_index, 0);
+    }
+}
+
 internal void format_emit_fn_signature_one_line(StringBuilder*        sb,
                                                 const Cst*            cst,
                                                 const Lexer*          lexer,
@@ -2806,13 +2847,15 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     format_emit_fn_signature_prefix(sb, cst, lexer, signature);
     sb_append_cstr(sb, " (");
     usize param_column = format_sb_current_column(sb);
+    usize name_width =
+        format_fn_signature_param_name_width(cst, lexer, signature);
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ",\n");
             format_emit_spaces(sb, param_column);
         }
         const CstParam* param = &cst->params[signature->first_param + i];
-        format_emit_fn_param(sb, cst, lexer, param);
+        format_emit_fn_param_aligned(sb, cst, lexer, param, name_width);
     }
     if (signature->is_varargs) {
         if (signature->param_count > 0) {
@@ -2902,13 +2945,15 @@ internal void format_emit_ffi_entry(StringBuilder* sb,
 
     format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, name_width);
     usize param_column = format_sb_current_column(sb);
+    usize param_name_width =
+        format_fn_signature_param_name_width(cst, lexer, signature);
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ",\n");
             format_emit_spaces(sb, param_column);
         }
         const CstParam* param = &cst->params[signature->first_param + i];
-        format_emit_fn_param(sb, cst, lexer, param);
+        format_emit_fn_param_aligned(sb, cst, lexer, param, param_name_width);
     }
     if (signature->is_varargs) {
         if (signature->param_count > 0) {
