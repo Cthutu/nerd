@@ -35,7 +35,7 @@ window_put :: fn (window: ^TermWindow, x: i32, y: i32, ch: u32, ink: u32, paper:
 }
 
 window_box :: fn (window: ^TermWindow, ink: u32, paper: u32, border: u32, title: string) {
-    full := term_rect(0, 0, window.rect.width, window.rect.height)
+    full := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
 
     term_window_paint_rect(window, full, ' '.as(u32), ink, paper)
     term_window_9slice(window, full, c"/-\\| |\\-/", no)
@@ -111,15 +111,15 @@ render :: fn (backdrop: ^TermWindow, panel: ^TermWindow, ticker: ^TermWindow, fr
 
     ticker_y := (height - 3).as(u16)
 
-    backdrop_rect: TermRect = term_rect(0, 0, width.as(u16), height.as(u16))
+    backdrop_rect := TermRect { x: 0, y: 0, width: width.as(u16), height: height.as(u16) }
     term_window_init(backdrop, backdrop_rect)
     draw_backdrop(backdrop, frame)
 
-    panel_rect: TermRect = term_rect(panel_x, panel_y, panel_w.as(u16), panel_h.as(u16))
+    panel_rect := TermRect { x: panel_x, y: panel_y, width: panel_w.as(u16), height: panel_h.as(u16) }
     term_window_init(panel, panel_rect)
     draw_panel(panel, frame, width, height)
 
-    ticker_rect: TermRect = term_rect(0, ticker_y, width.as(u16), 3)
+    ticker_rect := TermRect { x: 0, y: ticker_y, width: width.as(u16), height: 3 }
     term_window_init(ticker, ticker_rect)
     draw_ticker(ticker, frame)
 

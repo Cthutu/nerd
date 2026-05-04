@@ -213,7 +213,12 @@ pub term_fb_cls :: fn (ink: u32, paper: u32) {
 }
 
 pub term_fb_rect :: fn (rect: TermRect, ch: u32, ink: u32, paper: u32) {
-    fb_rect := term_rect(0, 0, g_term_fb_size.0.as(u16), g_term_fb_size.1.as(u16))
+    fb_rect := TermRect {
+        x: 0,
+        y: 0,
+        width: g_term_fb_size.0.as(u16),
+        height: g_term_fb_size.1.as(u16),
+    }
     clipped := rect.intersection(fb_rect)
     on clipped.is_empty() => return
 
@@ -301,7 +306,7 @@ impl TermWindow {
     }
 
     pub paint_rect :: fn (window: ^Self, rect: TermRect, ch: u32, ink: u32, paper: u32) {
-        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
         clipped := rect.intersection(local)
         on clipped.is_empty() => return
 
@@ -315,7 +320,7 @@ impl TermWindow {
     }
 
     pub draw_rect :: fn (window: ^Self, rect: TermRect, ch: u32) {
-        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
         clipped := rect.intersection(local)
         on clipped.is_empty() => return
 
@@ -330,7 +335,7 @@ impl TermWindow {
     }
 
     pub paint :: fn (window: ^Self, rect: TermRect, ink: u32, paper: u32) {
-        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
         clipped := rect.intersection(local)
         on clipped.is_empty() => return
 
@@ -346,13 +351,15 @@ impl TermWindow {
     }
 
     pub nine_slice :: fn (window: ^Self, rect: TermRect, slices: ^u8, fill_centre: bool) {
-        top_left := term_rect(rect.x, rect.y, 1, 1)
-        top_right := term_rect((rect.x + rect.width - 1).as(u16), rect.y, 1, 1)
-        bottom_left := term_rect(rect.x, (rect.y + rect.height - 1).as(u16), 1, 1)
-        bottom_right := term_rect((rect.x + rect.width - 1).as(u16),
-                                  (rect.y + rect.height - 1).as(u16),
-                                  1,
-                                  1)
+        top_left := TermRect { x: rect.x, y: rect.y, width: 1, height: 1 }
+        top_right := TermRect { x: (rect.x + rect.width - 1).as(u16), y: rect.y, width: 1, height: 1 }
+        bottom_left := TermRect { x: rect.x, y: (rect.y + rect.height - 1).as(u16), width: 1, height: 1 }
+        bottom_right := TermRect {
+            x: (rect.x + rect.width - 1).as(u16),
+            y: (rect.y + rect.height - 1).as(u16),
+            width: 1,
+            height: 1,
+        }
 
         window.draw_rect(top_left, (slices[0]).as(u32))
         window.draw_rect(top_right, (slices[2]).as(u32))
@@ -360,30 +367,46 @@ impl TermWindow {
         window.draw_rect(bottom_right, (slices[8]).as(u32))
 
         on rect.width > 2 => {
-            top := term_rect((rect.x + 1).as(u16), rect.y, (rect.width - 2).as(u16), 1)
-            bottom := term_rect((rect.x + 1).as(u16),
-                                (rect.y + rect.height - 1).as(u16),
-                                (rect.width - 2).as(u16),
-                                1)
+            top := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: rect.y,
+                width: (rect.width - 2).as(u16),
+                height: 1,
+            }
+            bottom := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: (rect.y + rect.height - 1).as(u16),
+                width: (rect.width - 2).as(u16),
+                height: 1,
+            }
             window.draw_rect(top, (slices[1]).as(u32))
             window.draw_rect(bottom, (slices[7]).as(u32))
         }
 
         on rect.height > 2 => {
-            left := term_rect(rect.x, (rect.y + 1).as(u16), 1, (rect.height - 2).as(u16))
-            right := term_rect((rect.x + rect.width - 1).as(u16),
-                               (rect.y + 1).as(u16),
-                               1,
-                               (rect.height - 2).as(u16))
+            left := TermRect {
+                x: rect.x,
+                y: (rect.y + 1).as(u16),
+                width: 1,
+                height: (rect.height - 2).as(u16),
+            }
+            right := TermRect {
+                x: (rect.x + rect.width - 1).as(u16),
+                y: (rect.y + 1).as(u16),
+                width: 1,
+                height: (rect.height - 2).as(u16),
+            }
             window.draw_rect(left, (slices[3]).as(u32))
             window.draw_rect(right, (slices[5]).as(u32))
         }
 
         on fill_centre && rect.width > 2 && rect.height > 2 => {
-            centre := term_rect((rect.x + 1).as(u16),
-                                (rect.y + 1).as(u16),
-                                (rect.width - 2).as(u16),
-                                (rect.height - 2).as(u16))
+            centre := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: (rect.y + 1).as(u16),
+                width: (rect.width - 2).as(u16),
+                height: (rect.height - 2).as(u16),
+            }
             window.draw_rect(centre, (slices[4]).as(u32))
         }
     }

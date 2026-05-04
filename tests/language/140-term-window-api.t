@@ -2,8 +2,9 @@ use std.term
 
 main :: fn () -> i32 {
     window: TermWindow
-    rect: TermRect = term_rect(0, 0, 12, 4)
-    overlap := rect.intersection(term_rect(2, 1, 4, 2))
+    rect := TermRect { x: 0, y: 0, width: 12, height: 4 }
+    other := TermRect { x: 2, y: 1, width: 4, height: 2 }
+    overlap := rect.intersection(other)
 
     on rect.is_empty() => return 1
     on overlap.x != 2 || overlap.y != 1 => return 2

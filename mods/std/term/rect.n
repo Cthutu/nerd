@@ -21,20 +21,13 @@ impl TermRect {
         x1 := on ax1 < bx1 => ax1 else bx1
         y1 := on ay1 < by1 => ay1 else by1
 
-        on x1 <= x0.as(u32) || y1 <= y0.as(u32) => return term_rect(0, 0, 0, 0)
-        return term_rect(x0, y0, (x1 - x0.as(u32)).as(u16), (y1 - y0.as(u32)).as(u16))
+        on x1 <= x0.as(u32) || y1 <= y0.as(u32) => return TermRect { x: 0, y: 0, width: 0, height: 0 }
+        return TermRect {
+            x: x0,
+            y: y0,
+            width: (x1 - x0.as(u32)).as(u16),
+            height: (y1 - y0.as(u32)).as(u16),
+        }
     }
 
-}
-
-pub term_rect :: fn (x: u16, y: u16, width: u16, height: u16) -> TermRect {
-    return { x, y, width, height }
-}
-
-pub term_rect_is_empty :: fn (rect: TermRect) -> bool {
-    return rect.is_empty()
-}
-
-pub term_rect_intersection :: fn (a: TermRect, b: TermRect) -> TermRect {
-    return a.intersection(b)
 }
