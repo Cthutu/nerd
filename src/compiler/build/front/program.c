@@ -263,6 +263,22 @@ internal bool program_source_is_folder_module(NerdSource source)
     return result;
 }
 
+internal bool program_part_node_matches_source(NerdSource     source,
+                                               const Lexer*   lexer,
+                                               const Ast*     ast,
+                                               const AstNode* part_node)
+{
+    ASSERT(part_node->kind == AK_Part, "Expected part node");
+    const AstModulePath* path = &ast->module_paths[part_node->a];
+    if (path->symbol_count != 1) {
+        return false;
+    }
+
+    string part_name =
+        lex_symbol(lexer, ast->module_path_symbols[path->first_symbol]);
+    return string_eq(part_name, path_stem(source.source_path));
+}
+
 internal cstr program_part_file_path(Arena*         arena,
                                      NerdSource     source,
                                      const Lexer*   lexer,
@@ -289,6 +305,133 @@ internal cstr program_part_file_path(Arena*         arena,
     filename[name.count + 2] = '\0';
 
     return path_join(arena, path_dirname(arena, source_path), filename);
+}
+
+internal bool program_expand_part_root(ProgramInfo* program,
+                                       NerdSource   source,
+                                       NerdSource*  out_source)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    cstr source_path = module_source_file_path(&temp, source);
+    if (source_path == NULL ||
+        string_eq_cstr(path_filename(s(source_path)), "mod.n")) {
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    cstr module_dir = path_dirname(&temp, source_path);
+    cstr mod_path   = path_join(&temp, module_dir, "mod.n");
+    if (!path_exists(mod_path) || path_is_directory(mod_path)) {
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    FileMap mod_map    = {0};
+    string  mod_source = filemap_load(mod_path, &mod_map);
+    if (mod_source.data == NULL) {
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    Lexer lexer  = {0};
+    Ast   ast    = {0};
+    bool  parsed = lex(
+        (NerdSource){.source = mod_source, .source_path = s(mod_path)}, &lexer);
+    if (parsed) {
+        ast    = ast_parse(&lexer);
+        parsed = array_count(ast.nodes) > 0 || array_count(lexer.tokens) == 0;
+    }
+    if (!parsed) {
+        ast_done(&ast);
+        lex_done(&lexer);
+        filemap_unload(&mod_map);
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    bool found_part = false;
+    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
+        if (ast.nodes[i].kind == AK_Part &&
+            program_part_node_matches_source(
+                source, &lexer, &ast, &ast.nodes[i])) {
+            found_part = true;
+            break;
+        }
+    }
+
+    if (!found_part) {
+        ast_done(&ast);
+        lex_done(&lexer);
+        filemap_unload(&mod_map);
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, &program->arena);
+    sb_append_string(&sb, mod_source);
+    if (mod_source.count == 0 ||
+        mod_source.data[mod_source.count - 1] != '\n') {
+        sb_append_char(&sb, '\n');
+    }
+
+    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
+        const AstNode* node = &ast.nodes[i];
+        if (node->kind != AK_Part) {
+            continue;
+        }
+
+        sb_append_char(&sb, '\n');
+        if (program_part_node_matches_source(source, &lexer, &ast, node)) {
+            sb_append_string(&sb, source.source);
+            if (source.source.count == 0 ||
+                source.source.data[source.source.count - 1] != '\n') {
+                sb_append_char(&sb, '\n');
+            }
+            continue;
+        }
+
+        cstr part_path = program_part_file_path(
+            &temp,
+            (NerdSource){.source = mod_source, .source_path = s(mod_path)},
+            &lexer,
+            &ast,
+            node);
+        if (part_path == NULL) {
+            continue;
+        }
+
+        FileMap part_map    = {0};
+        string  part_source = filemap_load(part_path, &part_map);
+        if (part_source.data == NULL) {
+            continue;
+        }
+        sb_append_string(&sb, part_source);
+        if (part_source.count == 0 ||
+            part_source.data[part_source.count - 1] != '\n') {
+            sb_append_char(&sb, '\n');
+        }
+        filemap_unload(&part_map);
+    }
+
+    string expanded = sb_to_string(&sb);
+    *out_source     = (NerdSource){
+        .source      = expanded,
+        .source_path = source.source_path,
+    };
+
+    ast_done(&ast);
+    lex_done(&lexer);
+    filemap_unload(&mod_map);
+    arena_done(&temp);
+    return true;
 }
 
 internal bool program_expand_module_parts(ProgramInfo* program,
@@ -639,6 +782,14 @@ bool front_end_program(NerdSource             source,
         .root_module_index = 0,
     };
     arena_init(&program.arena);
+
+    NerdSource effective_source = {0};
+    if (!program_expand_part_root(&program, source, &effective_source)) {
+        program_info_done(&program);
+        return false;
+    }
+    source                 = effective_source;
+    program.root_source    = source;
 
     ModuleInfo root_module = {
         .qualified_name =
