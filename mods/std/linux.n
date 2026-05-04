@@ -18,6 +18,7 @@ pub winsize :: plex #c {
 
 pub STDOUT_FILENO :: 1
 pub TIOCGWINSZ    :: 0x5413
+
 pub LC_CTYPE      :: 0
 pub LC_NUMERIC    :: 1
 pub LC_TIME       :: 2

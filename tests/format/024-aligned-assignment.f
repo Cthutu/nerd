@@ -5,6 +5,7 @@ top::1
 
 longer_top::2
 
+
 typed_top:i32:3
 
 Callable :: fn () {
@@ -56,9 +57,11 @@ long_values :: fn () {
 -- This test checks that the formatter aligns variable declarations and
 -- assignments properly.
 
-top        :: 1
+top :: 1
+
 longer_top :: 2
-typed_top  : i32 : 3
+
+typed_top : i32 : 3
 
 Callable :: fn () {
 }
@@ -90,9 +93,11 @@ main :: fn () {
 }
 
 bind_values :: fn () {
-    first  :: 1
+    first :: 1
+
     longer :: 2
-    typed  : i32 : 3
+
+    typed : i32 : 3
 }
 
 single_mixed :: fn () {

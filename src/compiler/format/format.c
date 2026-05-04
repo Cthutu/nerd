@@ -2994,7 +2994,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                            next_aligned)) {
                     break;
                 }
-                if (has_blank_line && !first_aligned.is_bind) {
+                if (has_blank_line) {
                     break;
                 }
 
@@ -3808,7 +3808,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                                                            next_aligned)) {
                     break;
                 }
-                if (has_blank_line && !first_aligned.is_bind) {
+                if (has_blank_line) {
                     break;
                 }
 
