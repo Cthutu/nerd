@@ -275,8 +275,26 @@ internal bool lexer_lex_string_literal(NerdSource source,
     return true;
 }
 
-internal u8 lexer_decode_escape(u8 escaped, u8 quote)
+internal bool lexer_hex_nibble(u8 ch, u8* out_nibble)
 {
+    if (ch >= '0' && ch <= '9') {
+        *out_nibble = (u8)(ch - '0');
+        return true;
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        *out_nibble = (u8)(10 + (ch - 'a'));
+        return true;
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        *out_nibble = (u8)(10 + (ch - 'A'));
+        return true;
+    }
+    return false;
+}
+
+internal u8 lexer_decode_escape(string source_code, usize* io_index, u8 quote)
+{
+    u8 escaped = source_code.data[(*io_index)++];
     switch (escaped) {
     case '\\':
         return '\\';
@@ -296,6 +314,21 @@ internal u8 lexer_decode_escape(u8 escaped, u8 quote)
         return '\f';
     case 'v':
         return '\v';
+    case 'x':
+        {
+            u8  value  = 0;
+            u32 digits = 0;
+            while (*io_index < source_code.count && digits < 2) {
+                u8 nibble = 0;
+                if (!lexer_hex_nibble(source_code.data[*io_index], &nibble)) {
+                    break;
+                }
+                value = (u8)((value << 4) | nibble);
+                ++digits;
+                ++(*io_index);
+            }
+            return digits == 0 ? 'x' : value;
+        }
     default:
         return escaped == quote ? quote : escaped;
     }
@@ -322,7 +355,7 @@ internal bool lexer_lex_packed_integer_literal(NerdSource source,
             break;
         }
         if (ch == '\\' && i < source_code.count) {
-            ch = lexer_decode_escape(source_code.data[i++], '\'');
+            ch = lexer_decode_escape(source_code, &i, '\'');
         }
 
         if (bytes >= 8) {
@@ -439,7 +472,7 @@ internal bool lexer_lex_interpolated_text(NerdSource source,
         }
 
         if (ch == '\\' && i < source_code.count) {
-            ch = lexer_decode_escape(source_code.data[i++], '"');
+            ch = lexer_decode_escape(source_code, &i, '"');
         }
 
         buffer[length++] = ch;

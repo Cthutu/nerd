@@ -4,8 +4,18 @@ use std.io
 name :: "world"
 count := 3
 
+check_escape :: fn (escape: string) -> bool {
+    on escape.count != 4 => return no
+    on escape.data[0] != 27 => return no
+    on escape.data[1] != '[' => return no
+    on escape.data[2] != '3' => return no
+    on escape.data[3] != 'm' => return no
+    return yes
+}
+
 main :: fn () {
     prn($"Hello, {name}! count={count}")
+    on !check_escape($"\x1b[{count}m") => return
 }
 ¬
 0
