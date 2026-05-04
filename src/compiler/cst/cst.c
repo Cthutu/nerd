@@ -541,6 +541,18 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
                 }
                 (*io_index)++;
             }
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Equal) {
+                (*io_index)++;
+                if (!cst_skip_enum_value_tokens(state, io_index)) {
+                    return false;
+                }
+            }
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Comma) {
+                (*io_index)++;
+                if (cst_kind_at_stream_index(state, *io_index) == TK_RBrace) {
+                    break;
+                }
+            }
         }
         (*io_index)++;
         return true;
@@ -2195,7 +2207,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     }
 
     u32 false_expr = 0;
-    if (!cst_parse_expr_bp(state, 0, &false_expr)) {
+    if (!cst_parse_on_branch_expr(state, &false_expr)) {
         return false;
     }
 

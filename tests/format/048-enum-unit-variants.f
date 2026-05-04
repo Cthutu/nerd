@@ -1,4 +1,4 @@
-Colour::enum{Red Green Blue}
+Colour::enum{Red, Green, Blue,}
 
 score::fn(colour:Colour)->i32{
 return on colour{

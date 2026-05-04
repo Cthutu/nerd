@@ -13,49 +13,34 @@ on linux {
 }
 
 Term :: plex {
-    size (i32, i32)
+    size          (i32, i32)
     key_modifiers u8
-    event_queue [..]TermEvent
-    initialised bool
-    running bool
+    event_queue   [..]TermEvent
+    initialised   bool
+    running       bool
 }
 
-TermEvent :: enum {
-    Key(TermKeyEvent)
-    Mouse(TermMouseEvent)
-    Resize(i32, i32)
-}
+TermEvent :: enum { Key(TermKeyEvent) Mouse(TermMouseEvent) Resize(i32, i32) }
 
 TermKeyEvent :: plex {
-    key u8
-    key_code TermKeyCode
+    key           u8
+    key_code      TermKeyCode
     key_modifiers u8
 }
 
 TermMouseEvent :: plex {
-    x u16
-    y u16
-    wheel i16
+    x       u16
+    y       u16
+    wheel   i16
     buttons u8
 }
 
-TermKeyCode :: enum {
-    NONE,
-    ENTER,
-    BACKSPACE,
-    DELETE,
-    LEFT,
-    RIGHT,
-    UP,
-    DOWN,
-    HOME,
-    END
-}
+TermKeyCode :: enum { NONE ENTER BACKSPACE DELETE LEFT RIGHT UP DOWN HOME END }
 
 pub term_size :: fn () -> (i32, i32) {
-    width: i32
-    height: i32
-    ws : winsize
+    width  : i32
+    height : i32
+    ws     : winsize
 
     on ioctl(STDOUT_FILENO, TIOCGWINSZ, ^ws) == 0 => {
         width = ws.col.as(i32)
