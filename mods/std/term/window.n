@@ -234,3 +234,37 @@ pub term_window_write_cstr :: fn (window: ^TermWindow, x: i32, y: i32, text: ^u8
 pub term_window_draw :: fn (window: ^TermWindow) {
     window.draw()
 }
+
+test "window draw clips negative positions into framebuffer" {
+    term_fb_resize(4, 3)
+    defer {
+        g_term_fb_chars.free()
+        g_term_fb_ink.free()
+        g_term_fb_paper.free()
+    }
+
+    window: TermWindow
+    window.init(TermRect {
+        x: (-1).as(i16).as(u16),
+        y: (-1).as(i16).as(u16),
+        width: 3,
+        height: 3,
+    })
+    defer window.done()
+
+    ink := term_rgb(10, 20, 30)
+    paper := term_rgb(40, 50, 60)
+    window.clear('x'.as(u32), ink, paper)
+    clear_ink := term_rgb(255, 255, 255)
+    clear_paper := term_rgb(0, 0, 0)
+    term_fb_cls(clear_ink, clear_paper)
+    window.draw()
+
+    first := term_fb_index(0, 0)
+    assert g_term_fb_chars[first] == 'x'.as(u32)
+    assert g_term_fb_ink[first] == ink
+    assert g_term_fb_paper[first] == paper
+
+    untouched := term_fb_index(3, 2)
+    assert g_term_fb_chars[untouched] == ' '.as(u32)
+}

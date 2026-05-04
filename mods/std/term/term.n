@@ -785,8 +785,8 @@ term_fb_present :: fn () {
     current_paper: u32
     colours_set := no
 
-    term_cursor_goto(0, 0)
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
+        term_cursor_goto(0, y)
         for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
             index := term_fb_index(x, y)
             ink := g_term_fb_ink[index]
@@ -802,7 +802,14 @@ term_fb_present :: fn () {
             ch: [1]u8 = [g_term_fb_chars[index].as(u8)]
             pr(ch[..].as(string))
         }
-        on y + 1 < g_term_fb_size.1 => pr("\r\n")
     }
     pr("\x1b[0m")
+}
+
+test "framebuffer colours split into rgb components" {
+    colour := term_rgb(12, 34, 56)
+
+    assert term_colour_r(colour) == 12
+    assert term_colour_g(colour) == 34
+    assert term_colour_b(colour) == 56
 }

@@ -256,7 +256,6 @@ main :: fn () {
         }
 
         render(^backdrop, ^main_panel, ^probe_panel, ^ticker_panel, frame)
-        term_present()
         frame += 1
         sleep_ms(16)
     }
