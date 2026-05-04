@@ -2831,35 +2831,37 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     arena_done(&temp_arena);
 }
 
-internal void format_emit_ffi_entry(StringBuilder* sb,
-                                    const Cst*     cst,
-                                    const Lexer*   lexer,
-                                    u32            ffi_info_index,
-                                    usize          name_width)
+internal void format_emit_ffi_entry_prefix(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           u32            ffi_info_index,
+                                           usize          name_width)
 {
-    const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
-    const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
-
-    string name                     = lex_symbol(lexer, ffi->symbol_handle);
+    const CstFfiInfo* ffi  = &cst->ffi_infos[ffi_info_index];
+    string            name = lex_symbol(lexer, ffi->symbol_handle);
     sb_append_string(sb, name);
     for (usize pad = name.count; pad <= name_width; ++pad) {
         sb_append_char(sb, ' ');
     }
     sb_append_char(sb, '(');
+}
+
+internal void format_emit_ffi_entry_one_line(StringBuilder* sb,
+                                             const Cst*     cst,
+                                             const Lexer*   lexer,
+                                             u32            ffi_info_index,
+                                             usize          name_width)
+{
+    const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
+    const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
+
+    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, name_width);
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ", ");
         }
         const CstParam* param = &cst->params[signature->first_param + i];
-        if (param->symbol_handle != U32_MAX) {
-            sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
-            sb_append_cstr(sb, ": ");
-        }
-        format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
-        if (param->default_node_index != U32_MAX) {
-            sb_append_cstr(sb, " = ");
-            format_emit_expr(sb, cst, lexer, param->default_node_index, 0);
-        }
+        format_emit_fn_param(sb, cst, lexer, param);
     }
     if (signature->is_varargs) {
         if (signature->param_count > 0) {
@@ -2872,6 +2874,56 @@ internal void format_emit_ffi_entry(StringBuilder* sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
+}
+
+internal void format_emit_ffi_entry(StringBuilder* sb,
+                                    const Cst*     cst,
+                                    const Lexer*   lexer,
+                                    u32            ffi_info_index,
+                                    usize          name_width)
+{
+    const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
+    const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
+
+    Arena temp_arena                = {0};
+    arena_init(&temp_arena);
+    StringBuilder single_line = {0};
+    sb_init(&single_line, &temp_arena);
+    format_emit_ffi_entry_one_line(
+        &single_line, cst, lexer, ffi_info_index, name_width);
+
+    usize start_column = format_sb_current_column(sb);
+    if (signature->param_count == 0 ||
+        start_column + single_line.size <= FORMAT_WRAP_WIDTH) {
+        sb_append_string(sb, sb_to_string(&single_line));
+        arena_done(&temp_arena);
+        return;
+    }
+
+    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, name_width);
+    usize param_column = format_sb_current_column(sb);
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        const CstParam* param = &cst->params[signature->first_param + i];
+        format_emit_fn_param(sb, cst, lexer, param);
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_char(sb, ')');
+    if (signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+
+    arena_done(&temp_arena);
 }
 
 internal void format_emit_ffi_def(StringBuilder* sb,
