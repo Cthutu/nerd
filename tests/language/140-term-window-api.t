@@ -32,13 +32,15 @@ main :: fn () -> i32 {
     term_window_paint_rect(^window, rect, ' '.as(u32), ink, paper)
     term_window_write(^window, 2, 1, "ok")
 
-    first := window.cells[(1 * 12 + 2).as(usize)].ch
-    second := window.cells[(1 * 12 + 3).as(usize)].ch
+    first_cell := window.cells[(1 * 12 + 2).as(usize)]
+    second_cell := window.cells[(1 * 12 + 3).as(usize)]
 
     term_window_done(^window)
 
-    on first != 'o'.as(u32) => return 17
-    on second != 'k'.as(u32) => return 18
+    on first_cell.ch != 'o'.as(u32) => return 17
+    on second_cell.ch != 'k'.as(u32) => return 18
+    on first_cell.ink != ink || second_cell.ink != ink => return 19
+    on first_cell.paper != paper || second_cell.paper != paper => return 20
     return 0
 }
 ¬

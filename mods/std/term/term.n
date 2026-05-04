@@ -660,6 +660,37 @@ pub term_rgba :: fn (r: u8, g: u8, b: u8, a: u8) -> u32 {
     return (a.as(u32) << 24) | (r.as(u32) << 16) | (g.as(u32) << 8) | b.as(u32)
 }
 
+term_colour_r :: fn (colour: u32) -> u8 {
+    return ((colour >> 16) & 0xff).as(u8)
+}
+
+term_colour_g :: fn (colour: u32) -> u8 {
+    return ((colour >> 8) & 0xff).as(u8)
+}
+
+term_colour_b :: fn (colour: u32) -> u8 {
+    return (colour & 0xff).as(u8)
+}
+
+term_apply_ink :: fn (ink: u32) {
+    r := term_colour_r(ink).as(u32)
+    g := term_colour_g(ink).as(u32)
+    b := term_colour_b(ink).as(u32)
+    pr($"\x1b[38;2;{r};{g};{b}m")
+}
+
+term_apply_paper :: fn (paper: u32) {
+    r := term_colour_r(paper).as(u32)
+    g := term_colour_g(paper).as(u32)
+    b := term_colour_b(paper).as(u32)
+    pr($"\x1b[48;2;{r};{g};{b}m")
+}
+
+term_apply_colours :: fn (ink: u32, paper: u32) {
+    term_apply_ink(ink)
+    term_apply_paper(paper)
+}
+
 --
 -- Framebuffer
 --
@@ -750,13 +781,28 @@ pub term_fb_write_cstr :: fn (x: i32, y: i32, text: ^u8) {
 term_fb_present :: fn () {
     on g_term_fb_size.0 == 0 || g_term_fb_size.1 == 0 => return
 
+    current_ink: u32
+    current_paper: u32
+    colours_set := no
+
     term_cursor_goto(0, 0)
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
         for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
             index := term_fb_index(x, y)
+            ink := g_term_fb_ink[index]
+            paper := g_term_fb_paper[index]
+
+            on !colours_set || ink != current_ink || paper != current_paper => {
+                term_apply_colours(ink, paper)
+                current_ink = ink
+                current_paper = paper
+                colours_set = yes
+            }
+
             ch: [1]u8 = [g_term_fb_chars[index].as(u8)]
             pr(ch[..].as(string))
         }
         on y + 1 < g_term_fb_size.1 => pr("\r\n")
     }
+    pr("\x1b[0m")
 }
