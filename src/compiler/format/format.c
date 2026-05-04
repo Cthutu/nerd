@@ -1404,6 +1404,25 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
     }
 }
 
+internal void format_emit_spaces(StringBuilder* sb, usize count)
+{
+    for (usize i = 0; i < count; ++i) {
+        sb_append_char(sb, ' ');
+    }
+}
+
+internal usize format_sb_current_column(const StringBuilder* sb)
+{
+    usize column = 0;
+    for (usize i = sb->size; i > 0; --i) {
+        if (sb->data[i - 1] == '\n') {
+            break;
+        }
+        ++column;
+    }
+    return column;
+}
+
 internal bool format_string_has_newline(string text)
 {
     for (usize i = 0; i < text.count; ++i) {
@@ -2658,14 +2677,11 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
     }
 }
 
-internal void format_emit_fn_signature(StringBuilder* sb,
-                                       const Cst*     cst,
-                                       const Lexer*   lexer,
-                                       u32            signature_index,
-                                       bool           include_return_type)
+internal void format_emit_fn_signature_prefix(StringBuilder*        sb,
+                                              const Cst*            cst,
+                                              const Lexer*          lexer,
+                                              const CstFnSignature* signature)
 {
-    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
-
     sb_append_cstr(sb, "fn");
     if (signature->generic_params_index != U32_MAX) {
         const CstGenericParams* generic =
@@ -2683,6 +2699,31 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         }
         sb_append_char(sb, ']');
     }
+}
+
+internal void format_emit_fn_param(StringBuilder*  sb,
+                                   const Cst*      cst,
+                                   const Lexer*    lexer,
+                                   const CstParam* param)
+{
+    if (param->symbol_handle != U32_MAX) {
+        sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
+        sb_append_cstr(sb, ": ");
+    }
+    format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
+    if (param->default_node_index != U32_MAX) {
+        sb_append_cstr(sb, " = ");
+        format_emit_expr(sb, cst, lexer, param->default_node_index, 0);
+    }
+}
+
+internal void format_emit_fn_signature_one_line(StringBuilder*        sb,
+                                                const Cst*            cst,
+                                                const Lexer*          lexer,
+                                                const CstFnSignature* signature,
+                                                bool include_return_type)
+{
+    format_emit_fn_signature_prefix(sb, cst, lexer, signature);
     sb_append_cstr(sb, " (");
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
@@ -2690,15 +2731,7 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         }
 
         const CstParam* param = &cst->params[signature->first_param + i];
-        if (param->symbol_handle != U32_MAX) {
-            sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
-            sb_append_cstr(sb, ": ");
-        }
-        format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
-        if (param->default_node_index != U32_MAX) {
-            sb_append_cstr(sb, " = ");
-            format_emit_expr(sb, cst, lexer, param->default_node_index, 0);
-        }
+        format_emit_fn_param(sb, cst, lexer, param);
     }
     if (signature->is_varargs) {
         if (signature->param_count > 0) {
@@ -2712,6 +2745,57 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
+}
+
+internal void format_emit_fn_signature(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            signature_index,
+                                       bool           include_return_type)
+{
+    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
+
+    Arena temp_arena                = {0};
+    arena_init(&temp_arena);
+    StringBuilder single_line = {0};
+    sb_init(&single_line, &temp_arena);
+    format_emit_fn_signature_one_line(
+        &single_line, cst, lexer, signature, include_return_type);
+
+    usize start_column = format_sb_current_column(sb);
+    if (signature->param_count == 0 ||
+        start_column + single_line.size <= FORMAT_WRAP_WIDTH) {
+        sb_append_string(sb, sb_to_string(&single_line));
+        arena_done(&temp_arena);
+        return;
+    }
+
+    format_emit_fn_signature_prefix(sb, cst, lexer, signature);
+    sb_append_cstr(sb, " (");
+    usize param_column = format_sb_current_column(sb);
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        const CstParam* param = &cst->params[signature->first_param + i];
+        format_emit_fn_param(sb, cst, lexer, param);
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_char(sb, ')');
+
+    if (include_return_type && signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+
+    arena_done(&temp_arena);
 }
 
 internal void format_emit_ffi_entry(StringBuilder* sb,
@@ -2843,9 +2927,10 @@ internal void format_emit_impl(StringBuilder* sb,
     format_emit_indent(sb, indent_level);
     sb_append_cstr(sb, "impl ");
     format_emit_expr(sb, cst, lexer, impl->target_type_node_index, 0);
-    sb_append_cstr(sb, " {\n");
+    sb_append_cstr(sb, " {\n\n");
     format_emit_block_contents(
         sb, cst, lexer, impl->body_node_index, indent_level + 1);
+    sb_append_char(sb, '\n');
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 }

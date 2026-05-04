@@ -1570,7 +1570,8 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     }
                     continue;
                 }
-                if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                if (!state->stop_before_param_separator &&
+                    ast_peek_kind_at(state, 0) == TK_Comma) {
                     if (!ast_expect_token(state, TK_Comma) ||
                         !ast_next_token(state)) {
                         array_free(arg_nodes);

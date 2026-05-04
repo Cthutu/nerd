@@ -6,11 +6,11 @@ Counter :: plex {
 }
 
 impl Counter {
-    inc :: fn (self: ^Counter, amount: i32) {
+    inc :: fn (self: ^Self, amount: i32) {
         self.value += amount
     }
 
-    get :: fn (self: Counter) -> i32 {
+    get :: fn (self: Self) -> i32 {
         return self.value
     }
 }

@@ -2132,7 +2132,7 @@ internal bool sema_node_is_inside_function_body(const Ast* ast, u32 node_index)
     return false;
 }
 
-internal bool sema_node_is_inside_impl_body(const Ast* ast, u32 node_index)
+internal u32 sema_enclosing_impl_node_index(const Ast* ast, u32 node_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* owner = &ast->nodes[i];
@@ -2142,10 +2142,15 @@ internal bool sema_node_is_inside_impl_body(const Ast* ast, u32 node_index)
         const AstImplInfo* impl = &ast->impls[owner->a];
         const AstNode*     body = &ast->nodes[impl->body_node_index];
         if (body->a <= node_index && node_index < body->b) {
-            return true;
+            return i;
         }
     }
-    return false;
+    return U32_MAX;
+}
+
+internal bool sema_node_is_inside_impl_body(const Ast* ast, u32 node_index)
+{
+    return sema_enclosing_impl_node_index(ast, node_index) != U32_MAX;
 }
 
 internal u32 sema_mangle_method_symbol(const Lexer* lexer,
@@ -6028,6 +6033,25 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
     switch (node->kind) {
     case AK_SymbolRef:
         {
+            if (string_eq(lex_symbol(lexer, node->a), s("Self"))) {
+                u32 impl_node_index =
+                    sema_enclosing_impl_node_index(ast, node_index);
+                if (impl_node_index != U32_MAX) {
+                    const AstImplInfo* impl =
+                        &ast->impls[ast->nodes[impl_node_index].a];
+                    if (!sema_resolve_type_node_ex(lexer,
+                                                   ast,
+                                                   sema,
+                                                   impl->target_type_node_index,
+                                                   subst,
+                                                   out_type_index)) {
+                        return false;
+                    }
+                    sema->node_type_indices[node_index] = *out_type_index;
+                    return true;
+                }
+            }
+
             for (u32 i = 0; i < subst.count; ++i) {
                 if (subst.param_symbols[i] == node->a) {
                     u32 type_index                      = subst.arg_types[i];
@@ -11815,6 +11839,29 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     type_index = sema->types[fn_type_index].return_type;
                     array_free(explicit_arg_nodes);
                     break;
+                }
+            }
+
+            if (callee_node->kind == AK_SymbolRef) {
+                u32 decl_index = sema->node_decl_indices[node->a];
+                if (decl_index != sema_no_decl()) {
+                    SemaDecl* decl = &sema->decls[decl_index];
+                    if (decl->kind == SK_Function &&
+                        decl->type_index == sema_no_type() &&
+                        decl->value_node_index != sema_no_decl()) {
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  decl->value_node_index,
+                                                  sema_no_type(),
+                                                  &decl->type_index)) {
+                            return false;
+                        }
+                        if (decl->bind_node_index != sema_no_decl()) {
+                            sema->node_type_indices[decl->bind_node_index] =
+                                decl->type_index;
+                        }
+                    }
                 }
             }
 

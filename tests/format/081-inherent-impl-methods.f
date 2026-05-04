@@ -6,6 +6,7 @@ Stack :: plex [T] {
 }
 
 impl Stack[T] {
+
     pub push :: fn (self: ^Stack[T], item: T) {
         self.data.push(item)
     }
@@ -14,4 +15,5 @@ impl Stack[T] {
     pub pop :: fn (self: ^Stack[T]) -> T {
         return self.data.pop()
     }
+
 }

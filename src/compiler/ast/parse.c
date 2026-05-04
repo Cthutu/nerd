@@ -693,8 +693,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                         return false;
                     }
                     bool previous_boundary = state->allow_statement_boundary;
-                    state->allow_statement_boundary = true;
+                    bool previous_param_separator =
+                        state->stop_before_param_separator;
+                    state->allow_statement_boundary    = true;
+                    state->stop_before_param_separator = true;
                     bool parsed = ast_parse_expr(state, &default_node);
+                    state->stop_before_param_separator =
+                        previous_param_separator;
                     state->allow_statement_boundary = previous_boundary;
                     if (!parsed) {
                         return false;
@@ -862,9 +867,13 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                     return false;
                 }
                 bool previous_boundary = state->allow_statement_boundary;
-                state->allow_statement_boundary = true;
+                bool previous_param_separator =
+                    state->stop_before_param_separator;
+                state->allow_statement_boundary    = true;
+                state->stop_before_param_separator = true;
                 bool parsed = ast_parse_expr(state, &default_node);
-                state->allow_statement_boundary = previous_boundary;
+                state->stop_before_param_separator = previous_param_separator;
+                state->allow_statement_boundary    = previous_boundary;
                 if (!parsed) {
                     return false;
                 }
