@@ -12,7 +12,6 @@ pub ffi "c" {
     setlocale (category: i32, locale: ^u8) -> ^u8
     tcgetattr (fd: i32, ios: ^termios) -> i32
     tcsetattr (fd: i32, optional_actions: i32, ios: ^termios) -> i32
-    write     (fd: i32, buf: ^u8, count: usize) -> isize
 
     mmap     (addr   : ^void,
               len    : usize,

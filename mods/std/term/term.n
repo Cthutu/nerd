@@ -1055,11 +1055,13 @@ term_output_append_codepoint :: fn (ch: u32) {
 }
 
 term_output_flush :: fn () {
+    chunk_size: usize = 512
     offset: usize = 0
     for offset < g_term_output.count {
-        written := write(STDOUT_FILENO, ^g_term_output[offset], g_term_output.count - offset)
-        on written <= 0 => return
-        offset += written.as(usize)
+        end := offset + chunk_size
+        on end > g_term_output.count => end = g_term_output.count
+        pr(g_term_output[offset .. end].as(string))
+        offset = end
     }
 }
 
