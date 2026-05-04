@@ -1054,6 +1054,17 @@ term_output_append_codepoint :: fn (ch: u32) {
     }
 }
 
+term_output_flush :: fn () {
+    chunk_size: usize = 512
+    offset: usize = 0
+    for offset < g_term_output.count {
+        end := offset + chunk_size
+        on end > g_term_output.count => end = g_term_output.count
+        pr(g_term_output[offset .. end].as(string))
+        offset = end
+    }
+}
+
 --
 -- Framebuffer
 --
@@ -1190,7 +1201,7 @@ term_fb_present :: fn () {
         }
     }
     term_output_append("\x1b[0m")
-    pr(g_term_output[..].as(string))
+    term_output_flush()
 }
 
 test "framebuffer colours split into rgb components" {
