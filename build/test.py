@@ -13,10 +13,8 @@ from dataclasses import dataclass
 
 try:
     from rich.console import Console
-    from rich.table import Table
 except ImportError:  # pragma: no cover - fallback for minimal Python installs
     Console = None
-    Table = None
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -39,6 +37,22 @@ class SuiteCounts:
 
 console = Console() if Console else None
 
+ANSI_RESET = "\033[0m"
+ANSI_BOLD_WHITE = "\033[1;37m"
+ANSI_BG_BLUE = "\033[44m"
+ANSI_FAINT_WHITE = "\033[2;37m"
+ANSI_RED = "\033[31m"
+ANSI_GREEN = "\033[32m"
+ANSI_CYAN = "\033[36m"
+
+SUITE_LABELS = {
+    "language": "language",
+    "errors": "error",
+    "format": "format",
+    "lsp": "lsp",
+    "commands": "command",
+}
+
 
 def rel(path: pathlib.Path) -> str:
     return str(path.relative_to(ROOT))
@@ -50,9 +64,16 @@ def colour(text: str, code: str) -> str:
     return f"\033[{code}m{text}\033[0m"
 
 
-def out(text: str, *, style: str | None = None) -> None:
+def out(text: str) -> None:
     if console:
-        console.print(text, style=style)
+        console.print(text, highlight=False, markup=False)
+    else:
+        print(text)
+
+
+def emit(text: str) -> None:
+    if console:
+        console.out(text, highlight=False)
     else:
         print(text)
 
@@ -429,22 +450,79 @@ def main() -> int:
         case_failures = runners[kind](path)
         if case_failures:
             counts[kind].failed += 1
-            if console:
-                console.print("[bold red]FAIL[/bold red]", rel(path))
-            else:
-                print(f"{colour('FAIL', '1;31')} {rel(path)}")
+            print_result_line(False, SUITE_LABELS[kind], rel(path))
             for failure in case_failures:
                 out(failure.message)
             failures.extend(case_failures)
         else:
             counts[kind].passed += 1
-            if console:
-                console.print("[bold green]PASS[/bold green]", rel(path))
-            else:
-                print(f"{colour('PASS', '1;32')} {rel(path)}")
+            print_result_line(True, SUITE_LABELS[kind], rel(path))
 
     print_summary(counts)
     return 1 if failures else 0
+
+
+def print_result_line(passed: bool, kind: str, label: str) -> None:
+    colour_code = ANSI_GREEN if passed else ANSI_RED
+    status = "PASS" if passed else "FAIL"
+    emit(f"{colour_code}[{status}]{ANSI_RESET} {kind}: {label}")
+
+
+def visible_width(text: str) -> int:
+    return len(text)
+
+
+def print_repeat(text: str, count: int) -> None:
+    if count <= 0:
+        return
+    if console:
+        console.out(text * count, end="", highlight=False)
+    else:
+        print(text * count, end="")
+
+
+def print_box_line(left: str, mid: str, right: str, widths: list[int]) -> None:
+    if console:
+        console.out(f"{ANSI_FAINT_WHITE}{left}", end="", highlight=False)
+        for index, width in enumerate(widths):
+            console.out("─" * (width + 2), end="", highlight=False)
+            if index + 1 < len(widths):
+                console.out(mid, end="", highlight=False)
+        console.out(f"{right}{ANSI_RESET}", highlight=False)
+        return
+
+    print(f"{ANSI_FAINT_WHITE}{left}", end="")
+    for index, width in enumerate(widths):
+        print("─" * (width + 2), end="")
+        if index + 1 < len(widths):
+            print(mid, end="")
+    print(f"{right}{ANSI_RESET}")
+
+
+def print_span_line(left: str, right: str, width: int) -> None:
+    emit(f"{ANSI_FAINT_WHITE}{left}{'─' * width}{right}{ANSI_RESET}")
+
+
+def print_text_cell(text: str, width: int, colour_code: str) -> str:
+    padding = max(0, width - visible_width(text))
+    return f" {colour_code}{text}{ANSI_RESET}{' ' * padding} "
+
+
+def print_number_cell(value: int, width: int, colour_code: str) -> str:
+    text = str(value)
+    padding = max(0, width - len(text))
+    return f" {colour_code}{text}{ANSI_RESET}{' ' * padding} "
+
+
+def print_table_row(cells: list[str], widths: list[int], colours: list[str], numeric: list[bool]) -> None:
+    parts = [f"{ANSI_FAINT_WHITE}│{ANSI_RESET}"]
+    for value, width, colour_code, is_numeric in zip(cells, widths, colours, numeric):
+        if is_numeric:
+            parts.append(print_number_cell(int(value), width, colour_code))
+        else:
+            parts.append(print_text_cell(value, width, colour_code))
+        parts.append(f"{ANSI_FAINT_WHITE}│{ANSI_RESET}")
+    emit("".join(parts))
 
 
 def print_summary(counts: dict[str, SuiteCounts]) -> None:
@@ -454,25 +532,46 @@ def print_summary(counts: dict[str, SuiteCounts]) -> None:
         total.passed += count.passed
         total.failed += count.failed
 
-    if console and Table:
-        table = Table(title="Test Summary")
-        table.add_column("Suite", style="cyan")
-        table.add_column("Total", justify="right")
-        table.add_column("Passed", justify="right", style="green")
-        table.add_column("Failed", justify="right", style="red")
-        for kind, count in counts.items():
-            table.add_row(kind, str(count.total), str(count.passed), str(count.failed))
-        table.add_section()
-        table.add_row("total", str(total.total), str(total.passed), str(total.failed))
-        console.print(table)
-        return
+    headers = ["Type", "Passed", "Failed"]
+    rows = [
+        (SUITE_LABELS[kind], count.passed, count.failed)
+        for kind, count in counts.items()
+    ]
+    rows.append(("total", total.passed, total.failed))
 
-    print()
-    print("Test Summary")
-    print("suite       total  passed  failed")
-    for kind, count in counts.items():
-        print(f"{kind:<10} {count.total:>5} {count.passed:>7} {count.failed:>7}")
-    print(f"{'total':<10} {total.total:>5} {total.passed:>7} {total.failed:>7}")
+    widths = [
+        max(visible_width(headers[0]), *(visible_width(row[0]) for row in rows)),
+        max(visible_width(headers[1]), *(len(str(row[1])) for row in rows)),
+        max(visible_width(headers[2]), *(len(str(row[2])) for row in rows)),
+    ]
+    content_width = sum(width + 2 for width in widths) + len(widths) - 1
+    title = "Test Summary"
+    title_width = visible_width(title)
+    if content_width < title_width + 2:
+        widths[-1] += title_width + 2 - content_width
+        content_width = title_width + 2
+
+    emit("")
+    print_span_line("┌", "┐", content_width)
+    title_padding = max(0, content_width - title_width - 1)
+    emit(
+        f"{ANSI_FAINT_WHITE}│{ANSI_RESET}"
+        f"{ANSI_BG_BLUE}{ANSI_BOLD_WHITE} {title}{' ' * title_padding}"
+        f"{ANSI_RESET}{ANSI_FAINT_WHITE}│{ANSI_RESET}"
+    )
+    print_box_line("├", "┬", "┤", widths)
+    print_table_row(headers, widths, [ANSI_BOLD_WHITE] * 3, [False, False, False])
+    print_box_line("├", "┼", "┤", widths)
+    for index, row in enumerate(rows):
+        if index == len(rows) - 1:
+            print_box_line("├", "┼", "┤", widths)
+        print_table_row(
+            [row[0], str(row[1]), str(row[2])],
+            widths,
+            [ANSI_CYAN, ANSI_GREEN, ANSI_RED],
+            [False, True, True],
+        )
+    print_box_line("└", "┴", "┘", widths)
 
 
 if __name__ == "__main__":
