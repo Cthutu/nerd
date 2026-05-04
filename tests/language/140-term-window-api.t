@@ -3,6 +3,11 @@ use std.term
 main :: fn () -> i32 {
     window: TermWindow
     rect: TermRect = term_rect(0, 0, 12, 4)
+    overlap := rect.intersection(term_rect(2, 1, 4, 2))
+
+    on rect.is_empty() => return 1
+    on overlap.x != 2 || overlap.y != 1 => return 2
+    on overlap.width != 4 || overlap.height != 2 => return 3
 
     term_window_init(^window, rect)
     ink := term_rgb(255, 255, 255)
@@ -15,8 +20,8 @@ main :: fn () -> i32 {
 
     term_window_done(^window)
 
-    on first != 'o'.as(u32) => return 1
-    on second != 'k'.as(u32) => return 2
+    on first != 'o'.as(u32) => return 4
+    on second != 'k'.as(u32) => return 5
     return 0
 }
 ¬

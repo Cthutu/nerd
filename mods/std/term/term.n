@@ -168,31 +168,8 @@ pub term_cursor_goto :: fn (x: i32, y: i32) {
 }
 
 --
--- Rectangles and colours
+-- Colours
 --
-
-pub term_rect :: fn (x: u16, y: u16, width: u16, height: u16) -> TermRect {
-    return { x, y, width, height }
-}
-
-pub term_rect_is_empty :: fn (rect: TermRect) -> bool {
-    return rect.width == 0 || rect.height == 0
-}
-
-pub term_rect_intersection :: fn (a: TermRect, b: TermRect) -> TermRect {
-    ax1 := a.x.as(u32) + a.width.as(u32)
-    ay1 := a.y.as(u32) + a.height.as(u32)
-    bx1 := b.x.as(u32) + b.width.as(u32)
-    by1 := b.y.as(u32) + b.height.as(u32)
-
-    x0 := on a.x > b.x => a.x else b.x
-    y0 := on a.y > b.y => a.y else b.y
-    x1 := on ax1 < bx1 => ax1 else bx1
-    y1 := on ay1 < by1 => ay1 else by1
-
-    on x1 <= x0.as(u32) || y1 <= y0.as(u32) => return term_rect(0, 0, 0, 0)
-    return term_rect(x0, y0, (x1 - x0.as(u32)).as(u16), (y1 - y0.as(u32)).as(u16))
-}
 
 pub term_rgb :: fn (r: u8, g: u8, b: u8) -> u32 {
     return 0xff000000 | (r.as(u32) << 16) | (g.as(u32) << 8) | b.as(u32)
@@ -237,8 +214,8 @@ pub term_fb_cls :: fn (ink: u32, paper: u32) {
 
 pub term_fb_rect :: fn (rect: TermRect, ch: u32, ink: u32, paper: u32) {
     fb_rect := term_rect(0, 0, g_term_fb_size.0.as(u16), g_term_fb_size.1.as(u16))
-    clipped := term_rect_intersection(rect, fb_rect)
-    on term_rect_is_empty(clipped) => return
+    clipped := rect.intersection(fb_rect)
+    on clipped.is_empty() => return
 
     for y: u16 = 0; y < clipped.height; y += 1 {
         for x: u16 = 0; x < clipped.width; x += 1 {
@@ -325,8 +302,8 @@ impl TermWindow {
 
     pub paint_rect :: fn (window: ^Self, rect: TermRect, ch: u32, ink: u32, paper: u32) {
         local := term_rect(0, 0, window.rect.width, window.rect.height)
-        clipped := term_rect_intersection(rect, local)
-        on term_rect_is_empty(clipped) => return
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
 
         for y: u16 = 0; y < clipped.height; y += 1 {
             for x: u16 = 0; x < clipped.width; x += 1 {
@@ -339,8 +316,8 @@ impl TermWindow {
 
     pub draw_rect :: fn (window: ^Self, rect: TermRect, ch: u32) {
         local := term_rect(0, 0, window.rect.width, window.rect.height)
-        clipped := term_rect_intersection(rect, local)
-        on term_rect_is_empty(clipped) => return
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
 
         for y: u16 = 0; y < clipped.height; y += 1 {
             for x: u16 = 0; x < clipped.width; x += 1 {
@@ -354,8 +331,8 @@ impl TermWindow {
 
     pub paint :: fn (window: ^Self, rect: TermRect, ink: u32, paper: u32) {
         local := term_rect(0, 0, window.rect.width, window.rect.height)
-        clipped := term_rect_intersection(rect, local)
-        on term_rect_is_empty(clipped) => return
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
 
         for y: u16 = 0; y < clipped.height; y += 1 {
             for x: u16 = 0; x < clipped.width; x += 1 {
