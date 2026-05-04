@@ -1356,6 +1356,54 @@ void cgen_add_address_of_index(CGen* cgen, const IrInstruction* instr)
     cgen_addn(cgen, "];");
 }
 
+void cgen_add_address_of_field_ptr(CGen*                cgen,
+                                   const Lexer*         lexer,
+                                   const IrInstruction* instr)
+{
+    const SemaType* pointer_type = &cgen->ir->types[instr->rvalue[0].type];
+    ASSERT(pointer_type->kind == STK_Pointer,
+           "Expected pointer target for field address");
+    u32             target_type = pointer_type->first_param_type;
+    const SemaType* record_type = &cgen->ir->types[target_type];
+
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = &");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen, "->");
+    if (record_type->kind == STK_Plex || record_type->kind == STK_Union) {
+        cgen_add_symbol_name(cgen, (u32)instr->rvalue[1].value.integer);
+    } else {
+        string field = lex_symbol(lexer, (u32)instr->rvalue[1].value.integer);
+        cgen_add_bytes(cgen, (const char*)field.data, field.count);
+    }
+    cgen_addn(cgen, ";");
+}
+
+void cgen_add_address_of_index_ptr(CGen* cgen, const IrInstruction* instr)
+{
+    const SemaType* pointer_type = &cgen->ir->types[instr->rvalue[0].type];
+    ASSERT(pointer_type->kind == STK_Pointer,
+           "Expected pointer target for index address");
+    u32             target_type = pointer_type->first_param_type;
+    const SemaType* collection  = &cgen->ir->types[target_type];
+
+    cgen_start_line(cgen);
+    cgen_add_decl_type_and_name(cgen, instr->lvalue.type, &instr->lvalue);
+    cgen_add(cgen, " = &");
+    cgen_add_value(cgen, &instr->rvalue[0]);
+    cgen_add(cgen,
+             collection->kind == STK_Array
+                 ? "->items["
+                 : ((collection->kind == STK_Slice ||
+                     collection->kind == STK_DynamicArray ||
+                     collection->kind == STK_String)
+                        ? "->data["
+                        : "["));
+    cgen_add_value(cgen, &instr->rvalue[1]);
+    cgen_addn(cgen, "];");
+}
+
 internal void cgen_add_dynarray_target(CGen*                       cgen,
                                        const IrDynamicArrayOpInfo* info)
 {
@@ -2322,6 +2370,12 @@ void cgen_generate(CGen* cgen, const Ir* ir)
             break;
         case IR_OP_INDEX:
             cgen_add_index(cgen, instr);
+            break;
+        case IR_OP_ADDRESS_OF_FIELD_PTR:
+            cgen_add_address_of_field_ptr(cgen, cgen->lexer, instr);
+            break;
+        case IR_OP_ADDRESS_OF_INDEX_PTR:
+            cgen_add_address_of_index_ptr(cgen, instr);
             break;
         case IR_OP_DYNARRAY_RESERVE:
         case IR_OP_DYNARRAY_PUSH:

@@ -98,27 +98,31 @@ $34 = $23 + 1
 $23 = $34
 jump L24
 label L26
-$35 = ^[3]i32:values[i32:1]
+$36 = ^[3]i32:values
+$35 = ^^[3]i32:$36^[i32:1]
 local ptr = ^i32:$35
-$36 = string.start
-$38 = ^i32:ptr[0]
-string.append i32:$38
+$37 = string.start
+$39 = ^i32:ptr[0]
+string.append i32:$39
 string.append string:" "
 string.append i32:total
 string.append string:" "
 string.append i32:count
 string.append string:" "
 string.append i32:sum
-$37 = string.finish $36
-call fn(string)->void:prn, string:$37
+$38 = string.finish $37
+call fn(string)->void:prn, string:$38
 string.reset
-$39 = ^i32:ptr[0]
-$40 = i32:$39 + i32:total
-$41 = i32:$40 + i32:count
-return i32:$41
+$40 = ^i32:ptr[0]
+$41 = i32:$40 + i32:total
+$42 = i32:$41 + i32:count
+return i32:$42
+end
+init
+input_buf = [256]u8:0
+input_len = usize:0
 end
 ¬
-void init() {}
 #ifndef NERD_TYPE_arrayc02222e1
 #define NERD_TYPE_arrayc02222e1
 typedef struct arrayc02222e1 {
@@ -132,6 +136,78 @@ typedef struct slice3087b0d5 {
     uintptr_t count;
 } slice3087b0d5;
 #endif
+int printf(const char*, ...);
+int scanf(const char*, ...);
+uintptr_t strlen(const char*);
+int getchar(void);
+intptr_t write(int, const char*, uintptr_t);
+
+array0c21e4e1 $input_buf;
+uintptr_t $input_len;
+void $pr(string $text) {
+    uint8_t* $0 = $text.data;
+    uintptr_t $1 = $text.count;
+    intptr_t $2 = write(1, (const char*)$0, $1);
+    return;
+}
+void $epr(string $text) {
+    uint8_t* $0 = $text.data;
+    uintptr_t $1 = $text.count;
+    intptr_t $2 = write(2, (const char*)$0, $1);
+    return;
+}
+void $prn(string $text) {
+    $pr($text);
+    intptr_t $0 = write(1, (const char*)(u8*)"\n", 1);
+    return;
+}
+void $eprn(string $text) {
+    $epr($text);
+    intptr_t $0 = write(2, (const char*)(u8*)"\n", 1);
+    return;
+}
+string $input(string $prompt) {
+    $pr($prompt);
+    slice6d447031 $0 = (slice6d447031){.data = $input_buf.items, .count = 256};
+    uint8_t* $1 = $0.data;
+    int $2 = scanf((const char*)(u8*)"%255[^\n]", $1);
+    int $read_count = $2;
+    int $3 = getchar();
+    int $ch = $3;
+    L4: ;
+    bool $6 = false;
+    bool $9 = $ch != 10;
+    if (!$9) goto L7;
+    bool $10 = $ch != -1;
+    if (!$10) goto L7;
+    $6 = true;
+    goto L8;
+    L7: ;
+    $6 = false;
+    L8: ;
+    if (!$6) goto L5;
+    {
+        int $11 = getchar();
+        $ch = $11;
+    }
+    goto L4;
+    L5: ;
+    bool $12 = $read_count == 1;
+    uintptr_t $13 = 0;
+    if (!$12) goto L15;
+    slice6d447031 $16 = (slice6d447031){.data = $input_buf.items, .count = 256};
+    uint8_t* $17 = $16.data;
+    uintptr_t $18 = strlen((const char*)$17);
+    $13 = $18;
+    goto L14;
+    L15: ;
+    $13 = 0;
+    L14: ;
+    uintptr_t $input_len = $13;
+    slice6d447031 $19 = (slice6d447031){.data = $input_buf.items + 0, .count = ($input_len) - (0)};
+    string $20 = (string){.data = $19.data, .count = $19.count};
+    return $20;
+}
 int $main() {
     string_builder_reset();
     arrayc02222e1 $0 = (arrayc02222e1){.items = {1, 2, 3}};
@@ -207,22 +283,32 @@ int $main() {
     $23 = $34;
     goto L24;
     L26: ;
-    int* $35 = &$values.items[1];
+    struct arrayc02222e1* $36 = &$values;
+    int* $35 = &$36->items[1];
     int* $ptr = $35;
-    size_t $36 = string_builder_mark();
-    int $38 = $ptr[0];
-    string_builder_append_string(to_string$i32($38));
+    size_t $37 = string_builder_mark();
+    int $39 = $ptr[0];
+    string_builder_append_string(to_string$i32($39));
     string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
     string_builder_append_string(to_string$i32($total));
     string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
     string_builder_append_string(to_string$i32($count));
     string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
     string_builder_append_string(to_string$i32($sum));
-    string $37 = string_builder_finish($36);
-    prn($37);
+    string $38 = string_builder_finish($37);
+    $prn($38);
     string_builder_reset();
-    int $39 = $ptr[0];
-    int $40 = $39 + $total;
-    int $41 = $40 + $count;
-    return $41;
+    int $40 = $ptr[0];
+    int $41 = $40 + $total;
+    int $42 = $41 + $count;
+    return $42;
+}
+void init() {
+    $input_buf = (array0c21e4e1){0};
+    $input_len = 0;
+}
+
+int main() {
+    init();
+    return $main();
 }

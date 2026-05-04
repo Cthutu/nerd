@@ -51,6 +51,10 @@ pub TermKeyCode :: enum {
     END
 }
 
+pub TERM_KEYMOD_CTRL  :: 1
+pub TERM_KEYMOD_ALT   :: 2
+pub TERM_KEYMOD_SHIFT :: 4
+
 pub TermRect :: plex {
     x      u16
     y      u16

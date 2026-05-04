@@ -7310,6 +7310,8 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                 sema_copy_u32_array(sema->node_method_call_decl_indices),
             .node_method_call_receiver_refs =
                 sema_copy_bool_array(sema->node_method_call_receiver_refs),
+            .node_method_call_receiver_derefs =
+                sema_copy_bool_array(sema->node_method_call_receiver_derefs),
         });
 
     *out_symbol = symbol;
@@ -7670,6 +7672,7 @@ typedef struct {
     u32  fn_type_index;
     u32  lowered_symbol_handle;
     bool receiver_ref;
+    bool receiver_deref;
 } SemaResolvedMethodCall;
 
 internal bool sema_try_resolve_method_call(const Lexer* lexer,
@@ -7813,7 +7816,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             return false;
         }
 
-        bool receiver_ref = false;
+        bool receiver_ref   = false;
+        bool receiver_deref = false;
         if (!sema_type_matches(
                 source_sema, expected_self, source_receiver_type)) {
             u32 pointer_receiver =
@@ -7821,6 +7825,15 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             if (sema_type_matches(
                     source_sema, expected_self, pointer_receiver)) {
                 receiver_ref = true;
+            } else if (source_receiver_type != sema_no_type() &&
+                       source_sema->types[source_receiver_type].kind ==
+                           STK_Pointer &&
+                       sema_type_matches(
+                           source_sema,
+                           expected_self,
+                           source_sema->types[source_receiver_type]
+                               .first_param_type)) {
+                receiver_deref = true;
             } else {
                 array_free(source_arg_types);
                 continue;
@@ -7941,6 +7954,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             .fn_type_index         = fn_type_index,
             .lowered_symbol_handle = symbol,
             .receiver_ref          = receiver_ref,
+            .receiver_deref        = receiver_deref,
         };
         *out_found = true;
         return true;
@@ -11798,6 +11812,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         method_call.decl_index;
                     sema->node_method_call_receiver_refs[node_index] =
                         method_call.receiver_ref;
+                    sema->node_method_call_receiver_derefs[node_index] =
+                        method_call.receiver_deref;
                     type_index =
                         sema->types[method_call.fn_type_index].return_type;
                     break;
@@ -12215,6 +12231,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer, target),
                         s("expression"));
                 }
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          node->a,
+                                          sema_no_type(),
+                                          &target_type)) {
+                    return false;
+                }
+            } else if (target->kind == AK_Index) {
                 if (!sema_infer_node_type(lexer,
                                           ast,
                                           sema,
@@ -14423,6 +14448,7 @@ bool sema_analyse(const Lexer*           lexer,
         array_push(sema.node_type_indices, sema_no_type());
         array_push(sema.node_method_call_decl_indices, sema_no_decl());
         array_push(sema.node_method_call_receiver_refs, false);
+        array_push(sema.node_method_call_receiver_derefs, false);
         array_push(sema.node_implicit_array_type_indices, sema_no_type());
         array_push(sema.node_is_type_expr, false);
         array_push(sema.node_const_known, false);
@@ -14523,6 +14549,7 @@ void sema_done(Sema* sema)
         array_free(inst->node_type_indices);
         array_free(inst->node_method_call_decl_indices);
         array_free(inst->node_method_call_receiver_refs);
+        array_free(inst->node_method_call_receiver_derefs);
     }
     array_free(sema->types);
     array_free(sema->type_param_types);
@@ -14542,6 +14569,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_type_indices);
     array_free(sema->node_method_call_decl_indices);
     array_free(sema->node_method_call_receiver_refs);
+    array_free(sema->node_method_call_receiver_derefs);
     array_free(sema->node_implicit_array_type_indices);
     array_free(sema->on_branch_local_indices);
     array_free(sema->pattern_local_indices);

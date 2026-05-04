@@ -149,6 +149,7 @@ typedef struct {
     Array(u32) node_type_indices;
     Array(u32) node_method_call_decl_indices;
     Array(bool) node_method_call_receiver_refs;
+    Array(bool) node_method_call_receiver_derefs;
 } SemaGenericFnInstantiation;
 
 //------------------------------------------------------------------------------
@@ -174,6 +175,7 @@ typedef struct {
     Array(u32) node_type_indices;
     Array(u32) node_method_call_decl_indices;
     Array(bool) node_method_call_receiver_refs;
+    Array(bool) node_method_call_receiver_derefs;
     Array(u32) node_implicit_array_type_indices;
     Array(u32) on_branch_local_indices;
     Array(u32) pattern_local_indices;

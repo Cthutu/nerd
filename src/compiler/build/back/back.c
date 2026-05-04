@@ -164,7 +164,10 @@ internal void back_end_copy_module_types(ProgramBackEndMerge* merge,
         case STK_Slice:
         case STK_DynamicArray:
         case STK_Pointer:
-            dst->first_param_type = (*out_type_map)[src->first_param_type];
+            dst->first_param_type =
+                src->first_param_type == sema_no_type()
+                    ? sema_no_type()
+                    : (*out_type_map)[src->first_param_type];
             break;
         case STK_Function:
             {
@@ -494,6 +497,12 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                     &merge.lexer,
                     &front_end->lexer,
                     (u32)module_ir->instructions[i].rvalue[0].value.integer);
+                break;
+            case IR_OP_ADDRESS_OF_FIELD_PTR:
+                instr.rvalue[1].value.integer = sema_import_symbol_handle(
+                    &merge.lexer,
+                    &front_end->lexer,
+                    (u32)module_ir->instructions[i].rvalue[1].value.integer);
                 break;
             default:
                 break;

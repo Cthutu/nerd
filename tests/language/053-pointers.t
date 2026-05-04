@@ -26,40 +26,45 @@ $0 = array[i32:10, i32:20, i32:30]
 local values = [3]i32:$0
 $1 = ^[3]i32:values
 local array_ptr = ^[3]i32:$1
-$2 = ^[3]i32:values[i32:1]
+$3 = ^[3]i32:values
+$2 = ^^[3]i32:$3^[i32:1]
 local elem_ptr = ^i32:$2
-$4 = array[i32:1, i32:2, i32:3]
-$3 = ^[3]i32:$4
-local literal_ptr = ^[3]i32:$3
-$5 = string.start
+$5 = array[i32:1, i32:2, i32:3]
+$4 = ^[3]i32:$5
+local literal_ptr = ^[3]i32:$4
+$6 = string.start
 string.append string:"array pointer = "
-$7 = ^[3]i32:array_ptr[i32:0]
-string.append [3]i32:$7
-$6 = string.finish $5
-call fn(string)->void:prn, string:$6
+$8 = ^[3]i32:array_ptr[i32:0]
+string.append [3]i32:$8
+$7 = string.finish $6
+call fn(string)->void:prn, string:$7
 string.reset
-$8 = string.start
+$9 = string.start
 string.append string:"elem pointer = "
-$10 = ^i32:elem_ptr[i32:0]
-string.append i32:$10
-$9 = string.finish $8
-call fn(string)->void:prn, string:$9
+$11 = ^i32:elem_ptr[i32:0]
+string.append i32:$11
+$10 = string.finish $9
+call fn(string)->void:prn, string:$10
 string.reset
-$11 = string.start
+$12 = string.start
 string.append string:"literal pointer = "
-$13 = ^[3]i32:literal_ptr[i32:0]
-string.append [3]i32:$13
-$12 = string.finish $11
-call fn(string)->void:prn, string:$12
+$14 = ^[3]i32:literal_ptr[i32:0]
+string.append [3]i32:$14
+$13 = string.finish $12
+call fn(string)->void:prn, string:$13
 string.reset
-$14 = ^[3]i32:array_ptr[i32:0]
-$15 = [3]i32:$14[i32:0]
-$16 = ^i32:elem_ptr[i32:0]
-$17 = i32:$15 + i32:$16
-$18 = ^[3]i32:literal_ptr[i32:0]
-$19 = [3]i32:$18[i32:2]
-$20 = i32:$17 + i32:$19
-return i32:$20
+$15 = ^[3]i32:array_ptr[i32:0]
+$16 = [3]i32:$15[i32:0]
+$17 = ^i32:elem_ptr[i32:0]
+$18 = i32:$16 + i32:$17
+$19 = ^[3]i32:literal_ptr[i32:0]
+$20 = [3]i32:$19[i32:2]
+$21 = i32:$18 + i32:$20
+return i32:$21
+end
+init
+input_buf = [256]u8:0
+input_len = usize:0
 end
 ¬
 

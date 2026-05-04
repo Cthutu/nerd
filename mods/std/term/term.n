@@ -18,6 +18,8 @@ g_term_original_flags: i32
 g_term_pending_count : usize
 g_term_pending_index : usize
 g_term_escape_count  : usize
+g_term_pending_bytes : [32]u8
+g_term_escape_bytes  : [32]u8
 
 g_term_fb_chars      : [..]u32
 g_term_fb_ink        : [..]u32
@@ -127,6 +129,29 @@ term_queue_event :: fn (event: TermEvent) {
     g_term.event_queue.push(event)
 }
 
+term_queue_key_char :: fn (ch: u8, modifiers: u8) {
+    key_code: TermKeyCode = NONE
+    on ch == '\r' || ch == '\n' => key_code = ENTER
+    on ch == 8 || ch == 23 || ch == 127 => key_code = BACKSPACE
+
+    key := TermKeyEvent { key: ch, key_code, key_modifiers: modifiers }
+    term_queue_event(TermEvent.Key(key))
+}
+
+term_queue_key :: fn (ch: u8) {
+    term_queue_key_char(ch, 0)
+}
+
+term_queue_key_special :: fn (code: TermKeyCode, modifiers: u8) {
+    key := TermKeyEvent { key: 0, key_code: code, key_modifiers: modifiers }
+    term_queue_event(TermEvent.Key(key))
+}
+
+term_queue_mouse :: fn (x: u16, y: u16, wheel: i16, buttons: u8) {
+    mouse := TermMouseEvent { x, y, wheel, buttons }
+    term_queue_event(TermEvent.Mouse(mouse))
+}
+
 term_check_resize :: fn () {
     new_size := term_size()
     on new_size.0 != g_term.size.0 || new_size.1 != g_term.size.1 => {
@@ -136,17 +161,444 @@ term_check_resize :: fn () {
     }
 }
 
-term_raw_key :: fn () {
+term_try_read_byte :: fn (out_ch: ^u8) -> bool {
     ch: u8
     count := read(STDIN_FILENO, ^ch, 1)
-    on count != 1 => return
+    on count != 1 => return no
+    out_ch^ = ch
+    return yes
+}
 
-    key_code: TermKeyCode = NONE
-    on ch == '\r' || ch == '\n' => key_code = ENTER
-    on ch == 8 || ch == 127 => key_code = BACKSPACE
+term_parse_u16_bytes :: fn (bytes: []u8, out_value: ^u16) -> bool {
+    on bytes.count == 0 => return no
 
-    key := TermKeyEvent { key: ch, key_code, key_modifiers: g_term.key_modifiers }
-    term_queue_event(TermEvent.Key(key))
+    value: u64 = 0
+    for i: usize = 0; i < bytes.count; i += 1 {
+        ch := bytes[i]
+        on ch < 48 || ch > 57 => return no
+        value = value * 10 + (ch - 48).as(u64)
+        on value > 65535 => return no
+    }
+
+    out_value^ = value.as(u16)
+    return yes
+}
+
+term_parse_modifiers :: fn (value: u16, out_modifiers: ^u8) -> bool {
+    on value < 2 || value > 8 => return no
+
+    modifiers: u8 = 0
+    on value == 2 || value == 4 || value == 6 || value == 8 => modifiers |= TERM_KEYMOD_SHIFT
+    on value == 3 || value == 4 || value == 7 || value == 8 => modifiers |= TERM_KEYMOD_ALT
+    on value == 5 || value == 6 || value == 7 || value == 8 => modifiers |= TERM_KEYMOD_CTRL
+    out_modifiers^ = modifiers
+    return yes
+}
+
+term_posix_buffer_pending :: fn (bytes: []u8) {
+    on bytes.count == 0 => {
+        g_term_pending_count = 0
+        g_term_pending_index = 0
+        return
+    }
+
+    count := on bytes.count > 32 => 32 else bytes.count
+    for i: usize = 0; i < count; i += 1 {
+        g_term_pending_bytes[i] = bytes[i]
+    }
+    g_term_pending_count = count
+    g_term_pending_index = 0
+}
+
+term_posix_shift_escape :: fn (consumed: usize) {
+    on consumed >= g_term_escape_count => {
+        g_term_escape_count = 0
+        return
+    }
+
+    remaining := g_term_escape_count - consumed
+    for i: usize = 0; i < remaining; i += 1 {
+        g_term_escape_bytes[i] = g_term_escape_bytes[consumed + i]
+    }
+    g_term_escape_count = remaining
+}
+
+term_posix_decode_key_csi :: fn (bytes: []u8, out_consumed: ^usize) -> bool {
+    on bytes.count < 3 || bytes[0] != 27 || bytes[1] != 91 => return no
+
+    final_pos: usize = 0
+    for i: usize = 2; i < bytes.count; i += 1 {
+        final := bytes[i]
+        on final >= 64 && final <= 126 => {
+            final_pos = i
+            break
+        }
+    }
+    on final_pos == 0 => return no
+
+    final := bytes[final_pos]
+    body := bytes[2 .. final_pos]
+    modifiers: u8 = 0
+    code: TermKeyCode = NONE
+    has_code := no
+
+    on (final == 65 || final == 66 || final == 67 ||
+        final == 68 || final == 72 || final == 70) => {
+        on body.count > 0 => {
+            param_start: usize = 0
+            param_index: usize = 0
+            for i: usize = 0; i <= body.count; i += 1 {
+                on i == body.count || body[i] == 59 => {
+                    param: u16
+                    on !term_parse_u16_bytes(body[param_start .. i], ^param) => return no
+                    on param_index == 1 => {
+                        parsed_modifiers: u8
+                        on term_parse_modifiers(param, ^parsed_modifiers) => modifiers = parsed_modifiers
+                    }
+                    param_index += 1
+                    param_start = i + 1
+                }
+            }
+        }
+
+        on final == 65 => {
+            code = UP
+            has_code = yes
+        }
+        on final == 66 => {
+            code = DOWN
+            has_code = yes
+        }
+        on final == 67 => {
+            code = RIGHT
+            has_code = yes
+        }
+        on final == 68 => {
+            code = LEFT
+            has_code = yes
+        }
+        on final == 72 => {
+            code = HOME
+            has_code = yes
+        }
+        on final == 70 => {
+            code = END
+            has_code = yes
+        }
+    } else {
+        on final == 126 => {
+            first_param: u16 = 0
+            param_start: usize = 0
+            param_index: usize = 0
+            for i: usize = 0; i <= body.count; i += 1 {
+                on i == body.count || body[i] == 59 => {
+                    param: u16
+                    on !term_parse_u16_bytes(body[param_start .. i], ^param) => return no
+                    on param_index == 0 => first_param = param
+                    on param_index == 1 => {
+                        parsed_modifiers: u8
+                        on term_parse_modifiers(param, ^parsed_modifiers) => modifiers = parsed_modifiers
+                    }
+                    param_index += 1
+                    param_start = i + 1
+                }
+            }
+
+            on first_param == 1 || first_param == 7 => {
+                code = HOME
+                has_code = yes
+            }
+            on first_param == 4 || first_param == 8 => {
+                code = END
+                has_code = yes
+            }
+            on first_param == 3 => {
+                code = DELETE
+                has_code = yes
+            }
+        } else {
+            return no
+        }
+    }
+
+    on !has_code => return no
+    term_queue_key_special(code, modifiers)
+    out_consumed^ = final_pos + 1
+    return yes
+}
+
+term_posix_decode_mouse_sgr :: fn (bytes: []u8, out_consumed: ^usize) -> bool {
+    on bytes.count < 6 || bytes[0] != 27 || bytes[1] != 91 || bytes[2] != 60 => return no
+
+    first_sep: usize = 0
+    second_sep: usize = 0
+    final_pos: usize = 0
+    for i: usize = 3; i < bytes.count; i += 1 {
+        on bytes[i] == 59 => {
+            on first_sep == 0 => first_sep = i else {
+                on second_sep == 0 => second_sep = i
+            }
+        } else {
+            on bytes[i] == 77 || bytes[i] == 109 => {
+                final_pos = i
+                break
+            }
+        }
+    }
+
+    on first_sep == 0 || second_sep == 0 || final_pos == 0 => return no
+
+    cb: u16
+    cx: u16
+    cy: u16
+    on !term_parse_u16_bytes(bytes[3 .. first_sep], ^cb) => return no
+    on !term_parse_u16_bytes(bytes[first_sep + 1 .. second_sep], ^cx) => return no
+    on !term_parse_u16_bytes(bytes[second_sep + 1 .. final_pos], ^cy) => return no
+
+    buttons: u8 = 0
+    wheel: i16 = 0
+    base := cb & 0x3
+    on (cb & 0x40) != 0 => {
+        wheel = on base == 0 => 1 else -1
+    } else {
+        on bytes[final_pos] == 77 => {
+            on base == 0 => buttons = 0x1
+            on base == 1 => buttons = 0x4
+            on base == 2 => buttons = 0x2
+        }
+    }
+
+    x := on cx > 0 => cx - 1 else 0
+    y := on cy > 0 => cy - 1 else 0
+    term_queue_mouse(x, y, wheel, buttons)
+    out_consumed^ = final_pos + 1
+    return yes
+}
+
+term_posix_decode_mouse_1015 :: fn (bytes: []u8, out_consumed: ^usize) -> bool {
+    on bytes.count < 7 || bytes[0] != 27 || bytes[1] != 91 => return no
+    on bytes[2] < 48 || bytes[2] > 57 => return no
+
+    first_sep: usize = 0
+    second_sep: usize = 0
+    final_pos: usize = 0
+    for i: usize = 2; i < bytes.count; i += 1 {
+        on bytes[i] == 59 => {
+            on first_sep == 0 => first_sep = i else {
+                on second_sep == 0 => second_sep = i
+            }
+        } else {
+            on bytes[i] == 77 => {
+                final_pos = i
+                break
+            }
+        }
+    }
+    on first_sep == 0 || second_sep == 0 || final_pos == 0 => return no
+
+    cb: u16
+    cx: u16
+    cy: u16
+    on !term_parse_u16_bytes(bytes[2 .. first_sep], ^cb) => return no
+    on !term_parse_u16_bytes(bytes[first_sep + 1 .. second_sep], ^cx) => return no
+    on !term_parse_u16_bytes(bytes[second_sep + 1 .. final_pos], ^cy) => return no
+
+    buttons: u8 = 0
+    wheel: i16 = 0
+    base := cb & 0x3
+    on (cb & 0x40) != 0 => {
+        wheel = on base == 0 => 1 else -1
+    } else {
+        on base == 0 => buttons = 0x1
+        on base == 1 => buttons = 0x4
+        on base == 2 => buttons = 0x2
+    }
+
+    x := on cx > 0 => cx - 1 else 0
+    y := on cy > 0 => cy - 1 else 0
+    term_queue_mouse(x, y, wheel, buttons)
+    out_consumed^ = final_pos + 1
+    return yes
+}
+
+term_posix_decode_mouse_x10 :: fn (bytes: []u8, out_consumed: ^usize) -> bool {
+    on bytes.count < 6 || bytes[0] != 27 || bytes[1] != 91 || bytes[2] != 77 => return no
+
+    cb := bytes[3] - 32
+    cx := bytes[4] - 32
+    cy := bytes[5] - 32
+
+    buttons: u8 = 0
+    wheel: i16 = 0
+    base := cb & 0x3
+    on (cb & 0x40) != 0 => {
+        wheel = on base == 0 => 1 else -1
+    } else {
+        on base == 0 => buttons = 0x1
+        on base == 1 => buttons = 0x4
+        on base == 2 => buttons = 0x2
+    }
+
+    x := on cx > 0 => (cx - 1).as(u16) else 0
+    y := on cy > 0 => (cy - 1).as(u16) else 0
+    term_queue_mouse(x, y, wheel, buttons)
+    out_consumed^ = 6
+    return yes
+}
+
+term_posix_swallow_mouse_tail :: fn (first: u8) -> bool {
+    on first != 59 => return no
+
+    tail: [32]u8
+    count: usize = 0
+    tail[count] = first
+    count += 1
+
+    next: u8
+    for count < 32 && term_try_read_byte(^next) {
+        tail[count] = next
+        count += 1
+    }
+
+    on count < 3 || tail[count - 1] != 77 => {
+        term_queue_key(first)
+        on count > 1 => term_posix_buffer_pending(tail[1 .. count])
+        return yes
+    }
+
+    for i: usize = 1; i + 1 < count; i += 1 {
+        on (tail[i] < 48 || tail[i] > 57) && tail[i] != 59 => {
+            term_queue_key(first)
+            term_posix_buffer_pending(tail[1 .. count])
+            return yes
+        }
+    }
+
+    return yes
+}
+
+term_posix_drain_escape_buffer :: fn () -> bool {
+    on g_term_escape_count > 0 && g_term_escape_bytes[0] != 27 => {
+        term_posix_buffer_pending(g_term_escape_bytes[0 .. g_term_escape_count])
+        g_term_escape_count = 0
+        return yes
+    }
+
+    on g_term_escape_count < 2 || g_term_escape_bytes[0] != 27 => return no
+
+    on g_term_escape_bytes[1] == 79 => {
+        for i: usize = 2; i < g_term_escape_count; i += 1 {
+            final := g_term_escape_bytes[i]
+            on final >= 64 && final <= 126 => {
+                on final == 72 => {
+                    code: TermKeyCode = HOME
+                    term_queue_key_special(code, 0)
+                }
+                on final == 70 => {
+                    code: TermKeyCode = END
+                    term_queue_key_special(code, 0)
+                }
+                term_posix_shift_escape(i + 1)
+                return yes
+            }
+        }
+        return no
+    }
+
+    on g_term_escape_bytes[1] != 91 => {
+        term_queue_key(g_term_escape_bytes[0])
+        term_posix_buffer_pending(g_term_escape_bytes[1 .. g_term_escape_count])
+        g_term_escape_count = 0
+        return yes
+    }
+
+    bytes := g_term_escape_bytes[0 .. g_term_escape_count]
+
+    on g_term_escape_count >= 6 && g_term_escape_bytes[2] == 77 => {
+        consumed: usize
+        on term_posix_decode_mouse_x10(bytes, ^consumed) => {
+            term_posix_shift_escape(consumed)
+            return yes
+        }
+    }
+
+    on g_term_escape_count >= 3 && g_term_escape_bytes[2] == 60 => {
+        for i: usize = 3; i < g_term_escape_count; i += 1 {
+            on g_term_escape_bytes[i] == 109 || g_term_escape_bytes[i] == 77 => {
+                consumed: usize
+                on term_posix_decode_mouse_sgr(bytes, ^consumed) => term_posix_shift_escape(consumed)
+                return yes
+            }
+        }
+        return no
+    }
+
+    on g_term_escape_count >= 3 && g_term_escape_bytes[2] >= 48 && g_term_escape_bytes[2] <= 57 => {
+        for i: usize = 2; i < g_term_escape_count; i += 1 {
+            on g_term_escape_bytes[i] == 77 => {
+                consumed: usize
+                on term_posix_decode_mouse_1015(bytes, ^consumed) => term_posix_shift_escape(consumed)
+                return yes
+            }
+        }
+    }
+
+    on g_term_escape_count >= 3 => {
+        consumed: usize
+        on term_posix_decode_key_csi(bytes, ^consumed) => {
+            term_posix_shift_escape(consumed)
+            return yes
+        }
+
+        for i: usize = 2; i < g_term_escape_count; i += 1 {
+            final := g_term_escape_bytes[i]
+            on final >= 64 && final <= 126 => {
+                term_posix_shift_escape(i + 1)
+                return yes
+            }
+        }
+    }
+
+    return no
+}
+
+term_posix_try_drain_escape :: fn () -> bool {
+    next: u8
+    for g_term_escape_count < 32 && term_try_read_byte(^next) {
+        g_term_escape_bytes[g_term_escape_count] = next
+        g_term_escape_count += 1
+    }
+    return term_posix_drain_escape_buffer()
+}
+
+term_raw_key :: fn () {
+    on g_term_pending_index < g_term_pending_count => {
+        term_queue_key(g_term_pending_bytes[g_term_pending_index])
+        g_term_pending_index += 1
+        on g_term_pending_index == g_term_pending_count => {
+            g_term_pending_count = 0
+            g_term_pending_index = 0
+        }
+        return
+    }
+
+    on g_term_escape_count > 0 => {
+        term_posix_try_drain_escape()
+        return
+    }
+
+    first: u8
+    on !term_try_read_byte(^first) => return
+
+    on first != 27 => {
+        on term_posix_swallow_mouse_tail(first) => return
+        term_queue_key(first)
+        return
+    }
+
+    g_term_escape_bytes[0] = first
+    g_term_escape_count = 1
+    term_posix_try_drain_escape()
 }
 
 term_maybe_present :: fn () {
@@ -273,7 +725,7 @@ pub term_fb_write :: fn (x: i32, y: i32, text: string) {
             -- Skip simple ANSI escape sequences. Colour parsing can be ported
             -- after the framebuffer path is stable.
             i += 1
-            for i < text.count && text.data[i] != 'm' {
+            for i < text.count && text.data[i] != 109 {
                 i += 1
             }
             continue

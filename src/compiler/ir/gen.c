@@ -767,6 +767,44 @@ void ir_add_address_of_index(Ir*     ir,
                });
 }
 
+void ir_add_address_of_field_ptr(Ir*     ir,
+                                 IrValue lvalue,
+                                 u32     lvalue_type,
+                                 IrValue target,
+                                 u32     target_type,
+                                 u32     field_symbol)
+{
+    lvalue.type = lvalue_type;
+    target.type = target_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ADDRESS_OF_FIELD_PTR,
+                   .lvalue = lvalue,
+                   .rvalue = {target,
+                              {.kind          = IR_VALUE_INTEGER,
+                               .value.integer = field_symbol}},
+               });
+}
+
+void ir_add_address_of_index_ptr(Ir*     ir,
+                                 IrValue lvalue,
+                                 u32     lvalue_type,
+                                 IrValue target,
+                                 u32     target_type,
+                                 IrValue index,
+                                 u32     index_type)
+{
+    lvalue.type = lvalue_type;
+    target.type = target_type;
+    index.type  = index_type;
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ADDRESS_OF_INDEX_PTR,
+                   .lvalue = lvalue,
+                   .rvalue = {target, index},
+               });
+}
+
 void ir_add_add(Ir*     ir,
                 IrValue lvalue,
                 u32     lvalue_type,
@@ -1294,6 +1332,44 @@ internal u32 ir_enum_variant_index(const Sema* sema,
     return U32_MAX;
 }
 
+internal bool ir_try_lower_contextual_enum_variant(const Ast*  ast,
+                                                   const Sema* sema,
+                                                   u32         node_index,
+                                                   u32         type_index,
+                                                   u64*        next_value_index,
+                                                   IrValue*    out_value,
+                                                   Ir*         ir)
+{
+    if (type_index == sema_no_type() ||
+        sema->types[type_index].kind != STK_Enum) {
+        return false;
+    }
+
+    const AstNode* node           = &ast->nodes[node_index];
+    u32            variant_symbol = U32_MAX;
+    if (node->kind == AK_SymbolRef) {
+        variant_symbol = node->a;
+    } else if (node->kind == AK_Field) {
+        variant_symbol = node->b;
+    } else {
+        return false;
+    }
+
+    u32 variant = ir_enum_variant_index(sema, type_index, variant_symbol);
+    if (variant == U32_MAX) {
+        return false;
+    }
+
+    IrValue value = {
+        .kind          = IR_VALUE_VARIABLE,
+        .type          = type_index,
+        .value.integer = (i64)(*next_value_index)++,
+    };
+    ir_add_enum(ir, value, type_index, variant, ir_unset_value());
+    *out_value = value;
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Allocate a fresh node-value table for one lowered body.
 
@@ -1601,6 +1677,15 @@ internal u32 ir_add_pointer_type(Sema* sema, u32 pointee_type)
                    .first_param_type = pointee_type,
                }));
     return (u32)array_count(sema->types) - 1;
+}
+
+internal u32 ir_ensure_pointer_type(Sema* sema, Ir* ir, u32 pointee_type)
+{
+    u32 type_index = ir_add_pointer_type(sema, pointee_type);
+    while (array_count(ir->types) < array_count(sema->types)) {
+        array_push(ir->types, sema->types[array_count(ir->types)]);
+    }
+    return type_index;
 }
 
 internal u32 ir_add_slice_type(Sema* sema, u32 item_type)
@@ -2088,6 +2173,14 @@ internal bool    ir_try_lower_module_field(const Lexer* lex,
                                            const Sema*  sema,
                                            u32          node_index,
                                            IrValue*     out_value);
+internal IrValue ir_lower_lvalue_address(const Lexer* lex,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index,
+                                         IrLoopLabels loop,
+                                         Array(IrValue) node_values,
+                                         u64* next_value_index,
+                                         Ir*  ir);
 internal void    ir_generate_return_statement(const Lexer*   lex,
                                               const Ast*     ast,
                                               const Sema*    sema,
@@ -2790,6 +2883,127 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
     return true;
 }
 
+internal IrValue ir_lower_lvalue_address(const Lexer* lex,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index,
+                                         IrLoopLabels loop,
+                                         Array(IrValue) node_values,
+                                         u64* next_value_index,
+                                         Ir*  ir)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_Deref) {
+        return ir_lower_node(
+            lex, ast, sema, node->a, loop, node_values, next_value_index, ir);
+    }
+
+    IrValue value = {
+        .kind = IR_VALUE_VARIABLE,
+        .type = ir_ensure_pointer_type(
+            (Sema*)sema, ir, ir_node_type_index(ast, sema, node_index)),
+        .value.integer = (i64)(*next_value_index)++,
+    };
+
+    if (node->kind == AK_Field) {
+        u32     base_type = ir_node_type_index(ast, sema, node->a);
+        IrValue target    = ir_unset_value();
+        if (base_type != sema_no_type() &&
+            ir->types[base_type].kind == STK_Pointer &&
+            (ir->types[ir->types[base_type].first_param_type].kind ==
+                 STK_Plex ||
+             ir->types[ir->types[base_type].first_param_type].kind ==
+                 STK_Union)) {
+            target = ir_lower_node(lex,
+                                   ast,
+                                   sema,
+                                   node->a,
+                                   loop,
+                                   node_values,
+                                   next_value_index,
+                                   ir);
+        } else {
+            target = ir_lower_lvalue_address(lex,
+                                             ast,
+                                             sema,
+                                             node->a,
+                                             loop,
+                                             node_values,
+                                             next_value_index,
+                                             ir);
+        }
+        if (target.type != sema_no_type() &&
+            ir->types[target.type].kind == STK_Pointer) {
+            u32 field_target_type = ir->types[target.type].first_param_type;
+            if (field_target_type != sema_no_type() &&
+                (ir->types[field_target_type].kind == STK_Plex ||
+                 ir->types[field_target_type].kind == STK_Union)) {
+                const SemaType* record = &ir->types[field_target_type];
+                for (u32 i = 0; i < record->param_count; ++i) {
+                    u32 candidate =
+                        sema->type_param_symbols[record->first_param_type + i];
+                    if (candidate == node->b ||
+                        string_eq(lex_symbol(lex, candidate),
+                                  lex_symbol(lex, node->b))) {
+                        value.type = ir_ensure_pointer_type(
+                            (Sema*)sema,
+                            ir,
+                            sema->type_param_types[record->first_param_type +
+                                                   i]);
+                        break;
+                    }
+                }
+            }
+        }
+        ir_add_address_of_field_ptr(
+            ir, value, value.type, target, target.type, node->b);
+        return value;
+    }
+
+    if (node->kind == AK_Index) {
+        u32 collection_type_index = ir_node_type_index(ast, sema, node->a);
+        if (collection_type_index != sema_no_type() &&
+            ir->types[collection_type_index].kind == STK_Pointer) {
+            collection_type_index =
+                ir->types[collection_type_index].first_param_type;
+        }
+        if (collection_type_index != sema_no_type()) {
+            const SemaType* collection_type = &ir->types[collection_type_index];
+            if (collection_type->kind == STK_Array ||
+                collection_type->kind == STK_Slice ||
+                collection_type->kind == STK_DynamicArray ||
+                collection_type->kind == STK_String ||
+                collection_type->kind == STK_Pointer) {
+                value.type = ir_ensure_pointer_type(
+                    (Sema*)sema, ir, collection_type->first_param_type);
+            }
+        }
+
+        IrValue target = ir_lower_lvalue_address(
+            lex, ast, sema, node->a, loop, node_values, next_value_index, ir);
+        IrValue index = ir_lower_node(
+            lex, ast, sema, node->b, loop, node_values, next_value_index, ir);
+        ir_add_address_of_index_ptr(ir,
+                                    value,
+                                    value.type,
+                                    target,
+                                    target.type,
+                                    index,
+                                    ir_node_type_index(ast, sema, node->b));
+        return value;
+    }
+
+    IrValue target = ir_lower_node(
+        lex, ast, sema, node_index, loop, node_values, next_value_index, ir);
+    if (target.type != sema_no_type() &&
+        (value.type == sema_no_type() || value.type >= array_count(ir->types) ||
+         ir->types[value.type].kind != STK_Pointer)) {
+        value.type = ir_ensure_pointer_type((Sema*)sema, ir, target.type);
+    }
+    ir_add_address_of(ir, value, value.type, target);
+    return value;
+}
+
 internal bool ir_try_lower_method_call(const Ast*     ast,
                                        const Sema*    sema,
                                        const AstNode* call_node,
@@ -2833,13 +3047,33 @@ internal bool ir_try_lower_method_call(const Ast*     ast,
     u32     receiver_type   = ir_node_type_index(ast, sema, callee_node->a);
     if (sema->node_method_call_receiver_refs[call_node_index]) {
         IrValue receiver_ref = {
-            .kind          = IR_VALUE_VARIABLE,
-            .type          = ir_add_pointer_type((Sema*)sema, receiver_type),
+            .kind = IR_VALUE_VARIABLE,
+            .type = ir_ensure_pointer_type((Sema*)sema, ir, receiver_type),
             .value.integer = (i64)(*next_value_index)++,
         };
         ir_add_address_of(ir, receiver_ref, receiver_ref.type, receiver);
         receiver      = receiver_ref;
         receiver_type = receiver_ref.type;
+    } else if (sema->node_method_call_receiver_derefs[call_node_index]) {
+        IrValue receiver_value = {
+            .kind          = IR_VALUE_VARIABLE,
+            .type          = ir->types[receiver_type].first_param_type,
+            .value.integer = (i64)(*next_value_index)++,
+        };
+        IrValue index = {
+            .kind          = IR_VALUE_INTEGER,
+            .type          = ir_builtin_type(sema, STK_Usize),
+            .value.integer = 0,
+        };
+        ir_add_index(ir,
+                     receiver_value,
+                     receiver_value.type,
+                     receiver,
+                     receiver_type,
+                     index,
+                     ir_builtin_type(sema, STK_Usize));
+        receiver      = receiver_value;
+        receiver_type = receiver_value.type;
     }
     array_push(args, receiver);
     array_push(arg_types, receiver_type);
@@ -2849,16 +3083,21 @@ internal bool ir_try_lower_method_call(const Ast*     ast,
         if (ast->nodes[arg_node].kind == AK_Assign) {
             arg_node = ast->nodes[arg_node].b;
         }
-        array_push(args,
-                   ir_lower_node(lex,
-                                 ast,
-                                 sema,
-                                 arg_node,
-                                 loop,
-                                 node_values,
-                                 next_value_index,
-                                 ir));
-        array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
+        u32     arg_type = ir_node_type_index(ast, sema, arg_node);
+        IrValue arg      = ir_unset_value();
+        if (!ir_try_lower_contextual_enum_variant(
+                ast, sema, arg_node, arg_type, next_value_index, &arg, ir)) {
+            arg = ir_lower_node(lex,
+                                ast,
+                                sema,
+                                arg_node,
+                                loop,
+                                node_values,
+                                next_value_index,
+                                ir);
+        }
+        array_push(args, arg);
+        array_push(arg_types, arg_type);
     }
 
     u32     result_type = ir_node_type_index(ast, sema, call_node_index);
@@ -2943,16 +3182,21 @@ internal IrValue ir_lower_call(const Lexer*   lex,
         if (ast->nodes[arg_node].kind == AK_Assign) {
             arg_node = ast->nodes[arg_node].b;
         }
-        array_push(args,
-                   ir_lower_node(lex,
-                                 ast,
-                                 sema,
-                                 arg_node,
-                                 loop,
-                                 node_values,
-                                 next_value_index,
-                                 ir));
-        array_push(arg_types, ir_node_type_index(ast, sema, arg_node));
+        u32     arg_type = ir_node_type_index(ast, sema, arg_node);
+        IrValue arg      = ir_unset_value();
+        if (!ir_try_lower_contextual_enum_variant(
+                ast, sema, arg_node, arg_type, next_value_index, &arg, ir)) {
+            arg = ir_lower_node(lex,
+                                ast,
+                                sema,
+                                arg_node,
+                                loop,
+                                node_values,
+                                next_value_index,
+                                ir);
+        }
+        array_push(args, arg);
+        array_push(arg_types, arg_type);
     }
 
     u32 substitution_count = (u32)array_count(g_ir_local_substitutions);
@@ -3456,51 +3700,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
 
     case AK_AddressOf:
         {
-            IrValue value = {
-                .kind          = IR_VALUE_VARIABLE,
-                .type          = ir_node_type_index(ast, sema, node_index),
-                .value.integer = (i64)(*next_value_index)++,
-            };
-            const AstNode* target_node = &ast->nodes[node->a];
-            if (target_node->kind == AK_Index) {
-                IrValue target = ir_lower_node(lex,
-                                               ast,
-                                               sema,
-                                               target_node->a,
-                                               loop,
-                                               node_values,
-                                               next_value_index,
-                                               ir);
-                IrValue index  = ir_lower_node(lex,
-                                               ast,
-                                               sema,
-                                               target_node->b,
-                                               loop,
-                                               node_values,
-                                               next_value_index,
-                                               ir);
-                ir_add_address_of_index(
-                    ir,
-                    value,
-                    ir_node_type_index(ast, sema, node_index),
-                    target,
-                    ir_node_type_index(ast, sema, target_node->a),
-                    index,
-                    ir_node_type_index(ast, sema, target_node->b));
-            } else {
-                IrValue target = ir_lower_node(lex,
-                                               ast,
-                                               sema,
-                                               node->a,
-                                               loop,
-                                               node_values,
-                                               next_value_index,
-                                               ir);
-                ir_add_address_of(ir,
-                                  value,
-                                  ir_node_type_index(ast, sema, node_index),
-                                  target);
-            }
+            IrValue value           = ir_lower_lvalue_address(lex,
+                                                              ast,
+                                                              sema,
+                                                              node->a,
+                                                              loop,
+                                                              node_values,
+                                                              next_value_index,
+                                                              ir);
             node_values[node_index] = value;
             return value;
         }
@@ -3777,8 +3984,9 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         ? ir_value_type_for_local_index(ast, sema, local_index)
                         : ir_value_type_for_decl(sema, target_node->a);
                 ir_add_assign(ir, target, target_type, value, target_type);
-            } else if (target_node->kind == AK_Deref) {
-                IrValue pointer = ir_lower_node(lex,
+            } else if (target_node->kind == AK_Field &&
+                       ast->nodes[target_node->a].kind == AK_SymbolRef) {
+                IrValue target  = ir_lower_node(lex,
                                                 ast,
                                                 sema,
                                                 target_node->a,
@@ -3786,31 +3994,35 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                                 node_values,
                                                 next_value_index,
                                                 ir);
+                u32 target_type = ir_node_type_index(ast, sema, target_node->a);
+                if ((target_type == sema_no_type() ||
+                     target_type >= array_count(ir->types) ||
+                     ir->types[target_type].kind == STK_Void) &&
+                    target.type != sema_no_type()) {
+                    target_type = target.type;
+                }
+                ir_add_store_field(ir,
+                                   target,
+                                   target_type,
+                                   target_node->b,
+                                   value,
+                                   ir_node_type_index(ast, sema, node->a));
+            } else if (target_node->kind == AK_Deref ||
+                       target_node->kind == AK_Field ||
+                       target_node->kind == AK_Index) {
+                IrValue pointer = ir_lower_lvalue_address(lex,
+                                                          ast,
+                                                          sema,
+                                                          node->a,
+                                                          loop,
+                                                          node_values,
+                                                          next_value_index,
+                                                          ir);
                 ir_add_store(ir,
                              pointer,
-                             ir_node_type_index(ast, sema, target_node->a),
+                             pointer.type,
                              value,
                              ir_node_type_index(ast, sema, node->a));
-            } else if (target_node->kind == AK_Field) {
-                const AstNode* field_base       = &ast->nodes[target_node->a];
-                u32            target_base_node = field_base->kind == AK_Deref
-                                                      ? field_base->a
-                                                      : target_node->a;
-                IrValue        target = ir_lower_node(lex,
-                                                      ast,
-                                                      sema,
-                                                      target_base_node,
-                                                      loop,
-                                                      node_values,
-                                                      next_value_index,
-                                                      ir);
-                ir_add_store_field(
-                    ir,
-                    target,
-                    ir_node_type_index(ast, sema, target_base_node),
-                    target_node->b,
-                    value,
-                    ir_node_type_index(ast, sema, node->a));
             } else {
                 error_ice("Unsupported assignment target node kind: %d",
                           target_node->kind);
@@ -3990,12 +4202,14 @@ internal IrValue ir_lower_node(const Lexer* lex,
                      sema->types[target_type].kind == STK_Slice ||
                      sema->types[target_type].kind == STK_DynamicArray)) {
                     if (sema->types[target_type].kind == STK_String) {
-                        type_index = ir_add_pointer_type(
+                        type_index = ir_ensure_pointer_type(
                             (Sema*)sema,
+                            ir,
                             ir_ensure_builtin_type((Sema*)sema, STK_U8));
                     } else {
-                        type_index = ir_add_pointer_type(
+                        type_index = ir_ensure_pointer_type(
                             (Sema*)sema,
+                            ir,
                             sema->types[target_type].first_param_type);
                     }
                 } else if (string_eq(field_name, s("count")) ||
@@ -6343,6 +6557,8 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
             inst->node_method_call_decl_indices;
         inst_sema.node_method_call_receiver_refs =
             inst->node_method_call_receiver_refs;
+        inst_sema.node_method_call_receiver_derefs =
+            inst->node_method_call_receiver_derefs;
         ir_generate_function_body(lex,
                                   ast,
                                   &inst_sema,
