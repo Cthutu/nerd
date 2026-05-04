@@ -14,5 +14,6 @@ pub term_init :: fn () {
     on g_term_initialised => return
 
     setlocale(LC_CTYPE, c"")
+
     -- Initialise the terminal, read for a loop
 }

@@ -17,12 +17,13 @@ pub winsize :: plex #c {
 }
 
 pub STDOUT_FILENO :: 1
-pub TIOCGWINSZ    :: 0x5413
 
-pub LC_CTYPE      :: 0
-pub LC_NUMERIC    :: 1
-pub LC_TIME       :: 2
-pub LC_COLLATE    :: 3
-pub LC_MONETARY   :: 4
-pub LC_MESSAGES   :: 5
-pub LC_ALL        :: 6
+pub TIOCGWINSZ :: 0x5413
+
+pub LC_CTYPE    :: 0
+pub LC_NUMERIC  :: 1
+pub LC_TIME     :: 2
+pub LC_COLLATE  :: 3
+pub LC_MONETARY :: 4
+pub LC_MESSAGES :: 5
+pub LC_ALL      :: 6
