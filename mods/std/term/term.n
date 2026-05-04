@@ -81,11 +81,11 @@ term_stop :: fn () {
 --
 
 term_alt_enter :: fn () {
-    pr("\x1b[?1049h\x1b[?1007l\x1b[?1002h\x1b[?1006h")
+    pr("\x1b[?1049h\x1b[?7l\x1b[?1007l\x1b[?1002h\x1b[?1006h")
 }
 
 term_alt_leave :: fn () {
-    pr("\x1b[?1002l\x1b[?1006l\x1b[?1007h\x1b[?1049l")
+    pr("\x1b[?1002l\x1b[?1006l\x1b[?1007h\x1b[?7h\x1b[?1049l")
 }
 
 --
