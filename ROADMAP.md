@@ -18,8 +18,8 @@ continuing to grow this file.
 - Modules load through the program-level front end. Standard modules live under
   `mods/` and should be treated like normal source modules.
 - Module paths resolve to `path.n` first, then `path/mod.n` for folder modules.
-- Folder modules may use `part name` in `mod.n` to include `name.n` in the
-  same module scope.
+- Folder modules implicitly include immediate sibling `.n` files in the same
+  module scope.
 - Public module exports are explicit with `pub`. Non-exported module members
   are private.
 

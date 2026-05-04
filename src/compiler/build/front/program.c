@@ -263,48 +263,103 @@ internal bool program_source_is_folder_module(NerdSource source)
     return result;
 }
 
-internal bool program_part_node_matches_source(NerdSource     source,
-                                               const Lexer*   lexer,
-                                               const Ast*     ast,
-                                               const AstNode* part_node)
+internal bool program_path_is_module_part_file(cstr path)
 {
-    ASSERT(part_node->kind == AK_Part, "Expected part node");
-    const AstModulePath* path = &ast->module_paths[part_node->a];
-    if (path->symbol_count != 1) {
+    string filename = path_filename(s(path));
+    if (string_eq_cstr(filename, "mod.n") ||
+        !path_has_extension(filename, ".n")) {
+        return false;
+    }
+    return true;
+}
+
+internal int program_compare_cstr_ptr(const void* lhs, const void* rhs)
+{
+    const cstr* a = lhs;
+    const cstr* b = rhs;
+    return strcmp(*a, *b);
+}
+
+internal Array(cstr)
+    program_collect_implicit_part_paths(Arena* arena, cstr module_dir)
+{
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (!dir_iter_init(&iter, module_dir)) {
+        return NULL;
+    }
+
+    cstr path         = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, arena, &path, &is_directory)) {
+        if (is_directory || !program_path_is_module_part_file(path)) {
+            continue;
+        }
+        array_push(part_paths, path);
+    }
+    dir_iter_done(&iter);
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              program_compare_cstr_ptr);
+    }
+
+    return part_paths;
+}
+
+internal bool program_path_matches_source(NerdSource source, cstr path)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr source_path = module_source_file_path(&temp, source);
+    bool result      = source_path != NULL && strcmp(source_path, path) == 0;
+    arena_done(&temp);
+    return result;
+}
+
+internal bool program_mod_ref_matches_path(const Lexer*         lexer,
+                                           const Ast*           ast,
+                                           const AstModulePath* module_path,
+                                           cstr                 path)
+{
+    if (module_path->symbol_count != 1) {
         return false;
     }
 
-    string part_name =
-        lex_symbol(lexer, ast->module_path_symbols[path->first_symbol]);
-    return string_eq(part_name, path_stem(source.source_path));
+    string module_name =
+        lex_symbol(lexer, ast->module_path_symbols[module_path->first_symbol]);
+    return string_eq(module_name, path_stem(s(path)));
 }
 
-internal cstr program_part_file_path(Arena*         arena,
-                                     NerdSource     source,
-                                     const Lexer*   lexer,
-                                     const Ast*     ast,
-                                     const AstNode* part_node)
+internal bool program_mod_explicitly_uses_child_path(const Lexer* lexer,
+                                                     const Ast*   ast,
+                                                     cstr         path)
 {
-    ASSERT(part_node->kind == AK_Part, "Expected part node");
-    const AstModulePath* path = &ast->module_paths[part_node->a];
-    if (path->symbol_count != 1) {
-        return NULL;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_ModRef) {
+            continue;
+        }
+        if (program_mod_ref_matches_path(
+                lexer, ast, &ast->module_paths[node->a], path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool
+program_parse_module_header(NerdSource source, Lexer* out_lexer, Ast* out_ast)
+{
+    if (!lex(source, out_lexer)) {
+        return false;
     }
 
-    cstr source_path = module_source_file_path(arena, source);
-    if (source_path == NULL) {
-        return NULL;
-    }
-
-    string name =
-        lex_symbol(lexer, ast->module_path_symbols[path->first_symbol]);
-    char* filename = (char*)arena_alloc(arena, name.count + 3);
-    memcpy(filename, name.data, name.count);
-    filename[name.count]     = '.';
-    filename[name.count + 1] = 'n';
-    filename[name.count + 2] = '\0';
-
-    return path_join(arena, path_dirname(arena, source_path), filename);
+    *out_ast = ast_parse(out_lexer);
+    return array_count(out_ast->nodes) > 0 ||
+           array_count(out_lexer->tokens) == 0;
 }
 
 internal bool program_expand_part_root(ProgramInfo* program,
@@ -315,8 +370,7 @@ internal bool program_expand_part_root(ProgramInfo* program,
     arena_init(&temp);
 
     cstr source_path = module_source_file_path(&temp, source);
-    if (source_path == NULL ||
-        string_eq_cstr(path_filename(s(source_path)), "mod.n")) {
+    if (source_path == NULL || !program_path_is_module_part_file(source_path)) {
         arena_done(&temp);
         *out_source = source;
         return true;
@@ -338,36 +392,23 @@ internal bool program_expand_part_root(ProgramInfo* program,
         return true;
     }
 
-    Lexer lexer  = {0};
-    Ast   ast    = {0};
-    bool  parsed = lex(
-        (NerdSource){.source = mod_source, .source_path = s(mod_path)}, &lexer);
-    if (parsed) {
-        ast    = ast_parse(&lexer);
-        parsed = array_count(ast.nodes) > 0 || array_count(lexer.tokens) == 0;
-    }
-    if (!parsed) {
-        ast_done(&ast);
-        lex_done(&lexer);
+    Lexer mod_lexer = {0};
+    Ast   mod_ast   = {0};
+    if (!program_parse_module_header(
+            (NerdSource){.source = mod_source, .source_path = s(mod_path)},
+            &mod_lexer,
+            &mod_ast)) {
+        ast_done(&mod_ast);
+        lex_done(&mod_lexer);
         filemap_unload(&mod_map);
         arena_done(&temp);
         *out_source = source;
         return true;
     }
-
-    bool found_part = false;
-    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
-        if (ast.nodes[i].kind == AK_Part &&
-            program_part_node_matches_source(
-                source, &lexer, &ast, &ast.nodes[i])) {
-            found_part = true;
-            break;
-        }
-    }
-
-    if (!found_part) {
-        ast_done(&ast);
-        lex_done(&lexer);
+    if (program_mod_explicitly_uses_child_path(
+            &mod_lexer, &mod_ast, source_path)) {
+        ast_done(&mod_ast);
+        lex_done(&mod_lexer);
         filemap_unload(&mod_map);
         arena_done(&temp);
         *out_source = source;
@@ -382,14 +423,17 @@ internal bool program_expand_part_root(ProgramInfo* program,
         sb_append_char(&sb, '\n');
     }
 
-    for (u32 i = 0; i < array_count(ast.nodes); ++i) {
-        const AstNode* node = &ast.nodes[i];
-        if (node->kind != AK_Part) {
+    Array(cstr) part_paths =
+        program_collect_implicit_part_paths(&temp, module_dir);
+
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        if (program_mod_explicitly_uses_child_path(
+                &mod_lexer, &mod_ast, part_paths[i])) {
             continue;
         }
 
         sb_append_char(&sb, '\n');
-        if (program_part_node_matches_source(source, &lexer, &ast, node)) {
+        if (program_path_matches_source(source, part_paths[i])) {
             sb_append_string(&sb, source.source);
             if (source.source.count == 0 ||
                 source.source.data[source.source.count - 1] != '\n') {
@@ -398,18 +442,8 @@ internal bool program_expand_part_root(ProgramInfo* program,
             continue;
         }
 
-        cstr part_path = program_part_file_path(
-            &temp,
-            (NerdSource){.source = mod_source, .source_path = s(mod_path)},
-            &lexer,
-            &ast,
-            node);
-        if (part_path == NULL) {
-            continue;
-        }
-
         FileMap part_map    = {0};
-        string  part_source = filemap_load(part_path, &part_map);
+        string  part_source = filemap_load(part_paths[i], &part_map);
         if (part_source.data == NULL) {
             continue;
         }
@@ -427,8 +461,9 @@ internal bool program_expand_part_root(ProgramInfo* program,
         .source_path = source.source_path,
     };
 
-    ast_done(&ast);
-    lex_done(&lexer);
+    array_free(part_paths);
+    ast_done(&mod_ast);
+    lex_done(&mod_lexer);
     filemap_unload(&mod_map);
     arena_done(&temp);
     return true;
@@ -445,25 +480,18 @@ internal bool program_expand_module_parts(ProgramInfo* program,
         return true;
     }
 
-    Array(cstr) part_paths = NULL;
-    Arena temp             = {0};
+    Arena temp = {0};
     arena_init(&temp);
 
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* node = &ast->nodes[i];
-        if (node->kind != AK_Part) {
-            continue;
-        }
-
-        cstr part_path =
-            program_part_file_path(&temp, source, lexer, ast, node);
-        if (part_path == NULL) {
-            array_free(part_paths);
-            arena_done(&temp);
-            return error_runtime("Failed to resolve module part");
-        }
-        array_push(part_paths, part_path);
+    cstr source_path = module_source_file_path(&temp, source);
+    if (source_path == NULL) {
+        arena_done(&temp);
+        *out_source = source;
+        return true;
     }
+    cstr module_dir = path_dirname(&temp, source_path);
+    Array(cstr) part_paths =
+        program_collect_implicit_part_paths(&temp, module_dir);
 
     if (array_count(part_paths) == 0) {
         array_free(part_paths);
@@ -481,6 +509,10 @@ internal bool program_expand_module_parts(ProgramInfo* program,
     }
 
     for (u32 i = 0; i < array_count(part_paths); ++i) {
+        if (program_mod_explicitly_uses_child_path(lexer, ast, part_paths[i])) {
+            continue;
+        }
+
         FileMap part_map    = {0};
         string  part_source = filemap_load(part_paths[i], &part_map);
         if (part_source.data == NULL) {

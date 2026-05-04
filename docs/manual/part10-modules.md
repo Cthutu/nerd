@@ -19,20 +19,27 @@ to own a directory of helper files while still presenting one public module.
 
 ## Module Parts
 
-A folder module can split one module scope across several files with `part`.
-Only `mod.n` names the parts:
+A folder module owns its immediate sibling `.n` files as one module scope. The
+root file is `mod.n`; every other `.n` file in the same directory is a module
+part:
+
+```text
+std/term/mod.n   -- module root
+std/term/term.n  -- part of std.term
+std/term/input.n -- part of std.term
+```
+
+A part file is not a separate imported module. It shares the same top-level
+scope as `mod.n`, so declarations in `mod.n` and declarations in parts can
+refer to each other directly. For example, `mod.n` can define `Term`:
 
 ```nerd
-part terminal  -- include terminal.n in this module scope
-
 pub Term :: plex {
     running bool
 }
 ```
 
-The part file is not a separate imported module. It shares the same top-level
-scope as `mod.n`, so declarations in `mod.n` and declarations in the part can
-refer to each other directly:
+Then `term.n` can use it without an import:
 
 ```nerd
 pub term_init :: fn (term: ^Term) {  -- Term is declared in mod.n
@@ -40,9 +47,9 @@ pub term_init :: fn (term: ^Term) {  -- Term is declared in mod.n
 }
 ```
 
-Use `part` for implementation files that belong to the same public module. Use
-`use` or `pub use` when another file should remain a separate module with its
-own public/private boundary.
+Use sibling `.n` files for implementation files that belong to the same public
+module. Use a nested folder module, such as `std/term/input/mod.n`, when another
+file should remain a separate module with its own public/private boundary.
 
 ## `use`
 
@@ -133,7 +140,7 @@ pub io :: use std.io  -- re-export std.io through this module
 Code that imports this module can then access the public `io` module binding.
 
 Use `pub use` to import another module's public names into the current module
-and re-export them as if they were part of this module:
+and re-export them through this module:
 
 ```nerd
 pub use child  -- re-export public names from a sibling module
