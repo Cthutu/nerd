@@ -131,7 +131,8 @@ bool ast_parse_fn_signature(AstParseState* state,
                             u32*           out_signature_index);
 bool ast_parse_declaration(AstParseState* state,
                            u32*           out_node,
-                           bool           allow_ffi_block);
+                           bool           allow_ffi_block,
+                           AstNodeFlag    flags);
 bool ast_parse_bind(AstParseState* state, u32* out_node);
 bool ast_parse_variable(AstParseState* state, u32* out_node);
 bool ast_parse_assignment(AstParseState* state, u32* out_node);

@@ -1321,6 +1321,8 @@ internal u32 sema_ensure_module_export_decl(Sema*        sema,
         kind = SK_GenericTypeAlias;
     } else if (import_decl_kind == SK_GenericFunction) {
         kind = SK_GenericFunction;
+    } else if (import_decl_kind == SK_FfiFunction) {
+        kind = SK_FfiFunction;
     } else if (type_index != sema_no_type() &&
                sema->types[type_index].kind == STK_Function) {
         kind = SK_BuiltinFunction;
@@ -2989,7 +2991,11 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
         decl->kind       = SK_TypeAlias;
         decl->type_index = rhs_type;
     } else if (reserved_type != sema_no_type()) {
-        decl->type_index = sema_no_type();
+        return error_0304_type_mismatch(
+            lexer->source,
+            sema_decl_span(lexer, ast, decl),
+            s("type declaration"),
+            s("non-type value in type declaration"));
     }
 
     alias_states[decl_index] = SEMA_ALIAS_DONE;

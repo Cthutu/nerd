@@ -1465,7 +1465,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                                  out_node);
         }
     case TK_fn:
-        return ast_parse_declaration(state, out_node, false);
+        return ast_parse_declaration(state, out_node, false, ANF_None);
     case TK_on:
         return ast_parse_on_expr(state, token, out_node);
     case TK_for:

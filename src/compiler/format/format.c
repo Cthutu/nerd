@@ -3436,12 +3436,18 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_FfiDef) {
+        if (stmt->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         format_emit_ffi_def(sb, cst, lexer, stmt->a);
         sb_append_char(sb, '\n');
         return;
     }
 
     if (stmt->kind == CK_FfiBlock) {
+        if (stmt->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         format_emit_ffi_block(sb, cst, lexer, stmt->a, indent_level);
         sb_append_char(sb, '\n');
         return;
@@ -3732,6 +3738,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         if (node->kind == CK_FfiDef) {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
             format_emit_ffi_def(sb, &cst, &lexer, node->a);
             sb_append_char(sb, '\n');
             first_binding          = false;
@@ -3740,6 +3749,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         if (node->kind == CK_FfiBlock) {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
             format_emit_ffi_block(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
             first_binding          = false;

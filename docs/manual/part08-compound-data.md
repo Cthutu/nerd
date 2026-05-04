@@ -311,7 +311,7 @@ Enums are tagged values:
 
 ```nerd
 Maybe :: enum {
-    None       -- case with no payload
+    None,      -- case with no payload
     Some(i32)  -- case carrying an i32
 }
 
@@ -322,6 +322,8 @@ value_or_zero :: fn (value: Maybe) -> i32 {
     }
 }
 ```
+
+Enum variants may be separated with commas. A trailing comma is allowed.
 
 Use enums when a value has one active case and the program should track that
 case safely.

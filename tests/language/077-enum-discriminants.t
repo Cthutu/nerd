@@ -1,18 +1,18 @@
 use std.io
 
 Direction :: enum {
-    NORTH
-    EAST
-    SOUTH = 10
-    WEST
+    NORTH,
+    EAST,
+    SOUTH = 10,
+    WEST,
     COUNT
 }
 
 Token :: enum {
-    EOF = 0
-    IDENT
-    NUMBER = 10
-    STRING
+    EOF = 0,
+    IDENT,
+    NUMBER = 10,
+    STRING,
 }
 
 labels : [Direction.COUNT]string = [

@@ -1,0 +1,27 @@
+--
+-- LibC linux FFI
+--
+-- Copyright (C)2026 Matt Davies
+
+pub ffi "c" {
+    abort ()
+    ioctl (fd: i32, request: i32, ...) -> i32
+    setlocale (category: i32, locale: ^u8) -> ^u8
+}
+
+pub winsize :: plex #c {
+    row    u16
+    col    u16
+    xpixel u16
+    ypixel u16
+}
+
+pub STDOUT_FILENO :: 1
+pub TIOCGWINSZ    :: 0x5413
+pub LC_CTYPE      :: 0
+pub LC_NUMERIC    :: 1
+pub LC_TIME       :: 2
+pub LC_COLLATE    :: 3
+pub LC_MONETARY   :: 4
+pub LC_MESSAGES   :: 5
+pub LC_ALL        :: 6

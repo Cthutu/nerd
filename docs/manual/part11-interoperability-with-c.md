@@ -34,6 +34,17 @@ Each entry inside the block has the same form as the part after the library in a
 direct declaration. FFI block entries do not have separate Nerd binding names;
 the Nerd-visible name is the foreign symbol name.
 
+Use `pub ffi` when a module should export the declared foreign functions:
+
+```nerd
+pub ffi "c" {
+    ioctl (i32, i32, ...) -> i32  -- exported from this module
+}
+```
+
+`pub` applies to every entry in the block. For a single foreign function,
+`pub ffi "c" name (...) -> Type` exports that one declaration.
+
 ## Bound FFI Declarations
 
 Use a binding when the Nerd name should differ from the foreign symbol:

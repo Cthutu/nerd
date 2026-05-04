@@ -41,6 +41,21 @@ The first line imports `std.io`. The second imports `app.commands` and
 
 Use imports sparingly in larger files so readers can tell where names come from.
 
+## Platform-Gated Imports
+
+Top-level `on` blocks can contain declarations and `use` statements. The
+compiler only loads imports from an enabled platform branch:
+
+```nerd
+on linux {
+    use std.linux  -- imported only when the linux platform keyword is enabled
+}
+```
+
+Names imported inside an enabled top-level `on` block become visible to the rest
+of the module, just like other top-level imports. Imports inside a disabled
+branch are ignored.
+
 ## Module Bindings
 
 Bind a module to a local top-level name with `use` as the binding value:

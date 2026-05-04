@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include "compiler/ir/ir.h"
+#include <compiler/build/build.h>
 #include <compiler/error/error.h>
 
 #include <stdio.h>
@@ -20,6 +21,104 @@ typedef struct {
 } IrLocalSubstitution;
 
 internal Array(IrLocalSubstitution) g_ir_local_substitutions = NULL;
+
+internal bool ir_imported_ffi_decl_source(const Sema*      sema,
+                                          const SemaDecl*  decl,
+                                          const Lexer**    out_lexer,
+                                          const Ast**      out_ast,
+                                          const Sema**     out_sema,
+                                          const SemaDecl** out_decl)
+{
+    if (decl->import_module_index == sema_no_decl() ||
+        decl->import_decl_index == sema_no_decl() || sema->program == NULL ||
+        decl->import_module_index >= array_count(sema->program->modules)) {
+        return false;
+    }
+
+    const ModuleInfo* module =
+        &sema->program->modules[decl->import_module_index];
+    if (decl->import_decl_index >= array_count(module->front_end.sema.decls)) {
+        return false;
+    }
+
+    const SemaDecl* source_decl =
+        &module->front_end.sema.decls[decl->import_decl_index];
+    if (source_decl->kind != SK_FfiFunction ||
+        source_decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    *out_lexer = &module->front_end.lexer;
+    *out_ast   = &module->front_end.ast;
+    *out_sema  = &module->front_end.sema;
+    *out_decl  = source_decl;
+    return true;
+}
+
+internal bool ir_imported_decl_source(const Sema*      sema,
+                                      const SemaDecl*  decl,
+                                      const Lexer**    out_lexer,
+                                      const Ast**      out_ast,
+                                      const Sema**     out_sema,
+                                      const SemaDecl** out_decl)
+{
+    if (decl->import_module_index == sema_no_decl() ||
+        decl->import_decl_index == sema_no_decl() || sema->program == NULL ||
+        decl->import_module_index >= array_count(sema->program->modules)) {
+        return false;
+    }
+
+    const ModuleInfo* module =
+        &sema->program->modules[decl->import_module_index];
+    if (decl->import_decl_index >= array_count(module->front_end.sema.decls)) {
+        return false;
+    }
+
+    *out_lexer = &module->front_end.lexer;
+    *out_ast   = &module->front_end.ast;
+    *out_sema  = &module->front_end.sema;
+    *out_decl  = &module->front_end.sema.decls[decl->import_decl_index];
+    return true;
+}
+
+internal bool ir_decl_ffi_info(const Lexer*       lex,
+                               const Ast*         ast,
+                               const Sema*        sema,
+                               const SemaDecl*    decl,
+                               const Lexer**      out_lexer,
+                               const Ast**        out_ast,
+                               const Sema**       out_sema,
+                               const AstFfiInfo** out_info)
+{
+    const Lexer*    source_lexer = lex;
+    const Ast*      source_ast   = ast;
+    const Sema*     source_sema  = sema;
+    const SemaDecl* source_decl  = decl;
+
+    if (decl->value_node_index == sema_no_decl() &&
+        !ir_imported_ffi_decl_source(sema,
+                                     decl,
+                                     &source_lexer,
+                                     &source_ast,
+                                     &source_sema,
+                                     &source_decl)) {
+        return false;
+    }
+
+    if (source_decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+    const AstNode* ffi_node = &source_ast->nodes[source_decl->value_node_index];
+    if (ffi_node->kind != AK_FfiDef) {
+        return false;
+    }
+
+    *out_lexer = source_lexer;
+    *out_ast   = source_ast;
+    *out_sema  = source_sema;
+    *out_info  = &source_ast->ffi_infos[ffi_node->a];
+    return true;
+}
 
 internal u32 ir_unwrap_expr_node(const Ast* ast, u32 node_index)
 {
@@ -1928,10 +2027,11 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                Array(IrValue) node_values,
                                u64* next_value_index,
                                Ir*  ir);
-internal bool    ir_try_lower_module_field(const Ast*  ast,
-                                           const Sema* sema,
-                                           u32         node_index,
-                                           IrValue*    out_value);
+internal bool    ir_try_lower_module_field(const Lexer* lex,
+                                           const Ast*   ast,
+                                           const Sema*  sema,
+                                           u32          node_index,
+                                           IrValue*     out_value);
 internal void    ir_generate_return_statement(const Lexer*   lex,
                                               const Ast*     ast,
                                               const Sema*    sema,
@@ -2437,10 +2537,11 @@ internal void ir_lower_on_pattern_binders(const Ast*  ast,
     }
 }
 
-internal bool ir_try_lower_module_field(const Ast*  ast,
-                                        const Sema* sema,
-                                        u32         node_index,
-                                        IrValue*    out_value)
+internal bool ir_try_lower_module_field(const Lexer* lex,
+                                        const Ast*   ast,
+                                        const Sema*  sema,
+                                        u32          node_index,
+                                        IrValue*     out_value)
 {
     const AstNode* node = &ast->nodes[node_index];
     if (node->kind != AK_Field) {
@@ -2460,12 +2561,25 @@ internal bool ir_try_lower_module_field(const Ast*  ast,
                decl->kind == SK_Function,
            "Expected module export function");
     u32 runtime_symbol = decl->symbol_handle;
-    if (decl->kind == SK_FfiFunction &&
-        decl->value_node_index != sema_no_decl()) {
-        const AstNode* ffi_node = &ast->nodes[decl->value_node_index];
-        if (ffi_node->kind == AK_FfiDef) {
-            runtime_symbol = ast->ffi_infos[ffi_node->a].symbol_handle;
+    if (decl->kind == SK_FfiFunction) {
+        const Lexer*      ffi_lexer = lex;
+        const Ast*        ffi_ast   = ast;
+        const Sema*       ffi_sema  = sema;
+        const AstFfiInfo* ffi_info  = NULL;
+        if (ir_decl_ffi_info(lex,
+                             ast,
+                             sema,
+                             decl,
+                             &ffi_lexer,
+                             &ffi_ast,
+                             &ffi_sema,
+                             &ffi_info)) {
+            runtime_symbol = sema_import_symbol_handle(
+                (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle);
         }
+        UNUSED(ffi_lexer);
+        UNUSED(ffi_ast);
+        UNUSED(ffi_sema);
     }
 
     *out_value = (IrValue){
@@ -2742,7 +2856,7 @@ internal IrValue ir_lower_call(const Lexer*   lex,
     }
 
     IrValue callee = ir_unset_value();
-    if (!ir_try_lower_module_field(ast, sema, call_node->a, &callee)) {
+    if (!ir_try_lower_module_field(lex, ast, sema, call_node->a, &callee)) {
         callee = ir_lower_node(lex,
                                ast,
                                sema,
@@ -3213,14 +3327,56 @@ internal IrValue ir_lower_node(const Lexer* lex,
                     node_values[node_index] = value;
                     return value;
                 }
-                if (decl->kind == SK_FfiFunction &&
-                    decl->value_node_index != sema_no_decl()) {
-                    const AstNode* ffi_node =
-                        &ast->nodes[decl->value_node_index];
-                    if (ffi_node->kind == AK_FfiDef) {
-                        runtime_symbol =
-                            ast->ffi_infos[ffi_node->a].symbol_handle;
+                if (decl->kind == SK_Constant &&
+                    decl->import_module_index != sema_no_decl()) {
+                    const Lexer*    source_lexer = lex;
+                    const Ast*      source_ast   = ast;
+                    const Sema*     source_sema  = sema;
+                    const SemaDecl* source_decl  = NULL;
+                    if (ir_imported_decl_source(sema,
+                                                decl,
+                                                &source_lexer,
+                                                &source_ast,
+                                                &source_sema,
+                                                &source_decl) &&
+                        source_decl->value_node_index != sema_no_decl()) {
+                        const AstNode* source_value =
+                            &source_ast->nodes[source_decl->value_node_index];
+                        if (source_value->kind == AK_Expression) {
+                            source_value = &source_ast->nodes[source_value->a];
+                        }
+                        if (source_value->kind == AK_IntegerLiteral) {
+                            value = (IrValue){
+                                .kind          = IR_VALUE_INTEGER,
+                                .type          = decl->type_index,
+                                .value.integer = (i64)ast_get_integer(
+                                    source_lexer, source_value),
+                            };
+                            node_values[node_index] = value;
+                            return value;
+                        }
                     }
+                    UNUSED(source_sema);
+                }
+                if (decl->kind == SK_FfiFunction) {
+                    const Lexer*      ffi_lexer = lex;
+                    const Ast*        ffi_ast   = ast;
+                    const Sema*       ffi_sema  = sema;
+                    const AstFfiInfo* ffi_info  = NULL;
+                    if (ir_decl_ffi_info(lex,
+                                         ast,
+                                         sema,
+                                         decl,
+                                         &ffi_lexer,
+                                         &ffi_ast,
+                                         &ffi_sema,
+                                         &ffi_info)) {
+                        runtime_symbol = sema_import_symbol_handle(
+                            (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle);
+                    }
+                    UNUSED(ffi_lexer);
+                    UNUSED(ffi_ast);
+                    UNUSED(ffi_sema);
                 }
 
                 value = (IrValue){
@@ -3717,7 +3873,7 @@ internal IrValue ir_lower_node(const Lexer* lex,
             }
             IrValue module_field = ir_unset_value();
             if (ir_try_lower_module_field(
-                    ast, sema, node_index, &module_field)) {
+                    lex, ast, sema, node_index, &module_field)) {
                 node_values[node_index] = module_field;
                 return module_field;
             }
@@ -6091,12 +6247,25 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         const SemaDecl* decl = &sema->decls[sema->ordered_decl_indices[i]];
         if (decl->kind == SK_FfiFunction) {
-            const AstNode*    ffi_node = &ast->nodes[decl->value_node_index];
-            const AstFfiInfo* ffi_info = &ast->ffi_infos[ffi_node->a];
-            string            library  = {0};
-            if (!ir_eval_string_constant(lex,
-                                         ast,
-                                         sema,
+            const Lexer*      ffi_lexer = lex;
+            const Ast*        ffi_ast   = ast;
+            const Sema*       ffi_sema  = sema;
+            const AstFfiInfo* ffi_info  = NULL;
+            if (!ir_decl_ffi_info(lex,
+                                  ast,
+                                  sema,
+                                  decl,
+                                  &ffi_lexer,
+                                  &ffi_ast,
+                                  &ffi_sema,
+                                  &ffi_info)) {
+                continue;
+            }
+
+            string library = {0};
+            if (!ir_eval_string_constant(ffi_lexer,
+                                         ffi_ast,
+                                         ffi_sema,
                                          &ir,
                                          ffi_info->library_node_index,
                                          &library)) {
@@ -6104,7 +6273,8 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
             }
             array_push(ir.externs,
                        (IrExtern){
-                           .symbol  = ffi_info->symbol_handle,
+                           .symbol = sema_import_symbol_handle(
+                               (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle),
                            .type    = decl->type_index,
                            .library = library,
                        });

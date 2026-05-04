@@ -1,0 +1,17 @@
+--
+-- Basic terminal control and loop
+--
+-- Copyright (C)2026 Matt Davies, all rights reserved
+--
+
+on linux {
+    use std.linux
+}
+
+g_term_initialised := no
+
+pub term_init :: fn () {
+    on g_term_initialised => return
+    setlocale(LC_CTYPE, c"")
+    -- Initialise the terminal, read for a loop
+}

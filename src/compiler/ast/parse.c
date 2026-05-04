@@ -202,6 +202,10 @@ internal bool ast_skip_enum_value_tokens(const AstParseState* state,
             kind == TK_RBrace) {
             return true;
         }
+        if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+            kind == TK_Comma) {
+            return true;
+        }
         if (*io_index > start_index && paren_depth == 0 && bracket_depth == 0 &&
             brace_depth == 0 && kind == TK_Symbol &&
             ast_tokens_cross_line_break(state, *io_index - 1, *io_index)) {
@@ -411,6 +415,12 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
                 (*io_index)++;
                 if (!ast_skip_enum_value_tokens(state, io_index)) {
                     return false;
+                }
+            }
+            if (ast_kind_at_stream_index(state, *io_index) == TK_Comma) {
+                (*io_index)++;
+                if (ast_kind_at_stream_index(state, *io_index) == TK_RBrace) {
+                    break;
                 }
             }
         }
@@ -1354,6 +1364,14 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             variant_count++;
             if (!ast_next_token(state)) {
                 return false;
+            }
+            if (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_RBrace) {
+                    break;
+                }
             }
         }
         u32 enum_type_index = (u32)array_count(state->enum_types);
@@ -2678,7 +2696,7 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
 internal bool ast_parse_block_statement(AstParseState* state)
 {
     if (state->token.kind == TK_ffi) {
-        return ast_parse_declaration(state, NULL, true);
+        return ast_parse_declaration(state, NULL, true, ANF_None);
     }
 
     if (state->token.kind == TK_use) {
@@ -3480,15 +3498,8 @@ internal bool ast_parse_top_level_item(AstParseState* state)
 
     switch (state->token.kind) {
     case TK_ffi:
-        if (is_public) {
-            return error_0204_unexpected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                state->token.kind,
-                "Expected a symbol to start a "
-                "public binding");
-        }
-        return ast_parse_declaration(state, NULL, true);
+        return ast_parse_declaration(
+            state, NULL, true, is_public ? ANF_Public : ANF_None);
     case TK_use:
         return ast_parse_use(state, NULL, is_public ? ANF_Public : 0);
     case TK_on:
@@ -3627,7 +3638,8 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 //
 bool ast_parse_declaration(AstParseState* state,
                            u32*           out_node,
-                           bool           allow_ffi_block)
+                           bool           allow_ffi_block,
+                           AstNodeFlag    flags)
 {
     if (state->token.kind == TK_use) {
         return ast_parse_module_ref_after_use(state, out_node);
@@ -3744,6 +3756,7 @@ bool ast_parse_declaration(AstParseState* state,
                 if (!ast_emit_node(
                         state,
                         (AstNode){.kind        = AK_FfiDef,
+                                  .flags       = flags,
                                   .token_index = ffi_token.token_index,
                                   .a           = ffi_index},
                         NULL)) {
@@ -3811,6 +3824,7 @@ bool ast_parse_declaration(AstParseState* state,
 
         return ast_emit_node(state,
                              (AstNode){.kind        = AK_FfiDef,
+                                       .flags       = flags,
                                        .token_index = ffi_token.token_index,
                                        .a           = ffi_index},
                              out_node);
@@ -3969,7 +3983,7 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
             return false;
         }
     } else if (query == PQ_Declaration) {
-        if (!ast_parse_declaration(state, &expr_index, false)) {
+        if (!ast_parse_declaration(state, &expr_index, false, ANF_None)) {
             return false;
         }
 

@@ -370,6 +370,10 @@ internal bool cst_skip_enum_value_tokens(const CstParseState* state,
             kind == TK_RBrace) {
             return true;
         }
+        if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+            kind == TK_Comma) {
+            return true;
+        }
         if (*io_index > start_index && paren_depth == 0 && bracket_depth == 0 &&
             brace_depth == 0 && kind == TK_Symbol &&
             cst_token_has_newline_before(state, *io_index)) {
@@ -484,6 +488,12 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
                 (*io_index)++;
                 if (!cst_skip_enum_value_tokens(state, io_index)) {
                     return false;
+                }
+            }
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Comma) {
+                (*io_index)++;
+                if (cst_kind_at_stream_index(state, *io_index) == TK_RBrace) {
+                    break;
                 }
             }
         }
@@ -854,8 +864,10 @@ internal bool cst_parse_variable_payload(CstParseState* state,
                                          u32            token_index,
                                          u32*           out_node);
 internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
-internal bool
-cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block);
+internal bool cst_parse_ffi_def(CstParseState* state,
+                                u32*           out_node,
+                                bool           allow_block,
+                                CstNodeFlag    flags);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node, u8 flags);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
@@ -1450,6 +1462,12 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                            .value_node_index = variant_value_node,
                        });
             variant_count++;
+            if (cst_current_token(state).kind == TK_Comma) {
+                cst_advance(state);
+                if (cst_current_token(state).kind == TK_RBrace) {
+                    break;
+                }
+            }
         }
         if (!cst_consume(state, TK_RBrace)) {
             return false;
@@ -3747,7 +3765,7 @@ internal bool cst_parse_block_statement(CstParseState* state)
     u32 token_index = state->token_index;
 
     if (cst_current_token(state).kind == TK_ffi) {
-        return cst_parse_ffi_def(state, NULL, true);
+        return cst_parse_ffi_def(state, NULL, true, CNF_None);
     }
 
     if (cst_current_token(state).kind == TK_use) {
@@ -4060,7 +4078,7 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_ffi) {
-        return cst_parse_ffi_def(state, out_node, false);
+        return cst_parse_ffi_def(state, out_node, false, CNF_None);
     }
 
     if (cst_current_token(state).kind == TK_use) {
@@ -4113,8 +4131,10 @@ internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node)
                          out_node);
 }
 
-internal bool
-cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
+internal bool cst_parse_ffi_def(CstParseState* state,
+                                u32*           out_node,
+                                bool           allow_block,
+                                CstNodeFlag    flags)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
@@ -4175,6 +4195,7 @@ cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
         return cst_emit_node(state,
                              (CstNode){
                                  .kind        = CK_FfiBlock,
+                                 .flags       = flags,
                                  .token_index = token_index,
                                  .a           = ffi_block_info_index,
                              },
@@ -4207,6 +4228,7 @@ cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block)
     return cst_emit_node(state,
                          (CstNode){
                              .kind        = CK_FfiDef,
+                             .flags       = flags,
                              .token_index = token_index,
                              .a           = ffi_info_index,
                          },
@@ -4805,10 +4827,8 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_ffi) {
-        if (is_public) {
-            return false;
-        }
-        return cst_parse_ffi_def(state, out_node, true);
+        return cst_parse_ffi_def(
+            state, out_node, true, is_public ? CNF_Public : CNF_None);
     }
 
     if (cst_current_token(state).kind == TK_use) {

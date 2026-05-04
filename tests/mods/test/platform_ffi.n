@@ -1,0 +1,5 @@
+pub ffi "c" {
+    abs (i32) -> i32
+}
+
+pub PLATFORM_VALUE :: 12

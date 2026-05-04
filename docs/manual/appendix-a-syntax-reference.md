@@ -36,7 +36,11 @@ impl Name[T] {
     name :: fn (self: ^Name[T], value: T) { ... }
 }
 ffi "lib" foreign_name (...) -> Type
+pub ffi "lib" foreign_name (...) -> Type
 ffi "lib" {
+    foreign_name (...) -> Type
+}
+pub ffi "lib" {
     foreign_name (...) -> Type
 }
 local_name :: ffi "lib" foreign_name (...) -> Type
@@ -151,7 +155,7 @@ plex #c { field Type }
 plex #packed { field Type }
 union { field Type }
 union [T] { field T }
-enum { Variant Payload(Type) }
+enum { Variant, Payload(Type) }
 enum [T] { Variant(T) }
 Name[T]
 Name[T, U]
