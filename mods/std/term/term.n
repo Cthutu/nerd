@@ -25,6 +25,7 @@ g_term_fb_chars      : [..]u32
 g_term_fb_ink        : [..]u32
 g_term_fb_paper      : [..]u32
 g_term_fb_size       : (i32, i32)
+g_term_output        : [..]u8
 
 TERM_FB_CHAR_WIDE_TAIL :: 0xffffffff
 
@@ -69,6 +70,7 @@ term_stop :: fn () {
     g_term_fb_chars.free()
     g_term_fb_ink.free()
     g_term_fb_paper.free()
+    g_term_output.free()
     term_alt_leave()
     term_raw_leave()
     g_term_arena.done()
@@ -967,6 +969,91 @@ term_print_codepoint :: fn (ch: u32) {
     pr(bytes[0 .. count].as(string))
 }
 
+term_output_append :: fn (text: string) {
+    for i: usize = 0; i < text.count; i += 1 {
+        g_term_output.push(text.data[i])
+    }
+}
+
+term_output_append_u32 :: fn (value: u32) {
+    on value == 0 => {
+        g_term_output.push('0')
+        return
+    }
+
+    digits: [10]u8
+    count: usize = 0
+    remaining := value.as(i32)
+    for remaining > 0 {
+        digits[count] = ('0' + (remaining % 10)).as(u8)
+        remaining = remaining / 10
+        count += 1
+    }
+
+    for count > 0 {
+        count -= 1
+        g_term_output.push(digits[count])
+    }
+}
+
+term_output_append_cursor_goto :: fn (x: i32, y: i32) {
+    term_output_append("\x1b[")
+    term_output_append_u32((y + 1).as(u32))
+    term_output_append(";")
+    term_output_append_u32((x + 1).as(u32))
+    term_output_append("H")
+}
+
+term_output_append_colours :: fn (ink: u32, paper: u32) {
+    term_output_append("\x1b[38;2;")
+    term_output_append_u32(term_colour_r(ink).as(u32))
+    term_output_append(";")
+    term_output_append_u32(term_colour_g(ink).as(u32))
+    term_output_append(";")
+    term_output_append_u32(term_colour_b(ink).as(u32))
+    term_output_append("m\x1b[48;2;")
+    term_output_append_u32(term_colour_r(paper).as(u32))
+    term_output_append(";")
+    term_output_append_u32(term_colour_g(paper).as(u32))
+    term_output_append(";")
+    term_output_append_u32(term_colour_b(paper).as(u32))
+    term_output_append("m")
+}
+
+term_output_append_codepoint :: fn (ch: u32) {
+    on ch == TERM_FB_CHAR_WIDE_TAIL => return
+
+    bytes: [4]u8
+    count: usize = 1
+
+    on ch <= 0x7f => {
+        bytes[0] = ch.as(u8)
+    } else {
+        on ch <= 0x7ff => {
+            bytes[0] = (0xc0 + ((ch / 0x40) % 0x20)).as(u8)
+            bytes[1] = (0x80 + (ch % 0x40)).as(u8)
+            count = 2
+        } else {
+            on ch <= 0xffff => {
+                bytes[0] = (0xe0 + ((ch / 0x1000) % 0x10)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[2] = (0x80 + (ch % 0x40)).as(u8)
+                count = 3
+            } else {
+                bytes[0] = (0xf0 + ((ch / 0x40000) % 0x08)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x1000) % 0x40)).as(u8)
+                bytes[2] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[3] = (0x80 + (ch % 0x40)).as(u8)
+                count = 4
+            }
+        }
+    }
+
+    for i: usize = 0; i < count; i += 1 {
+        g_term_output.push(bytes[i])
+    }
+}
+
 --
 -- Framebuffer
 --
@@ -1083,24 +1170,27 @@ term_fb_present :: fn () {
     current_paper: u32
     colours_set := no
 
+    g_term_output.clear()
+
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
-        term_cursor_goto(0, y)
+        term_output_append_cursor_goto(0, y)
         for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
             index := term_fb_index(x, y)
             ink := g_term_fb_ink[index]
             paper := g_term_fb_paper[index]
 
             on !colours_set || ink != current_ink || paper != current_paper => {
-                term_apply_colours(ink, paper)
+                term_output_append_colours(ink, paper)
                 current_ink = ink
                 current_paper = paper
                 colours_set = yes
             }
 
-            term_print_codepoint(g_term_fb_chars[index])
+            term_output_append_codepoint(g_term_fb_chars[index])
         }
     }
-    pr("\x1b[0m")
+    term_output_append("\x1b[0m")
+    pr(g_term_output[..].as(string))
 }
 
 test "framebuffer colours split into rgb components" {
@@ -1125,4 +1215,14 @@ test "utf8 decoder stores unicode codepoints" {
     assert ch == 0x754c
     assert bytes == 3
     assert width == 2
+}
+
+test "terminal output buffer appends decimal values" {
+    g_term_output.clear()
+    defer g_term_output.free()
+
+    term_output_append("value=")
+    term_output_append_u32(12045)
+
+    assert g_term_output[..].as(string) == "value=12045"
 }
