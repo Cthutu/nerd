@@ -24,6 +24,7 @@ g_term_escape_bytes  : [32]u8
 g_term_fb_chars      : [..]u32
 g_term_fb_ink        : [..]u32
 g_term_fb_paper      : [..]u32
+g_term_fb_dirty      : [..]u8
 g_term_fb_size       : (i32, i32)
 
 TERM_FB_CHAR_WIDE_TAIL :: 0xffffffff
@@ -69,6 +70,7 @@ term_stop :: fn () {
     g_term_fb_chars.free()
     g_term_fb_ink.free()
     g_term_fb_paper.free()
+    g_term_fb_dirty.free()
     term_alt_leave()
     term_raw_leave()
     g_term_arena.done()
@@ -975,17 +977,44 @@ term_fb_index :: fn (x: i32, y: i32) -> usize {
     return (y * g_term_fb_size.0 + x).as(usize)
 }
 
+term_fb_has_dirty :: fn () -> bool {
+    for i: usize = 0; i < g_term_fb_dirty.count; i += 1 {
+        on g_term_fb_dirty[i] != 0 => return yes
+    }
+    return no
+}
+
+term_fb_set_char :: fn (index: usize, ch: u32) {
+    on g_term_fb_chars[index] != ch => {
+        (^g_term_fb_chars[index])^ = ch
+        (^g_term_fb_dirty[index])^ = 1
+    }
+}
+
+term_fb_set_cell :: fn (index: usize, ch: u32, ink: u32, paper: u32) {
+    on g_term_fb_chars[index] != ch ||
+       g_term_fb_ink[index] != ink ||
+       g_term_fb_paper[index] != paper => {
+        (^g_term_fb_chars[index])^ = ch
+        (^g_term_fb_ink[index])^ = ink
+        (^g_term_fb_paper[index])^ = paper
+        (^g_term_fb_dirty[index])^ = 1
+    }
+}
+
 term_fb_resize :: fn (width: i32, height: i32) {
     count := (width * height).as(usize)
 
     g_term_fb_chars.clear()
     g_term_fb_ink.clear()
     g_term_fb_paper.clear()
+    g_term_fb_dirty.clear()
 
     for i: usize = 0; i < count; i += 1 {
         g_term_fb_chars.push(' '.as(u32))
         g_term_fb_ink.push(0xffffffff)
         g_term_fb_paper.push(0xff000000)
+        g_term_fb_dirty.push(1)
     }
 
     g_term_fb_size = (width, height)
@@ -994,9 +1023,7 @@ term_fb_resize :: fn (width: i32, height: i32) {
 pub term_fb_cls :: fn (ink: u32, paper: u32) {
     count := g_term_fb_chars.count
     for i: usize = 0; i < count; i += 1 {
-        (^g_term_fb_chars[i])^ = ' '.as(u32)
-        (^g_term_fb_ink[i])^ = ink
-        (^g_term_fb_paper[i])^ = paper
+        term_fb_set_cell(i, ' '.as(u32), ink, paper)
     }
 }
 
@@ -1013,9 +1040,7 @@ pub term_fb_rect :: fn (rect: TermRect, ch: u32, ink: u32, paper: u32) {
     for y: u16 = 0; y < clipped.height; y += 1 {
         for x: u16 = 0; x < clipped.width; x += 1 {
             index := term_fb_index((clipped.x + x).as(i32), (clipped.y + y).as(i32))
-            (^g_term_fb_chars[index])^ = ch
-            (^g_term_fb_ink[index])^ = ink
-            (^g_term_fb_paper[index])^ = paper
+            term_fb_set_cell(index, ch, ink, paper)
         }
     }
 }
@@ -1053,12 +1078,12 @@ pub term_fb_write :: fn (x: i32, y: i32, text: string) {
 
         on cx >= 0 && cx < g_term_fb_size.0 && width <= (g_term_fb_size.0 - cx).as(usize) => {
             index := term_fb_index(cx, cy)
-            (^g_term_fb_chars[index])^ = ch
+            term_fb_set_char(index, ch)
             for cell: usize = 1; cell < width; cell += 1 {
                 tail_x := cx + cell.as(i32)
                 on tail_x < g_term_fb_size.0 => {
                     tail_index := term_fb_index(tail_x, cy)
-                    (^g_term_fb_chars[tail_index])^ = TERM_FB_CHAR_WIDE_TAIL
+                    term_fb_set_char(tail_index, TERM_FB_CHAR_WIDE_TAIL)
                 }
             }
             cx += width.as(i32)
@@ -1078,27 +1103,33 @@ pub term_fb_write_cstr :: fn (x: i32, y: i32, text: ^u8) {
 
 term_fb_present :: fn () {
     on g_term_fb_size.0 == 0 || g_term_fb_size.1 == 0 => return
-
-    current_ink: u32
-    current_paper: u32
-    colours_set := no
+    on !term_fb_has_dirty() => return
 
     pr("\x1b[?2026h")
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
-        term_cursor_goto(0, y)
-        for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
+        x: i32 = 0
+        for x < g_term_fb_size.0 {
             index := term_fb_index(x, y)
-            ink := g_term_fb_ink[index]
-            paper := g_term_fb_paper[index]
-
-            on !colours_set || ink != current_ink || paper != current_paper => {
-                term_apply_colours(ink, paper)
-                current_ink = ink
-                current_paper = paper
-                colours_set = yes
+            on g_term_fb_dirty[index] == 0 => {
+                x += 1
+                continue
             }
 
-            term_print_codepoint(g_term_fb_chars[index])
+            ink := g_term_fb_ink[index]
+            paper := g_term_fb_paper[index]
+            term_cursor_goto(x, y)
+            term_apply_colours(ink, paper)
+
+            for x < g_term_fb_size.0 {
+                index = term_fb_index(x, y)
+                on g_term_fb_dirty[index] == 0 ||
+                   g_term_fb_ink[index] != ink ||
+                   g_term_fb_paper[index] != paper => break
+
+                term_print_codepoint(g_term_fb_chars[index])
+                (^g_term_fb_dirty[index])^ = 0
+                x += 1
+            }
         }
     }
     pr("\x1b[0m\x1b[?2026l")
