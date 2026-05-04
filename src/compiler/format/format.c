@@ -1734,26 +1734,28 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Statement:
     case CK_Use:
         return format_node_end_token_index(cst, lexer, node->a);
-    case CK_Return:
-    case CK_ReturnExpr:
     case CK_Defer:
     case CK_Assert:
-    case CK_Break:
-    case CK_BreakExpr:
-    case CK_Continue:
-    case CK_ContinueExpr:
         if (node->kind == CK_Defer) {
             return format_node_end_token_index(cst, lexer, node->a);
         }
-        if (node->kind == CK_Assert) {
-            return node->b == U32_MAX
-                       ? format_node_end_token_index(cst, lexer, node->a)
-                       : format_node_end_token_index(cst, lexer, node->b);
-        }
+        return node->b == U32_MAX
+                   ? format_node_end_token_index(cst, lexer, node->a)
+                   : format_node_end_token_index(cst, lexer, node->b);
+    case CK_Return:
+    case CK_ReturnExpr:
         return node->a == U32_MAX
-                   ? (node->b == U32_MAX ? node->token_index
-                                         : node->token_index + 2)
+                   ? node->token_index
                    : format_node_end_token_index(cst, lexer, node->a);
+    case CK_Break:
+    case CK_BreakExpr:
+        if (node->a != U32_MAX) {
+            return format_node_end_token_index(cst, lexer, node->a);
+        }
+        return node->b == U32_MAX ? node->token_index : node->token_index + 2;
+    case CK_Continue:
+    case CK_ContinueExpr:
+        return node->b == U32_MAX ? node->token_index : node->token_index + 2;
     case CK_For:
         return format_node_end_token_index(cst, lexer, node->b);
     case CK_IntegerPlus:
