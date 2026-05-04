@@ -5,8 +5,13 @@
 --
 
 use std.arena
+use std.io
 use std.linux
 use std.mem
+
+ffi "c" {
+    printf (^u8, ...) -> i32
+}
 
 g_term_initialised   :         = no
 g_term               : Term
@@ -1028,7 +1033,8 @@ term_output_apply_colours :: fn (ink: u32, paper: u32) {
 term_output_flush :: fn () {
     on g_term_output.count == 0 => return
 
-    pr(g_term_output[..].as(string))
+    g_term_output.push(0)
+    printf(c"%s", g_term_output[..].data)
     g_term_output.clear()
 }
 
@@ -1169,7 +1175,7 @@ term_fb_present :: fn () {
     on !term_fb_has_dirty() => return
 
     term_output_clear()
-    term_output_append("\x1b[?2026h")
+    term_output_append("\x1b[H")
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
         x: i32 = 0
         for x < g_term_fb_size.0 {
@@ -1196,7 +1202,7 @@ term_fb_present :: fn () {
             }
         }
     }
-    term_output_append("\x1b[0m\x1b[?2026l")
+    term_output_append("\x1b[0m")
     term_output_flush()
 }
 
