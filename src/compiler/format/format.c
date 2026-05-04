@@ -2601,6 +2601,14 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             cst->top_ons[node->a].body_node_index == node_index) {
             return true;
         }
+        if (node->kind == CK_Call) {
+            const CstCallInfo* call = &cst->calls[node->b];
+            for (u32 arg_index = 0; arg_index < call->arg_count; ++arg_index) {
+                if (cst->call_args[call->first_arg + arg_index] == node_index) {
+                    return true;
+                }
+            }
+        }
         if (node->kind == CK_Statement && node->a == node_index) {
             return true;
         }
