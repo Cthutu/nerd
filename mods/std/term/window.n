@@ -395,3 +395,61 @@ test "window write stores utf8 codepoints and wide tails" {
     assert window.cells[3].ch == TERM_FB_CHAR_WIDE_TAIL
     assert window.cells[4].ch == 'B'.as(u32)
 }
+
+test "foreground window blank cells overwrite backdrop cells" {
+    term_fb_resize(8, 5)
+    defer {
+        g_term_fb_chars.free()
+        g_term_fb_ink.free()
+        g_term_fb_paper.free()
+    }
+
+    backdrop: TermWindow
+    backdrop.init(TermRect { x: 0, y: 0, width: 8, height: 5 })
+    defer backdrop.done()
+    backdrop_ink := term_rgb(1, 2, 3)
+    backdrop_paper := term_rgb(4, 5, 6)
+    backdrop.clear('#'.as(u32), backdrop_ink, backdrop_paper)
+
+    foreground: TermWindow
+    foreground.init(TermRect { x: 2, y: 1, width: 4, height: 3 })
+    defer foreground.done()
+    foreground_ink := term_rgb(20, 21, 22)
+    foreground_paper := term_rgb(30, 31, 32)
+    foreground.clear(' '.as(u32), foreground_ink, foreground_paper)
+
+    clear_colour := term_rgb(0, 0, 0)
+    term_fb_cls(clear_colour, clear_colour)
+    backdrop.draw()
+    foreground.draw()
+
+    for y: i32 = 1; y < 4; y += 1 {
+        for x: i32 = 2; x < 6; x += 1 {
+            index := term_fb_index(x, y)
+            assert g_term_fb_chars[index] == ' '.as(u32)
+            assert g_term_fb_ink[index] == foreground_ink
+            assert g_term_fb_paper[index] == foreground_paper
+        }
+    }
+}
+
+test "window box leaves interior blank rows filled with spaces" {
+    window: TermWindow
+    window.init(TermRect { x: 0, y: 0, width: 24, height: 10 })
+    defer window.done()
+
+    ink := term_rgb(236, 223, 204)
+    paper := term_rgb(20, 24, 32)
+    edge := term_rgb(255, 180, 90)
+    full := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
+
+    window.paint_rect(full, ' '.as(u32), ink, paper)
+    window.nine_slice(full, c"/-\\| |\\-/", no)
+    window.paint(full, edge, paper)
+
+    for x: usize = 1; x + 1 < window.rect.width.as(usize); x += 1 {
+        index := (7 * window.rect.width.as(usize)) + x
+        assert window.cells[index].ch == ' '.as(u32)
+        assert window.cells[index].paper == paper
+    }
+}

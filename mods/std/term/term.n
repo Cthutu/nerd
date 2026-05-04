@@ -1083,6 +1083,7 @@ term_fb_present :: fn () {
     current_paper: u32
     colours_set := no
 
+    pr("\x1b[?2026h")
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
         term_cursor_goto(0, y)
         for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
@@ -1100,7 +1101,7 @@ term_fb_present :: fn () {
             term_print_codepoint(g_term_fb_chars[index])
         }
     }
-    pr("\x1b[0m")
+    pr("\x1b[0m\x1b[?2026l")
 }
 
 test "framebuffer colours split into rgb components" {
