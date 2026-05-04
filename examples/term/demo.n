@@ -1,13 +1,156 @@
 --
--- Terminal demo
+-- Terminal window demo
 --
 -- Copyright (C)2026 Matt Davies, all rights reserved
 --
 
-use std.io
 use std.term
+use std.time
+
+min_i32 :: fn (a: i32, b: i32) -> i32 {
+    return on a < b => a else b
+}
+
+max_i32 :: fn (a: i32, b: i32) -> i32 {
+    return on a > b => a else b
+}
+
+ping_pong :: fn (tick: u32, span: i32) -> i32 {
+    on span <= 0 => return 0
+
+    period := span.as(u32) * 2
+    pos := tick % period
+    return on pos < span.as(u32) => pos.as(i32) else (period - pos).as(i32)
+}
+
+window_put :: fn (window: ^TermWindow, x: i32, y: i32, ch: u32, ink: u32, paper: u32) {
+    on x < 0 || y < 0 => return
+    on x >= window.rect.width.as(i32) || y >= window.rect.height.as(i32) => return
+
+    index := (y.as(usize) * window.rect.width.as(usize)) + x.as(usize)
+    cell := ^window.cells[index]
+    cell^.ch = ch
+    cell^.ink = ink
+    cell^.paper = paper
+}
+
+window_box :: fn (window: ^TermWindow, ink: u32, paper: u32, border: u32, title: string) {
+    full := term_rect(0, 0, window.rect.width, window.rect.height)
+
+    term_window_paint_rect(window, full, ' '.as(u32), ink, paper)
+    term_window_9slice(window, full, c"/-\\| |\\-/", no)
+    term_window_paint(window, full, border, paper)
+
+    on title.count > 0 && window.rect.width > 4 => term_window_write(window, 2, 0, title)
+}
+
+draw_backdrop :: fn (window: ^TermWindow, frame: u32) {
+    ramp :: " .:-=+*#%@"
+    width := window.rect.width
+    height := window.rect.height
+
+    for y: u16 = 0; y < height; y += 1 {
+        for x: u16 = 0; x < width; x += 1 {
+            wave := ((x.as(u32) * 3) + (y.as(u32) * 5) + frame) % 10
+            ch := ramp.data[wave.as(usize)].as(u32)
+            paper := term_rgb((10 + wave * 3).as(u8), 20, (32 + wave * 4).as(u8))
+            ink := term_rgb((70 + wave * 10).as(u8), 120, 140)
+            window_put(window, x.as(i32), y.as(i32), ch, ink, paper)
+        }
+    }
+}
+
+draw_panel :: fn (window: ^TermWindow, frame: u32, width: i32, height: i32) {
+    paper := term_rgb(20, 24, 32)
+    ink := term_rgb(236, 223, 204)
+    edge := term_rgb(255, 180, 90)
+
+    window_box(window, ink, paper, edge, " TERM WINDOW CONTROL ")
+    term_window_write(window, 2, 2, "Layered panels, direct cell painting, and clipping.")
+    term_window_write(window, 2, 3, "This is the Nerd port of the Linux terminal demo.")
+    term_window_write(window, 2, 5, $"Terminal {width}x{height}")
+    term_window_write(window, 2, 6, $"Frame    {frame}")
+
+    bar_width := max_i32(8, window.rect.width.as(i32) - 16)
+    filled := ((frame * 3) % bar_width.as(u32)).as(i32)
+
+    term_window_write(window, 2, 8, "Signal")
+    bar_ink := term_rgb(120, 255, 180)
+    for x: i32 = 0; x < bar_width; x += 1 {
+        ch := on x <= filled => '#'.as(u32) else '.'.as(u32)
+        window_put(window, 12 + x, 8, ch, bar_ink, paper)
+    }
+}
+
+draw_ticker :: fn (window: ^TermWindow, frame: u32) {
+    paper := term_rgb(42, 20, 8)
+    ink := term_rgb(255, 218, 130)
+    edge := term_rgb(255, 150, 70)
+
+    window_box(window, ink, paper, edge, " FEED ")
+    offset := 1 - (frame % 40).as(i32)
+    term_window_write(window, offset, 1, "Nerd terminal demo | framebuffer windows | Linux raw terminal path | ")
+}
+
+render :: fn (backdrop: ^TermWindow, panel: ^TermWindow, ticker: ^TermWindow, frame: u32) {
+    (width, height) := term_size()
+
+    on width < 36 || height < 14 => {
+        small_ink := term_rgb(240, 240, 240)
+        small_paper := term_rgb(18, 18, 24)
+        term_fb_cls(small_ink, small_paper)
+        term_fb_write(2, 2, "demo: terminal too small")
+        term_fb_write(2, 4, $"Need at least 36x14, have {width}x{height}.")
+        return
+    }
+
+    panel_w := min_i32(64, width - 4)
+    panel_h := min_i32(14, height - 4)
+    panel_x := ((width - panel_w) / 2).as(u16)
+    panel_y := ((height - panel_h) / 2).as(u16)
+
+    ticker_y := (height - 3).as(u16)
+
+    backdrop_rect: TermRect = term_rect(0, 0, width.as(u16), height.as(u16))
+    term_window_init(backdrop, backdrop_rect)
+    draw_backdrop(backdrop, frame)
+
+    panel_rect: TermRect = term_rect(panel_x, panel_y, panel_w.as(u16), panel_h.as(u16))
+    term_window_init(panel, panel_rect)
+    draw_panel(panel, frame, width, height)
+
+    ticker_rect: TermRect = term_rect(0, ticker_y, width.as(u16), 3)
+    term_window_init(ticker, ticker_rect)
+    draw_ticker(ticker, frame)
+
+    fb_ink := term_rgb(255, 255, 255)
+    fb_paper := term_rgb(0, 0, 0)
+    term_fb_cls(fb_ink, fb_paper)
+    term_window_draw(backdrop)
+    term_window_draw(panel)
+    term_window_draw(ticker)
+}
 
 main :: fn () {
-    (width, height) := term_size()
-    prn($"The terminal size is {width}x{height}")
+    backdrop: TermWindow
+    panel: TermWindow
+    ticker: TermWindow
+    frame: u32 = 0
+
+    term_init()
+    term_cursor_hide()
+
+    for term_loop() {
+        _event := term_poll_event()
+
+        render(^backdrop, ^panel, ^ticker, frame)
+        frame += 1
+
+        on frame > 600 => term_done()
+        sleep_ms(16)
+    }
+
+    term_window_done(^backdrop)
+    term_window_done(^panel)
+    term_window_done(^ticker)
 }

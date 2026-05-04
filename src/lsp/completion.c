@@ -54,7 +54,7 @@ lsp_completion_member_context(string source, usize offset, string* out_receiver)
 internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
                                             string             symbol)
 {
-    if (!doc->analysis_ok) {
+    if (!doc->semantic_ready) {
         return sema_no_type();
     }
 
@@ -239,6 +239,96 @@ internal void lsp_completion_add_members(Arena*             arena,
 
         lsp_completion_add(
             arena, items, lex_symbol(lexer, method->symbol_handle), 2);
+    }
+}
+
+internal u32 lsp_completion_ast_type_symbol(const Ast* ast, u32 type_node_index)
+{
+    if (type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind == AK_SymbolRef) {
+        return type_node->a;
+    }
+    if (type_node->kind == AK_TypePointer) {
+        return lsp_completion_ast_type_symbol(ast, type_node->a);
+    }
+    return U32_MAX;
+}
+
+internal u32 lsp_completion_ast_receiver_type_symbol(const LspDocument* doc,
+                                                     string receiver)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Variable && node->kind != AK_Bind) {
+            continue;
+        }
+        if (node->a == U32_MAX ||
+            !string_eq(lex_symbol(lexer, node->a), receiver)) {
+            continue;
+        }
+        if (node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind == AK_AnnotatedValue || value->kind == AK_ZeroInit ||
+            value->kind == AK_Undefined) {
+            return lsp_completion_ast_type_symbol(ast, value->a);
+        }
+    }
+
+    return U32_MAX;
+}
+
+internal void lsp_completion_add_ast_members(Arena*             arena,
+                                             JsonValue*         items,
+                                             const LspDocument* doc,
+                                             string             receiver)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    u32 type_symbol    = lsp_completion_ast_receiver_type_symbol(doc, receiver);
+    if (type_symbol == U32_MAX) {
+        return;
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Bind || node->a != type_symbol ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypePlex) {
+            continue;
+        }
+        if (value->a >= array_count(ast->plex_types)) {
+            return;
+        }
+
+        const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
+        for (u32 field_index = 0; field_index < plex->field_count;
+             ++field_index) {
+            u32 ast_field_index = plex->first_field + field_index;
+            if (ast_field_index >= array_count(ast->plex_fields)) {
+                break;
+            }
+
+            const AstPlexField* field = &ast->plex_fields[ast_field_index];
+            if (field->symbol_handle != U32_MAX) {
+                lsp_completion_add(
+                    arena, items, lex_symbol(lexer, field->symbol_handle), 5);
+            }
+        }
+        return;
     }
 }
 
@@ -462,7 +552,7 @@ internal void lsp_completion_add_symbols(Arena*             arena,
                                          JsonValue*         items,
                                          const LspDocument* doc)
 {
-    if (!doc->analysis_ok) {
+    if (!doc->semantic_ready) {
         return;
     }
 
@@ -529,6 +619,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
             items,
             doc,
             lsp_completion_type_for_symbol(doc, receiver));
+        if (array_count(items->array.values) == 0) {
+            lsp_completion_add_ast_members(
+                message->arena, items, doc, receiver);
+        }
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);
         return;

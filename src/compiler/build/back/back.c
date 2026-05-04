@@ -271,13 +271,15 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         u32 first_call_arg = (u32)array_count(merge.ir.call_args);
         for (u32 i = 0; i < array_count(module_ir->call_args); ++i) {
             IrCallArg arg = module_ir->call_args[i];
-            arg.type      = type_map[arg.type];
-            arg.value     = back_end_remap_ir_value(&arg.value,
-                                                    module_ir,
-                                                    type_map,
-                                                    string_map,
-                                                    &merge,
-                                                    &front_end->lexer);
+            if (arg.type != sema_no_type()) {
+                arg.type = type_map[arg.type];
+            }
+            arg.value = back_end_remap_ir_value(&arg.value,
+                                                module_ir,
+                                                type_map,
+                                                string_map,
+                                                &merge,
+                                                &front_end->lexer);
             array_push(merge.ir.call_args, arg);
         }
 

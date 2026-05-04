@@ -872,6 +872,11 @@ bool front_end_program(NerdSource             source,
                                   timing,
                                   effective_options.require_entry_point)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
+        if (effective_options.keep_partial_results && out_program != NULL) {
+            *out_program = program;
+            program_rebind_sema_programs(out_program);
+            return false;
+        }
         program_info_done(&program);
         return false;
     }

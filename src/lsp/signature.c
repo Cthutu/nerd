@@ -331,7 +331,7 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
 internal const SemaDecl* lsp_signature_find_decl(const LspDocument* doc,
                                                  string             name)
 {
-    if (!doc->analysis_ok) {
+    if (!doc->semantic_ready) {
         return NULL;
     }
 

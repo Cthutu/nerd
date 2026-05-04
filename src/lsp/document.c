@@ -62,13 +62,15 @@ internal bool lsp_front_end_document(NerdSource             source,
                                      ProgramInfo*           out_program,
                                      FrontEndState*         out_front_end)
 {
-    if (!front_end_program(source, options, NULL, out_program)) {
+    bool ok = front_end_program(source, options, NULL, out_program);
+    if (array_count(out_program->modules) == 0 ||
+        out_program->root_module_index >= array_count(out_program->modules)) {
         return false;
     }
 
     *out_front_end =
         out_program->modules[out_program->root_module_index].front_end;
-    return true;
+    return ok;
 }
 
 internal void lsp_document_reset_runtime(LspDocument* doc)
@@ -77,10 +79,11 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->cst = (Cst){0};
     program_info_done(&doc->program);
     arena_done(&doc->arena);
-    doc->program     = (ProgramInfo){0};
-    doc->front_end   = (FrontEndState){0};
-    doc->analysis_ok = false;
-    doc->has_cst     = false;
+    doc->program        = (ProgramInfo){0};
+    doc->front_end      = (FrontEndState){0};
+    doc->analysis_ok    = false;
+    doc->semantic_ready = false;
+    doc->has_cst        = false;
 }
 
 internal void lsp_document_set_source(LspDocument* doc, string content)
@@ -96,9 +99,10 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
 {
     *staged = (LspDocument){0};
     arena_init(&staged->arena);
-    staged->analysis_ok = false;
-    staged->has_cst     = false;
-    staged->source      = content;
+    staged->analysis_ok    = false;
+    staged->semantic_ready = false;
+    staged->has_cst        = false;
+    staged->source         = content;
 
     lsp_log("Analysing document...");
     ErrorRenderMode previous_mode = error_system_mode();
@@ -107,10 +111,11 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
     FrontEndOptions options = {
-        .verbose             = false,
-        .release             = false,
-        .require_entry_point = false,
-        .skip_ir_generation  = true,
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_ir_generation   = true,
+        .keep_partial_results = true,
     };
     bool ok = lsp_front_end_document(
         (NerdSource){
@@ -123,13 +128,20 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
-    if (!ok) {
-        lsp_log("Front-end analysis failed for current document contents");
+    if (array_count(staged->front_end.lexer.tokens) == 0 ||
+        array_count(staged->front_end.ast.nodes) == 0) {
+        if (!ok) {
+            lsp_log("Front-end analysis failed for current document contents");
+        }
         program_info_done(&staged->program);
         return false;
     }
 
-    staged->analysis_ok = true;
+    staged->analysis_ok    = ok;
+    staged->semantic_ready = true;
+    if (!ok) {
+        lsp_log("Keeping partial front-end analysis for editor features");
+    }
     if (cst_parse(&staged->front_end.lexer, &staged->cst)) {
         staged->has_cst = true;
     } else {
@@ -148,13 +160,14 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     }
 
     lsp_document_reset_runtime(doc);
-    doc->arena       = staged.arena;
-    doc->program     = staged.program;
-    doc->front_end   = staged.front_end;
-    doc->cst         = staged.cst;
-    doc->analysis_ok = staged.analysis_ok;
-    doc->has_cst     = staged.has_cst;
-    return true;
+    doc->arena          = staged.arena;
+    doc->program        = staged.program;
+    doc->front_end      = staged.front_end;
+    doc->cst            = staged.cst;
+    doc->analysis_ok    = staged.analysis_ok;
+    doc->semantic_ready = staged.semantic_ready;
+    doc->has_cst        = staged.has_cst;
+    return staged.analysis_ok;
 }
 
 usize lsp_offset_from_position(string source, u64 line, u64 character)

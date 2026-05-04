@@ -1,41 +1,95 @@
 -- Simple arena implementation
 
+use std.io
+use std.linux
 use std.mem
 
 pub Arena :: plex {
-    base     []u8
-    cursor   usize
+    base              ^u8
+    cursor            usize
+    committed_size    usize
+    reserved_size     usize
+    alloc_granularity usize
+    grow_rate         usize
 }
 
-pub arena_new :: fn (capacity: usize) -> Arena {
-    return Arena {
-        base: alloc(capacity)
-        cursor: 0
-    }
+pub HeapArena :: plex {
+    base   []u8
+    cursor usize
 }
 
-pub arena_free :: fn (arena: ^Arena) {
-    free(arena.base)
-    arena.base = nil
-    arena.cursor = 0
+pub arena_new :: fn (size: usize) -> HeapArena {
+    base := alloc(size)
+    return { base, cursor: 0 }
 }
 
-pub arena_capacity :: fn (arena: ^Arena) -> usize {
+pub arena_capacity :: fn (arena: ^HeapArena) -> usize {
     return arena.base.count
 }
 
-pub arena_alloc :: fn (arena: ^Arena, size: usize) -> []u8 {
-    for arena.cursor + size > arena.base.count {
-        new_base := realloc(arena.base, arena.base.count * 2)
-        on new_base == nil => return nil
-        arena.base = new_base
-    }
-
-    result := arena.base[arena.cursor .. arena.cursor + size]
+pub arena_alloc :: fn (arena: ^HeapArena, size: usize) -> []u8 {
+    start := arena.cursor
     arena.cursor += size
-    return result
+    assert arena.cursor <= arena.base.count, "Heap arena overflow"
+    return arena.base[start .. arena.cursor]
 }
 
-pub arena_reset :: fn (arena: ^Arena) {
-    arena.cursor = 0
+pub arena_free :: fn (arena: ^HeapArena) {
+    free(arena.base)
+    arena^ = { ... }
+}
+
+-- Returns (alloc_granularity, reserve_granularity)
+get_arena_memory_info :: fn () -> (usize, usize) {
+    page_size := sysconf(_SC_PAGESIZE).as(usize)
+    return (page_size, page_size)
+}
+
+impl Arena {
+
+    pub init :: fn (arena         : ^Self,
+                    reserved_size : usize = kb(4),
+                    grow_rate     : usize = 16) {
+        (alloc_granularity, reserve_granularity) := get_arena_memory_info()
+
+        reserved_size = align_up(reserved_size, reserve_granularity)
+        initial_alloc_size := alloc_granularity * grow_rate
+
+        assert reserved_size >= initial_alloc_size,
+            $"Arena reserve size must be at least {initial_alloc_size} bytes"
+
+        memory := mmap(nil, reserved_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+
+        on mprotect(memory, initial_alloc_size, PROT_READ | PROT_WRITE) != 0 => {
+            eprn($"Unable to create a arena of size {initial_alloc_size}")
+            abort()
+        }
+
+        arena.base = memory
+        arena.cursor = 0
+        arena.committed_size = initial_alloc_size
+        arena.reserved_size = reserved_size
+        arena.alloc_granularity = alloc_granularity
+        arena.grow_rate = grow_rate
+    }
+
+    pub done :: fn (arena: ^Self) {
+        munmap(arena.base, arena.reserved_size)
+
+        arena^ = { ... }
+    }
+
+    pub store :: fn (arena: ^Self) -> usize {
+        return arena.cursor
+    }
+
+    pub restore :: fn (arena: ^Self, mark: usize) {
+        assert mark <= arena.cursor, "Invalid arena restore point"
+        arena.cursor = mark
+    }
+
+    pub reset :: fn (arena: ^Self) {
+        arena.cursor = 0
+    }
+
 }

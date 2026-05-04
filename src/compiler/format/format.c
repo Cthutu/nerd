@@ -1548,6 +1548,7 @@ typedef struct {
     bool   is_bind;
     bool   is_assignment;
     bool   has_value;
+    bool   is_public;
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
 
@@ -2364,6 +2365,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             .value     = value,
             .is_bind   = false,
             .has_value = payload->kind != CK_ZeroInit,
+            .is_public = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
                                          payload->kind != CK_ZeroInit &&
                                          payload->kind != CK_Undefined,
@@ -2401,6 +2403,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             .value     = value,
             .is_bind   = true,
             .has_value = true,
+            .is_public = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = false,
         };
         return true;
@@ -2651,8 +2654,10 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
     usize max_symbol_width = 0;
     usize max_type_width   = 0;
     for (u32 i = 0; i < stmt_count; ++i) {
-        if (stmts[i].symbol.count > max_symbol_width) {
-            max_symbol_width = stmts[i].symbol.count;
+        usize symbol_width =
+            stmts[i].symbol.count + (stmts[i].is_public ? 4 : 0);
+        if (symbol_width > max_symbol_width) {
+            max_symbol_width = symbol_width;
         }
         if (stmts[i].type.count > max_type_width) {
             max_type_width = stmts[i].type.count;
@@ -2662,8 +2667,13 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
 
     for (u32 i = 0; i < stmt_count; ++i) {
         format_emit_indent(sb, indent_level);
+        if (stmts[i].is_public) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_string(sb, stmts[i].symbol);
-        for (usize pad = stmts[i].symbol.count; pad < max_symbol_width; ++pad) {
+        usize symbol_width =
+            stmts[i].symbol.count + (stmts[i].is_public ? 4 : 0);
+        for (usize pad = symbol_width; pad < max_symbol_width; ++pad) {
             sb_append_char(sb, ' ');
         }
 

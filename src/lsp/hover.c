@@ -58,6 +58,68 @@ internal u32 lsp_token_index_from_pointer(const Lexer* lexer,
 }
 
 //------------------------------------------------------------------------------
+// Return the analysed-source offset where the open editor document begins.
+// Folder modules analyse `mod.n` plus implicit sibling parts as one source, but
+// LSP requests are still expressed relative to the file open in the editor.
+
+internal bool lsp_document_visible_start(const LspDocument* doc,
+                                         usize*             out_start)
+{
+    string analysed = doc->front_end.lexer.source.source;
+    if (string_eq(analysed, doc->source)) {
+        *out_start = 0;
+        return true;
+    }
+
+    if (doc->source.count <= analysed.count &&
+        memcmp(analysed.data, doc->source.data, doc->source.count) == 0) {
+        *out_start = 0;
+        return true;
+    }
+
+    if (doc->source.count == 0) {
+        *out_start = 0;
+        return true;
+    }
+
+    for (usize i = 0; i + doc->source.count <= analysed.count; ++i) {
+        if (memcmp(analysed.data + i, doc->source.data, doc->source.count) ==
+            0) {
+            *out_start = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Build a range relative to the open editor document when possible.
+
+internal JsonValue* lsp_make_document_range(const LspDocument* doc,
+                                            Arena*             arena,
+                                            usize              start_offset,
+                                            usize              end_offset)
+{
+    usize visible_start = 0;
+    if (lsp_document_visible_start(doc, &visible_start) &&
+        start_offset >= visible_start && end_offset >= visible_start &&
+        end_offset <= visible_start + doc->source.count) {
+        NerdSource visible_source = {
+            .source      = doc->source,
+            .source_path = doc->front_end.lexer.source.source_path,
+        };
+        return lsp_make_range(arena,
+                              visible_source,
+                              start_offset - visible_start,
+                              end_offset - visible_start);
+    }
+
+    return lsp_make_range(
+        arena, doc->front_end.lexer.source, start_offset, end_offset);
+}
+
+//------------------------------------------------------------------------------
 // Return the source offsets of one token in the current document.
 
 internal void lsp_token_offsets(const Lexer* lexer,
@@ -1135,8 +1197,7 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
     json_object_set_object(
         location,
         "range",
-        lsp_make_range(
-            arena, doc->front_end.lexer.source, start_offset, end_offset));
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
     return location;
 }
 
@@ -1166,8 +1227,7 @@ internal JsonValue* lsp_local_location(const LspDocument* doc,
     json_object_set_object(
         location,
         "range",
-        lsp_make_range(
-            arena, doc->front_end.lexer.source, start_offset, end_offset));
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
     return location;
 }
 
@@ -1244,12 +1304,10 @@ internal JsonValue* lsp_local_record_field_location(const LspDocument* doc,
 
             JsonValue* location = json_new_object(arena);
             json_object_set_string(location, arena, "uri", uri);
-            json_object_set_object(location,
-                                   "range",
-                                   lsp_make_range(arena,
-                                                  doc->front_end.lexer.source,
-                                                  start_offset,
-                                                  end_offset));
+            json_object_set_object(
+                location,
+                "range",
+                lsp_make_document_range(doc, arena, start_offset, end_offset));
             return location;
         }
     }
@@ -1290,12 +1348,10 @@ internal JsonValue* lsp_field_location_from_type_node(const LspDocument* doc,
 
             JsonValue* location = json_new_object(arena);
             json_object_set_string(location, arena, "uri", uri);
-            json_object_set_object(location,
-                                   "range",
-                                   lsp_make_range(arena,
-                                                  doc->front_end.lexer.source,
-                                                  start_offset,
-                                                  end_offset));
+            json_object_set_object(
+                location,
+                "range",
+                lsp_make_document_range(doc, arena, start_offset, end_offset));
             return location;
         }
         return NULL;
@@ -1358,8 +1414,7 @@ internal JsonValue* lsp_unique_record_field_location(const LspDocument* doc,
     json_object_set_object(
         location,
         "range",
-        lsp_make_range(
-            arena, doc->front_end.lexer.source, start_offset, end_offset));
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
     return location;
 }
 
@@ -1484,14 +1539,29 @@ internal bool lsp_get_request_context(LspState*         state,
     if (!*out_doc) {
         return false;
     }
-    if (!(*out_doc)->analysis_ok) {
+    if (!(*out_doc)->semantic_ready) {
         return false;
     }
 
-    if (!lex_line_col_to_offset((*out_doc)->front_end.lexer.source,
-                                (u32)json_integer(line_value),
-                                (u32)json_integer(col_value),
-                                out_offset)) {
+    u32 line            = (u32)json_integer(line_value);
+    u32 col             = (u32)json_integer(col_value);
+
+    usize visible_start = 0;
+    if (lsp_document_visible_start(*out_doc, &visible_start) &&
+        !string_eq((*out_doc)->front_end.lexer.source.source,
+                   (*out_doc)->source)) {
+        NerdSource visible_source = {
+            .source      = (*out_doc)->source,
+            .source_path = (*out_doc)->front_end.lexer.source.source_path,
+        };
+        usize visible_offset = 0;
+        if (!lex_line_col_to_offset(
+                visible_source, line, col, &visible_offset)) {
+            return false;
+        }
+        *out_offset = visible_start + visible_offset;
+    } else if (!lex_line_col_to_offset(
+                   (*out_doc)->front_end.lexer.source, line, col, out_offset)) {
         return false;
     }
 
@@ -1788,7 +1858,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
 
     string       uri = json_string(uri_value);
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->analysis_ok) {
+    if (!doc || !doc->semantic_ready) {
         json_object_set_array(
             response, "result", json_new_array(message->arena));
         lsp_send_response(message->arena, response);
@@ -1821,18 +1891,16 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                                    lex_symbol(&doc->front_end.lexer, bind->a));
             json_object_set_number(
                 symbol, message->arena, "kind", lsp_decl_symbol_kind(decl));
-            json_object_set_object(symbol,
-                                   "range",
-                                   lsp_make_range(message->arena,
-                                                  doc->front_end.lexer.source,
-                                                  start_offset,
-                                                  end_offset));
-            json_object_set_object(symbol,
-                                   "selectionRange",
-                                   lsp_make_range(message->arena,
-                                                  doc->front_end.lexer.source,
-                                                  start_offset,
-                                                  end_offset));
+            json_object_set_object(
+                symbol,
+                "range",
+                lsp_make_document_range(
+                    doc, message->arena, start_offset, end_offset));
+            json_object_set_object(
+                symbol,
+                "selectionRange",
+                lsp_make_document_range(
+                    doc, message->arena, start_offset, end_offset));
 
             if (decl->kind == SK_TypeAlias) {
                 json_object_set_string(

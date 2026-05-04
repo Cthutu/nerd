@@ -10239,17 +10239,6 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     field_target_type = pointee_type;
                 }
             }
-            if (string_eq(field, s("size"))) {
-                if (target_type != sema_no_type() &&
-                    sema->types[target_type].kind == STK_Module) {
-                    return error_0304_type_mismatch(lexer->source,
-                                                    sema_node_span(lexer, node),
-                                                    s("runtime-sized value"),
-                                                    s("module"));
-                }
-                type_index = sema_builtin_type(sema, STK_Usize);
-                break;
-            }
             if (field_target_type != sema_no_type() &&
                 (sema->types[field_target_type].kind == STK_Plex ||
                  sema->types[field_target_type].kind == STK_Union)) {
@@ -10264,13 +10253,27 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
                 if (type_index == sema_no_type()) {
+                    if (!string_eq(field, s("size"))) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            record->kind == STK_Union ? s("known union field")
+                                                      : s("known plex field"),
+                            lex_symbol(lexer, node->b));
+                    }
+                } else {
+                    break;
+                }
+            }
+            if (string_eq(field, s("size"))) {
+                if (target_type != sema_no_type() &&
+                    sema->types[target_type].kind == STK_Module) {
                     return error_0304_type_mismatch(lexer->source,
                                                     sema_node_span(lexer, node),
-                                                    record->kind == STK_Union
-                                                        ? s("known union field")
-                                                        : s("known plex field"),
-                                                    lex_symbol(lexer, node->b));
+                                                    s("runtime-sized value"),
+                                                    s("module"));
                 }
+                type_index = sema_builtin_type(sema, STK_Usize);
                 break;
             }
             if (target_type != sema_no_type() &&

@@ -1697,6 +1697,57 @@ internal u32 ir_node_type_index(const Ast*  ast,
     return sema_no_type();
 }
 
+internal u32 ir_type_index_for_name(const Sema* sema, string name)
+{
+    if (string_eq(name, s("void"))) {
+        return ir_builtin_type(sema, STK_Void);
+    }
+    if (string_eq(name, s("bool"))) {
+        return ir_builtin_type(sema, STK_Bool);
+    }
+    if (string_eq(name, s("string"))) {
+        return ir_builtin_type(sema, STK_String);
+    }
+    if (string_eq(name, s("i8"))) {
+        return ir_builtin_type(sema, STK_I8);
+    }
+    if (string_eq(name, s("i16"))) {
+        return ir_builtin_type(sema, STK_I16);
+    }
+    if (string_eq(name, s("i32"))) {
+        return ir_builtin_type(sema, STK_I32);
+    }
+    if (string_eq(name, s("i64"))) {
+        return ir_builtin_type(sema, STK_I64);
+    }
+    if (string_eq(name, s("u8"))) {
+        return ir_builtin_type(sema, STK_U8);
+    }
+    if (string_eq(name, s("u16"))) {
+        return ir_builtin_type(sema, STK_U16);
+    }
+    if (string_eq(name, s("u32"))) {
+        return ir_builtin_type(sema, STK_U32);
+    }
+    if (string_eq(name, s("u64"))) {
+        return ir_builtin_type(sema, STK_U64);
+    }
+    if (string_eq(name, s("f32"))) {
+        return ir_builtin_type(sema, STK_F32);
+    }
+    if (string_eq(name, s("f64"))) {
+        return ir_builtin_type(sema, STK_F64);
+    }
+    if (string_eq(name, s("isize"))) {
+        return ir_builtin_type(sema, STK_Isize);
+    }
+    if (string_eq(name, s("usize"))) {
+        return ir_builtin_type(sema, STK_Usize);
+    }
+
+    return sema_no_type();
+}
+
 internal u32 ir_value_type_for_local_index(const Ast*  ast,
                                            const Sema* sema,
                                            u32         local_index)
@@ -3850,26 +3901,58 @@ internal IrValue ir_lower_node(const Lexer* lex,
             string field_name = lex_symbol(lex, node->b);
             if (string_eq(field_name, s("size"))) {
                 u32 source_type = ir_node_type_index(ast, sema, node->a);
-                if (source_type == sema_no_type()) {
-                    IrValue source = ir_lower_node(lex,
-                                                   ast,
-                                                   sema,
-                                                   node->a,
-                                                   loop,
-                                                   node_values,
-                                                   next_value_index,
-                                                   ir);
-                    source_type    = source.type;
+                if (source_type == sema_no_type() &&
+                    ast->nodes[node->a].kind == AK_SymbolRef) {
+                    source_type = ir_type_index_for_name(
+                        sema, lex_symbol(lex, ast->nodes[node->a].a));
                 }
-                source_type   = sema_materialise_type(sema, source_type);
-                IrValue value = {
-                    .kind          = IR_VALUE_VARIABLE,
-                    .type          = type_index,
-                    .value.integer = (i64)(*next_value_index)++,
-                };
-                ir_add_size(ir, value, type_index, source_type);
-                node_values[node_index] = value;
-                return value;
+
+                u32  field_target_type = source_type;
+                bool record_size_field = false;
+                if (field_target_type != sema_no_type() &&
+                    sema->types[field_target_type].kind == STK_Pointer) {
+                    u32 pointee_type =
+                        sema->types[field_target_type].first_param_type;
+                    if (sema->types[pointee_type].kind == STK_Plex ||
+                        sema->types[pointee_type].kind == STK_Union) {
+                        field_target_type = pointee_type;
+                    }
+                }
+                if (field_target_type != sema_no_type() &&
+                    (sema->types[field_target_type].kind == STK_Plex ||
+                     sema->types[field_target_type].kind == STK_Union)) {
+                    const SemaType* record = &sema->types[field_target_type];
+                    for (u32 i = 0; i < record->param_count; ++i) {
+                        if (sema->type_param_symbols[record->first_param_type +
+                                                     i] == node->b) {
+                            record_size_field = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!record_size_field) {
+                    if (source_type == sema_no_type()) {
+                        IrValue source = ir_lower_node(lex,
+                                                       ast,
+                                                       sema,
+                                                       node->a,
+                                                       loop,
+                                                       node_values,
+                                                       next_value_index,
+                                                       ir);
+                        source_type    = source.type;
+                    }
+                    source_type   = sema_materialise_type(sema, source_type);
+                    IrValue value = {
+                        .kind          = IR_VALUE_VARIABLE,
+                        .type          = type_index,
+                        .value.integer = (i64)(*next_value_index)++,
+                    };
+                    ir_add_size(ir, value, type_index, source_type);
+                    node_values[node_index] = value;
+                    return value;
+                }
             }
             u32 variant = ir_enum_variant_index(sema, type_index, node->b);
             if (variant != U32_MAX) {

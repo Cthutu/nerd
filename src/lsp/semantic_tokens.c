@@ -355,7 +355,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
 
     string       uri = json_string(uri_value);
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->analysis_ok) {
+    if (!doc || !doc->semantic_ready) {
         lsp_cancel(response, message->arena);
         return;
     }

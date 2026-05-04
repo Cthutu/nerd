@@ -4,9 +4,28 @@
 -- Copyright (C)2026 Matt Davies, all rights reserved
 --
 
-g_term_initialised := no
+use std.arena
+use std.linux
+use std.mem
 
-g_term: Term
+g_term_initialised   :         = no
+g_term               : Term
+g_term_arena         : Arena
+
+g_term_original_tios : termios
+
+g_term_pending_count : usize
+g_term_pending_index : usize
+g_term_escape_count  : usize
+
+g_term_fb_chars      : [..]u32
+g_term_fb_ink        : [..]u32
+g_term_fb_paper      : [..]u32
+g_term_fb_size       : (i32, i32)
+
+--
+-- Start up
+--
 
 pub term_init :: fn () {
     on g_term_initialised => return
@@ -14,4 +33,479 @@ pub term_init :: fn () {
     setlocale(LC_CTYPE, c"")
 
     -- Initialise the terminal, read for a loop
+    g_term.size = (0, 0)
+    g_term.running = yes
+    g_term.initialised = yes
+
+    g_term_arena.init(reserved_size = mb(128), grow_rate = 1)
+
+    term_start()
+    term_check_resize()
+}
+
+term_start :: fn () {
+    term_platform_init()
+    term_alt_enter()
+    term_raw_enter()
+}
+
+--
+-- Shutdown
+--
+
+pub term_done :: fn () {
+    g_term.running = no
+}
+
+term_stop :: fn () {
+    g_term.event_queue.free()
+    g_term_fb_chars.free()
+    g_term_fb_ink.free()
+    g_term_fb_paper.free()
+    term_alt_leave()
+    term_raw_leave()
+    g_term_arena.done()
+}
+
+--
+-- Alternative mode
+--
+
+term_alt_enter :: fn () {
+    pr("\x1b[?1049h\x1b[?1007l\x1b[?1002h\x1b[?1006h")
+}
+
+term_alt_leave :: fn () {
+    pr("\x1b[?1002l\x1b[?1006l\x1b[?1007h\x1b[?1049l")
+}
+
+--
+-- Raw mode
+--
+
+term_raw_enter :: fn () {
+    tcgetattr(STDIN_FILENO, ^g_term_original_tios)
+    raw_tios := g_term_original_tios
+
+    raw_tios.c_lflag &= 0xffff7ff4
+    raw_tios.c_iflag &= 0xfffffacd
+    raw_tios.c_oflag &= 0xfffffffe
+    raw_tios.c_cflag |= 0x0030
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, ^raw_tios)
+
+    g_term_pending_count = 0
+    g_term_pending_index = 0
+    g_term_escape_count = 0
+}
+
+term_raw_leave :: fn () {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, ^g_term_original_tios)
+}
+
+--
+-- Platform loop
+--
+
+term_platform_init :: fn () {
+    -- The C implementation installs SIGWINCH here.  The Nerd port polls size
+    -- changes in `term_loop` for now, which keeps the Linux path simple and
+    -- avoids exposing signal handler function pointers through FFI.
+}
+
+term_queue_event :: fn (event: TermEvent) {
+    g_term.event_queue.push(event)
+}
+
+term_check_resize :: fn () {
+    new_size := term_size()
+    on new_size.0 != g_term.size.0 || new_size.1 != g_term.size.1 => {
+        g_term.size = new_size
+        term_queue_event(TermEvent.Resize(new_size.0, new_size.1))
+    }
+}
+
+term_raw_key :: fn () {
+    -- TODO: port the POSIX escape sequence decoder from term.c.
+}
+
+term_maybe_present :: fn () {
+    term_fb_present()
+}
+
+pub term_loop :: fn () -> bool {
+    on g_term.running => {
+        term_check_resize()
+        term_raw_key()
+        term_maybe_present()
+        return yes
+    }
+
+    term_stop()
+    return no
+}
+
+pub term_poll_event :: fn () -> TermEvent {
+    on g_term.event_queue.count == 0 => return TermEvent.None
+
+    event := g_term.event_queue.pop()
+    return event
+}
+
+pub term_cls :: fn () {
+    pr("\x1b[2J\x1b[3J\x1b[H")
+}
+
+pub term_cursor_hide :: fn () {
+    pr("\x1b[?25l")
+}
+
+pub term_cursor_show :: fn () {
+    pr("\x1b[?25h")
+}
+
+pub term_cursor_goto :: fn (x: i32, y: i32) {
+    pr($"\x1b[{y + 1};{x + 1}H")
+}
+
+--
+-- Rectangles and colours
+--
+
+pub term_rect :: fn (x: u16, y: u16, width: u16, height: u16) -> TermRect {
+    return { x, y, width, height }
+}
+
+pub term_rect_is_empty :: fn (rect: TermRect) -> bool {
+    return rect.width == 0 || rect.height == 0
+}
+
+pub term_rect_intersection :: fn (a: TermRect, b: TermRect) -> TermRect {
+    ax1 := a.x.as(u32) + a.width.as(u32)
+    ay1 := a.y.as(u32) + a.height.as(u32)
+    bx1 := b.x.as(u32) + b.width.as(u32)
+    by1 := b.y.as(u32) + b.height.as(u32)
+
+    x0 := on a.x > b.x => a.x else b.x
+    y0 := on a.y > b.y => a.y else b.y
+    x1 := on ax1 < bx1 => ax1 else bx1
+    y1 := on ay1 < by1 => ay1 else by1
+
+    on x1 <= x0.as(u32) || y1 <= y0.as(u32) => return term_rect(0, 0, 0, 0)
+    return term_rect(x0, y0, (x1 - x0.as(u32)).as(u16), (y1 - y0.as(u32)).as(u16))
+}
+
+pub term_rgb :: fn (r: u8, g: u8, b: u8) -> u32 {
+    return 0xff000000 | (r.as(u32) << 16) | (g.as(u32) << 8) | b.as(u32)
+}
+
+pub term_rgba :: fn (r: u8, g: u8, b: u8, a: u8) -> u32 {
+    return (a.as(u32) << 24) | (r.as(u32) << 16) | (g.as(u32) << 8) | b.as(u32)
+}
+
+--
+-- Framebuffer
+--
+
+term_fb_index :: fn (x: i32, y: i32) -> usize {
+    return (y * g_term_fb_size.0 + x).as(usize)
+}
+
+term_fb_resize :: fn (width: i32, height: i32) {
+    count := (width * height).as(usize)
+
+    g_term_fb_chars.clear()
+    g_term_fb_ink.clear()
+    g_term_fb_paper.clear()
+
+    for i: usize = 0; i < count; i += 1 {
+        g_term_fb_chars.push(' '.as(u32))
+        g_term_fb_ink.push(0xffffffff)
+        g_term_fb_paper.push(0xff000000)
+    }
+
+    g_term_fb_size = (width, height)
+}
+
+pub term_fb_cls :: fn (ink: u32, paper: u32) {
+    count := g_term_fb_chars.count
+    for i: usize = 0; i < count; i += 1 {
+        (^g_term_fb_chars[i])^ = ' '.as(u32)
+        (^g_term_fb_ink[i])^ = ink
+        (^g_term_fb_paper[i])^ = paper
+    }
+}
+
+pub term_fb_rect :: fn (rect: TermRect, ch: u32, ink: u32, paper: u32) {
+    fb_rect := term_rect(0, 0, g_term_fb_size.0.as(u16), g_term_fb_size.1.as(u16))
+    clipped := term_rect_intersection(rect, fb_rect)
+    on term_rect_is_empty(clipped) => return
+
+    for y: u16 = 0; y < clipped.height; y += 1 {
+        for x: u16 = 0; x < clipped.width; x += 1 {
+            index := term_fb_index((clipped.x + x).as(i32), (clipped.y + y).as(i32))
+            (^g_term_fb_chars[index])^ = ch
+            (^g_term_fb_ink[index])^ = ink
+            (^g_term_fb_paper[index])^ = paper
+        }
+    }
+}
+
+pub term_fb_write :: fn (x: i32, y: i32, text: string) {
+    on y < 0 || y >= g_term_fb_size.1 => return
+
+    cx := x
+    for i: usize = 0; i < text.count; i += 1 {
+        ch := text.data[i]
+        on ch == '\n' => return
+
+        on ch == 27 => {
+            -- Skip simple ANSI escape sequences. Colour parsing can be ported
+            -- after the framebuffer path is stable.
+            i += 1
+            for i < text.count && text.data[i] != 'm' {
+                i += 1
+            }
+            continue
+        }
+
+        on cx >= 0 && cx < g_term_fb_size.0 => {
+            index := term_fb_index(cx, y)
+            (^g_term_fb_chars[index])^ = ch.as(u32)
+        }
+        cx += 1
+    }
+}
+
+pub term_fb_write_cstr :: fn (x: i32, y: i32, text: ^u8) {
+    i: usize = 0
+    for text[i] != 0 {
+        i += 1
+    }
+    term_fb_write(x, y, text.as([]u8, i).as(string))
+}
+
+term_fb_present :: fn () {
+    on g_term_fb_size.0 == 0 || g_term_fb_size.1 == 0 => return
+
+    term_cursor_goto(0, 0)
+    for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
+        for x: i32 = 0; x < g_term_fb_size.0; x += 1 {
+            index := term_fb_index(x, y)
+            ch: [1]u8 = [g_term_fb_chars[index].as(u8)]
+            pr(ch[..].as(string))
+        }
+        on y + 1 < g_term_fb_size.1 => pr("\r\n")
+    }
+}
+
+--
+-- Windows
+--
+
+impl TermWindow {
+    pub init :: fn (window: ^Self, rect: TermRect) {
+        window.rect = rect
+        window.cells.clear()
+
+        count := rect.width.as(usize) * rect.height.as(usize)
+        for i: usize = 0; i < count; i += 1 {
+            window.cells.push({ ink: 0xffffffff, paper: 0xff000000, ch: ' '.as(u32) })
+        }
+    }
+
+    pub done :: fn (window: ^Self) {
+        window.cells.free()
+    }
+
+    pub clear :: fn (window: ^Self, ch: u32, ink: u32, paper: u32) {
+        for i: usize = 0; i < window.cells.count; i += 1 {
+            (^window.cells[i])^ = { ink, paper, ch }
+        }
+    }
+
+    pub paint_rect :: fn (window: ^Self, rect: TermRect, ch: u32, ink: u32, paper: u32) {
+        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        clipped := term_rect_intersection(rect, local)
+        on term_rect_is_empty(clipped) => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                (^window.cells[index])^ = { ink, paper, ch }
+            }
+        }
+    }
+
+    pub draw_rect :: fn (window: ^Self, rect: TermRect, ch: u32) {
+        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        clipped := term_rect_intersection(rect, local)
+        on term_rect_is_empty(clipped) => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                cell := ^window.cells[index]
+                cell^.ch = ch
+            }
+        }
+    }
+
+    pub paint :: fn (window: ^Self, rect: TermRect, ink: u32, paper: u32) {
+        local := term_rect(0, 0, window.rect.width, window.rect.height)
+        clipped := term_rect_intersection(rect, local)
+        on term_rect_is_empty(clipped) => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                cell := ^window.cells[index]
+                cell^.ink = ink
+                cell^.paper = paper
+            }
+        }
+    }
+
+    pub nine_slice :: fn (window: ^Self, rect: TermRect, slices: ^u8, fill_centre: bool) {
+        top_left := term_rect(rect.x, rect.y, 1, 1)
+        top_right := term_rect((rect.x + rect.width - 1).as(u16), rect.y, 1, 1)
+        bottom_left := term_rect(rect.x, (rect.y + rect.height - 1).as(u16), 1, 1)
+        bottom_right := term_rect((rect.x + rect.width - 1).as(u16),
+                                  (rect.y + rect.height - 1).as(u16),
+                                  1,
+                                  1)
+
+        window.draw_rect(top_left, (slices[0]).as(u32))
+        window.draw_rect(top_right, (slices[2]).as(u32))
+        window.draw_rect(bottom_left, (slices[6]).as(u32))
+        window.draw_rect(bottom_right, (slices[8]).as(u32))
+
+        on rect.width > 2 => {
+            top := term_rect((rect.x + 1).as(u16), rect.y, (rect.width - 2).as(u16), 1)
+            bottom := term_rect((rect.x + 1).as(u16),
+                                (rect.y + rect.height - 1).as(u16),
+                                (rect.width - 2).as(u16),
+                                1)
+            window.draw_rect(top, (slices[1]).as(u32))
+            window.draw_rect(bottom, (slices[7]).as(u32))
+        }
+
+        on rect.height > 2 => {
+            left := term_rect(rect.x, (rect.y + 1).as(u16), 1, (rect.height - 2).as(u16))
+            right := term_rect((rect.x + rect.width - 1).as(u16),
+                               (rect.y + 1).as(u16),
+                               1,
+                               (rect.height - 2).as(u16))
+            window.draw_rect(left, (slices[3]).as(u32))
+            window.draw_rect(right, (slices[5]).as(u32))
+        }
+
+        on fill_centre && rect.width > 2 && rect.height > 2 => {
+            centre := term_rect((rect.x + 1).as(u16),
+                                (rect.y + 1).as(u16),
+                                (rect.width - 2).as(u16),
+                                (rect.height - 2).as(u16))
+            window.draw_rect(centre, (slices[4]).as(u32))
+        }
+    }
+
+    pub write :: fn (window: ^Self, x: i32, y: i32, text: string) {
+        on y < 0 || y >= window.rect.height.as(i32) => return
+
+        cx := x
+        for i: usize = 0; i < text.count; i += 1 {
+            ch := text.data[i]
+            on ch == '\n' => return
+            on ch == 27 => {
+                i += 1
+                for i < text.count && text.data[i] != 'm' {
+                    i += 1
+                }
+                continue
+            }
+            on cx >= 0 && cx < window.rect.width.as(i32) => {
+                index := (y.as(usize) * window.rect.width.as(usize)) + cx.as(usize)
+                cell := ^window.cells[index]
+                cell^.ch = ch.as(u32)
+            }
+            cx += 1
+        }
+    }
+
+    pub write_cstr :: fn (window: ^Self, x: i32, y: i32, text: ^u8) {
+        i: usize = 0
+        for text[i] != 0 {
+            i += 1
+        }
+        window.write(x, y, text.as([]u8, i).as(string))
+    }
+
+    pub draw :: fn (window: ^Self) {
+        win_x0 := window.rect.x.as(i16).as(i32)
+        win_y0 := window.rect.y.as(i16).as(i32)
+        win_x1 := win_x0 + window.rect.width.as(i32)
+        win_y1 := win_y0 + window.rect.height.as(i32)
+
+        draw_x0 := on win_x0 < 0 => 0 else win_x0
+        draw_y0 := on win_y0 < 0 => 0 else win_y0
+        draw_x1 := on win_x1 > g_term_fb_size.0 => g_term_fb_size.0 else win_x1
+        draw_y1 := on win_y1 > g_term_fb_size.1 => g_term_fb_size.1 else win_y1
+
+        on draw_x1 <= draw_x0 || draw_y1 <= draw_y0 => return
+
+        for y := draw_y0; y < draw_y1; y += 1 {
+            for x := draw_x0; x < draw_x1; x += 1 {
+                src_x := x - win_x0
+                src_y := y - win_y0
+                src_index := (src_y.as(usize) * window.rect.width.as(usize)) + src_x.as(usize)
+                dst_index := term_fb_index(x, y)
+                cell := window.cells[src_index]
+                (^g_term_fb_chars[dst_index])^ = cell.ch
+                (^g_term_fb_ink[dst_index])^ = cell.ink
+                (^g_term_fb_paper[dst_index])^ = cell.paper
+            }
+        }
+    }
+}
+
+pub term_window_init :: fn (window: ^TermWindow, rect: TermRect) {
+    window.init(rect)
+}
+
+pub term_window_done :: fn (window: ^TermWindow) {
+    window.done()
+}
+
+pub term_window_paint_rect :: fn (window: ^TermWindow, rect: TermRect, ch: u32, ink: u32, paper: u32) {
+    window.paint_rect(rect, ch, ink, paper)
+}
+
+pub term_window_clear :: fn (window: ^TermWindow, ch: u32, ink: u32, paper: u32) {
+    window.clear(ch, ink, paper)
+}
+
+pub term_window_rect :: fn (window: ^TermWindow, rect: TermRect, ch: u32) {
+    window.draw_rect(rect, ch)
+}
+
+pub term_window_paint :: fn (window: ^TermWindow, rect: TermRect, ink: u32, paper: u32) {
+    window.paint(rect, ink, paper)
+}
+
+pub term_window_9slice :: fn (window: ^TermWindow, rect: TermRect, slices: ^u8, fill_centre: bool) {
+    window.nine_slice(rect, slices, fill_centre)
+}
+
+pub term_window_write :: fn (window: ^TermWindow, x: i32, y: i32, text: string) {
+    window.write(x, y, text)
+}
+
+pub term_window_write_cstr :: fn (window: ^TermWindow, x: i32, y: i32, text: ^u8) {
+    window.write_cstr(x, y, text)
+}
+
+pub term_window_draw :: fn (window: ^TermWindow) {
+    window.draw()
 }

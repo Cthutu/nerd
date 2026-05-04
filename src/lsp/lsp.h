@@ -20,14 +20,15 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena         source_arena; // Arena for the current editor buffer
-    Arena         arena;        // Arena for analysis data
-    string        source;       // Current editor document source
-    ProgramInfo   program;      // Program analysis for the current document
-    FrontEndState front_end;    // Compiler front-end results for the document
-    Cst           cst;          // Concrete syntax tree for editor tooling
-    bool          analysis_ok;  // Whether front-end analysis succeeded
-    bool          has_cst;      // Whether CST parsing succeeded
+    Arena         source_arena;   // Arena for the current editor buffer
+    Arena         arena;          // Arena for analysis data
+    string        source;         // Current editor document source
+    ProgramInfo   program;        // Program analysis for the current document
+    FrontEndState front_end;      // Compiler front-end results for the document
+    Cst           cst;            // Concrete syntax tree for editor tooling
+    bool          analysis_ok;    // Whether front-end analysis succeeded
+    bool          semantic_ready; // Whether semantic data is usable
+    bool          has_cst;        // Whether CST parsing succeeded
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,

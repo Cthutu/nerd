@@ -1,7 +1,9 @@
 -- Basic memory utilities that wrap libc's malloc functions.
 
 c_malloc :: ffi "c" malloc (size: usize) -> ^void
+
 c_realloc :: ffi "c" realloc (ptr: ^void, size: usize) -> ^void
+
 c_free :: ffi "c" free (ptr: ^void)
 
 pub alloc :: fn (size: usize) -> []u8 {
@@ -14,4 +16,16 @@ pub realloc :: fn (ptr: []u8, new_size: usize) -> []u8 {
 
 pub free :: fn (ptr: []u8) {
     c_free(ptr.data)
+}
+
+pub kb :: fn (n: usize) => n * 1024
+
+pub mb :: fn (n: usize) => kb(n) * 1024
+
+pub gb :: fn (n: usize) => mb(n) * 1024
+
+pub align_up :: fn (value: usize, alignment: usize) -> usize {
+    remainder := value % alignment
+    on remainder == 0 => return value
+    return value + alignment - remainder
 }
