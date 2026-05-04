@@ -20,6 +20,7 @@ g_term_pending_index : usize
 g_term_escape_count  : usize
 g_term_pending_bytes : [32]u8
 g_term_escape_bytes  : [32]u8
+g_term_output        : [..]u8
 
 g_term_fb_chars      : [..]u32
 g_term_fb_ink        : [..]u32
@@ -67,6 +68,7 @@ pub term_done :: fn () {
 term_stop :: fn () {
     term_cursor_show()
     g_term.event_queue.free()
+    g_term_output.free()
     g_term_fb_chars.free()
     g_term_fb_ink.free()
     g_term_fb_paper.free()
@@ -969,6 +971,67 @@ term_print_codepoint :: fn (ch: u32) {
     pr(bytes[0 .. count].as(string))
 }
 
+term_output_clear :: fn () {
+    g_term_output.clear()
+}
+
+term_output_append :: fn (text: string) {
+    for i: usize = 0; i < text.count; i += 1 {
+        g_term_output.push(text.data[i])
+    }
+}
+
+term_output_append_codepoint :: fn (ch: u32) {
+    on ch == TERM_FB_CHAR_WIDE_TAIL => return
+
+    bytes: [4]u8
+    count: usize = 0
+
+    on ch <= 0x7f => {
+        bytes[0] = ch.as(u8)
+        count = 1
+    } else {
+        on ch <= 0x7ff => {
+            bytes[0] = (0xc0 + (ch / 0x40)).as(u8)
+            bytes[1] = (0x80 + (ch % 0x40)).as(u8)
+            count = 2
+        } else {
+            on ch <= 0xffff => {
+                bytes[0] = (0xe0 + (ch / 0x1000)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[2] = (0x80 + (ch % 0x40)).as(u8)
+                count = 3
+            } else {
+                bytes[0] = (0xf0 + (ch / 0x40000)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x1000) % 0x40)).as(u8)
+                bytes[2] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[3] = (0x80 + (ch % 0x40)).as(u8)
+                count = 4
+            }
+        }
+    }
+
+    for i: usize = 0; i < count; i += 1 {
+        g_term_output.push(bytes[i])
+    }
+}
+
+term_output_cursor_goto :: fn (x: i32, y: i32) {
+    term_output_append($"\x1b[{y + 1};{x + 1}H")
+}
+
+term_output_apply_colours :: fn (ink: u32, paper: u32) {
+    term_output_append($"\x1b[38;2;{term_colour_r(ink)};{term_colour_g(ink)};{term_colour_b(ink)}m")
+    term_output_append($"\x1b[48;2;{term_colour_r(paper)};{term_colour_g(paper)};{term_colour_b(paper)}m")
+}
+
+term_output_flush :: fn () {
+    on g_term_output.count == 0 => return
+
+    pr(g_term_output[..].as(string))
+    g_term_output.clear()
+}
+
 --
 -- Framebuffer
 --
@@ -1105,7 +1168,8 @@ term_fb_present :: fn () {
     on g_term_fb_size.0 == 0 || g_term_fb_size.1 == 0 => return
     on !term_fb_has_dirty() => return
 
-    pr("\x1b[?2026h")
+    term_output_clear()
+    term_output_append("\x1b[?2026h")
     for y: i32 = 0; y < g_term_fb_size.1; y += 1 {
         x: i32 = 0
         for x < g_term_fb_size.0 {
@@ -1117,8 +1181,8 @@ term_fb_present :: fn () {
 
             ink := g_term_fb_ink[index]
             paper := g_term_fb_paper[index]
-            term_cursor_goto(x, y)
-            term_apply_colours(ink, paper)
+            term_output_cursor_goto(x, y)
+            term_output_apply_colours(ink, paper)
 
             for x < g_term_fb_size.0 {
                 index = term_fb_index(x, y)
@@ -1126,13 +1190,14 @@ term_fb_present :: fn () {
                    g_term_fb_ink[index] != ink ||
                    g_term_fb_paper[index] != paper => break
 
-                term_print_codepoint(g_term_fb_chars[index])
+                term_output_append_codepoint(g_term_fb_chars[index])
                 (^g_term_fb_dirty[index])^ = 0
                 x += 1
             }
         }
     }
-    pr("\x1b[0m\x1b[?2026l")
+    term_output_append("\x1b[0m\x1b[?2026l")
+    term_output_flush()
 }
 
 test "framebuffer colours split into rgb components" {
