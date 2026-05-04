@@ -11,6 +11,13 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+try:
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:  # pragma: no cover - fallback for minimal Python installs
+    Console = None
+    Table = None
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 NERD = ROOT / "_bin" / ("nerd-debug.exe" if os.name == "nt" else "nerd-debug")
@@ -23,8 +30,31 @@ class Failure:
     message: str
 
 
+@dataclass
+class SuiteCounts:
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+
+
+console = Console() if Console else None
+
+
 def rel(path: pathlib.Path) -> str:
     return str(path.relative_to(ROOT))
+
+
+def colour(text: str, code: str) -> str:
+    if console:
+        return text
+    return f"\033[{code}m{text}\033[0m"
+
+
+def out(text: str, *, style: str | None = None) -> None:
+    if console:
+        console.print(text, style=style)
+    else:
+        print(text)
 
 
 def split_sections(path: pathlib.Path) -> list[str]:
@@ -392,19 +422,57 @@ def main() -> int:
     }
 
     cases = [(kind, path) for kind, path in collect() if args.filter in rel(path)]
+    counts: dict[str, SuiteCounts] = {kind: SuiteCounts() for kind in runners}
     failures: list[Failure] = []
     for kind, path in cases:
+        counts[kind].total += 1
         case_failures = runners[kind](path)
         if case_failures:
-            print(f"FAIL {rel(path)}")
+            counts[kind].failed += 1
+            if console:
+                console.print("[bold red]FAIL[/bold red]", rel(path))
+            else:
+                print(f"{colour('FAIL', '1;31')} {rel(path)}")
             for failure in case_failures:
-                print(failure.message)
+                out(failure.message)
             failures.extend(case_failures)
         else:
-            print(f"PASS {rel(path)}")
+            counts[kind].passed += 1
+            if console:
+                console.print("[bold green]PASS[/bold green]", rel(path))
+            else:
+                print(f"{colour('PASS', '1;32')} {rel(path)}")
 
-    print(f"{len(cases) - len({f.path for f in failures})}/{len(cases)} files passed")
+    print_summary(counts)
     return 1 if failures else 0
+
+
+def print_summary(counts: dict[str, SuiteCounts]) -> None:
+    total = SuiteCounts()
+    for count in counts.values():
+        total.total += count.total
+        total.passed += count.passed
+        total.failed += count.failed
+
+    if console and Table:
+        table = Table(title="Test Summary")
+        table.add_column("Suite", style="cyan")
+        table.add_column("Total", justify="right")
+        table.add_column("Passed", justify="right", style="green")
+        table.add_column("Failed", justify="right", style="red")
+        for kind, count in counts.items():
+            table.add_row(kind, str(count.total), str(count.passed), str(count.failed))
+        table.add_section()
+        table.add_row("total", str(total.total), str(total.passed), str(total.failed))
+        console.print(table)
+        return
+
+    print()
+    print("Test Summary")
+    print("suite       total  passed  failed")
+    for kind, count in counts.items():
+        print(f"{kind:<10} {count.total:>5} {count.passed:>7} {count.failed:>7}")
+    print(f"{'total':<10} {total.total:>5} {total.passed:>7} {total.failed:>7}")
 
 
 if __name__ == "__main__":
