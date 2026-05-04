@@ -992,26 +992,31 @@ term_output_append_codepoint :: fn (ch: u32) {
     bytes: [4]u8
     count: usize = 0
 
-    on ch <= 0x7f => {
-        bytes[0] = ch.as(u8)
+    on ch == 0 => {
+        bytes[0] = ' '
         count = 1
     } else {
-        on ch <= 0x7ff => {
-            bytes[0] = (0xc0 + (ch / 0x40)).as(u8)
-            bytes[1] = (0x80 + (ch % 0x40)).as(u8)
-            count = 2
+        on ch <= 0x7f => {
+            bytes[0] = ch.as(u8)
+            count = 1
         } else {
-            on ch <= 0xffff => {
-                bytes[0] = (0xe0 + (ch / 0x1000)).as(u8)
-                bytes[1] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
-                bytes[2] = (0x80 + (ch % 0x40)).as(u8)
-                count = 3
+            on ch <= 0x7ff => {
+                bytes[0] = (0xc0 + (ch / 0x40)).as(u8)
+                bytes[1] = (0x80 + (ch % 0x40)).as(u8)
+                count = 2
             } else {
-                bytes[0] = (0xf0 + (ch / 0x40000)).as(u8)
-                bytes[1] = (0x80 + ((ch / 0x1000) % 0x40)).as(u8)
-                bytes[2] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
-                bytes[3] = (0x80 + (ch % 0x40)).as(u8)
-                count = 4
+                on ch <= 0xffff => {
+                    bytes[0] = (0xe0 + (ch / 0x1000)).as(u8)
+                    bytes[1] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                    bytes[2] = (0x80 + (ch % 0x40)).as(u8)
+                    count = 3
+                } else {
+                    bytes[0] = (0xf0 + (ch / 0x40000)).as(u8)
+                    bytes[1] = (0x80 + ((ch / 0x1000) % 0x40)).as(u8)
+                    bytes[2] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                    bytes[3] = (0x80 + (ch % 0x40)).as(u8)
+                    count = 4
+                }
             }
         }
     }
@@ -1228,4 +1233,16 @@ test "utf8 decoder stores unicode codepoints" {
     assert ch == 0x754c
     assert bytes == 3
     assert width == 2
+}
+
+test "frame output encodes zero cells as spaces" {
+    term_output_clear()
+    term_output_append_codepoint(0)
+    term_output_append_codepoint('x'.as(u32))
+
+    assert g_term_output.count == 2
+    assert g_term_output[0] == ' '
+    assert g_term_output[1] == 'x'
+
+    g_term_output.clear()
 }
