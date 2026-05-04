@@ -6,8 +6,57 @@
 
 impl TermRect {
 
+    pub to_point :: fn (rect: Self, x1: u16, y1: u16) -> Self {
+        x0 := on rect.x < x1 => rect.x else x1
+        y0 := on rect.y < y1 => rect.y else y1
+        max_x := on rect.x > x1 => rect.x else x1
+        max_y := on rect.y > y1 => rect.y else y1
+
+        result: Self = TermRect {
+            x: x0,
+            y: y0,
+            width: (max_x - x0 + 1).as(u16),
+            height: (max_y - y0 + 1).as(u16),
+        }
+        return result
+    }
+
+    pub union_with :: fn (a: Self, b: Self) -> Self {
+        x0 := on a.x < b.x => a.x else b.x
+        y0 := on a.y < b.y => a.y else b.y
+        ax1 := a.x.as(u32) + a.width.as(u32)
+        ay1 := a.y.as(u32) + a.height.as(u32)
+        bx1 := b.x.as(u32) + b.width.as(u32)
+        by1 := b.y.as(u32) + b.height.as(u32)
+        x1 := on ax1 > bx1 => ax1 else bx1
+        y1 := on ay1 > by1 => ay1 else by1
+
+        result: Self = TermRect {
+            x: x0,
+            y: y0,
+            width: (x1 - x0.as(u32)).as(u16),
+            height: (y1 - y0.as(u32)).as(u16),
+        }
+        return result
+    }
+
     pub is_empty :: fn (rect: Self) -> bool {
         return rect.width == 0 || rect.height == 0
+    }
+
+    pub equals :: fn (a: Self, b: Self) -> bool {
+        return a.x == b.x && a.y == b.y && a.width == b.width &&
+               a.height == b.height
+    }
+
+    pub contains :: fn (rect: Self, x: u16, y: u16) -> bool {
+        return x >= rect.x && x < rect.x + rect.width && y >= rect.y &&
+               y < rect.y + rect.height
+    }
+
+    pub overlaps :: fn (a: Self, b: Self) -> bool {
+        return a.x < b.x + b.width && a.x + a.width > b.x &&
+               a.y < b.y + b.height && a.y + a.height > b.y
     }
 
     pub intersection :: fn (a: Self, b: Self) -> Self {
@@ -21,13 +70,37 @@ impl TermRect {
         x1 := on ax1 < bx1 => ax1 else bx1
         y1 := on ay1 < by1 => ay1 else by1
 
-        on x1 <= x0.as(u32) || y1 <= y0.as(u32) => return TermRect { x: 0, y: 0, width: 0, height: 0 }
-        return TermRect {
+        on x1 <= x0.as(u32) || y1 <= y0.as(u32) => {
+            empty: Self = TermRect { x: 0, y: 0, width: 0, height: 0 }
+            return empty
+        }
+
+        result: Self = TermRect {
             x: x0,
             y: y0,
             width: (x1 - x0.as(u32)).as(u16),
             height: (y1 - y0.as(u32)).as(u16),
         }
+        return result
+    }
+
+    pub clip :: fn (a: Self, b: Self) -> TermRectClip {
+        clipped := a.intersection(b)
+        on clipped.width == 0 || clipped.height == 0 => {
+            empty := TermRect { x: 0, y: 0, width: 0, height: 0 }
+            result: TermRectClip = { ok: no, clipped: empty, local: empty }
+            return result
+        }
+
+        local := TermRect {
+            x: (clipped.x - a.x).as(u16),
+            y: (clipped.y - a.y).as(u16),
+            width: clipped.width,
+            height: clipped.height,
+        }
+
+        result: TermRectClip = { ok: yes, clipped, local }
+        return result
     }
 
 }
