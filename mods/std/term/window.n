@@ -268,3 +268,52 @@ test "window draw clips negative positions into framebuffer" {
     untouched := term_fb_index(3, 2)
     assert g_term_fb_chars[untouched] == ' '.as(u32)
 }
+
+test "window write clips text on both edges" {
+    window: TermWindow
+    window.init(TermRect { x: 0, y: 0, width: 5, height: 2 })
+    defer window.done()
+
+    ink := term_rgb(1, 2, 3)
+    paper := term_rgb(4, 5, 6)
+    window.clear('.'.as(u32), ink, paper)
+
+    window.write(-2, 0, "abcdef")
+
+    assert window.cells[0].ch == 'c'.as(u32)
+    assert window.cells[1].ch == 'd'.as(u32)
+    assert window.cells[2].ch == 'e'.as(u32)
+    assert window.cells[3].ch == 'f'.as(u32)
+    assert window.cells[4].ch == '.'.as(u32)
+
+    window.write(3, 1, "wxyz")
+
+    row := window.rect.width.as(usize)
+    assert window.cells[row + 0].ch == '.'.as(u32)
+    assert window.cells[row + 1].ch == '.'.as(u32)
+    assert window.cells[row + 2].ch == '.'.as(u32)
+    assert window.cells[row + 3].ch == 'w'.as(u32)
+    assert window.cells[row + 4].ch == 'x'.as(u32)
+}
+
+test "window box draws expected border characters" {
+    window: TermWindow
+    window.init(TermRect { x: 0, y: 0, width: 4, height: 3 })
+    defer window.done()
+
+    ink := term_rgb(1, 1, 1)
+    paper := term_rgb(2, 2, 2)
+    window.paint_rect(TermRect { x: 0, y: 0, width: 4, height: 3 }, ' '.as(u32), ink, paper)
+    window.nine_slice(TermRect { x: 0, y: 0, width: 4, height: 3 }, c"/-\\| |\\-/", no)
+
+    assert window.cells[0].ch == '/'.as(u32)
+    assert window.cells[1].ch == '-'.as(u32)
+    assert window.cells[2].ch == '-'.as(u32)
+    assert window.cells[3].ch == '\\'.as(u32)
+    assert window.cells[4].ch == '|'.as(u32)
+    assert window.cells[7].ch == '|'.as(u32)
+    assert window.cells[8].ch == '\\'.as(u32)
+    assert window.cells[9].ch == '-'.as(u32)
+    assert window.cells[10].ch == '-'.as(u32)
+    assert window.cells[11].ch == '/'.as(u32)
+}
