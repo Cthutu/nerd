@@ -6,6 +6,7 @@
 pub ffi "c" {
     abort     ()
     exit      (status: i32)
+    fcntl     (fd: i32, cmd: i32, ...) -> i32
     ioctl     (fd: i32, request: i32, ...) -> i32
     read      (fd: i32, buf: ^void, count: usize) -> isize
     setlocale (category: i32, locale: ^u8) -> ^u8
@@ -51,7 +52,12 @@ pub STDOUT_FILENO :: 1
 
 pub TIOCGWINSZ :: 0x5413
 
+pub TCSANOW   :: 0
 pub TCSAFLUSH :: 2
+
+pub F_GETFL    :: 3
+pub F_SETFL    :: 4
+pub O_NONBLOCK :: 0x800
 
 pub VTIME :: 5
 pub VMIN  :: 6

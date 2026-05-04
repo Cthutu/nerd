@@ -1,0 +1,236 @@
+--
+-- Terminal clipping windows
+--
+-- Copyright (C)2026 Matt Davies, all rights reserved
+--
+
+impl TermWindow {
+
+    pub init :: fn (window: ^Self, rect: TermRect) {
+        window.rect = rect
+        window.cells.clear()
+
+        count := rect.width.as(usize) * rect.height.as(usize)
+        for i: usize = 0; i < count; i += 1 {
+            cell: TermCell = { ink: 0xffffffff, paper: 0xff000000, ch: ' '.as(u32) }
+            window.cells.push(cell)
+        }
+    }
+
+    pub done :: fn (window: ^Self) {
+        window.cells.free()
+    }
+
+    pub clear :: fn (window: ^Self, ch: u32, ink: u32, paper: u32) {
+        for i: usize = 0; i < window.cells.count; i += 1 {
+            cell: TermCell = { ink, paper, ch }
+            (^window.cells[i])^ = cell
+        }
+    }
+
+    pub paint_rect :: fn (window: ^Self, rect: TermRect, ch: u32, ink: u32, paper: u32) {
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                cell: TermCell = { ink, paper, ch }
+                (^window.cells[index])^ = cell
+            }
+        }
+    }
+
+    pub draw_rect :: fn (window: ^Self, rect: TermRect, ch: u32) {
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                cell := ^window.cells[index]
+                cell^.ch = ch
+            }
+        }
+    }
+
+    pub paint :: fn (window: ^Self, rect: TermRect, ink: u32, paper: u32) {
+        local := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
+        clipped := rect.intersection(local)
+        on clipped.is_empty() => return
+
+        for y: u16 = 0; y < clipped.height; y += 1 {
+            for x: u16 = 0; x < clipped.width; x += 1 {
+                index := ((clipped.y + y).as(usize) * window.rect.width.as(usize)) +
+                         (clipped.x + x).as(usize)
+                cell := ^window.cells[index]
+                cell^.ink = ink
+                cell^.paper = paper
+            }
+        }
+    }
+
+    pub nine_slice :: fn (window: ^Self, rect: TermRect, slices: ^u8, fill_centre: bool) {
+        top_left := TermRect { x: rect.x, y: rect.y, width: 1, height: 1 }
+        top_right := TermRect { x: (rect.x + rect.width - 1).as(u16), y: rect.y, width: 1, height: 1 }
+        bottom_left := TermRect { x: rect.x, y: (rect.y + rect.height - 1).as(u16), width: 1, height: 1 }
+        bottom_right := TermRect {
+            x: (rect.x + rect.width - 1).as(u16),
+            y: (rect.y + rect.height - 1).as(u16),
+            width: 1,
+            height: 1,
+        }
+
+        window.draw_rect(top_left, (slices[0]).as(u32))
+        window.draw_rect(top_right, (slices[2]).as(u32))
+        window.draw_rect(bottom_left, (slices[6]).as(u32))
+        window.draw_rect(bottom_right, (slices[8]).as(u32))
+
+        on rect.width > 2 => {
+            top := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: rect.y,
+                width: (rect.width - 2).as(u16),
+                height: 1,
+            }
+            bottom := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: (rect.y + rect.height - 1).as(u16),
+                width: (rect.width - 2).as(u16),
+                height: 1,
+            }
+            window.draw_rect(top, (slices[1]).as(u32))
+            window.draw_rect(bottom, (slices[7]).as(u32))
+        }
+
+        on rect.height > 2 => {
+            left := TermRect {
+                x: rect.x,
+                y: (rect.y + 1).as(u16),
+                width: 1,
+                height: (rect.height - 2).as(u16),
+            }
+            right := TermRect {
+                x: (rect.x + rect.width - 1).as(u16),
+                y: (rect.y + 1).as(u16),
+                width: 1,
+                height: (rect.height - 2).as(u16),
+            }
+            window.draw_rect(left, (slices[3]).as(u32))
+            window.draw_rect(right, (slices[5]).as(u32))
+        }
+
+        on fill_centre && rect.width > 2 && rect.height > 2 => {
+            centre := TermRect {
+                x: (rect.x + 1).as(u16),
+                y: (rect.y + 1).as(u16),
+                width: (rect.width - 2).as(u16),
+                height: (rect.height - 2).as(u16),
+            }
+            window.draw_rect(centre, (slices[4]).as(u32))
+        }
+    }
+
+    pub write :: fn (window: ^Self, x: i32, y: i32, text: string) {
+        on y < 0 || y >= window.rect.height.as(i32) => return
+
+        cx := x
+        for i: usize = 0; i < text.count; i += 1 {
+            ch := text.data[i]
+            on ch == '\n' => return
+            on ch == 27 => {
+                i += 1
+                for i < text.count && text.data[i] != 'm' {
+                    i += 1
+                }
+                continue
+            }
+            on cx >= 0 && cx < window.rect.width.as(i32) => {
+                index := (y.as(usize) * window.rect.width.as(usize)) + cx.as(usize)
+                cell := ^window.cells[index]
+                cell^.ch = ch.as(u32)
+            }
+            cx += 1
+        }
+    }
+
+    pub write_cstr :: fn (window: ^Self, x: i32, y: i32, text: ^u8) {
+        i: usize = 0
+        for text[i] != 0 {
+            i += 1
+        }
+        window.write(x, y, text.as([]u8, i).as(string))
+    }
+
+    pub draw :: fn (window: ^Self) {
+        win_x0 := window.rect.x.as(i16).as(i32)
+        win_y0 := window.rect.y.as(i16).as(i32)
+        win_x1 := win_x0 + window.rect.width.as(i32)
+        win_y1 := win_y0 + window.rect.height.as(i32)
+
+        draw_x0 := on win_x0 < 0 => 0 else win_x0
+        draw_y0 := on win_y0 < 0 => 0 else win_y0
+        draw_x1 := on win_x1 > g_term_fb_size.0 => g_term_fb_size.0 else win_x1
+        draw_y1 := on win_y1 > g_term_fb_size.1 => g_term_fb_size.1 else win_y1
+
+        on draw_x1 <= draw_x0 || draw_y1 <= draw_y0 => return
+
+        for y := draw_y0; y < draw_y1; y += 1 {
+            for x := draw_x0; x < draw_x1; x += 1 {
+                src_x := x - win_x0
+                src_y := y - win_y0
+                src_index := (src_y.as(usize) * window.rect.width.as(usize)) + src_x.as(usize)
+                dst_index := term_fb_index(x, y)
+                cell := window.cells[src_index]
+                (^g_term_fb_chars[dst_index])^ = cell.ch
+                (^g_term_fb_ink[dst_index])^ = cell.ink
+                (^g_term_fb_paper[dst_index])^ = cell.paper
+            }
+        }
+    }
+
+}
+
+pub term_window_init :: fn (window: ^TermWindow, rect: TermRect) {
+    window.init(rect)
+}
+
+pub term_window_done :: fn (window: ^TermWindow) {
+    window.done()
+}
+
+pub term_window_paint_rect :: fn (window: ^TermWindow, rect: TermRect, ch: u32, ink: u32, paper: u32) {
+    window.paint_rect(rect, ch, ink, paper)
+}
+
+pub term_window_clear :: fn (window: ^TermWindow, ch: u32, ink: u32, paper: u32) {
+    window.clear(ch, ink, paper)
+}
+
+pub term_window_rect :: fn (window: ^TermWindow, rect: TermRect, ch: u32) {
+    window.draw_rect(rect, ch)
+}
+
+pub term_window_paint :: fn (window: ^TermWindow, rect: TermRect, ink: u32, paper: u32) {
+    window.paint(rect, ink, paper)
+}
+
+pub term_window_9slice :: fn (window: ^TermWindow, rect: TermRect, slices: ^u8, fill_centre: bool) {
+    window.nine_slice(rect, slices, fill_centre)
+}
+
+pub term_window_write :: fn (window: ^TermWindow, x: i32, y: i32, text: string) {
+    window.write(x, y, text)
+}
+
+pub term_window_write_cstr :: fn (window: ^TermWindow, x: i32, y: i32, text: ^u8) {
+    window.write_cstr(x, y, text)
+}
+
+pub term_window_draw :: fn (window: ^TermWindow) {
+    window.draw()
+}
