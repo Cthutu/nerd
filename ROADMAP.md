@@ -455,58 +455,65 @@ the roadmap before committing the implementation.
 
 ### Source Testing Milestone
 
-- [ ] Reserve `nerd test <root-filename>` for unit tests declared in Nerd
+- [x] Reserve `nerd test <root-filename>` for unit tests declared in Nerd
   source code.
-- [ ] Move the current compiler regression harness out of the `nerd`
+- [x] Move the current compiler regression harness out of the `nerd`
   executable:
-  - [ ] port language/error/format/LSP/command test orchestration to Python
-  - [ ] keep existing test file formats during the migration
-  - [ ] update `just test` / `just t` to run the Python harness
-  - [ ] remove `src/testing` and `compiler_cmd_test` from the production
-    compiler binary once Python owns the harness
-- [ ] Add `nerd test` CLI options for source tests:
-  - [ ] required positional root source filename
-  - [ ] `--filter <text>` to run only matching test names
-  - [ ] `--list` to list discovered tests without running them
-- [ ] Add source-level test syntax:
-  - [ ] `test "name" { ... }`
-  - [ ] top-level/module-level only
-  - [ ] test blocks type-check like `void` functions
-  - [ ] test declarations do not become part of normal module APIs
-- [ ] Add test discovery:
-  - [ ] load the root module and imports
-  - [ ] collect reachable test declarations
-  - [ ] apply `--filter` before execution
-  - [ ] make `--list` output stable, readable test names
-- [ ] Add parser and AST support:
-  - [ ] parse test declarations
-  - [ ] store test name, body, and owning module
-- [ ] Add sema support:
-  - [ ] type-check test bodies with module-scope visibility
-  - [ ] reject tests in invalid locations
-  - [ ] reject invalid test names or duplicate names if needed for stable output
-- [ ] Add lowering and runner support:
-  - [ ] generate one hidden function per test
-  - [ ] generate a test main that calls discovered tests
-  - [ ] report pass/fail counts
-  - [ ] return nonzero if any selected test fails
-- [ ] Decide and implement assertion behaviour for test mode:
-  - [ ] either accept v1 fail-fast behaviour from current `assert`
+  - [x] port language/error/format/LSP/command test orchestration to Python
+  - [x] keep existing test file formats during the migration
+  - [x] update `just test` / `just t` to run the Python harness
+  - [x] remove `src/testing` and the old regression `compiler_cmd_test` path
+    from the production compiler binary once Python owns the harness
+- [x] Add `nerd test` CLI options for source tests:
+  - [x] required positional root source filename
+  - [x] `--filter <text>` to run only matching test names
+  - [x] `--list` to list discovered tests without running them
+- [x] Add source-level test syntax:
+  - [x] `test "name" { ... }`
+  - [x] top-level/module-level only
+  - [x] test blocks type-check like `void` functions
+  - [x] test declarations do not become part of normal module APIs
+- [x] Add test discovery:
+  - [x] load the root module and imports for normal visibility
+  - [x] collect root-module test declarations
+  - [x] apply `--filter` before execution
+  - [x] make `--list` output stable, readable test names
+- [x] Add parser and runner support:
+  - [x] parse test declarations
+  - [x] store test name and body for the root module during test generation
+- [x] Add sema support:
+  - [x] type-check selected test bodies with module-scope visibility
+  - [x] reject tests in invalid locations
+  - [x] keep duplicate names valid for now; filters and lists preserve source
+    order for stable output
+- [x] Add lowering and runner support:
+  - [x] generate one hidden function per selected test
+  - [x] generate a test main that calls discovered tests
+  - [x] report pass/fail counts
+  - [x] return nonzero if any selected test fails
+- [x] Decide and implement assertion behaviour for test mode:
+  - [x] accept v1 fail-fast behaviour from current `assert`
   - [ ] or add a test-mode assertion path that records failure and continues
     to later tests
-- [ ] Tests for the feature:
-  - [ ] command tests for `nerd test root.n`
-  - [ ] command tests for `nerd test root.n --filter text`
-  - [ ] command tests for `nerd test root.n --list`
-  - [ ] language tests for valid test declarations where useful
-  - [ ] error tests for invalid test declarations
-  - [ ] regression tests proving compiler harness execution no longer depends
+- [x] Tests for the feature:
+  - [x] command tests for `nerd test root.n`
+  - [x] command tests for `nerd test root.n --filter text`
+  - [x] command tests for `nerd test root.n --list`
+  - [x] command tests for valid test declarations
+  - [x] error tests for invalid test declarations
+  - [x] regression tests proving compiler harness execution no longer depends
     on `nerd test`
-- [ ] Documentation:
-  - [ ] manual section for source tests
-  - [ ] syntax-reference appendix entry
-  - [ ] language-reference appendix rules
-  - [ ] update contributor/test documentation for the Python compiler harness
+- [x] Documentation:
+  - [x] manual section for source tests
+  - [x] syntax-reference appendix entry
+  - [x] language-reference appendix rules
+  - [x] update contributor/test documentation for the Python compiler harness
+
+Follow-up source testing work:
+
+- [ ] collect and run tests declared in imported modules
+- [ ] add non-fail-fast test assertions if continuing after failure becomes
+  useful
 
 ### Editor Intelligence Milestone
 

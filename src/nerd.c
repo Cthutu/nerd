@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//> use: core intern compiler timing table cli lsp object testing
+//> use: core intern compiler timing table cli lsp object
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
@@ -359,10 +359,40 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             nerd_cli_make_command(
                 arena, "r", "Alias for run", run_flags, run_params));
     }
-    json_array_push(
-        commands,
-        nerd_cli_make_command(
-            arena, "test", "Run the compiler test command", NULL, NULL));
+    {
+        JsonValue* flags  = json_new_array(arena);
+        JsonValue* params = json_new_array(arena);
+        json_array_push(
+            flags,
+            nerd_cli_make_flag(arena,
+                               "list",
+                               NULL,
+                               "List discovered source tests without running"));
+        json_array_push(params,
+                        nerd_cli_make_param(arena,
+                                            "input",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Root source file to test",
+                                            true));
+        json_array_push(
+            params,
+            nerd_cli_make_param(arena,
+                                "filter",
+                                "named",
+                                "filter",
+                                NULL,
+                                "Run only test names containing text",
+                                false));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(arena,
+                                  "test",
+                                  "Run source tests in a Nerd module",
+                                  flags,
+                                  params));
+    }
     {
         JsonValue* flags  = json_new_array(arena);
         JsonValue* params = json_new_array(arena);
@@ -526,10 +556,19 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
     };
 }
 
-internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result)
+internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result,
+                                                   Array(string) keywords)
 {
-    UNUSED(cli_result);
-    return (NerdTestConfig){0};
+    return (NerdTestConfig){
+        .input_path = nerd_cli_param_string(
+            cli_result, "command.params.input", (string){0}),
+        .filter = nerd_cli_param_string(
+            cli_result, "command.params.filter", (string){0}),
+        .list = nerd_cli_flag_bool(cli_result, "command.flags.list", false),
+        .verbose =
+            nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .keywords = keywords,
+    };
 }
 
 internal NerdFormatConfig
@@ -600,7 +639,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
     arena_init(&arena);
-    error_system_init(ERROR_RENDER_NORMAL);
+    error_system_init(getenv("NERD_ERROR_RENDER_TEST") != NULL
+                          ? ERROR_RENDER_TEST
+                          : ERROR_RENDER_NORMAL);
 
     JsonValue* schema = nerd_cli_schema(&arena);
     CliParser  parser = {0};
@@ -704,8 +745,9 @@ internal int nerd_run_with_cli(int argc, char** argv)
             nerd_run_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_run(&config);
     } else if (string_eq_cstr(name, "test")) {
-        NerdTestConfig config = nerd_test_config_from_json(cli_result);
-        result                = compiler_cmd_test(&config);
+        NerdTestConfig config =
+            nerd_test_config_from_json(cli_result, cli_keywords);
+        result = compiler_cmd_test(&config);
     } else if (string_eq_cstr(name, "format")) {
         NerdFormatConfig config = nerd_format_config_from_json(cli_result);
         result                  = compiler_cmd_format(&config);

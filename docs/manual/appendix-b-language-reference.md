@@ -72,6 +72,16 @@ intended exit code.
 - `defer` runs code when the current scope exits.
 - Deferred statements run in last-in, first-out order.
 
+## Source Tests
+
+- Source tests are written as `test "name" { ... }`.
+- Tests are top-level declarations.
+- Test names are string literals.
+- Test declarations are not exported module API.
+- `nerd test root.n --list` lists discovered tests.
+- `nerd test root.n --filter text` runs matching tests.
+- The current runner uses fail-fast `assert` behaviour.
+
 ## `on`
 
 - Short form: `on condition => expr else expr`.

@@ -40,7 +40,11 @@ typedef struct {
 } NerdBuildConfig;
 
 typedef struct {
-    bool reserved;
+    string input_path;
+    string filter;
+    bool   list;
+    bool   verbose;
+    Array(string) keywords;
 } NerdTestConfig;
 
 typedef struct {

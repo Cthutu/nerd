@@ -1,9 +1,12 @@
 # Testing
 
-The repository test runner lives in
-[src/testing/testing.c](/home/matt/nerd/src/testing/testing.c).
+The repository regression test runner lives in
+[build/test.py](/home/matt/nerd/build/test.py).
 
 `just test` is the main regression gate.
+
+The `nerd test <root-filename>` command is reserved for unit tests declared in
+Nerd source code. It is not the repository regression harness.
 
 ## Test Families
 
@@ -70,7 +73,7 @@ Command tests use `.cmd` files with three sections:
 They may also include optional sections for run mode, extra CLI arguments, and
 command name. The parser accepts three to six sections.
 
-The runner writes the source into a generated `.input.n` file next to the test
+The Python runner writes the source into a generated `.input.n` file next to the test
 case and invokes the relevant compiler command against that file. This covers
 behaviour outside the pure compiler pipeline, such as `run` resolving generated
 binaries correctly when the input path is relative to the current directory.
@@ -83,6 +86,28 @@ easy to inspect locally.
 
 Command tests also generate temporary `.input.n` files and command artefacts
 beside the test case; successful runs remove them.
+
+## Source Tests
+
+Source-level unit tests live inside ordinary Nerd files:
+
+```nerd
+test "name" {
+    assert yes
+}
+```
+
+Run them with:
+
+```sh
+nerd test root.n
+nerd test root.n --list
+nerd test root.n --filter name
+```
+
+Source tests use the normal compiler and runtime assertion path. A failing
+assertion exits with status 127, so the current runner stops at the first
+failing selected test.
 
 ## Working Style
 

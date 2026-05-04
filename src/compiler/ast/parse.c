@@ -3381,6 +3381,64 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
     return true;
 }
 
+internal bool ast_current_symbol_is_cstr(const AstParseState* state, cstr name)
+{
+    if (state->token.kind != TK_Symbol) {
+        return false;
+    }
+    return string_eq_cstr(
+        lex_symbol(state->lexer, state->token.value.symbol_handle), name);
+}
+
+internal bool ast_parse_test_decl(AstParseState* state)
+{
+    ASSERT(ast_current_symbol_is_cstr(state, "test"), "Expected `test` symbol");
+    AstToken test_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &test_token),
+                                         TK_String,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_String) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_String,
+                                         state->token.kind);
+    }
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+
+    u32 brace_depth = 1;
+    while (ast_next_token(state)) {
+        if (state->token.kind == TK_LBrace) {
+            brace_depth += 1;
+        } else if (state->token.kind == TK_RBrace) {
+            brace_depth -= 1;
+            if (brace_depth == 0) {
+                return true;
+            }
+        }
+    }
+
+    return error_0203_expected_token(state->lexer->source,
+                                     ast_token_span(state, &test_token),
+                                     TK_RBrace,
+                                     TK_EOF);
+}
+
 internal bool ast_parse_top_level_item(AstParseState* state)
 {
     bool is_public = false;
@@ -3437,6 +3495,16 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         }
         return ast_parse_impl(state, NULL);
     case TK_Symbol:
+        if (ast_current_symbol_is_cstr(state, "test")) {
+            if (is_public) {
+                return error_0204_unexpected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind,
+                    "Source test declarations cannot be public");
+            }
+            return ast_parse_test_decl(state);
+        }
         if (ast_peek_kind_at(state, 0) != TK_Colon) {
             break;
         }

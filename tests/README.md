@@ -10,6 +10,10 @@ The implementation notes for the runner live in
 [../docs/testing.md](/home/matt/nerd/docs/testing.md). This file is the quick
 index for the test inputs.
 
+`nerd test <root-filename>` is for source-level unit tests written in Nerd
+source files. Repository regression tests are run by the Python harness via
+`just test`.
+
 ## Test Families
 
 - `language`

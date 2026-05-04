@@ -25,8 +25,8 @@ The repository contains:
   The compiler front end, IR, C generation, error system, and commands.
 - `src/lsp`
   The language server built on the compiler front end and CST.
-- `src/testing`
-  The repository test runner.
+- `build/test.py`
+  The repository regression test runner.
 - `tests`
   Language, error, formatter, and LSP test inputs.
 
@@ -52,8 +52,8 @@ For editor tooling work:
 For tests:
 
 1. [tests/README.md](/home/matt/nerd/tests/README.md)
-2. [src/testing/testing.c](/home/matt/nerd/src/testing/testing.c)
-3. [src/testing/diff.c](/home/matt/nerd/src/testing/diff.c)
+2. [docs/testing.md](/home/matt/nerd/docs/testing.md)
+3. [build/test.py](/home/matt/nerd/build/test.py)
 
 ## Execution Flow
 

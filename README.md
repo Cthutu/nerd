@@ -6,7 +6,7 @@ The codebase is split into a few major areas:
 
 - `src/compiler` contains the compiler pipeline
 - `src/lsp` contains the language server
-- `src/testing` contains the test runner
+- `build/test.py` contains the repository regression test runner
 - `tests` contains language, error, formatter, and LSP tests
 - `docs` contains developer-facing documentation
 

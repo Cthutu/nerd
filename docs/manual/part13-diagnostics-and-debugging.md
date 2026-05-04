@@ -138,6 +138,42 @@ matching.
 Deferred statements follow the same rules: a `break` or `continue` inside a
 deferred statement still needs a valid target where it appears.
 
+## Source Tests
+
+Nerd source files can contain top-level tests:
+
+```nerd
+test "adds two numbers" {
+    assert 1 + 1 == 2  -- fail the test if the condition is false
+}
+```
+
+Run tests from the command line:
+
+```sh
+nerd test path/to/file.n
+```
+
+Use `--list` to show discovered test names without running them:
+
+```sh
+nerd test path/to/file.n --list
+```
+
+Use `--filter text` to run only tests whose names contain that text:
+
+```sh
+nerd test path/to/file.n --filter adds
+```
+
+Test declarations are not normal module API declarations. The test runner
+turns each selected test into a hidden zero-parameter function and calls those
+functions from a generated test entry point.
+
+The current test runner uses fail-fast assertion behaviour. If an `assert`
+inside a test fails, the program exits with status 127 and later selected tests
+do not run.
+
 ## Debugging Small
 
 When a program fails to compile:

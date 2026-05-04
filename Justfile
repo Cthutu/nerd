@@ -26,11 +26,13 @@ clean:
 format:
     python3 build/format.py
 
-test: 
-    just run nerd test
+test:
+    just build nerd
+    python3 build/test.py
 
 test-release:
-    just run-release nerd test
+    just build-release nerd
+    python3 build/test.py
 
 test-build:
     just run nerd build -v examples/text-adventure/adv.n
