@@ -17,6 +17,7 @@ continuing to grow this file.
   formatter, LSP, and command tests.
 - Modules load through the program-level front end. Standard modules live under
   `mods/` and should be treated like normal source modules.
+- Module paths resolve to `path.n` first, then `path/mod.n` for folder modules.
 - Public module exports are explicit with `pub`. Non-exported module members
   are private.
 
@@ -493,13 +494,14 @@ the roadmap before committing the implementation.
   - [x] return nonzero if any selected test fails
 - [x] Decide and implement assertion behaviour for test mode:
   - [x] accept v1 fail-fast behaviour from current `assert`
-  - [ ] or add a test-mode assertion path that records failure and continues
-    to later tests
+  - [x] keep non-fail-fast test assertions as follow-up work if continuing
+    after failure becomes useful
 - [x] Tests for the feature:
   - [x] command tests for `nerd test root.n`
   - [x] command tests for `nerd test root.n --filter text`
   - [x] command tests for `nerd test root.n --list`
   - [x] command tests for valid test declarations
+  - [x] formatter test for `test "name" { ... }`
   - [x] error tests for invalid test declarations
   - [x] regression tests proving compiler harness execution no longer depends
     on `nerd test`

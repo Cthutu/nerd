@@ -3,6 +3,7 @@
 use std.random
 use std.collections
 use std.io
+use std.term
 
 main :: fn () {
     random_number := random_u64()
@@ -15,4 +16,6 @@ main :: fn () {
 
     prn($"Popped: {stack.pop()}")
     prn($"Popped: {stack.pop()}")
+
+    test_fn()
 }

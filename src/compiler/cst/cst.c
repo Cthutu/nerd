@@ -105,6 +105,19 @@ internal u32 cst_current_symbol_handle(const CstParseState* state)
     return state->token_symbol_handles[state->token_index];
 }
 
+internal bool cst_current_symbol_is_cstr(const CstParseState* state, cstr name)
+{
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 symbol_handle = cst_current_symbol_handle(state);
+    if (symbol_handle == CST_NO_VALUE) {
+        return false;
+    }
+    return string_eq_cstr(lex_symbol(state->lexer, symbol_handle), name);
+}
+
 //------------------------------------------------------------------------------
 // Advance to the next token in the lexer stream.
 
@@ -4748,6 +4761,32 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
     return true;
 }
 
+internal bool cst_parse_test_decl(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    u32 name_node = 0;
+    if (cst_current_token(state).kind != TK_String ||
+        !cst_parse_expr_bp(state, 0, &name_node)) {
+        return false;
+    }
+
+    u32 body_node = 0;
+    if (!cst_parse_nested_block(state, &body_node)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_Test,
+                             .token_index = token_index,
+                             .a           = name_node,
+                             .b           = body_node,
+                         },
+                         out_node);
+}
+
 internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
 {
     bool is_public = false;
@@ -4782,6 +4821,14 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
             return false;
         }
         return cst_parse_impl(state, out_node);
+    }
+
+    if (cst_current_symbol_is_cstr(state, "test") &&
+        cst_peek_kind_at(state, 1) != TK_Colon) {
+        if (is_public) {
+            return false;
+        }
+        return cst_parse_test_decl(state, out_node);
     }
 
     if (!cst_starts_binding(state)) {
@@ -4982,7 +5029,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
-           node->kind == CK_FfiBlock || node->kind == CK_TopOn;
+           node->kind == CK_FfiBlock || node->kind == CK_TopOn ||
+           node->kind == CK_Test;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -4999,6 +5047,9 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
     }
     if (node->kind == CK_TopOn) {
         return cst->nodes[cst->top_ons[node->a].body_node_index].b;
+    }
+    if (node->kind == CK_Test) {
+        return cst->nodes[node->b].b;
     }
     if (node->kind == CK_Defer) {
         u32 end = cst_block_statement_end_exclusive(cst, node->a);

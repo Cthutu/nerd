@@ -6,7 +6,16 @@ Modules organise code across files and control which names are visible outside a
 file.
 
 A module path such as `std.io` names a module by its dotted path. The compiler
-resolves that path to a source file in the configured module roots.
+resolves that path in the configured module roots. A path can resolve to a
+single file or to a folder module:
+
+| Import path | First location tried | Folder-module fallback |
+|-------------|----------------------|------------------------|
+| `std.io`    | `std/io.n`           | `std/io/mod.n`         |
+| `std.term`  | `std/term.n`         | `std/term/mod.n`       |
+
+If both forms exist, the single `.n` file wins. Use `mod.n` when a module needs
+to own a directory of helper files while still presenting one public module.
 
 ## `use`
 

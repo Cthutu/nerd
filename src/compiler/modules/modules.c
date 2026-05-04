@@ -82,6 +82,12 @@ internal bool module_path_exists_in_root(Arena*               arena,
     cstr module_file = path_join(
         arena, root, module_path_to_relative(arena, lexer, ast, path, ".n"));
     if (!path_exists(module_file) || path_is_directory(module_file)) {
+        cstr module_dir = path_join(
+            arena, root, module_path_to_relative(arena, lexer, ast, path, ""));
+        module_file = path_join(arena, module_dir, "mod.n");
+    }
+
+    if (!path_exists(module_file) || path_is_directory(module_file)) {
         return false;
     }
 

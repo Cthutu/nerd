@@ -1,0 +1,11 @@
+--
+-- Terminal API
+--
+-- Copyright (C)2026 Matt Davies, all rights reserved
+--
+
+use std.io
+
+pub test_fn :: fn () {
+    prn("This is a test")
+}

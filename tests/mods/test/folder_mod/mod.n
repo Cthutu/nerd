@@ -1,0 +1,3 @@
+pub answer :: fn () => 42
+
+pub label :: "folder"

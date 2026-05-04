@@ -3495,7 +3495,8 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         }
         return ast_parse_impl(state, NULL);
     case TK_Symbol:
-        if (ast_current_symbol_is_cstr(state, "test")) {
+        if (ast_current_symbol_is_cstr(state, "test") &&
+            ast_peek_kind_at(state, 0) != TK_Colon) {
             if (is_public) {
                 return error_0204_unexpected_token(
                     state->lexer->source,

@@ -24,6 +24,7 @@ intended exit code.
 - `pub` exports a module-level declaration.
 - `use path` imports public names.
 - `name :: use path` binds a module for qualified access.
+- A module path first resolves to `path.n`, then falls back to `path/mod.n`.
 
 ## Values
 

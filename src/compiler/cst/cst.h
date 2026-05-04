@@ -77,6 +77,7 @@
 // | CK_Use             | Module node index     | 0                     |
 // | CK_Impl            | Impl-info index       | 0                     |
 // | CK_TopOn           | Top-on info index     | 0                     |
+// | CK_Test            | Name string node      | Body block node       |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_Defer           | Deferred statement node index | 0              |
@@ -163,6 +164,7 @@ typedef enum {
     CK_Use,
     CK_Impl,
     CK_TopOn,
+    CK_Test,
     CK_Statement,
     CK_Return,
     CK_Defer,

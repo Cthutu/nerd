@@ -138,6 +138,33 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
 }
 
 //------------------------------------------------------------------------------
+// Return whether one symbol token is the contextual source-test keyword.
+
+internal bool lsp_semantic_is_test_keyword(const LspDocument* doc,
+                                           u32                token_index)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    if (token_index + 1 >= array_count(lexer->tokens)) {
+        return false;
+    }
+
+    const Token* token = &lexer->tokens[token_index];
+    if (token->kind != TK_Symbol) {
+        return false;
+    }
+
+    usize end = lex_token_end_offset(lexer, token);
+    string text =
+        string_from(lexer->source.source.data + token->offset,
+                    end - token->offset);
+    if (!string_eq_cstr(text, "test")) {
+        return false;
+    }
+
+    return lexer->tokens[token_index + 1].kind == TK_String;
+}
+
+//------------------------------------------------------------------------------
 // Return whether a token kind should emit a semantic token.
 
 internal bool
@@ -147,6 +174,10 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
 
     switch (token->kind) {
     case TK_Symbol:
+        if (lsp_semantic_is_test_keyword(doc, token_index)) {
+            *out_type = LSP_SEMANTIC_KEYWORD;
+            return true;
+        }
         *out_type = lsp_semantic_symbol_type(doc, token_index);
         return true;
 
