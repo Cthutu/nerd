@@ -2784,23 +2784,13 @@ internal bool ast_parse_block_statement(AstParseState* state)
                     return false;
                 }
             }
-            if (state->token.kind != TK_String) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_String,
-                    state->token.kind);
-            }
-            AstToken message_token = state->token;
-            if (!ast_emit_node(state,
-                               (AstNode){
-                                   .kind        = AK_StringLiteral,
-                                   .token_index = message_token.token_index,
-                                   .a = message_token.value.string_index,
-                               },
-                               &message_node)) {
+            previous_boundary               = state->allow_statement_boundary;
+            state->allow_statement_boundary = true;
+            if (!ast_parse_expr(state, &message_node)) {
+                state->allow_statement_boundary = previous_boundary;
                 return false;
             }
+            state->allow_statement_boundary = previous_boundary;
         }
 
         return ast_emit_node(state,

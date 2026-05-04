@@ -891,12 +891,7 @@ void cgen_add_assert(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, ", ");
     cgen_add_c_string_literal(cgen, cgen->lexer->source.source_path);
     arena_format(&cgen->arena, ", %u, ", (u32)instr->rvalue[1].value.integer);
-    if (instr->lvalue.kind == IR_VALUE_STRING) {
-        cgen_add_c_string_literal(
-            cgen, cgen->ir->strings[(u32)instr->lvalue.value.integer]);
-    } else {
-        cgen_add(cgen, "\"assertion failed\"");
-    }
+    cgen_add_typed_value(cgen, &instr->lvalue, instr->lvalue.type);
     cgen_addn(cgen, ");");
 }
 

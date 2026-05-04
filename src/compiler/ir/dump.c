@@ -589,7 +589,7 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             sb_append_cstr(&sb, "assert ");
             ir_render_maybe_typed_value(&sb, ir, lexer, &instr->rvalue[0]);
             sb_append_cstr(&sb, ", ");
-            ir_render_value(&sb, ir, lexer, &instr->lvalue);
+            ir_render_maybe_typed_value(&sb, ir, lexer, &instr->lvalue);
             sb_format(&sb, ", line %lld", instr->rvalue[1].value.integer);
             break;
         case IR_OP_BRANCH_FALSE:

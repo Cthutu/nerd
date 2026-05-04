@@ -81,7 +81,7 @@
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_Defer           | Deferred statement node index | 0              |
-// | CK_Assert          | Condition node index  | String node or U32_MAX |
+// | CK_Assert          | Condition node index  | Message expr or U32_MAX |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_BreakExpr       | Expr node or U32_MAX  | Symbol or U32_MAX    |
 // | CK_ContinueExpr    | 0                     | Symbol or U32_MAX    |

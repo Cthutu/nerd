@@ -7,12 +7,12 @@ main :: fn () {
 ¬
 ¬
 fn main
-assert bool:no, "stopped", line 3
+assert bool:no, string:"stopped", line 3
 return i32:0
 end
 ¬
 void init() {}
 int $main() {
-    nerd_assert(false, "tests/language/111-assert-failure-exit.t", 3, "stopped");
+    nerd_assert(false, "tests/language/111-assert-failure-exit.t", 3, (string){.data = (u8*)"stopped", .count = 7});
     return 0;
 }

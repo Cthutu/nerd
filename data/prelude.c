@@ -34,12 +34,14 @@ static void eprn(const char* format, ...)
 }
 
 static void
-nerd_assert(bool condition, const char* source_path, unsigned line, const char* message)
+nerd_assert(bool condition, const char* source_path, unsigned line, string message)
 {
     if (condition) {
         return;
     }
-    eprn("assertion failed at %s:%u: %s", source_path, line, message);
+    epr("assertion failed at %s:%u: ", source_path, line);
+    fwrite(message.data, 1, message.count, stderr);
+    epr("\n");
     exit(127);
 }
 

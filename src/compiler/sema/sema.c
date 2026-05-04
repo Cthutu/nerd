@@ -4320,7 +4320,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
 
         if (node->kind != AK_Return && node->kind != AK_Statement &&
             node->kind != AK_For && node->kind != AK_Break &&
-            node->kind != AK_Continue) {
+            node->kind != AK_Continue && node->kind != AK_Assert) {
             i++;
             continue;
         }
@@ -5109,6 +5109,24 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                             scope_index,
                                             node->a,
                                             sema);
+    case AK_Assert:
+        return sema_resolve_node_refs(lexer,
+                                      ast,
+                                      owner_decl_index,
+                                      current_function_symbol,
+                                      capture_scope_index,
+                                      scope_index,
+                                      node->a,
+                                      sema) &&
+               (node->b == U32_MAX ||
+                sema_resolve_node_refs(lexer,
+                                       ast,
+                                       owner_decl_index,
+                                       current_function_symbol,
+                                       capture_scope_index,
+                                       scope_index,
+                                       node->b,
+                                       sema));
     case AK_For:
         {
             const AstForInfo* for_info  = &ast->fors[node->a];
@@ -5572,6 +5590,13 @@ internal void sema_collect_node_deps(const Ast*  ast,
         if (node->a != U32_MAX) {
             sema_collect_node_deps(
                 ast, sema, owner_decl_index, node->a, out_sema);
+        }
+        return;
+    case AK_Assert:
+        sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        if (node->b != U32_MAX) {
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, node->b, out_sema);
         }
         return;
     case AK_Assign:
@@ -10556,16 +10581,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(lexer, sema, &temp_arena, bool_type),
                     sema_type_name(lexer, sema, &temp_arena, condition_type));
             }
-            if (node->b != U32_MAX &&
-                ast->nodes[node->b].kind != AK_StringLiteral) {
-                return error_0304_type_mismatch(
-                    lexer->source,
-                    sema_node_span(lexer, &ast->nodes[node->b]),
-                    s("string literal"),
-                    sema_type_name(lexer,
-                                   sema,
-                                   &temp_arena,
-                                   sema->node_type_indices[node->b]));
+            if (node->b != U32_MAX) {
+                u32 message_type = sema_no_type();
+                u32 string_type  = sema_builtin_type(sema, STK_String);
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          node->b,
+                                          string_type,
+                                          &message_type)) {
+                    return false;
+                }
+                if (message_type != string_type) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[node->b]),
+                        sema_type_name(lexer, sema, &temp_arena, string_type),
+                        sema_type_name(lexer, sema, &temp_arena, message_type));
+                }
             }
             type_index = sema_builtin_type(sema, STK_Void);
         }
@@ -13564,7 +13597,10 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
         return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
     case AK_Assert:
-        return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
+        return sema_validate_assignment_node(
+                   lexer, ast, sema, node->a, state) &&
+               (node->b == U32_MAX || sema_validate_assignment_node(
+                                          lexer, ast, sema, node->b, state));
 
     case AK_TypePointer:
     case AK_TypeSlice:

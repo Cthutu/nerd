@@ -3828,23 +3828,9 @@ internal bool cst_parse_block_statement(CstParseState* state)
         }
         if (cst_current_token(state).kind == TK_Comma) {
             cst_advance(state);
-            if (cst_current_token(state).kind != TK_String) {
+            if (!cst_parse_expr_bp(state, 0, &message)) {
                 return false;
             }
-            u32 string_index = cst_current_string_index(state);
-            if (string_index == CST_NO_VALUE) {
-                return false;
-            }
-            if (!cst_emit_node(state,
-                               (CstNode){
-                                   .kind        = CK_StringLiteral,
-                                   .token_index = state->token_index,
-                                   .a           = string_index,
-                               },
-                               &message)) {
-                return false;
-            }
-            cst_advance(state);
         }
         return cst_emit_node(state,
                              (CstNode){

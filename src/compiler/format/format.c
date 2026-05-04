@@ -1466,7 +1466,11 @@ internal usize format_find_string_split(string text, usize start, usize max_end)
 internal void
 format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
 {
-    if (is_c_string || text.count + 2 <= FORMAT_WRAP_WIDTH ||
+    usize column          = format_sb_current_column(sb);
+    usize available_width = column < FORMAT_WRAP_WIDTH
+                                ? FORMAT_WRAP_WIDTH - column
+                                : FORMAT_WRAP_WIDTH;
+    if (is_c_string || text.count + 2 <= available_width ||
         format_string_has_newline(text)) {
         if (is_c_string) {
             sb_append_char(sb, 'c');
@@ -1477,9 +1481,14 @@ format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
         return;
     }
 
-    usize start        = 0;
-    usize segment_size = FORMAT_WRAP_WIDTH - 2;
+    usize start = 0;
     while (start < text.count) {
+        column          = format_sb_current_column(sb);
+        available_width = column < FORMAT_WRAP_WIDTH
+                              ? FORMAT_WRAP_WIDTH - column
+                              : FORMAT_WRAP_WIDTH;
+        usize segment_size =
+            available_width > 2 ? available_width - 2 : FORMAT_WRAP_WIDTH - 2;
         usize end = start + segment_size;
         if (end > text.count) {
             end = text.count;
@@ -3469,14 +3478,39 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Assert) {
+        Arena temp_arena = {0};
+        arena_init(&temp_arena);
+        StringBuilder single_line = {0};
+        sb_init(&single_line, &temp_arena);
+        sb_append_cstr(&single_line, "assert ");
+        format_emit_expr_with_indent(
+            &single_line, cst, lexer, stmt->a, 0, indent_level);
+        if (stmt->b != U32_MAX) {
+            sb_append_cstr(&single_line, ", ");
+            format_emit_expr_with_indent(
+                &single_line, cst, lexer, stmt->b, 0, indent_level);
+        }
+
+        string rendered     = sb_to_string(&single_line);
+        usize  start_column = (usize)indent_level * 4;
+        if (!format_string_has_newline(rendered) &&
+            start_column + rendered.count <= FORMAT_WRAP_WIDTH) {
+            sb_append_string(sb, rendered);
+            sb_append_char(sb, '\n');
+            arena_done(&temp_arena);
+            return;
+        }
+
         sb_append_cstr(sb, "assert ");
         format_emit_expr_with_indent(sb, cst, lexer, stmt->a, 0, indent_level);
         if (stmt->b != U32_MAX) {
-            sb_append_cstr(sb, ", ");
+            sb_append_cstr(sb, ",\n");
+            format_emit_indent(sb, indent_level + 1);
             format_emit_expr_with_indent(
                 sb, cst, lexer, stmt->b, 0, indent_level);
         }
         sb_append_char(sb, '\n');
+        arena_done(&temp_arena);
         return;
     }
 
