@@ -22,6 +22,76 @@ typedef struct {
     u32 type;
 } LspSemanticToken;
 
+typedef struct {
+    usize start_offset;
+    usize end_offset;
+    u32   start_line;
+    u32   start_col;
+} LspSemanticVisibleRange;
+
+//------------------------------------------------------------------------------
+// Return whether `haystack` starts with `needle`.
+
+internal bool lsp_semantic_string_starts_with(string haystack, string needle)
+{
+    if (needle.count > haystack.count) {
+        return false;
+    }
+
+    return memcmp(haystack.data, needle.data, needle.count) == 0;
+}
+
+//------------------------------------------------------------------------------
+// Find one string inside another.
+
+internal bool
+lsp_semantic_string_find(string haystack, string needle, usize* out_offset)
+{
+    if (needle.count == 0 || needle.count > haystack.count) {
+        return false;
+    }
+
+    for (usize i = 0; i + needle.count <= haystack.count; ++i) {
+        if (memcmp(haystack.data + i, needle.data, needle.count) == 0) {
+            *out_offset = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Return the slice of the analysed source that belongs to the open editor
+// document. Folder modules can analyse a combined `mod.n` plus sibling parts
+// source; LSP semantic token positions still have to be reported relative to
+// the file the editor opened.
+
+internal bool lsp_semantic_visible_range(const LspDocument*       doc,
+                                         LspSemanticVisibleRange* out_range)
+{
+    const NerdSource analysed = doc->front_end.lexer.source;
+    string           source   = analysed.source;
+
+    if (string_eq(source, doc->source) ||
+        lsp_semantic_string_starts_with(source, doc->source)) {
+        out_range->start_offset = 0;
+    } else if (!lsp_semantic_string_find(
+                   source, doc->source, &out_range->start_offset)) {
+        return false;
+    }
+
+    out_range->end_offset = out_range->start_offset + doc->source.count;
+    if (!lex_offset_to_line_col(analysed,
+                                out_range->start_offset,
+                                &out_range->start_line,
+                                &out_range->start_col)) {
+        return false;
+    }
+
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Return the AST binding node that starts at a specific token index.
 
@@ -195,10 +265,14 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_ffi:
     case TK_part:
     case TK_use:
+    case TK_pub:
+    case TK_impl:
     case TK_with:
+    case TK_in:
     case TK_as:
     case TK_yes:
     case TK_no:
+    case TK_nil:
     case TK_undefined:
         *out_type = LSP_SEMANTIC_KEYWORD;
         return true;
@@ -287,11 +361,16 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         return;
     }
 
-    JsonValue* result         = json_new_object(message->arena);
-    JsonValue* data           = json_new_array(message->arena);
-    u32        previous_line  = 0;
-    u32        previous_start = 0;
-    bool       have_previous  = false;
+    JsonValue*              result         = json_new_object(message->arena);
+    JsonValue*              data           = json_new_array(message->arena);
+    u32                     previous_line  = 0;
+    u32                     previous_start = 0;
+    bool                    have_previous  = false;
+    LspSemanticVisibleRange visible        = {0};
+    if (!lsp_semantic_visible_range(doc, &visible)) {
+        lsp_cancel(response, message->arena);
+        return;
+    }
 
     for (u32 i = 0; i < array_count(doc->front_end.lexer.tokens); ++i) {
         u32 type = 0;
@@ -300,15 +379,23 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         }
 
         const Token* token = &doc->front_end.lexer.tokens[i];
-        u32          line  = 0;
-        u32          start = 0;
-        bool         ok    = lex_offset_to_line_col(
+        u32 end = (u32)lex_token_end_offset(&doc->front_end.lexer, token);
+        if (token->offset < visible.start_offset || end > visible.end_offset) {
+            continue;
+        }
+
+        u32  line  = 0;
+        u32  start = 0;
+        bool ok    = lex_offset_to_line_col(
             doc->front_end.lexer.source, token->offset, &line, &start);
         ASSERT(ok, "Expected valid token offset");
         UNUSED(ok);
 
-        u32 end    = (u32)lex_token_end_offset(&doc->front_end.lexer, token);
         u32 length = end - token->offset;
+        if (line == visible.start_line) {
+            start -= visible.start_col;
+        }
+        line -= visible.start_line;
 
         if (!have_previous) {
             lsp_semantic_push_encoded(

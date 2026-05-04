@@ -59,11 +59,15 @@
             "patterns": [
                 {
                     "name": "keyword.control.function.nerd",
-                    "match": "\\b(fn|return|break|continue|for|on|else|as|plex|union|enum|ffi|part|mod|with)\\b"
+                    "match": "\\b(fn|return|break|continue|for|on|else|defer|assert|as|plex|union|enum|ffi|mod|use|pub|impl|with|in|test)\\b"
                 },
                 {
                     "name": "constant.language.boolean.nerd",
                     "match": "\\b(yes|no)\\b"
+                },
+                {
+                    "name": "constant.language.nil.nerd",
+                    "match": "\\b(nil|undefined)\\b"
                 }
             ]
         },
@@ -89,6 +93,10 @@
         },
         "strings": {
             "patterns": [
+                {
+                    "name": "string.quoted.double.c.nerd",
+                    "match": "c\"(?:\\\\.|[^\"\\\\])*\""
+                },
                 {
                     "name": "string.quoted.double.nerd",
                     "match": "\"(?:\\\\.|[^\"\\\\])*\""

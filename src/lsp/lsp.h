@@ -21,6 +21,7 @@ typedef struct LspMessage {
 
 typedef struct {
     Arena         arena;       // Arena for storing document content
+    string        source;      // Current editor document source
     ProgramInfo   program;     // Program analysis for the current document
     FrontEndState front_end;   // Compiler front-end results for the document
     Cst           cst;         // Concrete syntax tree for editor tooling

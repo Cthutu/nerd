@@ -92,6 +92,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     memcpy(document_copy, content.data, content.count);
 
     string document_copy_str = {.data = document_copy, .count = content.count};
+    staged->source           = document_copy_str;
 
     lsp_log("Analysing document...");
     ErrorRenderMode previous_mode = error_system_mode();
