@@ -1512,6 +1512,7 @@ typedef struct {
     string type;
     string value;
     bool   is_bind;
+    bool   is_inferred_variable;
     bool   has_value;
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
@@ -2276,6 +2277,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
                                                const Cst*   cst,
                                                const Lexer* lexer,
                                                u32          node_index,
+                                               bool include_inferred_variables,
                                                FormatAlignedStatement* out_stmt)
 {
     const CstNode* node = &cst->nodes[node_index];
@@ -2294,16 +2296,27 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value = s("undefined");
         } else {
-            return false;
+            if (!include_inferred_variables) {
+                return false;
+            }
+            if (!format_statement_is_single_line(cst, lexer, node_index)) {
+                return false;
+            }
+            value = format_render_value_to_string(arena, cst, lexer, node->b);
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
-            .type      = type,
-            .value     = value,
-            .is_bind   = false,
-            .has_value = payload->kind != CK_ZeroInit,
-            .uses_standard_single_line = false,
+            .symbol               = lex_symbol(lexer, cst_get_symbol(node)),
+            .type                 = type,
+            .value                = value,
+            .is_bind              = false,
+            .is_inferred_variable = payload->kind != CK_AnnotatedValue &&
+                                    payload->kind != CK_ZeroInit &&
+                                    payload->kind != CK_Undefined,
+            .has_value            = payload->kind != CK_ZeroInit,
+            .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
+                                         payload->kind != CK_ZeroInit &&
+                                         payload->kind != CK_Undefined,
         };
         return true;
     }
@@ -2616,6 +2629,13 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 }
             }
         } else {
+            if (stmts[i].is_inferred_variable) {
+                sb_append_cstr(sb, " := ");
+                sb_append_string(sb, stmts[i].value);
+                sb_append_char(sb, '\n');
+                continue;
+            }
+
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
             if (!stmts[i].has_value) {
@@ -2998,7 +3018,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
 
         FormatAlignedStatement first_aligned = {0};
         if (format_collect_aligned_statement(
-                &align_arena, cst, lexer, i, &first_aligned)) {
+                &align_arena, cst, lexer, i, false, &first_aligned)) {
             Array(FormatAlignedStatement) aligned = NULL;
             array_push(aligned, first_aligned);
 
@@ -3018,6 +3038,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                       cst,
                                                       lexer,
                                                       next_statement,
+                                                      false,
                                                       &next_aligned)) {
                     break;
                 }
@@ -3057,6 +3078,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                           cst,
                                                           lexer,
                                                           next_statement,
+                                                          false,
                                                           &ignored)) {
                         sb_append_char(sb, '\n');
                     } else if (!format_aligned_statements_same_family(
@@ -3084,7 +3106,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
         FormatAlignedStatement current_aligned = {0};
         if (format_collect_aligned_statement(
-                &align_arena, cst, lexer, i, &current_aligned)) {
+                &align_arena, cst, lexer, i, false, &current_aligned)) {
             u32 next_statement = format_next_block_statement(
                 cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
@@ -3095,6 +3117,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                                                      cst,
                                                      lexer,
                                                      next_statement,
+                                                     false,
                                                      &next_aligned) &&
                     !format_aligned_statements_same_family(current_aligned,
                                                            next_aligned)) {
@@ -3830,7 +3853,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         FormatAlignedStatement first_aligned = {0};
         if (format_collect_aligned_statement(
-                &align_arena, &cst, &lexer, node_index, &first_aligned)) {
+                &align_arena, &cst, &lexer, node_index, true, &first_aligned)) {
             Array(FormatAlignedStatement) aligned = NULL;
             array_push(aligned, first_aligned);
 
@@ -3848,6 +3871,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                                                       &cst,
                                                       &lexer,
                                                       next_index,
+                                                      true,
                                                       &next_aligned) ||
                     !format_aligned_statements_same_family(first_aligned,
                                                            next_aligned)) {
