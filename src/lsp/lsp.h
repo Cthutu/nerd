@@ -20,13 +20,14 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena         arena;       // Arena for storing document content
-    string        source;      // Current editor document source
-    ProgramInfo   program;     // Program analysis for the current document
-    FrontEndState front_end;   // Compiler front-end results for the document
-    Cst           cst;         // Concrete syntax tree for editor tooling
-    bool          analysis_ok; // Whether front-end analysis succeeded
-    bool          has_cst;     // Whether CST parsing succeeded
+    Arena         source_arena; // Arena for the current editor buffer
+    Arena         arena;        // Arena for analysis data
+    string        source;       // Current editor document source
+    ProgramInfo   program;      // Program analysis for the current document
+    FrontEndState front_end;    // Compiler front-end results for the document
+    Cst           cst;          // Concrete syntax tree for editor tooling
+    bool          analysis_ok;  // Whether front-end analysis succeeded
+    bool          has_cst;      // Whether CST parsing succeeded
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,
@@ -60,6 +61,12 @@ void lsp_done(LspState* state);
 // LSP document utilities
 
 void lsp_document_done(LspDocument* doc);
+bool lsp_get_string_param(const LspMessage* message,
+                          cstr              param_path,
+                          string*           out_str);
+bool lsp_get_u64_param(const LspMessage* message,
+                       cstr              param_path,
+                       u64*              out_value);
 
 //------------------------------------------------------------------------------
 // LSP message handling
@@ -80,5 +87,6 @@ void lsp_handle_definition(LspState* state, const LspMessage* message);
 void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
 void lsp_handle_semantic_tokens_full(LspState*         state,
                                      const LspMessage* message);
+void lsp_handle_completion(LspState* state, const LspMessage* message);
 
 //------------------------------------------------------------------------------

@@ -35,10 +35,19 @@ main :: fn () => 0
                 "version": "0.1.0"
             },
             "capabilities": {
-                "textDocumentSync": 1,
+                "textDocumentSync": {
+                    "openClose": true,
+                    "change": 2
+                },
                 "hoverProvider": true,
                 "definitionProvider": true,
                 "documentSymbolProvider": true,
+                "completionProvider": {
+                    "triggerCharacters": [
+                        "."
+                    ],
+                    "resolveProvider": false
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

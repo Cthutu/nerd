@@ -96,6 +96,7 @@ struct {
     {"textDocument/definition", lsp_handle_definition},
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
     {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
+    {"textDocument/completion", lsp_handle_completion},
 };
 
 //------------------------------------------------------------------------------
@@ -233,12 +234,24 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_string(server_info, arena, "name", s("Nerd LSP"));
     json_object_set_string(server_info, arena, "version", s("0.1.0"));
 
-    JsonValue* capabilities = json_new_object(arena);
-    json_object_set_number(
-        capabilities, arena, "textDocumentSync", 1); // Full sync
+    JsonValue* capabilities       = json_new_object(arena);
+    JsonValue* text_document_sync = json_new_object(arena);
+    json_object_set_bool(text_document_sync, arena, "openClose", true);
+    json_object_set_number(text_document_sync, arena, "change", 2);
+    json_object_set_object(
+        capabilities, "textDocumentSync", text_document_sync);
     json_object_set_bool(capabilities, arena, "hoverProvider", true);
     json_object_set_bool(capabilities, arena, "definitionProvider", true);
     json_object_set_bool(capabilities, arena, "documentSymbolProvider", true);
+
+    JsonValue* completion_provider = json_new_object(arena);
+    JsonValue* trigger_characters  = json_new_array(arena);
+    json_array_push(trigger_characters, json_new_string(arena, s(".")));
+    json_object_set_array(
+        completion_provider, "triggerCharacters", trigger_characters);
+    json_object_set_bool(completion_provider, arena, "resolveProvider", false);
+    json_object_set_object(
+        capabilities, "completionProvider", completion_provider);
 
     JsonValue* semantic_tokens = json_new_object(arena);
     JsonValue* legend          = json_new_object(arena);

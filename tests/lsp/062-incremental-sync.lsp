@@ -1,12 +1,33 @@
-main :: fn () -> i32 {
-    value := 7
-    return on {
-        value < 10 => value
-        else => 0
-    }
-}
+answer :: 1
+
+main :: fn () => answer
 ¬
 [
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/didChange",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n",
+                "version": 2
+            },
+            "contentChanges": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 0,
+                            "character": 10
+                        },
+                        "end": {
+                            "line": 0,
+                            "character": 11
+                        }
+                    },
+                    "text": "2"
+                }
+            ]
+        }
+    },
     {
         "jsonrpc": "2.0",
         "id": 2,
@@ -16,8 +37,8 @@ main :: fn () -> i32 {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 3,
-                "character": 22
+                "line": 0,
+                "character": 0
             }
         }
     }
@@ -73,11 +94,19 @@ main :: fn () -> i32 {
     },
     {
         "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "file:///test.n",
+            "diagnostics": []
+        }
+    },
+    {
+        "jsonrpc": "2.0",
         "id": 2,
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nvalue\n```\n\n- Kind: local variable\n- Type: `i32`"
+                "value": "```nerd\nanswer :: 2\n```\n\n- Kind: constant\n- Type: `untyped integer`\n- Value: `2`"
             }
         }
     },
