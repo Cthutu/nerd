@@ -1510,8 +1510,10 @@ internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
 typedef struct {
     string symbol;
     string type;
+    string op;
     string value;
     bool   is_bind;
+    bool   is_assignment;
     bool   is_inferred_variable;
     bool   has_value;
     bool   uses_standard_single_line;
@@ -2356,6 +2358,22 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         return true;
     }
 
+    if (node->kind == CK_Assign) {
+        if (!format_statement_is_single_line(cst, lexer, node_index)) {
+            return false;
+        }
+
+        *out_stmt = (FormatAlignedStatement){
+            .symbol = format_render_expr_to_string(arena, cst, lexer, node->a),
+            .op     = format_assignment_operator(lexer, node),
+            .value  = format_render_expr_to_string(arena, cst, lexer, node->b),
+            .is_assignment             = true,
+            .has_value                 = true,
+            .uses_standard_single_line = true,
+        };
+        return true;
+    }
+
     return false;
 }
 
@@ -2562,7 +2580,7 @@ internal u32 format_next_block_statement(const Cst* cst,
 internal bool format_aligned_statements_same_family(FormatAlignedStatement a,
                                                     FormatAlignedStatement b)
 {
-    return a.is_bind == b.is_bind;
+    return a.is_bind == b.is_bind && a.is_assignment == b.is_assignment;
 }
 
 internal void
@@ -2594,7 +2612,12 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             sb_append_char(sb, ' ');
         }
 
-        if (stmts[i].is_bind) {
+        if (stmts[i].is_assignment) {
+            sb_append_char(sb, ' ');
+            sb_append_string(sb, stmts[i].op);
+            sb_append_char(sb, ' ');
+            sb_append_string(sb, stmts[i].value);
+        } else if (stmts[i].is_bind) {
             if (has_type_column && stmts[i].type.count > 0) {
                 sb_append_cstr(sb, " : ");
                 sb_append_string(sb, stmts[i].type);
@@ -3070,7 +3093,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
 
                 u32 next_statement = format_next_block_statement(
                     cst, i + 1, block->b, block_node_index);
-                if (array_count(aligned) > 1 && next_statement != U32_MAX &&
+                if (!first_aligned.is_assignment && array_count(aligned) > 1 &&
+                    next_statement != U32_MAX &&
                     !format_has_blank_line_between_statements(
                         cst, lexer, last_aligned_index, next_statement)) {
                     FormatAlignedStatement ignored = {0};
@@ -3106,7 +3130,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
         FormatAlignedStatement current_aligned = {0};
         if (format_collect_aligned_statement(
-                &align_arena, cst, lexer, i, false, &current_aligned)) {
+                &align_arena, cst, lexer, i, false, &current_aligned) &&
+            !current_aligned.is_assignment) {
             u32 next_statement = format_next_block_statement(
                 cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
