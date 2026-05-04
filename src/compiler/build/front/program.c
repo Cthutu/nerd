@@ -250,6 +250,152 @@ internal u32 program_find_module_by_path(const ProgramInfo* program,
     return U32_MAX;
 }
 
+internal bool program_source_is_folder_module(NerdSource source)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr file_path = module_source_file_path(&temp, source);
+    bool result    = false;
+    if (file_path != NULL) {
+        result = string_eq_cstr(path_filename(s(file_path)), "mod.n");
+    }
+    arena_done(&temp);
+    return result;
+}
+
+internal cstr program_part_file_path(Arena*         arena,
+                                     NerdSource     source,
+                                     const Lexer*   lexer,
+                                     const Ast*     ast,
+                                     const AstNode* part_node)
+{
+    ASSERT(part_node->kind == AK_Part, "Expected part node");
+    const AstModulePath* path = &ast->module_paths[part_node->a];
+    if (path->symbol_count != 1) {
+        return NULL;
+    }
+
+    cstr source_path = module_source_file_path(arena, source);
+    if (source_path == NULL) {
+        return NULL;
+    }
+
+    string name =
+        lex_symbol(lexer, ast->module_path_symbols[path->first_symbol]);
+    char* filename = (char*)arena_alloc(arena, name.count + 3);
+    memcpy(filename, name.data, name.count);
+    filename[name.count]     = '.';
+    filename[name.count + 1] = 'n';
+    filename[name.count + 2] = '\0';
+
+    return path_join(arena, path_dirname(arena, source_path), filename);
+}
+
+internal bool program_expand_module_parts(ProgramInfo* program,
+                                          NerdSource   source,
+                                          const Lexer* lexer,
+                                          const Ast*   ast,
+                                          NerdSource*  out_source)
+{
+    if (!program_source_is_folder_module(source)) {
+        *out_source = source;
+        return true;
+    }
+
+    Array(cstr) part_paths = NULL;
+    Arena temp             = {0};
+    arena_init(&temp);
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Part) {
+            continue;
+        }
+
+        cstr part_path =
+            program_part_file_path(&temp, source, lexer, ast, node);
+        if (part_path == NULL) {
+            array_free(part_paths);
+            arena_done(&temp);
+            return error_runtime("Failed to resolve module part");
+        }
+        array_push(part_paths, part_path);
+    }
+
+    if (array_count(part_paths) == 0) {
+        array_free(part_paths);
+        arena_done(&temp);
+        *out_source = source;
+        return true;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, &program->arena);
+    sb_append_string(&sb, source.source);
+    if (source.source.count == 0 ||
+        source.source.data[source.source.count - 1] != '\n') {
+        sb_append_char(&sb, '\n');
+    }
+
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        FileMap part_map    = {0};
+        string  part_source = filemap_load(part_paths[i], &part_map);
+        if (part_source.data == NULL) {
+            cstr missing = program_copy_cstr(&program->arena, part_paths[i]);
+            array_free(part_paths);
+            arena_done(&temp);
+            return error_runtime("Failed to load module part: %s", missing);
+        }
+
+        sb_append_char(&sb, '\n');
+        sb_append_string(&sb, part_source);
+        if (part_source.count == 0 ||
+            part_source.data[part_source.count - 1] != '\n') {
+            sb_append_char(&sb, '\n');
+        }
+        filemap_unload(&part_map);
+    }
+
+    string expanded = sb_to_string(&sb);
+    array_free(part_paths);
+    arena_done(&temp);
+
+    *out_source = (NerdSource){
+        .source      = expanded,
+        .source_path = source.source_path,
+    };
+    return true;
+}
+
+internal bool program_front_end_parse_module(ProgramInfo*           program,
+                                             NerdSource             source,
+                                             const FrontEndOptions* options,
+                                             Timing*                timing,
+                                             FrontEndState*         front_end)
+{
+    if (!program_front_end_parse_only(source, options, timing, front_end)) {
+        return false;
+    }
+
+    NerdSource expanded_source = {0};
+    if (!program_expand_module_parts(program,
+                                     source,
+                                     &front_end->lexer,
+                                     &front_end->ast,
+                                     &expanded_source)) {
+        return false;
+    }
+
+    if (expanded_source.source.data == source.source.data &&
+        expanded_source.source.count == source.source.count) {
+        return true;
+    }
+
+    front_end_results_done(front_end);
+    return program_front_end_parse_only(
+        expanded_source, options, timing, front_end);
+}
+
 internal void program_collect_module_exports(ModuleInfo* module)
 {
     const Ast*  ast  = &module->front_end.ast;
@@ -367,8 +513,11 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
     FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
     module_options.require_entry_point = false;
 
-    if (!program_front_end_parse_only(
-            module_source, &module_options, timing, &current->front_end)) {
+    if (!program_front_end_parse_module(program,
+                                        module_source,
+                                        &module_options,
+                                        timing,
+                                        &current->front_end)) {
         current->state = MODULE_Failed;
         return false;
     }
@@ -505,7 +654,8 @@ bool front_end_program(NerdSource             source,
     };
     array_push(program.modules, root_module);
 
-    if (!program_front_end_parse_only(
+    if (!program_front_end_parse_module(
+            &program,
             source,
             &effective_options,
             timing,

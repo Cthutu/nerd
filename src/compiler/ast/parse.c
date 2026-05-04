@@ -1448,6 +1448,7 @@ internal bool ast_parse_destructure(AstParseState* state, u32* out_node);
 internal bool ast_parse_destructure_pattern(AstParseState* state,
                                             u32*           out_pattern);
 internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags);
+internal bool ast_parse_part(AstParseState* state, u32* out_node);
 internal bool ast_parse_module_path_symbols(AstParseState* state,
                                             Array(u32) * out_symbols);
 internal bool ast_emit_use_from_symbols(AstParseState* state,
@@ -3059,6 +3060,53 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags)
                          out_node);
 }
 
+internal bool ast_parse_part(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_part, "Expected 'part' token");
+    AstToken part_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0205_expected_declaration_or_expression(
+            state->lexer->source,
+            ast_token_span(state, &part_token),
+            TK_EOF,
+            "Expected a part name after 'part', but found end of file");
+    }
+
+    if (state->token.kind != TK_Symbol) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+
+    if (ast_peek_kind_at(state, 0) == TK_Dot) {
+        return error_0204_unexpected_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_Dot,
+            "`part` names are local to the current folder module");
+    }
+
+    u32 first_symbol = (u32)array_count(state->module_path_symbols);
+    array_push(state->module_path_symbols, state->token.value.symbol_handle);
+
+    u32 module_path_index = (u32)array_count(state->module_paths);
+    array_push(state->module_paths,
+               (AstModulePath){
+                   .first_symbol = first_symbol,
+                   .symbol_count = 1,
+               });
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Part,
+                             .token_index = part_token.token_index,
+                             .a           = module_path_index,
+                         },
+                         out_node);
+}
+
 internal bool ast_parse_module_path_symbols(AstParseState* state,
                                             Array(u32) * out_symbols)
 {
@@ -3502,6 +3550,15 @@ internal bool ast_parse_top_level_item(AstParseState* state)
             state, NULL, true, is_public ? ANF_Public : ANF_None);
     case TK_use:
         return ast_parse_use(state, NULL, is_public ? ANF_Public : 0);
+    case TK_part:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "`part` declarations cannot be public");
+        }
+        return ast_parse_part(state, NULL);
     case TK_on:
         if (is_public) {
             return error_0204_unexpected_token(

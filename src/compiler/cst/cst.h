@@ -75,6 +75,7 @@
 // | CK_FfiBlock        | FFI-block info index  | 0                     |
 // | CK_ModRef          | Module path index     | 0                     |
 // | CK_Use             | Module node index     | 0                     |
+// | CK_Part            | Module path index     | 0                     |
 // | CK_Impl            | Impl-info index       | 0                     |
 // | CK_TopOn           | Top-on info index     | 0                     |
 // | CK_Test            | Name string node      | Body block node       |
@@ -162,6 +163,7 @@ typedef enum {
     CK_FfiBlock,
     CK_ModRef,
     CK_Use,
+    CK_Part,
     CK_Impl,
     CK_TopOn,
     CK_Test,

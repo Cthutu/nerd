@@ -6,7 +6,7 @@
 
 use std.io
 
-pub use term
+part term
 
 on linux {
     use std.linux

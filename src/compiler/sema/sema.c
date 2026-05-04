@@ -5059,6 +5059,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       scope_index,
                                       node->a,
                                       sema);
+    case AK_Part:
+        return true;
     case AK_Cast:
         {
             const AstCastInfo* cast = sema_cast_info(ast, node);
@@ -5547,6 +5549,8 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_Statement:
     case AK_Use:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
+        return;
+    case AK_Part:
         return;
     case AK_Cast:
         {
@@ -12272,6 +12276,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         break;
 
     case AK_Use:
+    case AK_Part:
         type_index = sema_builtin_type(sema, STK_Void);
         break;
 
@@ -13077,6 +13082,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_FfiDef:
     case AK_ModRef:
     case AK_Use:
+    case AK_Part:
     case AK_Impl:
         return true;
 

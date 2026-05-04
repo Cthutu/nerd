@@ -17,6 +17,33 @@ single file or to a folder module:
 If both forms exist, the single `.n` file wins. Use `mod.n` when a module needs
 to own a directory of helper files while still presenting one public module.
 
+## Module Parts
+
+A folder module can split one module scope across several files with `part`.
+Only `mod.n` names the parts:
+
+```nerd
+part terminal  -- include terminal.n in this module scope
+
+pub Term :: plex {
+    running bool
+}
+```
+
+The part file is not a separate imported module. It shares the same top-level
+scope as `mod.n`, so declarations in `mod.n` and declarations in the part can
+refer to each other directly:
+
+```nerd
+pub term_init :: fn (term: ^Term) {  -- Term is declared in mod.n
+    term.running = yes
+}
+```
+
+Use `part` for implementation files that belong to the same public module. Use
+`use` or `pub use` when another file should remain a separate module with its
+own public/private boundary.
+
 ## `use`
 
 `use` imports public names from a module into the current scope:
@@ -109,11 +136,11 @@ Use `pub use` to import another module's public names into the current module
 and re-export them as if they were part of this module:
 
 ```nerd
-pub use test1  -- re-export public names from a sibling module
+pub use child  -- re-export public names from a sibling module
 ```
 
-Inside `std/term/mod.n`, this imports public names from `std/term/test1.n` and
-makes them visible to code that imports `std.term`.
+Inside a folder module, this imports public names from `child.n` and makes them
+visible to code that imports the folder module.
 
 ## Choosing A Use Form
 

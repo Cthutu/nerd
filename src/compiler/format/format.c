@@ -1232,6 +1232,10 @@ internal void format_emit_expr(StringBuilder* sb,
             format_emit_expr(sb, cst, lexer, node->a, 0);
         }
         break;
+    case CK_Part:
+        sb_append_cstr(sb, "part ");
+        format_emit_module_path(sb, cst, lexer, node->a);
+        break;
     default:
         error_ice("Unhandled CST node kind in formatter expression rendering: "
                   "%u",
@@ -1721,6 +1725,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Statement:
     case CK_Use:
         return format_node_end_token_index(cst, lexer, node->a);
+    case CK_Part:
+        return node->token_index + 1;
     case CK_Defer:
     case CK_Assert:
         if (node->kind == CK_Defer) {
@@ -3480,6 +3486,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_Part) {
+        sb_append_cstr(sb, "part ");
+        format_emit_module_path(sb, cst, lexer, stmt->a);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_FfiDef) {
         if (stmt->flags & CNF_Public) {
             sb_append_cstr(sb, "pub ");
@@ -3686,6 +3699,10 @@ internal void format_emit_value(StringBuilder* sb,
     case CK_ModRef:
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
+    case CK_Part:
+        sb_append_cstr(sb, "part ");
+        format_emit_module_path(sb, cst, lexer, node->a);
+        break;
     default:
         format_emit_expr(sb, cst, lexer, node_index, 0);
         break;
@@ -3806,6 +3823,15 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            first_binding          = false;
+            previous_binding_index = node_index;
+            continue;
+        }
+
+        if (node->kind == CK_Part) {
+            sb_append_cstr(sb, "part ");
+            format_emit_module_path(sb, &cst, &lexer, node->a);
             sb_append_char(sb, '\n');
             first_binding          = false;
             previous_binding_index = node_index;

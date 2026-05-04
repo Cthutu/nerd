@@ -1,0 +1,8 @@
+pub make_thing :: fn (value: i32) -> Thing {
+    return Thing { value: value }
+}
+
+pub part_answer :: fn () -> i32 {
+    thing := make_thing(42)
+    return thing.value
+}

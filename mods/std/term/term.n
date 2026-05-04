@@ -4,11 +4,9 @@
 -- Copyright (C)2026 Matt Davies, all rights reserved
 --
 
-on linux {
-    use std.linux
-}
-
 g_term_initialised := no
+
+g_term: Term
 
 pub term_init :: fn () {
     on g_term_initialised => return

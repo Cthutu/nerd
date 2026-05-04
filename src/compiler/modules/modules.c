@@ -23,7 +23,7 @@ internal int module_hex_value(u8 ch)
     return -1;
 }
 
-internal cstr module_root_path_from_source(Arena* arena, NerdSource source)
+cstr module_source_file_path(Arena* arena, NerdSource source)
 {
     if (source.source_path.count == 0) {
         return NULL;
@@ -226,12 +226,12 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_InvalidRootSource;
     }
 
-    cstr root_path = module_root_path_from_source(arena, root_source);
+    cstr root_path = module_source_file_path(arena, root_source);
     if (root_path == NULL) {
         return MRS_InvalidRootSource;
     }
 
-    cstr current_path = module_root_path_from_source(arena, lexer->source);
+    cstr current_path = module_source_file_path(arena, lexer->source);
     if (current_path != NULL) {
         cstr current_dir = path_dirname(arena, current_path);
         if (module_path_exists_in_root(

@@ -47,6 +47,7 @@ local_name :: ffi "lib" foreign_name (...) -> Type
 name :: use module.path
 use module.path
 pub use module.path
+part name
 test "name" { statements }
 ```
 

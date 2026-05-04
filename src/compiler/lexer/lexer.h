@@ -95,6 +95,7 @@ typedef enum {
     TK_union,
     TK_enum,
     TK_ffi,
+    TK_part,
     TK_use,
     TK_pub,
     TK_impl,
