@@ -2780,7 +2780,7 @@ internal void format_emit_fn_param_aligned(StringBuilder*  sb,
 
     string name = lex_symbol(lexer, param->symbol_handle);
     sb_append_string(sb, name);
-    for (usize pad = name.count; pad < name_width; ++pad) {
+    for (usize pad = name.count; pad <= name_width; ++pad) {
         sb_append_char(sb, ' ');
     }
     sb_append_cstr(sb, ": ");

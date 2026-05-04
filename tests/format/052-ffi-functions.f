@@ -25,12 +25,12 @@ ffi "c" {
     puts   (^u8) -> i32
 
     setlocale (i32, ^u8) -> ^u8
-    mmap      (addr  : ^void,
-               len   : usize,
-               prot  : i32,
-               flags : i32,
-               fd    : i32,
-               offset: usize) -> ^void
+    mmap      (addr   : ^void,
+               len    : usize,
+               prot   : i32,
+               flags  : i32,
+               fd     : i32,
+               offset : usize) -> ^void
 }
 
 puts :: ffi "c" puts (^u8)
