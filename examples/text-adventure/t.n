@@ -1,8 +1,8 @@
 --
 
-use std.random
 use std.collections
 use std.io
+use std.random
 use std.term
 
 main :: fn () {

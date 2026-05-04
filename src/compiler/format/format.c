@@ -44,6 +44,18 @@ internal usize format_rendered_expr_width(const Cst*   cst,
                                           const Lexer* lexer,
                                           u32          node_index,
                                           u32          indent_level);
+internal void  format_advance_delimiter_depth(const Lexer* lexer,
+                                              u32*         io_token_index,
+                                              usize        end_offset,
+                                              i32*         io_depth);
+internal void  format_emit_block_comments_before_offset(StringBuilder* sb,
+                                                        const Lexer*   lexer,
+                                                        u32*  io_comment_index,
+                                                        usize end_offset,
+                                                        u32   indent_level);
+internal void  format_skip_block_comments_before_offset(const Lexer* lexer,
+                                                        u32*  io_comment_index,
+                                                        usize end_offset);
 
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
@@ -2843,6 +2855,36 @@ internal void format_emit_test(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal void format_emit_block_comments_before_offset(StringBuilder* sb,
+                                                       const Lexer*   lexer,
+                                                       u32*  io_comment_index,
+                                                       usize end_offset,
+                                                       u32   indent_level)
+{
+    while (*io_comment_index < array_count(lexer->comments)) {
+        LexerComment comment = lexer->comments[*io_comment_index];
+        if (comment.offset >= end_offset) {
+            break;
+        }
+
+        format_emit_indent(sb, indent_level);
+        sb_append_cstr(sb, "--");
+        sb_append_string(sb, comment.text);
+        sb_append_char(sb, '\n');
+        (*io_comment_index)++;
+    }
+}
+
+internal void format_skip_block_comments_before_offset(const Lexer* lexer,
+                                                       u32*  io_comment_index,
+                                                       usize end_offset)
+{
+    while (*io_comment_index < array_count(lexer->comments) &&
+           lexer->comments[*io_comment_index].offset < end_offset) {
+        (*io_comment_index)++;
+    }
+}
+
 internal void format_emit_block_contents(StringBuilder* sb,
                                          const Cst*     cst,
                                          const Lexer*   lexer,
@@ -2855,12 +2897,26 @@ internal void format_emit_block_contents(StringBuilder* sb,
     Arena align_arena              = {0};
     arena_init(&align_arena);
 
+    u32   comment_index = 0;
+    usize block_open_end =
+        lex_token_end_offset(lexer, &lexer->tokens[block->token_index]);
+    u32 block_close_token =
+        format_node_end_token_index(cst, lexer, block_node_index);
+    usize block_close_offset = lexer->tokens[block_close_token].offset;
+    format_skip_block_comments_before_offset(
+        lexer, &comment_index, block_open_end);
+
     for (u32 i = block->a; i < block->b; ++i) {
         if (!cst_node_is_block_statement(&cst->nodes[i]) ||
             format_node_is_owned_by_later_statement(
                 cst, i, block->b, block_node_index)) {
             continue;
         }
+
+        usize statement_start_offset =
+            lexer->tokens[cst->nodes[i].token_index].offset;
+        format_emit_block_comments_before_offset(
+            sb, lexer, &comment_index, statement_start_offset, indent_level);
 
         if (previous_statement_index != U32_MAX &&
             format_has_blank_line_between_statements(
@@ -2899,6 +2955,12 @@ internal void format_emit_block_contents(StringBuilder* sb,
 
             previous_statement_index = last_use_index;
             i = cst_block_statement_end_exclusive(cst, last_use_index) - 1;
+            u32 use_end_token =
+                format_node_end_token_index(cst, lexer, last_use_index);
+            usize use_end_offset =
+                lex_token_end_offset(lexer, &lexer->tokens[use_end_token]);
+            format_skip_block_comments_before_offset(
+                lexer, &comment_index, use_end_offset);
             array_free(use_nodes);
             continue;
         }
@@ -2947,8 +3009,14 @@ internal void format_emit_block_contents(StringBuilder* sb,
                     sb, aligned, (u32)array_count(aligned), indent_level);
                 previous_statement_index = last_aligned_index;
                 i                        = last_aligned_index;
+                u32 aligned_end_token =
+                    format_node_end_token_index(cst, lexer, last_aligned_index);
+                usize aligned_end_offset = lex_token_end_offset(
+                    lexer, &lexer->tokens[aligned_end_token]);
+                format_skip_block_comments_before_offset(
+                    lexer, &comment_index, aligned_end_offset);
 
-                u32 next_statement       = format_next_block_statement(
+                u32 next_statement = format_next_block_statement(
                     cst, i + 1, block->b, block_node_index);
                 if (array_count(aligned) > 1 && next_statement != U32_MAX &&
                     !format_has_blank_line_between_statements(
@@ -3003,9 +3071,17 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 }
             }
         }
-        previous_statement_index = i;
+        previous_statement_index  = i;
+        u32   statement_end_token = format_node_end_token_index(cst, lexer, i);
+        usize statement_end_offset =
+            lex_token_end_offset(lexer, &lexer->tokens[statement_end_token]);
+        format_skip_block_comments_before_offset(
+            lexer, &comment_index, statement_end_offset);
         i = cst_block_statement_end_exclusive(cst, i) - 1;
     }
+
+    format_emit_block_comments_before_offset(
+        sb, lexer, &comment_index, block_close_offset, indent_level);
 
     arena_done(&align_arena);
 }
@@ -3600,7 +3676,8 @@ internal void format_emit_variable_payload(StringBuilder* sb,
 internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 {
     Lexer lexer = {0};
-    if (!lex(source, &lexer)) {
+    if (!lex_with_config(
+            source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
         return false;
     }
 
@@ -3791,6 +3868,41 @@ internal bool format_is_blank_line(string line)
 }
 
 //------------------------------------------------------------------------------
+// Advance delimiter nesting for formatter block detection.
+
+internal void format_advance_delimiter_depth(const Lexer* lexer,
+                                             u32*         io_token_index,
+                                             usize        end_offset,
+                                             i32*         io_depth)
+{
+    while (*io_token_index < array_count(lexer->tokens)) {
+        Token token = lexer->tokens[*io_token_index];
+        if (token.offset >= end_offset) {
+            break;
+        }
+
+        switch (token.kind) {
+        case TK_LParen:
+        case TK_LBracket:
+        case TK_LBrace:
+            (*io_depth)++;
+            break;
+        case TK_RParen:
+        case TK_RBracket:
+        case TK_RBrace:
+            if (*io_depth > 0) {
+                (*io_depth)--;
+            }
+            break;
+        default:
+            break;
+        }
+
+        (*io_token_index)++;
+    }
+}
+
+//------------------------------------------------------------------------------
 // Format source text, reflowing comments and normalising code blocks.
 
 bool format_source(NerdSource source, Arena* arena, string* out_text)
@@ -3829,8 +3941,17 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
         string indent       = {0};
         string comment_body = {0};
         if (!format_parse_comment_line(line, &indent, &comment_body)) {
-            usize block_start = offset;
-            usize block_end   = has_newline ? line_end + 1 : line_end;
+            usize block_start     = offset;
+            usize block_end       = has_newline ? line_end + 1 : line_end;
+            u32   token_index     = 0;
+            i32   delimiter_depth = 0;
+
+            while (token_index < array_count(lexer.tokens) &&
+                   lexer.tokens[token_index].offset < block_start) {
+                token_index++;
+            }
+            format_advance_delimiter_depth(
+                &lexer, &token_index, block_end, &delimiter_depth);
 
             while (block_end < text.count) {
                 usize next_line_end = block_end;
@@ -3847,12 +3968,15 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                 string next_body   = {0};
 
                 if (format_parse_comment_line(
-                        next_line, &next_indent, &next_body)) {
+                        next_line, &next_indent, &next_body) &&
+                    delimiter_depth == 0) {
                     break;
                 }
 
                 block_end =
                     next_has_newline ? next_line_end + 1 : next_line_end;
+                format_advance_delimiter_depth(
+                    &lexer, &token_index, block_end, &delimiter_depth);
             }
 
             Arena block_arena = {0};
