@@ -97,7 +97,6 @@
 // | AK_FfiDef          | Ast ffi-info index | 0                              |
 // | AK_ModRef          | Ast module path index | 0                            |
 // | AK_Use             | Ast index of module expression | 0                  |
-// | AK_Part            | Ast module path index | 0                            |
 // | AK_Impl            | Ast impl-info index | 0                             |
 // | AK_TopOn           | Ast top-on info index | 0                           |
 //
@@ -186,7 +185,6 @@ typedef enum {
     AK_FfiDef,
     AK_ModRef,
     AK_Use,
-    AK_Part,
     AK_Impl,
     AK_TopOn,
 } AstKind;

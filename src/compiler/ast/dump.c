@@ -150,8 +150,6 @@ string ast_kind_to_string(AstKind kind)
         return s("ModRef");
     case AK_Use:
         return s("Use");
-    case AK_Part:
-        return s("Part");
     case AK_FnDef:
         return s("FnDef");
     case AK_FnStart:

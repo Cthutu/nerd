@@ -154,8 +154,6 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `enum`");
     case TK_ffi:
         return string_from_cstr("Keyword `ffi`");
-    case TK_part:
-        return string_from_cstr("Keyword `part`");
     case TK_use:
         return string_from_cstr("Keyword `use`");
     case TK_pub:

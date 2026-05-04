@@ -263,7 +263,6 @@ lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
     case TK_union:
     case TK_enum:
     case TK_ffi:
-    case TK_part:
     case TK_use:
     case TK_pub:
     case TK_impl:

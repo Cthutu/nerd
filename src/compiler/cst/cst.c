@@ -882,7 +882,6 @@ internal bool cst_parse_ffi_def(CstParseState* state,
                                 CstNodeFlag    flags);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
 internal bool cst_parse_use(CstParseState* state, u32* out_node, u8 flags);
-internal bool cst_parse_part(CstParseState* state, u32* out_node);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
                                             Array(u32) * out_symbols);
 internal bool cst_emit_use_from_symbols(CstParseState* state,
@@ -4510,43 +4509,6 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node, u8 flags)
                          out_node);
 }
 
-internal bool cst_parse_part(CstParseState* state, u32* out_node)
-{
-    u32 token_index = state->token_index;
-    cst_advance(state);
-
-    if (cst_current_token(state).kind != TK_Symbol) {
-        return false;
-    }
-    if (cst_peek_kind_at(state, 1) == TK_Dot) {
-        return false;
-    }
-
-    u32 symbol_handle = cst_current_symbol_handle(state);
-    if (symbol_handle == CST_NO_VALUE) {
-        return false;
-    }
-    cst_advance(state);
-
-    u32 first_symbol = (u32)array_count(state->cst.module_path_symbols);
-    array_push(state->cst.module_path_symbols, symbol_handle);
-
-    u32 module_path_index = (u32)array_count(state->cst.module_paths);
-    array_push(state->cst.module_paths,
-               (CstModulePath){
-                   .first_symbol = first_symbol,
-                   .symbol_count = 1,
-               });
-
-    return cst_emit_node(state,
-                         (CstNode){
-                             .kind        = CK_Part,
-                             .token_index = token_index,
-                             .a           = module_path_index,
-                         },
-                         out_node);
-}
-
 internal bool cst_parse_module_path_symbols(CstParseState* state,
                                             Array(u32) * out_symbols)
 {
@@ -4885,13 +4847,6 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
         return cst_parse_use(state, out_node, is_public ? CNF_Public : 0);
     }
 
-    if (cst_current_token(state).kind == TK_part) {
-        if (is_public) {
-            return false;
-        }
-        return cst_parse_part(state, out_node);
-    }
-
     if (cst_current_token(state).kind == TK_on) {
         if (is_public) {
             return false;
@@ -5111,9 +5066,9 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
-           node->kind == CK_Use || node->kind == CK_Part ||
-           node->kind == CK_FfiDef || node->kind == CK_FfiBlock ||
-           node->kind == CK_TopOn || node->kind == CK_Test;
+           node->kind == CK_Use || node->kind == CK_FfiDef ||
+           node->kind == CK_FfiBlock || node->kind == CK_TopOn ||
+           node->kind == CK_Test;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
@@ -5142,10 +5097,7 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         node->kind == CK_DestructureBind ||
         node->kind == CK_DestructureVariable ||
         node->kind == CK_DestructureAssign || node->kind == CK_Statement ||
-        node->kind == CK_Use || node->kind == CK_Part) {
-        if (node->kind == CK_Part) {
-            return node_index + 1;
-        }
+        node->kind == CK_Use) {
         u32 child_index = node->kind == CK_Statement ? node->a : node->b;
         if (node->kind == CK_Use) {
             child_index = node->a;
