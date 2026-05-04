@@ -153,10 +153,9 @@ internal bool lsp_semantic_is_test_keyword(const LspDocument* doc,
         return false;
     }
 
-    usize end = lex_token_end_offset(lexer, token);
-    string text =
-        string_from(lexer->source.source.data + token->offset,
-                    end - token->offset);
+    usize  end  = lex_token_end_offset(lexer, token);
+    string text = string_from(lexer->source.source.data + token->offset,
+                              end - token->offset);
     if (!string_eq_cstr(text, "test")) {
         return false;
     }

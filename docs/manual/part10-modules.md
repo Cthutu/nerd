@@ -90,6 +90,16 @@ pub io :: use std.io  -- re-export std.io through this module
 
 Code that imports this module can then access the public `io` module binding.
 
+Use `pub use` to import another module's public names into the current module
+and re-export them as if they were part of this module:
+
+```nerd
+pub use test1  -- re-export public names from a sibling module
+```
+
+Inside `std/term/mod.n`, this imports public names from `std/term/test1.n` and
+makes them visible to code that imports `std.term`.
+
 ## Choosing A Use Form
 
 Use `use` for simple examples and small programs:

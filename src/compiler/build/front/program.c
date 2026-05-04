@@ -269,6 +269,53 @@ internal void program_collect_module_exports(ModuleInfo* module)
         }
         array_push(module->export_decl_indices, i);
     }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || !ast_has_flag(node, ANF_Public)) {
+            continue;
+        }
+        if (node->a >= array_count(sema->node_type_indices)) {
+            continue;
+        }
+
+        u32 module_type = sema->node_type_indices[node->a];
+        if (module_type == sema_no_type() ||
+            sema->types[module_type].kind != STK_Module) {
+            continue;
+        }
+
+        const SemaType* use_module          = &sema->types[module_type];
+        u32             import_module_index = use_module->return_type;
+        if (module->front_end.sema.program == NULL ||
+            import_module_index >=
+                array_count(module->front_end.sema.program->modules)) {
+            continue;
+        }
+
+        const ModuleInfo* import_module =
+            &module->front_end.sema.program->modules[import_module_index];
+        for (u32 j = 0; j < use_module->param_count; ++j) {
+            u32 symbol =
+                sema->type_param_symbols[use_module->first_param_type + j];
+            u32 import_decl_index =
+                j < array_count(import_module->export_decl_indices)
+                    ? import_module->export_decl_indices[j]
+                    : sema_no_decl();
+
+            for (u32 decl_index = 0; decl_index < array_count(sema->decls);
+                 ++decl_index) {
+                const SemaDecl* decl = &sema->decls[decl_index];
+                if (decl->symbol_handle == symbol &&
+                    decl->bind_node_index == sema_no_decl() &&
+                    decl->import_module_index == import_module_index &&
+                    decl->import_decl_index == import_decl_index) {
+                    array_push(module->export_decl_indices, decl_index);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 internal bool

@@ -1211,6 +1211,9 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
     case CK_Use:
+        if (node->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_cstr(sb, "use ");
         if (cst->nodes[node->a].kind == CK_ModRef) {
             format_emit_module_path(sb, cst, lexer, cst->nodes[node->a].a);
@@ -3282,6 +3285,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Use) {
+        if (stmt->flags & CNF_Public) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_cstr(sb, "use ");
         if (cst->nodes[stmt->a].kind == CK_ModRef) {
             format_emit_module_path(sb, cst, lexer, cst->nodes[stmt->a].a);
@@ -3464,6 +3470,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         if (node->kind == CK_Use) {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
             sb_append_cstr(sb, "use ");
             if (cst.nodes[node->a].kind == CK_ModRef) {
                 format_emit_module_path(sb, &cst, &lexer, cst.nodes[node->a].a);

@@ -1,0 +1,3 @@
+pub child_answer :: fn () => 37
+
+secret_answer :: fn () => 9000

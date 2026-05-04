@@ -857,7 +857,7 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node);
 internal bool
 cst_parse_ffi_def(CstParseState* state, u32* out_node, bool allow_block);
 internal bool cst_parse_mod_ref(CstParseState* state, u32* out_node);
-internal bool cst_parse_use(CstParseState* state, u32* out_node);
+internal bool cst_parse_use(CstParseState* state, u32* out_node, u8 flags);
 internal bool cst_parse_module_path_symbols(CstParseState* state,
                                             Array(u32) * out_symbols);
 internal bool cst_emit_use_from_symbols(CstParseState* state,
@@ -865,9 +865,11 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
                                         u32            path_token_index,
                                         const u32*     symbols,
                                         u32            symbol_count,
+                                        u8             flags,
                                         u32*           out_use_node);
 internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                             u32            use_token_index,
+                                            u8             flags,
                                             Array(u32) * prefix_symbols,
                                             u32* out_first_use_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
@@ -3749,7 +3751,7 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_use) {
-        return cst_parse_use(state, NULL);
+        return cst_parse_use(state, NULL, 0);
     }
 
     if (cst_current_token(state).kind == TK_defer) {
@@ -4417,13 +4419,13 @@ internal bool cst_parse_destructure(CstParseState* state, u32* out_node)
                          out_node);
 }
 
-internal bool cst_parse_use(CstParseState* state, u32* out_node)
+internal bool cst_parse_use(CstParseState* state, u32* out_node, u8 flags)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
 
     if (cst_current_token(state).kind == TK_Symbol &&
-        (cst_peek_kind_at(state, 1) == TK_Dot ||
+        ((flags & CNF_Public) || cst_peek_kind_at(state, 1) == TK_Dot ||
          cst_peek_kind_at(state, 1) == TK_LBrace)) {
         u32 path_token_index = state->token_index;
         Array(u32) symbols   = NULL;
@@ -4439,7 +4441,7 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
                 return false;
             }
             bool ok = cst_parse_grouped_use_entries(
-                state, token_index, &symbols, out_node);
+                state, token_index, flags, &symbols, out_node);
             array_free(symbols);
             if (ok && out_node != NULL) {
                 *out_node = U32_MAX;
@@ -4452,6 +4454,7 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
                                             path_token_index,
                                             symbols,
                                             (u32)array_count(symbols),
+                                            flags,
                                             out_node);
         array_free(symbols);
         return ok;
@@ -4465,6 +4468,7 @@ internal bool cst_parse_use(CstParseState* state, u32* out_node)
     return cst_emit_node(state,
                          (CstNode){
                              .kind        = CK_Use,
+                             .flags       = flags,
                              .token_index = token_index,
                              .a           = module_node,
                          },
@@ -4502,6 +4506,7 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
                                         u32            path_token_index,
                                         const u32*     symbols,
                                         u32            symbol_count,
+                                        u8             flags,
                                         u32*           out_use_node)
 {
     u32 first_symbol = (u32)array_count(state->cst.module_path_symbols);
@@ -4530,6 +4535,7 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
     return cst_emit_node(state,
                          (CstNode){
                              .kind        = CK_Use,
+                             .flags       = flags,
                              .token_index = use_token_index,
                              .a           = module_node,
                          },
@@ -4538,6 +4544,7 @@ internal bool cst_emit_use_from_symbols(CstParseState* state,
 
 internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                             u32            use_token_index,
+                                            u8             flags,
                                             Array(u32) * prefix_symbols,
                                             u32* out_first_use_node)
 {
@@ -4559,6 +4566,7 @@ internal bool cst_parse_grouped_use_entries(CstParseState* state,
             }
             if (!cst_parse_grouped_use_entries(state,
                                                use_token_index,
+                                               flags,
                                                prefix_symbols,
                                                out_first_use_node)) {
                 return false;
@@ -4570,6 +4578,7 @@ internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                            path_token_index,
                                            *prefix_symbols,
                                            (u32)array_count(*prefix_symbols),
+                                           flags,
                                            &use_node)) {
                 return false;
             }
@@ -4803,10 +4812,7 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_use) {
-        if (is_public) {
-            return false;
-        }
-        return cst_parse_use(state, out_node);
+        return cst_parse_use(state, out_node, is_public ? CNF_Public : 0);
     }
 
     if (cst_current_token(state).kind == TK_on) {

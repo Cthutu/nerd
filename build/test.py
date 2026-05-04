@@ -6,6 +6,7 @@ import difflib
 import json
 import os
 import pathlib
+import re
 import shlex
 import subprocess
 import sys
@@ -44,6 +45,7 @@ ANSI_FAINT_WHITE = "\033[2;37m"
 ANSI_RED = "\033[31m"
 ANSI_GREEN = "\033[32m"
 ANSI_CYAN = "\033[36m"
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 SUITE_LABELS = {
     "language": "language",
@@ -96,6 +98,10 @@ def split_sections(path: pathlib.Path) -> list[str]:
 
 def norm(text: str) -> str:
     return text.replace("\r\n", "\n")
+
+
+def strip_ansi(text: str) -> str:
+    return ANSI_RE.sub("", text)
 
 
 def unified(expected: str, actual: str, expected_name: str, actual_name: str) -> str:
@@ -398,8 +404,9 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     if proc.returncode != expected_exit:
         failures.append(Failure(path, f"exit mismatch: expected {expected_exit}, got {proc.returncode}\n{proc.stderr}"))
     if expected_stdout.strip():
-        if expected_stdout.rstrip("\n") != proc.stdout.rstrip("\n"):
-            stdout_failure = check_equal(path, "stdout", expected_stdout, proc.stdout)
+        actual_stdout = strip_ansi(proc.stdout)
+        if expected_stdout.rstrip("\n") != actual_stdout.rstrip("\n"):
+            stdout_failure = check_equal(path, "stdout", expected_stdout, actual_stdout)
             if stdout_failure:
                 failures.append(stdout_failure)
 

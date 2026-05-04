@@ -231,6 +231,15 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_InvalidRootSource;
     }
 
+    cstr current_path = module_root_path_from_source(arena, lexer->source);
+    if (current_path != NULL) {
+        cstr current_dir = path_dirname(arena, current_path);
+        if (module_path_exists_in_root(
+                arena, lexer, ast, path, current_dir, out_result)) {
+            return MRS_Found;
+        }
+    }
+
     cstr root_dir = path_dirname(arena, root_path);
     if (module_path_exists_in_root(
             arena, lexer, ast, path, root_dir, out_result)) {

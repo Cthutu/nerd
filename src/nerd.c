@@ -392,6 +392,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                   "Run source tests in a Nerd module",
                                   flags,
                                   params));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(arena, "t", "Alias for test", flags, params));
     }
     {
         JsonValue* flags  = json_new_array(arena);
@@ -420,6 +423,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             commands,
             nerd_cli_make_command(
                 arena, "format", "Format one source file", flags, params));
+        json_array_push(commands,
+                        nerd_cli_make_command(
+                            arena, "f", "Alias for format", flags, params));
     }
     json_array_push(
         commands,
@@ -665,10 +671,6 @@ internal int nerd_run_with_cli(int argc, char** argv)
     JsonValue* ok         = json_object_get_cstr(cli_result, "ok");
 
     if (help && help->kind == JSON_BOOL && json_bool(help)) {
-        if (argc <= 1) {
-            dump_info();
-        }
-
         if (command && command->kind == JSON_OBJECT) {
             JsonValue* command_name = json_object_get_cstr(command, "name");
             if (command_name && command_name->kind == JSON_STRING) {
@@ -696,9 +698,6 @@ internal int nerd_run_with_cli(int argc, char** argv)
 
     if (!ok || ok->kind != JSON_BOOL || !json_bool(ok)) {
         JsonValue* error = json_object_get_cstr(cli_result, "error");
-        if (argc <= 1) {
-            dump_info();
-        }
         cli_print_help(&parser);
         if (error && error->kind == JSON_STRING) {
             string error_message = json_string(error);
@@ -709,6 +708,10 @@ internal int nerd_run_with_cli(int argc, char** argv)
             arena_done(&arena);
             error_system_done();
             return 1;
+        }
+
+        if (argc <= 1) {
+            dump_info();
         }
 
         json_done(cli_result);
@@ -744,11 +747,11 @@ internal int nerd_run_with_cli(int argc, char** argv)
         NerdRunConfig config =
             nerd_run_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_run(&config);
-    } else if (string_eq_cstr(name, "test")) {
+    } else if (string_eq_cstr(name, "test") || string_eq_cstr(name, "t")) {
         NerdTestConfig config =
             nerd_test_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_test(&config);
-    } else if (string_eq_cstr(name, "format")) {
+    } else if (string_eq_cstr(name, "format") || string_eq_cstr(name, "f")) {
         NerdFormatConfig config = nerd_format_config_from_json(cli_result);
         result                  = compiler_cmd_format(&config);
     } else if (string_eq_cstr(name, "explain")) {

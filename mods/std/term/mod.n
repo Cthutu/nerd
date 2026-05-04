@@ -6,6 +6,8 @@
 
 use std.io
 
+pub use test1
+
 pub test_fn :: fn () {
     prn("This is a test")
 }

@@ -18,6 +18,12 @@ typedef struct {
     bool   selected;
 } SourceTestDecl;
 
+typedef struct {
+    usize start_offset;
+    usize end_offset;
+    bool  found;
+} SourceTestMainDecl;
+
 internal bool source_test_is_ident(u8 ch)
 {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
@@ -255,6 +261,94 @@ internal bool source_test_discover(Arena* arena,
     return true;
 }
 
+internal bool source_test_is_top_level_main_binding(string source, usize offset)
+{
+    bool left_ok =
+        offset == 0 || !source_test_is_ident(source.data[offset - 1]);
+    bool right_ok = offset + 4 >= source.count ||
+                    !source_test_is_ident(source.data[offset + 4]);
+    if (!left_ok || !right_ok) {
+        return false;
+    }
+
+    usize cursor = offset + 4;
+    source_test_skip_ws_and_comments(source, &cursor);
+    return cursor + 1 < source.count && source.data[cursor] == ':' &&
+           source.data[cursor + 1] == ':';
+}
+
+internal SourceTestMainDecl source_test_find_main_binding(string source)
+{
+    usize offset = 0;
+    u32   depth  = 0;
+
+    while (offset < source.count) {
+        if (source_test_starts_with_at(source, offset, "--")) {
+            source_test_skip_line_comment(source, &offset);
+            continue;
+        }
+        if (source_test_starts_with_at(source, offset, "c\"")) {
+            if (!source_test_skip_c_string(source, &offset)) {
+                break;
+            }
+            continue;
+        }
+
+        u8 ch = source.data[offset];
+        if (ch == '"') {
+            if (!source_test_skip_string(source, &offset)) {
+                break;
+            }
+            continue;
+        }
+        if (ch == '{') {
+            depth += 1;
+            offset += 1;
+            continue;
+        }
+        if (ch == '}') {
+            if (depth > 0) {
+                depth -= 1;
+            }
+            offset += 1;
+            continue;
+        }
+
+        if (depth == 0 && source_test_starts_with_at(source, offset, "main") &&
+            source_test_is_top_level_main_binding(source, offset)) {
+            return (SourceTestMainDecl){
+                .start_offset = offset,
+                .end_offset   = offset + 4,
+                .found        = true,
+            };
+        }
+
+        offset += 1;
+    }
+
+    return (SourceTestMainDecl){0};
+}
+
+internal void source_test_append_source_range(StringBuilder*     sb,
+                                              string             source,
+                                              usize              start,
+                                              usize              end,
+                                              SourceTestMainDecl main_decl)
+{
+    if (!main_decl.found || main_decl.start_offset >= end ||
+        main_decl.end_offset <= start) {
+        sb_append_string(sb, string_from(source.data + start, end - start));
+        return;
+    }
+
+    sb_append_string(
+        sb, string_from(source.data + start, main_decl.start_offset - start));
+    sb_append_cstr(sb, "__nerd_program_main");
+    sb_append_string(sb,
+                     string_from(source.data + main_decl.end_offset,
+                                 end - main_decl.end_offset));
+}
+
 internal string source_test_generated_source(Arena* arena,
                                              string source,
                                              Array(SourceTestDecl) tests)
@@ -262,13 +356,13 @@ internal string source_test_generated_source(Arena* arena,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
 
-    usize next_offset      = 0;
-    u32   selected_counter = 0;
+    SourceTestMainDecl main_decl        = source_test_find_main_binding(source);
+    usize              next_offset      = 0;
+    u32                selected_counter = 0;
     for (usize i = 0; i < array_count(tests); i++) {
         SourceTestDecl test = tests[i];
-        sb_append_string(&sb,
-                         string_from(source.data + next_offset,
-                                     test.start_offset - next_offset));
+        source_test_append_source_range(
+            &sb, source, next_offset, test.start_offset, main_decl);
 
         if (test.selected) {
             sb_format(&sb, "__nerd_test_%u :: fn () {", selected_counter);
@@ -283,9 +377,8 @@ internal string source_test_generated_source(Arena* arena,
         next_offset = test.end_offset;
     }
 
-    sb_append_string(
-        &sb,
-        string_from(source.data + next_offset, source.count - next_offset));
+    source_test_append_source_range(
+        &sb, source, next_offset, source.count, main_decl);
 
     sb_append_cstr(&sb, "\nmain :: fn () -> i32 {\n");
     selected_counter = 0;
@@ -339,7 +432,7 @@ int compiler_cmd_test(const NerdTestConfig* config)
     if (config->list) {
         for (usize i = 0; i < array_count(tests); i++) {
             if (tests[i].selected) {
-                prn(STRINGP, STRINGV(tests[i].name));
+                prn(ANSI_CYAN STRINGP ANSI_RESET, STRINGV(tests[i].name));
             }
         }
         array_free(tests);
@@ -349,7 +442,7 @@ int compiler_cmd_test(const NerdTestConfig* config)
     }
 
     if (selected_count == 0) {
-        prn("0 tests passed");
+        prn(ANSI_BOLD_YELLOW "0 tests passed" ANSI_RESET);
         array_free(tests);
         filemap_unload(&map);
         arena_done(&arena);
@@ -369,9 +462,9 @@ int compiler_cmd_test(const NerdTestConfig* config)
 
     int result = compiler_cmd_run(&run_config);
     if (result == 0) {
-        prn("%u tests passed", selected_count);
+        prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, selected_count);
     } else {
-        eprn("source test run failed");
+        eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
     }
 
     array_free(tests);

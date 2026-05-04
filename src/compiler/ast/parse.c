@@ -1416,16 +1416,19 @@ internal bool ast_parse_block_statement(AstParseState* state);
 internal bool ast_parse_destructure(AstParseState* state, u32* out_node);
 internal bool ast_parse_destructure_pattern(AstParseState* state,
                                             u32*           out_pattern);
-internal bool ast_parse_use(AstParseState* state, u32* out_node);
+internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags);
 internal bool ast_parse_module_path_symbols(AstParseState* state,
                                             Array(u32) * out_symbols);
 internal bool ast_emit_use_from_symbols(AstParseState* state,
                                         u32            use_token_index,
                                         u32            path_token_index,
                                         const u32*     symbols,
-                                        u32            symbol_count);
+                                        u32            symbol_count,
+                                        u8             flags,
+                                        u32*           out_node);
 internal bool ast_parse_grouped_use_entries(AstParseState* state,
                                             u32            use_token_index,
+                                            u8             flags,
                                             Array(u32) * prefix_symbols);
 
 internal bool ast_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
@@ -2666,7 +2669,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
     }
 
     if (state->token.kind == TK_use) {
-        return ast_parse_use(state, NULL);
+        return ast_parse_use(state, NULL, 0);
     }
 
     if (state->token.kind == TK_defer) {
@@ -2949,7 +2952,7 @@ internal bool ast_parse_module_ref_after_use(AstParseState* state,
                          out_node);
 }
 
-internal bool ast_parse_use(AstParseState* state, u32* out_node)
+internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags)
 {
     ASSERT(state->token.kind == TK_use, "Expected 'use' token");
     AstToken use_token = state->token;
@@ -2963,7 +2966,7 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
     }
 
     if (state->token.kind == TK_Symbol &&
-        (ast_peek_kind_at(state, 0) == TK_Dot ||
+        ((flags & ANF_Public) || ast_peek_kind_at(state, 0) == TK_Dot ||
          ast_peek_kind_at(state, 0) == TK_LBrace)) {
         AstToken path_token = state->token;
         Array(u32) symbols  = NULL;
@@ -2990,7 +2993,7 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
                     state->token.kind);
             }
             bool ok = ast_parse_grouped_use_entries(
-                state, use_token.token_index, &symbols);
+                state, use_token.token_index, flags, &symbols);
             array_free(symbols);
             return ok;
         }
@@ -2999,7 +3002,9 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
                                             use_token.token_index,
                                             path_token.token_index,
                                             symbols,
-                                            (u32)array_count(symbols));
+                                            (u32)array_count(symbols),
+                                            flags,
+                                            out_node);
         array_free(symbols);
         return ok;
     }
@@ -3016,6 +3021,7 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node)
     return ast_emit_node(state,
                          (AstNode){
                              .kind        = AK_Use,
+                             .flags       = flags,
                              .token_index = use_token.token_index,
                              .a           = module_node,
                          },
@@ -3054,7 +3060,9 @@ internal bool ast_emit_use_from_symbols(AstParseState* state,
                                         u32            use_token_index,
                                         u32            path_token_index,
                                         const u32*     symbols,
-                                        u32            symbol_count)
+                                        u32            symbol_count,
+                                        u8             flags,
+                                        u32*           out_node)
 {
     u32 first_symbol = (u32)array_count(state->module_path_symbols);
     for (u32 i = 0; i < symbol_count; ++i) {
@@ -3082,14 +3090,16 @@ internal bool ast_emit_use_from_symbols(AstParseState* state,
     return ast_emit_node(state,
                          (AstNode){
                              .kind        = AK_Use,
+                             .flags       = flags,
                              .token_index = use_token_index,
                              .a           = module_node,
                          },
-                         NULL);
+                         out_node);
 }
 
 internal bool ast_parse_grouped_use_entries(AstParseState* state,
                                             u32            use_token_index,
+                                            u8             flags,
                                             Array(u32) * prefix_symbols)
 {
     for (;;) {
@@ -3123,15 +3133,16 @@ internal bool ast_parse_grouped_use_entries(AstParseState* state,
                     state->token.kind);
             }
             if (!ast_parse_grouped_use_entries(
-                    state, use_token_index, prefix_symbols)) {
+                    state, use_token_index, flags, prefix_symbols)) {
                 return false;
             }
-        } else if (!ast_emit_use_from_symbols(
-                       state,
-                       use_token_index,
-                       path_token.token_index,
-                       *prefix_symbols,
-                       (u32)array_count(*prefix_symbols))) {
+        } else if (!ast_emit_use_from_symbols(state,
+                                              use_token_index,
+                                              path_token.token_index,
+                                              *prefix_symbols,
+                                              (u32)array_count(*prefix_symbols),
+                                              flags,
+                                              NULL)) {
             return false;
         }
 
@@ -3466,15 +3477,7 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         }
         return ast_parse_declaration(state, NULL, true);
     case TK_use:
-        if (is_public) {
-            return error_0204_unexpected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                state->token.kind,
-                "Expected a symbol to start a "
-                "public binding");
-        }
-        return ast_parse_use(state, NULL);
+        return ast_parse_use(state, NULL, is_public ? ANF_Public : 0);
     case TK_on:
         if (is_public) {
             return error_0204_unexpected_token(
