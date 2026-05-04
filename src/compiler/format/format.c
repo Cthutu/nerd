@@ -1814,7 +1814,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Impl:
         {
             const CstImplInfo* impl = &cst->impls[node->a];
-            return format_node_end_token_index(cst, lexer, impl->body_node_index);
+            return format_node_end_token_index(
+                cst, lexer, impl->body_node_index);
         }
     case CK_Block:
         return format_find_matching_close_token_index(

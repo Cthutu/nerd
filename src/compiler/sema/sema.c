@@ -1199,15 +1199,15 @@ internal bool      sema_infer_node_type(const Lexer* lexer,
                                         u32          expected_type,
                                         u32*         out_type_index);
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
-                                                     u32 decl_index);
+                                                     u32         decl_index);
 internal void sema_import_method_for_decl(Lexer*       dst_lexer,
                                           Sema*        sema,
                                           const Lexer* source_lexer,
                                           const Sema*  source_sema,
                                           u32          source_decl_index,
                                           u32          dst_decl_index);
-internal void sema_import_public_methods_from_module(Lexer*           dst_lexer,
-                                                     Sema*            sema,
+internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
+                                                     Sema*  sema,
                                                      const ModuleInfo* module,
                                                      u32 module_index);
 internal bool
@@ -2150,11 +2150,9 @@ internal u32 sema_mangle_method_symbol(const Lexer* lexer,
                                        u32          impl_node_index,
                                        u32          method_symbol)
 {
-    string method = lex_symbol(lexer, method_symbol);
-    string mangled = string_format(&temp_arena,
-                                   "__impl_%u_" STRINGP,
-                                   impl_node_index,
-                                   STRINGV(method));
+    string method  = lex_symbol(lexer, method_symbol);
+    string mangled = string_format(
+        &temp_arena, "__impl_%u_" STRINGP, impl_node_index, STRINGV(method));
     InternAddResult ignored = {0};
     return lex_add_symbol((Lexer*)lexer, mangled, &ignored);
 }
@@ -2221,7 +2219,7 @@ internal bool sema_imported_decl_source(Sema*           sema,
 }
 
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
-                                                     u32 decl_index)
+                                                     u32         decl_index)
 {
     for (u32 i = 0; i < array_count(sema->methods); ++i) {
         if (sema->methods[i].decl_index == decl_index) {
@@ -2231,8 +2229,8 @@ internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
     return NULL;
 }
 
-internal void sema_import_method_for_decl(Lexer*      dst_lexer,
-                                          Sema*       sema,
+internal void sema_import_method_for_decl(Lexer*       dst_lexer,
+                                          Sema*        sema,
                                           const Lexer* source_lexer,
                                           const Sema*  source_sema,
                                           u32          source_decl_index,
@@ -2248,22 +2246,21 @@ internal void sema_import_method_for_decl(Lexer*      dst_lexer,
         return;
     }
 
-    array_push(sema->methods,
-               (SemaMethod){
-                   .symbol_handle = sema_import_symbol_handle(
-                       dst_lexer, source_lexer, source_method->symbol_handle),
-                   .decl_index             = dst_decl_index,
-                   .impl_node_index        = source_method->impl_node_index,
-                   .target_type_node_index =
-                       source_method->target_type_node_index,
-                   .generic_params_index =
-                       source_method->generic_params_index,
-                   .is_public = true,
-               });
+    array_push(
+        sema->methods,
+        (SemaMethod){
+            .symbol_handle = sema_import_symbol_handle(
+                dst_lexer, source_lexer, source_method->symbol_handle),
+            .decl_index             = dst_decl_index,
+            .impl_node_index        = source_method->impl_node_index,
+            .target_type_node_index = source_method->target_type_node_index,
+            .generic_params_index   = source_method->generic_params_index,
+            .is_public              = true,
+        });
 }
 
-internal void sema_import_public_methods_from_module(Lexer*           dst_lexer,
-                                                     Sema*            sema,
+internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
+                                                     Sema*  sema,
                                                      const ModuleInfo* module,
                                                      u32 module_index)
 {
@@ -2285,13 +2282,13 @@ internal void sema_import_public_methods_from_module(Lexer*           dst_lexer,
                                     source_lexer,
                                     source_sema,
                                     source_decl->type_index);
-        u32 imported_decl = sema_ensure_module_export_decl(sema,
-                                                           symbol,
-                                                           type,
-                                                           source_decl->kind,
-                                                           module_index,
-                                                           source_method
-                                                               ->decl_index);
+        u32 imported_decl =
+            sema_ensure_module_export_decl(sema,
+                                           symbol,
+                                           type,
+                                           source_decl->kind,
+                                           module_index,
+                                           source_method->decl_index);
         sema_import_method_for_decl(dst_lexer,
                                     sema,
                                     source_lexer,
@@ -3125,14 +3122,13 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                         s("non-function binding"));
                 }
 
-                SemaDeclKind kind =
-                    (impl->generic_params_index != U32_MAX ||
-                     sema_fn_def_generic_params_index(ast, value_node_index) !=
-                         U32_MAX)
-                        ? SK_GenericFunction
-                        : SK_Function;
+                SemaDeclKind kind = (impl->generic_params_index != U32_MAX ||
+                                     sema_fn_def_generic_params_index(
+                                         ast, value_node_index) != U32_MAX)
+                                        ? SK_GenericFunction
+                                        : SK_Function;
 
-                u32 decl_index = (u32)array_count(sema->decls);
+                u32 decl_index    = (u32)array_count(sema->decls);
                 array_push(sema->decls,
                            (SemaDecl){
                                .kind                = kind,
@@ -3144,18 +3140,16 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                                .import_module_index = sema_no_decl(),
                                .import_decl_index   = sema_no_decl(),
                            });
-                array_push(sema->methods,
-                           (SemaMethod){
-                               .symbol_handle           = method_symbol,
-                               .decl_index              = decl_index,
-                               .impl_node_index         = i,
-                               .target_type_node_index  =
-                                   impl->target_type_node_index,
-                               .generic_params_index =
-                                   impl->generic_params_index,
-                               .is_public = ast_has_flag(method_node,
-                                                         ANF_Public),
-                           });
+                array_push(
+                    sema->methods,
+                    (SemaMethod){
+                        .symbol_handle          = method_symbol,
+                        .decl_index             = decl_index,
+                        .impl_node_index        = i,
+                        .target_type_node_index = impl->target_type_node_index,
+                        .generic_params_index   = impl->generic_params_index,
+                        .is_public = ast_has_flag(method_node, ANF_Public),
+                    });
             }
             continue;
         }
@@ -7099,8 +7093,8 @@ sema_decl_generic_params(const Ast* ast, const Sema* sema, u32 decl_index)
     const SemaDecl* decl = &sema->decls[decl_index];
     if (decl->value_node_index != sema_no_decl() &&
         ast->nodes[decl->value_node_index].kind == AK_FnDef) {
-        u32 signature_index = sema_fn_def_generic_params_index(
-            ast, decl->value_node_index);
+        u32 signature_index =
+            sema_fn_def_generic_params_index(ast, decl->value_node_index);
         if (signature_index != U32_MAX) {
             return &ast->generic_params[signature_index];
         }
@@ -7421,9 +7415,9 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
                                                           out_type);
     }
 
-    const AstNode*        fn_def    = &ast->nodes[decl->value_node_index];
-    const AstNode*        fn_start  = &ast->nodes[fn_def->a];
-    const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+    const AstNode*          fn_def    = &ast->nodes[decl->value_node_index];
+    const AstNode*          fn_start  = &ast->nodes[fn_def->a];
+    const AstFnSignature*   signature = &ast->fn_signatures[fn_start->a];
     const AstGenericParams* generic =
         sema_decl_generic_params(ast, sema, decl_index);
     ASSERT(generic != NULL, "Expected generic function parameters");
@@ -7566,7 +7560,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
 {
     const AstNode*     call_node = &ast->nodes[call_node_index];
     const AstCallInfo* call      = &ast->calls[call_node->b];
-    *out_found                  = false;
+    *out_found                   = false;
 
     for (u32 i = 0; i < array_count(sema->methods); ++i) {
         const SemaMethod* method = &sema->methods[i];
@@ -7574,12 +7568,12 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             continue;
         }
 
-        const SemaDecl* decl = &sema->decls[method->decl_index];
-        const Lexer*    source_lexer      = lexer;
-        const Ast*      source_ast        = ast;
-        Sema*           source_sema       = sema;
-        u32             source_decl_index = method->decl_index;
-        const SemaMethod* source_method    = method;
+        const SemaDecl*   decl              = &sema->decls[method->decl_index];
+        const Lexer*      source_lexer      = lexer;
+        const Ast*        source_ast        = ast;
+        Sema*             source_sema       = sema;
+        u32               source_decl_index = method->decl_index;
+        const SemaMethod* source_method     = method;
         bool imported = decl->import_module_index != sema_no_decl();
         if (imported) {
             if (!sema_imported_decl_source(sema,
@@ -7597,12 +7591,10 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             }
         }
 
-        const SemaDecl* source_decl =
-            &source_sema->decls[source_decl_index];
-        const AstNode* source_fn_def =
+        const SemaDecl* source_decl = &source_sema->decls[source_decl_index];
+        const AstNode*  source_fn_def =
             &source_ast->nodes[source_decl->value_node_index];
-        const AstNode* source_fn_start =
-            &source_ast->nodes[source_fn_def->a];
+        const AstNode* source_fn_start = &source_ast->nodes[source_fn_def->a];
         const AstFnSignature* source_signature =
             &source_ast->fn_signatures[source_fn_start->a];
         if (source_signature->param_count == 0) {
@@ -7621,53 +7613,48 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             }
         }
 
-        u32 source_receiver_type =
-            imported ? sema_import_type((Lexer*)source_lexer,
-                                        source_sema,
-                                        lexer,
-                                        sema,
-                                        receiver_type)
-                     : receiver_type;
-        u32 source_target_receiver = source_receiver_type;
-        bool target_matched        = true;
+        u32  source_receiver_type = imported
+                                        ? sema_import_type((Lexer*)source_lexer,
+                                                           source_sema,
+                                                           lexer,
+                                                           sema,
+                                                           receiver_type)
+                                        : receiver_type;
+        u32  source_target_receiver = source_receiver_type;
+        bool target_matched         = true;
         if (generic != NULL) {
-            target_matched =
-                sema_bind_generic_type_node(source_lexer,
-                                            source_ast,
-                                            source_sema,
-                                            generic,
-                                            source_method
-                                                ->target_type_node_index,
-                                            source_target_receiver,
-                                            source_arg_types);
-            if (!target_matched &&
-                source_receiver_type != sema_no_type() &&
+            target_matched = sema_bind_generic_type_node(
+                source_lexer,
+                source_ast,
+                source_sema,
+                generic,
+                source_method->target_type_node_index,
+                source_target_receiver,
+                source_arg_types);
+            if (!target_matched && source_receiver_type != sema_no_type() &&
                 source_sema->types[source_receiver_type].kind == STK_Pointer) {
                 source_target_receiver =
                     source_sema->types[source_receiver_type].first_param_type;
-                target_matched =
-                    sema_bind_generic_type_node(
-                        source_lexer,
-                        source_ast,
-                        source_sema,
-                        generic,
-                        source_method->target_type_node_index,
-                        source_target_receiver,
-                        source_arg_types);
+                target_matched = sema_bind_generic_type_node(
+                    source_lexer,
+                    source_ast,
+                    source_sema,
+                    generic,
+                    source_method->target_type_node_index,
+                    source_target_receiver,
+                    source_arg_types);
             }
         } else {
             u32 target_type = sema_no_type();
-            target_matched = sema_resolve_type_node(source_lexer,
-                                                    source_ast,
-                                                    source_sema,
-                                                    source_method
-                                                        ->target_type_node_index,
-                                                    &target_type) &&
-                             sema_type_matches(source_sema,
-                                               target_type,
-                                               source_target_receiver);
-            if (!target_matched &&
-                source_receiver_type != sema_no_type() &&
+            target_matched =
+                sema_resolve_type_node(source_lexer,
+                                       source_ast,
+                                       source_sema,
+                                       source_method->target_type_node_index,
+                                       &target_type) &&
+                sema_type_matches(
+                    source_sema, target_type, source_target_receiver);
+            if (!target_matched && source_receiver_type != sema_no_type() &&
                 source_sema->types[source_receiver_type].kind == STK_Pointer) {
                 source_target_receiver =
                     source_sema->types[source_receiver_type].first_param_type;
@@ -7684,8 +7671,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
         if (generic != NULL) {
             subst = (SemaTypeSubstitution){
                 .param_symbols =
-                    &source_ast
-                         ->generic_param_symbols[generic->first_symbol],
+                    &source_ast->generic_param_symbols[generic->first_symbol],
                 .arg_types = source_arg_types,
                 .count     = generic->symbol_count,
             };
@@ -7705,14 +7691,12 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
         }
 
         bool receiver_ref = false;
-        if (!sema_type_matches(source_sema,
-                               expected_self,
-                               source_receiver_type)) {
+        if (!sema_type_matches(
+                source_sema, expected_self, source_receiver_type)) {
             u32 pointer_receiver =
                 sema_add_pointer_type(source_sema, source_receiver_type);
-            if (sema_type_matches(source_sema,
-                                  expected_self,
-                                  pointer_receiver)) {
+            if (sema_type_matches(
+                    source_sema, expected_self, pointer_receiver)) {
                 receiver_ref = true;
             } else {
                 array_free(source_arg_types);
@@ -7739,8 +7723,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
 
         for (u32 j = 0; j < call->arg_count; ++j) {
             const AstParam* source_param =
-                &source_ast
-                     ->params[source_signature->first_param + 1 + j];
+                &source_ast->params[source_signature->first_param + 1 + j];
             u32 expected_source = sema_no_type();
             if (!sema_resolve_type_node_ex(source_lexer,
                                            source_ast,
@@ -7751,15 +7734,14 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 array_free(source_arg_types);
                 return false;
             }
-            u32 expected_dst =
-                imported ? sema_import_type((Lexer*)lexer,
-                                            sema,
-                                            source_lexer,
-                                            source_sema,
-                                            expected_source)
-                         : expected_source;
-            u32 arg_node = ast->call_args[call->first_arg + j];
-            u32 arg_type = sema_no_type();
+            u32 expected_dst = imported ? sema_import_type((Lexer*)lexer,
+                                                           sema,
+                                                           source_lexer,
+                                                           source_sema,
+                                                           expected_source)
+                                        : expected_source;
+            u32 arg_node     = ast->call_args[call->first_arg + j];
+            u32 arg_type     = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, arg_node, expected_dst, &arg_type)) {
                 array_free(source_arg_types);
@@ -7816,17 +7798,17 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
         array_free(source_arg_types);
 
         if (imported) {
-            symbol = sema_import_symbol_handle(
-                (Lexer*)lexer, source_lexer, symbol);
+            symbol =
+                sema_import_symbol_handle((Lexer*)lexer, source_lexer, symbol);
             fn_type_index = sema_import_type(
                 (Lexer*)lexer, sema, source_lexer, source_sema, fn_type_index);
         }
 
         *out_call = (SemaResolvedMethodCall){
-            .decl_index             = method->decl_index,
-            .fn_type_index          = fn_type_index,
-            .lowered_symbol_handle  = symbol,
-            .receiver_ref           = receiver_ref,
+            .decl_index            = method->decl_index,
+            .fn_type_index         = fn_type_index,
+            .lowered_symbol_handle = symbol,
+            .receiver_ref          = receiver_ref,
         };
         *out_found = true;
         return true;

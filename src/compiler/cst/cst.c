@@ -4739,7 +4739,7 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
                    .body_node_index        = block_node,
                    .generic_params_index   = generic_params_index,
                });
-    state->cst.nodes[impl_node].a = impl_index;
+    state->cst.nodes[impl_node].a  = impl_index;
     state->cst.nodes[block_node].a = first_item;
     state->cst.nodes[block_node].b = (u32)array_count(state->cst.nodes);
     if (out_node != NULL) {

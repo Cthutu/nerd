@@ -2620,15 +2620,15 @@ internal bool ir_try_lower_dynarray_method_call(const Lexer*   lex,
     return true;
 }
 
-internal bool ir_try_lower_method_call(const Ast*      ast,
-                                       const Sema*     sema,
-                                       const AstNode*  call_node,
-                                       IrLoopLabels    loop,
+internal bool ir_try_lower_method_call(const Ast*     ast,
+                                       const Sema*    sema,
+                                       const AstNode* call_node,
+                                       IrLoopLabels   loop,
                                        Array(IrValue) node_values,
-                                       u64*            next_value_index,
-                                       IrValue*        out_value,
-                                       Ir*             ir,
-                                       const Lexer*    lex)
+                                       u64*         next_value_index,
+                                       IrValue*     out_value,
+                                       Ir*          ir,
+                                       const Lexer* lex)
 {
     u32 call_node_index = (u32)(call_node - ast->nodes);
     if (call_node_index >= array_count(sema->node_method_call_decl_indices) ||
@@ -2648,19 +2648,19 @@ internal bool ir_try_lower_method_call(const Ast*      ast,
         .value.integer = lowered_symbol,
     };
 
-    const AstCallInfo* call      = &ast->calls[call_node->b];
-    Array(IrValue)     args      = NULL;
-    Array(u32)         arg_types = NULL;
+    const AstCallInfo* call = &ast->calls[call_node->b];
+    Array(IrValue) args     = NULL;
+    Array(u32) arg_types    = NULL;
 
-    IrValue receiver = ir_lower_node(lex,
-                                     ast,
-                                     sema,
-                                     callee_node->a,
-                                     loop,
-                                     node_values,
-                                     next_value_index,
-                                     ir);
-    u32 receiver_type = ir_node_type_index(ast, sema, callee_node->a);
+    IrValue receiver        = ir_lower_node(lex,
+                                            ast,
+                                            sema,
+                                            callee_node->a,
+                                            loop,
+                                            node_values,
+                                            next_value_index,
+                                            ir);
+    u32     receiver_type   = ir_node_type_index(ast, sema, callee_node->a);
     if (sema->node_method_call_receiver_refs[call_node_index]) {
         IrValue receiver_ref = {
             .kind          = IR_VALUE_VARIABLE,

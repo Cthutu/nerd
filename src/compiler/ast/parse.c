@@ -3372,7 +3372,7 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
                    .body_node_index        = block_index,
                    .generic_params_index   = generic_params_index,
                });
-    state->nodes[impl_node].a = impl_index;
+    state->nodes[impl_node].a   = impl_index;
     state->nodes[block_index].a = first_item;
     state->nodes[block_index].b = (u32)array_count(state->nodes);
     if (out_node) {
