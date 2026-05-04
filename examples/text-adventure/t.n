@@ -16,9 +16,6 @@ main :: fn () {
 
     prn($"Popped: {stack.pop()}")
     prn($"Popped: {stack.pop()}")
-
-    test_fn()
-    test_fn2()
 }
 
 test "Basic" {

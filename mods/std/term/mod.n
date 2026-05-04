@@ -6,8 +6,33 @@
 
 use std.io
 
-pub use test1
+ffi "c" {
+    ioctl (fd: i32, request: i32, ...) -> i32
+    abort ()
+}
 
-pub test_fn :: fn () {
-    prn("This is a test")
+winsize :: plex #c {
+    row u16
+    col u16
+    xpixel u16
+    ypixel u16
+}
+
+STDOUT_FILENO :: 1
+TIOCGWINSZ :: 0x5413
+
+pub term_size :: fn () -> (i32, i32) {
+    width: i32
+    height: i32
+    ws : winsize
+
+    on ioctl(STDOUT_FILENO, TIOCGWINSZ, ^ws) == 0 => {
+        width = ws.col.as(i32)
+        height = ws.row.as(i32)
+    } else {
+        eprn("Failed to get terminal size on Unix")
+        abort()
+    }
+
+    return (width, height)
 }

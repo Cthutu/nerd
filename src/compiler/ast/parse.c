@@ -927,6 +927,19 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
     return true;
 }
 
+internal bool ast_error_ffi_block_expected_signature(AstParseState* state,
+                                                     AstToken*      token)
+{
+    return error_0203_expected_token_ex(
+        state->lexer->source,
+        ast_token_span(state, token),
+        TK_LParen,
+        token->kind,
+        "FFI blocks only contain foreign function signatures of the form "
+        "`name (...) -> T`.",
+        "Move constants and Nerd bindings outside the `ffi` block.");
+}
+
 bool ast_parse_type(AstParseState* state, u32* out_node)
 {
     ASSERT(out_node != NULL, "Type parser requires an output node");
@@ -3664,6 +3677,16 @@ bool ast_parse_declaration(AstParseState* state,
             }
 
             while (state->token.kind != TK_RBrace) {
+                if (state->token.kind == TK_FatArrow) {
+                    return error_0203_expected_token_ex(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_ThinArrow,
+                        state->token.kind,
+                        "FFI signatures use `->` for return types; `=>` starts "
+                        "an expression function body.",
+                        "Write `name (...) -> T` inside an `ffi` block.");
+                }
                 if (state->token.kind != TK_Symbol) {
                     return error_0203_expected_token(
                         state->lexer->source,
@@ -3690,6 +3713,11 @@ bool ast_parse_declaration(AstParseState* state,
                 }
 
                 if (state->token.kind != TK_LParen) {
+                    if (state->token.kind == TK_Colon ||
+                        state->token.kind == TK_Equal) {
+                        return ast_error_ffi_block_expected_signature(
+                            state, &state->token);
+                    }
                     return error_0203_expected_token(
                         state->lexer->source,
                         ast_token_span(state, &state->token),

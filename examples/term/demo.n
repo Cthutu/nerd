@@ -1,0 +1,13 @@
+--
+-- Terminal demo
+--
+-- Copyright (C)2026 Matt Davies, all rights reserved
+--
+
+use std.io
+use std.term
+
+main :: fn () {
+    (width, height) := term_size()
+    prn($"The terminal size is {width}x{height}")
+}

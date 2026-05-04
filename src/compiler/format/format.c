@@ -357,6 +357,15 @@ internal void   format_emit_expr(StringBuilder* sb,
                                  int            parent_precedence);
 internal string format_assignment_operator(const Lexer*   lexer,
                                            const CstNode* stmt);
+internal bool   format_use_sort_key(StringBuilder* sb,
+                                    const Cst*     cst,
+                                    const Lexer*   lexer,
+                                    u32            node_index);
+internal bool   format_emit_sorted_use_run(StringBuilder* sb,
+                                           const Cst*     cst,
+                                           const Lexer*   lexer,
+                                           Array(u32) use_nodes,
+                                           u32 indent_level);
 internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index);
 internal void
@@ -388,6 +397,12 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            u32            indent_level);
 
 internal u32 g_format_expr_indent_level = 0;
+
+typedef struct {
+    u32    node_index;
+    string key;
+    bool   is_public;
+} FormatUseItem;
 
 internal void format_emit_pattern(StringBuilder* sb,
                                   const Cst*     cst,
@@ -1398,6 +1413,22 @@ internal bool format_string_has_newline(string text)
         }
     }
     return false;
+}
+
+internal int format_string_compare(string a, string b)
+{
+    usize count = a.count < b.count ? a.count : b.count;
+    int   cmp   = memcmp(a.data, b.data, count);
+    if (cmp != 0) {
+        return cmp;
+    }
+    if (a.count < b.count) {
+        return -1;
+    }
+    if (a.count > b.count) {
+        return 1;
+    }
+    return 0;
 }
 
 internal usize format_find_string_split(string text, usize start, usize max_end)
@@ -2843,6 +2874,35 @@ internal void format_emit_block_contents(StringBuilder* sb,
             sb_append_char(sb, '\n');
         }
 
+        if (cst->nodes[i].kind == CK_Use) {
+            Array(u32) use_nodes = NULL;
+            u32 last_use_index   = i;
+            u32 cursor           = cst_block_statement_end_exclusive(cst, i);
+            array_push(use_nodes, i);
+            while (true) {
+                u32 next_statement = format_next_block_statement(
+                    cst, cursor, block->b, block_node_index);
+                if (next_statement == U32_MAX ||
+                    cst->nodes[next_statement].kind != CK_Use) {
+                    break;
+                }
+                array_push(use_nodes, next_statement);
+                last_use_index = next_statement;
+                cursor         = next_statement + 1;
+            }
+
+            if (!format_emit_sorted_use_run(
+                    sb, cst, lexer, use_nodes, indent_level)) {
+                array_free(use_nodes);
+                break;
+            }
+
+            previous_statement_index = last_use_index;
+            i = cst_block_statement_end_exclusive(cst, last_use_index) - 1;
+            array_free(use_nodes);
+            continue;
+        }
+
         FormatAlignedStatement first_aligned = {0};
         if (format_collect_aligned_statement(
                 &align_arena, cst, lexer, i, &first_aligned)) {
@@ -3342,6 +3402,104 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 }
 
+internal bool format_use_sort_key(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind != CK_Use) {
+        return false;
+    }
+
+    if (cst->nodes[node->a].kind == CK_ModRef) {
+        format_emit_module_path(sb, cst, lexer, cst->nodes[node->a].a);
+        return true;
+    }
+
+    format_emit_expr(sb, cst, lexer, node->a, 0);
+    return true;
+}
+
+internal void format_sort_use_items(Array(FormatUseItem) items)
+{
+    for (usize i = 1; i < array_count(items); ++i) {
+        FormatUseItem item = items[i];
+        usize         j    = i;
+        while (j > 0 && format_string_compare(items[j - 1].key, item.key) > 0) {
+            items[j] = items[j - 1];
+            j--;
+        }
+        items[j] = item;
+    }
+}
+
+internal void format_emit_use_statement_from_key(StringBuilder* sb,
+                                                 FormatUseItem  item,
+                                                 u32            indent_level)
+{
+    format_emit_indent(sb, indent_level);
+    if (item.is_public) {
+        sb_append_cstr(sb, "pub ");
+    }
+    sb_append_cstr(sb, "use ");
+    sb_append_string(sb, item.key);
+    sb_append_char(sb, '\n');
+}
+
+internal bool format_emit_sorted_use_run(StringBuilder* sb,
+                                         const Cst*     cst,
+                                         const Lexer*   lexer,
+                                         Array(u32) use_nodes,
+                                         u32 indent_level)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    Array(FormatUseItem) private_items = NULL;
+    Array(FormatUseItem) public_items  = NULL;
+    for (usize i = 0; i < array_count(use_nodes); ++i) {
+        u32            node_index = use_nodes[i];
+        const CstNode* node       = &cst->nodes[node_index];
+
+        StringBuilder key_sb      = {0};
+        sb_init(&key_sb, &arena);
+        if (!format_use_sort_key(&key_sb, cst, lexer, node_index)) {
+            arena_done(&arena);
+            return false;
+        }
+
+        FormatUseItem item = {
+            .node_index = node_index,
+            .key        = sb_to_string(&key_sb),
+            .is_public  = (node->flags & CNF_Public) != 0,
+        };
+        if (item.is_public) {
+            array_push(public_items, item);
+        } else {
+            array_push(private_items, item);
+        }
+    }
+
+    format_sort_use_items(private_items);
+    format_sort_use_items(public_items);
+
+    for (usize i = 0; i < array_count(private_items); ++i) {
+        format_emit_use_statement_from_key(sb, private_items[i], indent_level);
+    }
+    if (array_count(private_items) > 0 && array_count(public_items) > 0) {
+        sb_append_char(sb, '\n');
+    }
+    for (usize i = 0; i < array_count(public_items); ++i) {
+        format_emit_use_statement_from_key(sb, public_items[i], indent_level);
+    }
+
+    array_free(private_items);
+    array_free(public_items);
+    arena_done(&arena);
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Format one top-level value node.
 
@@ -3470,18 +3628,29 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         }
 
         if (node->kind == CK_Use) {
-            if (node->flags & CNF_Public) {
-                sb_append_cstr(sb, "pub ");
+            Array(u32) use_nodes = NULL;
+            array_push(use_nodes, node_index);
+
+            u32 last_use_binding = i;
+            for (u32 cursor = i + 1; cursor < array_count(cst.bindings);
+                 ++cursor) {
+                u32 next_index = cst.bindings[cursor];
+                if (cst.nodes[next_index].kind != CK_Use) {
+                    break;
+                }
+                array_push(use_nodes, next_index);
+                last_use_binding = cursor;
             }
-            sb_append_cstr(sb, "use ");
-            if (cst.nodes[node->a].kind == CK_ModRef) {
-                format_emit_module_path(sb, &cst, &lexer, cst.nodes[node->a].a);
-            } else {
-                format_emit_expr(sb, &cst, &lexer, node->a, 0);
+
+            if (!format_emit_sorted_use_run(sb, &cst, &lexer, use_nodes, 0)) {
+                array_free(use_nodes);
+                break;
             }
-            sb_append_char(sb, '\n');
+
+            i                      = last_use_binding;
             first_binding          = false;
-            previous_binding_index = node_index;
+            previous_binding_index = cst.bindings[last_use_binding];
+            array_free(use_nodes);
             continue;
         }
 

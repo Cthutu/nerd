@@ -1,5 +1,0 @@
-use std.io
-
-pub test_fn2 :: fn () {
-    prn("This is test 2")
-}

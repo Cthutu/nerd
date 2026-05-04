@@ -2,26 +2,43 @@
 --
 -- This module now loads through the normal module pipeline.
 
-ffi "c" printf (^u8, ...) -> i32
-ffi "c" scanf (^u8, ...) -> i32
-ffi "c" strlen (^u8) -> usize
-ffi "c" getchar () -> i32
+ffi "c" {
+    printf (^u8, ...) -> i32
+    scanf (^u8, ...) -> i32
+    strlen (^u8) -> usize
+    getchar () -> i32
+    write (i32, ^u8, usize) -> isize
+}
 
-input_buf: [256]u8
-input_len: usize
+STDOUT_FILENO :: 1
+STDERR_FILENO :: 2
 
-pub pr :: fn(text: string) -> void {
-    printf(c"%.*s", text.count.as(i32), text.data)
+input_buf : [256]u8
+input_len : usize
+
+pub pr :: fn (text: string) -> void {
+    write(STDOUT_FILENO, text.data, text.count)
     return
 }
 
-pub prn :: fn(text: string) -> void {
+pub epr :: fn (text: string) -> void {
+    write(STDERR_FILENO, text.data, text.count)
+    return
+}
+
+pub prn :: fn (text: string) -> void {
     pr(text)
-    printf(c"\n")
+    write(STDOUT_FILENO, c"\n", 1)
     return
 }
 
-pub input :: fn(prompt: string) -> string {
+pub eprn :: fn (text: string) -> void {
+    epr(text)
+    write(STDERR_FILENO, c"\n", 1)
+    return
+}
+
+pub input :: fn (prompt: string) -> string {
     pr(prompt)
     read_count := scanf(c"%255[^\n]", input_buf[..].data)
     ch := getchar()
