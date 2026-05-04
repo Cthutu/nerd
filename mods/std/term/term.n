@@ -26,6 +26,8 @@ g_term_fb_ink        : [..]u32
 g_term_fb_paper      : [..]u32
 g_term_fb_size       : (i32, i32)
 
+TERM_FB_CHAR_WIDE_TAIL :: 0xffffffff
+
 --
 -- Start up
 --
@@ -79,11 +81,11 @@ term_stop :: fn () {
 --
 
 term_alt_enter :: fn () {
-    pr("\x1b[?1049h\x1b[?7l\x1b[?1007l\x1b[?1002h\x1b[?1006h")
+    pr("\x1b[?1049h\x1b[?1007l\x1b[?1002h\x1b[?1006h")
 }
 
 term_alt_leave :: fn () {
-    pr("\x1b[?1002l\x1b[?1006l\x1b[?1007h\x1b[?7h\x1b[?1049l")
+    pr("\x1b[?1002l\x1b[?1006l\x1b[?1007h\x1b[?1049l")
 }
 
 --
@@ -691,6 +693,280 @@ term_apply_colours :: fn (ink: u32, paper: u32) {
     term_apply_paper(paper)
 }
 
+term_ansi_palette :: fn (index: i32) -> u32 {
+    on index < 0 => index = 0
+    on index > 15 => index = 15
+
+    on index == 0 => return term_rgb(0, 0, 0)
+    on index == 1 => return term_rgb(128, 0, 0)
+    on index == 2 => return term_rgb(0, 128, 0)
+    on index == 3 => return term_rgb(128, 128, 0)
+    on index == 4 => return term_rgb(0, 0, 128)
+    on index == 5 => return term_rgb(128, 0, 128)
+    on index == 6 => return term_rgb(0, 128, 128)
+    on index == 7 => return term_rgb(192, 192, 192)
+    on index == 8 => return term_rgb(128, 128, 128)
+    on index == 9 => return term_rgb(255, 0, 0)
+    on index == 10 => return term_rgb(0, 255, 0)
+    on index == 11 => return term_rgb(255, 255, 0)
+    on index == 12 => return term_rgb(0, 0, 255)
+    on index == 13 => return term_rgb(255, 0, 255)
+    on index == 14 => return term_rgb(0, 255, 255)
+    return term_rgb(255, 255, 255)
+}
+
+term_ansi_cube_level :: fn (index: i32) -> u8 {
+    on index <= 0 => return 0
+    on index == 1 => return 95
+    on index == 2 => return 135
+    on index == 3 => return 175
+    on index == 4 => return 215
+    return 255
+}
+
+term_ansi_256_colour :: fn (index: i32) -> u32 {
+    on index < 16 => return term_ansi_palette(index)
+
+    on index < 232 => {
+        base := index - 16
+        r := term_ansi_cube_level(base / 36)
+        g := term_ansi_cube_level((base / 6) % 6)
+        b := term_ansi_cube_level(base % 6)
+        return term_rgb(r, g, b)
+    }
+
+    on index > 255 => index = 255
+    grey := (8 + ((index - 232) * 10)).as(u8)
+    return term_rgb(grey, grey, grey)
+}
+
+term_apply_sgr :: fn (params: [16]i32,
+                      count: usize,
+                      base_ink: u32,
+                      base_paper: u32,
+                      io_ink: ^u32,
+                      io_paper: ^u32) {
+    on count == 0 => {
+        io_ink^ = base_ink
+        io_paper^ = base_paper
+        return
+    }
+
+    i: usize = 0
+    for i < count {
+        on params[i] == 0 => {
+            io_ink^ = base_ink
+            io_paper^ = base_paper
+        } else {
+            on params[i] >= 30 && params[i] <= 37 => io_ink^ = term_ansi_palette(params[i] - 30)
+            on params[i] >= 90 && params[i] <= 97 => io_ink^ = term_ansi_palette((params[i] - 90) + 8)
+            on params[i] >= 40 && params[i] <= 47 => io_paper^ = term_ansi_palette(params[i] - 40)
+            on params[i] >= 100 && params[i] <= 107 => io_paper^ = term_ansi_palette((params[i] - 100) + 8)
+            on params[i] == 39 => io_ink^ = base_ink
+            on params[i] == 49 => io_paper^ = base_paper
+
+            on (params[i] == 38 || params[i] == 48) && i + 1 < count => {
+                is_ink := params[i] == 38
+                mode := params[i + 1]
+                i += 1
+
+                on mode == 5 && i + 1 < count => {
+                    colour := term_ansi_256_colour(params[i + 1])
+                    on is_ink => io_ink^ = colour else io_paper^ = colour
+                    i += 1
+                } else {
+                    on mode == 2 && i + 3 < count => {
+                        r := params[i + 1]
+                        g := params[i + 2]
+                        b := params[i + 3]
+                        on r < 0 => r = 0
+                        on g < 0 => g = 0
+                        on b < 0 => b = 0
+                        on r > 255 => r = 255
+                        on g > 255 => g = 255
+                        on b > 255 => b = 255
+                        colour := term_rgb(r.as(u8), g.as(u8), b.as(u8))
+                        on is_ink => io_ink^ = colour else io_paper^ = colour
+                        i += 3
+                    }
+                }
+            }
+        }
+
+        i += 1
+    }
+}
+
+term_try_parse_sgr :: fn (text: string,
+                          start: usize,
+                          base_ink: u32,
+                          base_paper: u32,
+                          io_ink: ^u32,
+                          io_paper: ^u32) -> usize {
+    on start + 2 > text.count || text.data[start] != 27 || text.data[start + 1] != '[' => return 0
+
+    params: [16]i32
+    count: usize = 0
+    current: i32 = 0
+    have_digit := no
+    i := start + 2
+
+    for i < text.count {
+        ch := text.data[i]
+        on ch >= '0' && ch <= '9' => {
+            current = current * 10 + (ch - '0').as(i32)
+            have_digit = yes
+            i += 1
+            continue
+        }
+
+        on ch == ';' => {
+            on count < 16 => {
+                params[count] = on have_digit => current else 0
+                count += 1
+            }
+            current = 0
+            have_digit = no
+            i += 1
+            continue
+        }
+
+        on ch == 'm' => {
+            on count < 16 => {
+                params[count] = on have_digit => current else 0
+                count += 1
+            }
+            term_apply_sgr(params, count, base_ink, base_paper, io_ink, io_paper)
+            return (i + 1) - start
+        }
+
+        return 0
+    }
+
+    return 0
+}
+
+term_codepoint_width :: fn (ch: u32) -> usize {
+    on ch == 0 => return 0
+    on ch < 0x20 || (ch >= 0x7f && ch < 0xa0) => return 0
+
+    on (ch >= 0x1100 && ch <= 0x115f) ||
+       (ch >= 0x2329 && ch <= 0x232a) ||
+       (ch >= 0x2e80 && ch <= 0x2ffb) ||
+       (ch >= 0x3000 && ch <= 0x303e) ||
+       (ch >= 0x3041 && ch <= 0x33ff) ||
+       (ch >= 0x3400 && ch <= 0x4dbf) ||
+       (ch >= 0x4e00 && ch <= 0xa4c6) ||
+       (ch >= 0xac00 && ch <= 0xd7a3) ||
+       (ch >= 0xf900 && ch <= 0xfaff) ||
+       (ch >= 0xfe10 && ch <= 0xfe19) ||
+       (ch >= 0xfe30 && ch <= 0xfe6b) ||
+       (ch >= 0xff01 && ch <= 0xff60) ||
+       (ch >= 0xffe0 && ch <= 0xffe6) ||
+       (ch >= 0x1f300 && ch <= 0x1f64f) ||
+       (ch >= 0x1f680 && ch <= 0x1f6ff) ||
+       (ch >= 0x1f900 && ch <= 0x1f9ff) => return 2
+
+    return 1
+}
+
+term_utf8_next :: fn (text: string, start: usize, out_ch: ^u32, out_bytes: ^usize, out_width: ^usize) {
+    on start >= text.count => {
+        out_ch^ = 0
+        out_bytes^ = 0
+        out_width^ = 0
+        return
+    }
+
+    b0 := text.data[start]
+    ch: u32 = ' '.as(u32)
+    bytes: usize = 1
+    ok := yes
+
+    on b0 < 0x80 => {
+        ch = b0.as(u32)
+    } else {
+        on b0 >= 0xc2 && b0 < 0xe0 && start + 1 < text.count => {
+            b1 := text.data[start + 1]
+            ok = (b1 & 0xc0) == 0x80
+            value := ((b0.as(i32) % 32) * 64) + (b1.as(i32) % 64)
+            ch = value.as(u32)
+            bytes = 2
+        } else {
+            on b0 >= 0xe0 && b0 < 0xf0 && start + 2 < text.count => {
+                b1 := text.data[start + 1]
+                b2 := text.data[start + 2]
+                ok = (b1 & 0xc0) == 0x80 && (b2 & 0xc0) == 0x80
+                value := ((b0.as(i32) % 16) * 4096) +
+                         ((b1.as(i32) % 64) * 64) +
+                         (b2.as(i32) % 64)
+                ch = value.as(u32)
+                bytes = 3
+                on ch < 0x800 || (ch >= 0xd800 && ch <= 0xdfff) => ok = no
+            } else {
+                on b0 >= 0xf0 && b0 < 0xf5 && start + 3 < text.count => {
+                    b1 := text.data[start + 1]
+                    b2 := text.data[start + 2]
+                    b3 := text.data[start + 3]
+                    ok = (b1 & 0xc0) == 0x80 && (b2 & 0xc0) == 0x80 && (b3 & 0xc0) == 0x80
+                    value := ((b0.as(i32) % 8) * 262144) +
+                             ((b1.as(i32) % 64) * 4096) +
+                             ((b2.as(i32) % 64) * 64) +
+                             (b3.as(i32) % 64)
+                    ch = value.as(u32)
+                    bytes = 4
+                    on ch < 0x10000 || ch > 0x10ffff => ok = no
+                } else {
+                    ok = no
+                }
+            }
+        }
+    }
+
+    on !ok => {
+        ch = ' '.as(u32)
+        bytes = 1
+    }
+
+    width := term_codepoint_width(ch)
+    on width == 0 => width = 1
+    out_ch^ = ch
+    out_bytes^ = bytes
+    out_width^ = width
+}
+
+term_print_codepoint :: fn (ch: u32) {
+    on ch == TERM_FB_CHAR_WIDE_TAIL => return
+
+    bytes: [4]u8
+    count: usize = 1
+
+    on ch <= 0x7f => {
+        bytes[0] = ch.as(u8)
+    } else {
+        on ch <= 0x7ff => {
+            bytes[0] = (0xc0 + ((ch / 0x40) % 0x20)).as(u8)
+            bytes[1] = (0x80 + (ch % 0x40)).as(u8)
+            count = 2
+        } else {
+            on ch <= 0xffff => {
+                bytes[0] = (0xe0 + ((ch / 0x1000) % 0x10)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[2] = (0x80 + (ch % 0x40)).as(u8)
+                count = 3
+            } else {
+                bytes[0] = (0xf0 + ((ch / 0x40000) % 0x08)).as(u8)
+                bytes[1] = (0x80 + ((ch / 0x1000) % 0x40)).as(u8)
+                bytes[2] = (0x80 + ((ch / 0x40) % 0x40)).as(u8)
+                bytes[3] = (0x80 + (ch % 0x40)).as(u8)
+                count = 4
+            }
+        }
+    }
+
+    pr(bytes[0 .. count].as(string))
+}
+
 --
 -- Framebuffer
 --
@@ -745,28 +1021,50 @@ pub term_fb_rect :: fn (rect: TermRect, ch: u32, ink: u32, paper: u32) {
 }
 
 pub term_fb_write :: fn (x: i32, y: i32, text: string) {
-    on y < 0 || y >= g_term_fb_size.1 => return
+    on g_term_fb_size.0 == 0 || g_term_fb_size.1 == 0 => return
 
     cx := x
-    for i: usize = 0; i < text.count; i += 1 {
-        ch := text.data[i]
-        on ch == '\n' => return
+    cy := y
+    i: usize = 0
+    for i < text.count && cy < g_term_fb_size.1 {
+        ch: u32
+        bytes: usize
+        width: usize
+        term_utf8_next(text, i, ^ch, ^bytes, ^width)
+        i += bytes
 
-        on ch == 27 => {
-            -- Skip simple ANSI escape sequences. Colour parsing can be ported
-            -- after the framebuffer path is stable.
-            i += 1
-            for i < text.count && text.data[i] != 109 {
-                i += 1
-            }
+        on ch == '\n' => {
+            cx = x
+            cy += 1
             continue
         }
 
-        on cx >= 0 && cx < g_term_fb_size.0 => {
-            index := term_fb_index(cx, y)
-            (^g_term_fb_chars[index])^ = ch.as(u32)
+        on cx >= g_term_fb_size.0 => {
+            cx = x
+            cy += 1
         }
-        cx += 1
+        on cy >= g_term_fb_size.1 => return
+
+        on width > (g_term_fb_size.0 - cx).as(usize) => {
+            cx = x
+            cy += 1
+        }
+        on cy >= g_term_fb_size.1 => return
+
+        on cx >= 0 && cx < g_term_fb_size.0 && width <= (g_term_fb_size.0 - cx).as(usize) => {
+            index := term_fb_index(cx, cy)
+            (^g_term_fb_chars[index])^ = ch
+            for cell: usize = 1; cell < width; cell += 1 {
+                tail_x := cx + cell.as(i32)
+                on tail_x < g_term_fb_size.0 => {
+                    tail_index := term_fb_index(tail_x, cy)
+                    (^g_term_fb_chars[tail_index])^ = TERM_FB_CHAR_WIDE_TAIL
+                }
+            }
+            cx += width.as(i32)
+        } else {
+            cx += width.as(i32)
+        }
     }
 }
 
@@ -799,8 +1097,7 @@ term_fb_present :: fn () {
                 colours_set = yes
             }
 
-            ch: [1]u8 = [g_term_fb_chars[index].as(u8)]
-            pr(ch[..].as(string))
+            term_print_codepoint(g_term_fb_chars[index])
         }
     }
     pr("\x1b[0m")
@@ -812,4 +1109,20 @@ test "framebuffer colours split into rgb components" {
     assert term_colour_r(colour) == 12
     assert term_colour_g(colour) == 34
     assert term_colour_b(colour) == 56
+}
+
+test "utf8 decoder stores unicode codepoints" {
+    ch: u32
+    bytes: usize
+    width: usize
+
+    term_utf8_next("◆", 0, ^ch, ^bytes, ^width)
+    assert ch == 0x25c6
+    assert bytes == 3
+    assert width == 1
+
+    term_utf8_next("界", 0, ^ch, ^bytes, ^width)
+    assert ch == 0x754c
+    assert bytes == 3
+    assert width == 2
 }

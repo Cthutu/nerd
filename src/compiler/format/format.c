@@ -284,7 +284,11 @@ internal void format_emit_string_text(StringBuilder* sb, string text)
             sb_append_cstr(sb, "\\\"");
             break;
         default:
-            sb_append_char(sb, (char)text.data[i]);
+            if (text.data[i] < 0x20 || text.data[i] == 0x7f) {
+                sb_format(sb, "\\x%02x", text.data[i]);
+            } else {
+                sb_append_char(sb, (char)text.data[i]);
+            }
             break;
         }
     }

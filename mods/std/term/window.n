@@ -137,24 +137,65 @@ impl TermWindow {
 
     pub write :: fn (window: ^Self, x: i32, y: i32, text: string) {
         on y < 0 || y >= window.rect.height.as(i32) => return
+        on window.rect.width == 0 => return
 
+        base_x := x
+        on base_x < 0 => base_x = 0
+        on base_x >= window.rect.width.as(i32) => base_x = window.rect.width.as(i32) - 1
+        base_index := y.as(usize) * window.rect.width.as(usize) + base_x.as(usize)
+        base_ink := window.cells[base_index].ink
+        base_paper := window.cells[base_index].paper
+        current_ink := base_ink
+        current_paper := base_paper
         cx := x
-        for i: usize = 0; i < text.count; i += 1 {
-            ch := text.data[i]
-            on ch == '\n' => return
-            on ch == 27 => {
-                i += 1
-                for i < text.count && text.data[i] != 'm' {
-                    i += 1
-                }
+        i: usize = 0
+        for i < text.count {
+            sgr_bytes := term_try_parse_sgr(text, i, base_ink, base_paper, ^current_ink, ^current_paper)
+            on sgr_bytes != 0 => {
+                i += sgr_bytes
                 continue
             }
+
+            ch: u32
+            bytes: usize
+            glyph_width: usize
+            term_utf8_next(text, i, ^ch, ^bytes, ^glyph_width)
+            i += bytes
+
+            on ch == '\n' => return
+
+            on glyph_width > window.rect.width.as(usize) => {
+                cx += glyph_width.as(i32)
+                continue
+            }
+
+            on cx + glyph_width.as(i32) <= 0 => {
+                cx += glyph_width.as(i32)
+                continue
+            }
+
+            on cx >= window.rect.width.as(i32) => return
+            on cx < 0 => {
+                cx += glyph_width.as(i32)
+                continue
+            }
+            on cx + glyph_width.as(i32) > window.rect.width.as(i32) => return
+
             on cx >= 0 && cx < window.rect.width.as(i32) => {
                 index := (y.as(usize) * window.rect.width.as(usize)) + cx.as(usize)
                 cell := ^window.cells[index]
-                cell^.ch = ch.as(u32)
+                cell^.ch = ch
+                cell^.ink = current_ink
+                cell^.paper = current_paper
+
+                for tail: usize = 1; tail < glyph_width && cx + tail.as(i32) < window.rect.width.as(i32); tail += 1 {
+                    tail_cell := ^window.cells[index + tail]
+                    tail_cell^.ch = TERM_FB_CHAR_WIDE_TAIL
+                    tail_cell^.ink = current_ink
+                    tail_cell^.paper = current_paper
+                }
             }
-            cx += 1
+            cx += glyph_width.as(i32)
         }
     }
 
@@ -316,4 +357,41 @@ test "window box draws expected border characters" {
     assert window.cells[9].ch == '-'.as(u32)
     assert window.cells[10].ch == '-'.as(u32)
     assert window.cells[11].ch == '/'.as(u32)
+}
+
+test "window write applies ansi colours and resets to base colours" {
+    window: TermWindow
+    window.init(TermRect { x: 0, y: 0, width: 4, height: 1 })
+    defer window.done()
+
+    base_ink := term_rgb(1, 2, 3)
+    base_paper := term_rgb(4, 5, 6)
+    window.clear('.'.as(u32), base_ink, base_paper)
+
+    window.write(0, 0, "\x1b[38;2;120;220;255mA\x1b[0mB")
+
+    assert window.cells[0].ch == 'A'.as(u32)
+    assert window.cells[0].ink == term_rgb(120, 220, 255)
+    assert window.cells[0].paper == base_paper
+    assert window.cells[1].ch == 'B'.as(u32)
+    assert window.cells[1].ink == base_ink
+    assert window.cells[1].paper == base_paper
+}
+
+test "window write stores utf8 codepoints and wide tails" {
+    window: TermWindow
+    window.init(TermRect { x: 0, y: 0, width: 6, height: 1 })
+    defer window.done()
+
+    ink := term_rgb(1, 1, 1)
+    paper := term_rgb(2, 2, 2)
+    window.clear('.'.as(u32), ink, paper)
+
+    window.write(0, 0, "A◆界B")
+
+    assert window.cells[0].ch == 'A'.as(u32)
+    assert window.cells[1].ch == 0x25c6
+    assert window.cells[2].ch == 0x754c
+    assert window.cells[3].ch == TERM_FB_CHAR_WIDE_TAIL
+    assert window.cells[4].ch == 'B'.as(u32)
 }

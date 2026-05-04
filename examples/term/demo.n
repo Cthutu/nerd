@@ -30,7 +30,36 @@ event_is_quit :: fn (event: TermEvent) -> bool {
     }
 }
 
-window_put :: fn (window: ^TermWindow, x: i32, y: i32, ch: u32, ink: u32, paper: u32) {
+visible_byte_count :: fn (text: string) -> i32 {
+    count : usize = 0
+    i     : usize = 0
+
+    for i < text.count {
+        on text.data[i] == 27 => {
+            i += 1
+            on i < text.count && text.data[i] == '[' => {
+                i += 1
+                for i < text.count && ((text.data[i] < '@' || text.data[i] > '~') && text.data[i] != 27) {
+                    i += 1
+                }
+                on i < text.count => i += 1
+            }
+            continue
+        }
+
+        count += 1
+        i     += 1
+    }
+
+    return count.as(i32)
+}
+
+window_put :: fn (window : ^TermWindow,
+                  x      : i32,
+                  y      : i32,
+                  ch     : u32,
+                  ink    : u32,
+                  paper  : u32) {
     on x < 0 || y < 0 => return
     on x >= window.rect.width.as(i32) || y >= window.rect.height.as(i32) => return
 
@@ -41,8 +70,12 @@ window_put :: fn (window: ^TermWindow, x: i32, y: i32, ch: u32, ink: u32, paper:
     cell^.paper = paper
 }
 
-window_box :: fn (window: ^TermWindow, ink: u32, paper: u32, border: u32, title: string) {
-    full := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
+window_box :: fn (window : ^TermWindow,
+                  ink    : u32,
+                  paper  : u32,
+                  border : u32,
+                  title  : string) {
+    full := TermRect { x:      0, y:      0, width:  window.rect.width, height: window.rect.height }
 
     term_window_paint_rect(window, full, ' '.as(u32), ink, paper)
     term_window_9slice(window, full, c"/-\\| |\\-/", no)
@@ -51,14 +84,14 @@ window_box :: fn (window: ^TermWindow, ink: u32, paper: u32, border: u32, title:
     on title.count > 0 && window.rect.width > 4 => term_window_write(window, 2, 0, title)
 }
 
-window_bar :: fn (window: ^TermWindow,
-                  x: i32,
-                  y: i32,
-                  width: i32,
-                  value: u32,
-                  max_value: u32,
-                  ink: u32,
-                  paper: u32) {
+window_bar :: fn (window    : ^TermWindow,
+                  x         : i32,
+                  y         : i32,
+                  width     : i32,
+                  value     : u32,
+                  max_value : u32,
+                  ink       : u32,
+                  paper     : u32) {
     on width <= 0 => return
 
     filled := on max_value == 0 => 0 else ((value * width.as(u32)) + (max_value / 2)) / max_value
@@ -93,23 +126,28 @@ draw_main_panel :: fn (window: ^TermWindow, frame: u32, width: i32, height: i32)
     edge := term_rgb(255, 180, 90)
 
     window_box(window, ink, paper, edge, " TERM WINDOW CONTROL ")
-    term_window_write(window, 2, 2, "Layered panels, direct cell painting, and clipping.")
-    term_window_write(window, 2, 3, "Press [q] to quit. ANSI escapes preserve panel colours.")
-    term_window_write(window, 2, 5, $"Terminal {width}x{height}")
-    term_window_write(window, 2, 6, $"Frame    {frame}")
+    term_window_write(window, 2, 2, "Layered \x1b[38;2;120;220;255mpanels\x1b[0m "
+        "\x1b[38;5;117m◆◆\x1b[0m, \x1b[38;5;221mdirect cell painting\x1b[0m, and "
+        "clipping.")
+    term_window_write(window, 2, 3, "Press \x1b[38;5;154m[q]\x1b[0m to quit. "
+        "\x1b[38;5;81mANSI resets\x1b[39m preserve the panel colours.")
+    term_window_write(window, 2, 5, "\x1b[38;5;215mTerminal ◌\x1b[0m")
+    term_window_write(window, 12, 5, $"\x1b[38;5;230m{width}x{height}\x1b[0m")
+    term_window_write(window, 2, 6, "\x1b[38;5;215mFrame ↻\x1b[0m")
+    term_window_write(window, 12, 6, $"\x1b[38;5;117m{frame}\x1b[0m")
 
     bar_width := max_i32(10, window.rect.width.as(i32) - 16)
-    term_window_write(window, 2, 8, "CPU")
+    term_window_write(window, 2, 8, "\x1b[38;5;118mCPU ▲\x1b[0m")
     cpu_value := 20 + ((frame * 7) % 80)
     cpu_ink := term_rgb(120, 255, 180)
     window_bar(window, 12, 8, bar_width, cpu_value, 100, cpu_ink, paper)
 
-    term_window_write(window, 2, 9, "GPU")
+    term_window_write(window, 2, 9, "\x1b[38;5;203mGPU ■\x1b[0m")
     gpu_value := 35 + ((frame * 5) % 65)
     gpu_ink := term_rgb(255, 120, 120)
     window_bar(window, 12, 9, bar_width, gpu_value, 100, gpu_ink, paper)
 
-    term_window_write(window, 2, 11, "Signal")
+    term_window_write(window, 2, 11, "\x1b[38;5;111mSignal ◇\x1b[0m")
     on window.rect.width > 16 && window.rect.height > 13 => {
         plot_width := window.rect.width.as(i32) - 16
         plot_height := min_i32(6, window.rect.height.as(i32) - 13)
@@ -159,18 +197,22 @@ draw_probe_panel :: fn (window: ^TermWindow, frame: u32) {
         window_put(window, blip_x.as(i32), blip_y.as(i32), '@'.as(u32), blip_ink, blip_paper)
     }
 
-    term_window_write(window, 2, 1, "Sweep through clip bounds")
+    term_window_write(window, 2, 1, "\x1b[38;5;159mSweep ◎\x1b[0m "
+        "\x1b[38;5;223mthrough clip bounds ↔↕\x1b[0m")
 }
 
 draw_ticker_panel :: fn (window: ^TermWindow, frame: u32) {
-    msg :: " demo-window.c | overlapping windows | animated clipping | ANSI window text | reset returns to feed colours | "
+    msg :: " demo-window.c  |  overlapping windows  |  \x1b[38;5;216manimated "
+    "clipping\x1b[0m  |  \x1b[38;5;159mANSI window text\x1b[0m  |  \x1b[38;5;118mreset "
+    "returns to feed colours\x1b[0m  |  \x1b[38;5;229m◆ glyphs ◇ arrows ↻ "
+    "◎\x1b[0m  |  "
     paper := term_rgb(42, 20, 8)
     ink := term_rgb(255, 218, 130)
     edge := term_rgb(255, 150, 70)
 
     window_box(window, ink, paper, edge, " FEED ")
 
-    msg_width := msg.count.as(i32)
+    msg_width := visible_byte_count(msg)
     span := msg_width + max_i32(1, window.rect.width.as(i32) - 2)
     offset := (frame % span.as(u32)).as(i32)
     start_x := 1 - offset
@@ -179,11 +221,11 @@ draw_ticker_panel :: fn (window: ^TermWindow, frame: u32) {
     term_window_write(window, start_x + msg_width, 1, msg)
 }
 
-render :: fn (backdrop: ^TermWindow,
-              main_panel: ^TermWindow,
-              probe_panel: ^TermWindow,
-              ticker_panel: ^TermWindow,
-              frame: u32) {
+render :: fn (backdrop     : ^TermWindow,
+              main_panel   : ^TermWindow,
+              probe_panel  : ^TermWindow,
+              ticker_panel : ^TermWindow,
+              frame        : u32) {
     (width, height) := term_size()
 
     on width < 36 || height < 14 => {
@@ -208,24 +250,24 @@ render :: fn (backdrop: ^TermWindow,
 
     ticker_y := (height - 3).as(u16)
 
-    backdrop_rect := TermRect { x: 0, y: 0, width: width.as(u16), height: height.as(u16) }
+    backdrop_rect := TermRect { x:      0, y:      0, width:  width.as(u16), height: height.as(u16) }
     term_window_init(backdrop, backdrop_rect)
     draw_backdrop(backdrop, frame)
 
     probe_rect := TermRect {
-        x: probe_x.as(i16).as(u16),
-        y: probe_y.as(i16).as(u16),
-        width: probe_w.as(u16),
-        height: probe_h.as(u16),
+        x:      probe_x.as(i16).as(u16)
+        y:      probe_y.as(i16).as(u16)
+        width:  probe_w.as(u16)
+        height: probe_h.as(u16)
     }
     term_window_init(probe_panel, probe_rect)
     draw_probe_panel(probe_panel, frame)
 
-    main_rect := TermRect { x: main_x, y: main_y, width: main_w.as(u16), height: main_h.as(u16) }
+    main_rect := TermRect { x:      main_x, y:      main_y, width:  main_w.as(u16), height: main_h.as(u16) }
     term_window_init(main_panel, main_rect)
     draw_main_panel(main_panel, frame, width, height)
 
-    ticker_rect := TermRect { x: 0, y: ticker_y, width: width.as(u16), height: 3 }
+    ticker_rect := TermRect { x:      0, y:      ticker_y, width:  width.as(u16), height: 3 }
     term_window_init(ticker_panel, ticker_rect)
     draw_ticker_panel(ticker_panel, frame)
 
@@ -239,11 +281,11 @@ render :: fn (backdrop: ^TermWindow,
 }
 
 main :: fn () {
-    backdrop: TermWindow
-    main_panel: TermWindow
-    probe_panel: TermWindow
-    ticker_panel: TermWindow
-    frame: u32 = 0
+    backdrop     : TermWindow
+    main_panel   : TermWindow
+    probe_panel  : TermWindow
+    ticker_panel : TermWindow
+    frame        : u32        = 0
 
     term_init()
     term_cursor_hide()
