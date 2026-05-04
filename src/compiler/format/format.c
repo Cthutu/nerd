@@ -35,6 +35,8 @@ internal void  format_emit_test(StringBuilder* sb,
                                 u32            node_index,
                                 u32            indent_level);
 internal bool  format_node_is_block_form_on(const Cst* cst, u32 node_index);
+internal bool  format_plex_field_is_shorthand(const Cst*                 cst,
+                                              const CstPlexLiteralField* field);
 internal void  format_emit_on_block_multiline(StringBuilder* sb,
                                               const Cst*     cst,
                                               const Lexer*   lexer,
@@ -681,6 +683,9 @@ internal void format_emit_expr(StringBuilder* sb,
                     &cst->plex_literal_fields[plex->first_field + i];
                 string field_name = lex_symbol(lexer, field->symbol_handle);
                 sb_append_string(sb, field_name);
+                if (format_plex_field_is_shorthand(cst, field)) {
+                    continue;
+                }
                 sb_append_char(sb, ':');
                 for (usize pad = field_name.count; pad < max_field_width;
                      ++pad) {
@@ -2007,6 +2012,13 @@ internal string format_render_value_to_string(Arena*       arena,
     return sb_to_string(&sb);
 }
 
+internal bool format_plex_field_is_shorthand(const Cst*                 cst,
+                                             const CstPlexLiteralField* field)
+{
+    const CstNode* value = &cst->nodes[field->value_node_index];
+    return value->kind == CK_SymbolRef && value->a == field->symbol_handle;
+}
+
 internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
@@ -2041,6 +2053,10 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         string field_name = lex_symbol(lexer, field->symbol_handle);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
+        if (format_plex_field_is_shorthand(cst, field)) {
+            sb_append_char(sb, '\n');
+            continue;
+        }
         sb_append_char(sb, ':');
         for (usize pad = field_name.count; pad < max_field_width; ++pad) {
             sb_append_char(sb, ' ');
@@ -2113,6 +2129,14 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
             &cst->plex_literal_fields[plex->first_field + i];
         string field_name = lex_symbol(lexer, field->symbol_handle);
         sb_append_string(sb, field_name);
+        if (format_plex_field_is_shorthand(cst, field)) {
+            if (i + 1 < plex->field_count || (plex->flags & CPLF_ZeroMissing)) {
+                sb_append_cstr(sb, ", ");
+            } else {
+                sb_append_char(sb, ' ');
+            }
+            continue;
+        }
         sb_append_char(sb, ':');
         for (usize pad = field_name.count; pad < field_name_widths[i]; ++pad) {
             sb_append_char(sb, ' ');

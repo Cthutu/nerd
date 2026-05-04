@@ -4,9 +4,10 @@ Point::plex#c{x i32 y i32 name string}
 Packed::plex#packed{a u8 b i32}
 
 main::fn(){
-p:=Point{x:1,y:2,name:"first"}
+p:=Point{x:x,y:y,name:name}
+short:=Point{x,y,name}
 q:=p with{
-y:7
+y
 name:"second"
 }
 pp:=^q
@@ -28,9 +29,10 @@ Packed :: plex #packed {
 }
 
 main :: fn () {
-    p := Point { x:    1, y:    2, name: "first" }
+    p := Point { x, y, name }
+    short := Point { x, y, name }
     q := p with {
-        y:    7
+        y
         name: "second"
     }
     pp := ^q

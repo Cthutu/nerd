@@ -153,6 +153,34 @@ internal bool cst_emit_node(CstParseState* state, CstNode node, u32* out_index)
     return true;
 }
 
+internal bool cst_emit_symbol_ref(CstParseState* state,
+                                  u32            token_index,
+                                  u32            symbol_handle,
+                                  u32*           out_node)
+{
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_SymbolRef,
+                             .token_index = token_index,
+                             .a           = symbol_handle,
+                         },
+                         out_node);
+}
+
+internal bool cst_parse_plex_literal_field_value(CstParseState* state,
+                                                 u32            field_token,
+                                                 u32            field_symbol,
+                                                 u32*           out_value)
+{
+    cst_advance(state);
+    if (cst_current_token(state).kind == TK_Colon) {
+        cst_advance(state);
+        return cst_parse_expr_bp(state, 0, out_value);
+    }
+
+    return cst_emit_symbol_ref(state, field_token, field_symbol, out_value);
+}
+
 //------------------------------------------------------------------------------
 // Return whether the current token starts a top-level binding.
 
@@ -1864,12 +1892,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                 }
                 u32 field_token  = state->token_index;
                 u32 field_symbol = cst_current_symbol_handle(state);
-                cst_advance(state);
-                if (!cst_consume(state, TK_Colon)) {
-                    return false;
-                }
-                u32 value = 0;
-                if (!cst_parse_expr_bp(state, 0, &value)) {
+                u32 value        = 0;
+                if (!cst_parse_plex_literal_field_value(
+                        state, field_token, field_symbol, &value)) {
                     return false;
                 }
                 array_push(state->cst.plex_literal_fields,
@@ -1886,8 +1911,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                     }
                     continue;
                 }
-                if (cst_current_token(state).kind == TK_Symbol &&
-                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                if (cst_current_token(state).kind == TK_Symbol) {
                     continue;
                 }
                 break;
@@ -2902,7 +2926,10 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&
                                (cst_peek_kind_at(state, 1) == TK_RBrace ||
                                 (cst_peek_kind_at(state, 1) == TK_Symbol &&
-                                 cst_peek_kind_at(state, 2) == TK_Colon));
+                                 (cst_peek_kind_at(state, 2) == TK_Colon ||
+                                  cst_peek_kind_at(state, 2) == TK_Comma ||
+                                  cst_peek_kind_at(state, 2) == TK_RBrace ||
+                                  cst_peek_kind_at(state, 2) == TK_Symbol)));
             if (!starts_plex) {
                 break;
             }
@@ -3097,11 +3124,8 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 }
                 u32 field_token  = state->token_index;
                 u32 field_symbol = cst_current_symbol_handle(state);
-                cst_advance(state);
-                if (!cst_consume(state, TK_Colon)) {
-                    return false;
-                }
-                if (!cst_parse_expr_bp(state, 0, &right)) {
+                if (!cst_parse_plex_literal_field_value(
+                        state, field_token, field_symbol, &right)) {
                     return false;
                 }
                 array_push(state->cst.plex_literal_fields,
@@ -3115,8 +3139,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     cst_advance(state);
                     continue;
                 }
-                if (cst_current_token(state).kind == TK_Symbol &&
-                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                if (cst_current_token(state).kind == TK_Symbol) {
                     continue;
                 }
                 break;
@@ -3164,11 +3187,8 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 }
                 u32 field_token  = state->token_index;
                 u32 field_symbol = cst_current_symbol_handle(state);
-                cst_advance(state);
-                if (!cst_consume(state, TK_Colon)) {
-                    return false;
-                }
-                if (!cst_parse_expr_bp(state, 0, &right)) {
+                if (!cst_parse_plex_literal_field_value(
+                        state, field_token, field_symbol, &right)) {
                     return false;
                 }
                 array_push(state->cst.plex_literal_fields,
@@ -3182,8 +3202,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     cst_advance(state);
                     continue;
                 }
-                if (cst_current_token(state).kind == TK_Symbol &&
-                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                if (cst_current_token(state).kind == TK_Symbol) {
                     continue;
                 }
                 break;

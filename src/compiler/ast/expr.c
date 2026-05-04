@@ -93,6 +93,26 @@ internal TokenKind ast_expr_cursor_kind(const AstParseState* state)
     return state->lexer->tokens[state->token_index].kind;
 }
 
+internal bool ast_parse_plex_literal_field_value(AstParseState* state,
+                                                 AstToken       field,
+                                                 u32*           out_value_node)
+{
+    if (ast_peek_kind_at(state, 0) == TK_Colon) {
+        if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
+            return false;
+        }
+        return ast_parse_expr_bp(state, 0, out_value_node);
+    }
+
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_SymbolRef,
+                             .token_index = field.token_index,
+                             .a           = field.value.symbol_handle,
+                         },
+                         out_value_node);
+}
+
 internal bool ast_token_has_newline_before(const AstParseState* state,
                                            u32                  token_index)
 {
@@ -1394,13 +1414,10 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                         TK_Symbol,
                         state->token.kind);
                 }
-                AstToken field = state->token;
-                if (!ast_expect_token(state, TK_Colon) ||
-                    !ast_next_token(state)) {
-                    return false;
-                }
-                u32 value_node = 0;
-                if (!ast_parse_expr_bp(state, 0, &value_node)) {
+                AstToken field      = state->token;
+                u32      value_node = 0;
+                if (!ast_parse_plex_literal_field_value(
+                        state, field, &value_node)) {
                     return false;
                 }
                 array_push(state->plex_literal_fields,
@@ -1431,8 +1448,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                     }
                     continue;
                 }
-                if (state->token.kind == TK_Symbol &&
-                    ast_peek_kind_at(state, 0) == TK_Colon) {
+                if (state->token.kind == TK_Symbol) {
                     if (!ast_next_token(state)) {
                         return false;
                     }
@@ -1740,12 +1756,10 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     TK_Symbol,
                     state->token.kind);
             }
-            AstToken field = state->token;
-            if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
-                return false;
-            }
-            u32 value_node = 0;
-            if (!ast_parse_expr_bp(state, 0, &value_node)) {
+            AstToken field      = state->token;
+            u32      value_node = 0;
+            if (!ast_parse_plex_literal_field_value(
+                    state, field, &value_node)) {
                 return false;
             }
             array_push(state->plex_literal_fields,
@@ -1776,8 +1790,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 }
                 continue;
             }
-            if (state->token.kind == TK_Symbol &&
-                ast_peek_kind_at(state, 0) == TK_Colon) {
+            if (state->token.kind == TK_Symbol) {
                 if (!ast_next_token(state)) {
                     return false;
                 }
@@ -1845,12 +1858,10 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     TK_Symbol,
                     state->token.kind);
             }
-            AstToken field = state->token;
-            if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
-                return false;
-            }
-            u32 value_node = 0;
-            if (!ast_parse_expr_bp(state, 0, &value_node)) {
+            AstToken field      = state->token;
+            u32      value_node = 0;
+            if (!ast_parse_plex_literal_field_value(
+                    state, field, &value_node)) {
                 return false;
             }
             array_push(state->plex_literal_fields,
@@ -1879,8 +1890,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 }
                 continue;
             }
-            if (state->token.kind == TK_Symbol &&
-                ast_peek_kind_at(state, 0) == TK_Colon) {
+            if (state->token.kind == TK_Symbol) {
                 if (!ast_next_token(state)) {
                     return false;
                 }
@@ -2085,7 +2095,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             bool starts_plex = state->nodes[left_node].kind == AK_SymbolRef &&
                                (ast_peek_kind_at(state, 0) == TK_RBrace ||
                                 (ast_peek_kind_at(state, 0) == TK_Symbol &&
-                                 ast_peek_kind_at(state, 1) == TK_Colon));
+                                 (ast_peek_kind_at(state, 1) == TK_Colon ||
+                                  ast_peek_kind_at(state, 1) == TK_Comma ||
+                                  ast_peek_kind_at(state, 1) == TK_RBrace ||
+                                  ast_peek_kind_at(state, 1) == TK_Symbol)));
             if (!starts_plex) {
                 break;
             }
