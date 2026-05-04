@@ -4178,6 +4178,7 @@ internal bool cst_parse_ffi_def(CstParseState* state,
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
+            u32 symbol_token  = state->token_index;
             u32 symbol_handle = cst_current_symbol_handle(state);
             if (symbol_handle == CST_NO_VALUE) {
                 return false;
@@ -4192,6 +4193,7 @@ internal bool cst_parse_ffi_def(CstParseState* state,
 
             array_push(state->cst.ffi_infos,
                        (CstFfiInfo){
+                           .token_index        = symbol_token,
                            .library_node_index = library_node_index,
                            .symbol_handle      = symbol_handle,
                            .signature_index    = signature_index,
@@ -4222,6 +4224,7 @@ internal bool cst_parse_ffi_def(CstParseState* state,
     if (cst_current_token(state).kind != TK_Symbol) {
         return false;
     }
+    u32 symbol_token  = state->token_index;
     u32 symbol_handle = cst_current_symbol_handle(state);
     if (symbol_handle == CST_NO_VALUE) {
         return false;
@@ -4237,6 +4240,7 @@ internal bool cst_parse_ffi_def(CstParseState* state,
     u32 ffi_info_index = (u32)array_count(state->cst.ffi_infos);
     array_push(state->cst.ffi_infos,
                (CstFfiInfo){
+                   .token_index        = symbol_token,
                    .library_node_index = library_node_index,
                    .symbol_handle      = symbol_handle,
                    .signature_index    = signature_index,

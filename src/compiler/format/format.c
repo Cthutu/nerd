@@ -2834,13 +2834,18 @@ internal void format_emit_fn_signature(StringBuilder* sb,
 internal void format_emit_ffi_entry(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
-                                    u32            ffi_info_index)
+                                    u32            ffi_info_index,
+                                    usize          name_width)
 {
     const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
     const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
 
-    sb_append_string(sb, lex_symbol(lexer, ffi->symbol_handle));
-    sb_append_cstr(sb, " (");
+    string name                     = lex_symbol(lexer, ffi->symbol_handle);
+    sb_append_string(sb, name);
+    for (usize pad = name.count; pad <= name_width; ++pad) {
+        sb_append_char(sb, ' ');
+    }
+    sb_append_char(sb, '(');
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ", ");
@@ -2879,7 +2884,67 @@ internal void format_emit_ffi_def(StringBuilder* sb,
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
     sb_append_char(sb, ' ');
-    format_emit_ffi_entry(sb, cst, lexer, ffi_info_index);
+    format_emit_ffi_entry(sb,
+                          cst,
+                          lexer,
+                          ffi_info_index,
+                          lex_symbol(lexer, ffi->symbol_handle).count);
+}
+
+internal bool format_ffi_infos_have_blank_line_between(const Cst*   cst,
+                                                       const Lexer* lexer,
+                                                       u32 previous_ffi_info,
+                                                       u32 current_ffi_info)
+{
+    const CstFfiInfo* current = &cst->ffi_infos[current_ffi_info];
+    if (current->token_index == 0) {
+        return false;
+    }
+
+    u32 previous_end_token_index = current->token_index - 1;
+    if (previous_end_token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+
+    usize previous_end =
+        lex_token_end_offset(lexer, &lexer->tokens[previous_end_token_index]);
+    usize current_start = lexer->tokens[current->token_index].offset;
+    UNUSED(cst);
+    UNUSED(previous_ffi_info);
+    return format_has_blank_line_between_offsets(
+        lexer->source, previous_end, current_start);
+}
+
+internal usize format_ffi_block_group_name_width(const Cst*   cst,
+                                                 const Lexer* lexer,
+                                                 u32          first_ffi_info,
+                                                 u32          end_ffi_info)
+{
+    usize width = 0;
+    for (u32 i = first_ffi_info; i < end_ffi_info; ++i) {
+        usize name_width =
+            lex_symbol(lexer, cst->ffi_infos[i].symbol_handle).count;
+        if (name_width > width) {
+            width = name_width;
+        }
+    }
+    return width;
+}
+
+internal void format_emit_ffi_block_group(StringBuilder* sb,
+                                          const Cst*     cst,
+                                          const Lexer*   lexer,
+                                          u32            first_ffi_info,
+                                          u32            end_ffi_info,
+                                          u32            indent_level)
+{
+    usize name_width = format_ffi_block_group_name_width(
+        cst, lexer, first_ffi_info, end_ffi_info);
+    for (u32 i = first_ffi_info; i < end_ffi_info; ++i) {
+        format_emit_indent(sb, indent_level + 1);
+        format_emit_ffi_entry(sb, cst, lexer, i, name_width);
+        sb_append_char(sb, '\n');
+    }
 }
 
 internal void format_emit_ffi_block(StringBuilder* sb,
@@ -2893,11 +2958,21 @@ internal void format_emit_ffi_block(StringBuilder* sb,
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, block->library_node_index, 0);
     sb_append_cstr(sb, " {\n");
-    for (u32 i = 0; i < block->ffi_info_count; ++i) {
-        format_emit_indent(sb, indent_level + 1);
-        format_emit_ffi_entry(sb, cst, lexer, block->first_ffi_info + i);
+
+    u32 group_start = block->first_ffi_info;
+    u32 block_end   = block->first_ffi_info + block->ffi_info_count;
+    for (u32 i = group_start + 1; i < block_end; ++i) {
+        if (!format_ffi_infos_have_blank_line_between(cst, lexer, i - 1, i)) {
+            continue;
+        }
+        format_emit_ffi_block_group(
+            sb, cst, lexer, group_start, i, indent_level);
         sb_append_char(sb, '\n');
+        group_start = i;
     }
+    format_emit_ffi_block_group(
+        sb, cst, lexer, group_start, block_end, indent_level);
+
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 }
