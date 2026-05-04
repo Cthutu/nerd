@@ -1514,7 +1514,6 @@ typedef struct {
     string value;
     bool   is_bind;
     bool   is_assignment;
-    bool   is_inferred_variable;
     bool   has_value;
     bool   uses_standard_single_line;
 } FormatAlignedStatement;
@@ -2308,14 +2307,11 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol               = lex_symbol(lexer, cst_get_symbol(node)),
-            .type                 = type,
-            .value                = value,
-            .is_bind              = false,
-            .is_inferred_variable = payload->kind != CK_AnnotatedValue &&
-                                    payload->kind != CK_ZeroInit &&
-                                    payload->kind != CK_Undefined,
-            .has_value            = payload->kind != CK_ZeroInit,
+            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
+            .type      = type,
+            .value     = value,
+            .is_bind   = false,
+            .has_value = payload->kind != CK_ZeroInit,
             .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
                                          payload->kind != CK_ZeroInit &&
                                          payload->kind != CK_Undefined,
@@ -2580,7 +2576,10 @@ internal u32 format_next_block_statement(const Cst* cst,
 internal bool format_aligned_statements_same_family(FormatAlignedStatement a,
                                                     FormatAlignedStatement b)
 {
-    return a.is_bind == b.is_bind && a.is_assignment == b.is_assignment;
+    if (a.is_assignment || b.is_assignment) {
+        return a.is_assignment && b.is_assignment;
+    }
+    return true;
 }
 
 internal void
@@ -2591,19 +2590,15 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
 {
     usize max_symbol_width = 0;
     usize max_type_width   = 0;
-    bool  has_variables    = false;
     for (u32 i = 0; i < stmt_count; ++i) {
         if (stmts[i].symbol.count > max_symbol_width) {
             max_symbol_width = stmts[i].symbol.count;
-        }
-        if (!stmts[i].is_bind) {
-            has_variables = true;
         }
         if (stmts[i].type.count > max_type_width) {
             max_type_width = stmts[i].type.count;
         }
     }
-    bool has_type_column = has_variables || max_type_width > 0;
+    bool has_type_column = max_type_width > 0;
 
     for (u32 i = 0; i < stmt_count; ++i) {
         format_emit_indent(sb, indent_level);
@@ -2617,27 +2612,8 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             sb_append_string(sb, stmts[i].op);
             sb_append_char(sb, ' ');
             sb_append_string(sb, stmts[i].value);
-        } else if (stmts[i].is_bind) {
-            if (has_type_column && stmts[i].type.count > 0) {
-                sb_append_cstr(sb, " : ");
-                sb_append_string(sb, stmts[i].type);
-                for (usize pad = stmts[i].type.count; pad <= max_type_width;
-                     ++pad) {
-                    sb_append_char(sb, ' ');
-                }
-                usize value_start_width = (usize)indent_level * 4 +
-                                          max_symbol_width + max_type_width + 6;
-                if (value_start_width + stmts[i].value.count <=
-                    FORMAT_WRAP_WIDTH) {
-                    sb_append_cstr(sb, ": ");
-                    sb_append_string(sb, stmts[i].value);
-                } else {
-                    sb_append_char(sb, ':');
-                    sb_append_char(sb, '\n');
-                    format_emit_indent(sb, indent_level + 1);
-                    sb_append_string(sb, stmts[i].value);
-                }
-            } else {
+        } else if (!has_type_column) {
+            if (stmts[i].is_bind) {
                 usize value_start_width =
                     (usize)indent_level * 4 + max_symbol_width + 4;
                 if (value_start_width + stmts[i].value.count <=
@@ -2650,15 +2626,11 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                     format_emit_indent(sb, indent_level + 1);
                     sb_append_string(sb, stmts[i].value);
                 }
-            }
-        } else {
-            if (stmts[i].is_inferred_variable) {
+            } else {
                 sb_append_cstr(sb, " := ");
                 sb_append_string(sb, stmts[i].value);
-                sb_append_char(sb, '\n');
-                continue;
             }
-
+        } else {
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
             if (!stmts[i].has_value) {

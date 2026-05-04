@@ -5,7 +5,7 @@ main::fn(){text::"hello" whole:string=text[..] ell:string=text[1..4] prn($"{ell.
 use std.io
 
 main :: fn () {
-    text :: "hello"
+    text  :        : "hello"
     whole : string = text[..]
     ell   : string = text[1..4]
 
