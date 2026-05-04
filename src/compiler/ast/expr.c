@@ -1571,7 +1571,53 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         if (!empty_call) {
             for (;;) {
                 right_node = 0;
-                if (!ast_parse_expr_bp(state, 0, &right_node)) {
+                if (state->token.kind == TK_Symbol &&
+                    ast_peek_kind_at(state, 0) == TK_Equal) {
+                    AstToken name_token  = state->token;
+                    u32      target_node = 0;
+                    if (!ast_emit_node(
+                            state,
+                            (AstNode){
+                                .kind        = AK_SymbolRef,
+                                .token_index = name_token.token_index,
+                                .a           = name_token.value.symbol_handle,
+                            },
+                            &target_node)) {
+                        array_free(arg_nodes);
+                        return false;
+                    }
+                    if (!ast_expect_token(state, TK_Equal) ||
+                        !ast_next_token(state)) {
+                        array_free(arg_nodes);
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_RParen);
+                    }
+
+                    bool previous_boundary = state->allow_statement_boundary;
+                    bool previous_param_separator =
+                        state->stop_before_param_separator;
+                    state->allow_statement_boundary    = true;
+                    state->stop_before_param_separator = true;
+                    bool parsed = ast_parse_expr_bp(state, 0, &right_node);
+                    state->stop_before_param_separator =
+                        previous_param_separator;
+                    state->allow_statement_boundary = previous_boundary;
+                    if (!parsed ||
+                        !ast_emit_node(
+                            state,
+                            (AstNode){
+                                .kind        = AK_Assign,
+                                .token_index = name_token.token_index,
+                                .a           = target_node,
+                                .b           = right_node,
+                            },
+                            &right_node)) {
+                        array_free(arg_nodes);
+                        return false;
+                    }
+                } else if (!ast_parse_expr_bp(state, 0, &right_node)) {
                     array_free(arg_nodes);
                     return false;
                 }

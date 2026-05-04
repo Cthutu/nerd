@@ -297,6 +297,10 @@ bool error_0338_default_param_later_reference(NerdSource source,
 bool error_0339_generics_not_implemented(NerdSource source,
                                          ErrorSpan  span,
                                          string     construct);
+bool error_0340_named_argument_position(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected,
+                                        string     found);
 
 //------------------------------------------------------------------------------
 // Low-level error system

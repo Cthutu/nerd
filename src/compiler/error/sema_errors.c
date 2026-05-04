@@ -1064,3 +1064,37 @@ bool error_0339_generics_not_implemented(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a named call argument that does not match the parameter at this
+// position.
+
+bool error_0340_named_argument_position(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected,
+                                        string     found)
+{
+    ErrorInfo error = error_init(340,
+                                 source,
+                                 span,
+                                 "Named argument `" STRINGP
+                                 "` does not match parameter `" STRINGP "`",
+                                 STRINGV(found),
+                                 STRINGV(expected));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This argument is named `" STRINGP "`",
+                        STRINGV(found));
+    error_add_note(&error,
+                   "Named arguments are currently checked in parameter order.");
+    error_add_help(
+        &error,
+        "Move `" STRINGP
+        " = ...` to the matching parameter position or provide `" STRINGP
+        " = ...` here.",
+        STRINGV(found),
+        STRINGV(expected));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -54,9 +54,10 @@ internal bool sema_try_resolve_type_symbol(const Lexer* lexer,
                                            u32          node_index,
                                            u32*         out_type_index);
 internal const AstCastInfo* sema_cast_info(const Ast* ast, const AstNode* node);
-internal ErrorSpan          sema_decl_span(const Lexer*    lexer,
-                                           const Ast*      ast,
-                                           const SemaDecl* decl);
+internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node);
+internal ErrorSpan sema_decl_span(const Lexer*    lexer,
+                                  const Ast*      ast,
+                                  const SemaDecl* decl);
 
 internal u32 sema_enclosing_function_return_type(const Sema* sema,
                                                  u32         node_index);
@@ -1142,6 +1143,58 @@ internal u32 sema_signature_required_param_count(
         }
     }
     return signature->param_count;
+}
+
+internal bool sema_call_arg_value_node(const Lexer*    arg_lexer,
+                                       const Ast*      ast,
+                                       const Lexer*    param_lexer,
+                                       const AstParam* param,
+                                       u32             arg_node,
+                                       u32*            out_value_node)
+{
+    const AstNode* arg = &ast->nodes[arg_node];
+    if (arg->kind != AK_Assign) {
+        *out_value_node = arg_node;
+        return true;
+    }
+
+    const AstNode* target = &ast->nodes[arg->a];
+    if (target->kind != AK_SymbolRef || param == NULL ||
+        param->symbol_handle == U32_MAX ||
+        !string_eq(lex_symbol(arg_lexer, target->a),
+                   lex_symbol(param_lexer, param->symbol_handle))) {
+        return error_0340_named_argument_position(
+            arg_lexer->source,
+            sema_node_span(arg_lexer, target),
+            param != NULL && param->symbol_handle != U32_MAX
+                ? lex_symbol(param_lexer, param->symbol_handle)
+                : s("positional argument"),
+            target->kind == AK_SymbolRef ? lex_symbol(arg_lexer, target->a)
+                                         : s("named argument"));
+    }
+
+    *out_value_node = arg->b;
+    return true;
+}
+
+internal bool sema_node_is_named_call_arg(const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes) ||
+        ast->nodes[node_index].kind != AK_Assign) {
+        return false;
+    }
+
+    for (u32 call_index = 0; call_index < array_count(ast->calls);
+         ++call_index) {
+        const AstCallInfo* call = &ast->calls[call_index];
+        for (u32 i = 0; i < call->arg_count; ++i) {
+            if (ast->call_args[call->first_arg + i] == node_index) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 internal bool sema_known_call_fn_node(const Ast*  ast,
@@ -4270,7 +4323,7 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             continue;
         }
 
-        if (node->kind == AK_Assign) {
+        if (node->kind == AK_Assign && !sema_node_is_named_call_arg(ast, i)) {
             if (!sema_resolve_node_refs(lexer,
                                         ast,
                                         owner_decl_index,
@@ -4958,13 +5011,17 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             }
             const AstCallInfo* call = &ast->calls[node->b];
             for (u32 i = 0; i < call->arg_count; ++i) {
+                u32 arg_node = ast->call_args[call->first_arg + i];
+                if (ast->nodes[arg_node].kind == AK_Assign) {
+                    arg_node = ast->nodes[arg_node].b;
+                }
                 if (!sema_resolve_node_refs(lexer,
                                             ast,
                                             owner_decl_index,
                                             current_function_symbol,
                                             capture_scope_index,
                                             scope_index,
-                                            ast->call_args[call->first_arg + i],
+                                            arg_node,
                                             sema)) {
                     return false;
                 }
@@ -5443,11 +5500,12 @@ internal void sema_collect_node_deps(const Ast*  ast,
         {
             const AstCallInfo* call = &ast->calls[node->b];
             for (u32 i = 0; i < call->arg_count; ++i) {
-                sema_collect_node_deps(ast,
-                                       sema,
-                                       owner_decl_index,
-                                       ast->call_args[call->first_arg + i],
-                                       out_sema);
+                u32 arg_node = ast->call_args[call->first_arg + i];
+                if (ast->nodes[arg_node].kind == AK_Assign) {
+                    arg_node = ast->nodes[arg_node].b;
+                }
+                sema_collect_node_deps(
+                    ast, sema, owner_decl_index, arg_node, out_sema);
             }
         }
         return;
@@ -7344,7 +7402,12 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
     for (u32 i = 0; i < call_arg_count; ++i) {
         const AstParam* source_param =
             &source_ast->params[source_signature->first_param + i];
-        u32 arg_node     = ast->call_args[call->first_arg + i];
+        u32 arg_node = ast->call_args[call->first_arg + i];
+        if (!sema_call_arg_value_node(
+                lexer, ast, source_lexer, source_param, arg_node, &arg_node)) {
+            array_free(source_arg_types);
+            return false;
+        }
         u32 expected_src = sema_no_type();
         u32 expected_dst = sema_no_type();
 
@@ -7520,9 +7583,14 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
 
     u32 call_arg_count = call != NULL ? call->arg_count : 0;
     for (u32 i = 0; i < call_arg_count; ++i) {
-        const AstParam* param        = &ast->params[signature->first_param + i];
-        u32             arg_node     = ast->call_args[call->first_arg + i];
-        u32             expected_arg = sema_no_type();
+        const AstParam* param    = &ast->params[signature->first_param + i];
+        u32             arg_node = ast->call_args[call->first_arg + i];
+        if (!sema_call_arg_value_node(
+                lexer, ast, lexer, param, arg_node, &arg_node)) {
+            array_free(arg_types);
+            return false;
+        }
+        u32 expected_arg = sema_no_type();
 
         if (explicit_arg_count != 0) {
             SemaTypeSubstitution subst = {
@@ -7796,7 +7864,16 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                                            expected_source)
                                         : expected_source;
             u32 arg_node     = ast->call_args[call->first_arg + j];
-            u32 arg_type     = sema_no_type();
+            if (!sema_call_arg_value_node(lexer,
+                                          ast,
+                                          source_lexer,
+                                          source_param,
+                                          arg_node,
+                                          &arg_node)) {
+                array_free(source_arg_types);
+                return false;
+            }
+            u32 arg_type = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, arg_node, expected_dst, &arg_type)) {
                 array_free(source_arg_types);
@@ -11947,6 +12024,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     i < fn_type->param_count
                         ? sema->type_param_types[fn_type->first_param_type + i]
                         : sema_no_type();
+                const AstParam* expected_param =
+                    known_signature != NULL && i < known_signature->param_count
+                        ? &ast->params[known_signature->first_param + i]
+                        : NULL;
+                if (!sema_call_arg_value_node(lexer,
+                                              ast,
+                                              lexer,
+                                              expected_param,
+                                              arg_node,
+                                              &arg_node)) {
+                    return false;
+                }
                 u32 arg_type = sema_no_type();
                 if (!sema_infer_node_type(
                         lexer, ast, sema, arg_node, expected_arg, &arg_type)) {
@@ -13240,12 +13329,12 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
             }
             const AstCallInfo* call = &ast->calls[node->b];
             for (u32 i = 0; i < call->arg_count; ++i) {
+                u32 arg_node = ast->call_args[call->first_arg + i];
+                if (ast->nodes[arg_node].kind == AK_Assign) {
+                    arg_node = ast->nodes[arg_node].b;
+                }
                 if (!sema_validate_assignment_node(
-                        lexer,
-                        ast,
-                        sema,
-                        ast->call_args[call->first_arg + i],
-                        state)) {
+                        lexer, ast, sema, arg_node, state)) {
                     return false;
                 }
             }
@@ -14092,14 +14181,17 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             }
             const AstCallInfo* call = &ast->calls[node->b];
             for (u32 i = 0; i < call->arg_count; ++i) {
-                if (!sema_validate_loop_control(
-                        lexer,
-                        ast,
-                        ast->call_args[call->first_arg + i],
-                        loop_depth,
-                        expr_block_depth,
-                        expr_labels,
-                        expr_label_count)) {
+                u32 arg_node = ast->call_args[call->first_arg + i];
+                if (ast->nodes[arg_node].kind == AK_Assign) {
+                    arg_node = ast->nodes[arg_node].b;
+                }
+                if (!sema_validate_loop_control(lexer,
+                                                ast,
+                                                arg_node,
+                                                loop_depth,
+                                                expr_block_depth,
+                                                expr_labels,
+                                                expr_label_count)) {
                     return false;
                 }
             }

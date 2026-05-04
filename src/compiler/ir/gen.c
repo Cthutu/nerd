@@ -2795,6 +2795,9 @@ internal bool ir_try_lower_method_call(const Ast*     ast,
 
     for (u32 i = 0; i < call->arg_count; ++i) {
         u32 arg_node = ast->call_args[call->first_arg + i];
+        if (ast->nodes[arg_node].kind == AK_Assign) {
+            arg_node = ast->nodes[arg_node].b;
+        }
         array_push(args,
                    ir_lower_node(lex,
                                  ast,
@@ -2886,6 +2889,9 @@ internal IrValue ir_lower_call(const Lexer*   lex,
 
     for (u32 i = 0; i < call->arg_count; ++i) {
         u32 arg_node = ast->call_args[call->first_arg + i];
+        if (ast->nodes[arg_node].kind == AK_Assign) {
+            arg_node = ast->nodes[arg_node].b;
+        }
         array_push(args,
                    ir_lower_node(lex,
                                  ast,
