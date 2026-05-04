@@ -458,36 +458,38 @@ the roadmap before committing the implementation.
 
 ### LSP Completion And Incremental Sync Milestone
 
-- [ ] Improve LSP document sync performance:
+- [x] Improve LSP document sync performance:
   - [x] advertise incremental document sync instead of full-document sync
   - [x] keep one internal text buffer per open document
   - [x] apply `didChange` range edits to the internal buffer
   - [x] keep re-running the existing full front-end analysis after edits until
     true incremental lex/parse/sema work is designed
   - [x] preserve diagnostics for edited buffers even when analysis fails
-- [ ] Add completion support:
+- [x] Add completion support:
   - [x] advertise `completionProvider`
   - [x] handle `textDocument/completion`
   - [x] complete language keywords
   - [x] complete visible top-level declarations
   - [x] complete visible locals and parameters
-  - [ ] complete fields and inherent methods after `value.`
-  - [ ] complete module paths and public symbols after `use`
-- [ ] Add signature-help support:
-  - [ ] advertise `signatureHelpProvider`
-  - [ ] show callable signatures for `foo(|)`
-  - [ ] include default parameter values and named-argument guidance
-- [ ] Tests:
+  - [x] complete fields and inherent methods after `value.`
+  - [x] complete module paths after `use`
+  - [x] complete public module symbols after module member access
+- [x] Add signature-help support:
+  - [x] advertise `signatureHelpProvider`
+  - [x] show callable signatures for `foo(|)`
+  - [x] include default parameter values and named-argument guidance
+- [x] Tests:
   - [x] LSP tests for advertised incremental sync and completion capabilities
   - [x] LSP tests for incremental `didChange` edits
   - [x] LSP tests for keyword completion
   - [x] LSP tests for top-level and local symbol completion
-  - [ ] LSP tests for field and method completion
-  - [ ] LSP tests for module path completion
-- [ ] Editor integration:
-  - [ ] verify VS Code completion trigger behaviour
-  - [ ] verify Neovim completion trigger behaviour
-  - [ ] update editor extension/plugin configuration if needed
+  - [x] LSP tests for field and method completion
+  - [x] LSP tests for module path completion
+  - [x] LSP tests for signature help
+- [x] Editor integration:
+  - [x] verify VS Code completion trigger behaviour
+  - [x] verify Neovim completion trigger behaviour
+  - [x] update editor extension/plugin configuration if needed
 
 ### Source Testing Milestone
 

@@ -44,6 +44,12 @@ main :: fn () => answer
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

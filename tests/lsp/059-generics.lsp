@@ -54,6 +54,12 @@ main :: fn () => id(1)
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

@@ -71,6 +71,12 @@ main :: fn () => enabled.as(i32)
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

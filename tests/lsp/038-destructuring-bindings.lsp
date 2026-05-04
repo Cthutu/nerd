@@ -73,6 +73,12 @@ main :: fn () {
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

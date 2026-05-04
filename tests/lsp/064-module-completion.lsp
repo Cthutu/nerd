@@ -1,33 +1,19 @@
-answer :: 42
+use test.lsp_types
 
-main :: fn () => answer
+main :: fn () {}
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 2,
-                "character": 19
+                "line": 0,
+                "character": 9
             }
         }
     }
@@ -90,29 +76,44 @@ main :: fn () => answer
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
+        "result": [
+            {
+                "label": "folder_mod",
+                "kind": 9
+            },
+            {
+                "label": "folder_priority",
+                "kind": 9
+            },
+            {
+                "label": "folder_pub_use",
+                "kind": 9
+            },
+            {
+                "label": "generics",
+                "kind": 9
+            },
+            {
+                "label": "imported_plex",
+                "kind": 9
+            },
+            {
+                "label": "lsp_types",
+                "kind": 9
+            },
+            {
+                "label": "parts",
+                "kind": 9
+            },
+            {
+                "label": "platform_ffi",
+                "kind": 9
+            },
+            {
+                "label": "reexport",
+                "kind": 9
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

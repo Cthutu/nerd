@@ -27,6 +27,12 @@ Thing :: plex {
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

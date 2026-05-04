@@ -60,13 +60,14 @@ void lsp_done(LspState* state);
 //------------------------------------------------------------------------------
 // LSP document utilities
 
-void lsp_document_done(LspDocument* doc);
-bool lsp_get_string_param(const LspMessage* message,
-                          cstr              param_path,
-                          string*           out_str);
-bool lsp_get_u64_param(const LspMessage* message,
-                       cstr              param_path,
-                       u64*              out_value);
+void  lsp_document_done(LspDocument* doc);
+bool  lsp_get_string_param(const LspMessage* message,
+                           cstr              param_path,
+                           string*           out_str);
+bool  lsp_get_u64_param(const LspMessage* message,
+                        cstr              param_path,
+                        u64*              out_value);
+usize lsp_offset_from_position(string source, u64 line, u64 character);
 
 //------------------------------------------------------------------------------
 // LSP message handling
@@ -88,5 +89,6 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
 void lsp_handle_semantic_tokens_full(LspState*         state,
                                      const LspMessage* message);
 void lsp_handle_completion(LspState* state, const LspMessage* message);
+void lsp_handle_signature_help(LspState* state, const LspMessage* message);
 
 //------------------------------------------------------------------------------

@@ -1,33 +1,34 @@
-answer :: 42
+Counter :: plex {
+    value i32
+}
 
-main :: fn () => answer
+impl Counter {
+    inc :: fn (self: ^Self, amount: i32) {
+        self.value += amount
+    }
+
+    get :: fn (self: Self) -> i32 {
+        return self.value
+    }
+}
+
+main :: fn () {
+    counter: Counter
+    counter.value
+}
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 2,
-                "character": 19
+                "line": 16,
+                "character": 12
             }
         }
     }
@@ -90,29 +91,20 @@ main :: fn () => answer
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
+        "result": [
+            {
+                "label": "value",
+                "kind": 5
+            },
+            {
+                "label": "inc",
+                "kind": 2
+            },
+            {
+                "label": "get",
+                "kind": 2
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

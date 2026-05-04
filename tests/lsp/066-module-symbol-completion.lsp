@@ -1,33 +1,21 @@
-answer :: 42
+io :: use std.io
 
-main :: fn () => answer
+main :: fn () {
+    io.prn("hello")
+}
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 2,
-                "character": 19
+                "line": 3,
+                "character": 7
             }
         }
     }
@@ -90,29 +78,28 @@ main :: fn () => answer
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
+        "result": [
+            {
+                "label": "pr",
+                "kind": 3
+            },
+            {
+                "label": "epr",
+                "kind": 3
+            },
+            {
+                "label": "prn",
+                "kind": 3
+            },
+            {
+                "label": "eprn",
+                "kind": 3
+            },
+            {
+                "label": "input",
+                "kind": 3
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

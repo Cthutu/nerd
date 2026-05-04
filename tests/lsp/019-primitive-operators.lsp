@@ -37,6 +37,12 @@ main :: fn () => on (ratio >= 1.0 && !no) => 1 else 0
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [

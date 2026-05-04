@@ -58,6 +58,12 @@ main :: fn () {
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [
@@ -97,7 +103,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///home/matt/nerd/tests/mods/test/grouped/alpha.n",
+            "uri": "__REPO_URI__/tests/mods/test/grouped/alpha.n",
             "range": {
                 "start": {
                     "line": 0,

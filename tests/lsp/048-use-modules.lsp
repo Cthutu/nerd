@@ -72,6 +72,12 @@ main :: fn () {
                     ],
                     "resolveProvider": false
                 },
+                "signatureHelpProvider": {
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ]
+                },
                 "semanticTokensProvider": {
                     "legend": {
                         "tokenTypes": [
@@ -111,7 +117,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///home/matt/nerd/_bin/mods/std/io.n",
+            "uri": "__REPO_URI__/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 28,
@@ -128,7 +134,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "file:///home/matt/nerd/_bin/mods/std/io.n",
+            "uri": "__REPO_URI__/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 0,

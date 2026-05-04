@@ -9,12 +9,15 @@ The key files are:
 - [src/lsp/lsp.c](/home/matt/nerd/src/lsp/lsp.c)
 - [src/lsp/document.c](/home/matt/nerd/src/lsp/document.c)
 - [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
+- [src/lsp/completion.c](/home/matt/nerd/src/lsp/completion.c)
+- [src/lsp/signature.c](/home/matt/nerd/src/lsp/signature.c)
 
 ## Core Design
 
 Each open document stores:
 
 - an arena for document-owned allocations
+- the current editor buffer text
 - `FrontEndState`
 - `Cst`
 - flags telling whether semantic analysis and CST parsing succeeded
@@ -26,10 +29,14 @@ the compiler front end directly.
 
 `didOpen` and `didChange` both:
 
-1. replace the document contents
+1. update the internal document contents
 2. re-run front-end analysis
 3. attempt CST parsing
 4. publish diagnostics
+
+The server advertises incremental document sync and applies LSP range edits to
+the stored buffer. Analysis is still whole-document: each accepted edit reruns
+the existing front end until a real incremental lexer/parser/sema design lands.
 
 `didClose` clears the stored document and publishes an empty diagnostic set.
 
@@ -61,6 +68,20 @@ Hover uses semantic tables for:
 
 Definition jumps resolve through semantic declaration indices and then convert
 the binding token span back into an LSP range.
+
+## Completion And Signature Help
+
+Completion is semantic where possible:
+
+- normal positions offer language keywords plus visible declarations, locals,
+  and parameters
+- `value.` offers fields for plexes/unions, built-in fields for strings,
+  slices, and dynamic arrays, and inherent methods for matching receiver types
+- `use ...` offers module path segments from the active module search roots
+
+Signature help is triggered by `(` and `,`. It resolves the callable name through
+the semantic declaration table, reports the active argument, includes default
+parameter expressions, and reminds the editor user of named-argument syntax.
 
 ## CST Usage
 

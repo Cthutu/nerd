@@ -157,7 +157,7 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     return true;
 }
 
-internal usize lsp_offset_from_position(string source, u64 line, u64 character)
+usize lsp_offset_from_position(string source, u64 line, u64 character)
 {
     u64   current_line      = 0;
     u64   current_character = 0;

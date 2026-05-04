@@ -1,33 +1,18 @@
-answer :: 42
-
-main :: fn () => answer
+add :: fn (a: i32, b: i32 = 1, c: i32 = a + b) => a + b + c
+main :: fn () => add(20, 2)
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/signatureHelp",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 2,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 2,
-                "character": 19
+                "line": 1,
+                "character": 24
             }
         }
     }
@@ -91,27 +76,25 @@ main :: fn () => answer
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> i32\n```\n\n- Kind: function"
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///test.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 6
+            "signatures": [
+                {
+                    "label": "add(a: i32, b: i32 = 1, c: i32 = a + b) -> i32",
+                    "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
+                    "parameters": [
+                        {
+                            "label": "a: i32"
+                        },
+                        {
+                            "label": "b: i32 = 1"
+                        },
+                        {
+                            "label": "c: i32 = a + b"
+                        }
+                    ]
                 }
-            }
+            ],
+            "activeSignature": 0,
+            "activeParameter": 1
         }
     },
     {

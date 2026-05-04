@@ -97,6 +97,7 @@ struct {
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
     {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
     {"textDocument/completion", lsp_handle_completion},
+    {"textDocument/signatureHelp", lsp_handle_signature_help},
 };
 
 //------------------------------------------------------------------------------
@@ -252,6 +253,15 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_bool(completion_provider, arena, "resolveProvider", false);
     json_object_set_object(
         capabilities, "completionProvider", completion_provider);
+
+    JsonValue* signature_provider = json_new_object(arena);
+    JsonValue* signature_triggers = json_new_array(arena);
+    json_array_push(signature_triggers, json_new_string(arena, s("(")));
+    json_array_push(signature_triggers, json_new_string(arena, s(",")));
+    json_object_set_array(
+        signature_provider, "triggerCharacters", signature_triggers);
+    json_object_set_object(
+        capabilities, "signatureHelpProvider", signature_provider);
 
     JsonValue* semantic_tokens = json_new_object(arena);
     JsonValue* legend          = json_new_object(arena);
