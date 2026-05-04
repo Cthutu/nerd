@@ -15,6 +15,9 @@ Either :: union [T, E] {
     err E
 }
 
-Maybe :: enum [T] { None Some(T) }
+Maybe :: enum [T] {
+    None
+    Some(T)
+}
 
 pair: Pair[i32, string]

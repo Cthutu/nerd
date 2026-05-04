@@ -1052,15 +1052,6 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypeEnum:
         {
             const CstEnumTypeInfo* enum_type = &cst->enum_types[node->a];
-            bool                   multiline = false;
-            for (u32 i = 0; i < enum_type->variant_count; ++i) {
-                const CstEnumVariant* variant =
-                    &cst->enum_variants[enum_type->first_variant + i];
-                if (variant->value_node_index != U32_MAX) {
-                    multiline = true;
-                    break;
-                }
-            }
             sb_append_cstr(sb, "enum");
             if (enum_type->generic_params_index != U32_MAX) {
                 const CstGenericParams* generic =
@@ -1083,12 +1074,8 @@ internal void format_emit_expr(StringBuilder* sb,
             for (u32 i = 0; i < enum_type->variant_count; ++i) {
                 const CstEnumVariant* variant =
                     &cst->enum_variants[enum_type->first_variant + i];
-                if (multiline) {
-                    sb_append_char(sb, '\n');
-                    format_emit_indent(sb, 1);
-                } else {
-                    sb_append_char(sb, ' ');
-                }
+                sb_append_char(sb, '\n');
+                format_emit_indent(sb, 1);
                 sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
                 if (variant->type_node_index != U32_MAX) {
                     sb_append_char(sb, '(');
@@ -1118,12 +1105,8 @@ internal void format_emit_expr(StringBuilder* sb,
                         sb, cst, lexer, variant->value_node_index, 0);
                 }
             }
-            if (multiline) {
-                sb_append_char(sb, '\n');
-                sb_append_char(sb, '}');
-            } else {
-                sb_append_cstr(sb, " }");
-            }
+            sb_append_char(sb, '\n');
+            sb_append_char(sb, '}');
         }
         break;
     case CK_TypeFn:

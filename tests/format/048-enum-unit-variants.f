@@ -15,7 +15,11 @@ explicit:Colour=Colour.Red
 score(picked)+score(explicit)
 }
 ¬
-Colour :: enum { Red Green Blue }
+Colour :: enum {
+    Red
+    Green
+    Blue
+}
 
 score :: fn (colour: Colour) -> i32 {
     return on colour {

@@ -20,7 +20,11 @@ Term :: plex {
     running       bool
 }
 
-TermEvent :: enum { Key(TermKeyEvent) Mouse(TermMouseEvent) Resize(i32, i32) }
+TermEvent :: enum {
+    Key(TermKeyEvent)
+    Mouse(TermMouseEvent)
+    Resize(i32, i32)
+}
 
 TermKeyEvent :: plex {
     key           u8
@@ -35,7 +39,18 @@ TermMouseEvent :: plex {
     buttons u8
 }
 
-TermKeyCode :: enum { NONE ENTER BACKSPACE DELETE LEFT RIGHT UP DOWN HOME END }
+TermKeyCode :: enum {
+    NONE
+    ENTER
+    BACKSPACE
+    DELETE
+    LEFT
+    RIGHT
+    UP
+    DOWN
+    HOME
+    END
+}
 
 pub term_size :: fn () -> (i32, i32) {
     width  : i32
