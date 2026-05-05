@@ -399,6 +399,11 @@ internal void   format_emit_type_plex_multiline(StringBuilder* sb,
                                                 const Lexer*   lexer,
                                                 u32            node_index,
                                                 u32            indent_level);
+internal void   format_emit_type_enum_multiline(StringBuilder* sb,
+                                                const Cst*     cst,
+                                                const Lexer*   lexer,
+                                                u32            node_index,
+                                                u32            indent_level);
 internal void   format_emit_expr(StringBuilder* sb,
                                  const Cst*     cst,
                                  const Lexer*   lexer,
@@ -1074,64 +1079,7 @@ internal void format_emit_expr(StringBuilder* sb,
         }
         break;
     case CK_TypeEnum:
-        {
-            const CstEnumTypeInfo* enum_type = &cst->enum_types[node->a];
-            sb_append_cstr(sb, "enum");
-            if (enum_type->generic_params_index != U32_MAX) {
-                const CstGenericParams* generic =
-                    &cst->generic_params[enum_type->generic_params_index];
-                sb_append_cstr(sb, " [");
-                for (u32 i = 0; i < generic->symbol_count; ++i) {
-                    if (i > 0) {
-                        sb_append_cstr(sb, ", ");
-                    }
-                    sb_append_string(
-                        sb,
-                        lex_symbol(
-                            lexer,
-                            cst->generic_param_symbols[generic->first_symbol +
-                                                       i]));
-                }
-                sb_append_char(sb, ']');
-            }
-            sb_append_cstr(sb, " {");
-            for (u32 i = 0; i < enum_type->variant_count; ++i) {
-                const CstEnumVariant* variant =
-                    &cst->enum_variants[enum_type->first_variant + i];
-                sb_append_char(sb, '\n');
-                format_emit_indent(sb, 1);
-                sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
-                if (variant->type_node_index != U32_MAX) {
-                    sb_append_char(sb, '(');
-                    const CstNode* variant_type =
-                        &cst->nodes[variant->type_node_index];
-                    if (variant_type->kind == CK_TypeTuple) {
-                        for (u32 item = 0; item < variant_type->b; ++item) {
-                            if (item > 0) {
-                                sb_append_cstr(sb, ", ");
-                            }
-                            format_emit_expr(
-                                sb,
-                                cst,
-                                lexer,
-                                cst->tuple_items[variant_type->a + item],
-                                0);
-                        }
-                    } else {
-                        format_emit_expr(
-                            sb, cst, lexer, variant->type_node_index, 0);
-                    }
-                    sb_append_char(sb, ')');
-                }
-                if (variant->value_node_index != U32_MAX) {
-                    sb_append_cstr(sb, " = ");
-                    format_emit_expr(
-                        sb, cst, lexer, variant->value_node_index, 0);
-                }
-            }
-            sb_append_char(sb, '\n');
-            sb_append_char(sb, '}');
-        }
+        format_emit_type_enum_multiline(sb, cst, lexer, node_index, 0);
         break;
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
@@ -2332,6 +2280,209 @@ internal usize format_rendered_expr_width(const Cst*   cst,
     usize width = sb.size;
     arena_done(&scratch);
     return width;
+}
+
+internal void format_emit_enum_header(StringBuilder*         sb,
+                                      const Cst*             cst,
+                                      const Lexer*           lexer,
+                                      const CstEnumTypeInfo* enum_type)
+{
+    sb_append_cstr(sb, "enum");
+    if (enum_type->generic_params_index == U32_MAX) {
+        return;
+    }
+
+    const CstGenericParams* generic =
+        &cst->generic_params[enum_type->generic_params_index];
+    sb_append_cstr(sb, " [");
+    for (u32 i = 0; i < generic->symbol_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_string(
+            sb,
+            lex_symbol(lexer,
+                       cst->generic_param_symbols[generic->first_symbol + i]));
+    }
+    sb_append_char(sb, ']');
+}
+
+internal void format_emit_enum_variant_code(StringBuilder*        sb,
+                                            const Cst*            cst,
+                                            const Lexer*          lexer,
+                                            const CstEnumVariant* variant)
+{
+    sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
+    if (variant->type_node_index != U32_MAX) {
+        sb_append_char(sb, '(');
+        const CstNode* variant_type = &cst->nodes[variant->type_node_index];
+        if (variant_type->kind == CK_TypeTuple) {
+            for (u32 item = 0; item < variant_type->b; ++item) {
+                if (item > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                format_emit_expr(sb,
+                                 cst,
+                                 lexer,
+                                 cst->tuple_items[variant_type->a + item],
+                                 0);
+            }
+        } else {
+            format_emit_expr(sb, cst, lexer, variant->type_node_index, 0);
+        }
+        sb_append_char(sb, ')');
+    }
+    if (variant->value_node_index != U32_MAX) {
+        sb_append_cstr(sb, " = ");
+        format_emit_expr(sb, cst, lexer, variant->value_node_index, 0);
+    }
+}
+
+internal usize format_rendered_enum_variant_width(const Cst*            cst,
+                                                  const Lexer*          lexer,
+                                                  const CstEnumVariant* variant,
+                                                  u32 indent_level)
+{
+    Arena         scratch = {0};
+    StringBuilder sb      = {0};
+    arena_init(&scratch);
+    sb_init(&sb, &scratch);
+    format_emit_enum_variant_code(&sb, cst, lexer, variant);
+    usize width = (usize)(indent_level + 1) * 4 + sb.size;
+    arena_done(&scratch);
+    return width;
+}
+
+internal usize format_enum_variant_end_offset(const Cst*            cst,
+                                              const Lexer*          lexer,
+                                              const CstEnumVariant* variant)
+{
+    if (variant->value_node_index != U32_MAX) {
+        u32 end_token =
+            format_node_end_token_index(cst, lexer, variant->value_node_index);
+        return lex_token_end_offset(lexer, &lexer->tokens[end_token]);
+    }
+    if (variant->type_node_index != U32_MAX) {
+        u32 end_token =
+            format_node_end_token_index(cst, lexer, variant->type_node_index);
+        if (end_token + 1 < array_count(lexer->tokens) &&
+            lexer->tokens[end_token + 1].kind == TK_RParen) {
+            end_token++;
+        }
+        return lex_token_end_offset(lexer, &lexer->tokens[end_token]);
+    }
+    return lex_token_end_offset(lexer, &lexer->tokens[variant->token_index]);
+}
+
+internal void format_emit_type_enum_multiline(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    ASSERT(node->kind == CK_TypeEnum, "Expected enum type node");
+
+    const CstEnumTypeInfo* enum_type     = &cst->enum_types[node->a];
+    Array(usize) variant_code_widths     = NULL;
+    Array(bool) variant_has_comments     = NULL;
+    Array(u32) variant_comment_indices   = NULL;
+    Array(usize) variant_comment_columns = NULL;
+
+    for (u32 i = 0; i < enum_type->variant_count; ++i) {
+        const CstEnumVariant* variant =
+            &cst->enum_variants[enum_type->first_variant + i];
+        usize code_width = format_rendered_enum_variant_width(
+            cst, lexer, variant, indent_level);
+        usize end_offset = format_enum_variant_end_offset(cst, lexer, variant);
+        u32   comment_index = U32_MAX;
+        bool  has_comment   = format_find_trailing_comment_index_after_offset(
+            lexer->source, lexer, end_offset, &comment_index);
+        array_push(variant_code_widths, code_width);
+        array_push(variant_has_comments, has_comment);
+        array_push(variant_comment_indices, comment_index);
+        array_push(variant_comment_columns, 0);
+    }
+    for (u32 i = 0; i < enum_type->variant_count;) {
+        if (!variant_has_comments[i]) {
+            i++;
+            continue;
+        }
+        u32   start          = i;
+        usize comment_column = 0;
+        while (i < enum_type->variant_count && variant_has_comments[i]) {
+            if (variant_code_widths[i] + 1 > comment_column) {
+                comment_column = variant_code_widths[i] + 1;
+            }
+            i++;
+        }
+        for (u32 variant_index = start; variant_index < i; ++variant_index) {
+            variant_comment_columns[variant_index] = comment_column;
+        }
+    }
+
+    format_emit_enum_header(sb, cst, lexer, enum_type);
+    sb_append_cstr(sb, " {\n");
+
+    u32 open_brace_token = node->token_index;
+    while (open_brace_token < array_count(lexer->tokens) &&
+           lexer->tokens[open_brace_token].kind != TK_LBrace) {
+        open_brace_token++;
+    }
+    u32 comment_index = 0;
+    if (open_brace_token < array_count(lexer->tokens)) {
+        usize open_brace_end =
+            lex_token_end_offset(lexer, &lexer->tokens[open_brace_token]);
+        format_skip_block_comments_before_offset(
+            lexer, &comment_index, open_brace_end);
+    }
+
+    for (u32 i = 0; i < enum_type->variant_count; ++i) {
+        const CstEnumVariant* variant =
+            &cst->enum_variants[enum_type->first_variant + i];
+        usize variant_start_offset = lexer->tokens[variant->token_index].offset;
+        format_emit_block_comments_before_offset(sb,
+                                                 lexer,
+                                                 &comment_index,
+                                                 variant_start_offset,
+                                                 indent_level + 1,
+                                                 NULL);
+        format_emit_indent(sb, indent_level + 1);
+        format_emit_enum_variant_code(sb, cst, lexer, variant);
+        if (variant_has_comments[i]) {
+            usize before_offset = lexer->source.source.count;
+            if (i + 1 < enum_type->variant_count) {
+                const CstEnumVariant* next_variant =
+                    &cst->enum_variants[enum_type->first_variant + i + 1];
+                before_offset = lexer->tokens[next_variant->token_index].offset;
+            }
+            string comment_text =
+                format_merged_trailing_comment_text(lexer,
+                                                    variant_comment_indices[i],
+                                                    variant_comment_columns[i],
+                                                    before_offset,
+                                                    &comment_index);
+            format_emit_trailing_comment_text_aligned(
+                sb,
+                comment_text,
+                variant_comment_columns[i],
+                variant_code_widths[i]);
+        } else {
+            sb_append_char(sb, '\n');
+        }
+    }
+
+    u32   close_token  = format_node_end_token_index(cst, lexer, node_index);
+    usize close_offset = lexer->tokens[close_token].offset;
+    format_emit_block_comments_before_offset(
+        sb, lexer, &comment_index, close_offset, indent_level + 1, NULL);
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
+
+    array_free(variant_code_widths);
+    array_free(variant_has_comments);
+    array_free(variant_comment_indices);
+    array_free(variant_comment_columns);
 }
 
 internal void format_emit_type_plex_multiline(StringBuilder* sb,
@@ -3989,6 +4140,8 @@ internal void format_emit_for_header_item(StringBuilder* sb,
             sb, cst->nodes[item->b].kind == CK_AnnotatedValue ? " : " : " :: ");
         if (cst->nodes[item->b].kind == CK_TypePlex) {
             format_emit_type_plex_multiline(sb, cst, lexer, item->b, 0);
+        } else if (cst->nodes[item->b].kind == CK_TypeEnum) {
+            format_emit_type_enum_multiline(sb, cst, lexer, item->b, 0);
         } else {
             format_emit_value_with_indent(sb, cst, lexer, item->b, 0);
         }
@@ -4242,6 +4395,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
         if (cst->nodes[stmt->b].kind == CK_TypePlex) {
             format_emit_type_plex_multiline(
+                sb, cst, lexer, stmt->b, indent_level);
+        } else if (cst->nodes[stmt->b].kind == CK_TypeEnum) {
+            format_emit_type_enum_multiline(
                 sb, cst, lexer, stmt->b, indent_level);
         } else {
             format_emit_value_with_indent(
@@ -4776,6 +4932,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
             if (cst.nodes[node->b].kind == CK_TypePlex) {
                 format_emit_type_plex_multiline(sb, &cst, &lexer, node->b, 0);
+            } else if (cst.nodes[node->b].kind == CK_TypeEnum) {
+                format_emit_type_enum_multiline(sb, &cst, &lexer, node->b, 0);
             } else {
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
