@@ -166,6 +166,12 @@ Use `--filter text` to run only tests whose names contain that text:
 nerd test path/to/file.n --filter adds
 ```
 
+Use `-v` or `--verbose` to print a result line as each selected test finishes:
+
+```sh
+nerd test path/to/file.n -v
+```
+
 Test declarations are not normal module API declarations. The test runner
 turns each selected test into a hidden zero-parameter function and calls those
 functions from a generated test entry point.

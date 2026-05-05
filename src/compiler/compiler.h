@@ -52,6 +52,7 @@ typedef struct {
     string input_path;
     string filter;
     bool   list;
+    bool   list_results;
     bool   verbose;
     Array(string) keywords;
 } NerdTestConfig;

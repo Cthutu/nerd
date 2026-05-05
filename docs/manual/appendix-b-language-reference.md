@@ -87,6 +87,7 @@ intended exit code.
 - Test declarations are not exported module API.
 - `nerd test root.n --list` lists discovered tests.
 - `nerd test root.n --filter text` runs matching tests.
+- `nerd test root.n -v` prints one result line per selected test.
 - The current runner uses fail-fast `assert` behaviour.
 
 ## `on`

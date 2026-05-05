@@ -456,6 +456,72 @@ internal SourceTestGenerated source_test_generated_source(Arena*     arena,
     };
 }
 
+internal void source_test_print_result(bool passed, string name)
+{
+    if (passed) {
+        prn(ANSI_GREEN "[PASS]" ANSI_RESET " source test: " STRINGP,
+            STRINGV(name));
+    } else {
+        eprn(ANSI_RED "[FAIL]" ANSI_RESET " source test: " STRINGP,
+             STRINGV(name));
+    }
+}
+
+internal int source_test_run_one(Arena*     arena,
+                                 NerdSource source,
+                                 Array(SourceTestDecl) tests,
+                                 usize                 test_index,
+                                 string                generated_path,
+                                 const NerdTestConfig* config)
+{
+    Array(SourceTestDecl) single_tests = NULL;
+    for (usize i = 0; i < array_count(tests); ++i) {
+        SourceTestDecl test = tests[i];
+        test.selected       = i == test_index;
+        array_push(single_tests, test);
+    }
+
+    SourceTestGenerated generated =
+        source_test_generated_source(arena, source, single_tests);
+    NerdRunConfig run_config = {
+        .source =
+            (NerdSource){
+                .source      = generated.source,
+                .source_path = generated_path,
+                .fragments   = generated.fragments,
+            },
+        .verbose  = config->verbose,
+        .keywords = config->keywords,
+    };
+
+    int result = compiler_cmd_run(&run_config);
+    source_test_print_result(result == 0, tests[test_index].name);
+    array_free(single_tests);
+    return result;
+}
+
+internal int source_test_run_verbose(Arena*     arena,
+                                     NerdSource source,
+                                     Array(SourceTestDecl) tests,
+                                     string                generated_path,
+                                     const NerdTestConfig* config,
+                                     u32*                  out_passed_count)
+{
+    for (usize i = 0; i < array_count(tests); ++i) {
+        if (!tests[i].selected) {
+            continue;
+        }
+
+        int result = source_test_run_one(
+            arena, source, tests, i, generated_path, config);
+        if (result != 0) {
+            return result;
+        }
+        *out_passed_count += 1;
+    }
+    return 0;
+}
+
 int compiler_cmd_test(const NerdTestConfig* config)
 {
     Arena arena = {0};
@@ -521,6 +587,30 @@ int compiler_cmd_test(const NerdTestConfig* config)
             filemap_unload(&map);
             arena_done(&arena);
             return 0;
+        }
+
+        if (config->list_results) {
+            u32 result_count = 0;
+            int result =
+                source_test_run_verbose(&arena,
+                                        (NerdSource){
+                                            .source      = source,
+                                            .source_path = config->input_path,
+                                        },
+                                        tests,
+                                        config->input_path,
+                                        config,
+                                        &result_count);
+            if (result == 0) {
+                prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, result_count);
+            } else {
+                eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
+            }
+
+            array_free(tests);
+            filemap_unload(&map);
+            arena_done(&arena);
+            return result;
         }
 
         SourceTestGenerated generated =
@@ -625,7 +715,8 @@ int compiler_cmd_test(const NerdTestConfig* config)
         return 0;
     }
 
-    int result = 0;
+    int result       = 0;
+    u32 result_count = 0;
     for (u32 module_index = 0; module_index < array_count(program.modules);
          ++module_index) {
         Array(SourceTestDecl) tests = module_tests[module_index];
@@ -646,6 +737,19 @@ int compiler_cmd_test(const NerdTestConfig* config)
         cstr generated_dir = path_dirname(&arena, module->resolved_path);
         cstr generated_path =
             path_join(&arena, generated_dir, "__nerd_source_test");
+        if (config->list_results) {
+            result = source_test_run_verbose(&arena,
+                                             module->front_end.lexer.source,
+                                             tests,
+                                             s(generated_path),
+                                             config,
+                                             &result_count);
+            if (result != 0) {
+                break;
+            }
+            continue;
+        }
+
         NerdRunConfig run_config = {
             .source =
                 (NerdSource){

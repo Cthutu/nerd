@@ -368,6 +368,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                "list",
                                NULL,
                                "List discovered source tests without running"));
+        json_array_push(
+            flags,
+            nerd_cli_make_flag(
+                arena, "verbose", "v", "List source tests as they run"));
         json_array_push(params,
                         nerd_cli_make_param(arena,
                                             "input",
@@ -571,6 +575,8 @@ internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result,
         .filter = nerd_cli_param_string(
             cli_result, "command.params.filter", (string){0}),
         .list = nerd_cli_flag_bool(cli_result, "command.flags.list", false),
+        .list_results =
+            nerd_cli_flag_bool(cli_result, "command.flags.verbose", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
         .keywords = keywords,
