@@ -25,6 +25,8 @@ The formatter should be deterministic and idempotent.
   the `--` marker aligned and continuation text indented.
 - Existing wrapped plex field end-of-line comments are reattached before
   wrapping so repeated formatting preserves continuation text.
+- Comment-only lines inside code constructs remain standalone and are not
+  crossed by alignment or use-sorting groups.
 
 ## Code Layout Rules
 
