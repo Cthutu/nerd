@@ -15,7 +15,8 @@
                 // "build",
                 // "-v",
                 // "nerd-src/main.n"
-                "examples/text-adventure/adv.n"
+                // "examples/text-adventure/adv.n"
+                "examples/term/demo.n"
             ],
             "group": {
                 "kind": "build",
