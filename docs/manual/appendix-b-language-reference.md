@@ -22,6 +22,7 @@ intended exit code.
 - Mutable inferred bindings use `:=`.
 - Local scopes are created by blocks.
 - `pub` exports a module-level declaration.
+- Public plex and union fields must not name private type declarations.
 - `use path` imports public names.
 - `name :: use path` binds a module for qualified access.
 - `pub use path` imports public names and re-exports them from this module.

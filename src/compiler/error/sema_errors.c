@@ -1098,3 +1098,35 @@ bool error_0340_named_argument_position(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a public record field whose type names a private declaration.
+
+bool error_0341_private_type_in_public_field(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     public_type,
+                                             string     private_type)
+{
+    ErrorInfo error = error_init(341,
+                                 source,
+                                 span,
+                                 "Public type `" STRINGP
+                                 "` exposes private type `" STRINGP "`",
+                                 STRINGV(public_type),
+                                 STRINGV(private_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is private to this module",
+                        STRINGV(private_type));
+    error_add_note(&error,
+                   "Public plex and union fields are part of the module's "
+                   "public API.");
+    error_add_help(&error,
+                   "Make `" STRINGP
+                   "` public or hide it behind a private implementation "
+                   "detail that is not stored in the public field list.",
+                   STRINGV(private_type));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

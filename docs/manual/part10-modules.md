@@ -117,6 +117,10 @@ pub answer :: fn () -> i32 {  -- exported from this module
 
 Declarations without `pub` are private to the module.
 
+Public plex and union declarations cannot expose private type declarations in
+their field types. Make the field type public, or keep that implementation
+detail outside the public field list.
+
 Public generic functions and generic type aliases can be imported like other
 public declarations. The concrete versions are still created only when another
 module uses them:

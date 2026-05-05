@@ -301,6 +301,10 @@ bool error_0340_named_argument_position(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected,
                                         string     found);
+bool error_0341_private_type_in_public_field(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     public_type,
+                                             string     private_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system

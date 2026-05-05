@@ -2522,6 +2522,218 @@ internal bool sema_error_non_type_in_type_context(const Lexer* lexer,
                                     s("non-type value"));
 }
 
+internal bool sema_decl_is_public(const Ast* ast, const SemaDecl* decl)
+{
+    if (decl->bind_node_index == sema_no_decl()) {
+        return true;
+    }
+    if (decl->bind_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    return ast_has_flag(&ast->nodes[decl->bind_node_index], ANF_Public);
+}
+
+internal bool sema_type_node_contains_private_type_ref(const Lexer* lexer,
+                                                       const Ast*   ast,
+                                                       const Sema*  sema,
+                                                       u32          node_index,
+                                                       u32* out_decl_index,
+                                                       u32* out_ref_node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_Expression:
+    case AK_Statement:
+    case AK_AnnotatedValue:
+        return sema_type_node_contains_private_type_ref(
+            lexer, ast, sema, node->a, out_decl_index, out_ref_node_index);
+
+    case AK_SymbolRef:
+        {
+            if (sema_type_index_for_name((Sema*)sema,
+                                         lex_symbol(lexer, node->a)) !=
+                sema_no_type()) {
+                return false;
+            }
+
+            u32 decl_index = sema_find_decl(sema, node->a);
+            if (decl_index == sema_no_decl()) {
+                return false;
+            }
+
+            const SemaDecl* decl = &sema->decls[decl_index];
+            if ((decl->kind == SK_TypeAlias ||
+                 decl->kind == SK_GenericTypeAlias) &&
+                !sema_decl_is_public(ast, decl)) {
+                *out_decl_index     = decl_index;
+                *out_ref_node_index = node_index;
+                return true;
+            }
+            return false;
+        }
+
+    case AK_TypeApply:
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            if (sema_type_node_contains_private_type_ref(
+                    lexer,
+                    ast,
+                    sema,
+                    apply->target_node_index,
+                    out_decl_index,
+                    out_ref_node_index)) {
+                return true;
+            }
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                if (sema_type_node_contains_private_type_ref(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->tuple_items[apply->first_arg + i],
+                        out_decl_index,
+                        out_ref_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    case AK_TypeFn:
+        {
+            const AstFnSignature* signature = sema_ast_signature(ast, node);
+            for (u32 i = 0; i < signature->param_count; ++i) {
+                if (sema_type_node_contains_private_type_ref(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->params[signature->first_param + i].type_node_index,
+                        out_decl_index,
+                        out_ref_node_index)) {
+                    return true;
+                }
+            }
+            if (signature->return_type_node_index != U32_MAX &&
+                sema_type_node_contains_private_type_ref(
+                    lexer,
+                    ast,
+                    sema,
+                    signature->return_type_node_index,
+                    out_decl_index,
+                    out_ref_node_index)) {
+                return true;
+            }
+            return false;
+        }
+
+    case AK_TypeTuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (sema_type_node_contains_private_type_ref(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->tuple_items[node->a + i],
+                    out_decl_index,
+                    out_ref_node_index)) {
+                return true;
+            }
+        }
+        return false;
+
+    case AK_TypeArray:
+        return sema_type_node_contains_private_type_ref(
+            lexer, ast, sema, node->b, out_decl_index, out_ref_node_index);
+
+    case AK_TypeSlice:
+    case AK_TypeDynamicArray:
+    case AK_TypePointer:
+        return sema_type_node_contains_private_type_ref(
+            lexer, ast, sema, node->a, out_decl_index, out_ref_node_index);
+
+    case AK_TypePlex:
+        {
+            const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                if (sema_type_node_contains_private_type_ref(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->plex_fields[plex->first_field + i].type_node_index,
+                        out_decl_index,
+                        out_ref_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    case AK_TypeEnum:
+        {
+            const AstEnumTypeInfo* enum_type = &ast->enum_types[node->a];
+            for (u32 i = 0; i < enum_type->variant_count; ++i) {
+                u32 payload_node =
+                    ast->enum_variants[enum_type->first_variant + i]
+                        .type_node_index;
+                if (payload_node != U32_MAX &&
+                    sema_type_node_contains_private_type_ref(
+                        lexer,
+                        ast,
+                        sema,
+                        payload_node,
+                        out_decl_index,
+                        out_ref_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    default:
+        return false;
+    }
+}
+
+internal bool sema_check_public_field_type_visibility(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      const Sema*  sema,
+                                                      u32 owner_decl_index,
+                                                      u32 field_type_node_index)
+{
+    if (owner_decl_index >= array_count(sema->decls)) {
+        return true;
+    }
+
+    const SemaDecl* owner_decl = &sema->decls[owner_decl_index];
+    if (!sema_decl_is_public(ast, owner_decl)) {
+        return true;
+    }
+
+    u32 private_decl_index = sema_no_decl();
+    u32 ref_node_index     = U32_MAX;
+    if (!sema_type_node_contains_private_type_ref(lexer,
+                                                  ast,
+                                                  sema,
+                                                  field_type_node_index,
+                                                  &private_decl_index,
+                                                  &ref_node_index)) {
+        return true;
+    }
+
+    ASSERT(private_decl_index < array_count(sema->decls),
+           "Expected private declaration index");
+    ASSERT(ref_node_index < array_count(ast->nodes),
+           "Expected private type reference node");
+    const SemaDecl* private_decl = &sema->decls[private_decl_index];
+    return error_0341_private_type_in_public_field(
+        lexer->source,
+        sema_node_span(lexer, &ast->nodes[ref_node_index]),
+        lex_symbol(lexer, owner_decl->symbol_handle),
+        lex_symbol(lexer, private_decl->symbol_handle));
+}
+
 internal bool sema_try_classify_type_node(const Lexer* lexer,
                                           const Ast*   ast,
                                           Sema*        sema,
@@ -2873,6 +3085,15 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                         sema,
                         field->type_node_index,
                         s("plex field type"));
+                }
+                if (!sema_check_public_field_type_visibility(
+                        lexer,
+                        ast,
+                        sema,
+                        owner_decl_index,
+                        field->type_node_index)) {
+                    array_free(field_types);
+                    return false;
                 }
                 array_push(field_types, field_type);
             }
