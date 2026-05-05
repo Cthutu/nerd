@@ -1188,3 +1188,31 @@ bool error_0343_duplicate_enum_variant(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a type-qualified impl function call whose candidate is not a valid
+// associated function.
+
+bool error_0344_invalid_associated_function_return(NerdSource source,
+                                                   ErrorSpan  span,
+                                                   string     symbol)
+{
+    ErrorInfo error = error_init(344,
+                                 source,
+                                 span,
+                                 "Impl function `" STRINGP
+                                 "` cannot be called as an associated function",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP
+                        "` is called through a type, so it must return `Self` "
+                        "or `^Self`",
+                        STRINGV(symbol));
+    error_add_help(&error,
+                   "Change the impl function return type to `Self` or "
+                   "`^Self`, or call it through a receiver value.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -4,6 +4,8 @@ Box :: plex [T] {
 
 IntBox :: Box[i32]
 
+global_box := IntBox.init(40)
+
 impl Box[T] {
     init :: fn (value: T) -> Self {
         return { value }
@@ -11,8 +13,8 @@ impl Box[T] {
 }
 
 main :: fn () -> i32 {
-    box := IntBox.init(42)
-    return box.value
+    box := IntBox.init(2)
+    return global_box.value + box.value
 }
 ¬
 42

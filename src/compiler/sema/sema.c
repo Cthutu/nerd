@@ -2402,12 +2402,14 @@ internal void sema_import_method_for_decl(Lexer*       dst_lexer,
         (SemaMethod){
             .symbol_handle = sema_import_symbol_handle(
                 dst_lexer, source_lexer, source_method->symbol_handle),
-            .decl_index             = dst_decl_index,
-            .impl_node_index        = source_method->impl_node_index,
-            .target_type_node_index = source_method->target_type_node_index,
-            .generic_params_index   = source_method->generic_params_index,
-            .is_public              = true,
-            .is_associated          = source_method->is_associated,
+            .decl_index              = dst_decl_index,
+            .impl_node_index         = source_method->impl_node_index,
+            .target_type_node_index  = source_method->target_type_node_index,
+            .generic_params_index    = source_method->generic_params_index,
+            .is_public               = true,
+            .is_associated           = source_method->is_associated,
+            .first_param_is_receiver = source_method->first_param_is_receiver,
+            .returns_self            = source_method->returns_self,
         });
 }
 
@@ -3639,6 +3641,8 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                         .is_public = ast_has_flag(method_node, ANF_Public),
                         .is_associated =
                             returns_self && !first_param_is_receiver,
+                        .first_param_is_receiver = first_param_is_receiver,
+                        .returns_self            = returns_self,
                     });
             }
             continue;
@@ -8677,7 +8681,7 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
 
     for (u32 i = 0; i < array_count(sema->methods); ++i) {
         const SemaMethod* method = &sema->methods[i];
-        if (!method->is_associated || method->symbol_handle != method_symbol) {
+        if (method->symbol_handle != method_symbol) {
             continue;
         }
 
@@ -8753,6 +8757,17 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
         }
         if (!target_matched) {
             array_free(source_arg_types);
+            continue;
+        }
+
+        if (!method->is_associated) {
+            array_free(source_arg_types);
+            if (!method->first_param_is_receiver && !method->returns_self) {
+                return error_0344_invalid_associated_function_return(
+                    lexer->source,
+                    sema_node_span(lexer, call_node),
+                    lex_symbol(lexer, method_symbol));
+            }
             continue;
         }
 

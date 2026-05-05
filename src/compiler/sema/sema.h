@@ -125,6 +125,8 @@ typedef struct {
     u32  generic_params_index;
     bool is_public;
     bool is_associated;
+    bool first_param_is_receiver;
+    bool returns_self;
 } SemaMethod;
 
 //------------------------------------------------------------------------------

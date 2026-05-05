@@ -313,6 +313,9 @@ bool error_0343_duplicate_enum_variant(NerdSource source,
                                        ErrorSpan  span,
                                        string     symbol,
                                        ErrorSpan  previous_span);
+bool error_0344_invalid_associated_function_return(NerdSource source,
+                                                   ErrorSpan  span,
+                                                   string     symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system
