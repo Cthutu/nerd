@@ -19,6 +19,7 @@ The formatter should be deterministic and idempotent.
 - Empty comment lines separate comment paragraphs.
 - Comment paragraphs are reflowed to a width of 80 characters.
 - Reflow keeps the current indentation of the comment block.
+- End-of-line comments stay attached to the formatted line they followed.
 
 ## Code Layout Rules
 

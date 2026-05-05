@@ -59,6 +59,21 @@ internal bool  format_emit_block_comments_before_offset(StringBuilder* sb,
 internal void  format_skip_block_comments_before_offset(const Lexer* lexer,
                                                         u32*  io_comment_index,
                                                         usize end_offset);
+internal bool  format_comment_is_trailing_after_offset(NerdSource   source,
+                                                       usize        end_offset,
+                                                       LexerComment comment);
+internal bool  format_node_has_trailing_comment(const Cst*   cst,
+                                                const Lexer* lexer,
+                                                u32          node_index);
+internal bool  format_emit_trailing_comment_after_offset(StringBuilder* sb,
+                                                         const Lexer*   lexer,
+                                                         u32*  io_comment_index,
+                                                         usize end_offset);
+internal bool  format_emit_trailing_comment_for_node(StringBuilder* sb,
+                                                     const Cst*     cst,
+                                                     const Lexer*   lexer,
+                                                     u32            node_index,
+                                                     u32* io_comment_index);
 
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
@@ -1530,6 +1545,7 @@ internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
 }
 
 typedef struct {
+    u32    node_index;
     string symbol;
     string type;
     string op;
@@ -2310,7 +2326,15 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
             sb_append_char(sb, ' ');
         }
         format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
-        sb_append_char(sb, '\n');
+        u32 field_comment_index = 0;
+        u32 field_type_end_token =
+            format_node_end_token_index(cst, lexer, field->type_node_index);
+        usize field_type_end_offset =
+            lex_token_end_offset(lexer, &lexer->tokens[field_type_end_token]);
+        if (!format_emit_trailing_comment_after_offset(
+                sb, lexer, &field_comment_index, field_type_end_offset)) {
+            sb_append_char(sb, '\n');
+        }
     }
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
@@ -2349,12 +2373,13 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
-            .type      = type,
-            .value     = value,
-            .is_bind   = false,
-            .has_value = payload->kind != CK_ZeroInit,
-            .is_public = (node->flags & CNF_Public) != 0,
+            .node_index = node_index,
+            .symbol     = lex_symbol(lexer, cst_get_symbol(node)),
+            .type       = type,
+            .value      = value,
+            .is_bind    = false,
+            .has_value  = payload->kind != CK_ZeroInit,
+            .is_public  = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
                                          payload->kind != CK_ZeroInit &&
                                          payload->kind != CK_Undefined,
@@ -2387,12 +2412,13 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .symbol    = lex_symbol(lexer, cst_get_symbol(node)),
-            .type      = type,
-            .value     = value,
-            .is_bind   = true,
-            .has_value = true,
-            .is_public = (node->flags & CNF_Public) != 0,
+            .node_index = node_index,
+            .symbol     = lex_symbol(lexer, cst_get_symbol(node)),
+            .type       = type,
+            .value      = value,
+            .is_bind    = true,
+            .has_value  = true,
+            .is_public  = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = false,
         };
         return true;
@@ -2404,6 +2430,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
+            .node_index = node_index,
             .symbol = format_render_expr_to_string(arena, cst, lexer, node->a),
             .op     = format_assignment_operator(lexer, node),
             .value  = format_render_expr_to_string(arena, cst, lexer, node->b),
@@ -3201,6 +3228,99 @@ internal void format_skip_block_comments_before_offset(const Lexer* lexer,
     }
 }
 
+internal bool format_comment_is_trailing_after_offset(NerdSource   source,
+                                                      usize        end_offset,
+                                                      LexerComment comment)
+{
+    if (comment.offset < end_offset) {
+        return false;
+    }
+
+    u32   end_line     = 0;
+    u32   end_col      = 0;
+    u32   comment_line = 0;
+    u32   comment_col  = 0;
+    usize line_offset  = end_offset > 0 ? end_offset - 1 : end_offset;
+    if (!lex_offset_to_line_col(source, line_offset, &end_line, &end_col) ||
+        !lex_offset_to_line_col(
+            source, comment.offset, &comment_line, &comment_col)) {
+        return false;
+    }
+    UNUSED(end_col);
+    UNUSED(comment_col);
+    if (end_line != comment_line) {
+        return false;
+    }
+
+    for (usize i = end_offset; i < comment.offset && i < source.source.count;
+         ++i) {
+        if (source.source.data[i] != ' ' && source.source.data[i] != '\t' &&
+            source.source.data[i] != '\r') {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool format_node_has_trailing_comment(const Cst*   cst,
+                                               const Lexer* lexer,
+                                               u32          node_index)
+{
+    u32   end_token  = format_node_end_token_index(cst, lexer, node_index);
+    usize end_offset = lex_token_end_offset(lexer, &lexer->tokens[end_token]);
+    for (u32 i = 0; i < array_count(lexer->comments); ++i) {
+        if (format_comment_is_trailing_after_offset(
+                lexer->source, end_offset, lexer->comments[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool format_emit_trailing_comment_after_offset(StringBuilder* sb,
+                                                        const Lexer*   lexer,
+                                                        u32*  io_comment_index,
+                                                        usize end_offset)
+{
+    while (*io_comment_index < array_count(lexer->comments) &&
+           lexer->comments[*io_comment_index].offset < end_offset) {
+        (*io_comment_index)++;
+    }
+
+    if (*io_comment_index >= array_count(lexer->comments)) {
+        return false;
+    }
+
+    LexerComment comment = lexer->comments[*io_comment_index];
+    if (!format_comment_is_trailing_after_offset(
+            lexer->source, end_offset, comment)) {
+        return false;
+    }
+
+    if (sb->size > 0 && sb->data[sb->size - 1] == '\n') {
+        sb->data[sb->size - 1] = ' ';
+    } else {
+        sb_append_char(sb, ' ');
+    }
+    sb_append_cstr(sb, "--");
+    sb_append_string(sb, comment.text);
+    sb_append_char(sb, '\n');
+    (*io_comment_index)++;
+    return true;
+}
+
+internal bool format_emit_trailing_comment_for_node(StringBuilder* sb,
+                                                    const Cst*     cst,
+                                                    const Lexer*   lexer,
+                                                    u32            node_index,
+                                                    u32* io_comment_index)
+{
+    u32   end_token  = format_node_end_token_index(cst, lexer, node_index);
+    usize end_offset = lex_token_end_offset(lexer, &lexer->tokens[end_token]);
+    return format_emit_trailing_comment_after_offset(
+        sb, lexer, io_comment_index, end_offset);
+}
+
 internal void format_emit_block_contents(StringBuilder* sb,
                                          const Cst*     cst,
                                          const Lexer*   lexer,
@@ -3290,6 +3410,29 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 cursor         = next_statement + 1;
             }
 
+            bool use_run_has_trailing_comment = false;
+            for (u32 use_index = 0; use_index < array_count(use_nodes);
+                 ++use_index) {
+                if (format_node_has_trailing_comment(
+                        cst, lexer, use_nodes[use_index])) {
+                    use_run_has_trailing_comment = true;
+                    break;
+                }
+            }
+            if (use_run_has_trailing_comment) {
+                for (u32 use_index = 0; use_index < array_count(use_nodes);
+                     ++use_index) {
+                    format_emit_block_statement(
+                        sb, cst, lexer, use_nodes[use_index], indent_level);
+                    format_emit_trailing_comment_for_node(
+                        sb, cst, lexer, use_nodes[use_index], &comment_index);
+                }
+                previous_statement_index = last_use_index;
+                i = cst_block_statement_end_exclusive(cst, last_use_index) - 1;
+                array_free(use_nodes);
+                continue;
+            }
+
             if (!format_emit_sorted_use_run(
                     sb, cst, lexer, use_nodes, indent_level)) {
                 array_free(use_nodes);
@@ -3347,8 +3490,19 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 cursor             = next_statement + 1;
             }
 
-            if (array_count(aligned) > 1 ||
-                !aligned[0].uses_standard_single_line) {
+            bool aligned_has_trailing_comment = false;
+            for (u32 aligned_index = 0; aligned_index < array_count(aligned);
+                 ++aligned_index) {
+                if (format_node_has_trailing_comment(
+                        cst, lexer, aligned[aligned_index].node_index)) {
+                    aligned_has_trailing_comment = true;
+                    break;
+                }
+            }
+
+            if (!aligned_has_trailing_comment &&
+                (array_count(aligned) > 1 ||
+                 !aligned[0].uses_standard_single_line)) {
                 format_emit_aligned_statement_group(
                     sb, aligned, (u32)array_count(aligned), indent_level);
                 previous_statement_index = last_aligned_index;
@@ -3388,6 +3542,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
 
         format_emit_block_statement(sb, cst, lexer, i, indent_level);
+        format_emit_trailing_comment_for_node(
+            sb, cst, lexer, i, &comment_index);
         if (format_statement_is_function_binding(cst, i)) {
             u32 next_statement = format_next_block_statement(
                 cst, i + 1, block->b, block_node_index);
@@ -4086,6 +4242,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
     bool first_binding          = true;
     u32  previous_binding_index = U32_MAX;
+    u32  comment_index          = 0;
     for (u32 i = 0; i < array_count(cst.bindings); ++i) {
         u32            node_index = cst.bindings[i];
         const CstNode* node       = &cst.nodes[node_index];
@@ -4112,6 +4269,30 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 last_use_binding = cursor;
             }
 
+            bool use_run_has_trailing_comment = false;
+            for (u32 use_index = 0; use_index < array_count(use_nodes);
+                 ++use_index) {
+                if (format_node_has_trailing_comment(
+                        &cst, &lexer, use_nodes[use_index])) {
+                    use_run_has_trailing_comment = true;
+                    break;
+                }
+            }
+            if (use_run_has_trailing_comment) {
+                for (u32 use_index = 0; use_index < array_count(use_nodes);
+                     ++use_index) {
+                    format_emit_block_statement(
+                        sb, &cst, &lexer, use_nodes[use_index], 0);
+                    format_emit_trailing_comment_for_node(
+                        sb, &cst, &lexer, use_nodes[use_index], &comment_index);
+                }
+                i                      = last_use_binding;
+                first_binding          = false;
+                previous_binding_index = cst.bindings[last_use_binding];
+                array_free(use_nodes);
+                continue;
+            }
+
             if (!format_emit_sorted_use_run(sb, &cst, &lexer, use_nodes, 0)) {
                 array_free(use_nodes);
                 break;
@@ -4120,6 +4301,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             i                      = last_use_binding;
             first_binding          = false;
             previous_binding_index = cst.bindings[last_use_binding];
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, previous_binding_index, &comment_index);
             array_free(use_nodes);
             continue;
         }
@@ -4130,6 +4313,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             }
             format_emit_ffi_def(sb, &cst, &lexer, node->a);
             sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
             first_binding          = false;
             previous_binding_index = node_index;
             continue;
@@ -4141,6 +4326,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             }
             format_emit_ffi_block(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
             first_binding          = false;
             previous_binding_index = node_index;
             continue;
@@ -4149,6 +4336,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
             first_binding          = false;
             previous_binding_index = node_index;
             continue;
@@ -4157,6 +4346,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         if (node->kind == CK_Impl) {
             format_emit_impl(sb, &cst, &lexer, node->a, 0);
             sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
             first_binding          = false;
             previous_binding_index = node_index;
             continue;
@@ -4165,6 +4356,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         if (node->kind == CK_Test) {
             format_emit_test(sb, &cst, &lexer, node_index, 0);
             sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
             first_binding          = false;
             previous_binding_index = node_index;
             continue;
@@ -4204,12 +4397,24 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 last_aligned_binding = cursor;
             }
 
-            if (array_count(aligned) > 1) {
+            bool aligned_has_trailing_comment = false;
+            for (u32 aligned_index = 0; aligned_index < array_count(aligned);
+                 ++aligned_index) {
+                if (format_node_has_trailing_comment(
+                        &cst, &lexer, aligned[aligned_index].node_index)) {
+                    aligned_has_trailing_comment = true;
+                    break;
+                }
+            }
+
+            if (!aligned_has_trailing_comment && array_count(aligned) > 1) {
                 format_emit_aligned_statement_group(
                     sb, aligned, (u32)array_count(aligned), 0);
                 i                      = last_aligned_binding;
                 first_binding          = false;
                 previous_binding_index = cst.bindings[last_aligned_binding];
+                format_emit_trailing_comment_for_node(
+                    sb, &cst, &lexer, previous_binding_index, &comment_index);
                 array_free(aligned);
                 continue;
             }
@@ -4243,6 +4448,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             }
         }
         sb_append_char(sb, '\n');
+        format_emit_trailing_comment_for_node(
+            sb, &cst, &lexer, node_index, &comment_index);
         first_binding          = false;
         previous_binding_index = node_index;
     }
