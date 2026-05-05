@@ -459,11 +459,9 @@ internal SourceTestGenerated source_test_generated_source(Arena*     arena,
 internal void source_test_print_result(bool passed, string name)
 {
     if (passed) {
-        prn(ANSI_GREEN "[PASS]" ANSI_RESET " source test: " STRINGP,
-            STRINGV(name));
+        prn(ANSI_GREEN "[PASS]" ANSI_RESET " " STRINGP, STRINGV(name));
     } else {
-        eprn(ANSI_RED "[FAIL]" ANSI_RESET " source test: " STRINGP,
-             STRINGV(name));
+        eprn(ANSI_RED "[FAIL]" ANSI_RESET " " STRINGP, STRINGV(name));
     }
 }
 

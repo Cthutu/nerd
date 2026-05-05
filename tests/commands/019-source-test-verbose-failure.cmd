@@ -8,7 +8,7 @@ test "second fails" {
 ¬
 127
 ¬
-[PASS] source test: first passes
+[PASS] first passes
 
 ¬
 delete
@@ -18,5 +18,5 @@ delete
 test
 ¬
 assertion failed at 019-source-test-verbose-failure.input.n:7: boom
-[FAIL] source test: second fails
+[FAIL] second fails
 source test run failed

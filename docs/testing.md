@@ -122,8 +122,8 @@ Source tests use the normal compiler and runtime assertion path. A failing
 assertion exits with status 127, so the current runner stops at the first
 failing selected test.
 
-With `-v` or `--verbose`, the test command prints one `[PASS] source test:
-name` or `[FAIL] source test: name` result line as each selected test finishes.
+With `-v` or `--verbose`, the test command prints one `[PASS] name` or
+`[FAIL] name` result line as each selected test finishes.
 
 ## Working Style
 

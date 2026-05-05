@@ -8,8 +8,8 @@ test "second passes" {
 ¬
 0
 ¬
-[PASS] source test: math passes
-[PASS] source test: second passes
+[PASS] math passes
+[PASS] second passes
 2 tests passed
 
 ¬
