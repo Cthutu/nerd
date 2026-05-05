@@ -110,6 +110,8 @@ intended exit code.
 
 - Tuples are positional.
 - Plexes are named-field product types.
+- Plexes, raw unions, and enums may be declared locally inside blocks and are
+  scoped like local bindings.
 - Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.
 - Plexes may refer to themselves through pointer fields, such as `next ^Node`;
   direct by-value self-recursion is invalid.

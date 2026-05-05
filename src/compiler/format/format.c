@@ -664,16 +664,6 @@ internal void format_emit_expr(StringBuilder* sb,
                 sb_append_cstr(sb, " with");
             }
 
-            usize max_field_width = 0;
-            for (u32 i = 0; i < plex->field_count; ++i) {
-                const CstPlexLiteralField* field =
-                    &cst->plex_literal_fields[plex->first_field + i];
-                usize field_width =
-                    lex_symbol(lexer, field->symbol_handle).count;
-                if (field_width > max_field_width) {
-                    max_field_width = field_width;
-                }
-            }
             sb_append_cstr(sb,
                            (plex->target_node_index != U32_MAX ||
                             node->kind == CK_PlexUpdate)
@@ -690,12 +680,7 @@ internal void format_emit_expr(StringBuilder* sb,
                 if (format_plex_field_is_shorthand(cst, field)) {
                     continue;
                 }
-                sb_append_char(sb, ':');
-                for (usize pad = field_name.count; pad < max_field_width;
-                     ++pad) {
-                    sb_append_char(sb, ' ');
-                }
-                sb_append_char(sb, ' ');
+                sb_append_cstr(sb, ": ");
                 format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
             }
             if (plex->flags & CPLF_ZeroMissing) {

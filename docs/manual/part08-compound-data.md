@@ -17,6 +17,17 @@ This part introduces several forms. The table gives the shape before the details
 | union | overlapping low-level storage |
 | enum | one active case from a set |
 
+Compound type declarations can appear at the top level or inside a block. A
+local declaration is scoped like other local bindings:
+
+```nerd
+main :: fn () -> i32 {
+    Point :: plex { x i32 y i32 }
+    point: Point = Point { x: 20, y: 22 }
+    return point.x + point.y
+}
+```
+
 ## Tuples
 
 Tuples group values by position:

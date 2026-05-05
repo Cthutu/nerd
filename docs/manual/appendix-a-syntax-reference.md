@@ -50,6 +50,9 @@ pub use module.path
 test "name" { statements }
 ```
 
+The same `Name :: plex`, `Name :: union`, and `Name :: enum` declaration forms
+may also appear inside block scopes.
+
 ## Mutable Bindings
 
 ```nerd

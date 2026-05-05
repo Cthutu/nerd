@@ -13,7 +13,7 @@ Point :: plex {
 }
 
 main :: fn () =>
-    on Point { x:    3, y:    4, name: "origin" } {
+    on Point { x: 3, y: 4, name: "origin" } {
         { name: "origin", x: as x } => x
         { x: 3, y: as y } => y * 10
         { name: as name } => 0
