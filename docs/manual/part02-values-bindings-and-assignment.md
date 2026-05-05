@@ -27,6 +27,15 @@ These forms are about the binding itself, not whether the binding appears at
 the top level or inside a function. Scope rules are covered in Part 5; for now,
 read "scope" as the region of code where a name can be used.
 
+At module level, `pub` can export either constant or mutable bindings:
+
+```nerd
+pub limit :: 10
+pub counter := 0
+```
+
+Mutable module bindings are initialised by the generated program init function.
+
 ## Constant Bindings
 
 Use `::` when a constant's type can be inferred from its value.

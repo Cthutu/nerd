@@ -2836,6 +2836,14 @@ ir_dynarray_method_op(const Lexer* lex, u32 method_symbol, IrOperation* out_op)
         *out_op = IR_OP_DYNARRAY_RESERVE;
         return true;
     }
+    if (string_eq(method, s("resize"))) {
+        *out_op = IR_OP_DYNARRAY_RESIZE;
+        return true;
+    }
+    if (string_eq(method, s("resize_undefined"))) {
+        *out_op = IR_OP_DYNARRAY_RESIZE_UNDEFINED;
+        return true;
+    }
     if (string_eq(method, s("clear"))) {
         *out_op = IR_OP_DYNARRAY_CLEAR;
         return true;
@@ -3233,7 +3241,16 @@ internal IrValue ir_lower_call(const Lexer*   lex,
     }
 
     IrValue callee = ir_unset_value();
-    if (!ir_try_lower_module_field(lex, ast, sema, call_node->a, &callee)) {
+    if (ast->nodes[call_node->a].kind == AK_Field &&
+        call_node->a < array_count(sema->node_lowered_symbol_handles) &&
+        sema->node_lowered_symbol_handles[call_node->a] != U32_MAX) {
+        callee = (IrValue){
+            .kind          = IR_VALUE_SYMBOL,
+            .type          = ir_node_type_index(ast, sema, call_node->a),
+            .value.integer = sema->node_lowered_symbol_handles[call_node->a],
+        };
+    } else if (!ir_try_lower_module_field(
+                   lex, ast, sema, call_node->a, &callee)) {
         callee = ir_lower_node(lex,
                                ast,
                                sema,
@@ -5468,6 +5485,18 @@ internal u32 ir_dynarray_min_capacity(const Ast*  ast,
     return 0;
 }
 
+internal u32 ir_dynarray_min_capacity_node(const Ast* ast, u32 type_node_index)
+{
+    if (type_node_index == sema_no_type()) {
+        return sema_no_decl();
+    }
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind != AK_TypeDynamicArray || type_node->a == U32_MAX) {
+        return sema_no_decl();
+    }
+    return type_node->a;
+}
+
 internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                                  const Ast*   ast,
                                                  const Sema*  sema,
@@ -6099,23 +6128,30 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
 
             u32 min_capacity =
                 ir_dynarray_min_capacity(ast, sema, local->type_node_index);
-            if (min_capacity > 0 &&
+            u32 min_capacity_node =
+                ir_dynarray_min_capacity_node(ast, local->type_node_index);
+            if (min_capacity_node != sema_no_decl() &&
                 (ast->nodes[init_node].kind == AK_ZeroInit ||
                  ast->nodes[init_node].kind == AK_Undefined ||
                  ast->nodes[init_node].kind == AK_Array)) {
-                ir_add_dynarray_op(ir,
-                                   IR_OP_DYNARRAY_RESERVE,
-                                   IR_DAT_DIRECT,
-                                   target,
-                                   local_type,
-                                   U32_MAX,
-                                   (IrValue){
-                                       .kind = IR_VALUE_INTEGER,
-                                       .type = ir_builtin_type(sema, STK_Usize),
-                                       .value.integer = min_capacity,
-                                   },
-                                   ir_builtin_type(sema, STK_Usize),
-                                   local_type);
+                IrValue capacity = ir_lower_node(lex,
+                                                 ast,
+                                                 sema,
+                                                 min_capacity_node,
+                                                 loop,
+                                                 node_values,
+                                                 next_value_index,
+                                                 ir);
+                ir_add_dynarray_op(
+                    ir,
+                    IR_OP_DYNARRAY_RESERVE,
+                    IR_DAT_DIRECT,
+                    target,
+                    local_type,
+                    U32_MAX,
+                    capacity,
+                    ir_node_type_index(ast, sema, min_capacity_node),
+                    local_type);
             }
 
             if (ast->nodes[init_node].kind == AK_Array) {

@@ -21,6 +21,14 @@ A dynamic array with inline capacity is written:
 ```
 
 The inline capacity gives the array room before it needs heap allocation.
+The capacity expression may also be a runtime integer in a local declaration:
+
+```nerd
+make :: fn (initial_capacity: usize) {
+    values: [initial_capacity..]i32
+    values.free()
+}
+```
 
 ## Basic Operations
 
@@ -46,6 +54,8 @@ Common operations:
 | `.pop()` | remove and return the last item |
 | `.append(slice)` | add many items from a slice |
 | `.reserve(capacity)` | ensure storage for at least this many items |
+| `.resize(count)` | change the count and default-initialise new items |
+| `.resize_undefined(count)` | change the count without initialising new items |
 | `.clear()` | set the count to zero but keep storage |
 | `.free()` | release owned storage |
 

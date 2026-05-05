@@ -274,6 +274,23 @@ impl Stack[T] {
 }
 ```
 
+An impl block may also contain associated functions. These are called through
+the type rather than through a value. Associated functions are intended for
+constructors and factories, so they return `Self` or `^Self`:
+
+```nerd
+impl Stack[T] {
+    init :: fn () -> Self {
+        return { data: nil }
+    }
+}
+
+main :: fn () {
+    stack := Stack[i32].init()
+    stack.data.free()
+}
+```
+
 Methods can be public inside a module:
 
 ```nerd

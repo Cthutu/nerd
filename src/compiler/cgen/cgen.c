@@ -1502,6 +1502,30 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_addn(cgen, ";");
         cgen_add_dynarray_grow(cgen, info, "$dyn_needed");
         break;
+    case IR_OP_DYNARRAY_RESIZE:
+    case IR_OP_DYNARRAY_RESIZE_UNDEFINED:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_needed = ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ";");
+        cgen_add_dynarray_grow(cgen, info, "$dyn_needed");
+        if (op == IR_OP_DYNARRAY_RESIZE) {
+            cgen_start_line(cgen);
+            cgen_add(cgen, "while (");
+            cgen_add_dynarray_target(cgen, info);
+            cgen_add(cgen, ".count < $dyn_needed) ");
+            cgen_add_dynarray_target(cgen, info);
+            cgen_add(cgen, ".data[");
+            cgen_add_dynarray_target(cgen, info);
+            cgen_add(cgen, ".count++] = ");
+            cgen_add_zero_value(
+                cgen, cgen->ir->types[info->dynarray_type].first_param_type);
+            cgen_addn(cgen, ";");
+        }
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count = $dyn_needed;");
+        break;
     case IR_OP_DYNARRAY_PUSH:
         cgen_start_line(cgen);
         cgen_add(cgen, "uintptr_t $dyn_needed = ");
@@ -2383,6 +2407,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_DYNARRAY_CLEAR:
         case IR_OP_DYNARRAY_FREE:
         case IR_OP_DYNARRAY_POP:
+        case IR_OP_DYNARRAY_RESIZE:
+        case IR_OP_DYNARRAY_RESIZE_UNDEFINED:
             cgen_add_dynarray_op(cgen,
                                  instr->op,
                                  (u32)(instr->op == IR_OP_DYNARRAY_POP

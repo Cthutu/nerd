@@ -555,6 +555,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = dynarray.pop");
             break;
+        case IR_OP_DYNARRAY_RESIZE:
+            sb_append_cstr(&sb, "dynarray.resize");
+            break;
+        case IR_OP_DYNARRAY_RESIZE_UNDEFINED:
+            sb_append_cstr(&sb, "dynarray.resize_undefined");
+            break;
         case IR_OP_ADDRESS_OF:
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = ^");

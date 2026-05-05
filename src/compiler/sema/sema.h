@@ -124,6 +124,7 @@ typedef struct {
     u32  target_type_node_index;
     u32  generic_params_index;
     bool is_public;
+    bool is_associated;
 } SemaMethod;
 
 //------------------------------------------------------------------------------

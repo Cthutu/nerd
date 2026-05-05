@@ -3545,15 +3545,16 @@ internal bool ast_parse_top_level_item(AstParseState* state)
             }
             return true;
         }
-        if (is_public) {
-            return error_0204_unexpected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                state->token.kind,
-                "Expected a symbol to start a "
-                "public binding");
+        {
+            u32 variable_index = 0;
+            if (!ast_parse_variable(state, &variable_index)) {
+                return false;
+            }
+            if (is_public) {
+                ast_set_flag(&state->nodes[variable_index], ANF_Public);
+            }
+            return true;
         }
-        return ast_parse_variable(state, NULL);
     default:
         break;
     }

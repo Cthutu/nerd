@@ -27,10 +27,12 @@ Name :: union [T, U] { field Type }
 Name :: enum { Variant Payload(Type) }
 Name :: enum [T, U] { Variant Payload(Type) }
 pub name :: value
+pub name := value
 pub Name :: Type
 impl Type {
     name :: fn (self: Type, ...) -> ReturnType { ... }
     pub name :: fn (self: ^Type, ...) { ... }
+    name :: fn (...) -> Self { ... }
 }
 impl Name[T] {
     name :: fn (self: ^Name[T], value: T) { ... }

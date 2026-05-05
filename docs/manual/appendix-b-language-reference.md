@@ -21,7 +21,7 @@ intended exit code.
 - Constant bindings use `::`.
 - Mutable inferred bindings use `:=`.
 - Local scopes are created by blocks.
-- `pub` exports a module-level declaration.
+- `pub` exports a module-level declaration, including mutable module bindings.
 - Public plex and union fields must not name private type declarations.
 - `use path` imports public names.
 - `name :: use path` binds a module for qualified access.
@@ -37,6 +37,8 @@ intended exit code.
 - `undefined` is intentionally uninitialised and must be assigned before it is
   read.
 - `nil` is available for pointer-like and slice-like values where supported.
+- Pointer equality supports matching pointer types, `nil`, and `^void` compared
+  with any pointer type.
 - Local variables, parameters, and pattern binders must be read unless their
   names start with `_`.
 
@@ -125,6 +127,8 @@ intended exit code.
 - Inherent methods are grouped with `impl Type { ... }`.
 - The first method parameter is the receiver. A receiver of type `^T` lets
   `value.method(...)` mutate `value`.
+- Associated functions in impl blocks are called as `Type.name(...)` and return
+  `Self` or `^Self`.
 - Public methods inside an impl block are imported with their type's module.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.

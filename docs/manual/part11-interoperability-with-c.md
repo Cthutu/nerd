@@ -35,6 +35,9 @@ Each entry inside the block has the same form as the part after the library in a
 direct declaration. Use `local :: foreign` inside the block when the
 Nerd-visible name should differ from the foreign symbol.
 
+FFI block entries are module declarations. Code earlier in the same module may
+call them, just like other top-level declarations.
+
 Use `pub ffi` when a module should export the declared foreign functions:
 
 ```nerd
