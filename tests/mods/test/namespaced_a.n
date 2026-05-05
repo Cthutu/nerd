@@ -1,0 +1,3 @@
+pub test :: fn () -> i32 {
+    return 10
+}

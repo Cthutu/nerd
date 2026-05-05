@@ -102,6 +102,14 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "namespaced_a",
+                "kind": 9
+            },
+            {
+                "label": "namespaced_b",
+                "kind": 9
+            },
+            {
                 "label": "parts",
                 "kind": 9
             },

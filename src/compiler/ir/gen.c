@@ -81,6 +81,53 @@ internal bool ir_imported_decl_source(const Sema*      sema,
     return true;
 }
 
+internal bool ir_function_symbol_conflicts(const ProgramInfo* program,
+                                           u32                module_index,
+                                           u32                symbol)
+{
+    if (program == NULL || module_index >= array_count(program->modules)) {
+        return false;
+    }
+    const ModuleInfo* module  = &program->modules[module_index];
+    string            name    = lex_symbol(&module->front_end.lexer, symbol);
+    u32               matches = 0;
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        const ModuleInfo* other = &program->modules[i];
+        for (u32 export = 0; export < array_count(other->export_decl_indices);
+             ++export) {
+            u32 decl_index = other->export_decl_indices[export];
+            if (decl_index >= array_count(other->front_end.sema.decls)) {
+                continue;
+            }
+            const SemaDecl* decl = &other->front_end.sema.decls[decl_index];
+            if (decl->kind == SK_Function &&
+                string_eq(
+                    name,
+                    lex_symbol(&other->front_end.lexer, decl->symbol_handle))) {
+                matches++;
+            }
+        }
+    }
+    return matches > 1;
+}
+
+internal u32 ir_module_qualified_symbol(Lexer*            lexer,
+                                        const ModuleInfo* module,
+                                        u32               source_symbol)
+{
+    string source_name = lex_symbol(&module->front_end.lexer, source_symbol);
+    StringBuilder sb   = {0};
+    sb_init(&sb, &temp_arena);
+    for (usize i = 0; i < module->qualified_name.count; ++i) {
+        u8 ch = module->qualified_name.data[i];
+        sb_append_char(&sb, ch == '.' ? '$' : (char)ch);
+    }
+    sb_append_char(&sb, '$');
+    sb_append_string(&sb, source_name);
+    InternAddResult ignored = {0};
+    return lex_add_symbol(lexer, sb_to_string(&sb), &ignored);
+}
+
 internal bool ir_decl_ffi_info(const Lexer*       lex,
                                const Ast*         ast,
                                const Sema*        sema,
@@ -2710,6 +2757,38 @@ internal bool ir_try_lower_module_field(const Lexer* lex,
                decl->kind == SK_Function,
            "Expected module export function");
     u32 runtime_symbol = decl->symbol_handle;
+    if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
+        const Lexer*    source_lexer = lex;
+        const Ast*      source_ast   = ast;
+        const Sema*     source_sema  = sema;
+        const SemaDecl* source_decl  = decl;
+        if (ir_imported_decl_source(sema,
+                                    decl,
+                                    &source_lexer,
+                                    &source_ast,
+                                    &source_sema,
+                                    &source_decl)) {
+            if (ir_function_symbol_conflicts(sema->program,
+                                             decl->import_module_index,
+                                             source_decl->symbol_handle)) {
+                runtime_symbol = ir_module_qualified_symbol(
+                    (Lexer*)lex,
+                    &sema->program->modules[decl->import_module_index],
+                    source_decl->symbol_handle);
+            } else if (source_decl->value_node_index != sema_no_decl() &&
+                       source_decl->value_node_index <
+                           array_count(
+                               source_sema->node_lowered_symbol_handles)) {
+                u32 lowered = source_sema->node_lowered_symbol_handles
+                                  [source_decl->value_node_index];
+                if (lowered != U32_MAX) {
+                    runtime_symbol = sema_import_symbol_handle(
+                        (Lexer*)lex, source_lexer, lowered);
+                }
+            }
+        }
+        UNUSED(source_ast);
+    }
     if (decl->kind == SK_FfiFunction) {
         const Lexer*      ffi_lexer = lex;
         const Ast*        ffi_ast   = ast;
@@ -3663,6 +3742,33 @@ internal IrValue ir_lower_node(const Lexer* lex,
                         }
                     }
                     UNUSED(source_sema);
+                }
+                if (decl->kind == SK_Function ||
+                    decl->kind == SK_BuiltinFunction) {
+                    const Lexer*    source_lexer = lex;
+                    const Sema*     source_sema  = sema;
+                    const SemaDecl* source_decl  = decl;
+                    if (decl->import_module_index != sema_no_decl()) {
+                        const Ast* source_ast = ast;
+                        ir_imported_decl_source(sema,
+                                                decl,
+                                                &source_lexer,
+                                                &source_ast,
+                                                &source_sema,
+                                                &source_decl);
+                        UNUSED(source_ast);
+                    }
+                    if (source_decl->value_node_index != sema_no_decl() &&
+                        source_decl->value_node_index <
+                            array_count(
+                                source_sema->node_lowered_symbol_handles)) {
+                        u32 lowered = source_sema->node_lowered_symbol_handles
+                                          [source_decl->value_node_index];
+                        if (lowered != U32_MAX) {
+                            runtime_symbol = sema_import_symbol_handle(
+                                (Lexer*)lex, source_lexer, lowered);
+                        }
+                    }
                 }
                 if (decl->kind == SK_FfiFunction) {
                     const Lexer*      ffi_lexer = lex;
@@ -6473,10 +6579,18 @@ internal void ir_generate_function(const Lexer*    lex,
                                    const SemaDecl* decl,
                                    Ir*             ir)
 {
+    u32 symbol_handle = decl->symbol_handle;
+    if (decl->value_node_index != sema_no_decl() &&
+        decl->value_node_index <
+            array_count(sema->node_lowered_symbol_handles) &&
+        sema->node_lowered_symbol_handles[decl->value_node_index] != U32_MAX) {
+        symbol_handle =
+            sema->node_lowered_symbol_handles[decl->value_node_index];
+    }
     ir_generate_function_body(lex,
                               ast,
                               sema,
-                              decl->symbol_handle,
+                              symbol_handle,
                               decl->type_index,
                               decl->value_node_index,
                               sema->node_scope_indices[decl->value_node_index],

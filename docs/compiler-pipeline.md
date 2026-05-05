@@ -122,6 +122,12 @@ The naming rule to remember is:
 - Nerd-visible names become C symbols with a leading `$`
 - hidden runtime/compiler helpers do not
 
+When same-named exported functions from different modules would collide after
+module IR is merged, the runtime symbol is disambiguated with the module path
+included, using `$` between path segments. For example, `std.gfx.test` may lower
+to the C symbol `$std$gfx$test`. Non-conflicting imported functions keep their
+normal Nerd-visible runtime name.
+
 ## Renderers And Dumpers
 
 The codebase distinguishes between:

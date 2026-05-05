@@ -1367,9 +1367,18 @@ internal u32 sema_ensure_module_export_decl(Sema*        sema,
                                             u32          import_module_index,
                                             u32          import_decl_index)
 {
-    u32 decl_index = sema_find_decl(sema, symbol_handle);
-    if (decl_index != sema_no_decl()) {
-        return decl_index;
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->symbol_handle != symbol_handle) {
+            continue;
+        }
+        bool same_import = decl->import_module_index == import_module_index &&
+                           decl->import_decl_index == import_decl_index;
+        bool both_local  = decl->import_module_index == sema_no_decl() &&
+                           import_module_index == sema_no_decl();
+        if (same_import || both_local) {
+            return i;
+        }
     }
 
     SemaDeclKind kind = SK_Constant;

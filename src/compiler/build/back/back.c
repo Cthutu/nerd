@@ -33,6 +33,11 @@ typedef struct {
     Ir    ir;
 } ProgramBackEndMerge;
 
+typedef struct {
+    u32 source_symbol;
+    u32 merged_symbol;
+} ProgramBackEndSymbolRemap;
+
 internal string back_end_copy_string(Arena* arena, string text)
 {
     u8* copy = (u8*)arena_alloc(arena, text.count);
@@ -86,12 +91,93 @@ internal bool back_end_symbol_is_extern(const Ir* ir, u32 symbol_handle)
     return false;
 }
 
+internal bool back_end_function_symbol_conflicts(const ProgramInfo* program,
+                                                 u32 module_index,
+                                                 u32 symbol)
+{
+    const ModuleInfo* module  = &program->modules[module_index];
+    string            name    = lex_symbol(&module->front_end.lexer, symbol);
+    u32               matches = 0;
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        const ModuleInfo* other = &program->modules[i];
+        const Ir*         ir    = &other->front_end.ir;
+        for (u32 fn = 0; fn < array_count(ir->functions); ++fn) {
+            if (string_eq(name,
+                          lex_symbol(&other->front_end.lexer,
+                                     ir->functions[fn].symbol))) {
+                matches++;
+            }
+        }
+    }
+    return matches > 1;
+}
+
+internal u32 back_end_module_qualified_symbol(ProgramBackEndMerge* merge,
+                                              const ModuleInfo*    module,
+                                              u32 source_symbol)
+{
+    string source_name = lex_symbol(&module->front_end.lexer, source_symbol);
+    StringBuilder sb   = {0};
+    sb_init(&sb, &merge->ir.arena);
+    for (usize i = 0; i < module->qualified_name.count; ++i) {
+        u8 ch = module->qualified_name.data[i];
+        sb_append_char(&sb, ch == '.' ? '$' : (char)ch);
+    }
+    sb_append_char(&sb, '$');
+    sb_append_string(&sb, source_name);
+    InternAddResult ignored = {0};
+    return lex_add_symbol(&merge->lexer, sb_to_string(&sb), &ignored);
+}
+
+internal u32 back_end_remap_function_symbol(const Lexer*         src_lexer,
+                                            u32                  source_symbol,
+                                            ProgramBackEndMerge* merge,
+                                            Array(ProgramBackEndSymbolRemap)
+                                                remaps)
+{
+    for (u32 i = 0; i < array_count(remaps); ++i) {
+        if (remaps[i].source_symbol == source_symbol) {
+            return remaps[i].merged_symbol;
+        }
+    }
+    return sema_import_symbol_handle(&merge->lexer, src_lexer, source_symbol);
+}
+
+internal Array(ProgramBackEndSymbolRemap)
+    back_end_module_function_remaps(const ProgramInfo*   program,
+                                    u32                  module_index,
+                                    ProgramBackEndMerge* merge)
+{
+    Array(ProgramBackEndSymbolRemap) remaps = NULL;
+    if (module_index == program->root_module_index) {
+        return remaps;
+    }
+    const ModuleInfo* module = &program->modules[module_index];
+    const Ir*         ir     = &module->front_end.ir;
+    for (u32 i = 0; i < array_count(ir->functions); ++i) {
+        u32 symbol = ir->functions[i].symbol;
+        if (!back_end_function_symbol_conflicts(
+                program, module_index, symbol)) {
+            continue;
+        }
+        array_push(remaps,
+                   (ProgramBackEndSymbolRemap){
+                       .source_symbol = symbol,
+                       .merged_symbol = back_end_module_qualified_symbol(
+                           merge, module, symbol),
+                   });
+    }
+    return remaps;
+}
+
 internal IrValue back_end_remap_ir_value(const IrValue*       value,
                                          const Ir*            module_ir,
                                          const u32*           type_map,
                                          const u32*           string_map,
                                          ProgramBackEndMerge* merge,
-                                         const Lexer*         module_lexer)
+                                         const Lexer*         module_lexer,
+                                         Array(ProgramBackEndSymbolRemap)
+                                             function_remaps)
 {
     IrValue remapped = *value;
     if (remapped.type != sema_no_type()) {
@@ -100,13 +186,16 @@ internal IrValue back_end_remap_ir_value(const IrValue*       value,
 
     switch (remapped.kind) {
     case IR_VALUE_LOCAL:
-    case IR_VALUE_SYMBOL:
         remapped.value.integer = sema_import_symbol_handle(
             &merge->lexer, module_lexer, (u32)remapped.value.integer);
         break;
+    case IR_VALUE_SYMBOL:
+        remapped.value.integer = back_end_remap_function_symbol(
+            module_lexer, (u32)remapped.value.integer, merge, function_remaps);
+        break;
     case IR_VALUE_BUILTIN:
-        remapped.value.integer = sema_import_symbol_handle(
-            &merge->lexer, module_lexer, (u32)remapped.value.integer);
+        remapped.value.integer = back_end_remap_function_symbol(
+            module_lexer, (u32)remapped.value.integer, merge, function_remaps);
         if (!back_end_symbol_is_extern(module_ir, (u32)value->value.integer) &&
             !back_end_symbol_is_runtime_helper(module_lexer,
                                                (u32)value->value.integer)) {
@@ -259,8 +348,10 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         const ModuleInfo*    module       = &program->modules[module_index];
         const FrontEndState* front_end    = &module->front_end;
         const Ir*            module_ir    = &front_end->ir;
+        Array(ProgramBackEndSymbolRemap) function_remaps =
+            back_end_module_function_remaps(program, module_index, &merge);
 
-        Array(u32) type_map               = NULL;
+        Array(u32) type_map = NULL;
         back_end_copy_module_types(
             &merge, &front_end->lexer, &front_end->sema, &type_map);
 
@@ -282,7 +373,8 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                                 type_map,
                                                 string_map,
                                                 &merge,
-                                                &front_end->lexer);
+                                                &front_end->lexer,
+                                                function_remaps);
             array_push(merge.ir.call_args, arg);
         }
 
@@ -307,7 +399,8 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                                   type_map,
                                                   string_map,
                                                   &merge,
-                                                  &front_end->lexer);
+                                                  &front_end->lexer,
+                                                  function_remaps);
             array_push(merge.ir.tuple_items, item);
         }
 
@@ -333,19 +426,22 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                                         type_map,
                                                         string_map,
                                                         &merge,
-                                                        &front_end->lexer);
+                                                        &front_end->lexer,
+                                                        function_remaps);
             slice.start       = back_end_remap_ir_value(&slice.start,
                                                         module_ir,
                                                         type_map,
                                                         string_map,
                                                         &merge,
-                                                        &front_end->lexer);
+                                                        &front_end->lexer,
+                                                        function_remaps);
             slice.end         = back_end_remap_ir_value(&slice.end,
                                                         module_ir,
                                                         type_map,
                                                         string_map,
                                                         &merge,
-                                                        &front_end->lexer);
+                                                        &front_end->lexer,
+                                                        function_remaps);
             array_push(merge.ir.slices, slice);
         }
 
@@ -364,13 +460,15 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                                      type_map,
                                                      string_map,
                                                      &merge,
-                                                     &front_end->lexer);
+                                                     &front_end->lexer,
+                                                     function_remaps);
             op_info.arg    = back_end_remap_ir_value(&op_info.arg,
                                                      module_ir,
                                                      type_map,
                                                      string_map,
                                                      &merge,
-                                                     &front_end->lexer);
+                                                     &front_end->lexer,
+                                                     function_remaps);
             if (op_info.field_symbol != U32_MAX) {
                 op_info.field_symbol = sema_import_symbol_handle(
                     &merge.lexer, &front_end->lexer, op_info.field_symbol);
@@ -399,8 +497,8 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
         u32 first_function = (u32)array_count(merge.ir.functions);
         for (u32 i = 0; i < array_count(module_ir->functions); ++i) {
             IrFunction function = module_ir->functions[i];
-            function.symbol     = sema_import_symbol_handle(
-                &merge.lexer, &front_end->lexer, function.symbol);
+            function.symbol     = back_end_remap_function_symbol(
+                &front_end->lexer, function.symbol, &merge, function_remaps);
             function.type = type_map[function.type];
             function.first_instruction +=
                 (u32)array_count(merge.ir.instructions);
@@ -443,19 +541,22 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
                                                       type_map,
                                                       string_map,
                                                       &merge,
-                                                      &front_end->lexer);
+                                                      &front_end->lexer,
+                                                      function_remaps);
             instr.rvalue[0] = back_end_remap_ir_value(&instr.rvalue[0],
                                                       module_ir,
                                                       type_map,
                                                       string_map,
                                                       &merge,
-                                                      &front_end->lexer);
+                                                      &front_end->lexer,
+                                                      function_remaps);
             instr.rvalue[1] = back_end_remap_ir_value(&instr.rvalue[1],
                                                       module_ir,
                                                       type_map,
                                                       string_map,
                                                       &merge,
-                                                      &front_end->lexer);
+                                                      &front_end->lexer,
+                                                      function_remaps);
 
             switch (instr.op) {
             case IR_OP_CALL:
@@ -517,6 +618,7 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
 
         array_free(type_map);
         array_free(string_map);
+        array_free(function_remaps);
     }
 
     if (array_count(merged_init_instructions) > 0) {
