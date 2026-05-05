@@ -62,7 +62,9 @@ internal bool lsp_front_end_document(NerdSource             source,
                                      ProgramInfo*           out_program,
                                      FrontEndState*         out_front_end)
 {
-    bool ok = front_end_program(source, options, NULL, out_program);
+    *out_program   = (ProgramInfo){0};
+    *out_front_end = (FrontEndState){0};
+    bool ok        = front_end_program(source, options, NULL, out_program);
     if (array_count(out_program->modules) == 0 ||
         out_program->root_module_index >= array_count(out_program->modules)) {
         return false;
@@ -160,9 +162,13 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     }
 
     lsp_document_reset_runtime(doc);
-    doc->arena          = staged.arena;
-    doc->program        = staged.program;
-    doc->front_end      = staged.front_end;
+    doc->arena   = staged.arena;
+    doc->program = staged.program;
+    for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+        doc->program.modules[i].front_end.sema.program = &doc->program;
+    }
+    doc->front_end =
+        doc->program.modules[doc->program.root_module_index].front_end;
     doc->cst            = staged.cst;
     doc->analysis_ok    = staged.analysis_ok;
     doc->semantic_ready = staged.semantic_ready;

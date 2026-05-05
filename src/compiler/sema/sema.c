@@ -2492,6 +2492,36 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_error_non_type_in_type_context(const Lexer* lexer,
+                                                  const Ast*   ast,
+                                                  const Sema*  sema,
+                                                  u32          node_index,
+                                                  string       expected)
+{
+    u32 bad_node_index      = sema_unwrap_type_candidate_node(ast, node_index);
+    const AstNode* bad_node = &ast->nodes[bad_node_index];
+    if (bad_node->kind == AK_TypePointer) {
+        u32 pointee_index = sema_unwrap_type_candidate_node(ast, bad_node->a);
+        const AstNode* pointee = &ast->nodes[pointee_index];
+        if (pointee->kind == AK_SymbolRef &&
+            sema_find_decl(sema, pointee->a) == sema_no_decl()) {
+            return error_0303_unknown_type(lexer->source,
+                                           sema_node_span(lexer, pointee),
+                                           lex_symbol(lexer, pointee->a));
+        }
+    }
+    if (bad_node->kind == AK_SymbolRef &&
+        sema_find_decl(sema, bad_node->a) == sema_no_decl()) {
+        return error_0303_unknown_type(lexer->source,
+                                       sema_node_span(lexer, bad_node),
+                                       lex_symbol(lexer, bad_node->a));
+    }
+    return error_0304_type_mismatch(lexer->source,
+                                    sema_node_span(lexer, bad_node),
+                                    expected,
+                                    s("non-type value"));
+}
+
 internal bool sema_try_classify_type_node(const Lexer* lexer,
                                           const Ast*   ast,
                                           Sema*        sema,
@@ -2820,25 +2850,29 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                                                : s("generic plex"));
             }
             for (u32 i = 0; i < plex->field_count; ++i) {
+                const AstPlexField* field =
+                    &ast->plex_fields[plex->first_field + i];
                 bool field_is_type = false;
                 u32  field_type    = sema_no_type();
-                if (!sema_try_classify_type_node(
-                        lexer,
-                        ast,
-                        sema,
-                        owner_decl_index,
-                        ast->plex_fields[plex->first_field + i].type_node_index,
-                        alias_states,
-                        &field_is_type,
-                        &field_type)) {
+                if (!sema_try_classify_type_node(lexer,
+                                                 ast,
+                                                 sema,
+                                                 owner_decl_index,
+                                                 field->type_node_index,
+                                                 alias_states,
+                                                 &field_is_type,
+                                                 &field_type)) {
                     array_free(field_types);
                     return false;
                 }
                 if (!field_is_type) {
                     array_free(field_types);
-                    *out_is_type    = false;
-                    *out_type_index = sema_no_type();
-                    return true;
+                    return sema_error_non_type_in_type_context(
+                        lexer,
+                        ast,
+                        sema,
+                        field->type_node_index,
+                        s("plex field type"));
                 }
                 array_push(field_types, field_type);
             }

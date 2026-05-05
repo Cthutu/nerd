@@ -15,8 +15,16 @@ typedef struct ProgramInfo ProgramInfo;
 typedef struct ModuleInfo  ModuleInfo;
 
 typedef struct {
+    usize  start;
+    usize  end;
+    usize  source_start;
+    string source_path;
+} NerdSourceFragment;
+
+typedef struct {
     string source;
     string source_path;
+    Array(NerdSourceFragment) fragments;
 } NerdSource;
 
 typedef struct {

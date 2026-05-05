@@ -1,22 +1,21 @@
 Bad :: plex {
-    field MissingType
+    field ^Missing
 }
-main :: fn () {}
 ¬
 {
     "code": "0303",
-    "message": "Unknown type `MissingType`",
-    "source_file": "tests/errors/062-type-declarations.e",
+    "message": "Unknown type `Missing`",
+    "source_file": "tests/errors/066-plex-field-types.e",
     "primary_location": {
         "line": 2,
-        "column": 11
+        "column": 12
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 11,
-            "length": 11,
+            "column": 12,
+            "length": 7,
             "message": "This type name is not defined"
         }
     ],

@@ -183,6 +183,9 @@ The same `ErrorInfo` can be rendered in three modes:
 
 This is the key architectural choice: the structured error is the source of
 truth, and each consumer gets a different projection of it.
+Diagnostics for expanded folder modules carry source-fragment information so
+terminal and LSP renderers can report the original part file and line rather
+than the synthetic concatenated module source.
 
 ## Coverage Policy
 

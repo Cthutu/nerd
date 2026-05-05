@@ -50,6 +50,8 @@ The diagnostics path is tightly coupled to the compiler error system:
 4. the parsed array is sent as `textDocument/publishDiagnostics`
 
 That reuse keeps compiler diagnostics and LSP diagnostics aligned.
+When folder modules are expanded from `mod.n` plus part files, diagnostics are
+mapped back to the physical part file before LSP ranges are emitted.
 
 ## Hover And Navigation
 

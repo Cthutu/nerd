@@ -283,6 +283,99 @@ internal bool error_reference_touches_line(const ErrorRef* ref,
     return ref_start < line_end && ref_end > line_start;
 }
 
+internal bool error_source_for_span(NerdSource  source,
+                                    ErrorSpan   span,
+                                    NerdSource* out_source,
+                                    ErrorSpan*  out_span)
+{
+    for (u32 i = 0; i < array_count(source.fragments); ++i) {
+        NerdSourceFragment fragment = source.fragments[i];
+        if (span.start < fragment.start || span.start >= fragment.end) {
+            continue;
+        }
+
+        usize source_prefix_start = fragment.start - fragment.source_start;
+        usize source_count        = fragment.end - source_prefix_start;
+        usize mapped_start =
+            span.start - fragment.start + fragment.source_start;
+        usize mapped_end =
+            span.end > fragment.end
+                ? fragment.end - fragment.start + fragment.source_start
+                : span.end - fragment.start + fragment.source_start;
+        *out_source = (NerdSource){
+            .source      = string_from(source.source.data + source_prefix_start,
+                                       source_count),
+            .source_path = fragment.source_path,
+        };
+        *out_span = (ErrorSpan){.start = mapped_start, .end = mapped_end};
+        return true;
+    }
+
+    *out_source = source;
+    *out_span   = span;
+    return false;
+}
+
+internal string error_source_uri_for_span(NerdSource source, ErrorSpan span)
+{
+    NerdSource mapped_source = {0};
+    ErrorSpan  mapped_span   = {0};
+    error_source_for_span(source, span, &mapped_source, &mapped_span);
+    UNUSED(mapped_span);
+    return mapped_source.source_path.count > 0 ? mapped_source.source_path
+                                               : s("<input>");
+}
+
+internal ErrorInfo
+error_info_mapped_to_primary_source(Arena* arena, const ErrorInfo* error_info)
+{
+    NerdSource mapped_source = {0};
+    ErrorSpan  mapped_span   = {0};
+    bool       mapped        = error_source_for_span(
+        error_info->source, error_info->span, &mapped_source, &mapped_span);
+    if (!mapped) {
+        return *error_info;
+    }
+
+    ErrorInfo mapped_info = *error_info;
+    mapped_info.source    = mapped_source;
+    mapped_info.span      = mapped_span;
+    u32 mapped_ref_count  = 0;
+    for (u32 i = 0; i < array_count(error_info->references); ++i) {
+        const ErrorRef* ref        = &error_info->references[i];
+        NerdSource      ref_source = {0};
+        ErrorSpan       ref_span   = {0};
+        error_source_for_span(
+            error_info->source, ref->span, &ref_source, &ref_span);
+        if (string_eq(ref_source.source_path, mapped_source.source_path)) {
+            mapped_ref_count++;
+        }
+    }
+
+    ArrayHeader* header = arena_alloc(
+        arena, sizeof(ArrayHeader) + mapped_ref_count * sizeof(ErrorRef));
+    header->count          = mapped_ref_count;
+    mapped_info.references = (ErrorRef*)(header + 1);
+
+    u32 mapped_ref_index   = 0;
+    for (u32 i = 0; i < array_count(error_info->references); ++i) {
+        const ErrorRef* ref        = &error_info->references[i];
+        NerdSource      ref_source = {0};
+        ErrorSpan       ref_span   = {0};
+        error_source_for_span(
+            error_info->source, ref->span, &ref_source, &ref_span);
+        if (!string_eq(ref_source.source_path, mapped_source.source_path)) {
+            continue;
+        }
+
+        ErrorRef mapped_ref                        = *ref;
+        mapped_ref.span                            = ref_span;
+        mapped_info.references[mapped_ref_index++] = mapped_ref;
+    }
+
+    return mapped_info;
+}
+
 internal void error_print_reference_line(const ErrorInfo* error_info,
                                          const ErrorRef*  ref,
                                          usize            gutter_width,
@@ -396,6 +489,10 @@ internal void error_print_snippet(const ErrorInfo* error_info)
 
 internal void error_normal_render(const ErrorInfo* error_info)
 {
+    ErrorInfo mapped_info =
+        error_info_mapped_to_primary_source(&temp_arena, error_info);
+    error_info = &mapped_info;
+
     //
     // Determine the primary colour
     //
@@ -509,6 +606,10 @@ internal void error_normal_render(const ErrorInfo* error_info)
 
 internal void error_test_render(const ErrorInfo* error_info)
 {
+    ErrorInfo mapped_info =
+        error_info_mapped_to_primary_source(&temp_arena, error_info);
+    error_info      = &mapped_info;
+
     JsonValue* root = json_new_object(&temp_arena);
     json_object_set_string(
         root,
@@ -589,6 +690,12 @@ internal void error_test_render(const ErrorInfo* error_info)
 internal JsonValue*
 error_make_lsp_range(Arena* arena, NerdSource source, ErrorSpan span)
 {
+    NerdSource mapped_source = {0};
+    ErrorSpan  mapped_span   = {0};
+    error_source_for_span(source, span, &mapped_source, &mapped_span);
+    source           = mapped_source;
+    span             = mapped_span;
+
     JsonValue* range = json_new_object(arena);
     JsonValue* start = json_new_object(arena);
     JsonValue* end   = json_new_object(arena);
@@ -620,9 +727,8 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 {
     JsonValue* diagnostics = json_new_array(&temp_arena);
     JsonValue* diagnostic  = json_new_object(&temp_arena);
-    string     source_uri  = error_info->source.source_path.count > 0
-                                 ? error_info->source.source_path
-                                 : s("<input>");
+    string     source_uri =
+        error_source_uri_for_span(error_info->source, error_info->span);
 
     json_object_set_object(diagnostic,
                            "range",
@@ -651,7 +757,11 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 
         JsonValue* info     = json_new_object(&temp_arena);
         JsonValue* location = json_new_object(&temp_arena);
-        json_object_set_string(location, &temp_arena, "uri", source_uri);
+        json_object_set_string(
+            location,
+            &temp_arena,
+            "uri",
+            error_source_uri_for_span(error_info->source, ref->span));
         json_object_set_object(
             location,
             "range",

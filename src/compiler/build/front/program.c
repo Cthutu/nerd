@@ -34,6 +34,27 @@ internal cstr program_copy_cstr_from_string(Arena* arena, string value)
     return copy;
 }
 
+internal void program_append_source_fragment(StringBuilder* sb,
+                                             Array(NerdSourceFragment) *
+                                                 fragments,
+                                             string source,
+                                             string source_path)
+{
+    usize start = sb->size;
+    sb_append_string(sb, source);
+    if (source.count == 0 || source.data[source.count - 1] != '\n') {
+        sb_append_char(sb, '\n');
+    }
+    usize end = sb->size;
+    array_push(*fragments,
+               (NerdSourceFragment){
+                   .start        = start,
+                   .end          = end,
+                   .source_start = 0,
+                   .source_path  = source_path,
+               });
+}
+
 internal void program_rebind_sema_programs(ProgramInfo* program)
 {
     for (u32 i = 0; i < array_count(program->modules); ++i) {
@@ -415,16 +436,22 @@ internal bool program_expand_part_root(ProgramInfo* program,
         return true;
     }
 
-    StringBuilder sb = {0};
-    sb_init(&sb, &program->arena);
-    sb_append_string(&sb, mod_source);
-    if (mod_source.count == 0 ||
-        mod_source.data[mod_source.count - 1] != '\n') {
-        sb_append_char(&sb, '\n');
-    }
-
     Array(cstr) part_paths =
         program_collect_implicit_part_paths(&temp, module_dir);
+    string mod_source_path = program_copy_string(&program->arena, s(mod_path));
+    string root_source_path =
+        program_copy_string(&program->arena, source.source_path);
+    Array(string) part_source_paths = NULL;
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        array_push(part_source_paths,
+                   program_copy_string(&program->arena, s(part_paths[i])));
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, &program->arena);
+    Array(NerdSourceFragment) fragments = NULL;
+    program_append_source_fragment(
+        &sb, &fragments, mod_source, mod_source_path);
 
     for (u32 i = 0; i < array_count(part_paths); ++i) {
         if (program_mod_explicitly_uses_child_path(
@@ -434,11 +461,8 @@ internal bool program_expand_part_root(ProgramInfo* program,
 
         sb_append_char(&sb, '\n');
         if (program_path_matches_source(source, part_paths[i])) {
-            sb_append_string(&sb, source.source);
-            if (source.source.count == 0 ||
-                source.source.data[source.source.count - 1] != '\n') {
-                sb_append_char(&sb, '\n');
-            }
+            program_append_source_fragment(
+                &sb, &fragments, source.source, root_source_path);
             continue;
         }
 
@@ -447,11 +471,8 @@ internal bool program_expand_part_root(ProgramInfo* program,
         if (part_source.data == NULL) {
             continue;
         }
-        sb_append_string(&sb, part_source);
-        if (part_source.count == 0 ||
-            part_source.data[part_source.count - 1] != '\n') {
-            sb_append_char(&sb, '\n');
-        }
+        program_append_source_fragment(
+            &sb, &fragments, part_source, part_source_paths[i]);
         filemap_unload(&part_map);
     }
 
@@ -459,8 +480,10 @@ internal bool program_expand_part_root(ProgramInfo* program,
     *out_source     = (NerdSource){
         .source      = expanded,
         .source_path = source.source_path,
+        .fragments   = fragments,
     };
 
+    array_free(part_source_paths);
     array_free(part_paths);
     ast_done(&mod_ast);
     lex_done(&mod_lexer);
@@ -500,13 +523,19 @@ internal bool program_expand_module_parts(ProgramInfo* program,
         return true;
     }
 
+    string root_source_path =
+        program_copy_string(&program->arena, source.source_path);
+    Array(string) part_source_paths = NULL;
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        array_push(part_source_paths,
+                   program_copy_string(&program->arena, s(part_paths[i])));
+    }
+
     StringBuilder sb = {0};
     sb_init(&sb, &program->arena);
-    sb_append_string(&sb, source.source);
-    if (source.source.count == 0 ||
-        source.source.data[source.source.count - 1] != '\n') {
-        sb_append_char(&sb, '\n');
-    }
+    Array(NerdSourceFragment) fragments = NULL;
+    program_append_source_fragment(
+        &sb, &fragments, source.source, root_source_path);
 
     for (u32 i = 0; i < array_count(part_paths); ++i) {
         if (program_mod_explicitly_uses_child_path(lexer, ast, part_paths[i])) {
@@ -523,21 +552,20 @@ internal bool program_expand_module_parts(ProgramInfo* program,
         }
 
         sb_append_char(&sb, '\n');
-        sb_append_string(&sb, part_source);
-        if (part_source.count == 0 ||
-            part_source.data[part_source.count - 1] != '\n') {
-            sb_append_char(&sb, '\n');
-        }
+        program_append_source_fragment(
+            &sb, &fragments, part_source, part_source_paths[i]);
         filemap_unload(&part_map);
     }
 
     string expanded = sb_to_string(&sb);
+    array_free(part_source_paths);
     array_free(part_paths);
     arena_done(&temp);
 
     *out_source = (NerdSource){
         .source      = expanded,
         .source_path = source.source_path,
+        .fragments   = fragments,
     };
     return true;
 }
@@ -905,6 +933,7 @@ void program_info_done(ProgramInfo* program)
         ModuleInfo* module = &program->modules[i];
         array_free(module->imported_module_indices);
         array_free(module->export_decl_indices);
+        array_free(module->front_end.lexer.source.fragments);
         front_end_results_done(&module->front_end);
         if (module->source_map.data != NULL) {
             filemap_unload(&module->source_map);
