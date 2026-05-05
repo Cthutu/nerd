@@ -46,6 +46,20 @@ main :: fn () {
                 "character": 12
             }
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 2,
+                "character": 10
+            }
+        }
     }
 ]
 ¬
@@ -139,6 +153,56 @@ main :: fn () {
                 }
             }
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "result": [
+            {
+                "label": "data",
+                "kind": 5
+            },
+            {
+                "label": "count",
+                "kind": 5
+            },
+            {
+                "label": "capacity",
+                "kind": 5
+            },
+            {
+                "label": "append",
+                "kind": 2
+            },
+            {
+                "label": "clear",
+                "kind": 2
+            },
+            {
+                "label": "free",
+                "kind": 2
+            },
+            {
+                "label": "pop",
+                "kind": 2
+            },
+            {
+                "label": "push",
+                "kind": 2
+            },
+            {
+                "label": "reserve",
+                "kind": 2
+            },
+            {
+                "label": "resize",
+                "kind": 2
+            },
+            {
+                "label": "resize_undefined",
+                "kind": 2
+            }
+        ]
     },
     {
         "jsonrpc": "2.0",

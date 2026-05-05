@@ -81,6 +81,11 @@ Completion is semantic where possible:
   slices, and dynamic arrays, and inherent methods for matching receiver types
 - `use ...` offers module path segments from the active module search roots
 
+The dynamic-array member list is shared conceptually with semantic analysis and
+should include the built-in fields `data`, `count`, `capacity`, plus methods
+`append`, `clear`, `free`, `pop`, `push`, `reserve`, `resize`, and
+`resize_undefined`.
+
 Completion results are filtered by the server using the exact typed prefix.
 Matching is case-sensitive, matching Nerd symbol resolution.
 

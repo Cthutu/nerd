@@ -225,15 +225,17 @@ internal void lsp_completion_add_members(Arena*             arena,
     }
 
     if (type->kind == STK_DynamicArray) {
-        lsp_completion_add(arena, items, s("data"), 5);     // Field
-        lsp_completion_add(arena, items, s("count"), 5);    // Field
-        lsp_completion_add(arena, items, s("capacity"), 5); // Field
-        lsp_completion_add(arena, items, s("append"), 2);   // Method
-        lsp_completion_add(arena, items, s("clear"), 2);    // Method
-        lsp_completion_add(arena, items, s("free"), 2);     // Method
-        lsp_completion_add(arena, items, s("pop"), 2);      // Method
-        lsp_completion_add(arena, items, s("push"), 2);     // Method
-        lsp_completion_add(arena, items, s("reserve"), 2);  // Method
+        lsp_completion_add(arena, items, s("data"), 5);             // Field
+        lsp_completion_add(arena, items, s("count"), 5);            // Field
+        lsp_completion_add(arena, items, s("capacity"), 5);         // Field
+        lsp_completion_add(arena, items, s("append"), 2);           // Method
+        lsp_completion_add(arena, items, s("clear"), 2);            // Method
+        lsp_completion_add(arena, items, s("free"), 2);             // Method
+        lsp_completion_add(arena, items, s("pop"), 2);              // Method
+        lsp_completion_add(arena, items, s("push"), 2);             // Method
+        lsp_completion_add(arena, items, s("reserve"), 2);          // Method
+        lsp_completion_add(arena, items, s("resize"), 2);           // Method
+        lsp_completion_add(arena, items, s("resize_undefined"), 2); // Method
         return;
     }
 
