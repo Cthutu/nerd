@@ -2439,13 +2439,6 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
     }
 
     for (u32 i = 0; i < enum_type->variant_count;) {
-        const CstEnumVariant* first_variant =
-            &cst->enum_variants[enum_type->first_variant + i];
-        if (first_variant->value_node_index == U32_MAX) {
-            i++;
-            continue;
-        }
-
         u32   start             = i;
         usize max_prefix_width  = 0;
         usize previous_end      = 0;
@@ -2453,24 +2446,25 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
         while (i < enum_type->variant_count) {
             const CstEnumVariant* variant =
                 &cst->enum_variants[enum_type->first_variant + i];
-            if (variant->value_node_index == U32_MAX) {
-                break;
-            }
             usize variant_start = lexer->tokens[variant->token_index].offset;
             if (have_previous_end &&
                 format_has_blank_line_between_offsets(
                     lexer->source, previous_end, variant_start)) {
                 break;
             }
-            if (variant_prefix_widths[i] > max_prefix_width) {
+            if (variant->value_node_index != U32_MAX &&
+                variant_prefix_widths[i] > max_prefix_width) {
                 max_prefix_width = variant_prefix_widths[i];
             }
             previous_end = format_enum_variant_end_offset(cst, lexer, variant);
             have_previous_end = true;
             i++;
         }
-        for (u32 variant_index = start; variant_index < i; ++variant_index) {
-            variant_aligned_prefix_widths[variant_index] = max_prefix_width;
+        if (max_prefix_width > 0) {
+            for (u32 variant_index = start; variant_index < i;
+                 ++variant_index) {
+                variant_aligned_prefix_widths[variant_index] = max_prefix_width;
+            }
         }
     }
 
@@ -2486,15 +2480,11 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
     }
 
     for (u32 i = 0; i < enum_type->variant_count;) {
-        if (!variant_has_comments[i]) {
-            i++;
-            continue;
-        }
         u32   start          = i;
         usize comment_column = 0;
         usize previous_end   = 0;
         bool  have_previous  = false;
-        while (i < enum_type->variant_count && variant_has_comments[i]) {
+        while (i < enum_type->variant_count) {
             const CstEnumVariant* variant =
                 &cst->enum_variants[enum_type->first_variant + i];
             usize variant_start = lexer->tokens[variant->token_index].offset;
@@ -2503,15 +2493,19 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                     lexer->source, previous_end, variant_start)) {
                 break;
             }
-            if (variant_code_widths[i] + 1 > comment_column) {
+            if (variant_has_comments[i] &&
+                variant_code_widths[i] + 1 > comment_column) {
                 comment_column = variant_code_widths[i] + 1;
             }
             previous_end  = format_enum_variant_end_offset(cst, lexer, variant);
             have_previous = true;
             i++;
         }
-        for (u32 variant_index = start; variant_index < i; ++variant_index) {
-            variant_comment_columns[variant_index] = comment_column;
+        if (comment_column > 0) {
+            for (u32 variant_index = start; variant_index < i;
+                 ++variant_index) {
+                variant_comment_columns[variant_index] = comment_column;
+            }
         }
     }
 
