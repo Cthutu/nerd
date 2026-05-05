@@ -20,6 +20,9 @@ The formatter should be deterministic and idempotent.
 - Comment paragraphs are reflowed to a width of 80 characters.
 - Reflow keeps the current indentation of the comment block.
 - End-of-line comments stay attached to the formatted line they followed.
+- Consecutive end-of-line comments on plex fields align their `--` marker.
+- Long plex field end-of-line comments wrap onto following comment lines with
+  the `--` marker aligned and continuation text indented.
 
 ## Code Layout Rules
 

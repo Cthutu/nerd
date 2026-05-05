@@ -3,7 +3,7 @@ use alpha -- alpha import
 
 pub Frame::plex {
     handle u64 -- native handle
-    system ^FrameSystem -- owning system
+    system ^FrameSystem -- owning system comment that is deliberately long enough to wrap onto another line while keeping the marker aligned
     title string -- visible title
 }
 
@@ -18,9 +18,11 @@ use beta -- beta import
 use alpha -- alpha import
 
 pub Frame :: plex {
-    handle u64 -- native handle
-    system ^FrameSystem -- owning system
-    title  string -- visible title
+    handle u64          -- native handle
+    system ^FrameSystem -- owning system comment that is deliberately long
+                        --     enough to wrap onto another line while keeping the
+                        --     marker aligned
+    title  string       -- visible title
 }
 
 main :: fn () {
