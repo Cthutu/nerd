@@ -395,6 +395,10 @@ the roadmap before committing the implementation.
   - [ ] require impls to provide all required trait functions
   - [ ] reject impl members with incompatible signatures
   - [ ] validate `where` constraints against known traits
+  - [ ] Add stricter non-lazy generic body checks once constraints exist:
+    unresolved names that do not depend on concrete type arguments should be
+    rejected before a generic function or impl method is instantiated, while
+    constraint-sensitive operations should be checked against trait bounds.
   - [ ] prove trait requirements for generic instantiations
   - [ ] reject missing, duplicate, overlapping, or ambiguous implementations
   - [ ] provide useful `help` text when trait generic parameters are required
