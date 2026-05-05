@@ -2,6 +2,10 @@ on linux {
     use test.platform_ffi
 }
 
+on windows {
+    use test.platform_ffi
+}
+
 main :: fn () -> i32 {
     return abs(-7) + PLATFORM_VALUE
 }

@@ -1,3 +1,5 @@
+-- test-platform: linux
+
 use std.term
 
 main :: fn () -> i32 {

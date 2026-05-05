@@ -1,3 +1,5 @@
+-- test-platform: linux
+
 arena :: use std.arena
 
 main :: fn () -> i32 {

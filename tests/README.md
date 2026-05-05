@@ -35,3 +35,6 @@ source files. Repository regression tests are run by the Python harness via
 
 Generated artefacts are removed when tests pass and retained when tests fail, so
 failed cases can be inspected locally.
+
+Use `-- test-platform: linux` in the source section for cases that intentionally
+depend on host APIs unavailable on other platforms.

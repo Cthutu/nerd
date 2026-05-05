@@ -10,7 +10,12 @@ import re
 import shlex
 import subprocess
 import sys
+from urllib.parse import quote
 from dataclasses import dataclass
+
+if os.name == "nt":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 try:
     from rich.console import Console
@@ -34,6 +39,7 @@ class SuiteCounts:
     total: int = 0
     passed: int = 0
     failed: int = 0
+    skipped: int = 0
 
 
 console = Console() if Console else None
@@ -57,7 +63,36 @@ SUITE_LABELS = {
 
 
 def rel(path: pathlib.Path) -> str:
-    return str(path.relative_to(ROOT))
+    return path.relative_to(ROOT).as_posix()
+
+
+def lsp_repo_uri() -> str:
+    path = quote(ROOT.as_posix(), safe="/")
+    return f"file:///{path}" if os.name == "nt" else f"file://{path}"
+
+
+def normalize_repo_uris(text: str) -> str:
+    return text.replace("__REPO_URI__", lsp_repo_uri()).replace(
+        "file:///home/matt/nerd", lsp_repo_uri()
+    )
+
+
+def normalized_returncode(code: int) -> int:
+    return code & 0xFF if os.name == "nt" and code > 255 else code
+
+
+def current_platform() -> str:
+    return "windows" if os.name == "nt" else "linux"
+
+
+def case_platforms(path: pathlib.Path) -> set[str]:
+    text = path.read_text(encoding="utf-8")
+    source = text.split("¬", 1)[0]
+    for line in source.splitlines():
+        match = re.match(r"\s*--\s*test-platforms?\s*:\s*(.+)$", line)
+        if match:
+            return {item.strip().lower() for item in re.split(r"[,\s]+", match.group(1)) if item.strip()}
+    return set()
 
 
 def colour(text: str, code: str) -> str:
@@ -81,7 +116,7 @@ def emit(text: str) -> None:
 
 
 def split_sections(path: pathlib.Path) -> list[str]:
-    sections = path.read_text().split("¬")
+    sections = path.read_text(encoding="utf-8").split("¬")
     normalized: list[str] = []
     for section in sections:
         if section.startswith("\r\n"):
@@ -141,6 +176,8 @@ def run_cmd(
         cwd=cwd,
         env=merged_env,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         input=stdin,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -177,7 +214,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
     stdin = parts[5] if len(parts) > 5 else None
     input_path = path.with_suffix(".input.n")
     output_root = path.parent / f"_{path.stem}"
-    input_path.write_text(source)
+    input_path.write_text(source, encoding="utf-8", newline="\n")
     for suffix in (".ir", ".gen.c"):
         sidecar = path.parent / f"_{path.stem}{suffix}"
         if sidecar.exists():
@@ -196,7 +233,8 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     failures: list[Failure] = []
     expected_code = int(expected_exit.strip() or "0")
-    if proc.returncode != expected_code:
+    actual_code = normalized_returncode(proc.returncode)
+    if actual_code != expected_code:
         failures.append(Failure(path, f"exit mismatch: expected {expected_code}, got {proc.returncode}\n{proc.stderr}"))
 
     if expected_stdout.rstrip("\n") != proc.stdout.rstrip("\n"):
@@ -206,7 +244,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     ir_path = path.parent / f"_{path.stem}.ir"
     if expected_ir.strip():
-        actual_ir = ir_path.read_text() if ir_path.exists() else ""
+        actual_ir = ir_path.read_text(encoding="utf-8") if ir_path.exists() else ""
         if not lines_are_subsequence(expected_ir, actual_ir):
             ir_failure = check_equal(path, "ir", expected_ir, actual_ir)
             if ir_failure:
@@ -214,8 +252,14 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     c_path = path.parent / f"_{path.stem}.gen.c"
     if expected_c.strip():
-        actual_c = c_path.read_text() if c_path.exists() else ""
-        actual_c = actual_c.replace(str(input_path), rel(path))
+        actual_c = c_path.read_text(encoding="utf-8") if c_path.exists() else ""
+        input_variants = {
+            str(input_path),
+            str(input_path).replace("\\", "\\\\"),
+            input_path.as_posix(),
+        }
+        for input_variant in input_variants:
+            actual_c = actual_c.replace(input_variant, rel(path))
         if not lines_are_subsequence(expected_c, actual_c, strip_dollars=True):
             c_failure = check_equal(path, "c", expected_c, actual_c)
             if c_failure:
@@ -247,7 +291,7 @@ def test_errors(path: pathlib.Path) -> list[Failure]:
         source = parts[index].rstrip("\n")
         expected = parts[index + 1]
         input_path = path.with_suffix(f".{index // 2}.input.n")
-        input_path.write_text(source)
+        input_path.write_text(source, encoding="utf-8", newline="\n")
         proc = run_cmd(
             [str(NERD), "build", str(input_path)],
             extra_env={"NERD_ERROR_RENDER_TEST": "1"},
@@ -285,7 +329,7 @@ def test_format(path: pathlib.Path) -> list[Failure]:
         return [Failure(path, "format test must have source and expected sections")]
     source, expected = parts
     input_path = path.with_suffix(".input.n")
-    input_path.write_text(source)
+    input_path.write_text(source, encoding="utf-8", newline="\n")
     proc = run_cmd([str(NERD), "format", "--stdout", str(input_path)])
     if proc.returncode != 0:
         return [Failure(path, f"formatter failed with exit {proc.returncode}\n{proc.stderr}")]
@@ -327,7 +371,7 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     if len(parts) != 3:
         return [Failure(path, "LSP test must have source, requests, and expected sections")]
     source, requests_text, expected_text = parts
-    requests = json.loads(requests_text)
+    requests = json.loads(normalize_repo_uris(requests_text))
 
     uri = "file:///test.n"
     messages = [
@@ -365,9 +409,7 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     if proc.returncode != 0:
         return [Failure(path, f"LSP failed with exit {proc.returncode}\n{proc.stderr.decode(errors='replace')}")]
     actual = json.dumps(lsp_read_frames(proc.stdout), indent=4) + "\n"
-    expected_text = expected_text.replace(
-        "__REPO_URI__", f"file://{ROOT}"
-    ).replace("/_bin/mods/", "/mods/")
+    expected_text = normalize_repo_uris(expected_text).replace("/_bin/mods/", "/mods/")
     try:
         if json.loads(expected_text) == json.loads(actual):
             return []
@@ -391,7 +433,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
 
     cwd = path.parent
     input_path = cwd / f"{path.stem}.input.n"
-    input_path.write_text(source)
+    input_path.write_text(source, encoding="utf-8", newline="\n")
 
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
@@ -401,7 +443,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     proc = run_cmd(args, cwd=cwd)
 
     failures: list[Failure] = []
-    if proc.returncode != expected_exit:
+    actual_exit = normalized_returncode(proc.returncode)
+    if actual_exit != expected_exit:
         failures.append(Failure(path, f"exit mismatch: expected {expected_exit}, got {proc.returncode}\n{proc.stderr}"))
     if expected_stdout.strip():
         actual_stdout = strip_ansi(proc.stdout)
@@ -454,6 +497,11 @@ def main() -> int:
     failures: list[Failure] = []
     for kind, path in cases:
         counts[kind].total += 1
+        platforms = case_platforms(path)
+        if platforms and current_platform() not in platforms:
+            counts[kind].skipped += 1
+            print_result_line(None, SUITE_LABELS[kind], rel(path))
+            continue
         case_failures = runners[kind](path)
         if case_failures:
             counts[kind].failed += 1
@@ -469,9 +517,12 @@ def main() -> int:
     return 1 if failures else 0
 
 
-def print_result_line(passed: bool, kind: str, label: str) -> None:
+def print_result_line(passed: bool | None, kind: str, label: str) -> None:
     colour_code = ANSI_GREEN if passed else ANSI_RED
     status = "PASS" if passed else "FAIL"
+    if passed is None:
+        colour_code = ANSI_CYAN
+        status = "SKIP"
     emit(f"{colour_code}[{status}]{ANSI_RESET} {kind}: {label}")
 
 
@@ -538,18 +589,20 @@ def print_summary(counts: dict[str, SuiteCounts]) -> None:
         total.total += count.total
         total.passed += count.passed
         total.failed += count.failed
+        total.skipped += count.skipped
 
-    headers = ["Type", "Passed", "Failed"]
+    headers = ["Type", "Passed", "Failed", "Skipped"]
     rows = [
-        (SUITE_LABELS[kind], count.passed, count.failed)
+        (SUITE_LABELS[kind], count.passed, count.failed, count.skipped)
         for kind, count in counts.items()
     ]
-    rows.append(("total", total.passed, total.failed))
+    rows.append(("total", total.passed, total.failed, total.skipped))
 
     widths = [
         max(visible_width(headers[0]), *(visible_width(row[0]) for row in rows)),
         max(visible_width(headers[1]), *(len(str(row[1])) for row in rows)),
         max(visible_width(headers[2]), *(len(str(row[2])) for row in rows)),
+        max(visible_width(headers[3]), *(len(str(row[3])) for row in rows)),
     ]
     content_width = sum(width + 2 for width in widths) + len(widths) - 1
     title = "Test Summary"
@@ -567,16 +620,16 @@ def print_summary(counts: dict[str, SuiteCounts]) -> None:
         f"{ANSI_RESET}{ANSI_FAINT_WHITE}│{ANSI_RESET}"
     )
     print_box_line("├", "┬", "┤", widths)
-    print_table_row(headers, widths, [ANSI_BOLD_WHITE] * 3, [False, False, False])
+    print_table_row(headers, widths, [ANSI_BOLD_WHITE] * len(headers), [False] * len(headers))
     print_box_line("├", "┼", "┤", widths)
     for index, row in enumerate(rows):
         if index == len(rows) - 1:
             print_box_line("├", "┼", "┤", widths)
         print_table_row(
-            [row[0], str(row[1]), str(row[2])],
+            [row[0], str(row[1]), str(row[2]), str(row[3])],
             widths,
-            [ANSI_CYAN, ANSI_GREEN, ANSI_RED],
-            [False, True, True],
+            [ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_CYAN],
+            [False, True, True, True],
         )
     print_box_line("└", "┴", "┘", widths)
 

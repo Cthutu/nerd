@@ -1,3 +1,5 @@
+-- test-platform: linux
+
 use std.io
 
 ffi "c" fcntl (i32, i32, ...) -> i32

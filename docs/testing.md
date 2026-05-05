@@ -78,6 +78,18 @@ case and invokes the relevant compiler command against that file. This covers
 behaviour outside the pure compiler pipeline, such as `run` resolving generated
 binaries correctly when the input path is relative to the current directory.
 
+## Platform-Specific Tests
+
+Tests that require a specific host platform can declare it in the source section:
+
+```nerd
+-- test-platform: linux
+```
+
+The runner skips the case when the current host platform is not listed. Use this
+only for tests that exercise host APIs or toolchain behaviour that cannot be made
+portable, such as POSIX-only FFI calls.
+
 ## Artefact Behaviour
 
 For language tests, generated `.ir`, `.c`, and `.out` artefacts are removed on
