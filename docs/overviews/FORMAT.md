@@ -23,6 +23,8 @@ The formatter should be deterministic and idempotent.
 - Consecutive end-of-line comments on plex fields align their `--` marker.
 - Long plex field end-of-line comments wrap onto following comment lines with
   the `--` marker aligned and continuation text indented.
+- Existing wrapped plex field end-of-line comments are reattached before
+  wrapping so repeated formatting preserves continuation text.
 
 ## Code Layout Rules
 
