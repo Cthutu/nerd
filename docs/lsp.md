@@ -81,6 +81,9 @@ Completion is semantic where possible:
   slices, and dynamic arrays, and inherent methods for matching receiver types
 - `use ...` offers module path segments from the active module search roots
 
+Completion results are filtered by the server using the exact typed prefix.
+Matching is case-sensitive, matching Nerd symbol resolution.
+
 Signature help is triggered by `(` and `,`. It resolves the callable name through
 the semantic declaration table, reports the active argument, includes default
 parameter expressions, and reminds the editor user of named-argument syntax.

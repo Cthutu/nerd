@@ -1,9 +1,11 @@
-value :: 1
-
-main :: fn () {
-    local := value
-    local
+Frame :: plex {
+    id i32
 }
+
+frame :: 1
+Frob :: 2
+
+main :: fn () {}
 ¬
 [
     {
@@ -15,8 +17,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 4,
-                "character": 5
+                "line": 0,
+                "character": 2
             }
         }
     }
@@ -81,8 +83,12 @@ main :: fn () {
         "id": 2,
         "result": [
             {
-                "label": "local",
-                "kind": 6
+                "label": "Frame",
+                "kind": 22
+            },
+            {
+                "label": "Frob",
+                "kind": 21
             }
         ]
     },

@@ -30,6 +30,37 @@ internal string lsp_completion_ident_before(string source, usize end)
     return (string){.data = source.data + start, .count = end - start};
 }
 
+internal bool lsp_completion_label_matches_prefix(string label, string prefix)
+{
+    if (prefix.count == 0) {
+        return true;
+    }
+    if (label.count < prefix.count) {
+        return false;
+    }
+    return memcmp(label.data, prefix.data, prefix.count) == 0;
+}
+
+internal void lsp_completion_filter_items(JsonValue* items, string prefix)
+{
+    if (prefix.count == 0 || items->kind != JSON_ARRAY) {
+        return;
+    }
+
+    usize write_index = 0;
+    for (usize read_index = 0; read_index < array_count(items->array.values);
+         ++read_index) {
+        JsonValue* item  = items->array.values[read_index];
+        JsonValue* label = json_object_get_cstr(item, "label");
+        if (label == NULL || label->kind != JSON_STRING ||
+            !lsp_completion_label_matches_prefix(json_string(label), prefix)) {
+            continue;
+        }
+        items->array.values[write_index++] = item;
+    }
+    __array_count(items->array.values) = write_index;
+}
+
 internal bool
 lsp_completion_member_context(string source, usize offset, string* out_receiver)
 {
@@ -601,12 +632,14 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     u64 character = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
-    usize offset     = lsp_offset_from_position(doc->source, line, character);
+    usize  offset    = lsp_offset_from_position(doc->source, line, character);
+    string prefix    = lsp_completion_ident_before(doc->source, offset);
 
     JsonValue* items = json_new_array(message->arena);
     string     use_path = {0};
     if (lsp_completion_use_context(doc->source, offset, &use_path)) {
         lsp_completion_add_modules(message->arena, items, doc, use_path);
+        lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);
         return;
@@ -623,6 +656,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
             lsp_completion_add_ast_members(
                 message->arena, items, doc, receiver);
         }
+        lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);
         return;
@@ -630,6 +664,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
 
     lsp_completion_add_keywords(message->arena, items);
     lsp_completion_add_symbols(message->arena, items, doc);
+    lsp_completion_filter_items(items, prefix);
     json_object_set_array(response, "result", items);
     lsp_send_response(message->arena, response);
 }
