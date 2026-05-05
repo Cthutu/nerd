@@ -50,6 +50,8 @@ The formatter should be deterministic and idempotent.
   align their symbol, type, and `=` columns.
 - Consecutive one-line local constant bindings in the same source paragraph
   align their symbol, optional type, and second `:` columns.
+- Renamed entries inside an `ffi "lib" { ... }` block align their `::` marker
+  within the same FFI block group, including any `pub ` prefix.
 - A source paragraph that mixes local constant bindings and local variable
   declarations is formatted as separate sub-paragraphs, split by a blank line.
 - Alignment does not cross blank lines.

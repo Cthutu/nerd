@@ -3376,25 +3376,52 @@ internal void format_emit_fn_signature(StringBuilder* sb,
     arena_done(&temp_arena);
 }
 
-internal void format_emit_ffi_entry_prefix(StringBuilder* sb,
-                                           const Cst*     cst,
-                                           const Lexer*   lexer,
-                                           u32            ffi_info_index,
-                                           usize          name_width)
+typedef struct {
+    usize name_width;
+    usize bind_prefix_width;
+} FormatFfiEntryWidths;
+
+internal usize format_ffi_entry_bind_prefix_width(const Cst*   cst,
+                                                  const Lexer* lexer,
+                                                  u32          ffi_info_index)
+{
+    const CstFfiInfo* ffi = &cst->ffi_infos[ffi_info_index];
+    if (ffi->foreign_symbol_handle == ffi->symbol_handle) {
+        return 0;
+    }
+    usize width = lex_symbol(lexer, ffi->symbol_handle).count;
+    if (ffi->flags & CNF_Public) {
+        width += 4;
+    }
+    return width;
+}
+
+internal void format_emit_ffi_entry_prefix(StringBuilder*       sb,
+                                           const Cst*           cst,
+                                           const Lexer*         lexer,
+                                           u32                  ffi_info_index,
+                                           FormatFfiEntryWidths widths)
 {
     const CstFfiInfo* ffi  = &cst->ffi_infos[ffi_info_index];
     string            name = lex_symbol(lexer, ffi->symbol_handle);
+    bool  is_renamed       = ffi->foreign_symbol_handle != ffi->symbol_handle;
+    usize prefix_width     = name.count;
     if (ffi->flags & CNF_Public) {
         sb_append_cstr(sb, "pub ");
+        prefix_width += 4;
     }
     sb_append_string(sb, name);
-    for (usize pad = name.count; pad <= name_width; ++pad) {
-        sb_append_char(sb, ' ');
-    }
-    if (ffi->foreign_symbol_handle != ffi->symbol_handle) {
+    if (is_renamed) {
+        for (usize pad = prefix_width; pad <= widths.bind_prefix_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
         sb_append_cstr(sb, ":: ");
         sb_append_string(sb, lex_symbol(lexer, ffi->foreign_symbol_handle));
         sb_append_char(sb, ' ');
+    } else {
+        for (usize pad = name.count; pad <= widths.name_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
     }
     sb_append_char(sb, '(');
 }
@@ -3403,12 +3430,12 @@ internal void format_emit_ffi_entry_one_line(StringBuilder* sb,
                                              const Cst*     cst,
                                              const Lexer*   lexer,
                                              u32            ffi_info_index,
-                                             usize          name_width)
+                                             FormatFfiEntryWidths widths)
 {
     const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
     const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
 
-    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, name_width);
+    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, widths);
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(sb, ", ");
@@ -3429,11 +3456,11 @@ internal void format_emit_ffi_entry_one_line(StringBuilder* sb,
     }
 }
 
-internal void format_emit_ffi_entry(StringBuilder* sb,
-                                    const Cst*     cst,
-                                    const Lexer*   lexer,
-                                    u32            ffi_info_index,
-                                    usize          name_width)
+internal void format_emit_ffi_entry(StringBuilder*       sb,
+                                    const Cst*           cst,
+                                    const Lexer*         lexer,
+                                    u32                  ffi_info_index,
+                                    FormatFfiEntryWidths widths)
 {
     const CstFfiInfo*     ffi       = &cst->ffi_infos[ffi_info_index];
     const CstFnSignature* signature = &cst->fn_signatures[ffi->signature_index];
@@ -3443,7 +3470,7 @@ internal void format_emit_ffi_entry(StringBuilder* sb,
     StringBuilder single_line = {0};
     sb_init(&single_line, &temp_arena);
     format_emit_ffi_entry_one_line(
-        &single_line, cst, lexer, ffi_info_index, name_width);
+        &single_line, cst, lexer, ffi_info_index, widths);
 
     usize start_column = format_sb_current_column(sb);
     if (signature->param_count == 0 ||
@@ -3453,7 +3480,7 @@ internal void format_emit_ffi_entry(StringBuilder* sb,
         return;
     }
 
-    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, name_width);
+    format_emit_ffi_entry_prefix(sb, cst, lexer, ffi_info_index, widths);
     usize param_column = format_sb_current_column(sb);
     usize param_name_width =
         format_fn_signature_param_name_width(cst, lexer, signature);
@@ -3491,11 +3518,16 @@ internal void format_emit_ffi_def(StringBuilder* sb,
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
     sb_append_char(sb, ' ');
-    format_emit_ffi_entry(sb,
-                          cst,
-                          lexer,
-                          ffi_info_index,
-                          lex_symbol(lexer, ffi->symbol_handle).count);
+    format_emit_ffi_entry(
+        sb,
+        cst,
+        lexer,
+        ffi_info_index,
+        (FormatFfiEntryWidths){
+            .name_width = lex_symbol(lexer, ffi->symbol_handle).count,
+            .bind_prefix_width =
+                format_ffi_entry_bind_prefix_width(cst, lexer, ffi_info_index),
+        });
 }
 
 internal bool format_ffi_infos_have_blank_line_between(const Cst*   cst,
@@ -3522,20 +3554,26 @@ internal bool format_ffi_infos_have_blank_line_between(const Cst*   cst,
         lexer->source, previous_end, current_start);
 }
 
-internal usize format_ffi_block_group_name_width(const Cst*   cst,
-                                                 const Lexer* lexer,
-                                                 u32          first_ffi_info,
-                                                 u32          end_ffi_info)
+internal FormatFfiEntryWidths format_ffi_block_group_entry_widths(
+    const Cst* cst, const Lexer* lexer, u32 first_ffi_info, u32 end_ffi_info)
 {
-    usize width = 0;
+    FormatFfiEntryWidths widths = {
+        .name_width        = 0,
+        .bind_prefix_width = 0,
+    };
     for (u32 i = first_ffi_info; i < end_ffi_info; ++i) {
         usize name_width =
             lex_symbol(lexer, cst->ffi_infos[i].symbol_handle).count;
-        if (name_width > width) {
-            width = name_width;
+        if (name_width > widths.name_width) {
+            widths.name_width = name_width;
+        }
+        usize bind_prefix_width =
+            format_ffi_entry_bind_prefix_width(cst, lexer, i);
+        if (bind_prefix_width > widths.bind_prefix_width) {
+            widths.bind_prefix_width = bind_prefix_width;
         }
     }
-    return width;
+    return widths;
 }
 
 internal void format_emit_ffi_block_group(StringBuilder* sb,
@@ -3545,11 +3583,11 @@ internal void format_emit_ffi_block_group(StringBuilder* sb,
                                           u32            end_ffi_info,
                                           u32            indent_level)
 {
-    usize name_width = format_ffi_block_group_name_width(
+    FormatFfiEntryWidths widths = format_ffi_block_group_entry_widths(
         cst, lexer, first_ffi_info, end_ffi_info);
     for (u32 i = first_ffi_info; i < end_ffi_info; ++i) {
         format_emit_indent(sb, indent_level + 1);
-        format_emit_ffi_entry(sb, cst, lexer, i, name_width);
+        format_emit_ffi_entry(sb, cst, lexer, i, widths);
         sb_append_char(sb, '\n');
     }
 }
