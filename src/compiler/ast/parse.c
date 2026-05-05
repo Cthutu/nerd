@@ -3885,6 +3885,22 @@ bool ast_parse_declaration(AstParseState* state,
     return true;
 }
 
+internal bool ast_bind_value_looks_like_missing_fn(AstParseState* state)
+{
+    if (state->token.kind != TK_Symbol ||
+        ast_peek_kind_at(state, 0) != TK_LParen) {
+        return false;
+    }
+
+    u32 paren_index = state->token.token_index + 1;
+    if (!ast_skip_balanced_tokens(state, &paren_index, TK_LParen, TK_RParen)) {
+        return false;
+    }
+
+    TokenKind next = ast_kind_at_stream_index(state, paren_index);
+    return next == TK_LBrace || next == TK_FatArrow || next == TK_ThinArrow;
+}
+
 //------------------------------------------------------------------------------
 // Parses a binding of the form `<symbol> :: <declaration or expression>`
 //
@@ -3958,6 +3974,18 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
                 "Expected a declaration or expression after the type "
                 "annotation, but found end of file");
         }
+    }
+
+    if (ast_bind_value_looks_like_missing_fn(state)) {
+        return error_0203_expected_token_ex(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_fn,
+            state->token.kind,
+            "Function declarations after `::` start with `fn`; a bare symbol "
+            "starts an expression instead.",
+            "Write `fn` before the parameter list, such as `name :: fn (...) "
+            "{ ... }`.");
     }
 
     bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);

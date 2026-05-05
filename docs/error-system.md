@@ -141,6 +141,15 @@ Good example:
 - note: `Exclusive end ranges and slices use \`..\`; inclusive end forms use \`..=\``
 - help: `Remove the \`<\` and keep \`..\` for an exclusive end range or slice`
 
+### Primary Spans
+
+Parser diagnostics should prefer the earliest token where the parser can tell
+which source rule was broken. A later token may be where parsing finally fails,
+but the primary span should move back to the syntactic fork when the parser has
+a reliable recovery clue. For example, a binding value shaped like
+`name :: symbol (...) { ... }` is diagnosed at `symbol`, because a function
+declaration after `::` must start with `fn`.
+
 ## Error-Code Ranges
 
 The project keeps phase-specific ranges:
