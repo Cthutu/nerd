@@ -53,6 +53,7 @@ Common causes:
 - invalid assignment targets
 - reads of `undefined` bindings before assignment
 - unused local variables, parameters, or pattern binders
+- discarded non-`void` expression results
 - invalid `break` or `continue`
 - non-exhaustive value-producing `on`
 - private module members
@@ -119,13 +120,14 @@ never read.
 ```nerd
 main :: fn () -> i32 {
     _future := 1  -- leading underscore marks deliberate non-use
+    _ := compute()  -- bare underscore discards the value
     return 0
 }
 ```
 
 Remove the binding if it is not needed. Use a leading underscore only when the
 binding is intentionally present for documentation, future work, or shape
-matching.
+matching. Use bare `_` when a returned value is deliberately ignored.
 
 ## Control Flow Errors
 

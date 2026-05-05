@@ -26,7 +26,7 @@ flip_blob_ffi :: ffi libc flip_blob (Blob) -> Blob
 
 main :: fn () {
     seed_rng(1)
-    write_line(c"ffi ok")
+    _ := write_line(c"ffi ok")
 }
 ¬
 0

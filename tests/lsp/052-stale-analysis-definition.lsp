@@ -2,7 +2,7 @@ State :: plex { inventory i32 }
 
 main :: fn () {
     game :: State { inventory: 1 }
-    game.inventory
+    _ := game.inventory
 }
 ¬
 [
@@ -15,7 +15,7 @@ main :: fn () {
             },
             "contentChanges": [
                 {
-                    "text": "State :: plex { inventory i32 }\n\nmain :: fn () {\n    game :: State { inventory: 1 }\n    game.inventory\n    broken :\n}\n"
+                    "text": "State :: plex { inventory i32 }\n\nmain :: fn () {\n    game :: State { inventory: 1 }\n    _ := game.inventory\n    broken :\n}\n"
                 }
             ]
         }
@@ -30,7 +30,7 @@ main :: fn () {
             },
             "position": {
                 "line": 4,
-                "character": 9
+                "character": 14
             }
         }
     }

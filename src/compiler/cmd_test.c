@@ -423,13 +423,14 @@ internal SourceTestGenerated source_test_generated_source(Arena*     arena,
             &sb, source, next_offset, test.start_offset, main_decl, &fragments);
 
         if (test.selected) {
-            sb_format(&sb, "__nerd_test_%u :: fn () {", selected_counter);
+            sb_format(
+                &sb, "__nerd_test_%u :: fn () -> void {", selected_counter);
             source_test_append_mapped_range(&sb,
                                             source,
                                             test.body_start_offset,
                                             test.body_end_offset,
                                             &fragments);
-            sb_append_cstr(&sb, "\n}\n");
+            sb_append_cstr(&sb, "\n    return\n}\n");
             selected_counter += 1;
         }
 

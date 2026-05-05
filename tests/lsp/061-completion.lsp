@@ -2,7 +2,7 @@ value :: 1
 
 main :: fn () {
     local := value
-    local
+    _ := local
 }
 ¬
 [
@@ -16,7 +16,7 @@ main :: fn () {
             },
             "position": {
                 "line": 4,
-                "character": 5
+                "character": 10
             }
         }
     }

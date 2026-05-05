@@ -1,7 +1,7 @@
 use test { grouped { alpha } }
 
 main :: fn () {
-    alpha()
+    _ := alpha()
 }
 ¬
 [
@@ -15,7 +15,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 4
+                "character": 9
             }
         }
     },
@@ -29,7 +29,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 4
+                "character": 9
             }
         }
     }

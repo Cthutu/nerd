@@ -14,7 +14,7 @@ impl Counter {
 
 main :: fn () {
     counter: Counter
-    counter.value
+    _ := counter.value
 }
 ¬
 [
@@ -28,7 +28,7 @@ main :: fn () {
             },
             "position": {
                 "line": 16,
-                "character": 12
+                "character": 17
             }
         }
     }

@@ -4076,6 +4076,11 @@ internal bool sema_local_is_decl_binding(const SemaLocal* local)
            local->kind == SLK_Function || local->kind == SLK_TypeAlias;
 }
 
+internal bool sema_symbol_is_discard(const Lexer* lexer, u32 symbol_handle)
+{
+    return string_eq(lex_symbol(lexer, symbol_handle), s("_"));
+}
+
 internal u32 sema_mangle_child_function_symbol(const Lexer* lexer,
                                                u32    parent_symbol_handle,
                                                string child_name)
@@ -4126,6 +4131,20 @@ internal u32 sema_mangle_for_item_symbol(const Lexer* lexer,
         &temp_arena, STRINGP "$for%u", STRINGV(name), token_index);
     return sema_mangle_child_function_symbol(
         lexer, current_function_symbol, suffix);
+}
+
+internal u32 sema_mangle_discard_symbol(const Lexer* lexer,
+                                        u32          current_function_symbol,
+                                        u32          token_index)
+{
+    string suffix = string_format(&temp_arena, "_$discard%u", token_index);
+    if (current_function_symbol != U32_MAX) {
+        return sema_mangle_child_function_symbol(
+            lexer, current_function_symbol, suffix);
+    }
+
+    InternAddResult ignored = 0;
+    return lex_add_symbol((Lexer*)lexer, suffix, &ignored);
 }
 
 internal void
@@ -4219,7 +4238,10 @@ internal bool sema_collect_destructure_pattern(const Lexer*  lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     u32 symbol = sema_destructure_binder_symbol(ast, pattern_index);
     if (symbol != U32_MAX) {
-        u32 duplicate = sema_find_local_in_scope(sema, scope_index, symbol);
+        bool discard = sema_symbol_is_discard(lexer, symbol);
+        u32  duplicate =
+            discard ? sema_no_local()
+                    : sema_find_local_in_scope(sema, scope_index, symbol);
         if (duplicate != sema_no_local()) {
             const SemaLocal* previous = &sema->locals[duplicate];
             return error_0301_duplicate_binding(
@@ -4231,16 +4253,19 @@ internal bool sema_collect_destructure_pattern(const Lexer*  lexer,
 
         array_push(sema->locals,
                    (SemaLocal){
-                       .kind                  = kind,
-                       .symbol_handle         = symbol,
-                       .owner_decl_index      = owner_decl_index,
-                       .scope_index           = scope_index,
-                       .decl_node_index       = decl_node_index,
-                       .decl_token_index      = pattern->token_index,
-                       .type_node_index       = sema_no_type(),
-                       .value_node_index      = ast->nodes[decl_node_index].b,
-                       .type_index            = sema_no_type(),
-                       .lowered_symbol_handle = symbol,
+                       .kind             = kind,
+                       .symbol_handle    = symbol,
+                       .owner_decl_index = owner_decl_index,
+                       .scope_index      = scope_index,
+                       .decl_node_index  = decl_node_index,
+                       .decl_token_index = pattern->token_index,
+                       .type_node_index  = sema_no_type(),
+                       .value_node_index = ast->nodes[decl_node_index].b,
+                       .type_index       = sema_no_type(),
+                       .lowered_symbol_handle =
+                           discard ? sema_mangle_discard_symbol(
+                                         lexer, U32_MAX, pattern->token_index)
+                                   : symbol,
                    });
         sema->pattern_local_indices[pattern_index] =
             (u32)array_count(sema->locals) - 1;
@@ -4344,7 +4369,10 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
 {
     const AstPattern* pattern = &ast->patterns[pattern_index];
     if (pattern->kind == APK_Bind) {
-        u32 duplicate = sema_find_local_in_scope(sema, scope_index, pattern->a);
+        bool discard = sema_symbol_is_discard(lexer, pattern->a);
+        u32  duplicate =
+            discard ? sema_no_local()
+                    : sema_find_local_in_scope(sema, scope_index, pattern->a);
         if (duplicate != sema_no_local()) {
             const SemaLocal* previous = &sema->locals[duplicate];
             return error_0301_duplicate_binding(
@@ -4353,8 +4381,14 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
                 lex_symbol(lexer, pattern->a),
                 sema_local_span(lexer, ast, previous));
         }
-        u32 lowered_symbol = sema_mangle_on_pattern_binder_symbol(
-            lexer, current_function_symbol, pattern->a, pattern->token_index);
+        u32 lowered_symbol =
+            discard
+                ? sema_mangle_discard_symbol(
+                      lexer, current_function_symbol, pattern->token_index)
+                : sema_mangle_on_pattern_binder_symbol(lexer,
+                                                       current_function_symbol,
+                                                       pattern->a,
+                                                       pattern->token_index);
         array_push(sema->locals,
                    (SemaLocal){
                        .kind                  = SLK_Binder,
@@ -4549,8 +4583,10 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             value            = &ast->nodes[value_node_index];
         }
 
-        u32 duplicate_local =
-            sema_find_local_in_scope(sema, scope_index, node->a);
+        bool discard = sema_symbol_is_discard(lexer, node->a);
+        u32  duplicate_local =
+            discard ? sema_no_local()
+                    : sema_find_local_in_scope(sema, scope_index, node->a);
         if (duplicate_local != sema_no_local()) {
             const SemaLocal* previous = &sema->locals[duplicate_local];
             return error_0301_duplicate_binding(
@@ -4564,9 +4600,12 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                                  ? SLK_Function
                                  : SLK_Constant;
         u32           lowered_symbol_handle =
-            kind == SLK_Function ? sema_mangle_nested_function_symbol(
-                                       lexer, current_function_symbol, node->a)
-                                 : node->a;
+            discard ? sema_mangle_discard_symbol(
+                          lexer, current_function_symbol, node->token_index)
+            : kind == SLK_Function
+                ? sema_mangle_nested_function_symbol(
+                      lexer, current_function_symbol, node->a)
+                : node->a;
 
         if (type_node_index != sema_no_type()) {
             sema_mark_type_expr_nodes_in_scope(
@@ -4653,8 +4692,13 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             sema->node_scope_indices[i] = child_scope;
             if (for_info->iterable_node_index != U32_MAX) {
                 if (for_info->index_symbol != U32_MAX) {
+                    bool discard =
+                        sema_symbol_is_discard(lexer, for_info->index_symbol);
                     u32 duplicate_index = sema_find_local_in_scope(
                         sema, child_scope, for_info->index_symbol);
+                    if (discard) {
+                        duplicate_index = sema_no_local();
+                    }
                     if (duplicate_index != sema_no_local()) {
                         const SemaLocal* previous =
                             &sema->locals[duplicate_index];
@@ -4677,16 +4721,24 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                             .value_node_index = sema_no_decl(),
                             .type_index = sema_builtin_type(sema, STK_Usize),
                             .lowered_symbol_handle =
-                                sema_mangle_for_item_symbol(
-                                    lexer,
-                                    current_function_symbol,
-                                    for_info->index_symbol,
-                                    for_info->index_token_index),
+                                discard ? sema_mangle_discard_symbol(
+                                              lexer,
+                                              current_function_symbol,
+                                              for_info->index_token_index)
+                                        : sema_mangle_for_item_symbol(
+                                              lexer,
+                                              current_function_symbol,
+                                              for_info->index_symbol,
+                                              for_info->index_token_index),
                         });
                     sema->scopes[child_scope].local_count++;
                 }
-                u32 duplicate_index = sema_find_local_in_scope(
-                    sema, child_scope, for_info->item_symbol);
+                bool discard =
+                    sema_symbol_is_discard(lexer, for_info->item_symbol);
+                u32 duplicate_index =
+                    discard ? sema_no_local()
+                            : sema_find_local_in_scope(
+                                  sema, child_scope, for_info->item_symbol);
                 if (duplicate_index != sema_no_local()) {
                     const SemaLocal* previous = &sema->locals[duplicate_index];
                     return error_0301_duplicate_binding(
@@ -4695,24 +4747,28 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                         lex_symbol(lexer, for_info->item_symbol),
                         sema_local_span(lexer, ast, previous));
                 }
-                array_push(
-                    sema->locals,
-                    (SemaLocal){
-                        .kind                  = SLK_Variable,
-                        .symbol_handle         = for_info->item_symbol,
-                        .owner_decl_index      = owner_decl_index,
-                        .scope_index           = child_scope,
-                        .decl_node_index       = i,
-                        .decl_token_index      = for_info->item_token_index,
-                        .type_node_index       = sema_no_type(),
-                        .value_node_index      = sema_no_decl(),
-                        .type_index            = sema_no_type(),
-                        .lowered_symbol_handle = sema_mangle_for_item_symbol(
-                            lexer,
-                            current_function_symbol,
-                            for_info->item_symbol,
-                            for_info->item_token_index),
-                    });
+                array_push(sema->locals,
+                           (SemaLocal){
+                               .kind             = SLK_Variable,
+                               .symbol_handle    = for_info->item_symbol,
+                               .owner_decl_index = owner_decl_index,
+                               .scope_index      = child_scope,
+                               .decl_node_index  = i,
+                               .decl_token_index = for_info->item_token_index,
+                               .type_node_index  = sema_no_type(),
+                               .value_node_index = sema_no_decl(),
+                               .type_index       = sema_no_type(),
+                               .lowered_symbol_handle =
+                                   discard ? sema_mangle_discard_symbol(
+                                                 lexer,
+                                                 current_function_symbol,
+                                                 for_info->item_token_index)
+                                           : sema_mangle_for_item_symbol(
+                                                 lexer,
+                                                 current_function_symbol,
+                                                 for_info->item_symbol,
+                                                 for_info->item_token_index),
+                           });
                 sema->scopes[child_scope].local_count++;
             }
             if (!sema_collect_block_statements(lexer,
@@ -4839,8 +4895,10 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
         }
 
         if (node->kind == AK_Variable) {
-            u32 duplicate_index =
-                sema_find_local_in_scope(sema, scope_index, node->a);
+            bool discard = sema_symbol_is_discard(lexer, node->a);
+            u32  duplicate_index =
+                discard ? sema_no_local()
+                        : sema_find_local_in_scope(sema, scope_index, node->a);
             if (duplicate_index != sema_no_local()) {
                 const SemaLocal* previous = &sema->locals[duplicate_index];
                 return error_0301_duplicate_binding(
@@ -4890,16 +4948,21 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
 
             array_push(sema->locals,
                        (SemaLocal){
-                           .kind                  = SLK_Variable,
-                           .symbol_handle         = node->a,
-                           .owner_decl_index      = owner_decl_index,
-                           .scope_index           = scope_index,
-                           .decl_node_index       = i,
-                           .decl_token_index      = U32_MAX,
-                           .type_node_index       = type_node_index,
-                           .value_node_index      = value_node_index,
-                           .type_index            = sema_no_type(),
-                           .lowered_symbol_handle = node->a,
+                           .kind             = SLK_Variable,
+                           .symbol_handle    = node->a,
+                           .owner_decl_index = owner_decl_index,
+                           .scope_index      = scope_index,
+                           .decl_node_index  = i,
+                           .decl_token_index = U32_MAX,
+                           .type_node_index  = type_node_index,
+                           .value_node_index = value_node_index,
+                           .type_index       = sema_no_type(),
+                           .lowered_symbol_handle =
+                               discard ? sema_mangle_discard_symbol(
+                                             lexer,
+                                             current_function_symbol,
+                                             node->token_index)
+                                       : node->a,
                        });
             sema->node_local_indices[i] = (u32)array_count(sema->locals) - 1;
             sema->scopes[scope_index].local_count++;
@@ -5089,8 +5152,11 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                 lex_symbol(lexer, param->symbol_handle));
         }
 
-        u32 duplicate_index =
-            sema_find_local_in_scope(sema, scope_index, param->symbol_handle);
+        bool discard = sema_symbol_is_discard(lexer, param->symbol_handle);
+        u32  duplicate_index =
+            discard ? sema_no_local()
+                    : sema_find_local_in_scope(
+                          sema, scope_index, param->symbol_handle);
         if (duplicate_index != sema_no_local()) {
             const SemaLocal* previous = &sema->locals[duplicate_index];
             return error_0301_duplicate_binding(
@@ -5106,19 +5172,24 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                 lexer, ast, sema, param->type_node_index, &param_type)) {
             return false;
         }
-        array_push(sema->locals,
-                   (SemaLocal){
-                       .kind                  = SLK_Param,
-                       .symbol_handle         = param->symbol_handle,
-                       .owner_decl_index      = owner_decl_index,
-                       .scope_index           = scope_index,
-                       .decl_node_index       = sema_no_decl(),
-                       .decl_token_index      = param->token_index,
-                       .type_node_index       = param->type_node_index,
-                       .value_node_index      = sema_no_decl(),
-                       .type_index            = param_type,
-                       .lowered_symbol_handle = param->symbol_handle,
-                   });
+        array_push(
+            sema->locals,
+            (SemaLocal){
+                .kind                  = SLK_Param,
+                .symbol_handle         = param->symbol_handle,
+                .owner_decl_index      = owner_decl_index,
+                .scope_index           = scope_index,
+                .decl_node_index       = sema_no_decl(),
+                .decl_token_index      = param->token_index,
+                .type_node_index       = param->type_node_index,
+                .value_node_index      = sema_no_decl(),
+                .type_index            = param_type,
+                .lowered_symbol_handle = discard ? sema_mangle_discard_symbol(
+                                                       lexer,
+                                                       current_function_symbol,
+                                                       param->token_index)
+                                                 : param->symbol_handle,
+            });
         sema->scopes[scope_index].local_count++;
 
         if (param->default_node_index != U32_MAX) {
@@ -9706,6 +9777,21 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                     lexer, ast, sema, i, sema_no_type(), &ignored)) {
                 return false;
             }
+            if (ignored != sema_no_type()) {
+                const AstNode* expr = &ast->nodes[stmt->a];
+                if (expr->kind == AK_Expression) {
+                    expr = &ast->nodes[expr->a];
+                }
+                u32 materialised = sema_materialise_type(sema, ignored);
+                if (expr->kind != AK_Bind && expr->kind != AK_Assign &&
+                    expr->kind != AK_DestructureAssign &&
+                    sema->types[materialised].kind != STK_Void) {
+                    return error_0345_discarded_value(
+                        lexer->source,
+                        sema_node_span(lexer, stmt),
+                        sema_type_name(lexer, sema, &temp_arena, materialised));
+                }
+            }
             if (sema_node_contains_interpolation(ast, i) &&
                 !sema_validate_interpolated_strings(lexer, ast, sema, i)) {
                 return false;
@@ -13380,7 +13466,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             u32 return_type = sema_builtin_type(
-                sema, node->b == AFK_Block ? STK_I32 : STK_UntypedInteger);
+                sema, node->b == AFK_Block ? STK_Void : STK_UntypedInteger);
 
             if (has_explicit_return_type &&
                 !sema_resolve_type_node(lexer,
@@ -14999,7 +15085,8 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
 
     const SemaType* fn_type = &sema->types[type_index];
     if (fn_type->param_count != 0 ||
-        !sema_type_is_integer(sema, fn_type->return_type)) {
+        (!sema_type_is_integer(sema, fn_type->return_type) &&
+         sema->types[fn_type->return_type].kind != STK_Void)) {
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),

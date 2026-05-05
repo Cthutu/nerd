@@ -5,7 +5,7 @@ Counter :: plex {
 counter: Counter
 
 main :: fn () {
-    counter.value
+    _ := counter.value
     missing_symbol()
 }
 ¬
@@ -20,7 +20,7 @@ main :: fn () {
             },
             "position": {
                 "line": 7,
-                "character": 12
+                "character": 17
             }
         }
     }

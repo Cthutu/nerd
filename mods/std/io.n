@@ -17,24 +17,24 @@ input_buf : [256]u8
 input_len : usize
 
 pub pr :: fn (text: string) -> void {
-    write(STDOUT_FILENO, text.data, text.count)
+    _ := write(STDOUT_FILENO, text.data, text.count)
     return
 }
 
 pub epr :: fn (text: string) -> void {
-    write(STDERR_FILENO, text.data, text.count)
+    _ := write(STDERR_FILENO, text.data, text.count)
     return
 }
 
 pub prn :: fn (text: string) -> void {
     pr(text)
-    write(STDOUT_FILENO, c"\n", 1)
+    _ := write(STDOUT_FILENO, c"\n", 1)
     return
 }
 
 pub eprn :: fn (text: string) -> void {
     epr(text)
-    write(STDERR_FILENO, c"\n", 1)
+    _ := write(STDERR_FILENO, c"\n", 1)
     return
 }
 

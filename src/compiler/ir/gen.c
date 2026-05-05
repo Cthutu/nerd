@@ -22,6 +22,11 @@ typedef struct {
 
 internal Array(IrLocalSubstitution) g_ir_local_substitutions = NULL;
 
+internal bool ir_symbol_is_discard(const Lexer* lexer, u32 symbol_handle)
+{
+    return string_eq(lex_symbol(lexer, symbol_handle), s("_"));
+}
+
 internal bool ir_imported_ffi_decl_source(const Sema*      sema,
                                           const SemaDecl*  decl,
                                           const Lexer**    out_lexer,
@@ -1833,6 +1838,14 @@ internal u32 ir_node_type_index(const Ast*  ast,
 
     if (node->kind == AK_InterpPartExpr || node->kind == AK_Expression) {
         return ir_node_type_index(ast, sema, node->a);
+    }
+
+    if (node->kind == AK_Call) {
+        u32 callee_type = ir_node_type_index(ast, sema, node->a);
+        if (callee_type != sema_no_type() &&
+            sema->types[callee_type].kind == STK_Function) {
+            return sema->types[callee_type].return_type;
+        }
     }
 
     switch (node->kind) {
@@ -5257,15 +5270,20 @@ internal void ir_generate_return_statement(const Lexer*   lex,
         u32 function_type          = ir->functions[current_function_index].type;
         const SemaType* fn_type    = &ir->types[function_type];
         u32             return_type = fn_type->return_type;
-        if (return_type == ir_builtin_type(sema, STK_Void)) {
+        bool            is_main     = string_eq(
+            lex_symbol(lex, ir->functions[current_function_index].symbol),
+            s("main"));
+        if (return_type == ir_builtin_type(sema, STK_Void) && !is_main) {
             ir_add_return(ir,
                           (IrValue){.kind = IR_VALUE_NONE},
                           ir_builtin_type(sema, STK_Void));
         } else {
-            ir_add_return(
-                ir,
-                (IrValue){.kind = IR_VALUE_INTEGER, .value.integer = 0},
-                return_type);
+            u32 zero_type = ir_builtin_type(sema, STK_I32);
+            ir_add_return(ir,
+                          (IrValue){.kind          = IR_VALUE_INTEGER,
+                                    .type          = zero_type,
+                                    .value.integer = 0},
+                          zero_type);
         }
         return;
     }
@@ -6112,6 +6130,27 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
         u32 local_index = sema->node_local_indices[node_index];
         u32 local_type  = ir_value_type_for_local_index(ast, sema, local_index);
         const SemaLocal* local = &sema->locals[local_index];
+        if (ir_symbol_is_discard(lex, node->a)) {
+            u32 value_node = node->b;
+            if (ast->nodes[value_node].kind == AK_AnnotatedValue) {
+                value_node = ast->nodes[value_node].b;
+            }
+            while (ast->nodes[value_node].kind == AK_Expression) {
+                value_node = ast->nodes[value_node].a;
+            }
+            if (ast->nodes[value_node].kind != AK_Undefined &&
+                ast->nodes[value_node].kind != AK_ZeroInit) {
+                (void)ir_lower_node(lex,
+                                    ast,
+                                    sema,
+                                    value_node,
+                                    loop,
+                                    node_values,
+                                    next_value_index,
+                                    ir);
+            }
+            return IR_STMT_FALLTHROUGH;
+        }
         if (local_type == sema_no_type() &&
             local->type_node_index != sema_no_type()) {
             u32 type_node = local->type_node_index;
@@ -6147,7 +6186,7 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
             };
             ir_add_local(ir,
                          function_index,
-                         node->a,
+                         local->lowered_symbol_handle,
                          local_type,
                          (IrValue){
                              .kind          = IR_VALUE_INTEGER,
@@ -6274,8 +6313,12 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                   next_value_index,
                                   ir);
         }
-        ir_add_local(
-            ir, function_index, node->a, local_type, value, local_type);
+        ir_add_local(ir,
+                     function_index,
+                     local->lowered_symbol_handle,
+                     local_type,
+                     value,
+                     local_type);
         return IR_STMT_FALLTHROUGH;
     }
 
@@ -6549,7 +6592,7 @@ internal void ir_generate_function_body(const Lexer* lex,
                "Expected semantic parameter local");
         ir_add_param(ir,
                      function_index,
-                     param->symbol_handle,
+                     sema->locals[local_index].lowered_symbol_handle,
                      sema->locals[local_index].type_index);
     }
 
@@ -6629,14 +6672,18 @@ internal void ir_generate_function_body(const Lexer* lex,
                            0,
                            &defers,
                            ir);
-            // Normal block functions currently omit explicit return types, so
-            // the first implementation lowers them as i32-returning functions
-            // with an implicit zero result.
-            ir_add_return(ir,
-                          (IrValue){.kind = IR_VALUE_INTEGER,
-                                    .type = ir_builtin_type(sema, STK_I32),
-                                    .value.integer = 0},
-                          ir_builtin_type(sema, STK_I32));
+            u32  return_type = sema->types[type_index].return_type;
+            bool is_main = string_eq(lex_symbol(lex, symbol_handle), s("main"));
+            if (sema->types[return_type].kind == STK_Void && !is_main) {
+                ir_add_return(
+                    ir, (IrValue){.kind = IR_VALUE_NONE}, return_type);
+            } else {
+                ir_add_return(ir,
+                              (IrValue){.kind = IR_VALUE_INTEGER,
+                                        .type = ir_builtin_type(sema, STK_I32),
+                                        .value.integer = 0},
+                              ir_builtin_type(sema, STK_I32));
+            }
         }
         array_free(defers.statements);
     }

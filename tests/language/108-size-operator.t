@@ -1,6 +1,8 @@
 use std.io
 
-helper :: fn () {}
+helper :: fn () -> i32 {
+    return 0
+}
 
 main :: fn () -> i32 {
     nums: [3]i32 = [1, 2, 3]

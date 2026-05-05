@@ -233,9 +233,19 @@ helper :: fn (_unused: i32) -> i32 {
 }
 ```
 
-Bare `_` is reserved for ignore patterns in destructuring and pattern matching.
-Use a descriptive leading-underscore name, such as `_future`, when you still
-want a normal local binding.
+Use bare `_` when a value is intentionally discarded. The discard binding may be
+used more than once in the same scope:
+
+```nerd
+main :: fn () -> i32 {
+    _ := compute()
+    _ := compute_again()
+    return 0
+}
+```
+
+Standalone expression statements may only have type `void`. If a function
+returns a value, bind it to `_` when the value is deliberately ignored.
 
 ## Choosing A Form
 
@@ -247,4 +257,5 @@ want a normal local binding.
 | mutable binding with explicit value   | `name: Type = value`       |
 | mutable binding with default storage  | `name: Type`               |
 | change an existing mutable target     | `target = value`           |
+| intentionally discard a value         | `_ := value`               |
 | explicit uninitialised typed storage  | `name: Type = undefined`   |

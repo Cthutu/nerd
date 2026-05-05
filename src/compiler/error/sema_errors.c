@@ -1216,3 +1216,31 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report an expression statement that discards a non-void value.
+
+bool error_0345_discarded_value(NerdSource source,
+                                ErrorSpan  span,
+                                string     type_name)
+{
+    ErrorInfo error =
+        error_init(345,
+                   source,
+                   span,
+                   "Expression result of type `" STRINGP "` is not used",
+                   STRINGV(type_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression produces a value, but the value is "
+                        "discarded");
+    error_add_note(&error,
+                   "Only `void` expressions can be used as standalone "
+                   "statements.");
+    error_add_help(&error,
+                   "Bind the result to `_` when the value is intentionally "
+                   "ignored.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

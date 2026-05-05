@@ -2192,6 +2192,16 @@ internal void cgen_add_function_header(CGen*                cgen,
         cgen->ir->types[fn_type].kind == STK_Function) {
         return_type = cgen->ir->types[fn_type].return_type;
     }
+    if (string_eq(lex_symbol(cgen->lexer, function->symbol), s("main")) &&
+        return_type != sema_no_type() &&
+        cgen->ir->types[return_type].kind == STK_Void) {
+        for (u32 i = 0; i < array_count(cgen->ir->types); ++i) {
+            if (cgen->ir->types[i].kind == STK_I32) {
+                return_type = i;
+                break;
+            }
+        }
+    }
     cgen_add(cgen, cgen_c_type(cgen, return_type));
     cgen_add(cgen, " ");
     cgen_add_symbol_name(cgen, (u32)instr->lvalue.value.integer);

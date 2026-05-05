@@ -42,7 +42,7 @@ TERM_FB_CHAR_WIDE_TAIL :: 0xffffffff
 pub term_init :: fn () {
     on g_term_initialised => return
 
-    setlocale(LC_CTYPE, c"")
+    _ := setlocale(LC_CTYPE, c"")
 
     -- Initialise the terminal, read for a loop
     g_term.size = (0, 0)
@@ -102,7 +102,7 @@ term_alt_leave :: fn () {
 --
 
 term_raw_enter :: fn () {
-    tcgetattr(STDIN_FILENO, ^g_term_original_tios)
+    _ := tcgetattr(STDIN_FILENO, ^g_term_original_tios)
     raw_tios := g_term_original_tios
 
     raw_tios.c_lflag &= 0xffff7ff4
@@ -111,10 +111,10 @@ term_raw_enter :: fn () {
     raw_tios.c_cflag |= 0x0030
     (^raw_tios.c_cc[VMIN])^ = 0
     (^raw_tios.c_cc[VTIME])^ = 0
-    tcsetattr(STDIN_FILENO, TCSANOW, ^raw_tios)
+    _ := tcsetattr(STDIN_FILENO, TCSANOW, ^raw_tios)
 
     g_term_original_flags = fcntl(STDIN_FILENO, F_GETFL, 0)
-    fcntl(STDIN_FILENO, F_SETFL, g_term_original_flags | O_NONBLOCK)
+    _ := fcntl(STDIN_FILENO, F_SETFL, g_term_original_flags | O_NONBLOCK)
 
     g_term_pending_count = 0
     g_term_pending_index = 0
@@ -122,8 +122,8 @@ term_raw_enter :: fn () {
 }
 
 term_raw_leave :: fn () {
-    fcntl(STDIN_FILENO, F_SETFL, g_term_original_flags)
-    tcsetattr(STDIN_FILENO, TCSANOW, ^g_term_original_tios)
+    _ := fcntl(STDIN_FILENO, F_SETFL, g_term_original_flags)
+    _ := tcsetattr(STDIN_FILENO, TCSANOW, ^g_term_original_tios)
 }
 
 --
@@ -639,7 +639,7 @@ pub term_poll_event :: fn () -> TermEvent {
     for i: usize = 1; i < g_term.event_queue.count; i += 1 {
         (^g_term.event_queue[i - 1])^ = g_term.event_queue[i]
     }
-    g_term.event_queue.pop()
+    _ := g_term.event_queue.pop()
     return event
 }
 
@@ -1039,7 +1039,7 @@ term_output_flush :: fn () {
     on g_term_output.count == 0 => return
 
     g_term_output.push(0)
-    printf(c"%s", g_term_output[..].data)
+    _ := printf(c"%s", g_term_output[..].data)
     g_term_output.clear()
 }
 
