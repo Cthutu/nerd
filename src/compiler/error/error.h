@@ -305,6 +305,10 @@ bool error_0341_private_type_in_public_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     public_type,
                                              string     private_type);
+bool error_0342_duplicate_enum_discriminant(NerdSource source,
+                                            ErrorSpan  span,
+                                            i64        value,
+                                            ErrorSpan  previous_span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

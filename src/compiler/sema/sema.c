@@ -2097,6 +2097,41 @@ internal ErrorSpan sema_token_span(const Lexer* lexer, u32 token_index)
                        .end   = lex_token_end_offset(lexer, token)};
 }
 
+internal ErrorSpan sema_enum_variant_discriminant_span(
+    const Lexer* lexer, const Ast* ast, const AstEnumVariant* variant)
+{
+    if (variant->value_node_index != U32_MAX) {
+        const AstNode* value_node = &ast->nodes[variant->value_node_index];
+        if (value_node->kind == AK_Expression) {
+            value_node = &ast->nodes[value_node->a];
+        }
+        return sema_node_span(lexer, value_node);
+    }
+    return sema_token_span(lexer, variant->token_index);
+}
+
+internal bool
+sema_check_enum_discriminant_unique(const Lexer*          lexer,
+                                    const Ast*            ast,
+                                    const AstEnumVariant* variants,
+                                    Array(i64) discriminants,
+                                    u32 variant_index,
+                                    i64 discriminant)
+{
+    for (u32 i = 0; i < array_count(discriminants); ++i) {
+        if (discriminants[i] != discriminant) {
+            continue;
+        }
+        return error_0342_duplicate_enum_discriminant(
+            lexer->source,
+            sema_enum_variant_discriminant_span(
+                lexer, ast, &variants[variant_index]),
+            discriminant,
+            sema_enum_variant_discriminant_span(lexer, ast, &variants[i]));
+    }
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Find a top-level declaration by its bound symbol handle.
 
@@ -3197,6 +3232,17 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                                   &ast->nodes[variant->value_node_index]),
                         s("non-negative integer constant"),
                         s("out-of-range integer constant"));
+                }
+                if (!sema_check_enum_discriminant_unique(
+                        lexer,
+                        ast,
+                        &ast->enum_variants[enum_type->first_variant],
+                        discriminants,
+                        i,
+                        discriminant)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return false;
                 }
                 array_push(discriminants, discriminant);
                 next_discriminant = discriminant + 1;
@@ -6875,6 +6921,17 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                         sema_node_span(lexer,
                                        &ast->nodes[variant->value_node_index]),
                         s("<enum discriminant>"));
+                }
+                if (!sema_check_enum_discriminant_unique(
+                        lexer,
+                        ast,
+                        &ast->enum_variants[enum_type->first_variant],
+                        discriminants,
+                        i,
+                        discriminant)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return false;
                 }
                 array_push(discriminants, discriminant);
                 next_discriminant = discriminant + 1;

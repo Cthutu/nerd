@@ -1130,3 +1130,31 @@ bool error_0341_private_type_in_public_field(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report an enum variant whose discriminant duplicates an earlier variant.
+
+bool error_0342_duplicate_enum_discriminant(NerdSource source,
+                                            ErrorSpan  span,
+                                            i64        value,
+                                            ErrorSpan  previous_span)
+{
+    ErrorInfo error = error_init(
+        342, source, span, "Duplicate enum discriminant value `%lld`", value);
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This variant also uses value `%lld`",
+                        value);
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        previous_span,
+                        "Previous variant with value `%lld` is here",
+                        value);
+    error_add_help(&error,
+                   "Give one of the variants a distinct explicit value, or "
+                   "remove the explicit value so the implicit sequence does "
+                   "not collide.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
