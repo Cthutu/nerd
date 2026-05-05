@@ -1,0 +1,3 @@
+pub module_answer :: fn () -> i32 {
+    return 41
+}

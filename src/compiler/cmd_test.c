@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/front/front.h>
 #include <compiler/cmd_internal.h>
 #include <compiler/error/error.h>
 
@@ -27,7 +28,7 @@ typedef struct {
 internal bool source_test_is_ident(u8 ch)
 {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-           (ch >= '0' && ch <= '9') || ch == '_';
+           (ch >= '0' && ch <= '9') || ch == '_' || ch == '.';
 }
 
 internal bool source_test_starts_with_at(string source, usize offset, cstr text)
@@ -180,6 +181,7 @@ internal bool source_test_find_body(string source,
 
 internal bool source_test_discover(Arena* arena,
                                    string source,
+                                   string name_prefix,
                                    string filter,
                                    Array(SourceTestDecl) * out_tests)
 {
@@ -240,7 +242,12 @@ internal bool source_test_discover(Arena* arena,
                 }
 
                 string stable_name =
-                    string_format(arena, STRINGP, STRINGV(name));
+                    name_prefix.count > 0
+                        ? string_format(arena,
+                                        STRINGP ": " STRINGP,
+                                        STRINGV(name_prefix),
+                                        STRINGV(name))
+                        : string_format(arena, STRINGP, STRINGV(name));
                 array_push(
                     *out_tests,
                     (SourceTestDecl){
@@ -412,30 +419,133 @@ int compiler_cmd_test(const NerdTestConfig* config)
         return error_runtime("Failed to load source file: %s", input_path);
     }
 
-    Array(SourceTestDecl) tests = NULL;
-    bool discovered =
-        source_test_discover(&arena, source, config->filter, &tests);
-    if (!discovered) {
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {
+        .verbose             = config->verbose,
+        .require_entry_point = false,
+        .skip_ir_generation  = true,
+        .keywords            = config->keywords,
+    };
+    NerdSource root_source = {
+        .source      = source,
+        .source_path = s(input_path),
+    };
+    if (!front_end_program(root_source, &options, NULL, &program)) {
+        Array(SourceTestDecl) tests = NULL;
+        bool root_discovered        = source_test_discover(
+            &arena, source, (string){0}, config->filter, &tests);
+        if (!root_discovered) {
+            array_free(tests);
+            filemap_unload(&map);
+            arena_done(&arena);
+            return 1;
+        }
+
+        u32 root_selected_count = 0;
+        for (usize i = 0; i < array_count(tests); i++) {
+            if (tests[i].selected) {
+                root_selected_count += 1;
+            }
+        }
+
+        if (config->list) {
+            for (usize i = 0; i < array_count(tests); i++) {
+                if (tests[i].selected) {
+                    prn(ANSI_CYAN STRINGP ANSI_RESET, STRINGV(tests[i].name));
+                }
+            }
+            array_free(tests);
+            filemap_unload(&map);
+            arena_done(&arena);
+            return 0;
+        }
+
+        if (root_selected_count == 0) {
+            prn(ANSI_BOLD_YELLOW "0 tests passed" ANSI_RESET);
+            array_free(tests);
+            filemap_unload(&map);
+            arena_done(&arena);
+            return 0;
+        }
+
+        string generated = source_test_generated_source(&arena, source, tests);
+        NerdRunConfig run_config = {
+            .source =
+                (NerdSource){
+                    .source      = generated,
+                    .source_path = config->input_path,
+                },
+            .verbose  = config->verbose,
+            .keywords = config->keywords,
+        };
+
+        int result = compiler_cmd_run(&run_config);
+        if (result == 0) {
+            prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET,
+                root_selected_count);
+        } else {
+            eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
+        }
+
         array_free(tests);
+        filemap_unload(&map);
+        arena_done(&arena);
+        return result;
+    }
+
+    Array(Array(SourceTestDecl)) module_tests = NULL;
+    u32  selected_count                       = 0;
+    bool discovered                           = true;
+    for (u32 module_index = 0; module_index < array_count(program.modules);
+         ++module_index) {
+        ModuleInfo* module          = &program.modules[module_index];
+        string      prefix          = module_index == program.root_module_index
+                                          ? (string){0}
+                                          : module->qualified_name;
+        Array(SourceTestDecl) tests = NULL;
+        if (!source_test_discover(&arena,
+                                  module->front_end.lexer.source.source,
+                                  prefix,
+                                  config->filter,
+                                  &tests)) {
+            array_free(tests);
+            discovered = false;
+            break;
+        }
+        for (usize i = 0; i < array_count(tests); i++) {
+            if (tests[i].selected) {
+                selected_count += 1;
+            }
+        }
+        array_push(module_tests, tests);
+    }
+
+    if (!discovered) {
+        for (usize i = 0; i < array_count(module_tests); ++i) {
+            array_free(module_tests[i]);
+        }
+        array_free(module_tests);
+        program_info_done(&program);
         filemap_unload(&map);
         arena_done(&arena);
         return 1;
     }
 
-    u32 selected_count = 0;
-    for (usize i = 0; i < array_count(tests); i++) {
-        if (tests[i].selected) {
-            selected_count += 1;
-        }
-    }
-
     if (config->list) {
-        for (usize i = 0; i < array_count(tests); i++) {
-            if (tests[i].selected) {
-                prn(ANSI_CYAN STRINGP ANSI_RESET, STRINGV(tests[i].name));
+        for (usize module_index = 0; module_index < array_count(module_tests);
+             ++module_index) {
+            Array(SourceTestDecl) tests = module_tests[module_index];
+            for (usize i = 0; i < array_count(tests); i++) {
+                if (tests[i].selected) {
+                    prn(ANSI_CYAN STRINGP ANSI_RESET, STRINGV(tests[i].name));
+                }
             }
         }
-        array_free(tests);
+        for (usize i = 0; i < array_count(module_tests); ++i) {
+            array_free(module_tests[i]);
+        }
+        array_free(module_tests);
+        program_info_done(&program);
         filemap_unload(&map);
         arena_done(&arena);
         return 0;
@@ -443,31 +553,63 @@ int compiler_cmd_test(const NerdTestConfig* config)
 
     if (selected_count == 0) {
         prn(ANSI_BOLD_YELLOW "0 tests passed" ANSI_RESET);
-        array_free(tests);
+        for (usize i = 0; i < array_count(module_tests); ++i) {
+            array_free(module_tests[i]);
+        }
+        array_free(module_tests);
+        program_info_done(&program);
         filemap_unload(&map);
         arena_done(&arena);
         return 0;
     }
 
-    string generated = source_test_generated_source(&arena, source, tests);
-    NerdRunConfig run_config = {
-        .source =
-            (NerdSource){
-                .source      = generated,
-                .source_path = config->input_path,
-            },
-        .verbose  = config->verbose,
-        .keywords = config->keywords,
-    };
+    int result = 0;
+    for (u32 module_index = 0; module_index < array_count(program.modules);
+         ++module_index) {
+        Array(SourceTestDecl) tests = module_tests[module_index];
+        bool has_selected           = false;
+        for (usize i = 0; i < array_count(tests); i++) {
+            if (tests[i].selected) {
+                has_selected = true;
+                break;
+            }
+        }
+        if (!has_selected) {
+            continue;
+        }
 
-    int result = compiler_cmd_run(&run_config);
+        ModuleInfo* module    = &program.modules[module_index];
+        string      generated = source_test_generated_source(
+            &arena, module->front_end.lexer.source.source, tests);
+        cstr generated_dir = path_dirname(&arena, module->resolved_path);
+        cstr generated_path =
+            path_join(&arena, generated_dir, "__nerd_source_test");
+        NerdRunConfig run_config = {
+            .source =
+                (NerdSource){
+                    .source      = generated,
+                    .source_path = s(generated_path),
+                },
+            .verbose  = config->verbose,
+            .keywords = config->keywords,
+        };
+
+        result = compiler_cmd_run(&run_config);
+        if (result != 0) {
+            break;
+        }
+    }
     if (result == 0) {
         prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, selected_count);
     } else {
         eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
     }
 
-    array_free(tests);
+    for (usize i = 0; i < array_count(module_tests); ++i) {
+        array_free(module_tests[i]);
+    }
+    array_free(module_tests);
+    program_info_done(&program);
     filemap_unload(&map);
     arena_done(&arena);
     return result;

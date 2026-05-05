@@ -1,0 +1,7 @@
+helper :: fn () -> i32 {
+    return 1
+}
+
+test "module part test" {
+    assert module_answer() + helper() == 42
+}

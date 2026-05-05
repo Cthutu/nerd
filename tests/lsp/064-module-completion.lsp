@@ -112,6 +112,10 @@ main :: fn () {}
             {
                 "label": "reexport",
                 "kind": 9
+            },
+            {
+                "label": "source_tests",
+                "kind": 9
             }
         ]
     },

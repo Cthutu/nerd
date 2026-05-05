@@ -7,6 +7,7 @@ package-lock.json
 tests/**/*.ir
 tests/**/*.c
 tests/**/*.out
+tests/**/*.pdb
 
 nerd-src/main
 .codex
