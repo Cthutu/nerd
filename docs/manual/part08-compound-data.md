@@ -274,6 +274,9 @@ impl Stack[T] {
 }
 ```
 
+The impl generic parameters are also in scope inside method bodies, so type
+operations such as `T.size` work there.
+
 An impl block may also contain associated functions. These are called through
 the type rather than through a value. Associated functions are intended for
 constructors and factories, so they return `Self` or `^Self`:

@@ -7232,6 +7232,14 @@ internal bool sema_try_resolve_type_symbol(const Lexer* lexer,
 
     u32 type_index = sema_type_index_for_name(sema, lex_symbol(lexer, node->a));
     if (type_index == sema_no_type()) {
+        for (u32 i = 0; i < g_sema_type_subst.count; ++i) {
+            if (g_sema_type_subst.param_symbols[i] == node->a) {
+                type_index = g_sema_type_subst.arg_types[i];
+                break;
+            }
+        }
+    }
+    if (type_index == sema_no_type()) {
         u32 decl_index = sema_find_decl(sema, node->a);
         if (decl_index != sema_no_decl() &&
             sema->decls[decl_index].kind == SK_TypeAlias) {
