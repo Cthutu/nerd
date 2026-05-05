@@ -460,6 +460,8 @@ Rules to teach:
 - A bound `local_name :: ffi "lib" foreign_name (...)` declares a foreign
   function with a different Nerd-visible name. Calls use `local_name`; generated
   code links to `foreign_name`.
+- Inside an `ffi "lib" { ... }` block, `local_name :: foreign_name (...)`
+  declares one renamed entry without repeating the library operand.
 - Prefer wrapping FFI declarations in Nerd functions that expose safer types.
 - C strings and Nerd strings are different.
 - Use explicit casts at the FFI boundary.

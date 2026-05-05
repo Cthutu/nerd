@@ -955,7 +955,7 @@ internal bool ast_error_ffi_block_expected_signature(AstParseState* state,
         TK_LParen,
         token->kind,
         "FFI blocks only contain foreign function signatures of the form "
-        "`name (...) -> T`.",
+        "`name (...) -> T` or `local :: foreign (...) -> T`.",
         "Move constants and Nerd bindings outside the `ffi` block.");
 }
 
@@ -3698,6 +3698,25 @@ bool ast_parse_declaration(AstParseState* state,
                         "an expression function body.",
                         "Write `name (...) -> T` inside an `ffi` block.");
                 }
+                AstNodeFlag entry_flags = flags;
+                if (state->token.kind == TK_pub) {
+                    entry_flags |= ANF_Public;
+                    if (state->token_index == state->token.token_index &&
+                        !ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            TK_EOF);
+                    }
+                    if (!ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            TK_EOF);
+                    }
+                }
                 if (state->token.kind != TK_Symbol) {
                     return error_0203_expected_token(
                         state->lexer->source,
@@ -3706,7 +3725,8 @@ bool ast_parse_declaration(AstParseState* state,
                         state->token.kind);
                 }
 
-                u32 symbol_handle = state->token.value.symbol_handle;
+                u32 symbol_handle         = state->token.value.symbol_handle;
+                u32 foreign_symbol_handle = symbol_handle;
                 if (state->token_index == state->token.token_index &&
                     !ast_next_token(state)) {
                     return error_0203_expected_token(
@@ -3721,6 +3741,38 @@ bool ast_parse_declaration(AstParseState* state,
                         ast_token_span(state, &state->token),
                         TK_LParen,
                         TK_EOF);
+                }
+
+                if (state->token.kind == TK_Colon &&
+                    ast_peek_kind_at(state, 0) == TK_Colon) {
+                    if (!ast_expect_token(state, TK_Colon) ||
+                        !ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            TK_EOF);
+                    }
+                    if (state->token.kind != TK_Symbol) {
+                        return ast_error_ffi_block_expected_signature(
+                            state, &state->token);
+                    }
+                    foreign_symbol_handle = state->token.value.symbol_handle;
+                    if (state->token_index == state->token.token_index &&
+                        !ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_LParen,
+                            TK_EOF);
+                    }
+                    if (!ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_LParen,
+                            TK_EOF);
+                    }
                 }
 
                 if (state->token.kind != TK_LParen) {
@@ -3748,14 +3800,15 @@ bool ast_parse_declaration(AstParseState* state,
                 u32 ffi_index = (u32)array_count(state->ffi_infos);
                 array_push(
                     state->ffi_infos,
-                    (AstFfiInfo){.library_node_index = library_node_index,
-                                 .symbol_handle      = symbol_handle,
-                                 .signature_index    = signature_index});
+                    (AstFfiInfo){.library_node_index    = library_node_index,
+                                 .symbol_handle         = symbol_handle,
+                                 .foreign_symbol_handle = foreign_symbol_handle,
+                                 .signature_index       = signature_index});
 
                 if (!ast_emit_node(
                         state,
                         (AstNode){.kind        = AK_FfiDef,
-                                  .flags       = flags,
+                                  .flags       = entry_flags,
                                   .token_index = ffi_token.token_index,
                                   .a           = ffi_index},
                         NULL)) {
@@ -3817,9 +3870,10 @@ bool ast_parse_declaration(AstParseState* state,
 
         u32 ffi_index = (u32)array_count(state->ffi_infos);
         array_push(state->ffi_infos,
-                   (AstFfiInfo){.library_node_index = library_node_index,
-                                .symbol_handle      = symbol_handle,
-                                .signature_index    = signature_index});
+                   (AstFfiInfo){.library_node_index    = library_node_index,
+                                .symbol_handle         = symbol_handle,
+                                .foreign_symbol_handle = symbol_handle,
+                                .signature_index       = signature_index});
 
         return ast_emit_node(state,
                              (AstNode){.kind        = AK_FfiDef,

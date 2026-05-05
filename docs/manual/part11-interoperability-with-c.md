@@ -27,12 +27,13 @@ When several functions come from the same library, group them in an FFI block:
 ffi "c" {
     abs (i32) -> i32      -- declares the C function abs
     strlen (^u8) -> usize -- declares the C function strlen
+    length :: strlen (^u8) -> usize -- Nerd name differs from C symbol
 }
 ```
 
 Each entry inside the block has the same form as the part after the library in a
-direct declaration. FFI block entries do not have separate Nerd binding names;
-the Nerd-visible name is the foreign symbol name.
+direct declaration. Use `local :: foreign` inside the block when the
+Nerd-visible name should differ from the foreign symbol.
 
 Use `pub ffi` when a module should export the declared foreign functions:
 
@@ -43,7 +44,8 @@ pub ffi "c" {
 ```
 
 `pub` applies to every entry in the block. For a single foreign function,
-`pub ffi "c" name (...) -> Type` exports that one declaration.
+`pub ffi "c" name (...) -> Type` exports that one declaration. Inside a block,
+`pub local :: foreign (...) -> Type` exports only that entry.
 
 ## Bound FFI Declarations
 
@@ -54,6 +56,14 @@ seed_rng :: ffi "c" srand (u32)  -- Nerd name differs from C symbol
 ```
 
 Source code runs `seed_rng(...)`. Generated code links to `srand`.
+
+Inside an FFI block, omit the repeated library operand:
+
+```nerd
+ffi "c" {
+    seed_rng :: srand (u32)
+}
+```
 
 Use this form when the C name is unclear, conflicts with a better wrapper name,
 or does not fit your source style.

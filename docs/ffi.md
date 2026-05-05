@@ -22,11 +22,14 @@ Several declarations that use the same library can be grouped in an FFI block:
 ffi "c" {
     abs (i32) -> i32
     strlen (^u8) -> usize
+    length :: strlen (^u8) -> usize
+    pub seed_rng :: srand (u32)
 }
 ```
 
-Entries in a block do not allow local binding names. Use the bound form outside
-the block when the Nerd-visible name should differ from the foreign symbol.
+Entries in a block can use `local :: foreign (...)` when the Nerd-visible name
+should differ from the foreign symbol. Prefix an entry with `pub` to export that
+entry without making the whole block public.
 
 You can also bind the foreign symbol to a different Nerd-visible name:
 
@@ -35,7 +38,8 @@ seed_rng :: ffi "c" srand (u32)
 ```
 
 The local binding name is `seed_rng`; the foreign symbol name is `srand`. Source
-code calls `seed_rng(...)`, while generated code links against `srand`.
+code calls `seed_rng(...)`, while generated code links against `srand`. The same
+rename can be written inside an FFI block as `seed_rng :: srand (u32)`.
 
 Use the bound form when:
 

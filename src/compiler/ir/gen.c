@@ -2803,7 +2803,7 @@ internal bool ir_try_lower_module_field(const Lexer* lex,
                              &ffi_sema,
                              &ffi_info)) {
             runtime_symbol = sema_import_symbol_handle(
-                (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle);
+                (Lexer*)lex, ffi_lexer, ffi_info->foreign_symbol_handle);
         }
         UNUSED(ffi_lexer);
         UNUSED(ffi_ast);
@@ -3784,7 +3784,9 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                          &ffi_sema,
                                          &ffi_info)) {
                         runtime_symbol = sema_import_symbol_handle(
-                            (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle);
+                            (Lexer*)lex,
+                            ffi_lexer,
+                            ffi_info->foreign_symbol_handle);
                     }
                     UNUSED(ffi_lexer);
                     UNUSED(ffi_ast);
@@ -6713,7 +6715,9 @@ Ir ir_generate(const Lexer* lex, const Ast* ast, const Sema* sema)
             array_push(ir.externs,
                        (IrExtern){
                            .symbol = sema_import_symbol_handle(
-                               (Lexer*)lex, ffi_lexer, ffi_info->symbol_handle),
+                               (Lexer*)lex,
+                               ffi_lexer,
+                               ffi_info->foreign_symbol_handle),
                            .type    = decl->type_index,
                            .library = library,
                        });

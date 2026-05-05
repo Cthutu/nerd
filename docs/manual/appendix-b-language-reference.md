@@ -142,6 +142,7 @@ intended exit code.
 
 - `ffi "lib" name (...)` exposes the same Nerd and foreign name.
 - `ffi "lib" { name (...) }` groups declarations that use the same library.
+- `ffi "lib" { local :: foreign (...) }` renames one grouped declaration.
 - `local :: ffi "lib" foreign (...)` uses `local` in Nerd and `foreign` for
   linking.
 - C strings use `c"..."`.

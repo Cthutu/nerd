@@ -3384,8 +3384,16 @@ internal void format_emit_ffi_entry_prefix(StringBuilder* sb,
 {
     const CstFfiInfo* ffi  = &cst->ffi_infos[ffi_info_index];
     string            name = lex_symbol(lexer, ffi->symbol_handle);
+    if (ffi->flags & CNF_Public) {
+        sb_append_cstr(sb, "pub ");
+    }
     sb_append_string(sb, name);
     for (usize pad = name.count; pad <= name_width; ++pad) {
+        sb_append_char(sb, ' ');
+    }
+    if (ffi->foreign_symbol_handle != ffi->symbol_handle) {
+        sb_append_cstr(sb, ":: ");
+        sb_append_string(sb, lex_symbol(lexer, ffi->foreign_symbol_handle));
         sb_append_char(sb, ' ');
     }
     sb_append_char(sb, '(');

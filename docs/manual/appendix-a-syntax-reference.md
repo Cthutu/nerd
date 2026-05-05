@@ -39,9 +39,12 @@ ffi "lib" foreign_name (...) -> Type
 pub ffi "lib" foreign_name (...) -> Type
 ffi "lib" {
     foreign_name (...) -> Type
+    local_name :: foreign_name (...) -> Type
+    pub local_name :: foreign_name (...) -> Type
 }
 pub ffi "lib" {
     foreign_name (...) -> Type
+    local_name :: foreign_name (...) -> Type
 }
 local_name :: ffi "lib" foreign_name (...) -> Type
 name :: use module.path

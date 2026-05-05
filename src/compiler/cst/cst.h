@@ -221,7 +221,9 @@ typedef struct {
     u32 token_index;
     u32 library_node_index;
     u32 symbol_handle;
+    u32 foreign_symbol_handle;
     u32 signature_index;
+    u8  flags;
 } CstFfiInfo;
 
 typedef struct {

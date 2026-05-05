@@ -6,23 +6,23 @@ main :: fn () {}
 ¬
 {
     "code": "0203",
-    "message": "Expected LeftParen `(` but found Colon `:`",
+    "message": "Expected LeftParen `(` but found Integer",
     "source_file": "tests/errors/061-ffi-block-syntax.e",
     "primary_location": {
         "line": 2,
-        "column": 11
+        "column": 14
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 11,
+            "column": 14,
             "length": 1,
-            "message": "Found Colon `:` here"
+            "message": "Found Integer here"
         }
     ],
     "notes": [
-        "FFI blocks only contain foreign function signatures of the form `name (...) -> T`."
+        "FFI blocks only contain foreign function signatures of the form `name (...) -> T` or `local :: foreign (...) -> T`."
     ],
     "help": [
         "Move constants and Nerd bindings outside the `ffi` block."

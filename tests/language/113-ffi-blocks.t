@@ -1,11 +1,11 @@
 -- Declares multiple foreign functions in one FFI block.
 ffi "c" {
-    abs (i32) -> i32
-    strlen (^u8) -> usize
+    absolute :: abs (i32) -> i32
+    pub c_strlen :: strlen (^u8) -> usize
 }
 
 main :: fn () -> i32 {
-    return abs(-7) + strlen(c"nerd").as(i32)
+    return absolute(-7) + c_strlen(c"nerd").as(i32)
 }
 ¬
 11
