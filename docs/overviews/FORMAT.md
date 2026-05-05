@@ -33,8 +33,8 @@ The formatter should be deterministic and idempotent.
   comments are reattached before wrapping so repeated formatting preserves
   continuation text.
 - Comment-only lines inside code constructs remain standalone.
-- Empty rows between enum variant groups are preserved, with repeated empty
-  rows collapsed to a single empty row.
+- Empty rows between enum variant groups and plex or union field groups are
+  preserved, with repeated empty rows collapsed to a single empty row.
 
 ## Code Layout Rules
 

@@ -1922,6 +1922,26 @@ internal bool format_has_comment_between_offsets(const Lexer* lexer,
     return false;
 }
 
+internal usize format_first_comment_or_offset_between(const Lexer* lexer,
+                                                      usize        previous_end,
+                                                      usize current_start)
+{
+    if (previous_end >= current_start) {
+        return current_start;
+    }
+
+    for (u32 i = 0; i < array_count(lexer->comments); ++i) {
+        usize offset = lexer->comments[i].offset;
+        if (offset >= current_start) {
+            return current_start;
+        }
+        if (offset >= previous_end) {
+            return offset;
+        }
+    }
+    return current_start;
+}
+
 internal bool format_has_comment_between_statements(const Cst*   cst,
                                                     const Lexer* lexer,
                                                     u32 previous_node_index,
@@ -2619,6 +2639,7 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         }
     }
     Array(usize) field_code_widths     = NULL;
+    Array(usize) field_end_offsets     = NULL;
     Array(bool) field_has_comments     = NULL;
     Array(u32) field_comment_indices   = NULL;
     Array(usize) field_comment_columns = NULL;
@@ -2637,25 +2658,43 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         bool has_comment   = format_find_trailing_comment_index_after_offset(
             lexer->source, lexer, type_end_offset, &comment_index);
         array_push(field_code_widths, code_width);
+        array_push(field_end_offsets, type_end_offset);
         array_push(field_has_comments, has_comment);
         array_push(field_comment_indices, comment_index);
         array_push(field_comment_columns, 0);
     }
     for (u32 i = 0; i < plex->field_count;) {
-        if (!field_has_comments[i]) {
-            i++;
-            continue;
-        }
         u32   start          = i;
         usize comment_column = 0;
-        while (i < plex->field_count && field_has_comments[i]) {
-            if (field_code_widths[i] + 1 > comment_column) {
+        usize previous_end   = 0;
+        bool  have_previous  = false;
+        while (i < plex->field_count) {
+            const CstPlexField* field =
+                &cst->plex_fields[plex->first_field + i];
+            usize field_start = lexer->tokens[field->token_index].offset;
+            usize group_start = format_first_comment_or_offset_between(
+                lexer, previous_end, field_start);
+            if (have_previous &&
+                format_has_blank_line_between_offsets(
+                    lexer->source, previous_end, group_start)) {
+                break;
+            }
+            if (field_has_comments[i] &&
+                field_code_widths[i] + 1 > comment_column) {
                 comment_column = field_code_widths[i] + 1;
             }
+            previous_end = field_end_offsets[i];
+            if (field_has_comments[i]) {
+                previous_end =
+                    lexer->comments[field_comment_indices[i]].end_offset;
+            }
+            have_previous = true;
             i++;
         }
-        for (u32 field_index = start; field_index < i; ++field_index) {
-            field_comment_columns[field_index] = comment_column;
+        if (comment_column > 0) {
+            for (u32 field_index = start; field_index < i; ++field_index) {
+                field_comment_columns[field_index] = comment_column;
+            }
         }
     }
 
@@ -2697,10 +2736,23 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
             lexer, &comment_index, open_brace_end);
     }
 
+    usize previous_field_end_offset = 0;
+    bool  have_previous_field       = false;
+
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
         string field_name         = lex_symbol(lexer, field->symbol_handle);
         usize  field_start_offset = lexer->tokens[field->token_index].offset;
+        usize  group_start_offset = field_start_offset;
+        if (comment_index < array_count(lexer->comments) &&
+            lexer->comments[comment_index].offset < field_start_offset) {
+            group_start_offset = lexer->comments[comment_index].offset;
+        }
+        if (have_previous_field &&
+            format_has_blank_line_between_offsets(
+                lexer->source, previous_field_end_offset, group_start_offset)) {
+            sb_append_char(sb, '\n');
+        }
         format_emit_block_comments_before_offset(sb,
                                                  lexer,
                                                  &comment_index,
@@ -2713,6 +2765,7 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
             sb_append_char(sb, ' ');
         }
         format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+        usize field_end_offset = field_end_offsets[i];
         if (field_has_comments[i]) {
             usize before_offset = lexer->source.source.count;
             if (i + 1 < plex->field_count) {
@@ -2720,9 +2773,10 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                     &cst->plex_fields[plex->first_field + i + 1];
                 before_offset = lexer->tokens[next_field->token_index].offset;
             }
+            u32    first_comment_index = field_comment_indices[i];
             string comment_text =
                 format_merged_trailing_comment_text(lexer,
-                                                    field_comment_indices[i],
+                                                    first_comment_index,
                                                     field_comment_columns[i],
                                                     before_offset,
                                                     &comment_index);
@@ -2730,9 +2784,16 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                                                       comment_text,
                                                       field_comment_columns[i],
                                                       field_code_widths[i]);
+            if (comment_index > first_comment_index &&
+                comment_index <= array_count(lexer->comments)) {
+                field_end_offset =
+                    lexer->comments[comment_index - 1].end_offset;
+            }
         } else {
             sb_append_char(sb, '\n');
         }
+        previous_field_end_offset = field_end_offset;
+        have_previous_field       = true;
     }
     u32   close_token  = format_node_end_token_index(cst, lexer, node_index);
     usize close_offset = lexer->tokens[close_token].offset;
@@ -2741,6 +2802,7 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
     array_free(field_code_widths);
+    array_free(field_end_offsets);
     array_free(field_has_comments);
     array_free(field_comment_indices);
     array_free(field_comment_columns);
