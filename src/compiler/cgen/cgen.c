@@ -889,7 +889,8 @@ void cgen_add_assert(CGen* cgen, const IrInstruction* instr)
     cgen_add(cgen, "nerd_assert(");
     cgen_add_typed_value(cgen, &instr->rvalue[0], instr->rvalue[0].type);
     cgen_add(cgen, ", ");
-    cgen_add_c_string_literal(cgen, cgen->lexer->source.source_path);
+    cgen_add_c_string_literal(
+        cgen, cgen->ir->strings[instr->rvalue[2].value.integer]);
     arena_format(&cgen->arena, ", %u, ", (u32)instr->rvalue[1].value.integer);
     cgen_add_typed_value(cgen, &instr->lvalue, instr->lvalue.type);
     cgen_addn(cgen, ");");

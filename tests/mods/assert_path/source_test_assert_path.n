@@ -1,0 +1,5 @@
+test "module assertion path" {
+    assert no, "module boom"
+}
+
+pub marker :: 1

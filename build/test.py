@@ -77,6 +77,10 @@ def normalize_repo_uris(text: str) -> str:
     )
 
 
+def normalize_repo_paths(text: str) -> str:
+    return text.replace(ROOT.as_posix(), "__REPO__").replace(str(ROOT), "__REPO__")
+
+
 def normalized_returncode(code: int) -> int:
     return code & 0xFF if os.name == "nt" and code > 255 else code
 
@@ -430,6 +434,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     run_mode = parts[3].strip() if len(parts) > 3 else "delete"
     cli_args = shlex.split(parts[4].strip()) if len(parts) > 4 and parts[4].strip() else []
     command = parts[5].strip() if len(parts) > 5 and parts[5].strip() else "run"
+    expected_stderr = parts[6] if len(parts) > 6 else ""
 
     cwd = path.parent
     input_path = cwd / f"{path.stem}.input.n"
@@ -452,6 +457,13 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             stdout_failure = check_equal(path, "stdout", expected_stdout, actual_stdout)
             if stdout_failure:
                 failures.append(stdout_failure)
+    if expected_stderr.strip():
+        actual_stderr = normalize_repo_paths(strip_ansi(proc.stderr))
+        expected_stderr = normalize_repo_paths(expected_stderr)
+        if expected_stderr.rstrip("\n") != actual_stderr.rstrip("\n"):
+            stderr_failure = check_equal(path, "stderr", expected_stderr, actual_stderr)
+            if stderr_failure:
+                failures.append(stderr_failure)
 
     executable = input_path.with_suffix("")
     if run_mode == "keep" and not executable.exists():

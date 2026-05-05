@@ -911,6 +911,8 @@ void ir_add_string_finish(Ir* ir, IrValue lvalue, IrValue start_value)
                });
 }
 
+internal u32 ir_add_string_literal(Ir* ir, string text);
+
 //------------------------------------------------------------------------------
 // Append a return instruction to the IR stream.
 
@@ -929,18 +931,51 @@ void ir_add_assert(Ir*     ir,
                    u32     condition_type,
                    IrValue message,
                    u32     message_type,
+                   string  source_path,
                    u32     line)
 {
     condition.type = condition_type;
     message.type   = message_type;
-    array_push(
-        ir->instructions,
-        (IrInstruction){
-            .op     = IR_OP_ASSERT,
-            .lvalue = message,
-            .rvalue = {condition,
-                       {.kind = IR_VALUE_INTEGER, .value.integer = line}},
-        });
+    array_push(ir->instructions,
+               (IrInstruction){
+                   .op     = IR_OP_ASSERT,
+                   .lvalue = message,
+                   .rvalue = {condition,
+                              {.kind = IR_VALUE_INTEGER, .value.integer = line},
+                              {.kind = IR_VALUE_STRING,
+                               .value.integer =
+                                   ir_add_string_literal(ir, source_path)}},
+               });
+}
+
+internal void ir_source_location_for_offset(NerdSource source,
+                                            usize      offset,
+                                            string*    out_source_path,
+                                            u32*       out_line)
+{
+    NerdSource mapped_source = source;
+    usize      mapped_offset = offset;
+    for (u32 i = 0; i < array_count(source.fragments); ++i) {
+        NerdSourceFragment fragment = source.fragments[i];
+        if (offset < fragment.start || offset >= fragment.end) {
+            continue;
+        }
+
+        usize source_prefix_start = fragment.start - fragment.source_start;
+        usize source_count        = fragment.end - source_prefix_start;
+        mapped_source             = (NerdSource){
+            .source      = string_from(source.source.data + source_prefix_start,
+                                       source_count),
+            .source_path = fragment.source_path,
+        };
+        mapped_offset = offset - fragment.start + fragment.source_start;
+        break;
+    }
+
+    u32 col = 0;
+    lex_offset_to_line_col(mapped_source, mapped_offset, out_line, &col);
+    *out_line += 1;
+    *out_source_path = mapped_source.source_path;
 }
 
 void ir_add_branch_false(Ir*     ir,
@@ -5576,16 +5611,19 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                                 node_values,
                                 next_value_index,
                                 ir);
-        u32 line = 0;
-        u32 col  = 0;
-        lex_offset_to_line_col(
-            lex->source, lex->tokens[node->token_index].offset, &line, &col);
+        string source_path = lex->source.source_path;
+        u32    line        = 0;
+        ir_source_location_for_offset(lex->source,
+                                      lex->tokens[node->token_index].offset,
+                                      &source_path,
+                                      &line);
         ir_add_assert(ir,
                       condition,
                       ir_builtin_type(sema, STK_Bool),
                       message,
                       string_type,
-                      line + 1);
+                      source_path,
+                      line);
         return IR_STMT_FALLTHROUGH;
     }
 

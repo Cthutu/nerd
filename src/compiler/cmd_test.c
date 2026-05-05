@@ -25,6 +25,11 @@ typedef struct {
     bool  found;
 } SourceTestMainDecl;
 
+typedef struct {
+    string source;
+    Array(NerdSourceFragment) fragments;
+} SourceTestGenerated;
+
 internal bool source_test_is_ident(u8 ch)
 {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
@@ -336,47 +341,94 @@ internal SourceTestMainDecl source_test_find_main_binding(string source)
     return (SourceTestMainDecl){0};
 }
 
-internal void source_test_append_source_range(StringBuilder*     sb,
-                                              string             source,
-                                              usize              start,
-                                              usize              end,
-                                              SourceTestMainDecl main_decl)
+internal NerdSourceFragment source_test_fragment_for_range(
+    NerdSource source, usize start, usize end, usize generated_start)
 {
-    if (!main_decl.found || main_decl.start_offset >= end ||
-        main_decl.end_offset <= start) {
-        sb_append_string(sb, string_from(source.data + start, end - start));
+    string source_path  = source.source_path;
+    usize  source_start = start;
+
+    for (u32 i = 0; i < array_count(source.fragments); ++i) {
+        NerdSourceFragment fragment = source.fragments[i];
+        if (start < fragment.start || start >= fragment.end) {
+            continue;
+        }
+
+        source_path  = fragment.source_path;
+        source_start = start - fragment.start + fragment.source_start;
+        break;
+    }
+
+    return (NerdSourceFragment){
+        .start        = generated_start,
+        .end          = generated_start + (end - start),
+        .source_start = source_start,
+        .source_path  = source_path,
+    };
+}
+
+internal void source_test_append_mapped_range(StringBuilder* sb,
+                                              NerdSource     source,
+                                              usize          start,
+                                              usize          end,
+                                              Array(NerdSourceFragment) *
+                                                  fragments)
+{
+    if (end <= start) {
         return;
     }
 
-    sb_append_string(
-        sb, string_from(source.data + start, main_decl.start_offset - start));
-    sb_append_cstr(sb, "__nerd_program_main");
-    sb_append_string(sb,
-                     string_from(source.data + main_decl.end_offset,
-                                 end - main_decl.end_offset));
+    usize generated_start = sb->size;
+    sb_append_string(sb, string_from(source.source.data + start, end - start));
+    array_push(
+        *fragments,
+        source_test_fragment_for_range(source, start, end, generated_start));
 }
 
-internal string source_test_generated_source(Arena* arena,
-                                             string source,
-                                             Array(SourceTestDecl) tests)
+internal void source_test_append_source_range(StringBuilder*     sb,
+                                              NerdSource         source,
+                                              usize              start,
+                                              usize              end,
+                                              SourceTestMainDecl main_decl,
+                                              Array(NerdSourceFragment) *
+                                                  fragments)
+{
+    if (!main_decl.found || main_decl.start_offset >= end ||
+        main_decl.end_offset <= start) {
+        source_test_append_mapped_range(sb, source, start, end, fragments);
+        return;
+    }
+
+    source_test_append_mapped_range(
+        sb, source, start, main_decl.start_offset, fragments);
+    sb_append_cstr(sb, "__nerd_program_main");
+    source_test_append_mapped_range(
+        sb, source, main_decl.end_offset, end, fragments);
+}
+
+internal SourceTestGenerated source_test_generated_source(Arena*     arena,
+                                                          NerdSource source,
+                                                          Array(SourceTestDecl)
+                                                              tests)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
 
-    SourceTestMainDecl main_decl        = source_test_find_main_binding(source);
+    Array(NerdSourceFragment) fragments = NULL;
+    SourceTestMainDecl main_decl = source_test_find_main_binding(source.source);
     usize              next_offset      = 0;
     u32                selected_counter = 0;
     for (usize i = 0; i < array_count(tests); i++) {
         SourceTestDecl test = tests[i];
         source_test_append_source_range(
-            &sb, source, next_offset, test.start_offset, main_decl);
+            &sb, source, next_offset, test.start_offset, main_decl, &fragments);
 
         if (test.selected) {
             sb_format(&sb, "__nerd_test_%u :: fn () {", selected_counter);
-            sb_append_string(
-                &sb,
-                string_from(source.data + test.body_start_offset,
-                            test.body_end_offset - test.body_start_offset));
+            source_test_append_mapped_range(&sb,
+                                            source,
+                                            test.body_start_offset,
+                                            test.body_end_offset,
+                                            &fragments);
             sb_append_cstr(&sb, "\n}\n");
             selected_counter += 1;
         }
@@ -385,7 +437,7 @@ internal string source_test_generated_source(Arena* arena,
     }
 
     source_test_append_source_range(
-        &sb, source, next_offset, source.count, main_decl);
+        &sb, source, next_offset, source.source.count, main_decl, &fragments);
 
     sb_append_cstr(&sb, "\nmain :: fn () -> i32 {\n");
     selected_counter = 0;
@@ -398,7 +450,10 @@ internal string source_test_generated_source(Arena* arena,
     }
     sb_append_cstr(&sb, "    return 0\n}\n");
 
-    return sb_to_string(&sb);
+    return (SourceTestGenerated){
+        .source    = sb_to_string(&sb),
+        .fragments = fragments,
+    };
 }
 
 int compiler_cmd_test(const NerdTestConfig* config)
@@ -468,12 +523,19 @@ int compiler_cmd_test(const NerdTestConfig* config)
             return 0;
         }
 
-        string generated = source_test_generated_source(&arena, source, tests);
+        SourceTestGenerated generated =
+            source_test_generated_source(&arena,
+                                         (NerdSource){
+                                             .source      = source,
+                                             .source_path = config->input_path,
+                                         },
+                                         tests);
         NerdRunConfig run_config = {
             .source =
                 (NerdSource){
-                    .source      = generated,
+                    .source      = generated.source,
                     .source_path = config->input_path,
+                    .fragments   = generated.fragments,
                 },
             .verbose  = config->verbose,
             .keywords = config->keywords,
@@ -578,17 +640,18 @@ int compiler_cmd_test(const NerdTestConfig* config)
             continue;
         }
 
-        ModuleInfo* module    = &program.modules[module_index];
-        string      generated = source_test_generated_source(
-            &arena, module->front_end.lexer.source.source, tests);
+        ModuleInfo*         module    = &program.modules[module_index];
+        SourceTestGenerated generated = source_test_generated_source(
+            &arena, module->front_end.lexer.source, tests);
         cstr generated_dir = path_dirname(&arena, module->resolved_path);
         cstr generated_path =
             path_join(&arena, generated_dir, "__nerd_source_test");
         NerdRunConfig run_config = {
             .source =
                 (NerdSource){
-                    .source      = generated,
+                    .source      = generated.source,
                     .source_path = s(generated_path),
+                    .fragments   = generated.fragments,
                 },
             .verbose  = config->verbose,
             .keywords = config->keywords,

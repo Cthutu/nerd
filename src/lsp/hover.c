@@ -280,6 +280,32 @@ lsp_module_decl_location(const ModuleInfo* module, Arena* arena, u32 decl_index)
 }
 
 //------------------------------------------------------------------------------
+// Build a location object for one token in the open document.
+
+internal JsonValue* lsp_token_location(const LspDocument* doc,
+                                       Arena*             arena,
+                                       string             uri,
+                                       u32                token_index)
+{
+    if (token_index >= array_count(doc->front_end.lexer.tokens)) {
+        return NULL;
+    }
+
+    usize start_offset = 0;
+    usize end_offset   = 0;
+    lsp_token_offsets(
+        &doc->front_end.lexer, token_index, &start_offset, &end_offset);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
+    return location;
+}
+
+//------------------------------------------------------------------------------
 // Build a location object for the start of one module source file.
 
 internal JsonValue* lsp_module_file_location(const ModuleInfo* module,
@@ -390,7 +416,9 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
         decl_index =
             lsp_find_decl_index_by_symbol_handle(&doc->front_end.sema, ref->a);
         if (decl_index != LSP_NO_DECL &&
-            doc->front_end.sema.decls[decl_index].kind == SK_TypeAlias) {
+            (doc->front_end.sema.decls[decl_index].kind == SK_TypeAlias ||
+             doc->front_end.sema.decls[decl_index].kind ==
+                 SK_GenericTypeAlias)) {
             return decl_index;
         }
     }
@@ -403,6 +431,89 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
     }
 
     return LSP_NO_DECL;
+}
+
+//------------------------------------------------------------------------------
+// Return a syntax-level definition location for a symbol when semantic data is
+// unavailable or incomplete. This is deliberately conservative: it points at a
+// same-file binder with the same spelling, preferring a binder before the use.
+
+internal JsonValue* lsp_ast_symbol_location(const LspDocument* doc,
+                                            Arena*             arena,
+                                            string             uri,
+                                            u32                token_index,
+                                            u32                symbol_handle)
+{
+    const Ast* ast    = &doc->front_end.ast;
+
+    u32 first_token   = U32_MAX;
+    u32 nearest_token = U32_MAX;
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if ((node->kind != AK_Bind && node->kind != AK_Variable) ||
+            node->a != symbol_handle) {
+            continue;
+        }
+
+        if (first_token == U32_MAX || node->token_index < first_token) {
+            first_token = node->token_index;
+        }
+        if (node->token_index <= token_index &&
+            (nearest_token == U32_MAX || node->token_index > nearest_token)) {
+            nearest_token = node->token_index;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->params); ++i) {
+        const AstParam* param = &ast->params[i];
+        if (param->symbol_handle != symbol_handle) {
+            continue;
+        }
+
+        if (first_token == U32_MAX || param->token_index < first_token) {
+            first_token = param->token_index;
+        }
+        if (param->token_index <= token_index &&
+            (nearest_token == U32_MAX || param->token_index > nearest_token)) {
+            nearest_token = param->token_index;
+        }
+    }
+
+    u32 best_token = nearest_token != U32_MAX ? nearest_token : first_token;
+    if (best_token == U32_MAX) {
+        return NULL;
+    }
+
+    return lsp_token_location(doc, arena, uri, best_token);
+}
+
+//------------------------------------------------------------------------------
+// Return a syntax-level definition location for the symbol under one token.
+
+internal JsonValue* lsp_ast_definition_location(const LspDocument* doc,
+                                                Arena*             arena,
+                                                string             uri,
+                                                u32                token_index)
+{
+    u32 ref_node_index =
+        lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
+    if (ref_node_index != U32_MAX) {
+        return lsp_ast_symbol_location(
+            doc,
+            arena,
+            uri,
+            token_index,
+            doc->front_end.ast.nodes[ref_node_index].a);
+    }
+
+    u32 bind_node_index =
+        lsp_find_bind_node_at_token(&doc->front_end.ast, token_index);
+    if (bind_node_index != U32_MAX) {
+        return lsp_token_location(doc, arena, uri, token_index);
+    }
+
+    return NULL;
 }
 
 internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
@@ -1826,6 +1937,13 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
     if (decl_index == LSP_NO_DECL) {
+        JsonValue* ast_location =
+            lsp_ast_definition_location(doc, message->arena, uri, token_index);
+        if (ast_location != NULL) {
+            json_object_set_object(response, "result", ast_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
         lsp_cancel(response, message->arena);
         return;
     }
@@ -1833,6 +1951,13 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
     JsonValue* location =
         lsp_decl_location(doc, message->arena, uri, decl_index);
     if (!location) {
+        JsonValue* ast_location =
+            lsp_ast_definition_location(doc, message->arena, uri, token_index);
+        if (ast_location != NULL) {
+            json_object_set_object(response, "result", ast_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
         lsp_cancel(response, message->arena);
         return;
     }

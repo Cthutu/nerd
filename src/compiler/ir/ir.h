@@ -98,7 +98,7 @@ typedef struct {
 typedef struct {
     IrOperation op;
     IrValue     lvalue;
-    IrValue     rvalue[2];
+    IrValue     rvalue[3];
 } IrInstruction;
 
 // Program-structure records make the IR self-contained for later back ends and
