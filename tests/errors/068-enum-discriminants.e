@@ -36,6 +36,44 @@ main :: fn () {}
 }
 ¬
 Mode :: enum {
+    Read
+    Write(i32)
+    Read(string)
+}
+
+main :: fn () {}
+¬
+{
+    "code": "0343",
+    "message": "Duplicate enum variant `Read`",
+    "source_file": "tests/errors/068-enum-discriminants.e",
+    "primary_location": {
+        "line": 4,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 5,
+            "length": 4,
+            "message": "This variant reuses `Read`"
+        },
+        {
+            "kind": "secondary",
+            "line": 2,
+            "column": 5,
+            "length": 4,
+            "message": "Previous variant `Read` is here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Rename one of the variants so every variant in the enum is unique."
+    ]
+}
+¬
+Mode :: enum {
     Read = 1
     Write = 0
     Execute

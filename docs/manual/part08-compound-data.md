@@ -334,9 +334,9 @@ value_or_zero :: fn (value: Maybe) -> i32 {
 }
 ```
 
-Enum variants may be separated with commas. A trailing comma is allowed.
-Explicit `= <value>` discriminants must be unique after implicit values are
-filled in.
+Enum variants may be separated with commas. A trailing comma is allowed. Variant
+names must be unique within one enum. Explicit `= <value>` discriminants must be
+unique after implicit values are filled in.
 
 Use enums when a value has one active case and the program should track that
 case safely.

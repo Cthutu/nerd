@@ -309,6 +309,10 @@ bool error_0342_duplicate_enum_discriminant(NerdSource source,
                                             ErrorSpan  span,
                                             i64        value,
                                             ErrorSpan  previous_span);
+bool error_0343_duplicate_enum_variant(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     symbol,
+                                       ErrorSpan  previous_span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

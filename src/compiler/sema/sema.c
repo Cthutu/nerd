@@ -2132,6 +2132,23 @@ sema_check_enum_discriminant_unique(const Lexer*          lexer,
     return true;
 }
 
+internal bool sema_check_enum_variant_name_unique(
+    const Lexer* lexer, const AstEnumVariant* variants, u32 variant_index)
+{
+    const AstEnumVariant* variant = &variants[variant_index];
+    for (u32 i = 0; i < variant_index; ++i) {
+        if (variants[i].symbol_handle != variant->symbol_handle) {
+            continue;
+        }
+        return error_0343_duplicate_enum_variant(
+            lexer->source,
+            sema_token_span(lexer, variant->token_index),
+            lex_symbol(lexer, variant->symbol_handle),
+            sema_token_span(lexer, variants[i].token_index));
+    }
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Find a top-level declaration by its bound symbol handle.
 
@@ -3163,6 +3180,14 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
             for (u32 i = 0; i < enum_type->variant_count; ++i) {
                 const AstEnumVariant* variant =
                     &ast->enum_variants[enum_type->first_variant + i];
+                if (!sema_check_enum_variant_name_unique(
+                        lexer,
+                        &ast->enum_variants[enum_type->first_variant],
+                        i)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return false;
+                }
                 bool payload_is_type = true;
                 u32  payload_type    = sema_no_type();
                 if (variant->type_node_index != U32_MAX &&
@@ -6893,6 +6918,14 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
             for (u32 i = 0; i < enum_type->variant_count; ++i) {
                 const AstEnumVariant* variant =
                     &ast->enum_variants[enum_type->first_variant + i];
+                if (!sema_check_enum_variant_name_unique(
+                        lexer,
+                        &ast->enum_variants[enum_type->first_variant],
+                        i)) {
+                    array_free(payload_types);
+                    array_free(discriminants);
+                    return false;
+                }
                 u32 payload_type = sema_no_type();
                 if (variant->type_node_index != U32_MAX &&
                     !sema_resolve_type_node_ex(lexer,

@@ -1158,3 +1158,33 @@ bool error_0342_duplicate_enum_discriminant(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a repeated variant name in one enum.
+
+bool error_0343_duplicate_enum_variant(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     symbol,
+                                       ErrorSpan  previous_span)
+{
+    ErrorInfo error = error_init(343,
+                                 source,
+                                 span,
+                                 "Duplicate enum variant `" STRINGP "`",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This variant reuses `" STRINGP "`",
+                        STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        previous_span,
+                        "Previous variant `" STRINGP "` is here",
+                        STRINGV(symbol));
+    error_add_help(
+        &error,
+        "Rename one of the variants so every variant in the enum is unique.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

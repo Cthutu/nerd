@@ -100,8 +100,9 @@ used where the expected type is already known to be that enum, such as
 is available, use the qualified form `Colour.Red`, or `Maybe.Some(1)` for a
 payload variant. Enums lower as a tag plus a union of payload storage. The
 generated tag uses the smallest practical unsigned integer width for the number
-of variants. Explicit enum discriminants must be non-negative integer constants,
-and every variant in one enum must have a distinct final discriminant value.
+of variants. Variant names must be unique within one enum. Explicit enum
+discriminants must be non-negative integer constants, and every variant in one
+enum must have a distinct final discriminant value.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
