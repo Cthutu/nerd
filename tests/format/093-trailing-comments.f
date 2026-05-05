@@ -3,6 +3,7 @@ use alpha -- alpha import
 
 pub Frame::plex {
     handle u64 -- native handle
+    system ^FrameSystem -- owning system
     title string -- visible title
 }
 
@@ -18,6 +19,7 @@ use alpha -- alpha import
 
 pub Frame :: plex {
     handle u64 -- native handle
+    system ^FrameSystem -- owning system
     title  string -- visible title
 }
 

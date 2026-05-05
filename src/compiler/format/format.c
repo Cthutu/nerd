@@ -1759,9 +1759,20 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_Field:
         return node->token_index;
     case CK_IntegerNegate:
+    case CK_LogicalNot:
+    case CK_AddressOf:
+    case CK_Deref:
+    case CK_TypePointer:
+    case CK_TypeSlice:
     case CK_Statement:
     case CK_Use:
         return format_node_end_token_index(cst, lexer, node->a);
+    case CK_TypeArray:
+        return format_node_end_token_index(cst, lexer, node->b);
+    case CK_TypeDynamicArray:
+        return node->b == U32_MAX
+                   ? node->token_index
+                   : format_node_end_token_index(cst, lexer, node->b);
     case CK_Defer:
     case CK_Assert:
         if (node->kind == CK_Defer) {
