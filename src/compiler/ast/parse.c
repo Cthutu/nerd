@@ -3887,18 +3887,42 @@ bool ast_parse_declaration(AstParseState* state,
 
 internal bool ast_bind_value_looks_like_missing_fn(AstParseState* state)
 {
-    if (state->token.kind != TK_Symbol ||
-        ast_peek_kind_at(state, 0) != TK_LParen) {
+    bool bare_params  = state->token.kind == TK_LParen;
+    bool named_params = state->token.kind == TK_Symbol &&
+                        ast_peek_kind_at(state, 0) == TK_LParen;
+    if (!bare_params && !named_params) {
         return false;
     }
 
-    u32 paren_index = state->token.token_index + 1;
+    u32 paren_index =
+        bare_params ? state->token.token_index : state->token.token_index + 1;
     if (!ast_skip_balanced_tokens(state, &paren_index, TK_LParen, TK_RParen)) {
         return false;
     }
 
     TokenKind next = ast_kind_at_stream_index(state, paren_index);
     return next == TK_LBrace || next == TK_FatArrow || next == TK_ThinArrow;
+}
+
+internal bool ast_error_missing_fn_in_binding_value(AstParseState* state,
+                                                    bool is_const_bind)
+{
+    cstr note = is_const_bind
+                    ? "Function values after `::` start with `fn` before the "
+                      "parameter list."
+                    : "Function values after `:=` start with `fn` before the "
+                      "parameter list.";
+    cstr help = is_const_bind
+                    ? "Did you forget `fn` before the parameter list? Write "
+                      "`:: fn (...) { ... }`."
+                    : "Did you forget `fn` before the parameter list? Write "
+                      "`:= fn (...) { ... }`.";
+    return error_0203_expected_token_ex(state->lexer->source,
+                                        ast_token_span(state, &state->token),
+                                        TK_fn,
+                                        state->token.kind,
+                                        note,
+                                        help);
 }
 
 //------------------------------------------------------------------------------
@@ -3977,15 +4001,7 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
     }
 
     if (ast_bind_value_looks_like_missing_fn(state)) {
-        return error_0203_expected_token_ex(
-            state->lexer->source,
-            ast_token_span(state, &state->token),
-            TK_fn,
-            state->token.kind,
-            "Function declarations after `::` start with `fn`; a bare symbol "
-            "starts an expression instead.",
-            "Write `fn` before the parameter list, such as `name :: fn (...) "
-            "{ ... }`.");
+        return ast_error_missing_fn_in_binding_value(state, true);
     }
 
     bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
@@ -4067,6 +4083,9 @@ internal bool ast_parse_variable_payload(AstParseState* state,
                 ast_token_span(state, &state->token),
                 TK_EOF,
                 "Expected an initializer after ':=', but found end of file");
+        }
+        if (ast_bind_value_looks_like_missing_fn(state)) {
+            return ast_error_missing_fn_in_binding_value(state, false);
         }
         bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;

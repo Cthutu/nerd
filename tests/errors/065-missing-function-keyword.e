@@ -1,3 +1,63 @@
+main :: () {
+    return
+}
+¬
+{
+    "code": "0203",
+    "message": "Expected Keyword `fn` but found LeftParen `(`",
+    "source_file": "tests/errors/065-missing-function-keyword.e",
+    "primary_location": {
+        "line": 1,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 9,
+            "length": 1,
+            "message": "Found LeftParen `(` here"
+        }
+    ],
+    "notes": [
+        "Function values after `::` start with `fn` before the parameter list."
+    ],
+    "help": [
+        "Did you forget `fn` before the parameter list? Write `:: fn (...) { ... }`."
+    ]
+}
+¬
+main :: fn () {
+    local := () {
+        return
+    }
+}
+¬
+{
+    "code": "0203",
+    "message": "Expected Keyword `fn` but found LeftParen `(`",
+    "source_file": "tests/errors/065-missing-function-keyword.e",
+    "primary_location": {
+        "line": 2,
+        "column": 14
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 14,
+            "length": 1,
+            "message": "Found LeftParen `(` here"
+        }
+    ],
+    "notes": [
+        "Function values after `:=` start with `fn` before the parameter list."
+    ],
+    "help": [
+        "Did you forget `fn` before the parameter list? Write `:= fn (...) { ... }`."
+    ]
+}
+¬
 main :: f () {
     return
 }
@@ -20,9 +80,9 @@ main :: f () {
         }
     ],
     "notes": [
-        "Function declarations after `::` start with `fn`; a bare symbol starts an expression instead."
+        "Function values after `::` start with `fn` before the parameter list."
     ],
     "help": [
-        "Write `fn` before the parameter list, such as `name :: fn (...) { ... }`."
+        "Did you forget `fn` before the parameter list? Write `:: fn (...) { ... }`."
     ]
 }

@@ -147,8 +147,9 @@ Parser diagnostics should prefer the earliest token where the parser can tell
 which source rule was broken. A later token may be where parsing finally fails,
 but the primary span should move back to the syntactic fork when the parser has
 a reliable recovery clue. For example, a binding value shaped like
-`name :: symbol (...) { ... }` is diagnosed at `symbol`, because a function
-declaration after `::` must start with `fn`.
+`name :: (...) { ... }`, `name :: symbol (...) { ... }`, or
+`name := (...) { ... }` is diagnosed at the apparent function introducer,
+because function values after binding operators must start with `fn`.
 
 ## Error-Code Ranges
 
