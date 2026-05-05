@@ -2437,10 +2437,24 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
             lexer, &comment_index, open_brace_end);
     }
 
+    usize previous_variant_end_offset = 0;
+    bool  have_previous_variant       = false;
+
     for (u32 i = 0; i < enum_type->variant_count; ++i) {
         const CstEnumVariant* variant =
             &cst->enum_variants[enum_type->first_variant + i];
         usize variant_start_offset = lexer->tokens[variant->token_index].offset;
+        usize group_start_offset   = variant_start_offset;
+        if (comment_index < array_count(lexer->comments) &&
+            lexer->comments[comment_index].offset < variant_start_offset) {
+            group_start_offset = lexer->comments[comment_index].offset;
+        }
+        if (have_previous_variant &&
+            format_has_blank_line_between_offsets(lexer->source,
+                                                  previous_variant_end_offset,
+                                                  group_start_offset)) {
+            sb_append_char(sb, '\n');
+        }
         format_emit_block_comments_before_offset(sb,
                                                  lexer,
                                                  &comment_index,
@@ -2449,6 +2463,8 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                                                  NULL);
         format_emit_indent(sb, indent_level + 1);
         format_emit_enum_variant_code(sb, cst, lexer, variant);
+        usize variant_end_offset =
+            format_enum_variant_end_offset(cst, lexer, variant);
         if (variant_has_comments[i]) {
             usize before_offset = lexer->source.source.count;
             if (i + 1 < enum_type->variant_count) {
@@ -2456,9 +2472,10 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                     &cst->enum_variants[enum_type->first_variant + i + 1];
                 before_offset = lexer->tokens[next_variant->token_index].offset;
             }
+            u32    first_comment_index = variant_comment_indices[i];
             string comment_text =
                 format_merged_trailing_comment_text(lexer,
-                                                    variant_comment_indices[i],
+                                                    first_comment_index,
                                                     variant_comment_columns[i],
                                                     before_offset,
                                                     &comment_index);
@@ -2467,9 +2484,16 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                 comment_text,
                 variant_comment_columns[i],
                 variant_code_widths[i]);
+            if (comment_index > first_comment_index &&
+                comment_index <= array_count(lexer->comments)) {
+                variant_end_offset =
+                    lexer->comments[comment_index - 1].end_offset;
+            }
         } else {
             sb_append_char(sb, '\n');
         }
+        previous_variant_end_offset = variant_end_offset;
+        have_previous_variant       = true;
     }
 
     u32   close_token  = format_node_end_token_index(cst, lexer, node_index);

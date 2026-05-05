@@ -30,6 +30,8 @@ The formatter should be deterministic and idempotent.
   continuation text.
 - Comment-only lines inside code constructs remain standalone and are not
   crossed by alignment or use-sorting groups.
+- Empty rows between enum variant groups are preserved, with repeated empty
+  rows collapsed to a single empty row.
 
 ## Code Layout Rules
 
