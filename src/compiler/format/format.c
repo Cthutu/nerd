@@ -2307,11 +2307,12 @@ internal void format_emit_enum_header(StringBuilder*         sb,
     sb_append_char(sb, ']');
 }
 
-internal void format_emit_enum_variant_code(StringBuilder*        sb,
-                                            const Cst*            cst,
-                                            const Lexer*          lexer,
-                                            const CstEnumVariant* variant)
+internal usize format_emit_enum_variant_prefix(StringBuilder*        sb,
+                                               const Cst*            cst,
+                                               const Lexer*          lexer,
+                                               const CstEnumVariant* variant)
 {
+    usize start_size = sb->size;
     sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
     if (variant->type_node_index != U32_MAX) {
         sb_append_char(sb, '(');
@@ -2332,7 +2333,21 @@ internal void format_emit_enum_variant_code(StringBuilder*        sb,
         }
         sb_append_char(sb, ')');
     }
+    return sb->size - start_size;
+}
+
+internal void format_emit_enum_variant_code(StringBuilder*        sb,
+                                            const Cst*            cst,
+                                            const Lexer*          lexer,
+                                            const CstEnumVariant* variant,
+                                            usize aligned_prefix_width)
+{
+    usize prefix_width =
+        format_emit_enum_variant_prefix(sb, cst, lexer, variant);
     if (variant->value_node_index != U32_MAX) {
+        if (aligned_prefix_width > prefix_width) {
+            format_emit_spaces(sb, aligned_prefix_width - prefix_width);
+        }
         sb_append_cstr(sb, " = ");
         format_emit_expr(sb, cst, lexer, variant->value_node_index, 0);
     }
@@ -2341,14 +2356,29 @@ internal void format_emit_enum_variant_code(StringBuilder*        sb,
 internal usize format_rendered_enum_variant_width(const Cst*            cst,
                                                   const Lexer*          lexer,
                                                   const CstEnumVariant* variant,
-                                                  u32 indent_level)
+                                                  u32   indent_level,
+                                                  usize aligned_prefix_width)
 {
     Arena         scratch = {0};
     StringBuilder sb      = {0};
     arena_init(&scratch);
     sb_init(&sb, &scratch);
-    format_emit_enum_variant_code(&sb, cst, lexer, variant);
+    format_emit_enum_variant_code(
+        &sb, cst, lexer, variant, aligned_prefix_width);
     usize width = (usize)(indent_level + 1) * 4 + sb.size;
+    arena_done(&scratch);
+    return width;
+}
+
+internal usize format_rendered_enum_variant_prefix_width(
+    const Cst* cst, const Lexer* lexer, const CstEnumVariant* variant)
+{
+    Arena         scratch = {0};
+    StringBuilder sb      = {0};
+    arena_init(&scratch);
+    sb_init(&sb, &scratch);
+    format_emit_enum_variant_prefix(&sb, cst, lexer, variant);
+    usize width = sb.size;
     arena_done(&scratch);
     return width;
 }
@@ -2383,26 +2413,78 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
     const CstNode* node = &cst->nodes[node_index];
     ASSERT(node->kind == CK_TypeEnum, "Expected enum type node");
 
-    const CstEnumTypeInfo* enum_type     = &cst->enum_types[node->a];
-    Array(usize) variant_code_widths     = NULL;
-    Array(bool) variant_has_comments     = NULL;
-    Array(u32) variant_comment_indices   = NULL;
-    Array(usize) variant_comment_columns = NULL;
+    const CstEnumTypeInfo* enum_type           = &cst->enum_types[node->a];
+    Array(usize) variant_prefix_widths         = NULL;
+    Array(usize) variant_aligned_prefix_widths = NULL;
+    Array(usize) variant_code_widths           = NULL;
+    Array(bool) variant_has_comments           = NULL;
+    Array(u32) variant_comment_indices         = NULL;
+    Array(usize) variant_comment_columns       = NULL;
 
     for (u32 i = 0; i < enum_type->variant_count; ++i) {
         const CstEnumVariant* variant =
             &cst->enum_variants[enum_type->first_variant + i];
-        usize code_width = format_rendered_enum_variant_width(
-            cst, lexer, variant, indent_level);
+        usize prefix_width =
+            format_rendered_enum_variant_prefix_width(cst, lexer, variant);
         usize end_offset = format_enum_variant_end_offset(cst, lexer, variant);
         u32   comment_index = U32_MAX;
         bool  has_comment   = format_find_trailing_comment_index_after_offset(
             lexer->source, lexer, end_offset, &comment_index);
-        array_push(variant_code_widths, code_width);
+        array_push(variant_prefix_widths, prefix_width);
+        array_push(variant_aligned_prefix_widths, prefix_width);
+        array_push(variant_code_widths, 0);
         array_push(variant_has_comments, has_comment);
         array_push(variant_comment_indices, comment_index);
         array_push(variant_comment_columns, 0);
     }
+
+    for (u32 i = 0; i < enum_type->variant_count;) {
+        const CstEnumVariant* first_variant =
+            &cst->enum_variants[enum_type->first_variant + i];
+        if (first_variant->value_node_index == U32_MAX) {
+            i++;
+            continue;
+        }
+
+        u32   start             = i;
+        usize max_prefix_width  = 0;
+        usize previous_end      = 0;
+        bool  have_previous_end = false;
+        while (i < enum_type->variant_count) {
+            const CstEnumVariant* variant =
+                &cst->enum_variants[enum_type->first_variant + i];
+            if (variant->value_node_index == U32_MAX) {
+                break;
+            }
+            usize variant_start = lexer->tokens[variant->token_index].offset;
+            if (have_previous_end &&
+                format_has_blank_line_between_offsets(
+                    lexer->source, previous_end, variant_start)) {
+                break;
+            }
+            if (variant_prefix_widths[i] > max_prefix_width) {
+                max_prefix_width = variant_prefix_widths[i];
+            }
+            previous_end = format_enum_variant_end_offset(cst, lexer, variant);
+            have_previous_end = true;
+            i++;
+        }
+        for (u32 variant_index = start; variant_index < i; ++variant_index) {
+            variant_aligned_prefix_widths[variant_index] = max_prefix_width;
+        }
+    }
+
+    for (u32 i = 0; i < enum_type->variant_count; ++i) {
+        const CstEnumVariant* variant =
+            &cst->enum_variants[enum_type->first_variant + i];
+        variant_code_widths[i] = format_rendered_enum_variant_width(
+            cst,
+            lexer,
+            variant,
+            indent_level,
+            variant_aligned_prefix_widths[i]);
+    }
+
     for (u32 i = 0; i < enum_type->variant_count;) {
         if (!variant_has_comments[i]) {
             i++;
@@ -2410,10 +2492,22 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
         }
         u32   start          = i;
         usize comment_column = 0;
+        usize previous_end   = 0;
+        bool  have_previous  = false;
         while (i < enum_type->variant_count && variant_has_comments[i]) {
+            const CstEnumVariant* variant =
+                &cst->enum_variants[enum_type->first_variant + i];
+            usize variant_start = lexer->tokens[variant->token_index].offset;
+            if (have_previous &&
+                format_has_blank_line_between_offsets(
+                    lexer->source, previous_end, variant_start)) {
+                break;
+            }
             if (variant_code_widths[i] + 1 > comment_column) {
                 comment_column = variant_code_widths[i] + 1;
             }
+            previous_end  = format_enum_variant_end_offset(cst, lexer, variant);
+            have_previous = true;
             i++;
         }
         for (u32 variant_index = start; variant_index < i; ++variant_index) {
@@ -2462,7 +2556,8 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                                                  indent_level + 1,
                                                  NULL);
         format_emit_indent(sb, indent_level + 1);
-        format_emit_enum_variant_code(sb, cst, lexer, variant);
+        format_emit_enum_variant_code(
+            sb, cst, lexer, variant, variant_aligned_prefix_widths[i]);
         usize variant_end_offset =
             format_enum_variant_end_offset(cst, lexer, variant);
         if (variant_has_comments[i]) {
@@ -2503,6 +2598,8 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 
+    array_free(variant_prefix_widths);
+    array_free(variant_aligned_prefix_widths);
     array_free(variant_code_widths);
     array_free(variant_has_comments);
     array_free(variant_comment_indices);

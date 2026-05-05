@@ -22,6 +22,8 @@ The formatter should be deterministic and idempotent.
 - End-of-line comments stay attached to the formatted line they followed.
 - Consecutive end-of-line comments on plex fields, union fields, and enum
   variants align their `--` marker.
+- Consecutive enum variants with explicit `= <value>` discriminants align the
+  `=` marker within the same enum variant group.
 - Long plex field, union field, and enum variant end-of-line comments wrap onto
   following comment lines with the `--` marker aligned and continuation text
   indented.

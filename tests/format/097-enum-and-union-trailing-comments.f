@@ -3,7 +3,7 @@ State::enum {
     Running(i32) -- active job identifier that is deliberately long enough to wrap onto another line while keeping the marker aligned
     Failed(string, i32) -- failure payload
     -- standalone after trailing
-    Done = 4            -- explicit discriminant
+    Done = 4 -- explicit discriminant
 }
 
 Value::union {
@@ -18,7 +18,7 @@ State :: enum {
                         --     marker aligned
     Failed(string, i32) -- failure payload
     -- standalone after trailing
-    Done = 4            -- explicit discriminant
+    Done = 4 -- explicit discriminant
 }
 
 Value :: union {
