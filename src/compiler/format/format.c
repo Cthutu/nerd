@@ -431,7 +431,7 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
 internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
-                                                 const CstNode* node,
+                                                 u32            node_index,
                                                  u32            indent_level);
 internal void format_emit_array_multiline(StringBuilder* sb,
                                           const Cst*     cst,
@@ -688,7 +688,7 @@ internal void format_emit_expr(StringBuilder* sb,
             const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
             if (!format_node_is_single_line(cst, lexer, node_index)) {
                 format_emit_plex_literal_multiline(
-                    sb, cst, lexer, node, g_format_expr_indent_level);
+                    sb, cst, lexer, node_index, g_format_expr_indent_level);
                 break;
             }
 
@@ -2056,9 +2056,10 @@ internal bool format_plex_field_is_shorthand(const Cst*                 cst,
 internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
-                                                 const CstNode* node,
+                                                 u32            node_index,
                                                  u32            indent_level)
 {
+    const CstNode*            node            = &cst->nodes[node_index];
     const CstPlexLiteralInfo* plex            = &cst->plex_literals[node->a];
     usize                     max_field_width = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
@@ -2067,6 +2068,72 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         usize field_width = lex_symbol(lexer, field->symbol_handle).count;
         if (field_width > max_field_width) {
             max_field_width = field_width;
+        }
+    }
+    Array(usize) field_code_widths     = NULL;
+    Array(usize) field_end_offsets     = NULL;
+    Array(bool) field_has_comments     = NULL;
+    Array(u32) field_comment_indices   = NULL;
+    Array(usize) field_comment_columns = NULL;
+    usize field_indent_width           = (usize)(indent_level + 1) * 4;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const CstPlexLiteralField* field =
+            &cst->plex_literal_fields[plex->first_field + i];
+        string field_name = lex_symbol(lexer, field->symbol_handle);
+        usize  value_width =
+            format_plex_field_is_shorthand(cst, field)
+                ? 0
+                : format_rendered_expr_width(
+                      cst, lexer, field->value_node_index, indent_level + 1);
+        usize code_width =
+            field_indent_width + (format_plex_field_is_shorthand(cst, field)
+                                      ? field_name.count
+                                      : max_field_width + 2 + value_width);
+        u32 value_end_token =
+            format_node_end_token_index(cst, lexer, field->value_node_index);
+        usize value_end_offset =
+            lex_token_end_offset(lexer, &lexer->tokens[value_end_token]);
+        u32  comment_index = U32_MAX;
+        bool has_comment   = format_find_trailing_comment_index_after_offset(
+            lexer->source, lexer, value_end_offset, &comment_index);
+        array_push(field_code_widths, code_width);
+        array_push(field_end_offsets, value_end_offset);
+        array_push(field_has_comments, has_comment);
+        array_push(field_comment_indices, comment_index);
+        array_push(field_comment_columns, 0);
+    }
+    for (u32 i = 0; i < plex->field_count;) {
+        u32   start          = i;
+        usize comment_column = 0;
+        usize previous_end   = 0;
+        bool  have_previous  = false;
+        while (i < plex->field_count) {
+            const CstPlexLiteralField* field =
+                &cst->plex_literal_fields[plex->first_field + i];
+            usize field_start = lexer->tokens[field->token_index].offset;
+            usize group_start = format_first_comment_or_offset_between(
+                lexer, previous_end, field_start);
+            if (have_previous &&
+                format_has_blank_line_between_offsets(
+                    lexer->source, previous_end, group_start)) {
+                break;
+            }
+            if (field_has_comments[i] &&
+                field_code_widths[i] + 1 > comment_column) {
+                comment_column = field_code_widths[i] + 1;
+            }
+            previous_end = field_end_offsets[i];
+            if (field_has_comments[i]) {
+                previous_end =
+                    lexer->comments[field_comment_indices[i]].end_offset;
+            }
+            have_previous = true;
+            i++;
+        }
+        if (comment_column > 0) {
+            for (u32 field_index = start; field_index < i; ++field_index) {
+                field_comment_columns[field_index] = comment_column;
+            }
         }
     }
 
@@ -2081,31 +2148,101 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         (plex->target_node_index != U32_MAX || node->kind == CK_PlexUpdate)
             ? " {\n"
             : "{\n");
+
+    u32 open_brace_token = node->token_index;
+    while (open_brace_token < array_count(lexer->tokens) &&
+           lexer->tokens[open_brace_token].kind != TK_LBrace) {
+        open_brace_token++;
+    }
+    u32 comment_index = 0;
+    if (open_brace_token < array_count(lexer->tokens)) {
+        usize open_brace_end =
+            lex_token_end_offset(lexer, &lexer->tokens[open_brace_token]);
+        format_skip_block_comments_before_offset(
+            lexer, &comment_index, open_brace_end);
+    }
+
+    usize previous_field_end_offset = 0;
+    bool  have_previous_field       = false;
+
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexLiteralField* field =
             &cst->plex_literal_fields[plex->first_field + i];
-        string field_name = lex_symbol(lexer, field->symbol_handle);
+        string field_name         = lex_symbol(lexer, field->symbol_handle);
+        usize  field_start_offset = lexer->tokens[field->token_index].offset;
+        usize  group_start_offset = field_start_offset;
+        if (comment_index < array_count(lexer->comments) &&
+            lexer->comments[comment_index].offset < field_start_offset) {
+            group_start_offset = lexer->comments[comment_index].offset;
+        }
+        if (have_previous_field &&
+            format_has_blank_line_between_offsets(
+                lexer->source, previous_field_end_offset, group_start_offset)) {
+            sb_append_char(sb, '\n');
+        }
+        format_emit_block_comments_before_offset(sb,
+                                                 lexer,
+                                                 &comment_index,
+                                                 field_start_offset,
+                                                 indent_level + 1,
+                                                 NULL);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
         if (format_plex_field_is_shorthand(cst, field)) {
-            sb_append_char(sb, '\n');
-            continue;
-        }
-        sb_append_char(sb, ':');
-        for (usize pad = field_name.count; pad < max_field_width; ++pad) {
+        } else {
+            sb_append_char(sb, ':');
+            for (usize pad = field_name.count; pad < max_field_width; ++pad) {
+                sb_append_char(sb, ' ');
+            }
             sb_append_char(sb, ' ');
+            format_emit_expr_with_indent(
+                sb, cst, lexer, field->value_node_index, 0, indent_level + 1);
         }
-        sb_append_char(sb, ' ');
-        format_emit_expr_with_indent(
-            sb, cst, lexer, field->value_node_index, 0, indent_level + 1);
-        sb_append_char(sb, '\n');
+        usize field_end_offset = field_end_offsets[i];
+        if (field_has_comments[i]) {
+            usize before_offset = lexer->source.source.count;
+            if (i + 1 < plex->field_count) {
+                const CstPlexLiteralField* next_field =
+                    &cst->plex_literal_fields[plex->first_field + i + 1];
+                before_offset = lexer->tokens[next_field->token_index].offset;
+            }
+            u32    first_comment_index = field_comment_indices[i];
+            string comment_text =
+                format_merged_trailing_comment_text(lexer,
+                                                    first_comment_index,
+                                                    field_comment_columns[i],
+                                                    before_offset,
+                                                    &comment_index);
+            format_emit_trailing_comment_text_aligned(sb,
+                                                      comment_text,
+                                                      field_comment_columns[i],
+                                                      field_code_widths[i]);
+            if (comment_index > first_comment_index &&
+                comment_index <= array_count(lexer->comments)) {
+                field_end_offset =
+                    lexer->comments[comment_index - 1].end_offset;
+            }
+        } else {
+            sb_append_char(sb, '\n');
+        }
+        previous_field_end_offset = field_end_offset;
+        have_previous_field       = true;
     }
     if (plex->flags & CPLF_ZeroMissing) {
         format_emit_indent(sb, indent_level + 1);
         sb_append_cstr(sb, "...\n");
     }
+    u32   close_token  = format_node_end_token_index(cst, lexer, node_index);
+    usize close_offset = lexer->tokens[close_token].offset;
+    format_emit_block_comments_before_offset(
+        sb, lexer, &comment_index, close_offset, indent_level + 1, NULL);
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
+    array_free(field_code_widths);
+    array_free(field_end_offsets);
+    array_free(field_has_comments);
+    array_free(field_comment_indices);
+    array_free(field_comment_columns);
 }
 
 internal bool format_plex_literals_have_same_shape(const Cst*     cst,

@@ -2804,7 +2804,8 @@ internal bool ir_try_lower_module_field(const Lexer* lex,
     ASSERT(decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction ||
                decl->kind == SK_Function,
            "Expected module export function");
-    u32 runtime_symbol = decl->symbol_handle;
+    u32             runtime_symbol = decl->symbol_handle;
+    const SemaDecl* runtime_decl   = decl;
     if (decl->kind == SK_Function || decl->kind == SK_BuiltinFunction) {
         const Lexer*    source_lexer = lex;
         const Ast*      source_ast   = ast;
@@ -2816,9 +2817,31 @@ internal bool ir_try_lower_module_field(const Lexer* lex,
                                     &source_ast,
                                     &source_sema,
                                     &source_decl)) {
-            if (ir_function_symbol_conflicts(sema->program,
-                                             decl->import_module_index,
-                                             source_decl->symbol_handle)) {
+            runtime_decl = source_decl;
+            if (source_decl->kind == SK_FfiFunction) {
+                const Lexer*      ffi_lexer = source_lexer;
+                const Ast*        ffi_ast   = source_ast;
+                const Sema*       ffi_sema  = source_sema;
+                const AstFfiInfo* ffi_info  = NULL;
+                if (ir_decl_ffi_info(source_lexer,
+                                     source_ast,
+                                     source_sema,
+                                     source_decl,
+                                     &ffi_lexer,
+                                     &ffi_ast,
+                                     &ffi_sema,
+                                     &ffi_info)) {
+                    runtime_symbol = sema_import_symbol_handle(
+                        (Lexer*)lex,
+                        ffi_lexer,
+                        ffi_info->foreign_symbol_handle);
+                }
+                UNUSED(ffi_ast);
+                UNUSED(ffi_sema);
+            } else if (ir_function_symbol_conflicts(
+                           sema->program,
+                           decl->import_module_index,
+                           source_decl->symbol_handle)) {
                 runtime_symbol = ir_module_qualified_symbol(
                     (Lexer*)lex,
                     &sema->program->modules[decl->import_module_index],
@@ -2859,10 +2882,11 @@ internal bool ir_try_lower_module_field(const Lexer* lex,
     }
 
     *out_value = (IrValue){
-        .kind = decl->kind == SK_BuiltinFunction || decl->kind == SK_FfiFunction
-                    ? IR_VALUE_BUILTIN
-                    : IR_VALUE_SYMBOL,
-        .type = decl->type_index,
+        .kind          = runtime_decl->kind == SK_BuiltinFunction ||
+                                 runtime_decl->kind == SK_FfiFunction
+                             ? IR_VALUE_BUILTIN
+                             : IR_VALUE_SYMBOL,
+        .type          = decl->type_index,
         .value.integer = runtime_symbol,
     };
     return true;
@@ -3289,16 +3313,43 @@ internal IrValue ir_lower_call(const Lexer*   lex,
     }
 
     IrValue callee = ir_unset_value();
-    if (ast->nodes[call_node->a].kind == AK_Field &&
-        call_node->a < array_count(sema->node_lowered_symbol_handles) &&
-        sema->node_lowered_symbol_handles[call_node->a] != U32_MAX) {
+    if (ir_try_lower_module_field(lex, ast, sema, call_node->a, &callee)) {
+        // Module FFI functions must keep their external symbol spelling.
+    } else if (ast->nodes[call_node->a].kind == AK_Field &&
+               call_node->a < array_count(sema->node_lowered_symbol_handles) &&
+               sema->node_lowered_symbol_handles[call_node->a] != U32_MAX) {
+        IrValueKind callee_kind = IR_VALUE_SYMBOL;
+        u32         decl_index  = sema->node_decl_indices[call_node->a];
+        if (decl_index != sema_no_decl()) {
+            const SemaDecl* runtime_decl = &sema->decls[decl_index];
+            if (runtime_decl->import_module_index != sema_no_decl()) {
+                const Lexer*    source_lexer = lex;
+                const Ast*      source_ast   = ast;
+                const Sema*     source_sema  = sema;
+                const SemaDecl* source_decl  = runtime_decl;
+                if (ir_imported_decl_source(sema,
+                                            runtime_decl,
+                                            &source_lexer,
+                                            &source_ast,
+                                            &source_sema,
+                                            &source_decl)) {
+                    runtime_decl = source_decl;
+                }
+                UNUSED(source_lexer);
+                UNUSED(source_ast);
+                UNUSED(source_sema);
+            }
+            if (runtime_decl->kind == SK_BuiltinFunction ||
+                runtime_decl->kind == SK_FfiFunction) {
+                callee_kind = IR_VALUE_BUILTIN;
+            }
+        }
         callee = (IrValue){
-            .kind          = IR_VALUE_SYMBOL,
+            .kind          = callee_kind,
             .type          = ir_node_type_index(ast, sema, call_node->a),
             .value.integer = sema->node_lowered_symbol_handles[call_node->a],
         };
-    } else if (!ir_try_lower_module_field(
-                   lex, ast, sema, call_node->a, &callee)) {
+    } else {
         callee = ir_lower_node(lex,
                                ast,
                                sema,

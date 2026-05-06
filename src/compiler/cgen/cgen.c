@@ -126,6 +126,24 @@ internal bool cgen_builtin_is_extern(const CGen* cgen, u32 symbol_handle)
     return false;
 }
 
+internal bool cgen_symbol_is_extern_without_runtime_function(const CGen* cgen,
+                                                             u32 symbol_handle)
+{
+    for (u32 i = 0; i < array_count(cgen->ir->functions); ++i) {
+        const IrFunction* function = &cgen->ir->functions[i];
+        if (function->symbol == symbol_handle) {
+            return false;
+        }
+    }
+    for (u32 i = 0; i < array_count(cgen->ir->externs); ++i) {
+        const IrExtern* extern_decl = &cgen->ir->externs[i];
+        if (extern_decl->symbol == symbol_handle) {
+            return true;
+        }
+    }
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Render a C symbol name for a built-in runtime function.
 
@@ -813,7 +831,12 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
         cgen_add_float_literal(cgen, value->value.floating, value->type);
         break;
     case IR_VALUE_SYMBOL:
-        cgen_add_symbol_name(cgen, (u32)value->value.integer);
+        if (cgen_symbol_is_extern_without_runtime_function(
+                cgen, (u32)value->value.integer)) {
+            cgen_add_builtin_name(cgen, (u32)value->value.integer);
+        } else {
+            cgen_add_symbol_name(cgen, (u32)value->value.integer);
+        }
         break;
     case IR_VALUE_BUILTIN:
         cgen_add_builtin_name(cgen, (u32)value->value.integer);
@@ -927,6 +950,9 @@ void cgen_add_call(CGen* cgen, const IrInstruction* instr)
     if (instr->rvalue[0].kind == IR_VALUE_BUILTIN) {
         extern_call =
             cgen_builtin_is_extern(cgen, (u32)instr->rvalue[0].value.integer);
+    } else if (instr->rvalue[0].kind == IR_VALUE_SYMBOL) {
+        extern_call = cgen_symbol_is_extern_without_runtime_function(
+            cgen, (u32)instr->rvalue[0].value.integer);
     }
     for (u32 i = 0; i < call->arg_count; ++i) {
         if (i > 0) {

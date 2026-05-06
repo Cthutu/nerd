@@ -20,21 +20,22 @@ The formatter should be deterministic and idempotent.
 - Comment paragraphs are reflowed to a width of 80 characters.
 - Reflow keeps the current indentation of the comment block.
 - End-of-line comments stay attached to the formatted line they followed.
-- Consecutive end-of-line comments on plex fields, union fields, and enum
-  variants align their `--` marker.
+- Consecutive end-of-line comments on plex fields, union fields, enum variants,
+  and multiline plex literal fields align their `--` marker.
 - Enum variants with explicit `= <value>` discriminants align the `=` marker
   within the same enum variant group, even when variants without explicit values
   appear between them.
 - Enum variant alignment groups are split only by empty rows.
-- Long plex field, union field, and enum variant end-of-line comments wrap onto
-  following comment lines with the `--` marker aligned and continuation text
-  indented.
-- Existing wrapped plex field, union field, and enum variant end-of-line
-  comments are reattached before wrapping so repeated formatting preserves
-  continuation text.
+- Long plex field, union field, enum variant, and multiline plex literal
+  end-of-line comments wrap onto following comment lines with the `--` marker
+  aligned and continuation text indented.
+- Existing wrapped plex field, union field, enum variant, and multiline plex
+  literal end-of-line comments are reattached before wrapping so repeated
+  formatting preserves continuation text.
 - Comment-only lines inside code constructs remain standalone.
-- Empty rows between enum variant groups and plex or union field groups are
-  preserved, with repeated empty rows collapsed to a single empty row.
+- Empty rows between enum variant groups, plex or union field groups, and
+  multiline plex literal field groups are preserved, with repeated empty rows
+  collapsed to a single empty row.
 
 ## Code Layout Rules
 
@@ -52,6 +53,8 @@ The formatter should be deterministic and idempotent.
   align their symbol, optional type, and second `:` columns.
 - Renamed entries inside an `ffi "lib" { ... }` block align their `::` marker
   within the same FFI block group, including any `pub ` prefix.
+- Multiline plex literals align field values and trailing comments within the
+  same field group.
 - A source paragraph that mixes local constant bindings and local variable
   declarations is formatted as separate sub-paragraphs, split by a blank line.
 - Alignment does not cross blank lines.
