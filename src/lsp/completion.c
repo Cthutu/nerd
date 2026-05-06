@@ -189,6 +189,89 @@ internal void lsp_completion_add_module_exports(Arena*            arena,
     }
 }
 
+internal u32 lsp_completion_ast_export_kind(const Ast* ast, const AstNode* node)
+{
+    if (node->kind == AK_FfiDef) {
+        return 3; // Function
+    }
+    if (node->kind == AK_Variable) {
+        return 6; // Variable
+    }
+    if (node->kind != AK_Bind || node->b >= array_count(ast->nodes)) {
+        return 1; // Text
+    }
+
+    const AstNode* value = &ast->nodes[node->b];
+    switch (value->kind) {
+    case AK_FnDef:
+        return 3; // Function
+    case AK_IntegerLiteral:
+    case AK_FloatLiteral:
+    case AK_StringLiteral:
+    case AK_BoolLiteral:
+    case AK_NilLiteral:
+        return 21; // Constant
+    default:
+        break;
+    }
+    return 22; // Struct/type alias
+}
+
+internal void lsp_completion_add_ast_exports(Arena*       arena,
+                                             JsonValue*   items,
+                                             const Lexer* lexer,
+                                             const Ast*   ast)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (!ast_has_flag(node, ANF_Public)) {
+            continue;
+        }
+
+        u32 symbol_handle = U32_MAX;
+        if (node->kind == AK_Bind || node->kind == AK_Variable) {
+            symbol_handle = node->a;
+        } else if (node->kind == AK_FfiDef &&
+                   node->a < array_count(ast->ffi_infos)) {
+            symbol_handle = ast->ffi_infos[node->a].symbol_handle;
+        }
+
+        if (symbol_handle == U32_MAX) {
+            continue;
+        }
+        lsp_completion_add(arena,
+                           items,
+                           lex_symbol(lexer, symbol_handle),
+                           lsp_completion_ast_export_kind(ast, node));
+    }
+}
+
+internal bool lsp_completion_add_module_ast_exports_from_source(
+    Arena* arena, JsonValue* items, string source, cstr resolved_path)
+{
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    Lexer lexer = {0};
+    bool  ok =
+        lex((NerdSource){.source = source, .source_path = s(resolved_path)},
+            &lexer);
+    if (ok) {
+        Ast ast = ast_parse(&lexer);
+        if (array_count(ast.nodes) > 0) {
+            lsp_completion_add_ast_exports(arena, items, &lexer, &ast);
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    return array_count(items->array.values) > 0;
+}
+
 internal void lsp_completion_add_members(Arena*             arena,
                                          JsonValue*         items,
                                          const LspDocument* doc,
@@ -432,6 +515,10 @@ internal bool lsp_completion_add_module_exports_from_path(Arena*     arena,
     }
 
     program_info_done(&program);
+    if (!added) {
+        added = lsp_completion_add_module_ast_exports_from_source(
+            arena, items, source, resolved_path);
+    }
     filemap_unload(&map);
     return added;
 }
@@ -649,10 +736,14 @@ internal bool lsp_completion_resolve_text_module_in_root(Arena* arena,
 internal bool lsp_completion_resolve_text_module(Arena*             arena,
                                                  const LspDocument* doc,
                                                  string             module_path,
-                                                 cstr*              out_path)
+                                                 string current_source_path,
+                                                 cstr*  out_path)
 {
-    cstr current_path =
-        module_source_file_path(arena, doc->front_end.lexer.source);
+    NerdSource current_source = doc->front_end.lexer.source;
+    if (current_source.source_path.count == 0) {
+        current_source.source_path = current_source_path;
+    }
+    cstr current_path = module_source_file_path(arena, current_source);
     if (current_path != NULL &&
         lsp_completion_resolve_text_module_in_root(
             arena, module_path, path_dirname(arena, current_path), out_path)) {
@@ -705,7 +796,8 @@ internal bool lsp_completion_resolve_text_module(Arena*             arena,
 internal void lsp_completion_add_source_module_members(Arena*             arena,
                                                        JsonValue*         items,
                                                        const LspDocument* doc,
-                                                       string receiver)
+                                                       string receiver,
+                                                       string document_uri)
 {
     Arena temp = {0};
     arena_init(&temp);
@@ -714,7 +806,7 @@ internal void lsp_completion_add_source_module_members(Arena*             arena,
             &temp, doc->source, receiver, &module_path)) {
         cstr resolved_path = NULL;
         if (lsp_completion_resolve_text_module(
-                &temp, doc, module_path, &resolved_path)) {
+                &temp, doc, module_path, document_uri, &resolved_path)) {
             lsp_completion_add_resolved_module_exports(
                 arena, items, doc, resolved_path);
         }
@@ -1021,7 +1113,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_module_members(
-                message->arena, items, doc, receiver);
+                message->arena, items, doc, receiver, uri);
         }
         lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);

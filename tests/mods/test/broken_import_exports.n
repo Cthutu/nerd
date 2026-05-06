@@ -1,0 +1,9 @@
+use missing.dep
+
+pub Box :: plex {
+    value usize
+}
+
+pub make_box :: fn (value: usize) -> Box {
+    return Box { value: value }
+}

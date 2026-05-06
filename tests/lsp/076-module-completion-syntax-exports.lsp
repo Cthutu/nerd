@@ -1,6 +1,8 @@
-use test.lsp_types
+broken :: use test.broken_import_exports
 
-main :: fn () {}
+main :: fn () {
+    broken.
+}
 ¬
 [
     {
@@ -12,8 +14,8 @@ main :: fn () {}
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
-                "character": 9
+                "line": 3,
+                "character": 11
             }
         }
     }
@@ -70,7 +72,42 @@ main :: fn () {}
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 4,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 4,
+                            "character": 1
+                        }
+                    },
+                    "severity": 1,
+                    "code": "0203",
+                    "source": "nerd",
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 4,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "character": 1
+                                    }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
@@ -78,56 +115,12 @@ main :: fn () {}
         "id": 2,
         "result": [
             {
-                "label": "broken_import_exports",
-                "kind": 9
+                "label": "Box",
+                "kind": 22
             },
             {
-                "label": "folder_mod",
-                "kind": 9
-            },
-            {
-                "label": "folder_priority",
-                "kind": 9
-            },
-            {
-                "label": "folder_pub_use",
-                "kind": 9
-            },
-            {
-                "label": "generics",
-                "kind": 9
-            },
-            {
-                "label": "imported_plex",
-                "kind": 9
-            },
-            {
-                "label": "lsp_types",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_a",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_b",
-                "kind": 9
-            },
-            {
-                "label": "parts",
-                "kind": 9
-            },
-            {
-                "label": "platform_ffi",
-                "kind": 9
-            },
-            {
-                "label": "reexport",
-                "kind": 9
-            },
-            {
-                "label": "source_tests",
-                "kind": 9
+                "label": "make_box",
+                "kind": 3
             }
         ]
     },
