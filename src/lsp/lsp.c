@@ -99,6 +99,8 @@ struct {
     {"textDocument/completion", lsp_handle_completion},
     {"textDocument/codeAction", lsp_handle_code_action},
     {"textDocument/signatureHelp", lsp_handle_signature_help},
+    {"textDocument/prepareRename", lsp_handle_prepare_rename},
+    {"textDocument/rename", lsp_handle_rename},
 };
 
 //------------------------------------------------------------------------------
@@ -248,6 +250,12 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     if (json_get_cstr(message->message,
                       "params.capabilities.textDocument.codeAction")) {
         json_object_set_bool(capabilities, arena, "codeActionProvider", true);
+    }
+    if (json_get_cstr(message->message,
+                      "params.capabilities.textDocument.rename")) {
+        JsonValue* rename_provider = json_new_object(arena);
+        json_object_set_bool(rename_provider, arena, "prepareProvider", true);
+        json_object_set_object(capabilities, "renameProvider", rename_provider);
     }
 
     JsonValue* completion_provider = json_new_object(arena);

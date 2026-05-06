@@ -12,6 +12,7 @@ The key files are:
 - [src/lsp/completion.c](/home/matt/nerd/src/lsp/completion.c)
 - [src/lsp/signature.c](/home/matt/nerd/src/lsp/signature.c)
 - [src/lsp/code_action.c](/home/matt/nerd/src/lsp/code_action.c)
+- [src/lsp/rename.c](/home/matt/nerd/src/lsp/rename.c)
 
 ## Core Design
 
@@ -77,6 +78,11 @@ Hover uses semantic tables for:
 
 Definition jumps resolve through semantic declaration indices and then convert
 the binding token span back into an LSP range.
+
+Rename supports same-document semantic renames for locals and local
+top-level declarations. It edits only token ranges that belong to the open
+editor document, so imported declarations and generated folder-module sibling
+content are deliberately left out until workspace-wide edits are implemented.
 
 ## Completion And Signature Help
 
