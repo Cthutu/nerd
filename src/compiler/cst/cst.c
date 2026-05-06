@@ -450,27 +450,41 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     TokenKind kind = cst_kind_at_stream_index(state, *io_index);
     if (kind == TK_Symbol) {
         (*io_index)++;
-        while (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
-            (*io_index)++;
-            if (cst_kind_at_stream_index(state, *io_index) == TK_RBracket) {
-                return false;
-            }
-            for (;;) {
-                if (!cst_skip_type_tokens(state, io_index)) {
-                    return false;
-                }
-                if (cst_kind_at_stream_index(state, *io_index) != TK_Comma) {
-                    break;
-                }
+        for (;;) {
+            if (cst_kind_at_stream_index(state, *io_index) == TK_LBracket) {
                 (*io_index)++;
                 if (cst_kind_at_stream_index(state, *io_index) == TK_RBracket) {
                     return false;
                 }
+                for (;;) {
+                    if (!cst_skip_type_tokens(state, io_index)) {
+                        return false;
+                    }
+                    if (cst_kind_at_stream_index(state, *io_index) !=
+                        TK_Comma) {
+                        break;
+                    }
+                    (*io_index)++;
+                    if (cst_kind_at_stream_index(state, *io_index) ==
+                        TK_RBracket) {
+                        return false;
+                    }
+                }
+                if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
+                    return false;
+                }
+                (*io_index)++;
+                continue;
             }
-            if (cst_kind_at_stream_index(state, *io_index) != TK_RBracket) {
-                return false;
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Dot) {
+                (*io_index)++;
+                if (cst_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                    return false;
+                }
+                (*io_index)++;
+                continue;
             }
-            (*io_index)++;
+            break;
         }
         return true;
     }
@@ -1115,44 +1129,72 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             return false;
         }
 
-        while (cst_current_token(state).kind == TK_LBracket) {
-            u32 lbracket = state->token_index;
-            cst_advance(state);
-            u32 first_arg = (u32)array_count(state->cst.tuple_items);
-            u32 arg_count = 0;
-            if (cst_current_token(state).kind != TK_RBracket) {
-                for (;;) {
-                    u32 arg_node = 0;
-                    if (!cst_parse_type(state, &arg_node)) {
-                        return false;
+        for (;;) {
+            if (cst_current_token(state).kind == TK_LBracket) {
+                u32 lbracket = state->token_index;
+                cst_advance(state);
+                u32 first_arg = (u32)array_count(state->cst.tuple_items);
+                u32 arg_count = 0;
+                if (cst_current_token(state).kind != TK_RBracket) {
+                    for (;;) {
+                        u32 arg_node = 0;
+                        if (!cst_parse_type(state, &arg_node)) {
+                            return false;
+                        }
+                        array_push(state->cst.tuple_items, arg_node);
+                        arg_count++;
+                        if (cst_current_token(state).kind != TK_Comma) {
+                            break;
+                        }
+                        cst_advance(state);
                     }
-                    array_push(state->cst.tuple_items, arg_node);
-                    arg_count++;
-                    if (cst_current_token(state).kind != TK_Comma) {
-                        break;
-                    }
-                    cst_advance(state);
                 }
+                if (!cst_consume(state, TK_RBracket)) {
+                    return false;
+                }
+                u32 apply_index =
+                    (u32)array_count(state->cst.type_applications);
+                array_push(state->cst.type_applications,
+                           (CstTypeApplyInfo){
+                               .target_node_index = target_node,
+                               .first_arg         = first_arg,
+                               .arg_count         = arg_count,
+                           });
+                if (!cst_emit_node(state,
+                                   (CstNode){
+                                       .kind        = CK_TypeApply,
+                                       .token_index = lbracket,
+                                       .a           = apply_index,
+                                   },
+                                   &target_node)) {
+                    return false;
+                }
+                continue;
             }
-            if (!cst_consume(state, TK_RBracket)) {
-                return false;
+            if (cst_current_token(state).kind == TK_Dot) {
+                u32 dot_token = state->token_index;
+                cst_advance(state);
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                u32 field_symbol = cst_current_symbol_handle(state);
+                if (field_symbol == CST_NO_VALUE) {
+                    return false;
+                }
+                cst_advance(state);
+                if (!cst_emit_node(state,
+                                   (CstNode){
+                                       .kind        = CK_Field,
+                                       .token_index = dot_token + 1,
+                                       .a           = target_node,
+                                       .b           = field_symbol,
+                                   },
+                                   &target_node)) {
+                    return false;
+                }
+                continue;
             }
-            u32 apply_index = (u32)array_count(state->cst.type_applications);
-            array_push(state->cst.type_applications,
-                       (CstTypeApplyInfo){
-                           .target_node_index = target_node,
-                           .first_arg         = first_arg,
-                           .arg_count         = arg_count,
-                       });
-            if (!cst_emit_node(state,
-                               (CstNode){
-                                   .kind        = CK_TypeApply,
-                                   .token_index = lbracket,
-                                   .a           = apply_index,
-                               },
-                               &target_node)) {
-                return false;
-            }
+            break;
         }
         *out_node = target_node;
         return true;
