@@ -342,6 +342,14 @@ export function activate(
     }
 
     registerFormatter(context);
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "nerd.restartLanguageServer",
+            async () => {
+                await restartLanguageServer("manual restart command");
+            }
+        )
+    );
     return startLanguageServer(context);
 }
 

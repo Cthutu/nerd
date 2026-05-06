@@ -38,6 +38,12 @@
                 "path": "./syntaxes/nerd.tmLanguage.json"
             }
         ],
+        "commands": [
+            {
+                "command": "nerd.restartLanguageServer",
+                "title": "Nerd: Restart Language Server"
+            }
+        ],
         "configuration": {
             "title": "Nerd",
             "properties": {
