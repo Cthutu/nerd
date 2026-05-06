@@ -11,6 +11,7 @@ The key files are:
 - [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
 - [src/lsp/completion.c](/home/matt/nerd/src/lsp/completion.c)
 - [src/lsp/signature.c](/home/matt/nerd/src/lsp/signature.c)
+- [src/lsp/code_action.c](/home/matt/nerd/src/lsp/code_action.c)
 
 ## Core Design
 
@@ -103,6 +104,14 @@ Matching is case-sensitive, matching Nerd symbol resolution.
 Signature help is triggered by `(` and `,`. It resolves the callable name through
 the semantic declaration table, reports the active argument, includes default
 parameter expressions, and reminds the editor user of named-argument syntax.
+
+## Code Actions
+
+The server offers a quick fix for incomplete plex literals. When a literal is
+missing fields, `Fill missing plex fields` inserts the remaining fields with
+simple default values such as `0`, `no`, `""`, and `nil`. The action first uses
+semantic type information and then falls back to the AST for local plex aliases,
+so it remains available while the missing-field diagnostic is present.
 
 ## CST Usage
 

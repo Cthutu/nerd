@@ -97,6 +97,7 @@ struct {
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
     {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
     {"textDocument/completion", lsp_handle_completion},
+    {"textDocument/codeAction", lsp_handle_code_action},
     {"textDocument/signatureHelp", lsp_handle_signature_help},
 };
 
@@ -244,6 +245,10 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_bool(capabilities, arena, "hoverProvider", true);
     json_object_set_bool(capabilities, arena, "definitionProvider", true);
     json_object_set_bool(capabilities, arena, "documentSymbolProvider", true);
+    if (json_get_cstr(message->message,
+                      "params.capabilities.textDocument.codeAction")) {
+        json_object_set_bool(capabilities, arena, "codeActionProvider", true);
+    }
 
     JsonValue* completion_provider = json_new_object(arena);
     JsonValue* trigger_characters  = json_new_array(arena);
