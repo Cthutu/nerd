@@ -48,11 +48,16 @@ The diagnostics path is tightly coupled to the compiler error system:
 1. LSP switches the error system to `ERROR_RENDER_DIAGNOSTICS`
 2. front-end analysis runs with output emission disabled
 3. if analysis fails, the last rendered diagnostics JSON is parsed
-4. the parsed array is sent as `textDocument/publishDiagnostics`
+4. the parsed array is grouped by physical source URI
+5. each group is sent as its own `textDocument/publishDiagnostics`
 
 That reuse keeps compiler diagnostics and LSP diagnostics aligned.
 When folder modules are expanded from `mod.n` plus part files, diagnostics are
 mapped back to the physical part file before LSP ranges are emitted.
+Imported module diagnostics are also published under the imported file's URI,
+not the URI of whichever open document triggered analysis. The active document
+is cleared separately so VS Code's Problems list and next-error navigation do
+not show the same imported error under several files.
 
 ## Hover And Navigation
 

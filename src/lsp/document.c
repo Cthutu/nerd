@@ -57,6 +57,135 @@ internal JsonValue* lsp_parse_last_diagnostics(Arena* arena)
     return diagnostics;
 }
 
+typedef struct {
+    string     uri;
+    JsonValue* diagnostics;
+} LspDiagnosticGroup;
+
+internal bool lsp_string_starts_with(string value, cstr prefix)
+{
+    string prefix_string = s(prefix);
+    if (value.count < prefix_string.count) {
+        return false;
+    }
+    return memcmp(value.data, prefix_string.data, prefix_string.count) == 0;
+}
+
+internal string lsp_normalise_diagnostic_uri(Arena* arena, string uri)
+{
+    if (lsp_string_starts_with(uri, "file://") ||
+        lsp_string_starts_with(uri, "<")) {
+        return uri;
+    }
+
+    bool absolute_path = uri.count > 0 && uri.data[0] == '/';
+#if OS_WINDOWS
+    absolute_path = absolute_path || (uri.count > 1 && uri.data[1] == ':');
+#endif
+
+    if (!absolute_path) {
+        return uri;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, "file://");
+#if OS_WINDOWS
+    if (uri.count > 1 && uri.data[1] == ':') {
+        sb_append_char(&sb, '/');
+    }
+#endif
+    sb_append_string(&sb, uri);
+    return sb_to_string(&sb);
+}
+
+internal string lsp_diagnostic_uri(Arena*     arena,
+                                   JsonValue* diagnostic,
+                                   string     fallback_uri)
+{
+    JsonValue* related = json_get_cstr(diagnostic, "relatedInformation");
+    if (!related || related->kind != JSON_ARRAY) {
+        return fallback_uri;
+    }
+
+    string first_uri = {0};
+    for (usize i = 0; i < array_count(related->array.values); i++) {
+        JsonValue* info     = related->array.values[i];
+        JsonValue* location = json_get_cstr(info, "location");
+        JsonValue* uri      = json_get_cstr(info, "location.uri");
+        if (!location || location->kind != JSON_OBJECT || !uri ||
+            uri->kind != JSON_STRING) {
+            continue;
+        }
+
+        string normalised_uri =
+            lsp_normalise_diagnostic_uri(arena, json_string(uri));
+        if (!string_eq(normalised_uri, json_string(uri))) {
+            json_object_set_string(location, arena, "uri", normalised_uri);
+        }
+
+        if (first_uri.count == 0) {
+            first_uri = normalised_uri;
+        }
+
+        JsonValue* message = json_get_cstr(info, "message");
+        if (message && message->kind == JSON_STRING) {
+            string message_text = json_string(message);
+            if (lsp_string_starts_with(message_text, "help:") ||
+                lsp_string_starts_with(message_text, "note:")) {
+                return normalised_uri;
+            }
+        }
+    }
+
+    return first_uri.count > 0 ? first_uri : fallback_uri;
+}
+
+internal JsonValue* lsp_diagnostic_group(Arena* arena,
+                                         Array(LspDiagnosticGroup) * groups,
+                                         string uri)
+{
+    for (usize i = 0; i < array_count(*groups); i++) {
+        if (string_eq((*groups)[i].uri, uri)) {
+            return (*groups)[i].diagnostics;
+        }
+    }
+
+    JsonValue* diagnostics = json_new_array(arena);
+    array_push(*groups,
+               ((LspDiagnosticGroup){
+                   .uri         = uri,
+                   .diagnostics = diagnostics,
+               }));
+    return diagnostics;
+}
+
+internal void lsp_publish_grouped_diagnostics(Arena*     arena,
+                                              string     document_uri,
+                                              JsonValue* diagnostics)
+{
+    Array(LspDiagnosticGroup) groups = NULL;
+
+    // Always clear the active document. Imported-module diagnostics are
+    // published under their physical URI instead.
+    lsp_diagnostic_group(arena, &groups, document_uri);
+
+    if (diagnostics && diagnostics->kind == JSON_ARRAY) {
+        for (usize i = 0; i < array_count(diagnostics->array.values); i++) {
+            JsonValue* diagnostic = diagnostics->array.values[i];
+            string uri = lsp_diagnostic_uri(arena, diagnostic, document_uri);
+            json_array_push(lsp_diagnostic_group(arena, &groups, uri),
+                            diagnostic);
+        }
+    }
+
+    for (usize i = 0; i < array_count(groups); i++) {
+        lsp_publish_diagnostics(arena, groups[i].uri, groups[i].diagnostics);
+    }
+
+    array_free(groups);
+}
+
 internal bool lsp_front_end_document(NerdSource             source,
                                      const FrontEndOptions* options,
                                      ProgramInfo*           out_program,
@@ -280,7 +409,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     bool       ok          = lsp_analyse_document(doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
-    lsp_publish_diagnostics(message->arena, uri, diagnostics);
+    lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
 }
 
 void lsp_handle_did_change(LspState* state, const LspMessage* message)
@@ -319,7 +448,7 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
     bool       ok          = lsp_analyse_document(doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
-    lsp_publish_diagnostics(message->arena, uri, diagnostics);
+    lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
 }
 
 void lsp_document_done(LspDocument* doc)

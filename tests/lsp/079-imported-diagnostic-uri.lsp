@@ -1,21 +1,15 @@
-broken :: use test.broken_import_exports
-
-main :: fn () {
-    _ := broken.make_box
-}
+main :: fn () {}
 ¬
 [
     {
         "jsonrpc": "2.0",
-        "id": 2,
-        "method": "textDocument/completion",
+        "method": "textDocument/didOpen",
         "params": {
             "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 16
+                "uri": "__REPO_URI__/tests/lsp/079-imported-diagnostic-uri/main.n",
+                "languageId": "nerd",
+                "version": 1,
+                "text": "bad :: use bad\n\nmain :: fn () {}\n"
             }
         }
     }
@@ -79,58 +73,52 @@ main :: fn () {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
-            "uri": "__REPO_URI__/tests/mods/test/broken_import_exports.n",
+            "uri": "__REPO_URI__/tests/lsp/079-imported-diagnostic-uri/main.n",
+            "diagnostics": []
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "__REPO_URI__/tests/lsp/079-imported-diagnostic-uri/bad/mod.n",
             "diagnostics": [
                 {
                     "range": {
                         "start": {
                             "line": 0,
-                            "character": 4
+                            "character": 13
                         },
                         "end": {
                             "line": 0,
-                            "character": 11
+                            "character": 20
                         }
                     },
                     "severity": 1,
-                    "code": "0304",
+                    "code": "0300",
                     "source": "nerd",
-                    "message": "Type mismatch: expected `known module`, found `module path`",
+                    "message": "Unknown symbol `missing`",
                     "relatedInformation": [
                         {
                             "location": {
-                                "uri": "__REPO_URI__/tests/mods/test/broken_import_exports.n",
+                                "uri": "__REPO_URI__/tests/lsp/079-imported-diagnostic-uri/bad/mod.n",
                                 "range": {
                                     "start": {
                                         "line": 0,
-                                        "character": 4
+                                        "character": 13
                                     },
                                     "end": {
                                         "line": 0,
-                                        "character": 11
+                                        "character": 20
                                     }
                                 }
                             },
-                            "message": "help: Change the expression or annotation so both sides use the same type."
+                            "message": "help: Add a binding for `missing` or fix the spelling."
                         }
                     ]
                 }
             ]
         }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 2,
-        "result": [
-            {
-                "label": "Box",
-                "kind": 22
-            },
-            {
-                "label": "make_box",
-                "kind": 3
-            }
-        ]
     },
     {
         "jsonrpc": "2.0",
