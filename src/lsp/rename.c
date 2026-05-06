@@ -22,6 +22,16 @@ typedef struct {
     string        name;
 } LspRenameTarget;
 
+typedef struct {
+    LspDocument* doc;
+    LspDocument  scratch_doc;
+    Lexer        scratch_lexer;
+    Ast          scratch_ast;
+    bool         has_scratch;
+    string       uri;
+    u32          token_index;
+} LspRenameRequestContext;
+
 //------------------------------------------------------------------------------
 
 internal JsonValue*
@@ -175,11 +185,53 @@ internal cstr lsp_rename_cstr(Arena* arena, string value)
 
 //------------------------------------------------------------------------------
 
-internal bool lsp_rename_get_context(LspState*         state,
-                                     const LspMessage* message,
-                                     LspDocument**     out_doc,
-                                     string*           out_uri,
-                                     u32*              out_token_index)
+internal void lsp_rename_request_context_done(LspRenameRequestContext* context)
+{
+    if (!context->has_scratch) {
+        return;
+    }
+
+    ast_done(&context->scratch_ast);
+    lex_done(&context->scratch_lexer);
+}
+
+internal bool lsp_rename_parse_scratch_doc(LspRenameRequestContext* context,
+                                           string                   uri,
+                                           LspDocument*             source_doc)
+{
+    NerdSource source = {
+        .source      = source_doc->source,
+        .source_path = uri,
+    };
+    if (!lex(source, &context->scratch_lexer)) {
+        return false;
+    }
+
+    context->scratch_ast = ast_parse(&context->scratch_lexer);
+    if (array_count(context->scratch_ast.nodes) == 0) {
+        ast_done(&context->scratch_ast);
+        lex_done(&context->scratch_lexer);
+        context->scratch_ast   = (Ast){0};
+        context->scratch_lexer = (Lexer){0};
+        return false;
+    }
+
+    context->scratch_doc = (LspDocument){
+        .source         = source_doc->source,
+        .front_end      = {.lexer = context->scratch_lexer,
+                           .ast   = context->scratch_ast},
+        .analysis_ok    = false,
+        .semantic_ready = false,
+        .has_cst        = false,
+    };
+    context->doc         = &context->scratch_doc;
+    context->has_scratch = true;
+    return true;
+}
+
+internal bool lsp_rename_get_context(LspState*                state,
+                                     const LspMessage*        message,
+                                     LspRenameRequestContext* context)
 {
     JsonValue* uri_value =
         json_get_cstr(message->message, "params.textDocument.uri");
@@ -194,11 +246,18 @@ internal bool lsp_rename_get_context(LspState*         state,
         return false;
     }
 
-    *out_uri = json_string(uri_value);
-    *out_doc = LspDocumentMap_find(&state->documents, *out_uri);
-    if (!*out_doc || array_count((*out_doc)->front_end.lexer.tokens) == 0 ||
-        array_count((*out_doc)->front_end.ast.nodes) == 0) {
+    context->uri = json_string(uri_value);
+    context->doc = LspDocumentMap_find(&state->documents, context->uri);
+    if (!context->doc) {
         return false;
+    }
+
+    if (array_count(context->doc->front_end.lexer.tokens) == 0 ||
+        array_count(context->doc->front_end.ast.nodes) == 0) {
+        if (!lsp_rename_parse_scratch_doc(
+                context, context->uri, context->doc)) {
+            return false;
+        }
     }
 
     u32   line          = (u32)json_integer(line_value);
@@ -206,12 +265,12 @@ internal bool lsp_rename_get_context(LspState*         state,
     usize offset        = 0;
     usize visible_start = 0;
 
-    if (lsp_rename_document_visible_start(*out_doc, &visible_start) &&
-        !string_eq((*out_doc)->front_end.lexer.source.source,
-                   (*out_doc)->source)) {
+    if (lsp_rename_document_visible_start(context->doc, &visible_start) &&
+        !string_eq(context->doc->front_end.lexer.source.source,
+                   context->doc->source)) {
         NerdSource visible_source = {
-            .source      = (*out_doc)->source,
-            .source_path = (*out_doc)->front_end.lexer.source.source_path,
+            .source      = context->doc->source,
+            .source_path = context->doc->front_end.lexer.source.source_path,
         };
         usize visible_offset = 0;
         if (!lex_line_col_to_offset(
@@ -220,18 +279,18 @@ internal bool lsp_rename_get_context(LspState*         state,
         }
         offset = visible_start + visible_offset;
     } else if (!lex_line_col_to_offset(
-                   (*out_doc)->front_end.lexer.source, line, col, &offset)) {
+                   context->doc->front_end.lexer.source, line, col, &offset)) {
         return false;
     }
 
     u32    token_end = 0;
-    Token* token = lex_find(&(*out_doc)->front_end.lexer, offset, &token_end);
+    Token* token = lex_find(&context->doc->front_end.lexer, offset, &token_end);
     if (!token || token->kind != TK_Symbol) {
         return false;
     }
 
-    *out_token_index = lsp_rename_token_index_from_pointer(
-        &(*out_doc)->front_end.lexer, token);
+    context->token_index = lsp_rename_token_index_from_pointer(
+        &context->doc->front_end.lexer, token);
     return true;
 }
 
@@ -559,67 +618,69 @@ internal Array(u32)
 
 void lsp_handle_prepare_rename(LspState* state, const LspMessage* message)
 {
-    JsonValue*      response    = lsp_prepare_response(message);
-    LspDocument*    doc         = NULL;
-    string          uri         = {0};
-    u32             token_index = U32_MAX;
-    LspRenameTarget target      = {0};
+    JsonValue*              response = lsp_prepare_response(message);
+    LspRenameRequestContext context  = {0};
+    LspRenameTarget         target   = {0};
 
-    if (!lsp_rename_get_context(state, message, &doc, &uri, &token_index) ||
-        !lsp_rename_target_from_token(doc, token_index, &target) ||
-        !lsp_rename_token_is_visible(doc, token_index)) {
+    if (!lsp_rename_get_context(state, message, &context) ||
+        !lsp_rename_target_from_token(
+            context.doc, context.token_index, &target) ||
+        !lsp_rename_token_is_visible(context.doc, context.token_index)) {
+        lsp_rename_request_context_done(&context);
         lsp_cancel(response, message->arena);
         return;
     }
 
     usize start = 0;
     usize end   = 0;
-    lsp_rename_token_offsets(&doc->front_end.lexer, token_index, &start, &end);
+    lsp_rename_token_offsets(
+        &context.doc->front_end.lexer, context.token_index, &start, &end);
 
     JsonValue* result = json_new_object(message->arena);
-    json_object_set_object(
-        result,
-        "range",
-        lsp_rename_make_document_range(doc, message->arena, start, end));
+    json_object_set_object(result,
+                           "range",
+                           lsp_rename_make_document_range(
+                               context.doc, message->arena, start, end));
     json_object_set_string(result, message->arena, "placeholder", target.name);
     json_object_set_object(response, "result", result);
     lsp_send_response(message->arena, response);
-    UNUSED(uri);
+    lsp_rename_request_context_done(&context);
 }
 
 void lsp_handle_rename(LspState* state, const LspMessage* message)
 {
     JsonValue* new_name_value =
         json_get_cstr(message->message, "params.newName");
-    JsonValue*      response    = lsp_prepare_response(message);
-    LspDocument*    doc         = NULL;
-    string          uri         = {0};
-    u32             token_index = U32_MAX;
-    LspRenameTarget target      = {0};
+    JsonValue*              response = lsp_prepare_response(message);
+    LspRenameRequestContext context  = {0};
+    LspRenameTarget         target   = {0};
 
     if (!new_name_value || new_name_value->kind != JSON_STRING ||
         !lsp_rename_valid_new_name(json_string(new_name_value)) ||
-        !lsp_rename_get_context(state, message, &doc, &uri, &token_index) ||
-        !lsp_rename_target_from_token(doc, token_index, &target)) {
+        !lsp_rename_get_context(state, message, &context) ||
+        !lsp_rename_target_from_token(
+            context.doc, context.token_index, &target)) {
+        lsp_rename_request_context_done(&context);
         lsp_cancel(response, message->arena);
         return;
     }
 
-    Array(u32) tokens = lsp_rename_collect_tokens(doc, target);
+    Array(u32) tokens = lsp_rename_collect_tokens(context.doc, target);
     JsonValue* edits  = json_new_array(message->arena);
     for (u32 i = 0; i < array_count(tokens); ++i) {
         u32 token = tokens[i];
-        if (!lsp_rename_token_is_visible(doc, token)) {
+        if (!lsp_rename_token_is_visible(context.doc, token)) {
             continue;
         }
 
         usize start = 0;
         usize end   = 0;
-        lsp_rename_token_offsets(&doc->front_end.lexer, token, &start, &end);
+        lsp_rename_token_offsets(
+            &context.doc->front_end.lexer, token, &start, &end);
 
-        JsonValue* edit = json_new_object(message->arena);
-        JsonValue* range =
-            lsp_rename_make_document_range(doc, message->arena, start, end);
+        JsonValue* edit  = json_new_object(message->arena);
+        JsonValue* range = lsp_rename_make_document_range(
+            context.doc, message->arena, start, end);
         if (range == NULL) {
             continue;
         }
@@ -631,11 +692,13 @@ void lsp_handle_rename(LspState* state, const LspMessage* message)
     }
 
     JsonValue* changes = json_new_object(message->arena);
-    json_object_set_array(changes, lsp_rename_cstr(message->arena, uri), edits);
+    json_object_set_array(
+        changes, lsp_rename_cstr(message->arena, context.uri), edits);
 
     JsonValue* workspace_edit = json_new_object(message->arena);
     json_object_set_object(workspace_edit, "changes", changes);
     json_object_set_object(response, "result", workspace_edit);
     lsp_send_response(message->arena, response);
     array_free(tokens);
+    lsp_rename_request_context_done(&context);
 }

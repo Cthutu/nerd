@@ -83,10 +83,11 @@ Rename supports same-document semantic renames for locals and local
 top-level declarations, including constant and mutable variable bindings. When
 semantic analysis fails but the AST is still available, rename falls back to
 same-file binding/reference tokens with the same symbol so simple renames keep
-working while code is mid-edit. It edits only token ranges that belong to the
-open editor document, so imported declarations and generated folder-module
-sibling content are deliberately left out until workspace-wide edits are
-implemented.
+working while code is mid-edit. If imported-module analysis fails before the
+front end preserves a root AST, rename lexes and parses just the open buffer for
+that same syntax fallback. It edits only token ranges that belong to the open
+editor document, so imported declarations and generated folder-module sibling
+content are deliberately left out until workspace-wide edits are implemented.
 
 ## Completion And Signature Help
 
