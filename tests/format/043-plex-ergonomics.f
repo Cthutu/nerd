@@ -33,7 +33,7 @@ main :: fn () {
     short := Point { x, y, name }
     q := p with {
         y
-        name: "second"
+        name : "second"
     }
     pp := ^q
     prn($"{pp.name} {pp.x} {pp.y}")

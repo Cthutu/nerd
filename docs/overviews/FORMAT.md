@@ -55,7 +55,7 @@ The formatter should be deterministic and idempotent.
   within the same FFI block group, including any `pub ` prefix.
 - Multiline plex literals, including literals whose type target is qualified
   through a module, align field `:` markers, values, and trailing comments within
-  the same field group.
+  the same field group, with at least one space before each aligned `:` marker.
 - A source paragraph that mixes local constant bindings and local variable
   declarations is formatted as separate sub-paragraphs, split by a blank line.
 - Alignment does not cross blank lines.

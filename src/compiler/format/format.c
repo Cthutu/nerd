@@ -2088,7 +2088,7 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         usize code_width =
             field_indent_width + (format_plex_field_is_shorthand(cst, field)
                                       ? field_name.count
-                                      : max_field_width + 2 + value_width);
+                                      : max_field_width + 3 + value_width);
         u32 value_end_token =
             format_node_end_token_index(cst, lexer, field->value_node_index);
         usize value_end_offset =
@@ -2190,7 +2190,7 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         sb_append_string(sb, field_name);
         if (format_plex_field_is_shorthand(cst, field)) {
         } else {
-            for (usize pad = field_name.count; pad < max_field_width; ++pad) {
+            for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
                 sb_append_char(sb, ' ');
             }
             sb_append_char(sb, ':');
@@ -2308,7 +2308,7 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
             }
             continue;
         }
-        for (usize pad = field_name.count; pad < field_name_widths[i]; ++pad) {
+        for (usize pad = field_name.count; pad <= field_name_widths[i]; ++pad) {
             sb_append_char(sb, ' ');
         }
         sb_append_char(sb, ':');
