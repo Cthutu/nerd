@@ -304,6 +304,13 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     TokenKind kind = ast_kind_at_stream_index(state, *io_index);
     if (kind == TK_Symbol) {
         (*io_index)++;
+        while (ast_kind_at_stream_index(state, *io_index) == TK_Dot) {
+            (*io_index)++;
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+        }
         while (ast_kind_at_stream_index(state, *io_index) == TK_LBracket) {
             (*io_index)++;
             if (ast_kind_at_stream_index(state, *io_index) == TK_RBracket) {
@@ -972,6 +979,28 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
         u32 target_node = 0;
         if (!ast_emit_node(state, node, &target_node)) {
             return false;
+        }
+        while (ast_peek_kind_at(state, 0) == TK_Dot) {
+            if (!ast_expect_token(state, TK_Dot) || !ast_next_token(state)) {
+                return false;
+            }
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            if (!ast_emit_node(state,
+                               (AstNode){
+                                   .kind        = AK_Field,
+                                   .token_index = state->token.token_index,
+                                   .a           = target_node,
+                                   .b = state->token.value.symbol_handle,
+                               },
+                               &target_node)) {
+                return false;
+            }
         }
         while (ast_peek_kind_at(state, 0) == TK_LBracket) {
             u32 lbracket_token_index = state->token.token_index + 1;

@@ -105,6 +105,17 @@ main :: fn () {
 This keeps access qualified and avoids importing public names directly into the
 current scope.
 
+Qualified module names work in type positions as well as expression positions:
+
+```nerd
+shapes :: use app.shapes
+
+Item :: plex {
+    bounds shapes.Rect
+    owner  ^shapes.Layer
+}
+```
+
 ## Public Exports
 
 Use `pub` to make a declaration visible outside its module:
