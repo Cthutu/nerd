@@ -88,9 +88,11 @@ Completion is semantic where possible:
   slices, and dynamic arrays, and inherent methods for matching receiver types
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
-  semantic errors. This fallback relies on the stored document URI remaining
-  valid across requests, because relative module imports are resolved from the
-  active document path.
+  semantic errors. Folder-module fallback includes public declarations from
+  sibling module-part files, while still skipping part files that `mod.n`
+  explicitly imports as child modules. This fallback relies on the stored
+  document URI remaining valid across requests, because relative module imports
+  are resolved from the active document path.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and

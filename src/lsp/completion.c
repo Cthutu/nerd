@@ -255,6 +255,138 @@ internal void lsp_completion_add_ast_exports(Arena*       arena,
     }
 }
 
+internal bool lsp_completion_path_is_module_part_file(cstr path)
+{
+    string filename = path_filename(s(path));
+    return !string_eq(filename, s("mod.n")) &&
+           path_has_extension(filename, ".n");
+}
+
+internal int lsp_completion_compare_cstr_ptr(const void* lhs, const void* rhs)
+{
+    const cstr* a = lhs;
+    const cstr* b = rhs;
+    return strcmp(*a, *b);
+}
+
+internal bool
+lsp_completion_mod_ref_matches_path(const Lexer*         lexer,
+                                    const Ast*           ast,
+                                    const AstModulePath* module_path,
+                                    cstr                 path)
+{
+    if (module_path->symbol_count != 1) {
+        return false;
+    }
+
+    string module_name =
+        lex_symbol(lexer, ast->module_path_symbols[module_path->first_symbol]);
+    return string_eq(module_name, path_stem(s(path)));
+}
+
+internal bool lsp_completion_mod_explicitly_uses_child_path(const Lexer* lexer,
+                                                            const Ast*   ast,
+                                                            cstr         path)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_ModRef ||
+            node->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+        if (lsp_completion_mod_ref_matches_path(
+                lexer, ast, &ast->module_paths[node->a], path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool lsp_completion_add_module_ast_exports_from_file(Arena*     arena,
+                                                              JsonValue* items,
+                                                              cstr       path)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    usize before = array_count(items->array.values);
+    Lexer lexer  = {0};
+    if (lex((NerdSource){.source = source, .source_path = s(path)}, &lexer)) {
+        Ast ast = ast_parse(&lexer);
+        if (array_count(ast.nodes) > 0) {
+            lsp_completion_add_ast_exports(arena, items, &lexer, &ast);
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    filemap_unload(&map);
+    return array_count(items->array.values) > before;
+}
+
+internal bool
+lsp_completion_add_module_part_ast_exports(Arena*       arena,
+                                           JsonValue*   items,
+                                           const Lexer* root_lexer,
+                                           const Ast*   root_ast,
+                                           cstr         resolved_path)
+{
+    if (!string_eq(path_filename(s(resolved_path)), s("mod.n"))) {
+        return false;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr module_dir        = path_dirname(&temp, resolved_path);
+
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (dir_iter_init(&iter, module_dir)) {
+        cstr path         = NULL;
+        bool is_directory = false;
+        while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+            if (!is_directory &&
+                lsp_completion_path_is_module_part_file(path)) {
+                array_push(part_paths, path);
+            }
+        }
+        dir_iter_done(&iter);
+    }
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              lsp_completion_compare_cstr_ptr);
+    }
+
+    bool added = false;
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        if (lsp_completion_mod_explicitly_uses_child_path(
+                root_lexer, root_ast, part_paths[i])) {
+            continue;
+        }
+        if (lsp_completion_add_module_ast_exports_from_file(
+                arena, items, part_paths[i])) {
+            added = true;
+        }
+    }
+
+    array_free(part_paths);
+    arena_done(&temp);
+    return added;
+}
+
 internal bool lsp_completion_add_module_ast_exports_from_source(
     Arena* arena, JsonValue* items, string source, cstr resolved_path)
 {
@@ -271,6 +403,10 @@ internal bool lsp_completion_add_module_ast_exports_from_source(
         Ast ast = ast_parse(&lexer);
         if (array_count(ast.nodes) > 0) {
             lsp_completion_add_ast_exports(arena, items, &lexer, &ast);
+            if (lsp_completion_add_module_part_ast_exports(
+                    arena, items, &lexer, &ast, resolved_path)) {
+                ok = true;
+            }
         }
         ast_done(&ast);
     }
@@ -540,12 +676,8 @@ internal void lsp_completion_add_resolved_module_exports(Arena*     arena,
     u32 module_index = lsp_completion_find_program_module_by_path(
         &doc->program, resolved_path);
     if (module_index != U32_MAX) {
-        usize before = array_count(items->array.values);
         lsp_completion_add_module_exports(
             arena, items, &doc->program.modules[module_index]);
-        if (array_count(items->array.values) > before) {
-            return;
-        }
     }
 
     (void)lsp_completion_add_module_exports_from_path(

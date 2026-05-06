@@ -1,6 +1,8 @@
-use test.lsp_types
+parts :: use test.completion_parts
 
-main :: fn () {}
+main :: fn () {
+    parts.
+}
 ¬
 [
     {
@@ -12,8 +14,12 @@ main :: fn () {}
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
-                "character": 9
+                "line": 3,
+                "character": 10
+            },
+            "context": {
+                "triggerKind": 2,
+                "triggerCharacter": "."
             }
         }
     }
@@ -70,7 +76,42 @@ main :: fn () {}
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 4,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 4,
+                            "character": 1
+                        }
+                    },
+                    "severity": 1,
+                    "code": "0203",
+                    "source": "nerd",
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 4,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "character": 1
+                                    }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
@@ -78,64 +119,12 @@ main :: fn () {}
         "id": 2,
         "result": [
             {
-                "label": "broken_import_exports",
-                "kind": 9
+                "label": "RootValue",
+                "kind": 22
             },
             {
-                "label": "completion_parts",
-                "kind": 9
-            },
-            {
-                "label": "ffi_import",
-                "kind": 9
-            },
-            {
-                "label": "folder_mod",
-                "kind": 9
-            },
-            {
-                "label": "folder_priority",
-                "kind": 9
-            },
-            {
-                "label": "folder_pub_use",
-                "kind": 9
-            },
-            {
-                "label": "generics",
-                "kind": 9
-            },
-            {
-                "label": "imported_plex",
-                "kind": 9
-            },
-            {
-                "label": "lsp_types",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_a",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_b",
-                "kind": 9
-            },
-            {
-                "label": "parts",
-                "kind": 9
-            },
-            {
-                "label": "platform_ffi",
-                "kind": 9
-            },
-            {
-                "label": "reexport",
-                "kind": 9
-            },
-            {
-                "label": "source_tests",
-                "kind": 9
+                "label": "PartValue",
+                "kind": 22
             }
         ]
     },
