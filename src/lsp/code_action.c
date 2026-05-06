@@ -75,6 +75,13 @@ internal string lsp_code_action_line_indent(Arena* arena,
     return (string){.data = data, .count = end - start};
 }
 
+internal void lsp_code_action_append_spaces(StringBuilder* sb, usize count)
+{
+    for (usize i = 0; i < count; ++i) {
+        sb_append_char(sb, ' ');
+    }
+}
+
 internal bool lsp_code_action_token_is_open(TokenKind kind)
 {
     return kind == TK_LBrace || kind == TK_LParen || kind == TK_LBracket;
@@ -596,6 +603,15 @@ internal bool lsp_code_action_missing_plex_fields(Arena*             arena,
         arena, doc->source, lexer->tokens[node->token_index].offset);
     StringBuilder sb = {0};
     sb_init(&sb, arena);
+    usize field_name_width = 0;
+    for (u32 i = 0; i < plex->param_count; ++i) {
+        string name = lex_symbol(
+            lexer, sema->type_param_symbols[plex->first_param_type + i]);
+        if (name.count > field_name_width) {
+            field_name_width = name.count;
+        }
+    }
+
     u32 missing_count = 0;
     for (u32 i = 0; i < plex->param_count; ++i) {
         if (seen[i]) {
@@ -613,10 +629,10 @@ internal bool lsp_code_action_missing_plex_fields(Arena*             arena,
         sb_append_char(&sb, '\n');
         sb_append_string(&sb, base_indent);
         sb_append_cstr(&sb, "    ");
-        sb_append_string(
-            &sb,
-            lex_symbol(lexer,
-                       sema->type_param_symbols[plex->first_param_type + i]));
+        string name = lex_symbol(
+            lexer, sema->type_param_symbols[plex->first_param_type + i]);
+        sb_append_string(&sb, name);
+        lsp_code_action_append_spaces(&sb, field_name_width - name.count);
         sb_append_cstr(&sb, ": ");
         sb_append_string(&sb, value);
         missing_count++;
@@ -682,6 +698,16 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
         arena, doc->source, lexer->tokens[node->token_index].offset);
     StringBuilder sb = {0};
     sb_init(&sb, arena);
+    usize field_name_width = 0;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const AstPlexField* field =
+            &type_ast->plex_fields[plex->first_field + i];
+        string name = lex_symbol(type_lexer, field->symbol_handle);
+        if (name.count > field_name_width) {
+            field_name_width = name.count;
+        }
+    }
+
     u32 missing_count = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
         if (seen[i]) {
@@ -699,7 +725,9 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
         sb_append_char(&sb, '\n');
         sb_append_string(&sb, base_indent);
         sb_append_cstr(&sb, "    ");
-        sb_append_string(&sb, lex_symbol(type_lexer, field->symbol_handle));
+        string name = lex_symbol(type_lexer, field->symbol_handle);
+        sb_append_string(&sb, name);
+        lsp_code_action_append_spaces(&sb, field_name_width - name.count);
         sb_append_cstr(&sb, ": ");
         sb_append_string(&sb, value);
         missing_count++;

@@ -109,11 +109,11 @@ parameter expressions, and reminds the editor user of named-argument syntax.
 
 The server offers a quick fix for incomplete plex literals. When a literal is
 missing fields, `Fill missing plex fields` inserts the remaining fields with
-simple default values such as `0`, `no`, `""`, and `nil`. The action first uses
-semantic type information and then falls back to the AST for local plex aliases,
-or imported module ASTs, so it remains available while the missing-field
-diagnostic is present and while the cursor is on either the literal target or
-the literal body.
+simple default values such as `0`, `no`, `""`, and `nil`, with field colons
+aligned to the plex field group. The action first uses semantic type information
+and then falls back to the AST for local plex aliases, or imported module ASTs,
+so it remains available while the missing-field diagnostic is present and while
+the cursor is on either the literal target or the literal body.
 
 ## CST Usage
 

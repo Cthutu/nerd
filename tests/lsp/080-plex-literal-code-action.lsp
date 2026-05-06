@@ -163,7 +163,7 @@ main :: fn () {
                                         "character": 4
                                     }
                                 },
-                                "newText": "\n        y: 0\n        visible: no\n        name: \"\"\n    "
+                                "newText": "\n        y      : 0\n        visible: no\n        name   : \"\"\n    "
                             }
                         ]
                     }
