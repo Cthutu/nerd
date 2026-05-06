@@ -182,7 +182,7 @@ Type.size
 
 | Literal form | Type |
 | --- | --- |
-| `123`, `1_000_000` | `untyped integer`; materialises to `i32` without other context |
+| `123`, `1_000_000` | `untyped integer`; materialises to `i32` without other context, or to an explicit pointer destination for address constants |
 | `0xff`, `0xff_ff` | `untyped integer`; hexadecimal literal |
 | `0b1010`, `0b1010_0101` | `untyped integer`; binary literal |
 | `0o755`, `0o7_55` | `untyped integer`; octal literal |

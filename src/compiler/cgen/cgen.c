@@ -799,6 +799,12 @@ void cgen_add_value(CGen* cgen, const IrValue* value)
             cgen_add(cgen, "(");
             cgen_add(cgen, cgen_c_type(cgen, value->type));
             cgen_add(cgen, "){.data = 0, .count = 0, .capacity = 0}");
+        } else if (value->type != sema_no_type() &&
+                   cgen->ir->types[value->type].kind == STK_Pointer) {
+            cgen_add(cgen, "((");
+            cgen_add(cgen, cgen_c_type(cgen, value->type));
+            arena_format(
+                &cgen->arena, ")(uintptr_t)%lld)", value->value.integer);
         } else {
             arena_format(&cgen->arena, "%lld", value->value.integer);
         }
@@ -1006,6 +1012,18 @@ void cgen_add_cast(CGen* cgen, const IrInstruction* instr)
         cgen_add(cgen, ".data, .count = ");
         cgen_add_value(cgen, &instr->rvalue[0]);
         cgen_add(cgen, ".count}");
+        cgen_addn(cgen, ";");
+        return;
+    }
+
+    if (target_type != sema_no_type() &&
+        cgen->ir->types[target_type].kind == STK_Pointer &&
+        source_type != sema_no_type() &&
+        cgen->ir->types[source_type].kind == STK_UntypedInteger) {
+        cgen_add(cgen, " = (");
+        cgen_add(cgen, cgen_c_type(cgen, target_type));
+        cgen_add(cgen, ")(uintptr_t)");
+        cgen_add_value(cgen, &instr->rvalue[0]);
         cgen_addn(cgen, ";");
         return;
     }

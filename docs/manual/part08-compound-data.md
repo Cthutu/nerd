@@ -86,6 +86,17 @@ view := pointer.as([]u8, count)  -- pointer plus count becomes a slice
 The cast requires the element type and count. The resulting slice borrows the
 memory behind the pointer.
 
+Untyped integer constants can be written as raw pointer address constants when a
+pointer type is explicit:
+
+```nerd
+null: ^u8 = 0
+device := 0x1000.as(^void)
+```
+
+Use this for FFI and platform APIs that deal in addresses. Ordinary concrete
+integer values are not pointer-compatible.
+
 ## Strings And String Slices
 
 `string` is distinct from `[]u8`, but it uses the same data/count shape.
