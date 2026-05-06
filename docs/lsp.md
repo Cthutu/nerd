@@ -106,8 +106,11 @@ Completion is semantic where possible:
   are resolved from the active document path.
 - `payload.` inside an `on` branch can complete fields for an enum payload
   binder such as `Variant(as payload) => { payload. }` even while the member
-  access is syntactically incomplete. The fallback repairs only the transient
-  completion analysis buffer; it does not mutate the open document.
+  access is syntactically incomplete. Imported enum payloads such as
+  `event : module.Event` use the same module-part fallback as module completion
+  so payload fields remain available from public plex types in imported files.
+  The fallback repairs only the transient completion analysis buffer; it does
+  not mutate the open document.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and

@@ -564,6 +564,7 @@ internal bool lsp_completion_resolve_text_module(Arena*             arena,
                                                  cstr*  out_path);
 internal bool
 lsp_completion_match_ident_at(string source, usize* cursor, string ident);
+internal string lsp_completion_trim(string value);
 internal void
 lsp_completion_add_qualified_ast_on_payload_members(Arena*             arena,
                                                     JsonValue*         items,
@@ -986,6 +987,174 @@ internal bool lsp_completion_add_payload_fields_from_ast(Arena*       arena,
     return array_count(items->array.values) > before;
 }
 
+internal string lsp_completion_strip_comment(string line)
+{
+    for (usize i = 0; i + 1 < line.count; ++i) {
+        if (line.data[i] == '-' && line.data[i + 1] == '-') {
+            return (string){.data = line.data, .count = i};
+        }
+    }
+    return line;
+}
+
+internal bool
+lsp_completion_line_starts_decl(string line, string name, string keyword)
+{
+    line    = lsp_completion_trim(lsp_completion_strip_comment(line));
+    usize i = 0;
+    if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+    }
+    if (!lsp_completion_match_ident_at(line, &i, name)) {
+        return false;
+    }
+    while (i < line.count && (line.data[i] == ' ' || line.data[i] == '\t')) {
+        i++;
+    }
+    if (i + 2 > line.count || line.data[i] != ':' || line.data[i + 1] != ':') {
+        return false;
+    }
+    i += 2;
+    while (i < line.count && (line.data[i] == ' ' || line.data[i] == '\t')) {
+        i++;
+    }
+    return lsp_completion_match_ident_at(line, &i, keyword);
+}
+
+internal bool lsp_completion_text_enum_payload_type(Arena*  arena,
+                                                    string  source,
+                                                    string  enum_name,
+                                                    string  variant_name,
+                                                    string* out_payload_type)
+{
+    usize line_start = 0;
+    bool  in_enum    = false;
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        if (!in_enum) {
+            if (lsp_completion_line_starts_decl(line, enum_name, s("enum"))) {
+                in_enum = true;
+            }
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        if (line.count > 0 && line.data[0] == '}') {
+            return false;
+        }
+
+        usize i = 0;
+        if (!lsp_completion_match_ident_at(line, &i, variant_name)) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        if (i >= line.count || line.data[i] != '(') {
+            return false;
+        }
+        i++;
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i == start) {
+            return false;
+        }
+        u8* copy = arena_alloc(arena, i - start);
+        memcpy(copy, line.data + start, i - start);
+        *out_payload_type = (string){.data = copy, .count = i - start};
+        return true;
+    }
+    return false;
+}
+
+internal bool lsp_completion_add_text_plex_fields(Arena*     arena,
+                                                  JsonValue* items,
+                                                  string     source,
+                                                  string     type_name)
+{
+    usize line_start = 0;
+    bool  in_plex    = false;
+    usize before     = array_count(items->array.values);
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        if (!in_plex) {
+            if (lsp_completion_line_starts_decl(line, type_name, s("plex"))) {
+                in_plex = true;
+            }
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        if (line.count > 0 && line.data[0] == '}') {
+            break;
+        }
+        usize i = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i > start) {
+            lsp_completion_add(
+                arena,
+                items,
+                (string){.data = line.data + start, .count = i - start},
+                5);
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return array_count(items->array.values) > before;
+}
+
+internal bool lsp_completion_add_payload_fields_from_text(Arena*     arena,
+                                                          JsonValue* items,
+                                                          string     source,
+                                                          string     enum_name,
+                                                          string variant_name)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+    string payload_type = {0};
+    bool   added        = false;
+    if (lsp_completion_text_enum_payload_type(
+            &temp, source, enum_name, variant_name, &payload_type)) {
+        added = lsp_completion_add_text_plex_fields(
+            arena, items, source, payload_type);
+    }
+    arena_done(&temp);
+    return added;
+}
+
 internal bool lsp_completion_add_payload_fields_from_file(Arena*     arena,
                                                           JsonValue* items,
                                                           cstr       path,
@@ -1014,6 +1183,11 @@ internal bool lsp_completion_add_payload_fields_from_file(Arena*     arena,
         ast_done(&ast);
     }
     lex_done(&lexer);
+
+    if (!added) {
+        added = lsp_completion_add_payload_fields_from_text(
+            arena, items, source, enum_name, variant_name);
+    }
 
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
@@ -1992,6 +2166,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_module_members(
                 message->arena, items, doc, receiver, uri);
+        }
+        if (array_count(items->array.values) == 0) {
+            lsp_completion_add_source_on_payload_members(
+                message->arena, items, doc, uri, offset, receiver);
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_repaired_members(

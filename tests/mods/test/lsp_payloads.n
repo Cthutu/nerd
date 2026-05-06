@@ -1,0 +1,9 @@
+pub KeyEvent :: plex {
+    keycode   i32
+    modifiers i32
+    char      u32
+}
+
+pub Event :: enum {
+    KeyDown(KeyEvent)
+}

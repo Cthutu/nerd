@@ -1,6 +1,13 @@
-use test.lsp_types
+payloads :: use test.lsp_payloads
 
-main :: fn () {}
+main :: fn () {
+    event : payloads.Event
+    on event {
+        KeyDown(as key_event) => {
+            key_event.
+        }
+    }
+}
 ¬
 [
     {
@@ -12,8 +19,12 @@ main :: fn () {}
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
-                "character": 9
+                "line": 6,
+                "character": 22
+            },
+            "context": {
+                "triggerKind": 2,
+                "triggerCharacter": "."
             }
         }
     }
@@ -70,7 +81,42 @@ main :: fn () {}
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 7,
+                            "character": 8
+                        },
+                        "end": {
+                            "line": 7,
+                            "character": 9
+                        }
+                    },
+                    "severity": 1,
+                    "code": "0203",
+                    "source": "nerd",
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 7,
+                                        "character": 8
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "character": 9
+                                    }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
@@ -78,68 +124,16 @@ main :: fn () {}
         "id": 2,
         "result": [
             {
-                "label": "broken_import_exports",
-                "kind": 9
+                "label": "keycode",
+                "kind": 5
             },
             {
-                "label": "completion_parts",
-                "kind": 9
+                "label": "modifiers",
+                "kind": 5
             },
             {
-                "label": "ffi_import",
-                "kind": 9
-            },
-            {
-                "label": "folder_mod",
-                "kind": 9
-            },
-            {
-                "label": "folder_priority",
-                "kind": 9
-            },
-            {
-                "label": "folder_pub_use",
-                "kind": 9
-            },
-            {
-                "label": "generics",
-                "kind": 9
-            },
-            {
-                "label": "imported_plex",
-                "kind": 9
-            },
-            {
-                "label": "lsp_payloads",
-                "kind": 9
-            },
-            {
-                "label": "lsp_types",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_a",
-                "kind": 9
-            },
-            {
-                "label": "namespaced_b",
-                "kind": 9
-            },
-            {
-                "label": "parts",
-                "kind": 9
-            },
-            {
-                "label": "platform_ffi",
-                "kind": 9
-            },
-            {
-                "label": "reexport",
-                "kind": 9
-            },
-            {
-                "label": "source_tests",
-                "kind": 9
+                "label": "char",
+                "kind": 5
             }
         ]
     },
