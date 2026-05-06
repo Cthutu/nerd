@@ -12,6 +12,7 @@ typedef enum {
     LSP_RENAME_NONE,
     LSP_RENAME_LOCAL,
     LSP_RENAME_DECL,
+    LSP_RENAME_SYMBOL,
 } LspRenameKind;
 
 typedef struct {
@@ -195,7 +196,8 @@ internal bool lsp_rename_get_context(LspState*         state,
 
     *out_uri = json_string(uri_value);
     *out_doc = LspDocumentMap_find(&state->documents, *out_uri);
-    if (!*out_doc || !(*out_doc)->semantic_ready) {
+    if (!*out_doc || array_count((*out_doc)->front_end.lexer.tokens) == 0 ||
+        array_count((*out_doc)->front_end.ast.nodes) == 0) {
         return false;
     }
 
@@ -267,6 +269,90 @@ internal u32 lsp_rename_find_decl_by_symbol(const Sema* sema, u32 symbol_handle)
         }
     }
     return sema_no_decl();
+}
+
+internal u32 lsp_rename_symbol_handle_at_token(const Lexer* lexer,
+                                               u32          token_index)
+{
+    u32 symbol_index = 0;
+    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind != TK_Symbol) {
+            continue;
+        }
+        if (i == token_index) {
+            if (symbol_index < array_count(lexer->symbol_handles)) {
+                return lexer->symbol_handles[symbol_index];
+            }
+            return U32_MAX;
+        }
+        symbol_index++;
+    }
+    return U32_MAX;
+}
+
+internal void lsp_rename_add_token(Array(u32) * tokens, u32 token_index);
+
+internal void lsp_rename_collect_ast_symbol_tokens(const LspDocument* doc,
+                                                   u32                symbol,
+                                                   Array(u32) * tokens)
+{
+    const Ast* ast = &doc->front_end.ast;
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        switch (node->kind) {
+        case AK_Bind:
+        case AK_Variable:
+        case AK_SymbolRef:
+            if (node->a == symbol) {
+                lsp_rename_add_token(tokens, node->token_index);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->params); ++i) {
+        const AstParam* param = &ast->params[i];
+        if (param->symbol_handle == symbol) {
+            lsp_rename_add_token(tokens, param->token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        const AstPattern* pattern = &ast->patterns[i];
+        if (pattern->kind == APK_Bind && pattern->a == symbol) {
+            lsp_rename_add_token(tokens, pattern->token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->fors); ++i) {
+        const AstForInfo* for_info = &ast->fors[i];
+        if (for_info->index_symbol == symbol) {
+            lsp_rename_add_token(tokens, for_info->index_token_index);
+        }
+        if (for_info->item_symbol == symbol) {
+            lsp_rename_add_token(tokens, for_info->item_token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+        const AstOnBranch* branch = &ast->on_branches[i];
+        if (branch->binder_symbol_handle == symbol) {
+            lsp_rename_add_token(tokens, branch->binder_token_index);
+        }
+    }
+}
+
+internal bool lsp_rename_token_list_contains(Array(u32) tokens, u32 token_index)
+{
+    for (u32 i = 0; i < array_count(tokens); ++i) {
+        if (tokens[i] == token_index) {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal bool lsp_rename_target_from_token(const LspDocument* doc,
@@ -367,6 +453,23 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
         }
     }
 
+    u32 symbol = lsp_rename_symbol_handle_at_token(lexer, token_index);
+    if (symbol == U32_MAX) {
+        return false;
+    }
+    Array(u32) tokens = NULL;
+    lsp_rename_collect_ast_symbol_tokens(doc, symbol, &tokens);
+    if (lsp_rename_token_list_contains(tokens, token_index)) {
+        *out_target = (LspRenameTarget){
+            .kind        = LSP_RENAME_SYMBOL,
+            .index       = symbol,
+            .token_index = token_index,
+            .name        = lex_symbol(lexer, symbol),
+        };
+        array_free(tokens);
+        return true;
+    }
+    array_free(tokens);
     return false;
 }
 
@@ -441,6 +544,11 @@ internal Array(u32)
                 lsp_rename_add_token(&tokens, ast->nodes[i].token_index);
             }
         }
+        return tokens;
+    }
+
+    if (target.kind == LSP_RENAME_SYMBOL) {
+        lsp_rename_collect_ast_symbol_tokens(doc, target.index, &tokens);
         return tokens;
     }
 
