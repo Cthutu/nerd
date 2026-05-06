@@ -79,6 +79,8 @@ Completion is semantic where possible:
   and parameters
 - `value.` offers fields for plexes/unions, built-in fields for strings,
   slices, and dynamic arrays, and inherent methods for matching receiver types
+- `module_binding.` offers public exports for `module_binding :: use ...`
+  imports, including while the edited document has parse or semantic errors
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and
