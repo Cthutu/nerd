@@ -2190,10 +2190,10 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         sb_append_string(sb, field_name);
         if (format_plex_field_is_shorthand(cst, field)) {
         } else {
-            sb_append_char(sb, ':');
             for (usize pad = field_name.count; pad < max_field_width; ++pad) {
                 sb_append_char(sb, ' ');
             }
+            sb_append_char(sb, ':');
             sb_append_char(sb, ' ');
             format_emit_expr_with_indent(
                 sb, cst, lexer, field->value_node_index, 0, indent_level + 1);
@@ -2308,10 +2308,10 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
             }
             continue;
         }
-        sb_append_char(sb, ':');
         for (usize pad = field_name.count; pad < field_name_widths[i]; ++pad) {
             sb_append_char(sb, ' ');
         }
+        sb_append_char(sb, ':');
         sb_append_char(sb, ' ');
         format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
         if (i + 1 < plex->field_count || (plex->flags & CPLF_ZeroMissing)) {

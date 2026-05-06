@@ -20,7 +20,7 @@ Person :: plex {
 
 matt :: Person {
     name: "Matt"
-    age:  53
+    age : 53
 }
 
 main :: fn () {

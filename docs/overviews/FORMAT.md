@@ -53,8 +53,8 @@ The formatter should be deterministic and idempotent.
   align their symbol, optional type, and second `:` columns.
 - Renamed entries inside an `ffi "lib" { ... }` block align their `::` marker
   within the same FFI block group, including any `pub ` prefix.
-- Multiline plex literals align field values and trailing comments within the
-  same field group.
+- Multiline plex literals align field `:` markers, values, and trailing comments
+  within the same field group.
 - A source paragraph that mixes local constant bindings and local variable
   declarations is formatted as separate sub-paragraphs, split by a blank line.
 - Alignment does not cross blank lines.

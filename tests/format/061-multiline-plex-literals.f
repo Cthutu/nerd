@@ -21,11 +21,11 @@ Room :: plex {
 
 rooms : []Room : [
     {
-        name:  "Hall"
+        name : "Hall"
         exits: [1, 2, 3]
     },
     {
-        name:  "Cellar"
+        name : "Cellar"
         exits: [4, 5, 6]
     },
 ]

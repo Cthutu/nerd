@@ -31,14 +31,14 @@ Room :: plex {
 
 rooms : []Room : [
     {
-        name:        "Hall"
+        name       : "Hall"
         description: "A dusty entrance hall."
-        exits:       [0, 1, 2, 3]
+        exits      : [0, 1, 2, 3]
     },
     {
-        name:        "Kitchen"
+        name       : "Kitchen"
         description: "An old kitchen."
-        exits:       [0, 0, 0, 1]
+        exits      : [0, 0, 0, 1]
     },
 ]
 
