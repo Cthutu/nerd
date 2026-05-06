@@ -531,9 +531,12 @@ internal void lsp_completion_add_resolved_module_exports(Arena*     arena,
     u32 module_index = lsp_completion_find_program_module_by_path(
         &doc->program, resolved_path);
     if (module_index != U32_MAX) {
+        usize before = array_count(items->array.values);
         lsp_completion_add_module_exports(
             arena, items, &doc->program.modules[module_index]);
-        return;
+        if (array_count(items->array.values) > before) {
+            return;
+        }
     }
 
     (void)lsp_completion_add_module_exports_from_path(
