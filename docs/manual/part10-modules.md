@@ -114,6 +114,10 @@ Item :: plex {
     bounds shapes.Rect
     owner  ^shapes.Layer
 }
+
+main :: fn () {
+    layer : shapes.Layer
+}
 ```
 
 ## Public Exports

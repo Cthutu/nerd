@@ -6,12 +6,14 @@ Holder :: plex {
 }
 
 main :: fn () -> i32 {
-    box := boxmod.make_box(7)
+    box : boxmod.Box
+    box = boxmod.make_box(7)
+    box.bump(1)
     holder := Holder { box, ptr: ^box }
     return (holder.box.value + holder.ptr^.value).as(i32)
 }
 ¬
-14
+16
 ¬
 
 ¬

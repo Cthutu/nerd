@@ -130,6 +130,13 @@ lsp_completion_add(Arena* arena, JsonValue* items, string label, u32 kind)
     json_array_push(items, item);
 }
 
+internal bool lsp_completion_is_internal_label(string label)
+{
+    string impl_prefix = s("__impl_");
+    return label.count >= impl_prefix.count &&
+           memcmp(label.data, impl_prefix.data, impl_prefix.count) == 0;
+}
+
 internal u32 lsp_completion_decl_kind(SemaDeclKind kind)
 {
     switch (kind) {
@@ -181,11 +188,13 @@ internal void lsp_completion_add_module_exports(Arena*            arena,
         if (decl->symbol_handle == U32_MAX) {
             continue;
         }
+        string label =
+            lex_symbol(&module->front_end.lexer, decl->symbol_handle);
+        if (lsp_completion_is_internal_label(label)) {
+            continue;
+        }
         lsp_completion_add(
-            arena,
-            items,
-            lex_symbol(&module->front_end.lexer, decl->symbol_handle),
-            lsp_completion_decl_kind(decl->kind));
+            arena, items, label, lsp_completion_decl_kind(decl->kind));
     }
 }
 
@@ -1048,10 +1057,12 @@ internal void lsp_completion_add_symbols(Arena*             arena,
         if (decl->symbol_handle == U32_MAX) {
             continue;
         }
-        lsp_completion_add(arena,
-                           items,
-                           lex_symbol(lexer, decl->symbol_handle),
-                           lsp_completion_decl_kind(decl->kind));
+        string label = lex_symbol(lexer, decl->symbol_handle);
+        if (lsp_completion_is_internal_label(label)) {
+            continue;
+        }
+        lsp_completion_add(
+            arena, items, label, lsp_completion_decl_kind(decl->kind));
     }
 
     for (u32 i = 0; i < array_count(sema->locals); ++i) {
