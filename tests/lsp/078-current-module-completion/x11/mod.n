@@ -1,0 +1,7 @@
+pub Display :: void
+pub Window  :: u64
+
+pub ffi "X11" {
+    XOpenDisplay  (display_name: ^u8) -> ^Display
+    XCloseDisplay (display: ^Display) -> i32
+}

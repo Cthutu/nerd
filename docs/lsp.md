@@ -18,6 +18,7 @@ Each open document stores:
 
 - an arena for document-owned allocations
 - the current editor buffer text
+- a stable copy of the document URI/source path for module resolution
 - `FrontEndState`
 - `Cst`
 - flags telling whether semantic analysis and CST parsing succeeded
@@ -81,7 +82,9 @@ Completion is semantic where possible:
   slices, and dynamic arrays, and inherent methods for matching receiver types
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
-  semantic errors
+  semantic errors. This fallback relies on the stored document URI remaining
+  valid across requests, because relative module imports are resolved from the
+  active document path.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and

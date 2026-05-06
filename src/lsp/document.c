@@ -106,6 +106,10 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     staged->has_cst        = false;
     staged->source         = content;
 
+    u8* uri_copy           = arena_alloc(&staged->arena, uri.count);
+    memcpy(uri_copy, uri.data, uri.count);
+    string stable_uri = {.data = uri_copy, .count = uri.count};
+
     lsp_log("Analysing document...");
     ErrorRenderMode previous_mode = error_system_mode();
     bool            previous_emit = error_system_should_emit_output();
@@ -122,7 +126,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     bool ok = lsp_front_end_document(
         (NerdSource){
             .source      = content,
-            .source_path = uri,
+            .source_path = stable_uri,
         },
         &options,
         &staged->program,
