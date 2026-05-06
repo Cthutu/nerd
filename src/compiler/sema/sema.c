@@ -4397,41 +4397,6 @@ internal bool sema_collect_destructure_pattern(const Lexer*  lexer,
     }
 }
 
-internal bool sema_pattern_contains_binder(const Ast* ast, u32 pattern_index)
-{
-    const AstPattern* pattern = &ast->patterns[pattern_index];
-    if (pattern->kind == APK_Bind) {
-        return true;
-    }
-    if (pattern->kind == APK_Tuple) {
-        for (u32 i = 0; i < pattern->b; ++i) {
-            if (sema_pattern_contains_binder(
-                    ast, ast->pattern_items[pattern->a + i])) {
-                return true;
-            }
-        }
-        return false;
-    }
-    if (pattern->kind == APK_Plex) {
-        for (u32 i = 0; i < pattern->b; ++i) {
-            if (sema_pattern_contains_binder(
-                    ast, ast->pattern_fields[pattern->a + i].pattern_index)) {
-                return true;
-            }
-        }
-    }
-    if (pattern->kind == APK_EnumVariant) {
-        const AstEnumPattern* enum_pattern = &ast->enum_patterns[pattern->a];
-        for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
-            if (sema_pattern_contains_binder(
-                    ast, ast->pattern_items[enum_pattern->first_pattern + i])) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
                                               const Ast*   ast,
                                               Sema*        sema,
@@ -5478,8 +5443,43 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_Undefined:
     case AK_Continue:
     case AK_ContinueExpr:
-    case AK_Block:
         return true;
+    case AK_Block:
+        {
+            u32 block_scope = sema->node_scope_indices[node_index];
+            if (block_scope == sema_no_scope()) {
+                block_scope =
+                    sema_add_scope(sema, owner_decl_index, scope_index);
+                sema->node_scope_indices[node_index] = block_scope;
+                if (!sema_collect_block_statements(lexer,
+                                                   ast,
+                                                   owner_decl_index,
+                                                   current_function_symbol,
+                                                   block_scope,
+                                                   node->a,
+                                                   node->b,
+                                                   sema)) {
+                    return false;
+                }
+            }
+            for (u32 i = node->a; i < node->b; ++i) {
+                if (!ast_node_is_block_statement(&ast->nodes[i])) {
+                    continue;
+                }
+                if (!sema_resolve_node_refs(lexer,
+                                            ast,
+                                            owner_decl_index,
+                                            current_function_symbol,
+                                            capture_scope_index,
+                                            block_scope,
+                                            i,
+                                            sema)) {
+                    return false;
+                }
+                i = ast_block_statement_end_exclusive(ast, i) - 1;
+            }
+            return true;
+        }
     case AK_Break:
     case AK_BreakExpr:
         return node->a == U32_MAX ||
@@ -5524,6 +5524,31 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       scope_index,
                                       node->b,
                                       sema);
+    case AK_Variable:
+        {
+            u32 value_node_index = node->b;
+            if (value_node_index >= array_count(ast->nodes)) {
+                return true;
+            }
+            if (ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
+                sema_mark_type_expr_nodes(
+                    ast, sema, ast->nodes[value_node_index].a);
+                value_node_index = ast->nodes[value_node_index].b;
+            }
+            if (value_node_index >= array_count(ast->nodes) ||
+                ast->nodes[value_node_index].kind == AK_ZeroInit ||
+                ast->nodes[value_node_index].kind == AK_Undefined) {
+                return true;
+            }
+            return sema_resolve_node_refs(lexer,
+                                          ast,
+                                          owner_decl_index,
+                                          current_function_symbol,
+                                          capture_scope_index,
+                                          scope_index,
+                                          value_node_index,
+                                          sema);
+        }
     case AK_Field:
         {
             u32 ignored = sema_no_type();
@@ -5635,22 +5660,9 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                u32  branch_scope        = scope_index;
-                bool has_pattern_binders = false;
-                if (!(branch->flags & AOBF_Else)) {
-                    for (u32 pattern = 0; pattern < branch->pattern_count;
-                         ++pattern) {
-                        if (sema_pattern_contains_binder(
-                                ast,
-                                ast->pattern_items[branch->pattern_index +
-                                                   pattern])) {
-                            has_pattern_binders = true;
-                            break;
-                        }
-                    }
-                }
+                u32 branch_scope = scope_index;
                 if (branch->binder_symbol_handle != U32_MAX ||
-                    has_pattern_binders) {
+                    !(branch->flags & AOBF_Else)) {
                     branch_scope =
                         sema_add_scope(sema, owner_decl_index, scope_index);
                 }

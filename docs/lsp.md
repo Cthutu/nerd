@@ -104,6 +104,10 @@ Completion is semantic where possible:
   explicitly imports as child modules. This fallback relies on the stored
   document URI remaining valid across requests, because relative module imports
   are resolved from the active document path.
+- `payload.` inside an `on` branch can complete fields for an enum payload
+  binder such as `Variant(as payload) => { payload. }` even while the member
+  access is syntactically incomplete. The fallback repairs only the transient
+  completion analysis buffer; it does not mutate the open document.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and

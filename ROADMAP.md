@@ -476,6 +476,7 @@ the roadmap before committing the implementation.
   - [x] complete visible top-level declarations
   - [x] complete visible locals and parameters
   - [x] complete fields and inherent methods after `value.`
+  - [x] complete fields for enum payload binders in `on` branch bodies
   - [x] complete module paths after `use`
   - [x] complete public module symbols after module member access
 - [x] Add signature-help support:
