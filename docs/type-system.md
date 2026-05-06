@@ -294,6 +294,7 @@ plex type:
 Plex values are constructed with a named instance literal:
 
 - `point := Point { x: 3, y: 4 }`
+- `point := geometry.Point { x: 3, y: 4 }`
 
 Every field must be supplied exactly once. Unknown fields, duplicate fields,
 missing fields, and field value type mismatches are rejected during semantic

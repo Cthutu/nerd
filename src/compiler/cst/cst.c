@@ -2923,10 +2923,12 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         }
 
         if (token.kind == TK_LBrace) {
-            bool starts_plex = state->cst.nodes[left].kind == CK_SymbolRef &&
+            bool starts_plex = (state->cst.nodes[left].kind == CK_SymbolRef ||
+                                state->cst.nodes[left].kind == CK_Field) &&
                                (cst_peek_kind_at(state, 1) == TK_RBrace ||
                                 (cst_peek_kind_at(state, 1) == TK_Symbol &&
-                                 (cst_peek_kind_at(state, 2) == TK_Colon ||
+                                 ((cst_peek_kind_at(state, 2) == TK_Colon &&
+                                   cst_peek_kind_at(state, 3) != TK_Equal) ||
                                   cst_peek_kind_at(state, 2) == TK_Comma ||
                                   cst_peek_kind_at(state, 2) == TK_RBrace ||
                                   cst_peek_kind_at(state, 2) == TK_Symbol)));

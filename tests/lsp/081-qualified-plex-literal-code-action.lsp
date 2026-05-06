@@ -1,14 +1,10 @@
-Point :: plex {
-    x i32
-    y i32
-    visible bool
-    name string
-}
+types :: use test.lsp_types
 
-main :: fn () {
-    point := Point {
+main :: fn () -> i32 {
+    point := types.Point {
         x: 1
     }
+    return point.x
 }
 ¬
 [
@@ -22,12 +18,12 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 8,
-                    "character": 13
+                    "line": 3,
+                    "character": 21
                 },
                 "end": {
-                    "line": 8,
-                    "character": 13
+                    "line": 3,
+                    "character": 21
                 }
             },
             "context": {
@@ -92,12 +88,12 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 8,
-                            "character": 19
+                            "line": 3,
+                            "character": 25
                         },
                         "end": {
-                            "line": 8,
-                            "character": 20
+                            "line": 3,
+                            "character": 26
                         }
                     },
                     "severity": 1,
@@ -110,28 +106,28 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 8,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 25
                                     },
                                     "end": {
-                                        "line": 8,
-                                        "character": 20
+                                        "line": 3,
+                                        "character": 26
                                     }
                                 }
                             },
-                            "message": "note: Missing fields: `y`, `visible`, `name`"
+                            "message": "note: Missing field: `y`"
                         },
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 8,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 25
                                     },
                                     "end": {
-                                        "line": 8,
-                                        "character": 20
+                                        "line": 3,
+                                        "character": 26
                                     }
                                 }
                             },
@@ -155,15 +151,15 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 10,
+                                        "line": 5,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 10,
+                                        "line": 5,
                                         "character": 4
                                     }
                                 },
-                                "newText": "\n        y: 0\n        visible: no\n        name: \"\"\n    "
+                                "newText": "\n        y: 0\n    "
                             }
                         ]
                     }

@@ -2138,10 +2138,12 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
         }
 
         if (next.kind == TK_LBrace) {
-            bool starts_plex = state->nodes[left_node].kind == AK_SymbolRef &&
+            bool starts_plex = (state->nodes[left_node].kind == AK_SymbolRef ||
+                                state->nodes[left_node].kind == AK_Field) &&
                                (ast_peek_kind_at(state, 0) == TK_RBrace ||
                                 (ast_peek_kind_at(state, 0) == TK_Symbol &&
-                                 (ast_peek_kind_at(state, 1) == TK_Colon ||
+                                 ((ast_peek_kind_at(state, 1) == TK_Colon &&
+                                   ast_peek_kind_at(state, 2) != TK_Equal) ||
                                   ast_peek_kind_at(state, 1) == TK_Comma ||
                                   ast_peek_kind_at(state, 1) == TK_RBrace ||
                                   ast_peek_kind_at(state, 1) == TK_Symbol)));
