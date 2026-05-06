@@ -612,7 +612,8 @@ internal bool lsp_code_action_missing_plex_fields(Arena*             arena,
         }
     }
 
-    u32 missing_count = 0;
+    bool needs_leading_newline = literal->field_count > 0;
+    u32  missing_count         = 0;
     for (u32 i = 0; i < plex->param_count; ++i) {
         if (seen[i]) {
             continue;
@@ -626,7 +627,10 @@ internal bool lsp_code_action_missing_plex_fields(Arena*             arena,
                 &value)) {
             return false;
         }
-        sb_append_char(&sb, '\n');
+        if (needs_leading_newline) {
+            sb_append_char(&sb, '\n');
+        }
+        needs_leading_newline = true;
         sb_append_string(&sb, base_indent);
         sb_append_cstr(&sb, "    ");
         string name = lex_symbol(
@@ -708,7 +712,8 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
         }
     }
 
-    u32 missing_count = 0;
+    bool needs_leading_newline = literal->field_count > 0;
+    u32  missing_count         = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
         if (seen[i]) {
             continue;
@@ -722,7 +727,10 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
             return false;
         }
 
-        sb_append_char(&sb, '\n');
+        if (needs_leading_newline) {
+            sb_append_char(&sb, '\n');
+        }
+        needs_leading_newline = true;
         sb_append_string(&sb, base_indent);
         sb_append_cstr(&sb, "    ");
         string name = lex_symbol(type_lexer, field->symbol_handle);
