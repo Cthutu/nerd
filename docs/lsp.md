@@ -104,8 +104,8 @@ Completion is semantic where possible:
   slices, and dynamic arrays, and inherent methods for matching receiver types
   from semantic analysis. When later parse or semantic errors make full
   analysis unavailable, completion falls back to AST and light source-text
-  recovery for declarations and function parameters that appear before the
-  error.
+  recovery for declarations, function parameters, and `for item in collection`
+  binders that appear before the error.
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
   semantic errors. Folder-module fallback includes public declarations from
