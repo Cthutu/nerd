@@ -426,11 +426,12 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc) {
+    LspSemanticView view = {0};
+    if (!lsp_semantic_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);
         return;
     }
+    const LspDocument* doc = view.doc;
 
     u64 line      = 0;
     u64 character = 0;

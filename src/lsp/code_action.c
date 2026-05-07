@@ -940,12 +940,13 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->sema_partial) {
+    LspSemanticView view = {0};
+    if (!lsp_semantic_view(state, uri, &view)) {
         json_object_set_array(response, "result", actions);
         lsp_send_response(message->arena, response);
         return;
     }
+    const LspDocument* doc = view.doc;
 
     usize offset      = lsp_offset_from_position(doc->source, line, character);
     u32   close_token = U32_MAX;
