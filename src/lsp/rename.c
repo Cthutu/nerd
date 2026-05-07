@@ -23,13 +23,13 @@ typedef struct {
 } LspRenameTarget;
 
 typedef struct {
-    LspDocument* doc;
-    LspDocument  scratch_doc;
-    Lexer        scratch_lexer;
-    Ast          scratch_ast;
-    bool         has_scratch;
-    string       uri;
-    u32          token_index;
+    const LspDocument* doc;
+    LspDocument        scratch_doc;
+    Lexer              scratch_lexer;
+    Ast                scratch_ast;
+    bool               has_scratch;
+    string             uri;
+    u32                token_index;
 } LspRenameRequestContext;
 
 //------------------------------------------------------------------------------
@@ -197,7 +197,7 @@ internal void lsp_rename_request_context_done(LspRenameRequestContext* context)
 
 internal bool lsp_rename_parse_scratch_doc(LspRenameRequestContext* context,
                                            string                   uri,
-                                           LspDocument*             source_doc)
+                                           const LspDocument*       source_doc)
 {
     NerdSource source = {
         .source      = source_doc->source,
@@ -250,11 +250,12 @@ internal bool lsp_rename_get_context(LspState*                state,
         return false;
     }
 
-    context->uri = json_string(uri_value);
-    context->doc = LspDocumentMap_find(&state->documents, context->uri);
-    if (!context->doc) {
+    context->uri       = json_string(uri_value);
+    LspSourceView view = {0};
+    if (!lsp_source_view(state, context->uri, &view)) {
         return false;
     }
+    context->doc = view.doc;
 
     if (array_count(context->doc->front_end.lexer.tokens) == 0 ||
         array_count(context->doc->front_end.ast.nodes) == 0) {
