@@ -69,6 +69,15 @@ bool  lsp_get_u64_param(const LspMessage* message,
                         cstr              param_path,
                         u64*              out_value);
 usize lsp_offset_from_position(string source, u64 line, u64 character);
+bool  lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
+bool  lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
+bool  lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
+bool  lsp_sema_node_decl(const Sema* sema,
+                         u32         node_index,
+                         u32*        out_decl_index);
+bool  lsp_sema_node_type(const Sema* sema,
+                         u32         node_index,
+                         u32*        out_type_index);
 
 //------------------------------------------------------------------------------
 // LSP message handling

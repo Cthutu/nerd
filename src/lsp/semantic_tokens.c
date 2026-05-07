@@ -157,11 +157,11 @@ internal u32 lsp_semantic_find_decl_index_by_symbol_handle(const Sema* sema,
 
 internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
 {
-    if (decl_index == U32_MAX || decl_index >= array_count(sema->decls)) {
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(sema, decl_index, &decl)) {
         return false;
     }
 
-    const SemaDecl* decl = &sema->decls[decl_index];
     return decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
            decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction;
 }
@@ -184,9 +184,8 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
 
     u32 ref_node_index =
         lsp_semantic_find_symbol_ref_node(&doc->front_end.ast, token_index);
-    if (ref_node_index != U32_MAX &&
-        ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
+    u32 decl_index = U32_MAX;
+    if (lsp_sema_node_decl(&doc->front_end.sema, ref_node_index, &decl_index)) {
         if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
@@ -194,10 +193,8 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
 
     u32 field_node_index =
         lsp_semantic_find_field_node(&doc->front_end.ast, token_index);
-    if (field_node_index != U32_MAX &&
-        field_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        u32 decl_index =
-            doc->front_end.sema.node_decl_indices[field_node_index];
+    if (lsp_sema_node_decl(
+            &doc->front_end.sema, field_node_index, &decl_index)) {
         if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }

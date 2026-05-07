@@ -97,3 +97,81 @@ void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...)
     va_end(args);
     lsp_cancel(response, arena);
 }
+
+//------------------------------------------------------------------------------
+// Checked semantic accessors used by editor features. These keep partial sema
+// products from leaking unchecked side-table indices into feature handlers.
+
+bool lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out)
+{
+    if (!sema || decl_index == U32_MAX ||
+        decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+    if (out) {
+        *out = &sema->decls[decl_index];
+    }
+    return true;
+}
+
+bool lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out)
+{
+    if (!sema || local_index == U32_MAX ||
+        local_index >= array_count(sema->locals)) {
+        return false;
+    }
+    if (out) {
+        *out = &sema->locals[local_index];
+    }
+    return true;
+}
+
+bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out)
+{
+    if (!sema || type_index == sema_no_type() ||
+        type_index >= array_count(sema->types)) {
+        return false;
+    }
+    if (out) {
+        *out = &sema->types[type_index];
+    }
+    return true;
+}
+
+bool lsp_sema_node_decl(const Sema* sema,
+                        u32         node_index,
+                        u32*        out_decl_index)
+{
+    if (!sema || node_index == U32_MAX ||
+        node_index >= array_count(sema->node_decl_indices)) {
+        return false;
+    }
+
+    u32 decl_index = sema->node_decl_indices[node_index];
+    if (!lsp_sema_decl(sema, decl_index, NULL)) {
+        return false;
+    }
+    if (out_decl_index) {
+        *out_decl_index = decl_index;
+    }
+    return true;
+}
+
+bool lsp_sema_node_type(const Sema* sema,
+                        u32         node_index,
+                        u32*        out_type_index)
+{
+    if (!sema || node_index == U32_MAX ||
+        node_index >= array_count(sema->node_type_indices)) {
+        return false;
+    }
+
+    u32 type_index = sema->node_type_indices[node_index];
+    if (!lsp_sema_type(sema, type_index, NULL)) {
+        return false;
+    }
+    if (out_type_index) {
+        *out_type_index = type_index;
+    }
+    return true;
+}
