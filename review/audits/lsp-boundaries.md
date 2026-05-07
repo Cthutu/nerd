@@ -175,15 +175,24 @@ have started using these accessors.
 
 ### Analysis Snapshot Views
 
-Introduce small feature-facing views instead of exposing all of `LspDocument`:
+Feature-facing views now exist for token, syntax, and semantic products:
 
 ```c
 typedef struct {
+    const LspDocument* doc;
     string source;
     const Lexer* lexer;
 } LspTokenView;
 
 typedef struct {
+    const LspDocument* doc;
+    string source;
+    const Lexer* lexer;
+    const Ast* ast;
+} LspSyntaxView;
+
+typedef struct {
+    const LspDocument* doc;
     string source;
     const Lexer* lexer;
     const Ast* ast;
@@ -191,8 +200,8 @@ typedef struct {
 } LspSemanticView;
 ```
 
-The constructor for each view checks readiness once. Feature handlers then
-work against the narrowest view they need.
+The constructor for each view checks readiness once. Semantic tokens now uses
+`LspTokenView`; other feature handlers still need migration.
 
 ## Open Questions
 
@@ -210,7 +219,7 @@ work against the narrowest view they need.
 ## Next Actions
 
 1. Continue migrating hover and completion direct side-table reads.
-2. Add feature-facing view constructors for token, syntax, and semantic views.
+2. Migrate document symbols or completion to `LspSyntaxView`/`LspSemanticView`.
 3. Decide whether declaration and binding readiness need separate flags.
 4. Keep adding stress cases for chained edits, broken imports, incomplete type
    syntax, rename, and semantic tokens.

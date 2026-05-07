@@ -45,11 +45,14 @@ Implemented:
 - trivia-backed `format_node_has_trailing_comment(...)`
 - trivia-backed node trailing-comment emission through
   `format_emit_trailing_comment_after_token(...)`
+- trivia-backed offset trailing-comment lookup when the offset matches a token
+  boundary, with the previous offset scan retained as fallback
 
 The first slice is mostly passive: it constructs trivia tables on the current
 formatter paths, validates trailing-comment classification in debug builds, and
 uses the trivia table for token-indexed trailing-comment queries and node
-trailing-comment emission. It does not change emitted output.
+trailing-comment emission. Offset-based trailing-comment consumers now use the
+same trivia table where possible. It does not change emitted output.
 
 ## Acceptance Target
 
@@ -97,6 +100,16 @@ python3 build/test.py --filter tests/format
 format: 105 passed, 0 failed, 0 skipped
 ```
 
+Fourth verification after trivia-backed offset trailing-comment lookup:
+
+```text
+python3 build/format.py
+just build nerd
+python3 build/test.py --filter tests/format
+
+format: 105 passed, 0 failed, 0 skipped
+```
+
 ## Design Notes
 
 - `LEXER_MODE_FORMAT` already records `LexerComment` rows with offset,
@@ -122,6 +135,6 @@ format: 105 passed, 0 failed, 0 skipped
 
 ## Next Step
 
-Add either debug-only assertions or a temporary dump path to compare trivia
-classification against additional formatter comment handling, then move newline
-classification or block-comment lookup onto trivia.
+Move one leading-comment or newline-sensitive path onto `FormatTrivia`, ideally
+behind a narrow helper so the recursive formatter keeps shrinking toward a
+token/trivia state machine.
