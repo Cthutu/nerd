@@ -84,6 +84,7 @@
 // | CK_Assert          | Condition node index  | Message expr or U32_MAX |
 // | CK_ReturnExpr      | Expr node or U32_MAX  | 0                     |
 // | CK_BreakExpr       | Expr node or U32_MAX  | Symbol or U32_MAX    |
+// | CK_BreakOn         | Condition node index  | Break expr node      |
 // | CK_ContinueExpr    | 0                     | Symbol or U32_MAX    |
 // | CK_ExprBlock       | Block node index      | Symbol or U32_MAX    |
 // | CK_Block           | First stmt index      | End-exclusive index   |
@@ -171,6 +172,7 @@ typedef enum {
     CK_Assert,
     CK_ReturnExpr,
     CK_BreakExpr,
+    CK_BreakOn,
     CK_ContinueExpr,
     CK_ExprBlock,
     CK_Block,

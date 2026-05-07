@@ -2333,6 +2333,68 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                          out_node);
 }
 
+internal bool cst_parse_break_on_expr(CstParseState* state,
+                                      u32            break_token_index,
+                                      u32            label,
+                                      u32*           out_node)
+{
+    ASSERT(cst_current_token(state).kind == TK_on, "Expected on token");
+    cst_advance(state);
+
+    u32 condition = 0;
+    {
+        bool previous_allow_statement_boundary =
+            state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool parsed = cst_parse_expr_bp(state, 0, &condition);
+        state->allow_statement_boundary = previous_allow_statement_boundary;
+        if (!parsed) {
+            return false;
+        }
+    }
+
+    if (!cst_consume(state, TK_FatArrow)) {
+        return false;
+    }
+
+    u32 payload = 0;
+    {
+        bool previous_stop_before_on_branch_head =
+            state->stop_before_on_branch_head;
+        bool previous_allow_statement_boundary =
+            state->allow_statement_boundary;
+        state->allow_statement_boundary   = true;
+        state->stop_before_on_branch_head = true;
+        bool parsed                     = cst_parse_expr_bp(state, 0, &payload);
+        state->allow_statement_boundary = previous_allow_statement_boundary;
+        state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
+        if (!parsed) {
+            return false;
+        }
+    }
+
+    u32 break_expr = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_BreakExpr,
+                           .token_index = break_token_index,
+                           .a           = payload,
+                           .b           = label,
+                       },
+                       &break_expr)) {
+        return false;
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_BreakOn,
+                             .token_index = break_token_index,
+                             .a           = condition,
+                             .b           = break_expr,
+                         },
+                         out_node);
+}
+
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
 {
     if (cst_current_token(state).kind == TK_LBrace) {
@@ -2395,6 +2457,10 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
             }
             label = cst_current_symbol_handle(state);
             cst_advance(state);
+        }
+        if (kind == CK_BreakExpr && cst_current_token(state).kind == TK_on &&
+            !cst_token_has_newline_before(state, state->token_index)) {
+            return cst_parse_break_on_expr(state, token_index, label, out_node);
         }
         u32 expr = U32_MAX;
         if (kind == CK_BreakExpr &&
@@ -3953,6 +4019,9 @@ internal bool cst_parse_block_statement(CstParseState* state)
             label = cst_current_symbol_handle(state);
             cst_advance(state);
         }
+        if (kind == CK_Break && cst_current_token(state).kind == TK_on) {
+            return cst_parse_break_on_expr(state, token_index, label, NULL);
+        }
         if (kind == CK_Break &&
             cst_token_starts_expression(cst_current_token(state).kind)) {
             if (!cst_parse_expr_bp(state, 0, &payload)) {
@@ -5172,8 +5241,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_Return || node->kind == CK_Bind ||
            node->kind == CK_For || node->kind == CK_Defer ||
            node->kind == CK_Assert || node->kind == CK_Break ||
-           node->kind == CK_Continue || node->kind == CK_Variable ||
-           node->kind == CK_DestructureBind ||
+           node->kind == CK_BreakOn || node->kind == CK_Continue ||
+           node->kind == CK_Variable || node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||

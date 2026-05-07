@@ -164,6 +164,19 @@ find :: fn (values: [..]i32, needle: i32) -> i32 {
 Expression blocks are still value targets, so `break $label <expr>` can target a
 labelled expression block when that is the nearest matching label.
 
+The same conditional break can be written with `break [label] on <condition> =>
+<expr>`:
+
+```nerd
+find :: fn (values: [..]i32, needle: i32) -> i32 {
+    return for value in values {
+        break on value == needle => value
+    } else {
+        break -1
+    }
+}
+```
+
 ## Labels
 
 Loops can also use labels when nested control flow needs an explicit target.

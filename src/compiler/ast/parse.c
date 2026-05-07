@@ -2883,6 +2883,22 @@ internal bool ast_parse_block_statement(AstParseState* state)
             }
             label = state->token.value.symbol_handle;
         }
+        if (kind == AK_Break && ast_cursor_kind(state) == TK_on) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            u32 on_node = 0;
+            if (!ast_parse_break_on_expr(state, token_index, label, &on_node)) {
+                return false;
+            }
+            return ast_emit_node(state,
+                                 (AstNode){
+                                     .kind        = AK_Statement,
+                                     .token_index = token_index,
+                                     .a           = on_node,
+                                 },
+                                 NULL);
+        }
         if (kind == AK_Break &&
             ast_token_starts_expression(ast_cursor_kind(state))) {
             if (!ast_next_token(state)) {

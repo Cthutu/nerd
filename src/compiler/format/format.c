@@ -772,6 +772,22 @@ internal void format_emit_expr(StringBuilder* sb,
             format_emit_expr(sb, cst, lexer, node->a, 0);
         }
         break;
+    case CK_BreakOn:
+        {
+            const CstNode* break_node = &cst->nodes[node->b];
+            ASSERT(break_node->kind == CK_BreakExpr,
+                   "Expected break expression");
+            sb_append_cstr(sb, "break");
+            if (break_node->b != U32_MAX) {
+                sb_append_cstr(sb, " $");
+                sb_append_string(sb, lex_symbol(lexer, break_node->b));
+            }
+            sb_append_cstr(sb, " on ");
+            format_emit_expr(sb, cst, lexer, node->a, 0);
+            sb_append_cstr(sb, " => ");
+            format_emit_expr(sb, cst, lexer, break_node->a, 0);
+        }
+        break;
     case CK_ContinueExpr:
         sb_append_cstr(sb, "continue");
         if (node->b != U32_MAX) {
@@ -1764,6 +1780,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
             return format_node_end_token_index(cst, lexer, node->a);
         }
         return node->b == U32_MAX ? node->token_index : node->token_index + 2;
+    case CK_BreakOn:
+        return format_node_end_token_index(cst, lexer, cst->nodes[node->b].a);
     case CK_Continue:
     case CK_ContinueExpr:
         return node->b == U32_MAX ? node->token_index : node->token_index + 2;
@@ -4729,7 +4747,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
-    if (stmt->kind == CK_Break || stmt->kind == CK_Continue) {
+    if (stmt->kind == CK_Break || stmt->kind == CK_BreakOn ||
+        stmt->kind == CK_Continue) {
+        if (stmt->kind == CK_BreakOn) {
+            format_emit_expr_with_indent(
+                sb, cst, lexer, node_index, 0, indent_level);
+            sb_append_char(sb, '\n');
+            return;
+        }
         sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "continue");
         if (stmt->b != U32_MAX) {
             sb_append_cstr(sb, " $");
