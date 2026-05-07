@@ -135,6 +135,39 @@ Follow-up:
   crash.
 - Continue with semantic tokens, rename, and module completion after edits.
 
+## Structured Stress Baseline
+
+Date: 2026-05-07
+
+Command:
+
+```sh
+python3 build/review_lsp_stress.py
+```
+
+Result:
+
+```text
+[PASS] completion after member field delete
+[PASS] hover after member field delete
+[PASS] semantic tokens after member field delete
+[PASS] document symbols after member field delete
+[PASS] rename after member field delete
+[PASS] module completion after broken use edit
+[PASS] semantic tokens after broken generic edit
+[PASS] hover after broken generic edit
+```
+
+Interpretation:
+
+- These partial-edit paths do not currently crash when reduced to deterministic
+  stdin/stdout LSP sessions.
+- This runner is not a substitute for transcript regression tests. It is a
+  cheap way to grow crash-shape coverage while deciding which cases deserve
+  permanent `.lsp` transcripts.
+- A request-level JSON-RPC response is required for every stress request; a
+  process exit, malformed frame stream, or missing response is a failure.
+
 ## Existing Coverage Groups
 
 The current suite covers:
