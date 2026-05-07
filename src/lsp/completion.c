@@ -127,7 +127,7 @@ internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
                                             string             symbol,
                                             usize              offset)
 {
-    if (!doc->semantic_ready) {
+    if (!doc->sema_partial) {
         return sema_no_type();
     }
 
@@ -783,7 +783,11 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             .source    = repaired,
             .front_end = program.modules[program.root_module_index].front_end,
             .program   = program,
-            .semantic_ready = ok,
+            .source_ready  = true,
+            .tokens_ready  = true,
+            .syntax_ready  = true,
+            .sema_partial  = ok,
+            .sema_complete = ok,
         };
         for (u32 i = 0; i < array_count(program.modules); ++i) {
             program.modules[i].front_end.sema.program = &program;
@@ -2949,7 +2953,7 @@ internal void lsp_completion_add_symbols(Arena*             arena,
                                          JsonValue*         items,
                                          const LspDocument* doc)
 {
-    if (!doc->semantic_ready) {
+    if (!doc->sema_partial) {
         const Lexer* lexer = &doc->front_end.lexer;
         const Ast*   ast   = &doc->front_end.ast;
         for (u32 i = 0; i < array_count(ast->nodes); ++i) {

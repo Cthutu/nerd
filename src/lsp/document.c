@@ -213,8 +213,11 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->program        = (ProgramInfo){0};
     doc->front_end      = (FrontEndState){0};
     doc->analysis_ok    = false;
-    doc->semantic_ready = false;
-    doc->has_cst        = false;
+    doc->tokens_ready   = false;
+    doc->syntax_ready   = false;
+    doc->sema_partial   = false;
+    doc->sema_complete  = false;
+    doc->cst_ready      = false;
 }
 
 internal void lsp_document_set_source(LspDocument* doc, string content)
@@ -222,7 +225,8 @@ internal void lsp_document_set_source(LspDocument* doc, string content)
     arena_reset(&doc->source_arena);
     u8* document_copy = (u8*)arena_alloc(&doc->source_arena, content.count);
     memcpy(document_copy, content.data, content.count);
-    doc->source = (string){.data = document_copy, .count = content.count};
+    doc->source       = (string){.data = document_copy, .count = content.count};
+    doc->source_ready = true;
 }
 
 internal bool
@@ -230,10 +234,14 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
 {
     *staged = (LspDocument){0};
     arena_init(&staged->arena);
-    staged->analysis_ok    = false;
-    staged->semantic_ready = false;
-    staged->has_cst        = false;
-    staged->source         = content;
+    staged->analysis_ok   = false;
+    staged->source_ready  = true;
+    staged->tokens_ready  = false;
+    staged->syntax_ready  = false;
+    staged->sema_partial  = false;
+    staged->sema_complete = false;
+    staged->cst_ready     = false;
+    staged->source        = content;
 
     u8* uri_copy           = arena_alloc(&staged->arena, uri.count);
     memcpy(uri_copy, uri.data, uri.count);
@@ -263,8 +271,9 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
-    if (array_count(staged->front_end.lexer.tokens) == 0 ||
-        array_count(staged->front_end.ast.nodes) == 0) {
+    staged->tokens_ready = array_count(staged->front_end.lexer.tokens) > 0;
+    staged->syntax_ready = array_count(staged->front_end.ast.nodes) > 0;
+    if (!staged->tokens_ready || !staged->syntax_ready) {
         if (!ok) {
             lsp_log("Front-end analysis failed for current document contents");
         }
@@ -272,13 +281,14 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
         return false;
     }
 
-    staged->analysis_ok    = ok;
-    staged->semantic_ready = true;
+    staged->analysis_ok   = ok;
+    staged->sema_partial  = true;
+    staged->sema_complete = ok;
     if (!ok) {
         lsp_log("Keeping partial front-end analysis for editor features");
     }
     if (cst_parse(&staged->front_end.lexer, &staged->cst)) {
-        staged->has_cst = true;
+        staged->cst_ready = true;
     } else {
         lsp_log("CST parsing failed for current document contents");
     }
@@ -304,8 +314,12 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
         doc->program.modules[doc->program.root_module_index].front_end;
     doc->cst            = staged.cst;
     doc->analysis_ok    = staged.analysis_ok;
-    doc->semantic_ready = staged.semantic_ready;
-    doc->has_cst        = staged.has_cst;
+    doc->source_ready   = staged.source_ready;
+    doc->tokens_ready   = staged.tokens_ready;
+    doc->syntax_ready   = staged.syntax_ready;
+    doc->sema_partial   = staged.sema_partial;
+    doc->sema_complete  = staged.sema_complete;
+    doc->cst_ready      = staged.cst_ready;
     return staged.analysis_ok;
 }
 

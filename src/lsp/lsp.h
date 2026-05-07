@@ -27,8 +27,12 @@ typedef struct {
     FrontEndState front_end;      // Compiler front-end results for the document
     Cst           cst;            // Concrete syntax tree for editor tooling
     bool          analysis_ok;    // Whether front-end analysis succeeded
-    bool          semantic_ready; // Whether semantic data is usable
-    bool          has_cst;        // Whether CST parsing succeeded
+    bool          source_ready;   // Whether editor source is stored
+    bool          tokens_ready;   // Whether lexer tokens are usable
+    bool          syntax_ready;   // Whether AST syntax is usable
+    bool          sema_partial;   // Whether partial semantic facts are usable
+    bool          sema_complete;  // Whether semantic analysis fully succeeded
+    bool          cst_ready;      // Whether CST parsing succeeded
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,

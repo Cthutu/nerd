@@ -2053,7 +2053,7 @@ internal bool lsp_get_request_context(LspState*         state,
     if (!*out_doc) {
         return false;
     }
-    if (!(*out_doc)->semantic_ready) {
+    if (!(*out_doc)->sema_partial) {
         return false;
     }
 
@@ -2386,7 +2386,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
 
     string       uri = json_string(uri_value);
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->semantic_ready) {
+    if (!doc || !doc->sema_partial) {
         json_object_set_array(
             response, "result", json_new_array(message->arena));
         lsp_send_response(message->arena, response);
@@ -2395,7 +2395,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
 
     JsonValue* result = json_new_array(message->arena);
 
-    if (doc->has_cst) {
+    if (doc->cst_ready) {
         for (u32 i = 0; i < array_count(doc->cst.bindings); ++i) {
             const CstNode* bind       = &doc->cst.nodes[doc->cst.bindings[i]];
             u32            decl_index = lsp_find_decl_index_by_symbol_handle(

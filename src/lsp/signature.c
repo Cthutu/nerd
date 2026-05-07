@@ -330,7 +330,7 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
 internal const SemaDecl* lsp_signature_find_decl(const LspDocument* doc,
                                                  string             name)
 {
-    if (!doc->semantic_ready) {
+    if (!doc->sema_partial) {
         return NULL;
     }
 

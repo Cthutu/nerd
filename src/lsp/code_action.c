@@ -941,7 +941,7 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     }
 
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->semantic_ready) {
+    if (!doc || !doc->sema_partial) {
         json_object_set_array(response, "result", actions);
         lsp_send_response(message->arena, response);
         return;
