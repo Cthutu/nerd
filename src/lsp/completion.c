@@ -1628,6 +1628,12 @@ internal bool lsp_completion_source_for_item_type_before(Arena*  arena,
         line        = lsp_completion_trim(lsp_completion_strip_comment(line));
 
         usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("return"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
         if (!lsp_completion_match_ident_at(line, &i, s("for"))) {
             line_start = line_end + (line_end < source.count ? 1 : 0);
             continue;

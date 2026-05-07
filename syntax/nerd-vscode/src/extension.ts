@@ -295,6 +295,19 @@ async function startLanguageServer(context: vscode.ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "nerd" }],
         outputChannel,
+        middleware: {
+            async provideCompletionItem(document, position, context, token, next) {
+                const result = await next(document, position, context, token);
+                if (!result) {
+                    return result;
+                }
+                if (Array.isArray(result)) {
+                    return new vscode.CompletionList(result, true);
+                }
+                result.isIncomplete = true;
+                return result;
+            },
+        },
     };
 
     const nextClient = new LanguageClient(

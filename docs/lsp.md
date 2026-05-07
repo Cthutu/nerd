@@ -105,7 +105,8 @@ Completion is semantic where possible:
   from semantic analysis. When later parse or semantic errors make full
   analysis unavailable, completion falls back to AST and light source-text
   recovery for declarations, function parameters, and `for item in collection`
-  binders that appear before the error.
+  binders that appear before the error, including loop expressions used as
+  `return for ...`.
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
   semantic errors. Folder-module fallback includes public declarations from
@@ -129,6 +130,9 @@ should include the built-in fields `data`, `count`, `capacity`, plus methods
 
 Completion results are filtered by the server using the exact typed prefix.
 Matching is case-sensitive, matching Nerd symbol resolution.
+The VS Code client marks Nerd completion lists as incomplete so the editor
+re-queries the server as the user continues typing; this prevents VS Code's
+cached, case-insensitive client filtering from showing stale mismatched items.
 
 Signature help is triggered by `(` and `,`. It resolves the callable name through
 the semantic declaration table, reports the active argument, includes default
