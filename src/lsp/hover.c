@@ -1156,6 +1156,359 @@ internal string lsp_local_hover_text(const LspDocument* doc,
 }
 
 //------------------------------------------------------------------------------
+// AST-only field lookup helpers used when semantic analysis stopped before it
+// attached type information to a field receiver.
+
+internal u32 lsp_ast_type_symbol_with_self(const Lexer* lexer,
+                                           const Ast*   ast,
+                                           u32          type_node_index,
+                                           u32          self_symbol)
+{
+    if (type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind == AK_Expression || type_node->kind == AK_Statement) {
+        return lsp_ast_type_symbol_with_self(
+            lexer, ast, type_node->a, self_symbol);
+    }
+    if (type_node->kind == AK_SymbolRef) {
+        if (self_symbol != U32_MAX &&
+            string_eq(lex_symbol(lexer, type_node->a), s("Self"))) {
+            return self_symbol;
+        }
+        return type_node->a;
+    }
+    if (type_node->kind == AK_TypePointer) {
+        return lsp_ast_type_symbol_with_self(
+            lexer, ast, type_node->a, self_symbol);
+    }
+    return U32_MAX;
+}
+
+internal u32 lsp_ast_type_symbol(const Lexer* lexer,
+                                 const Ast*   ast,
+                                 u32          type_node_index)
+{
+    return lsp_ast_type_symbol_with_self(lexer, ast, type_node_index, U32_MAX);
+}
+
+internal u32 lsp_ast_impl_self_symbol_at_token(const LspDocument* doc,
+                                               u32                token_index)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    if (token_index >= array_count(lexer->tokens)) {
+        return U32_MAX;
+    }
+
+    usize offset = lexer->tokens[token_index].offset;
+    for (u32 impl_index = 0; impl_index < array_count(ast->impls);
+         ++impl_index) {
+        const AstImplInfo* impl = &ast->impls[impl_index];
+        if (impl->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        u32 impl_node_index = U32_MAX;
+        for (u32 node_index = 0; node_index < array_count(ast->nodes);
+             ++node_index) {
+            const AstNode* node = &ast->nodes[node_index];
+            if (node->kind == AK_Impl && node->a == impl_index) {
+                impl_node_index = node_index;
+                break;
+            }
+        }
+        if (impl_node_index == U32_MAX) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[impl_node_index];
+        if (impl_node->token_index >= array_count(lexer->tokens) ||
+            lexer->tokens[impl_node->token_index].offset > offset) {
+            continue;
+        }
+
+        usize          end  = lexer->source.source.count;
+        const AstNode* body = &ast->nodes[impl->body_node_index];
+        if (body->kind == AK_Block) {
+            end = 0;
+            for (u32 node_index = body->a;
+                 node_index < body->b && node_index < array_count(ast->nodes);
+                 ++node_index) {
+                const AstNode* node = &ast->nodes[node_index];
+                if (node->token_index < array_count(lexer->tokens)) {
+                    end = MAX(end,
+                              lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]));
+                }
+            }
+        }
+        if (end != 0 && offset > end) {
+            continue;
+        }
+
+        return lsp_ast_type_symbol(lexer, ast, impl->target_type_node_index);
+    }
+
+    return U32_MAX;
+}
+
+internal u32 lsp_ast_receiver_type_symbol(const LspDocument* doc,
+                                          u32 receiver_node_index,
+                                          u32 field_token_index)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    if (receiver_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* receiver_node = &ast->nodes[receiver_node_index];
+    if (receiver_node->kind != AK_SymbolRef || receiver_node->a == U32_MAX) {
+        return U32_MAX;
+    }
+
+    u32   receiver_symbol = receiver_node->a;
+    usize field_offset    = field_token_index < array_count(lexer->tokens)
+                                ? lexer->tokens[field_token_index].offset
+                                : lexer->source.source.count;
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if ((node->kind != AK_Variable && node->kind != AK_Bind) ||
+            node->a != receiver_symbol || node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind == AK_AnnotatedValue || value->kind == AK_ZeroInit ||
+            value->kind == AK_Undefined) {
+            return lsp_ast_type_symbol(lexer, ast, value->a);
+        }
+    }
+
+    u32   best_type_symbol = U32_MAX;
+    usize best_offset      = 0;
+    for (u32 signature_index = 0;
+         signature_index < array_count(ast->fn_signatures);
+         ++signature_index) {
+        const AstFnSignature* signature = &ast->fn_signatures[signature_index];
+        for (u32 i = 0; i < signature->param_count; ++i) {
+            u32 param_index = signature->first_param + i;
+            if (param_index >= array_count(ast->params)) {
+                break;
+            }
+            const AstParam* param = &ast->params[param_index];
+            if (param->symbol_handle != receiver_symbol ||
+                param->token_index >= array_count(lexer->tokens)) {
+                continue;
+            }
+            usize param_offset = lexer->tokens[param->token_index].offset;
+            if (param_offset > field_offset || param_offset < best_offset) {
+                continue;
+            }
+
+            u32 self_symbol =
+                lsp_ast_impl_self_symbol_at_token(doc, field_token_index);
+            u32 type_symbol = lsp_ast_type_symbol_with_self(
+                lexer, ast, param->type_node_index, self_symbol);
+            if (type_symbol != U32_MAX) {
+                best_type_symbol = type_symbol;
+                best_offset      = param_offset;
+            }
+        }
+    }
+
+    return best_type_symbol;
+}
+
+internal const AstPlexField* lsp_ast_find_field_for_type_symbol(
+    const LspDocument* doc, u32 type_symbol, u32 field_symbol)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Bind || node->a != type_symbol ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypePlex) {
+            continue;
+        }
+        if (value->a >= array_count(ast->plex_types)) {
+            return NULL;
+        }
+
+        const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
+        for (u32 field_index = 0; field_index < plex->field_count;
+             ++field_index) {
+            u32 ast_field_index = plex->first_field + field_index;
+            if (ast_field_index >= array_count(ast->plex_fields)) {
+                break;
+            }
+
+            const AstPlexField* field = &ast->plex_fields[ast_field_index];
+            if (field->symbol_handle == field_symbol) {
+                return field;
+            }
+        }
+    }
+    return NULL;
+}
+
+internal usize lsp_ast_type_node_end_offset(const LspDocument* doc,
+                                            u32                type_node_index)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+
+    const AstNode* node = &ast->nodes[type_node_index];
+    if (node->token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+
+    switch (node->kind) {
+    case AK_Expression:
+    case AK_Statement:
+    case AK_TypePointer:
+    case AK_TypeSlice:
+        {
+            usize end = lsp_ast_type_node_end_offset(doc, node->a);
+            return end != 0 ? end
+                            : lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeArray:
+    case AK_TypeDynamicArray:
+        {
+            usize end = lsp_ast_type_node_end_offset(doc, node->b);
+            return end != 0 ? end
+                            : lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeTuple:
+        {
+            if (node->b != 0) {
+                u32 last_item = node->a + node->b - 1;
+                if (last_item < array_count(ast->tuple_items)) {
+                    usize end = lsp_ast_type_node_end_offset(
+                        doc, ast->tuple_items[last_item]);
+                    if (end != 0) {
+                        return end;
+                    }
+                }
+            }
+            return lex_token_end_offset(lexer,
+                                        &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeApply:
+        {
+            if (node->a < array_count(ast->type_applications)) {
+                const AstTypeApplyInfo* apply =
+                    &ast->type_applications[node->a];
+                if (apply->arg_count != 0) {
+                    u32 last_arg = apply->first_arg + apply->arg_count - 1;
+                    if (last_arg < array_count(ast->tuple_items)) {
+                        usize end = lsp_ast_type_node_end_offset(
+                            doc, ast->tuple_items[last_arg]);
+                        if (end != 0) {
+                            return end;
+                        }
+                    }
+                }
+                usize end =
+                    lsp_ast_type_node_end_offset(doc, apply->target_node_index);
+                if (end != 0) {
+                    return end;
+                }
+            }
+            return lex_token_end_offset(lexer,
+                                        &lexer->tokens[node->token_index]);
+        }
+    default:
+        return lex_token_end_offset(lexer, &lexer->tokens[node->token_index]);
+    }
+}
+
+internal string lsp_ast_type_node_source(const LspDocument* doc,
+                                         u32                type_node_index)
+{
+    if (type_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("<unknown>");
+    }
+    const AstNode* node = &doc->front_end.ast.nodes[type_node_index];
+    if (node->token_index >= array_count(doc->front_end.lexer.tokens)) {
+        return s("<unknown>");
+    }
+
+    usize start = doc->front_end.lexer.tokens[node->token_index].offset;
+    usize end   = lsp_ast_type_node_end_offset(doc, type_node_index);
+    if (end <= start || end > doc->front_end.lexer.source.source.count) {
+        return s("<unknown>");
+    }
+    return lsp_trim_source(doc, start, end);
+}
+
+internal string lsp_ast_field_hover_text(const LspDocument* doc,
+                                         Arena*             arena,
+                                         u32                field_node_index)
+{
+    if (field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("");
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind != AK_Field) {
+        return s("");
+    }
+
+    u32 type_symbol =
+        lsp_ast_receiver_type_symbol(doc, field->a, field->token_index);
+    if (type_symbol == U32_MAX) {
+        return s("");
+    }
+
+    const AstPlexField* plex_field =
+        lsp_ast_find_field_for_type_symbol(doc, type_symbol, field->b);
+    if (plex_field == NULL) {
+        return s("");
+    }
+
+    string type = s("<unknown>");
+    if (plex_field->type_node_index <
+        array_count(doc->front_end.sema.node_type_indices)) {
+        u32 type_index =
+            doc->front_end.sema.node_type_indices[plex_field->type_node_index];
+        if (type_index != sema_no_type() &&
+            type_index < array_count(doc->front_end.sema.types)) {
+            type = sema_type_name(
+                &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
+        }
+    }
+    if (string_eq(type, s("<unknown>"))) {
+        type = lsp_ast_type_node_source(doc, plex_field->type_node_index);
+    }
+
+    string name  = lex_symbol(&doc->front_end.lexer, field->b);
+    string owner = lex_symbol(&doc->front_end.lexer, type_symbol);
+    return string_format(
+        arena,
+        STRINGP "\n\n- Kind: plex field\n- Type: `" STRINGP "`"
+                "\n- Owner: `" STRINGP "`",
+        STRINGV(lsp_markdown_code_block(
+            arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(type),
+        STRINGV(owner));
+}
+
+//------------------------------------------------------------------------------
 // Return a hover summary for one plex/union field access.
 
 internal string lsp_field_hover_text(const LspDocument* doc,
@@ -1169,13 +1522,13 @@ internal string lsp_field_hover_text(const LspDocument* doc,
     const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
     if (field->kind != AK_Field ||
         field->a >= array_count(doc->front_end.sema.node_type_indices)) {
-        return s("");
+        return lsp_ast_field_hover_text(doc, arena, field_node_index);
     }
 
     u32 target_type = doc->front_end.sema.node_type_indices[field->a];
     if (target_type == sema_no_type() ||
         target_type >= array_count(doc->front_end.sema.types)) {
-        return s("");
+        return lsp_ast_field_hover_text(doc, arena, field_node_index);
     }
 
     const SemaType* target = &doc->front_end.sema.types[target_type];
@@ -1531,6 +1884,48 @@ internal JsonValue* lsp_unique_record_field_location(const LspDocument* doc,
     return location;
 }
 
+internal JsonValue* lsp_ast_field_location(const LspDocument* doc,
+                                           Arena*             arena,
+                                           string             uri,
+                                           u32                field_node_index)
+{
+    if (field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind != AK_Field) {
+        return NULL;
+    }
+
+    u32 type_symbol =
+        lsp_ast_receiver_type_symbol(doc, field->a, field->token_index);
+    if (type_symbol == U32_MAX) {
+        return NULL;
+    }
+
+    const AstPlexField* plex_field =
+        lsp_ast_find_field_for_type_symbol(doc, type_symbol, field->b);
+    if (plex_field == NULL) {
+        return NULL;
+    }
+
+    usize start_offset;
+    usize end_offset;
+    lsp_token_offsets(&doc->front_end.lexer,
+                      plex_field->token_index,
+                      &start_offset,
+                      &end_offset);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location,
+        "range",
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
+    return location;
+}
+
 //------------------------------------------------------------------------------
 // Build a location object for one plex/union field-access token.
 
@@ -1546,13 +1941,13 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
     const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
     if (field->kind != AK_Field ||
         field->a >= array_count(doc->front_end.sema.node_type_indices)) {
-        return NULL;
+        return lsp_ast_field_location(doc, arena, uri, field_node_index);
     }
 
     u32 target_type = doc->front_end.sema.node_type_indices[field->a];
     if (target_type == sema_no_type() ||
         target_type >= array_count(doc->front_end.sema.types)) {
-        return NULL;
+        return lsp_ast_field_location(doc, arena, uri, field_node_index);
     }
 
     const SemaType* target = &doc->front_end.sema.types[target_type];
@@ -1618,6 +2013,12 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
         lsp_local_record_field_location(doc, arena, uri, target_type, field->b);
     if (location != NULL) {
         return location;
+    }
+
+    JsonValue* ast_location =
+        lsp_ast_field_location(doc, arena, uri, field_node_index);
+    if (ast_location != NULL) {
+        return ast_location;
     }
 
     return lsp_unique_record_field_location(doc, arena, uri, field->b);

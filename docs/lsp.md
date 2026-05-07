@@ -76,6 +76,11 @@ Hover uses semantic tables for:
 - function signature text
 - constant integer values when they can be evaluated
 
+For field access hover and definition, the server falls back to AST type
+annotations when semantic analysis stops before attaching receiver type data.
+This keeps `param.field` useful while code is mid-edit, including cases where
+the field access itself is part of the current diagnostic.
+
 Definition jumps resolve through semantic declaration indices and then convert
 the binding token span back into an LSP range.
 
