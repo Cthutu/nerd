@@ -67,21 +67,21 @@ lsp_semantic_string_find(string haystack, string needle, usize* out_offset)
 // source; LSP semantic token positions still have to be reported relative to
 // the file the editor opened.
 
-internal bool lsp_semantic_visible_range(const LspDocument*       doc,
+internal bool lsp_semantic_visible_range(const LspTokenView*      view,
                                          LspSemanticVisibleRange* out_range)
 {
-    const NerdSource analysed = doc->front_end.lexer.source;
+    const NerdSource analysed = view->lexer->source;
     string           source   = analysed.source;
 
-    if (string_eq(source, doc->source) ||
-        lsp_semantic_string_starts_with(source, doc->source)) {
+    if (string_eq(source, view->source) ||
+        lsp_semantic_string_starts_with(source, view->source)) {
         out_range->start_offset = 0;
     } else if (!lsp_semantic_string_find(
-                   source, doc->source, &out_range->start_offset)) {
+                   source, view->source, &out_range->start_offset)) {
         return false;
     }
 
-    out_range->end_offset = out_range->start_offset + doc->source.count;
+    out_range->end_offset = out_range->start_offset + view->source.count;
     if (!lex_offset_to_line_col(analysed,
                                 out_range->start_offset,
                                 &out_range->start_line,
@@ -349,12 +349,13 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         return;
     }
 
-    string       uri = json_string(uri_value);
-    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->tokens_ready) {
+    string       uri  = json_string(uri_value);
+    LspTokenView view = {0};
+    if (!lsp_token_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);
         return;
     }
+    const LspDocument* doc = view.doc;
 
     JsonValue*              result         = json_new_object(message->arena);
     JsonValue*              data           = json_new_array(message->arena);
@@ -362,19 +363,19 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
     u32                     previous_start = 0;
     bool                    have_previous  = false;
     LspSemanticVisibleRange visible        = {0};
-    if (!lsp_semantic_visible_range(doc, &visible)) {
+    if (!lsp_semantic_visible_range(&view, &visible)) {
         lsp_cancel(response, message->arena);
         return;
     }
 
-    for (u32 i = 0; i < array_count(doc->front_end.lexer.tokens); ++i) {
+    for (u32 i = 0; i < array_count(view.lexer->tokens); ++i) {
         u32 type = 0;
         if (!lsp_semantic_token_type(doc, i, &type)) {
             continue;
         }
 
-        const Token* token = &doc->front_end.lexer.tokens[i];
-        u32 end = (u32)lex_token_end_offset(&doc->front_end.lexer, token);
+        const Token* token = &view.lexer->tokens[i];
+        u32 end = (u32)lex_token_end_offset(view.lexer, token);
         if (token->offset < visible.start_offset || end > visible.end_offset) {
             continue;
         }
@@ -382,7 +383,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         u32  line  = 0;
         u32  start = 0;
         bool ok    = lex_offset_to_line_col(
-            doc->front_end.lexer.source, token->offset, &line, &start);
+            view.lexer->source, token->offset, &line, &start);
         ASSERT(ok, "Expected valid token offset");
         UNUSED(ok);
 

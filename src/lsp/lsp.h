@@ -42,6 +42,27 @@ typedef struct {
     LspDocumentMap documents;
 } LspState;
 
+typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+} LspTokenView;
+
+typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+    const Ast*         ast;
+} LspSyntaxView;
+
+typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+    const Ast*         ast;
+    const Sema*        sema;
+} LspSemanticView;
+
 //------------------------------------------------------------------------------
 
 void lsp_logv(cstr format, va_list args);
@@ -66,6 +87,9 @@ void lsp_done(LspState* state);
 // LSP document utilities
 
 void  lsp_document_done(LspDocument* doc);
+bool  lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
+bool  lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
+bool  lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
 bool  lsp_get_string_param(const LspMessage* message,
                            cstr              param_path,
                            string*           out_str);

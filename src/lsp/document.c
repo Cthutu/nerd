@@ -323,6 +323,56 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     return staged.analysis_ok;
 }
 
+bool lsp_token_view(LspState* state, string uri, LspTokenView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->tokens_ready) {
+        return false;
+    }
+
+    *out_view = (LspTokenView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+    };
+    return true;
+}
+
+bool lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->syntax_ready) {
+        return false;
+    }
+
+    *out_view = (LspSyntaxView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+        .ast    = &doc->front_end.ast,
+    };
+    return true;
+}
+
+bool lsp_semantic_view(LspState* state,
+                       string    uri,
+                       LspSemanticView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->sema_partial) {
+        return false;
+    }
+
+    *out_view = (LspSemanticView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+        .ast    = &doc->front_end.ast,
+        .sema   = &doc->front_end.sema,
+    };
+    return true;
+}
+
 usize lsp_offset_from_position(string source, u64 line, u64 character)
 {
     u64   current_line      = 0;
