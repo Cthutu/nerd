@@ -842,15 +842,20 @@ internal void format_emit_expr(StringBuilder* sb,
                 sb_append_cstr(sb, " $");
                 sb_append_string(sb, lex_symbol(lexer, for_info->label_symbol));
             }
+            u32 indent_level = g_format_expr_indent_level;
             sb_append_cstr(sb, " {\n");
-            format_emit_block_contents(sb, cst, lexer, node->b, 2);
-            format_emit_indent(sb, 1);
+            format_emit_block_contents(
+                sb, cst, lexer, node->b, indent_level + 1);
+            format_emit_indent(sb, indent_level);
             sb_append_char(sb, '}');
             if (for_info->else_block_index != U32_MAX) {
                 sb_append_cstr(sb, " else {\n");
-                format_emit_block_contents(
-                    sb, cst, lexer, for_info->else_block_index, 2);
-                format_emit_indent(sb, 1);
+                format_emit_block_contents(sb,
+                                           cst,
+                                           lexer,
+                                           for_info->else_block_index,
+                                           indent_level + 1);
+                format_emit_indent(sb, indent_level);
                 sb_append_char(sb, '}');
             }
         }
@@ -3197,6 +3202,11 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
 
     for (u32 i = node_index + 1; i < end; ++i) {
         const CstNode* node = &cst->nodes[i];
+        if ((node->kind == CK_Return || node->kind == CK_ReturnExpr ||
+             node->kind == CK_Defer) &&
+            node->a == node_index) {
+            return true;
+        }
         if (node->kind == CK_Bind || node->kind == CK_Variable) {
             const CstNode* payload = &cst->nodes[node->b];
             if (node->b == node_index) {
@@ -5034,7 +5044,8 @@ internal void format_emit_value(StringBuilder* sb,
         format_emit_mod_ref(sb, cst, lexer, node->a);
         break;
     default:
-        format_emit_expr(sb, cst, lexer, node_index, 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, node_index, 0, g_format_value_indent_level);
         break;
     }
 }
