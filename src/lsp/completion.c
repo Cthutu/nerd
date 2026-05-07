@@ -205,9 +205,14 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
     }
 
     for (u32 i = 0; i < type->param_count; ++i) {
-        u32 symbol = sema->type_param_symbols[type->first_param_type + i];
+        u32 param_index = type->first_param_type + i;
+        if (param_index >= array_count(sema->type_param_symbols) ||
+            param_index >= array_count(sema->type_param_types)) {
+            break;
+        }
+        u32 symbol = sema->type_param_symbols[param_index];
         if (symbol != U32_MAX && string_eq(lex_symbol(lexer, symbol), field)) {
-            return sema->type_param_types[type->first_param_type + i];
+            return sema->type_param_types[param_index];
         }
     }
 
@@ -632,7 +637,11 @@ internal void lsp_completion_add_members(Arena*             arena,
 
     const Lexer* lexer = &doc->front_end.lexer;
     for (u32 i = 0; i < type->param_count; ++i) {
-        u32 symbol = sema->type_param_symbols[type->first_param_type + i];
+        u32 param_index = type->first_param_type + i;
+        if (param_index >= array_count(sema->type_param_symbols)) {
+            break;
+        }
+        u32 symbol = sema->type_param_symbols[param_index];
         if (symbol != U32_MAX) {
             lsp_completion_add(arena, items, lex_symbol(lexer, symbol), 5);
         }
@@ -760,11 +769,11 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
     };
 
     ProgramInfo program = {0};
-    (void)front_end_program(
-        (NerdSource){.source = repaired, .source_path = uri},
-        &options,
-        NULL,
-        &program);
+    bool        ok =
+        front_end_program((NerdSource){.source = repaired, .source_path = uri},
+                          &options,
+                          NULL,
+                          &program);
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
@@ -774,7 +783,7 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             .source    = repaired,
             .front_end = program.modules[program.root_module_index].front_end,
             .program   = program,
-            .semantic_ready = true,
+            .semantic_ready = ok,
         };
         for (u32 i = 0; i < array_count(program.modules); ++i) {
             program.modules[i].front_end.sema.program = &program;
