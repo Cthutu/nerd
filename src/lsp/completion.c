@@ -75,7 +75,29 @@ lsp_completion_member_context(string source, usize offset, string* out_receiver)
         return false;
     }
 
-    string receiver = lsp_completion_ident_before(source, prefix_start - 1);
+    usize receiver_end   = prefix_start - 1;
+    usize receiver_start = receiver_end;
+    while (receiver_start > 0) {
+        usize ident_end   = receiver_start;
+        usize ident_start = ident_end;
+        while (ident_start > 0 &&
+               lsp_completion_is_ident_char(source.data[ident_start - 1])) {
+            ident_start--;
+        }
+        if (ident_start == ident_end) {
+            break;
+        }
+        receiver_start = ident_start;
+        if (receiver_start == 0 || source.data[receiver_start - 1] != '.') {
+            break;
+        }
+        receiver_start--;
+    }
+
+    string receiver = {
+        .data  = source.data + receiver_start,
+        .count = receiver_end - receiver_start,
+    };
     if (receiver.count == 0) {
         return false;
     }
@@ -139,6 +161,99 @@ internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
     return sema_no_type();
 }
 
+internal u32 lsp_completion_field_type(const Sema*  sema,
+                                       const Lexer* lexer,
+                                       u32          receiver_type,
+                                       string       field)
+{
+    if (receiver_type == sema_no_type() ||
+        receiver_type >= array_count(sema->types)) {
+        return sema_no_type();
+    }
+
+    receiver_type = sema_materialise_type(sema, receiver_type);
+    if (receiver_type == sema_no_type() ||
+        receiver_type >= array_count(sema->types)) {
+        return sema_no_type();
+    }
+
+    const SemaType* type = &sema->types[receiver_type];
+    if (type->kind == STK_Pointer &&
+        type->first_param_type < array_count(sema->types)) {
+        u32 pointee_type = sema_materialise_type(sema, type->first_param_type);
+        if (pointee_type < array_count(sema->types) &&
+            (sema->types[pointee_type].kind == STK_Plex ||
+             sema->types[pointee_type].kind == STK_Union ||
+             sema->types[pointee_type].kind == STK_DynamicArray)) {
+            receiver_type = pointee_type;
+            type          = &sema->types[receiver_type];
+        }
+    }
+
+    if (type->kind == STK_String || type->kind == STK_Slice) {
+        (void)field;
+        return sema_no_type();
+    }
+
+    if (type->kind == STK_DynamicArray) {
+        (void)field;
+        return sema_no_type();
+    }
+
+    if (type->kind != STK_Plex && type->kind != STK_Union) {
+        return sema_no_type();
+    }
+
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 symbol = sema->type_param_symbols[type->first_param_type + i];
+        if (symbol != U32_MAX && string_eq(lex_symbol(lexer, symbol), field)) {
+            return sema->type_param_types[type->first_param_type + i];
+        }
+    }
+
+    return sema_no_type();
+}
+
+internal u32 lsp_completion_type_for_receiver(const LspDocument* doc,
+                                              string             receiver,
+                                              usize              offset)
+{
+    usize i = 0;
+    while (i < receiver.count &&
+           lsp_completion_is_ident_char(receiver.data[i])) {
+        i++;
+    }
+    if (i == 0) {
+        return sema_no_type();
+    }
+
+    u32 type_index = lsp_completion_type_for_symbol(
+        doc, (string){.data = receiver.data, .count = i}, offset);
+    const Sema*  sema  = &doc->front_end.sema;
+    const Lexer* lexer = &doc->front_end.lexer;
+    while (i < receiver.count) {
+        if (receiver.data[i] != '.') {
+            return sema_no_type();
+        }
+        i++;
+        usize start = i;
+        while (i < receiver.count &&
+               lsp_completion_is_ident_char(receiver.data[i])) {
+            i++;
+        }
+        if (i == start) {
+            return sema_no_type();
+        }
+        type_index = lsp_completion_field_type(
+            sema,
+            lexer,
+            type_index,
+            (string){.data = receiver.data + start, .count = i - start});
+    }
+
+    return type_index;
+}
+
 internal void
 lsp_completion_add(Arena* arena, JsonValue* items, string label, u32 kind)
 {
@@ -155,6 +270,22 @@ lsp_completion_add(Arena* arena, JsonValue* items, string label, u32 kind)
     json_object_set_string(item, arena, "label", label);
     json_object_set_number(item, arena, "kind", kind);
     json_array_push(items, item);
+}
+
+internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
+                                                       JsonValue* items)
+{
+    lsp_completion_add(arena, items, s("data"), 5);             // Field
+    lsp_completion_add(arena, items, s("count"), 5);            // Field
+    lsp_completion_add(arena, items, s("capacity"), 5);         // Field
+    lsp_completion_add(arena, items, s("append"), 2);           // Method
+    lsp_completion_add(arena, items, s("clear"), 2);            // Method
+    lsp_completion_add(arena, items, s("free"), 2);             // Method
+    lsp_completion_add(arena, items, s("pop"), 2);              // Method
+    lsp_completion_add(arena, items, s("push"), 2);             // Method
+    lsp_completion_add(arena, items, s("reserve"), 2);          // Method
+    lsp_completion_add(arena, items, s("resize"), 2);           // Method
+    lsp_completion_add(arena, items, s("resize_undefined"), 2); // Method
 }
 
 internal bool lsp_completion_is_internal_label(string label)
@@ -489,17 +620,7 @@ internal void lsp_completion_add_members(Arena*             arena,
     }
 
     if (type->kind == STK_DynamicArray) {
-        lsp_completion_add(arena, items, s("data"), 5);             // Field
-        lsp_completion_add(arena, items, s("count"), 5);            // Field
-        lsp_completion_add(arena, items, s("capacity"), 5);         // Field
-        lsp_completion_add(arena, items, s("append"), 2);           // Method
-        lsp_completion_add(arena, items, s("clear"), 2);            // Method
-        lsp_completion_add(arena, items, s("free"), 2);             // Method
-        lsp_completion_add(arena, items, s("pop"), 2);              // Method
-        lsp_completion_add(arena, items, s("push"), 2);             // Method
-        lsp_completion_add(arena, items, s("reserve"), 2);          // Method
-        lsp_completion_add(arena, items, s("resize"), 2);           // Method
-        lsp_completion_add(arena, items, s("resize_undefined"), 2); // Method
+        lsp_completion_add_dynamic_array_members(arena, items);
         return;
     }
 
@@ -661,7 +782,7 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             arena,
             items,
             &repaired_doc,
-            lsp_completion_type_for_symbol(&repaired_doc, receiver, offset));
+            lsp_completion_type_for_receiver(&repaired_doc, receiver, offset));
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_members(
                 arena, items, &repaired_doc, receiver, offset);
@@ -842,6 +963,44 @@ internal u32 lsp_completion_ast_field_type_node_for_symbol(
     return U32_MAX;
 }
 
+internal u32 lsp_completion_ast_field_type_node_for_name(const LspDocument* doc,
+                                                         u32    type_symbol,
+                                                         string field_name)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Bind || node->a != type_symbol ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypePlex ||
+            value->a >= array_count(ast->plex_types)) {
+            continue;
+        }
+
+        const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
+        for (u32 field_index = 0; field_index < plex->field_count;
+             ++field_index) {
+            u32 ast_field_index = plex->first_field + field_index;
+            if (ast_field_index >= array_count(ast->plex_fields)) {
+                break;
+            }
+
+            const AstPlexField* field = &ast->plex_fields[ast_field_index];
+            if (field->symbol_handle != U32_MAX &&
+                string_eq(lex_symbol(lexer, field->symbol_handle),
+                          field_name)) {
+                return field->type_node_index;
+            }
+        }
+    }
+    return U32_MAX;
+}
+
 internal u32 lsp_completion_ast_receiver_type_symbol(const LspDocument* doc,
                                                      string receiver,
                                                      usize  offset);
@@ -1009,7 +1168,39 @@ internal void lsp_completion_add_ast_members(Arena*             arena,
 {
     const Lexer* lexer = &doc->front_end.lexer;
     const Ast*   ast   = &doc->front_end.ast;
-    u32          type_symbol =
+
+    for (usize dot = 0; dot < receiver.count; ++dot) {
+        if (receiver.data[dot] != '.') {
+            continue;
+        }
+
+        string owner = {.data = receiver.data, .count = dot};
+        string field = {.data  = receiver.data + dot + 1,
+                        .count = receiver.count - dot - 1};
+        if (owner.count == 0 || field.count == 0) {
+            return;
+        }
+
+        u32 owner_type =
+            lsp_completion_ast_receiver_type_symbol(doc, owner, offset);
+        if (owner_type == U32_MAX) {
+            return;
+        }
+
+        u32 field_type_node =
+            lsp_completion_ast_field_type_node_for_name(doc, owner_type, field);
+        if (field_type_node >= array_count(ast->nodes)) {
+            return;
+        }
+
+        const AstNode* field_type = &ast->nodes[field_type_node];
+        if (field_type->kind == AK_TypeDynamicArray) {
+            lsp_completion_add_dynamic_array_members(arena, items);
+        }
+        return;
+    }
+
+    u32 type_symbol =
         lsp_completion_ast_receiver_type_symbol(doc, receiver, offset);
     if (type_symbol == U32_MAX) {
         return;
@@ -2848,7 +3039,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
                 message->arena,
                 items,
                 doc,
-                lsp_completion_type_for_symbol(doc, receiver, offset));
+                lsp_completion_type_for_receiver(doc, receiver, offset));
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_members(
