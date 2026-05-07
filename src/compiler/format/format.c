@@ -78,6 +78,14 @@ internal bool  format_emit_trailing_comment_after_offset(StringBuilder* sb,
                                                          const Lexer*   lexer,
                                                          u32*  io_comment_index,
                                                          usize end_offset);
+internal bool  format_emit_trailing_comment_after_token(StringBuilder* sb,
+                                                        const Lexer*   lexer,
+                                                        u32* io_comment_index,
+                                                        u32  token_index);
+internal bool  format_emit_trailing_comment_by_index(StringBuilder* sb,
+                                                     const Lexer*   lexer,
+                                                     u32* io_comment_index,
+                                                     u32  comment_index);
 internal bool
 format_find_trailing_comment_index_after_offset(NerdSource   source,
                                                 const Lexer* lexer,
@@ -4123,6 +4131,44 @@ internal bool format_node_has_trailing_comment(const Cst*   cst,
     return false;
 }
 
+internal bool format_emit_trailing_comment_by_index(StringBuilder* sb,
+                                                    const Lexer*   lexer,
+                                                    u32* io_comment_index,
+                                                    u32  comment_index)
+{
+    if (comment_index >= array_count(lexer->comments) ||
+        comment_index < *io_comment_index) {
+        return false;
+    }
+
+    LexerComment comment = lexer->comments[comment_index];
+    if (sb->size > 0 && sb->data[sb->size - 1] == '\n') {
+        sb->data[sb->size - 1] = ' ';
+    } else {
+        sb_append_char(sb, ' ');
+    }
+    sb_append_cstr(sb, "--");
+    sb_append_string(sb, comment.text);
+    sb_append_char(sb, '\n');
+    *io_comment_index = comment_index + 1;
+    return true;
+}
+
+internal bool format_emit_trailing_comment_after_token(StringBuilder* sb,
+                                                       const Lexer*   lexer,
+                                                       u32* io_comment_index,
+                                                       u32  token_index)
+{
+    u32 comment_index = U32_MAX;
+    if (!format_trivia_trailing_comment_after_token(
+            g_format_trivia, token_index, &comment_index)) {
+        return false;
+    }
+
+    return format_emit_trailing_comment_by_index(
+        sb, lexer, io_comment_index, comment_index);
+}
+
 internal bool format_emit_trailing_comment_after_offset(StringBuilder* sb,
                                                         const Lexer*   lexer,
                                                         u32*  io_comment_index,
@@ -4143,16 +4189,8 @@ internal bool format_emit_trailing_comment_after_offset(StringBuilder* sb,
         return false;
     }
 
-    if (sb->size > 0 && sb->data[sb->size - 1] == '\n') {
-        sb->data[sb->size - 1] = ' ';
-    } else {
-        sb_append_char(sb, ' ');
-    }
-    sb_append_cstr(sb, "--");
-    sb_append_string(sb, comment.text);
-    sb_append_char(sb, '\n');
-    (*io_comment_index)++;
-    return true;
+    return format_emit_trailing_comment_by_index(
+        sb, lexer, io_comment_index, *io_comment_index);
 }
 
 internal bool
@@ -4341,7 +4379,12 @@ internal bool format_emit_trailing_comment_for_node(StringBuilder* sb,
                                                     u32            node_index,
                                                     u32* io_comment_index)
 {
-    u32   end_token  = format_node_end_token_index(cst, lexer, node_index);
+    u32 end_token = format_node_end_token_index(cst, lexer, node_index);
+    if (format_emit_trailing_comment_after_token(
+            sb, lexer, io_comment_index, end_token)) {
+        return true;
+    }
+
     usize end_offset = lex_token_end_offset(lexer, &lexer->tokens[end_token]);
     return format_emit_trailing_comment_after_offset(
         sb, lexer, io_comment_index, end_offset);
