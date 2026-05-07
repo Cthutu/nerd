@@ -405,29 +405,29 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
 
     u32 ref_node_index =
         lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
-    if (ref_node_index != U32_MAX &&
-        ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
-        if (decl_index != LSP_NO_DECL) {
+    u32 decl_index = LSP_NO_DECL;
+    if (ref_node_index != U32_MAX) {
+        if (lsp_sema_node_decl(
+                &doc->front_end.sema, ref_node_index, &decl_index)) {
             return decl_index;
         }
 
         const AstNode* ref = &doc->front_end.ast.nodes[ref_node_index];
         decl_index =
             lsp_find_decl_index_by_symbol_handle(&doc->front_end.sema, ref->a);
-        if (decl_index != LSP_NO_DECL &&
-            (doc->front_end.sema.decls[decl_index].kind == SK_TypeAlias ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_GenericTypeAlias)) {
+        const SemaDecl* decl = NULL;
+        if (lsp_sema_decl(&doc->front_end.sema, decl_index, &decl) &&
+            (decl->kind == SK_TypeAlias ||
+             decl->kind == SK_GenericTypeAlias)) {
             return decl_index;
         }
     }
 
     u32 field_node_index =
         lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
-    if (field_node_index != U32_MAX &&
-        field_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        return doc->front_end.sema.node_decl_indices[field_node_index];
+    if (lsp_sema_node_decl(
+            &doc->front_end.sema, field_node_index, &decl_index)) {
+        return decl_index;
     }
 
     return LSP_NO_DECL;
@@ -531,20 +531,17 @@ internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
 
     u32 bind_node_index =
         lsp_find_bind_node_at_token(&doc->front_end.ast, token_index);
-    if (bind_node_index != U32_MAX &&
-        bind_node_index < array_count(doc->front_end.sema.node_local_indices)) {
-        u32 local_index =
-            doc->front_end.sema.node_local_indices[bind_node_index];
-        if (local_index != sema_no_local()) {
-            return local_index;
-        }
+    u32 local_index = sema_no_local();
+    if (lsp_sema_node_local(
+            &doc->front_end.sema, bind_node_index, &local_index)) {
+        return local_index;
     }
 
     u32 ref_node_index =
         lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
-    if (ref_node_index != U32_MAX &&
-        ref_node_index < array_count(doc->front_end.sema.node_local_indices)) {
-        return doc->front_end.sema.node_local_indices[ref_node_index];
+    if (lsp_sema_node_local(
+            &doc->front_end.sema, ref_node_index, &local_index)) {
+        return local_index;
     }
 
     return sema_no_local();
@@ -571,8 +568,9 @@ lsp_eval_ast_node(const LspDocument* doc, u32 node_index, i64* out_value)
 
     case AK_SymbolRef:
         {
-            u32 decl_index = doc->front_end.sema.node_decl_indices[node_index];
-            if (decl_index == LSP_NO_DECL) {
+            u32 decl_index = LSP_NO_DECL;
+            if (!lsp_sema_node_decl(
+                    &doc->front_end.sema, node_index, &decl_index)) {
                 return false;
             }
             return lsp_eval_decl_value(doc, decl_index, out_value);
