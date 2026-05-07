@@ -345,11 +345,11 @@ internal void lsp_completion_add_module_exports(Arena*            arena,
                                                 const ModuleInfo* module)
 {
     for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
-        u32 decl_index = module->export_decl_indices[i];
-        if (decl_index >= array_count(module->front_end.sema.decls)) {
+        u32             decl_index = module->export_decl_indices[i];
+        const SemaDecl* decl       = NULL;
+        if (!lsp_sema_decl(&module->front_end.sema, decl_index, &decl)) {
             continue;
         }
-        const SemaDecl* decl = &module->front_end.sema.decls[decl_index];
         if (decl->symbol_handle == U32_MAX) {
             continue;
         }

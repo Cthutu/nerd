@@ -883,12 +883,12 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
     string            target_name  = lex_symbol(lexer, target->b);
 
     for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
-        u32 decl_index = module->export_decl_indices[i];
-        if (decl_index >= array_count(module->front_end.sema.decls)) {
+        u32             decl_index = module->export_decl_indices[i];
+        const SemaDecl* decl       = NULL;
+        if (!lsp_sema_decl(&module->front_end.sema, decl_index, &decl)) {
             continue;
         }
 
-        const SemaDecl* decl = &module->front_end.sema.decls[decl_index];
         if (decl->kind != SK_TypeAlias ||
             !string_eq(lex_symbol(module_lexer, decl->symbol_handle),
                        target_name) ||
