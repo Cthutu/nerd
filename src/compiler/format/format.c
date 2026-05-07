@@ -20,6 +20,8 @@ typedef struct {
     Array(u32) trailing_comment_index_by_token;
 } FormatTrivia;
 
+global_variable const FormatTrivia* g_format_trivia = NULL;
+
 internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Cst*     cst,
                                             const Lexer*   lexer,
@@ -196,6 +198,54 @@ internal void format_trivia_done(FormatTrivia* trivia)
     array_free(trivia->comment_count_before_token);
     array_free(trivia->trailing_comment_index_by_token);
     *trivia = (FormatTrivia){0};
+}
+
+internal bool format_trivia_trailing_comment_after_token(
+    const FormatTrivia* trivia, u32 token_index, u32* out_comment_index)
+{
+    if (trivia == NULL ||
+        token_index >= array_count(trivia->trailing_comment_index_by_token)) {
+        return false;
+    }
+
+    u32 comment_index = trivia->trailing_comment_index_by_token[token_index];
+    if (comment_index == U32_MAX) {
+        return false;
+    }
+
+    if (out_comment_index != NULL) {
+        *out_comment_index = comment_index;
+    }
+    return true;
+}
+
+internal void format_trivia_validate(const Lexer*        lexer,
+                                     const FormatTrivia* trivia)
+{
+#if CONFIG_DEBUG
+    for (u32 token_index = 0; token_index < array_count(lexer->tokens);
+         ++token_index) {
+        usize end_offset =
+            lex_token_end_offset(lexer, &lexer->tokens[token_index]);
+        u32  old_comment_index = U32_MAX;
+        bool old_has_comment = format_find_trailing_comment_index_after_offset(
+            lexer->source, lexer, end_offset, &old_comment_index);
+
+        u32  new_comment_index = U32_MAX;
+        bool new_has_comment   = format_trivia_trailing_comment_after_token(
+            trivia, token_index, &new_comment_index);
+
+        ASSERT(old_has_comment == new_has_comment,
+               "Format trivia trailing-comment classification mismatch");
+        if (old_has_comment && new_has_comment) {
+            ASSERT(old_comment_index == new_comment_index,
+                   "Format trivia trailing-comment index mismatch");
+        }
+    }
+#else
+    UNUSED(lexer);
+    UNUSED(trivia);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -4057,7 +4107,12 @@ internal bool format_node_has_trailing_comment(const Cst*   cst,
                                                const Lexer* lexer,
                                                u32          node_index)
 {
-    u32   end_token  = format_node_end_token_index(cst, lexer, node_index);
+    u32 end_token = format_node_end_token_index(cst, lexer, node_index);
+    if (format_trivia_trailing_comment_after_token(
+            g_format_trivia, end_token, NULL)) {
+        return true;
+    }
+
     usize end_offset = lex_token_end_offset(lexer, &lexer->tokens[end_token]);
     for (u32 i = 0; i < array_count(lexer->comments); ++i) {
         if (format_comment_is_trailing_after_offset(
@@ -5225,9 +5280,13 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
     FormatTrivia trivia = {0};
     format_trivia_build(&lexer, &trivia);
+    format_trivia_validate(&lexer, &trivia);
+    const FormatTrivia* previous_trivia = g_format_trivia;
+    g_format_trivia                     = &trivia;
 
-    Cst cst = {0};
+    Cst cst                             = {0};
     if (!cst_parse(&lexer, &cst) || array_count(cst.bindings) == 0) {
+        g_format_trivia = previous_trivia;
         format_trivia_done(&trivia);
         cst_done(&cst);
         lex_done(&lexer);
@@ -5469,6 +5528,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     }
 
     arena_done(&align_arena);
+    g_format_trivia = previous_trivia;
     format_trivia_done(&trivia);
     cst_done(&cst);
     lex_done(&lexer);
@@ -5537,6 +5597,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
 
     FormatTrivia trivia = {0};
     format_trivia_build(&lexer, &trivia);
+    format_trivia_validate(&lexer, &trivia);
 
     StringBuilder sb = {0};
     sb_init(&sb, arena);

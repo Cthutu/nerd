@@ -36,12 +36,18 @@ Implemented:
 - internal `FormatTrivia` struct in `src/compiler/format/format.c`
 - `format_trivia_build(...)`
 - `format_trivia_done(...)`
+- `format_trivia_trailing_comment_after_token(...)`
 - newline counts keyed by token index plus an EOF slot
 - leading comment ranges keyed by token index plus an EOF slot
 - trailing comment index keyed by the preceding token
+- debug validation that compares trivia trailing-comment classification with the
+  previous offset-scanning implementation
+- trivia-backed `format_node_has_trailing_comment(...)`
 
-The first slice is passive: it constructs and frees trivia tables on the
-current formatter paths but does not change emitted output.
+The first slice is mostly passive: it constructs trivia tables on the current
+formatter paths, validates trailing-comment classification in debug builds, and
+uses the trivia table for one token-indexed trailing-comment query. It does not
+change emitted output.
 
 ## Acceptance Target
 
@@ -63,6 +69,16 @@ python3 build/test.py --filter tests/format
 Verification on 2026-05-07:
 
 ```text
+just build nerd
+python3 build/test.py --filter tests/format
+
+format: 105 passed, 0 failed, 0 skipped
+```
+
+Second verification after the first trivia consumer:
+
+```text
+python3 build/format.py
 just build nerd
 python3 build/test.py --filter tests/format
 
@@ -95,5 +111,5 @@ format: 105 passed, 0 failed, 0 skipped
 ## Next Step
 
 Add either debug-only assertions or a temporary dump path to compare trivia
-classification against existing formatter comment handling, then use the tables
-for one small formatting decision.
+classification against additional formatter comment handling, then replace one
+offset-scanning emission path with a trivia-backed path.
