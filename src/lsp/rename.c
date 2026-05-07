@@ -442,36 +442,32 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
 
     u32 bind_node_index = lsp_rename_find_bind_node_at_token(ast, token_index);
     if (bind_node_index != U32_MAX) {
-        if (bind_node_index < array_count(sema->node_local_indices)) {
-            u32 local_index = sema->node_local_indices[bind_node_index];
-            if (local_index != sema_no_local() &&
-                local_index < array_count(sema->locals)) {
-                const SemaLocal* local = &sema->locals[local_index];
-                *out_target            = (LspRenameTarget){
-                    .kind        = LSP_RENAME_LOCAL,
-                    .index       = local_index,
-                    .token_index = token_index,
-                    .name        = lex_symbol(lexer, local->symbol_handle),
-                };
-                return true;
-            }
+        u32              local_index = sema_no_local();
+        const SemaLocal* local       = NULL;
+        if (lsp_sema_node_local(sema, bind_node_index, &local_index) &&
+            lsp_sema_local(sema, local_index, &local)) {
+            *out_target = (LspRenameTarget){
+                .kind        = LSP_RENAME_LOCAL,
+                .index       = local_index,
+                .token_index = token_index,
+                .name        = lex_symbol(lexer, local->symbol_handle),
+            };
+            return true;
         }
 
         u32 decl_index =
             lsp_rename_find_decl_by_symbol(sema, ast->nodes[bind_node_index].a);
-        if (decl_index != sema_no_decl() &&
-            decl_index < array_count(sema->decls)) {
-            const SemaDecl* decl = &sema->decls[decl_index];
-            if (decl->bind_node_index != sema_no_decl() &&
-                decl->import_module_index == sema_no_decl()) {
-                *out_target = (LspRenameTarget){
-                    .kind        = LSP_RENAME_DECL,
-                    .index       = decl_index,
-                    .token_index = token_index,
-                    .name        = lex_symbol(lexer, decl->symbol_handle),
-                };
-                return true;
-            }
+        const SemaDecl* decl = NULL;
+        if (lsp_sema_decl(sema, decl_index, &decl) &&
+            decl->bind_node_index != sema_no_decl() &&
+            decl->import_module_index == sema_no_decl()) {
+            *out_target = (LspRenameTarget){
+                .kind        = LSP_RENAME_DECL,
+                .index       = decl_index,
+                .token_index = token_index,
+                .name        = lex_symbol(lexer, decl->symbol_handle),
+            };
+            return true;
         }
     }
 
@@ -560,11 +556,11 @@ internal Array(u32)
     const Sema* sema  = &doc->front_end.sema;
 
     if (target.kind == LSP_RENAME_LOCAL) {
-        if (target.index >= array_count(sema->locals)) {
+        const SemaLocal* local = NULL;
+        if (!lsp_sema_local(sema, target.index, &local)) {
             return tokens;
         }
 
-        const SemaLocal* local = &sema->locals[target.index];
         lsp_rename_add_token(&tokens, local->decl_token_index);
         if (local->decl_node_index < array_count(ast->nodes)) {
             lsp_rename_add_token(
@@ -572,8 +568,9 @@ internal Array(u32)
         }
 
         for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-            if (i < array_count(sema->node_local_indices) &&
-                sema->node_local_indices[i] == target.index &&
+            u32 local_index = sema_no_local();
+            if (lsp_sema_node_local(sema, i, &local_index) &&
+                local_index == target.index &&
                 ast->nodes[i].token_index != U32_MAX) {
                 lsp_rename_add_token(&tokens, ast->nodes[i].token_index);
             }
@@ -582,19 +579,20 @@ internal Array(u32)
     }
 
     if (target.kind == LSP_RENAME_DECL) {
-        if (target.index >= array_count(sema->decls)) {
+        const SemaDecl* decl = NULL;
+        if (!lsp_sema_decl(sema, target.index, &decl)) {
             return tokens;
         }
 
-        const SemaDecl* decl = &sema->decls[target.index];
         if (decl->bind_node_index < array_count(ast->nodes)) {
             lsp_rename_add_token(&tokens,
                                  ast->nodes[decl->bind_node_index].token_index);
         }
 
         for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-            if (i < array_count(sema->node_decl_indices) &&
-                sema->node_decl_indices[i] == target.index &&
+            u32 decl_index = sema_no_decl();
+            if (lsp_sema_node_decl(sema, i, &decl_index) &&
+                decl_index == target.index &&
                 ast->nodes[i].token_index != U32_MAX) {
                 lsp_rename_add_token(&tokens, ast->nodes[i].token_index);
             }

@@ -218,10 +218,9 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
     const SemaType* type        = NULL;
     bool            has_generic = signature->generic_params_index != U32_MAX;
     if (!has_generic) {
-        if (decl->type_index >= array_count(doc->front_end.sema.types)) {
+        if (!lsp_sema_type(&doc->front_end.sema, decl->type_index, &type)) {
             return false;
         }
-        type = &doc->front_end.sema.types[decl->type_index];
         if (type->kind != STK_Function) {
             return false;
         }
