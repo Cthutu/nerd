@@ -146,6 +146,8 @@ Block-form `on` currently supports:
 - unit enum variants through expected enum context, such as `Red` in
   `on colour { Red => ... }`
 - enum payload patterns, such as `Some(x)` and `Pair(left, _)`
+- tuple and plex structural patterns, such as `(0, _)`, `{ x: 3 }`, and
+  `Point { x: 3 }`
 
 Range endpoints and explicit comparison values are checked semantically against
 the scrutinee type and must be compile-time constants. Empty integer ranges are

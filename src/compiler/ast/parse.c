@@ -1513,7 +1513,8 @@ ast_emit_pattern(AstParseState* state, AstPattern pattern, u32* out_pattern)
     return true;
 }
 
-internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
+internal bool
+ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
 {
     AstToken open = state->token;
     ASSERT(open.kind == TK_LBrace, "Expected plex pattern");
@@ -1615,6 +1616,7 @@ internal bool ast_parse_plex_pattern(AstParseState* state, u32* out_pattern)
                                 .token_index = open.token_index,
                                 .a           = first_field,
                                 .b           = field_count,
+                                .c = type_node == U32_MAX ? 0 : type_node + 1,
                             },
                             out_pattern);
 }
@@ -1714,6 +1716,27 @@ internal bool ast_pattern_starts_enum_variant(const AstParseState* state)
 
     return saw_dot && index < array_count(state->lexer->tokens) &&
            state->lexer->tokens[index].kind == TK_LParen;
+}
+
+internal bool ast_pattern_starts_typed_plex(const AstParseState* state)
+{
+    if (state->token.kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 index = state->token.token_index + 1;
+    while (index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_Dot) {
+        index++;
+        if (index >= array_count(state->lexer->tokens) ||
+            state->lexer->tokens[index].kind != TK_Symbol) {
+            return false;
+        }
+        index++;
+    }
+
+    return index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_LBrace;
 }
 
 internal bool ast_parse_enum_variant_pattern(AstParseState* state,
@@ -1957,7 +1980,19 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
     }
 
     if (state->token.kind == TK_LBrace) {
-        return ast_parse_plex_pattern(state, out_pattern);
+        return ast_parse_plex_pattern(state, U32_MAX, out_pattern);
+    }
+
+    if (ast_pattern_starts_typed_plex(state)) {
+        u32 type_node = U32_MAX;
+        if (!ast_parse_type(state, &type_node)) {
+            return false;
+        }
+        if (state->token.kind != TK_LBrace &&
+            !ast_expect_token(state, TK_LBrace)) {
+            return false;
+        }
+        return ast_parse_plex_pattern(state, type_node, out_pattern);
     }
 
     if (ast_pattern_starts_enum_variant(state)) {

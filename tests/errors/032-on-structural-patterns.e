@@ -82,3 +82,37 @@ main :: fn () => on (1, 2) {
         "Add a binding for `x` or fix the spelling."
     ]
 }
+¬
+Point :: plex { x i32 }
+Other :: plex { x i32 }
+
+main :: fn () -> i32 {
+    point := Point { x: 1 }
+    return on point {
+        Other { x: 1 } => 1
+        else => 0
+    }
+}
+¬
+{
+    "code": "0304",
+    "message": "Type mismatch: expected `Point`, found `Other`",
+    "source_file": "tests/errors/032-on-structural-patterns.e",
+    "primary_location": {
+        "line": 7,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 7,
+            "column": 9,
+            "length": 5,
+            "message": "This expression has type `Other`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

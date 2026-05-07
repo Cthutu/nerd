@@ -336,6 +336,7 @@ typedef struct {
     u32            token_index;
     u32            a;
     u32            b;
+    u32            c;
 } AstPattern;
 
 typedef struct {

@@ -520,6 +520,10 @@ internal void format_emit_pattern(StringBuilder* sb,
         sb_append_char(sb, ')');
         break;
     case CPK_Plex:
+        if (pattern->c != 0) {
+            format_emit_expr(sb, cst, lexer, pattern->c - 1, 0);
+            sb_append_char(sb, ' ');
+        }
         sb_append_cstr(sb, "{ ");
         for (u32 i = 0; i < pattern->b; ++i) {
             if (i > 0) {

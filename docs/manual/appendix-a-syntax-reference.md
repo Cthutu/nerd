@@ -208,6 +208,8 @@ _
 name
 Variant
 Variant(name)
+{ field: pattern }
+Type { field: pattern }
 left, right
 start..end
 start..=end

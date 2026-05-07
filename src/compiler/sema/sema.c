@@ -6168,6 +6168,10 @@ internal void sema_collect_pattern_deps(const Ast*  ast,
                 ast->pattern_fields[pattern->a + i].pattern_index,
                 out_sema);
         }
+        if (pattern->c != 0) {
+            sema_collect_node_deps(
+                ast, sema, owner_decl_index, pattern->c - 1, out_sema);
+        }
         return;
     case APK_EnumVariant:
         {
@@ -9368,6 +9372,21 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     sema_pattern_span(lexer, pattern),
                     s("plex"),
                     sema_type_name(lexer, sema, &temp_arena, value_type));
+            }
+            if (pattern->c != 0) {
+                u32 qualified_type = sema_no_type();
+                if (!sema_resolve_type_node(
+                        lexer, ast, sema, pattern->c - 1, &qualified_type)) {
+                    return false;
+                }
+                if (qualified_type != value_type) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[pattern->c - 1]),
+                        sema_type_name(lexer, sema, &temp_arena, value_type),
+                        sema_type_name(
+                            lexer, sema, &temp_arena, qualified_type));
+                }
             }
             const SemaType* plex = &sema->types[value_type];
             for (u32 i = 0; i < pattern->b; ++i) {

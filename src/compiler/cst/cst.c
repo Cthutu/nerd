@@ -2655,7 +2655,8 @@ internal bool cst_pattern_starts_enum_variant(const CstParseState* state)
            state->lexer->tokens[index].kind == TK_LParen;
 }
 
-internal bool cst_parse_plex_pattern(CstParseState* state, u32* out_pattern)
+internal bool
+cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
@@ -2709,8 +2710,30 @@ internal bool cst_parse_plex_pattern(CstParseState* state, u32* out_pattern)
                                 .token_index = token_index,
                                 .a           = first_field,
                                 .b           = field_count,
+                                .c = type_node == U32_MAX ? 0 : type_node + 1,
                             },
                             out_pattern);
+}
+
+internal bool cst_pattern_starts_typed_plex(const CstParseState* state)
+{
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 index = state->token_index + 1;
+    while (index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_Dot) {
+        index++;
+        if (index >= array_count(state->lexer->tokens) ||
+            state->lexer->tokens[index].kind != TK_Symbol) {
+            return false;
+        }
+        index++;
+    }
+
+    return index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_LBrace;
 }
 
 internal bool cst_parse_enum_variant_pattern(CstParseState* state,
@@ -2884,7 +2907,17 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
         return cst_parse_tuple_pattern(state, out_pattern);
     }
     if (cst_current_token(state).kind == TK_LBrace) {
-        return cst_parse_plex_pattern(state, out_pattern);
+        return cst_parse_plex_pattern(state, U32_MAX, out_pattern);
+    }
+    if (cst_pattern_starts_typed_plex(state)) {
+        u32 type_node = U32_MAX;
+        if (!cst_parse_type(state, &type_node)) {
+            return false;
+        }
+        if (cst_current_token(state).kind != TK_LBrace) {
+            return false;
+        }
+        return cst_parse_plex_pattern(state, type_node, out_pattern);
     }
     if (cst_pattern_starts_enum_variant(state)) {
         return cst_parse_enum_variant_pattern(state, out_pattern);
