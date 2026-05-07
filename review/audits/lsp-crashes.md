@@ -227,8 +227,10 @@ Likely features:
 
 Follow-up:
 
-- Add checked accessors for semantic side tables used by LSP.
-- Convert one feature at a time to use the accessors.
+- Checked accessors now cover LSP semantic side-table reads outside the
+  accessor implementation itself.
+- Continue by splitting declaration/binding/type readiness if real crash
+  transcripts show that `sema_partial` is too coarse.
 
 ### Failed Or Partial Module Analysis
 

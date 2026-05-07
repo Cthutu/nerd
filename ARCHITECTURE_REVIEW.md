@@ -582,6 +582,17 @@ Possible readiness levels:
 Detailed evidence is recorded in `review/audits/lsp-crashes.md` and
 `review/audits/lsp-boundaries.md`.
 
+Migration status:
+
+- LSP document readiness is now exposed through source, token, syntax, and
+  semantic views.
+- Feature handlers no longer look up documents directly from the document map;
+  direct lookup is contained in document/view construction and lifecycle code.
+- LSP feature code now uses checked accessors for semantic declaration, local,
+  type, and AST-indexed side-table reads.
+- The remaining architectural question is whether `sema_partial` should split
+  into declaration, binding, and type readiness products.
+
 ## Memory Strategy Review
 
 Memory strategy should be part of the architecture discussion because the

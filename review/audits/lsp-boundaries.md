@@ -48,6 +48,11 @@ Risks:
 - features sometimes compare `doc->source` with the analysed lexer source
   because folder modules may analyse a combined source
 
+Current boundary:
+
+- Feature handlers request `LspSourceView` when source is the minimum useful
+  product, for example completion and rename.
+
 ### Tokens
 
 Tokens live in `doc->front_end.lexer.tokens`. Most source-level requests need
@@ -114,8 +119,8 @@ Remaining risks:
 
 - there is still no distinction between declaration facts, binding facts, and
   checked type facts
-- direct side-table access still exists in hover, completion, and imported
-  module helpers
+- imported module readiness is still inferred from the imported module's
+  front-end products rather than a named module view
 
 ## Feature Contracts
 
@@ -175,9 +180,14 @@ have started using these accessors.
 
 ### Analysis Snapshot Views
 
-Feature-facing views now exist for token, syntax, and semantic products:
+Feature-facing views now exist for source, token, syntax, and semantic products:
 
 ```c
+typedef struct {
+    const LspDocument* doc;
+    string source;
+} LspSourceView;
+
 typedef struct {
     const LspDocument* doc;
     string source;
@@ -200,8 +210,21 @@ typedef struct {
 } LspSemanticView;
 ```
 
-The constructor for each view checks readiness once. Semantic tokens now uses
-`LspTokenView`; other feature handlers still need migration.
+The constructor for each view checks readiness once. Feature handlers now use
+these boundaries instead of directly looking up documents from the document
+map:
+
+- completion: `LspSourceView`
+- rename: `LspSourceView`, with an internal scratch syntax fallback for
+  partially parsed source
+- semantic tokens: `LspTokenView`
+- document symbols: `LspSemanticView`
+- hover and definition: `LspSemanticView`
+- signature help: `LspSemanticView`
+- code actions: `LspSemanticView`
+
+Direct document-map lookup is now isolated to document/view construction and
+document lifecycle operations.
 
 ## Open Questions
 
@@ -218,8 +241,7 @@ The constructor for each view checks readiness once. Semantic tokens now uses
 
 ## Next Actions
 
-1. Continue migrating hover and completion direct side-table reads.
-2. Migrate document symbols or completion to `LspSyntaxView`/`LspSemanticView`.
-3. Decide whether declaration and binding readiness need separate flags.
-4. Keep adding stress cases for chained edits, broken imports, incomplete type
+1. Decide whether declaration and binding readiness need separate flags.
+2. Define a module/product view for imported module readiness.
+3. Keep adding stress cases for chained edits, broken imports, incomplete type
    syntax, rename, and semantic tokens.
