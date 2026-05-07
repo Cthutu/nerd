@@ -85,6 +85,56 @@ Follow-up:
 - Continue with additional real editor crash shapes, especially hover,
   semantic tokens, rename, and module completion after edits.
 
+### Case 2: Hover after incremental edit to incomplete member access
+
+Source state:
+
+- Document opens valid.
+- Incremental edit removes the field name from `frame.handle`, leaving
+  `frame.`.
+
+Request:
+
+- `textDocument/hover` on the still-valid `frame` reference after the edit.
+
+Reproduction:
+
+```sh
+python3 build/test.py --filter 097-incremental-hover-after-partial-edit
+```
+
+Expected:
+
+- LSP does not crash.
+- Diagnostics publish the parse error for incomplete field access.
+- Hover for `frame` still reports local variable information and type `^Frame`.
+
+Actual:
+
+- Covered by `tests/lsp/097-incremental-hover-after-partial-edit.lsp`.
+
+Classification:
+
+- `source_ready`
+- `tokens_ready`
+- partial syntax after edit
+- sema partial state retained for hover
+
+Likely owner:
+
+- `src/lsp/document.c`
+- `src/lsp/hover.c`
+
+Regression test:
+
+- `tests/lsp/097-incremental-hover-after-partial-edit.lsp`
+
+Follow-up:
+
+- This specific hover-after-edit shape is covered and does not reproduce a
+  crash.
+- Continue with semantic tokens, rename, and module completion after edits.
+
 ## Existing Coverage Groups
 
 The current suite covers:
