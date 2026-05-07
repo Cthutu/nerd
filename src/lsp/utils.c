@@ -157,6 +157,25 @@ bool lsp_sema_node_decl(const Sema* sema,
     return true;
 }
 
+bool lsp_sema_node_local(const Sema* sema,
+                         u32         node_index,
+                         u32*        out_local_index)
+{
+    if (!sema || node_index == U32_MAX ||
+        node_index >= array_count(sema->node_local_indices)) {
+        return false;
+    }
+
+    u32 local_index = sema->node_local_indices[node_index];
+    if (!lsp_sema_local(sema, local_index, NULL)) {
+        return false;
+    }
+    if (out_local_index) {
+        *out_local_index = local_index;
+    }
+    return true;
+}
+
 bool lsp_sema_node_type(const Sema* sema,
                         u32         node_index,
                         u32*        out_type_index)

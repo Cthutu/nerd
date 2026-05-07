@@ -478,36 +478,32 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
     u32 ref_node_index =
         lsp_rename_find_symbol_ref_node_at_token(ast, token_index);
     if (ref_node_index != U32_MAX) {
-        if (ref_node_index < array_count(sema->node_local_indices)) {
-            u32 local_index = sema->node_local_indices[ref_node_index];
-            if (local_index != sema_no_local() &&
-                local_index < array_count(sema->locals)) {
-                const SemaLocal* local = &sema->locals[local_index];
-                *out_target            = (LspRenameTarget){
-                    .kind        = LSP_RENAME_LOCAL,
-                    .index       = local_index,
-                    .token_index = token_index,
-                    .name        = lex_symbol(lexer, local->symbol_handle),
-                };
-                return true;
-            }
+        u32              local_index = sema_no_local();
+        const SemaLocal* local       = NULL;
+        if (lsp_sema_node_local(sema, ref_node_index, &local_index) &&
+            lsp_sema_local(sema, local_index, &local)) {
+            *out_target = (LspRenameTarget){
+                .kind        = LSP_RENAME_LOCAL,
+                .index       = local_index,
+                .token_index = token_index,
+                .name        = lex_symbol(lexer, local->symbol_handle),
+            };
+            return true;
         }
 
-        if (ref_node_index < array_count(sema->node_decl_indices)) {
-            u32 decl_index = sema->node_decl_indices[ref_node_index];
-            if (decl_index != sema_no_decl() &&
-                decl_index < array_count(sema->decls)) {
-                const SemaDecl* decl = &sema->decls[decl_index];
-                if (decl->bind_node_index != sema_no_decl() &&
-                    decl->import_module_index == sema_no_decl()) {
-                    *out_target = (LspRenameTarget){
-                        .kind        = LSP_RENAME_DECL,
-                        .index       = decl_index,
-                        .token_index = token_index,
-                        .name        = lex_symbol(lexer, decl->symbol_handle),
-                    };
-                    return true;
-                }
+        u32             decl_index = sema_no_decl();
+        const SemaDecl* decl       = NULL;
+        if (lsp_sema_node_decl(sema, ref_node_index, &decl_index) &&
+            lsp_sema_decl(sema, decl_index, &decl)) {
+            if (decl->bind_node_index != sema_no_decl() &&
+                decl->import_module_index == sema_no_decl()) {
+                *out_target = (LspRenameTarget){
+                    .kind        = LSP_RENAME_DECL,
+                    .index       = decl_index,
+                    .token_index = token_index,
+                    .name        = lex_symbol(lexer, decl->symbol_handle),
+                };
+                return true;
             }
         }
     }

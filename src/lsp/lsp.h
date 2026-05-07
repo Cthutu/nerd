@@ -75,6 +75,9 @@ bool  lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
 bool  lsp_sema_node_decl(const Sema* sema,
                          u32         node_index,
                          u32*        out_decl_index);
+bool  lsp_sema_node_local(const Sema* sema,
+                          u32         node_index,
+                          u32*        out_local_index);
 bool  lsp_sema_node_type(const Sema* sema,
                          u32         node_index,
                          u32*        out_type_index);

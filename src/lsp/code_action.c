@@ -143,16 +143,13 @@ internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
     switch (node->kind) {
     case AK_SymbolRef:
         {
-            u32 decl_index = node_index < array_count(sema->node_decl_indices)
-                                 ? sema->node_decl_indices[node_index]
-                                 : sema_no_decl();
-            if (decl_index == sema_no_decl()) {
+            u32 decl_index = sema_no_decl();
+            if (!lsp_sema_node_decl(sema, node_index, &decl_index)) {
                 decl_index = lsp_code_action_find_decl(sema, node->a);
             }
-            if (decl_index != sema_no_decl() &&
-                decl_index < array_count(sema->decls)) {
-                const SemaDecl* decl = &sema->decls[decl_index];
-                *out_type            = decl->type_index;
+            const SemaDecl* decl = NULL;
+            if (lsp_sema_decl(sema, decl_index, &decl)) {
+                *out_type = decl->type_index;
                 return *out_type != sema_no_type();
             }
             for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -160,9 +157,7 @@ internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
                 if ((candidate->kind == AK_Bind ||
                      candidate->kind == AK_Variable) &&
                     ast_get_symbol(candidate) == node->a &&
-                    i < array_count(sema->node_type_indices) &&
-                    sema->node_type_indices[i] != sema_no_type()) {
-                    *out_type = sema->node_type_indices[i];
+                    lsp_sema_node_type(sema, i, out_type)) {
                     return true;
                 }
             }
@@ -175,11 +170,11 @@ internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
                     ast, sema, node->a, &target_type)) {
                 return false;
             }
-            if (target_type >= array_count(sema->types) ||
-                sema->types[target_type].kind != STK_Module) {
+            const SemaType* module = NULL;
+            if (!lsp_sema_type(sema, target_type, &module) ||
+                module->kind != STK_Module) {
                 return false;
             }
-            const SemaType* module = &sema->types[target_type];
             for (u32 i = 0; i < module->param_count; ++i) {
                 if (sema->type_param_symbols[module->first_param_type + i] ==
                     node->b) {
@@ -215,9 +210,7 @@ internal bool lsp_code_action_resolve_plex_literal_type(const Ast*  ast,
             ast, sema, literal->target_node_index, out_type);
     }
 
-    if (node_index < array_count(sema->node_type_indices) &&
-        sema->node_type_indices[node_index] != sema_no_type()) {
-        *out_type = sema->node_type_indices[node_index];
+    if (lsp_sema_node_type(sema, node_index, out_type)) {
         return true;
     }
 
