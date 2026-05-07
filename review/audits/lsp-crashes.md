@@ -34,6 +34,57 @@ Interpretation:
 Record each crash with reproduction steps, expected behaviour, actual behaviour,
 classification, and follow-up.
 
+### Case 1: Incremental edit to incomplete member access
+
+Source state:
+
+- Document opens valid.
+- Incremental edit removes the field name from `frame.handle`, leaving
+  `frame.`.
+
+Request:
+
+- `textDocument/completion` immediately after the edit at the dot position.
+
+Reproduction:
+
+```sh
+python3 build/test.py --filter 096-incremental-member-completion-after-edit
+```
+
+Expected:
+
+- LSP does not crash.
+- Diagnostics publish the parse error for incomplete field access.
+- Completion still offers `handle` and `system` for `frame`.
+
+Actual:
+
+- Covered by `tests/lsp/096-incremental-member-completion-after-edit.lsp`.
+
+Classification:
+
+- `source_ready`
+- `tokens_ready`
+- partial syntax after edit
+- repaired-source/member-completion fallback
+
+Likely owner:
+
+- `src/lsp/document.c`
+- `src/lsp/completion.c`
+
+Regression test:
+
+- `tests/lsp/096-incremental-member-completion-after-edit.lsp`
+
+Follow-up:
+
+- This specific incremental-edit shape is covered and does not reproduce a
+  crash.
+- Continue with additional real editor crash shapes, especially hover,
+  semantic tokens, rename, and module completion after edits.
+
 ## Existing Coverage Groups
 
 The current suite covers:
