@@ -1490,15 +1490,11 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
     }
 
     string type = s("<unknown>");
-    if (plex_field->type_node_index <
-        array_count(doc->front_end.sema.node_type_indices)) {
-        u32 type_index =
-            doc->front_end.sema.node_type_indices[plex_field->type_node_index];
-        if (type_index != sema_no_type() &&
-            type_index < array_count(doc->front_end.sema.types)) {
-            type = sema_type_name(
-                &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
-        }
+    u32 type_index = sema_no_type();
+    if (lsp_sema_node_type(
+            &doc->front_end.sema, plex_field->type_node_index, &type_index)) {
+        type = sema_type_name(
+            &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
     }
     if (string_eq(type, s("<unknown>"))) {
         type = lsp_ast_type_node_source(doc, plex_field->type_node_index);
@@ -1528,38 +1524,41 @@ internal string lsp_field_hover_text(const LspDocument* doc,
     }
 
     const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
-    if (field->kind != AK_Field ||
-        field->a >= array_count(doc->front_end.sema.node_type_indices)) {
+    if (field->kind != AK_Field) {
         return lsp_ast_field_hover_text(doc, arena, field_node_index);
     }
 
-    u32 target_type = doc->front_end.sema.node_type_indices[field->a];
-    if (target_type == sema_no_type() ||
-        target_type >= array_count(doc->front_end.sema.types)) {
+    u32 target_type = sema_no_type();
+    if (!lsp_sema_node_type(&doc->front_end.sema, field->a, &target_type)) {
         return lsp_ast_field_hover_text(doc, arena, field_node_index);
     }
 
-    const SemaType* target = &doc->front_end.sema.types[target_type];
+    const SemaType* target = NULL;
+    if (!lsp_sema_type(&doc->front_end.sema, target_type, &target)) {
+        return lsp_ast_field_hover_text(doc, arena, field_node_index);
+    }
     if (target->kind == STK_Pointer) {
         u32 pointee_type = target->first_param_type;
-        if (pointee_type < array_count(doc->front_end.sema.types) &&
-            (doc->front_end.sema.types[pointee_type].kind == STK_Plex ||
-             doc->front_end.sema.types[pointee_type].kind == STK_Union ||
-             doc->front_end.sema.types[pointee_type].kind ==
-                 STK_DynamicArray)) {
+        const SemaType* pointee = NULL;
+        if (lsp_sema_type(&doc->front_end.sema, pointee_type, &pointee) &&
+            (pointee->kind == STK_Plex || pointee->kind == STK_Union ||
+             pointee->kind == STK_DynamicArray)) {
             target_type = pointee_type;
-            target      = &doc->front_end.sema.types[target_type];
+            target      = pointee;
         }
     }
 
     if (target->kind == STK_Slice || target->kind == STK_String ||
         target->kind == STK_DynamicArray) {
         string name = lex_symbol(&doc->front_end.lexer, field->b);
-        string type = sema_type_name(
-            &doc->front_end.lexer,
-            &doc->front_end.sema,
-            arena,
-            doc->front_end.sema.node_type_indices[field_node_index]);
+        u32 field_type = sema_no_type();
+        string type = lsp_sema_node_type(
+                          &doc->front_end.sema, field_node_index, &field_type)
+                          ? sema_type_name(&doc->front_end.lexer,
+                                           &doc->front_end.sema,
+                                           arena,
+                                           field_type)
+                          : s("<unknown>");
         string owner = sema_type_name(
             &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
         string kind       = s("");
@@ -1949,25 +1948,26 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
     }
 
     const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
-    if (field->kind != AK_Field ||
-        field->a >= array_count(doc->front_end.sema.node_type_indices)) {
+    if (field->kind != AK_Field) {
         return lsp_ast_field_location(doc, arena, uri, field_node_index);
     }
 
-    u32 target_type = doc->front_end.sema.node_type_indices[field->a];
-    if (target_type == sema_no_type() ||
-        target_type >= array_count(doc->front_end.sema.types)) {
+    u32 target_type = sema_no_type();
+    if (!lsp_sema_node_type(&doc->front_end.sema, field->a, &target_type)) {
         return lsp_ast_field_location(doc, arena, uri, field_node_index);
     }
 
-    const SemaType* target = &doc->front_end.sema.types[target_type];
+    const SemaType* target = NULL;
+    if (!lsp_sema_type(&doc->front_end.sema, target_type, &target)) {
+        return lsp_ast_field_location(doc, arena, uri, field_node_index);
+    }
     if (target->kind == STK_Pointer) {
         u32 pointee_type = target->first_param_type;
-        if (pointee_type < array_count(doc->front_end.sema.types) &&
-            (doc->front_end.sema.types[pointee_type].kind == STK_Plex ||
-             doc->front_end.sema.types[pointee_type].kind == STK_Union)) {
+        const SemaType* pointee = NULL;
+        if (lsp_sema_type(&doc->front_end.sema, pointee_type, &pointee) &&
+            (pointee->kind == STK_Plex || pointee->kind == STK_Union)) {
             target_type = pointee_type;
-            target      = &doc->front_end.sema.types[target_type];
+            target      = pointee;
         }
     }
 
@@ -1975,12 +1975,11 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
         return NULL;
     }
 
-    if (field->a < array_count(doc->front_end.ast.nodes) &&
-        field->a < array_count(doc->front_end.sema.node_local_indices)) {
-        u32 local_index = doc->front_end.sema.node_local_indices[field->a];
-        if (local_index != sema_no_local() &&
-            local_index < array_count(doc->front_end.sema.locals)) {
-            const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+    if (field->a < array_count(doc->front_end.ast.nodes)) {
+        u32 local_index = sema_no_local();
+        const SemaLocal* local = NULL;
+        if (lsp_sema_node_local(&doc->front_end.sema, field->a, &local_index) &&
+            lsp_sema_local(&doc->front_end.sema, local_index, &local)) {
             if (local->decl_node_index <
                 array_count(doc->front_end.ast.nodes)) {
                 const AstNode* bind =
