@@ -3028,8 +3028,8 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     }
     const LspDocument* doc = view.doc;
 
-    u64 line      = 0;
-    u64 character = 0;
+    u64 line               = 0;
+    u64 character          = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
     usize  offset    = lsp_offset_from_position(view.source, line, character);
@@ -3088,7 +3088,8 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
 
     lsp_completion_add_keywords(message->arena, items);
     lsp_completion_add_symbols(message->arena, items, doc);
-    lsp_completion_add_source_symbols(message->arena, items, view.source, offset);
+    lsp_completion_add_source_symbols(
+        message->arena, items, view.source, offset);
     lsp_completion_filter_items(items, prefix);
     json_object_set_array(response, "result", items);
     lsp_send_response(message->arena, response);

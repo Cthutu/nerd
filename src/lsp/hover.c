@@ -2040,13 +2040,13 @@ internal JsonValue* lsp_field_location(const LspDocument* doc,
 //------------------------------------------------------------------------------
 // Build a request context for one position-based LSP query.
 
-internal bool lsp_get_request_context(LspState*         state,
-                                      const LspMessage* message,
-                                      LspDocument**     out_doc,
-                                      string*           out_uri,
-                                      usize*            out_offset,
-                                      u32*              out_token_index,
-                                      const Token**     out_token)
+internal bool lsp_get_request_context(LspState*           state,
+                                      const LspMessage*   message,
+                                      const LspDocument** out_doc,
+                                      string*             out_uri,
+                                      usize*              out_offset,
+                                      u32*                out_token_index,
+                                      const Token**       out_token)
 {
     JsonValue* uri_value =
         json_get_cstr(message->message, "params.textDocument.uri");
@@ -2061,14 +2061,12 @@ internal bool lsp_get_request_context(LspState*         state,
         return false;
     }
 
-    *out_uri = json_string(uri_value);
-    *out_doc = LspDocumentMap_find(&state->documents, *out_uri);
-    if (!*out_doc) {
+    *out_uri             = json_string(uri_value);
+    LspSemanticView view = {0};
+    if (!lsp_semantic_view(state, *out_uri, &view)) {
         return false;
     }
-    if (!(*out_doc)->sema_partial) {
-        return false;
-    }
+    *out_doc            = view.doc;
 
     u32 line            = (u32)json_integer(line_value);
     u32 col             = (u32)json_integer(col_value);
@@ -2122,12 +2120,12 @@ internal int lsp_decl_symbol_kind(const SemaDecl* decl)
 
 void lsp_handle_hover(LspState* state, const LspMessage* message)
 {
-    JsonValue*   response    = lsp_prepare_response(message);
-    LspDocument* doc         = NULL;
-    string       uri         = {0};
-    usize        offset      = 0;
-    u32          token_index = 0;
-    const Token* token       = NULL;
+    JsonValue*         response    = lsp_prepare_response(message);
+    const LspDocument* doc         = NULL;
+    string             uri         = {0};
+    usize              offset      = 0;
+    u32                token_index = 0;
+    const Token*       token       = NULL;
 
     if (!lsp_get_request_context(
             state, message, &doc, &uri, &offset, &token_index, &token)) {
@@ -2212,10 +2210,12 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             string signature  = s("fn ()");
             u32    decl_index = lsp_find_decl_index_for_token(doc, token_index);
             if (decl_index != LSP_NO_DECL) {
-                signature =
-                    lsp_decl_signature(doc,
-                                       message->arena,
-                                       &doc->front_end.sema.decls[decl_index]);
+                const SemaDecl* decl = NULL;
+                if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
+                    lsp_cancel(response, message->arena);
+                    return;
+                }
+                signature = lsp_decl_signature(doc, message->arena, decl);
             }
             lsp_set_markdown_hover(
                 response,
@@ -2245,12 +2245,12 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
 
 void lsp_handle_definition(LspState* state, const LspMessage* message)
 {
-    JsonValue*   response    = lsp_prepare_response(message);
-    LspDocument* doc         = NULL;
-    string       uri         = {0};
-    usize        offset      = 0;
-    u32          token_index = 0;
-    const Token* token       = NULL;
+    JsonValue*         response    = lsp_prepare_response(message);
+    const LspDocument* doc         = NULL;
+    string             uri         = {0};
+    usize              offset      = 0;
+    u32                token_index = 0;
+    const Token*       token       = NULL;
 
     if (!lsp_get_request_context(
             state, message, &doc, &uri, &offset, &token_index, &token)) {
@@ -2407,7 +2407,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
     }
     const LspDocument* doc = view.doc;
 
-    JsonValue* result = json_new_array(message->arena);
+    JsonValue* result      = json_new_array(message->arena);
 
     if (doc->cst_ready) {
         for (u32 i = 0; i < array_count(doc->cst.bindings); ++i) {
@@ -2430,7 +2430,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                 continue;
             }
 
-            JsonValue*      symbol = json_new_object(message->arena);
+            JsonValue* symbol = json_new_object(message->arena);
             json_object_set_string(symbol,
                                    message->arena,
                                    "name",

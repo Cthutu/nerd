@@ -433,8 +433,8 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
     }
     const LspDocument* doc = view.doc;
 
-    u64 line      = 0;
-    u64 character = 0;
+    u64 line               = 0;
+    u64 character          = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
     usize offset = lsp_offset_from_position(doc->source, line, character);
