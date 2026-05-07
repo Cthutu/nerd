@@ -1648,7 +1648,10 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
                                       string             uri,
                                       u32                decl_index)
 {
-    const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
+        return NULL;
+    }
     if (decl->import_module_index != sema_no_decl() &&
         decl->import_decl_index != sema_no_decl() &&
         decl->import_module_index < array_count(doc->program.modules)) {
@@ -1681,7 +1684,10 @@ internal JsonValue* lsp_local_location(const LspDocument* doc,
                                        string             uri,
                                        u32                local_index)
 {
-    const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+    const SemaLocal* local = NULL;
+    if (!lsp_sema_local(&doc->front_end.sema, local_index, &local)) {
+        return NULL;
+    }
     usize            start_offset;
     usize            end_offset;
     if (local->decl_token_index != U32_MAX) {
@@ -1715,27 +1721,28 @@ internal JsonValue* lsp_local_record_field_location(const LspDocument* doc,
                                                     u32 type_index,
                                                     u32 field_symbol)
 {
-    if (type_index >= array_count(doc->front_end.sema.types)) {
+    const SemaType* target_type = NULL;
+    if (!lsp_sema_type(&doc->front_end.sema, type_index, &target_type)) {
         return NULL;
     }
 
-    const SemaType* target_type = &doc->front_end.sema.types[type_index];
-
     for (u32 i = 0; i < array_count(doc->front_end.ast.nodes); ++i) {
         const AstNode* node = &doc->front_end.ast.nodes[i];
-        if (node->kind != AK_TypePlex ||
-            i >= array_count(doc->front_end.sema.node_type_indices)) {
+        if (node->kind != AK_TypePlex) {
             continue;
         }
 
-        u32 candidate_type_index = doc->front_end.sema.node_type_indices[i];
-        if (candidate_type_index == sema_no_type() ||
-            candidate_type_index >= array_count(doc->front_end.sema.types)) {
+        u32 candidate_type_index = sema_no_type();
+        if (!lsp_sema_node_type(
+                &doc->front_end.sema, i, &candidate_type_index)) {
             continue;
         }
 
-        const SemaType* candidate_type =
-            &doc->front_end.sema.types[candidate_type_index];
+        const SemaType* candidate_type = NULL;
+        if (!lsp_sema_type(
+                &doc->front_end.sema, candidate_type_index, &candidate_type)) {
+            continue;
+        }
         if (candidate_type->kind != target_type->kind ||
             candidate_type->param_count != target_type->param_count) {
             continue;
