@@ -2397,14 +2397,15 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
         return;
     }
 
-    string       uri = json_string(uri_value);
-    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->sema_partial) {
+    string          uri  = json_string(uri_value);
+    LspSemanticView view = {0};
+    if (!lsp_semantic_view(state, uri, &view)) {
         json_object_set_array(
             response, "result", json_new_array(message->arena));
         lsp_send_response(message->arena, response);
         return;
     }
+    const LspDocument* doc = view.doc;
 
     JsonValue* result = json_new_array(message->arena);
 
@@ -2424,7 +2425,11 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                               &start_offset,
                               &end_offset);
 
-            const SemaDecl* decl   = &doc->front_end.sema.decls[decl_index];
+            const SemaDecl* decl = NULL;
+            if (!lsp_sema_decl(view.sema, decl_index, &decl)) {
+                continue;
+            }
+
             JsonValue*      symbol = json_new_object(message->arena);
             json_object_set_string(symbol,
                                    message->arena,
