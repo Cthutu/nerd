@@ -52,6 +52,8 @@ Common operations:
 | --- | --- |
 | `.push(value)` | add one item |
 | `.pop()` | remove and return the last item |
+| `.delete(index)` | remove one item and preserve order |
+| `.swap_delete(index)` | remove one item by replacing it with the last item |
 | `.append(slice)` | add many items from a slice |
 | `.reserve(capacity)` | ensure storage for at least this many items |
 | `.resize(count)` | change the count and default-initialise new items |
@@ -91,6 +93,23 @@ last := names.pop()  -- count decreases by one
 ```
 
 Popping an empty dynamic array is a runtime error.
+
+`.delete(index)` removes the item at `index`, shifts later items left, and
+preserves order:
+
+```nerd
+names.delete(1)
+```
+
+`.swap_delete(index)` removes the item at `index` by moving the last item into
+that slot. It does not preserve order, but it avoids shifting the rest of the
+array:
+
+```nerd
+names.swap_delete(1)
+```
+
+Deleting with an out-of-bounds index is a runtime error.
 
 `.free()` releases owned storage and resets the array to nil:
 

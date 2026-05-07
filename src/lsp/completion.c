@@ -280,11 +280,13 @@ internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
     lsp_completion_add(arena, items, s("capacity"), 5);         // Field
     lsp_completion_add(arena, items, s("append"), 2);           // Method
     lsp_completion_add(arena, items, s("clear"), 2);            // Method
+    lsp_completion_add(arena, items, s("delete"), 2);           // Method
     lsp_completion_add(arena, items, s("free"), 2);             // Method
     lsp_completion_add(arena, items, s("pop"), 2);              // Method
     lsp_completion_add(arena, items, s("push"), 2);             // Method
     lsp_completion_add(arena, items, s("reserve"), 2);          // Method
     lsp_completion_add(arena, items, s("resize"), 2);           // Method
+    lsp_completion_add(arena, items, s("swap_delete"), 2);      // Method
     lsp_completion_add(arena, items, s("resize_undefined"), 2); // Method
 }
 

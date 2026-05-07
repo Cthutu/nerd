@@ -378,6 +378,7 @@ Concepts:
 - dynamic array type syntax `[N..]T` and `[..]T`
 - `.count` and `.capacity`
 - `.push`
+- `.delete` and `.swap_delete`
 - `.append`
 - `.reserve`
 - `.clear`

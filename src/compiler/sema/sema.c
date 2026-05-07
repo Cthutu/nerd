@@ -7573,6 +7573,9 @@ internal bool sema_dynarray_method_signature(Sema*        sema,
     } else if (string_eq(method, s("resize")) ||
                string_eq(method, s("resize_undefined"))) {
         array_push(params, sema_builtin_type(sema, STK_Usize));
+    } else if (string_eq(method, s("delete")) ||
+               string_eq(method, s("swap_delete"))) {
+        array_push(params, sema_builtin_type(sema, STK_Usize));
     } else if (string_eq(method, s("pop"))) {
         result = item_type;
     } else if (string_eq(method, s("clear")) || string_eq(method, s("free"))) {
@@ -13150,7 +13153,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         }
                     } else if (string_eq(method, s("reserve")) ||
                                string_eq(method, s("resize")) ||
-                               string_eq(method, s("resize_undefined"))) {
+                               string_eq(method, s("resize_undefined")) ||
+                               string_eq(method, s("delete")) ||
+                               string_eq(method, s("swap_delete"))) {
                         if (call->arg_count != 1) {
                             return error_0313_argument_count_mismatch(
                                 lexer->source,

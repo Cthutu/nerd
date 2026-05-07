@@ -1620,6 +1620,58 @@ void cgen_add_dynarray_op(CGen* cgen, IrOperation op, u32 op_index)
         cgen_add_typed_value(cgen, &info->arg, info->arg_type);
         cgen_addn(cgen, ".count;");
         break;
+    case IR_OP_DYNARRAY_DELETE:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_index = ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ";");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if ($dyn_index >= ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen,
+                  ".count) { eprn(\"fatal: dynamic array delete index out of "
+                  "bounds\"); abort(); }");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if ($dyn_index + 1 < ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count) memmove(");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data + $dyn_index, ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data + $dyn_index + 1, (");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".count - $dyn_index - 1) * sizeof(");
+        cgen_add(
+            cgen,
+            cgen_c_type(cgen,
+                        cgen->ir->types[info->dynarray_type].first_param_type));
+        cgen_addn(cgen, "));");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count--;");
+        break;
+    case IR_OP_DYNARRAY_SWAP_DELETE:
+        cgen_start_line(cgen);
+        cgen_add(cgen, "uintptr_t $dyn_index = ");
+        cgen_add_typed_value(cgen, &info->arg, info->arg_type);
+        cgen_addn(cgen, ";");
+        cgen_start_line(cgen);
+        cgen_add(cgen, "if ($dyn_index >= ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen,
+                  ".count) { eprn(\"fatal: dynamic array swap_delete index out "
+                  "of bounds\"); abort(); }");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data[$dyn_index] = ");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_add(cgen, ".data[");
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count - 1];");
+        cgen_start_line(cgen);
+        cgen_add_dynarray_target(cgen, info);
+        cgen_addn(cgen, ".count--;");
+        break;
     case IR_OP_DYNARRAY_CLEAR:
         cgen_start_line(cgen);
         cgen_add_dynarray_target(cgen, info);
@@ -2462,6 +2514,8 @@ void cgen_generate(CGen* cgen, const Ir* ir)
         case IR_OP_DYNARRAY_CLEAR:
         case IR_OP_DYNARRAY_FREE:
         case IR_OP_DYNARRAY_POP:
+        case IR_OP_DYNARRAY_DELETE:
+        case IR_OP_DYNARRAY_SWAP_DELETE:
         case IR_OP_DYNARRAY_RESIZE:
         case IR_OP_DYNARRAY_RESIZE_UNDEFINED:
             cgen_add_dynarray_op(cgen,

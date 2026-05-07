@@ -555,6 +555,12 @@ string ir_render(const Ir* ir, const Lexer* lexer, Arena* arena)
             ir_render_value(&sb, ir, lexer, &instr->lvalue);
             sb_append_cstr(&sb, " = dynarray.pop");
             break;
+        case IR_OP_DYNARRAY_DELETE:
+            sb_append_cstr(&sb, "dynarray.delete");
+            break;
+        case IR_OP_DYNARRAY_SWAP_DELETE:
+            sb_append_cstr(&sb, "dynarray.swap_delete");
+            break;
         case IR_OP_DYNARRAY_RESIZE:
             sb_append_cstr(&sb, "dynarray.resize");
             break;

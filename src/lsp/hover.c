@@ -1575,6 +1575,8 @@ internal string lsp_field_hover_text(const LspDocument* doc,
                        string_eq(name, s("reserve")) ||
                        string_eq(name, s("resize")) ||
                        string_eq(name, s("resize_undefined")) ||
+                       string_eq(name, s("delete")) ||
+                       string_eq(name, s("swap_delete")) ||
                        string_eq(name, s("pop")) ||
                        string_eq(name, s("clear")) ||
                        string_eq(name, s("free"))) {

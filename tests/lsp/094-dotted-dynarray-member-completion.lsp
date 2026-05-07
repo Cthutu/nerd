@@ -147,6 +147,10 @@ impl FrameSystem {
                 "kind": 2
             },
             {
+                "label": "delete",
+                "kind": 2
+            },
+            {
                 "label": "free",
                 "kind": 2
             },
@@ -164,6 +168,10 @@ impl FrameSystem {
             },
             {
                 "label": "resize",
+                "kind": 2
+            },
+            {
+                "label": "swap_delete",
                 "kind": 2
             },
             {

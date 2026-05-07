@@ -2916,6 +2916,14 @@ ir_dynarray_method_op(const Lexer* lex, u32 method_symbol, IrOperation* out_op)
         *out_op = IR_OP_DYNARRAY_RESIZE_UNDEFINED;
         return true;
     }
+    if (string_eq(method, s("delete"))) {
+        *out_op = IR_OP_DYNARRAY_DELETE;
+        return true;
+    }
+    if (string_eq(method, s("swap_delete"))) {
+        *out_op = IR_OP_DYNARRAY_SWAP_DELETE;
+        return true;
+    }
     if (string_eq(method, s("clear"))) {
         *out_op = IR_OP_DYNARRAY_CLEAR;
         return true;

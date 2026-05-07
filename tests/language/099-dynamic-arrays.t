@@ -42,10 +42,29 @@ main :: fn () -> i32 {
     prn($"{words[0]} {words[1]}")
     words.free()
 
+    nums: [..]i32
+    nums.push(1)
+    nums.push(2)
+    nums.push(3)
+    nums.push(4)
+    nums.push(5)
+    nums.delete(1)
+    on nums.count != 4 => return 13
+    on nums[0] != 1 => return 14
+    on nums[1] != 3 => return 15
+    on nums[2] != 4 => return 16
+    on nums[3] != 5 => return 17
+    nums.swap_delete(1)
+    on nums.count != 3 => return 18
+    on nums[0] != 1 => return 19
+    on nums[1] != 5 => return 20
+    on nums[2] != 4 => return 21
+    nums.free()
+
     names.clear()
-    on names.count != 0 => return 13
+    on names.count != 0 => return 22
     names.free()
-    on names != nil => return 14
+    on names != nil => return 23
     return 0
 }
 ¬
