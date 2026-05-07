@@ -82,7 +82,7 @@ Risks:
 ### CST
 
 `doc->cst` is parsed separately from the front-end AST and guarded by
-`has_cst`.
+`cst_ready`.
 
 Good:
 
@@ -104,14 +104,18 @@ Good:
 - rich enough to power completion, hover, definition, rename, and code actions
 - partial results are already kept for editor use
 
-Risks:
+Resolved during this review:
 
-- `semantic_ready` is set when lexer and AST arrays exist, even if semantic
-  analysis returned errors
-- there is no distinction between declaration facts, binding facts, and checked
-  type facts
-- direct side-table access means every feature must perform its own validity
-  checks
+- `semantic_ready` has been split into `tokens_ready`, `syntax_ready`,
+  `sema_partial`, and `sema_complete`.
+- `has_cst` has been renamed to the product-oriented `cst_ready`.
+
+Remaining risks:
+
+- there is still no distinction between declaration facts, binding facts, and
+  checked type facts
+- direct side-table access still exists in hover, completion, and imported
+  module helpers
 
 ## Feature Contracts
 
@@ -137,38 +141,37 @@ named product or accessor and receive either a valid view or no result.
 
 ### Readiness Flags
 
-Replace the current loose booleans with explicit product readiness:
+The first implementation step replaced the current loose booleans with explicit
+product readiness fields on `LspDocument`:
 
 ```c
-typedef enum {
-    LSP_READY_SOURCE = 1 << 0,
-    LSP_READY_TOKENS = 1 << 1,
-    LSP_READY_AST = 1 << 2,
-    LSP_READY_CST = 1 << 3,
-    LSP_READY_DECLS = 1 << 4,
-    LSP_READY_BINDINGS = 1 << 5,
-    LSP_READY_TYPES_PARTIAL = 1 << 6,
-    LSP_READY_TYPES_COMPLETE = 1 << 7,
-} LspReadyFlags;
+bool source_ready;
+bool tokens_ready;
+bool syntax_ready;
+bool sema_partial;
+bool sema_complete;
+bool cst_ready;
 ```
 
-These flags should be set by the stage that owns the product, not inferred by
-feature handlers.
+These fields are set by document staging after each product is produced. A
+future bitset or view constructor may still be useful, but the first step is
+now in the codebase.
 
 ### Checked Accessors
 
-Add accessors around semantic side tables before more feature work:
+Accessors around semantic side tables are now available:
 
 ```c
 bool lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
 bool lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
+bool lsp_sema_node_local(const Sema* sema, u32 node_index, u32* out_local_index);
 bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
 bool lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
 bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
 ```
 
-The semantic-token hardening commit is an example of this direction: validate
-the declaration index loaded from a side table before indexing `sema->decls`.
+Semantic tokens, rename, signature help, code actions, and some hover helpers
+have started using these accessors.
 
 ### Analysis Snapshot Views
 
@@ -206,12 +209,8 @@ work against the narrowest view they need.
 
 ## Next Actions
 
-1. Add LSP semantic accessor helpers and migrate one feature at a time.
-2. Split `semantic_ready` into at least `tokens_ready`, `syntax_ready`, and
-   `sema_partial`.
-3. Convert semantic tokens to use the accessor helpers first because it has the
-   narrowest semantic needs.
-4. Convert hover and completion after that because they have the largest direct
-   sema surface area.
-5. Keep adding stress cases for chained edits, broken imports, incomplete type
+1. Continue migrating hover and completion direct side-table reads.
+2. Add feature-facing view constructors for token, syntax, and semantic views.
+3. Decide whether declaration and binding readiness need separate flags.
+4. Keep adding stress cases for chained edits, broken imports, incomplete type
    syntax, rename, and semantic tokens.
