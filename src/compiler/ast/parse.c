@@ -4023,6 +4023,52 @@ internal bool ast_bind_value_looks_like_missing_fn(AstParseState* state)
     return next == TK_LBrace || next == TK_FatArrow || next == TK_ThinArrow;
 }
 
+internal bool ast_fn_after_single_colon_looks_like_value(AstParseState* state,
+                                                         u32* out_bad_token)
+{
+    if (state->token.kind != TK_fn || ast_peek_kind_at(state, 0) != TK_LParen) {
+        return false;
+    }
+
+    u32 cursor = state->token.token_index + 1;
+    u32 depth  = 0;
+    while (cursor < array_count(state->lexer->tokens)) {
+        TokenKind kind = ast_kind_at_stream_index(state, cursor);
+        if (kind == TK_LParen) {
+            depth++;
+        } else if (kind == TK_RParen) {
+            if (depth == 0) {
+                break;
+            }
+            depth--;
+            if (depth == 0) {
+                return false;
+            }
+        } else if (kind == TK_Colon && depth == 1) {
+            *out_bad_token = state->token.token_index;
+            return true;
+        } else if (kind == TK_EOF) {
+            return false;
+        }
+        cursor++;
+    }
+    return false;
+}
+
+internal bool ast_error_fn_after_single_colon(AstParseState* state,
+                                              u32            token_index)
+{
+    return error_0203_expected_token_ex(
+        state->lexer->source,
+        ast_span_for_token_index(state, token_index),
+        TK_Colon,
+        TK_fn,
+        "Function values use a binding operator before `fn`, not a type "
+        "annotation colon.",
+        "Use `:: fn (...) { ... }` for a constant function binding, or `:= fn "
+        "(...) { ... }` for a mutable function value.");
+}
+
 internal bool ast_error_missing_fn_in_binding_value(AstParseState* state,
                                                     bool is_const_bind)
 {
@@ -4211,6 +4257,11 @@ internal bool ast_parse_variable_payload(AstParseState* state,
         bool ok                         = ast_parse_expr(state, out_value_node);
         state->allow_statement_boundary = previous_boundary;
         return ok;
+    }
+
+    u32 bad_token = U32_MAX;
+    if (ast_fn_after_single_colon_looks_like_value(state, &bad_token)) {
+        return ast_error_fn_after_single_colon(state, bad_token);
     }
 
     if (!ast_parse_type(state, &type_index)) {

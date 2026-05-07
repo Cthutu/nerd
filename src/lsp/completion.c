@@ -553,6 +553,11 @@ internal void lsp_completion_add_ast_on_payload_members(Arena*       arena,
                                                         const Lexer* lexer,
                                                         const Ast*   ast,
                                                         string       receiver);
+internal void lsp_completion_add_ast_members(Arena*             arena,
+                                             JsonValue*         items,
+                                             const LspDocument* doc,
+                                             string             receiver,
+                                             usize              offset);
 internal bool lsp_completion_source_module_path_for_binding(Arena*  arena,
                                                             string  source,
                                                             string  receiver,
@@ -631,6 +636,10 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             &repaired_doc,
             lsp_completion_type_for_symbol(&repaired_doc, receiver));
         if (array_count(items->array.values) == 0) {
+            lsp_completion_add_ast_members(
+                arena, items, &repaired_doc, receiver, offset);
+        }
+        if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_on_payload_members(
                 arena,
                 items,
@@ -652,24 +661,103 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
     arena_done(&temp);
 }
 
-internal u32 lsp_completion_ast_type_symbol(const Ast* ast, u32 type_node_index)
+internal u32 lsp_completion_ast_type_symbol_with_self(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      u32 type_node_index,
+                                                      u32 self_symbol)
 {
     if (type_node_index >= array_count(ast->nodes)) {
         return U32_MAX;
     }
 
     const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind == AK_Expression || type_node->kind == AK_Statement) {
+        return lsp_completion_ast_type_symbol_with_self(
+            lexer, ast, type_node->a, self_symbol);
+    }
     if (type_node->kind == AK_SymbolRef) {
+        if (self_symbol != U32_MAX &&
+            string_eq(lex_symbol(lexer, type_node->a), s("Self"))) {
+            return self_symbol;
+        }
         return type_node->a;
     }
     if (type_node->kind == AK_TypePointer) {
-        return lsp_completion_ast_type_symbol(ast, type_node->a);
+        return lsp_completion_ast_type_symbol_with_self(
+            lexer, ast, type_node->a, self_symbol);
     }
     return U32_MAX;
 }
 
+internal u32 lsp_completion_ast_type_symbol(const Lexer* lexer,
+                                            const Ast*   ast,
+                                            u32          type_node_index)
+{
+    return lsp_completion_ast_type_symbol_with_self(
+        lexer, ast, type_node_index, U32_MAX);
+}
+
+internal u32 lsp_completion_ast_impl_self_symbol_at_offset(
+    const LspDocument* doc, usize offset)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+
+    for (u32 impl_index = 0; impl_index < array_count(ast->impls);
+         ++impl_index) {
+        const AstImplInfo* impl = &ast->impls[impl_index];
+        if (impl->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        u32 impl_node_index = U32_MAX;
+        for (u32 node_index = 0; node_index < array_count(ast->nodes);
+             ++node_index) {
+            const AstNode* node = &ast->nodes[node_index];
+            if (node->kind == AK_Impl && node->a == impl_index) {
+                impl_node_index = node_index;
+                break;
+            }
+        }
+        if (impl_node_index == U32_MAX) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[impl_node_index];
+        if (impl_node->token_index >= array_count(lexer->tokens) ||
+            lexer->tokens[impl_node->token_index].offset > offset) {
+            continue;
+        }
+
+        usize          end  = lexer->source.source.count;
+        const AstNode* body = &ast->nodes[impl->body_node_index];
+        if (body->kind == AK_Block) {
+            end = 0;
+            for (u32 node_index = body->a;
+                 node_index < body->b && node_index < array_count(ast->nodes);
+                 ++node_index) {
+                const AstNode* node = &ast->nodes[node_index];
+                if (node->token_index < array_count(lexer->tokens)) {
+                    end = MAX(end,
+                              lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]));
+                }
+            }
+        }
+        if (end != 0 && offset > end) {
+            continue;
+        }
+
+        return lsp_completion_ast_type_symbol(
+            lexer, ast, impl->target_type_node_index);
+    }
+
+    return U32_MAX;
+}
+
 internal u32 lsp_completion_ast_receiver_type_symbol(const LspDocument* doc,
-                                                     string receiver)
+                                                     string receiver,
+                                                     usize  offset)
 {
     const Lexer* lexer = &doc->front_end.lexer;
     const Ast*   ast   = &doc->front_end.ast;
@@ -690,8 +778,45 @@ internal u32 lsp_completion_ast_receiver_type_symbol(const LspDocument* doc,
         const AstNode* value = &ast->nodes[node->b];
         if (value->kind == AK_AnnotatedValue || value->kind == AK_ZeroInit ||
             value->kind == AK_Undefined) {
-            return lsp_completion_ast_type_symbol(ast, value->a);
+            return lsp_completion_ast_type_symbol(lexer, ast, value->a);
         }
+    }
+
+    u32   best_type_symbol = U32_MAX;
+    usize best_offset      = 0;
+    for (u32 signature_index = 0;
+         signature_index < array_count(ast->fn_signatures);
+         ++signature_index) {
+        const AstFnSignature* signature = &ast->fn_signatures[signature_index];
+        for (u32 i = 0; i < signature->param_count; ++i) {
+            u32 param_index = signature->first_param + i;
+            if (param_index >= array_count(ast->params)) {
+                break;
+            }
+            const AstParam* param = &ast->params[param_index];
+            if (param->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(lexer, param->symbol_handle), receiver) ||
+                param->token_index >= array_count(lexer->tokens)) {
+                continue;
+            }
+            usize param_offset = lexer->tokens[param->token_index].offset;
+            if (param_offset > offset || param_offset < best_offset) {
+                continue;
+            }
+
+            u32 self_symbol =
+                lsp_completion_ast_impl_self_symbol_at_offset(doc, offset);
+            u32 type_symbol = lsp_completion_ast_type_symbol_with_self(
+                lexer, ast, param->type_node_index, self_symbol);
+            if (type_symbol != U32_MAX) {
+                best_type_symbol = type_symbol;
+                best_offset      = param_offset;
+            }
+        }
+    }
+
+    if (best_type_symbol != U32_MAX) {
+        return best_type_symbol;
     }
 
     return U32_MAX;
@@ -700,11 +825,13 @@ internal u32 lsp_completion_ast_receiver_type_symbol(const LspDocument* doc,
 internal void lsp_completion_add_ast_members(Arena*             arena,
                                              JsonValue*         items,
                                              const LspDocument* doc,
-                                             string             receiver)
+                                             string             receiver,
+                                             usize              offset)
 {
     const Lexer* lexer = &doc->front_end.lexer;
     const Ast*   ast   = &doc->front_end.ast;
-    u32 type_symbol    = lsp_completion_ast_receiver_type_symbol(doc, receiver);
+    u32          type_symbol =
+        lsp_completion_ast_receiver_type_symbol(doc, receiver, offset);
     if (type_symbol == U32_MAX) {
         return;
     }
@@ -1134,6 +1261,173 @@ internal bool lsp_completion_add_text_plex_fields(Arena*     arena,
         line_start = line_end + (line_end < source.count ? 1 : 0);
     }
     return array_count(items->array.values) > before;
+}
+
+internal bool lsp_completion_source_impl_type_before(Arena*  arena,
+                                                     string  source,
+                                                     usize   offset,
+                                                     string* out_type)
+{
+    usize line_start = 0;
+    bool  found      = false;
+    while (line_start < source.count && line_start < offset) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = MIN(line_end, offset) - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("impl"))) {
+            usize start = i;
+            while (i < line.count &&
+                   lsp_completion_is_ident_char(line.data[i])) {
+                i++;
+            }
+            if (i > start) {
+                u8* copy = arena_alloc(arena, i - start);
+                memcpy(copy, line.data + start, i - start);
+                *out_type = (string){.data = copy, .count = i - start};
+                found     = true;
+            }
+        }
+
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return found;
+}
+
+internal bool lsp_completion_source_param_type_before(Arena*  arena,
+                                                      string  source,
+                                                      usize   offset,
+                                                      string  receiver,
+                                                      string* out_type)
+{
+    usize line_start = 0;
+    bool  found      = false;
+    while (line_start < source.count && line_start < offset) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = MIN(line_end, offset) - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        for (usize i = 0; i < line.count; ++i) {
+            if (!lsp_completion_match_ident_at(line, &i, receiver)) {
+                continue;
+            }
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+            if (i >= line.count || line.data[i] != ':') {
+                continue;
+            }
+            i++;
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+            if (i < line.count && line.data[i] == '^') {
+                i++;
+            }
+            if (i < line.count && line.data[i] == '(') {
+                i++;
+            }
+            usize start = i;
+            while (i < line.count &&
+                   lsp_completion_is_ident_char(line.data[i])) {
+                i++;
+            }
+            if (i > start) {
+                u8* copy = arena_alloc(arena, i - start);
+                memcpy(copy, line.data + start, i - start);
+                *out_type = (string){.data = copy, .count = i - start};
+                found     = true;
+            }
+        }
+
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return found;
+}
+
+internal void lsp_completion_add_source_param_members(Arena*             arena,
+                                                      JsonValue*         items,
+                                                      const LspDocument* doc,
+                                                      usize              offset,
+                                                      string receiver)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    string type_name = {0};
+    if (lsp_completion_source_param_type_before(
+            &temp, doc->source, offset, receiver, &type_name)) {
+        if (string_eq(type_name, s("Self"))) {
+            string self_type = {0};
+            if (lsp_completion_source_impl_type_before(
+                    &temp, doc->source, offset, &self_type)) {
+                type_name = self_type;
+            }
+        }
+        (void)lsp_completion_add_text_plex_fields(
+            arena, items, doc->source, type_name);
+    }
+
+    arena_done(&temp);
+}
+
+internal void lsp_completion_add_source_symbols(Arena*     arena,
+                                                JsonValue* items,
+                                                string     source,
+                                                usize      offset)
+{
+    usize line_start = 0;
+    while (line_start < source.count && line_start < offset) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = MIN(line_end, offset) - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i == start) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        string label = {.data = line.data + start, .count = i - start};
+
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        if (i + 1 < line.count && line.data[i] == ':' &&
+            (line.data[i + 1] == ':' || line.data[i + 1] == '=')) {
+            lsp_completion_add(arena, items, label, 1);
+        } else if (i < line.count && line.data[i] == ':') {
+            lsp_completion_add(arena, items, label, 6);
+        }
+
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
 }
 
 internal bool lsp_completion_add_payload_fields_from_text(Arena*     arena,
@@ -2085,6 +2379,34 @@ internal void lsp_completion_add_symbols(Arena*             arena,
                                          const LspDocument* doc)
 {
     if (!doc->semantic_ready) {
+        const Lexer* lexer = &doc->front_end.lexer;
+        const Ast*   ast   = &doc->front_end.ast;
+        for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+            const AstNode* node          = &ast->nodes[i];
+            u32            symbol_handle = U32_MAX;
+            if (node->kind == AK_Bind || node->kind == AK_Variable) {
+                symbol_handle = node->a;
+            } else if (node->kind == AK_FfiDef &&
+                       node->a < array_count(ast->ffi_infos)) {
+                symbol_handle = ast->ffi_infos[node->a].symbol_handle;
+            }
+            if (symbol_handle == U32_MAX) {
+                continue;
+            }
+            string label = lex_symbol(lexer, symbol_handle);
+            if (lsp_completion_is_internal_label(label)) {
+                continue;
+            }
+            lsp_completion_add(
+                arena, items, label, lsp_completion_ast_export_kind(ast, node));
+        }
+        for (u32 i = 0; i < array_count(ast->params); ++i) {
+            const AstParam* param = &ast->params[i];
+            if (param->symbol_handle != U32_MAX) {
+                lsp_completion_add(
+                    arena, items, lex_symbol(lexer, param->symbol_handle), 6);
+            }
+        }
         return;
     }
 
@@ -2157,7 +2479,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
             lsp_completion_type_for_symbol(doc, receiver));
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_members(
-                message->arena, items, doc, receiver);
+                message->arena, items, doc, receiver, offset);
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_module_members(
@@ -2166,6 +2488,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_module_members(
                 message->arena, items, doc, receiver, uri);
+        }
+        if (array_count(items->array.values) == 0) {
+            lsp_completion_add_source_param_members(
+                message->arena, items, doc, offset, receiver);
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_on_payload_members(
@@ -2183,6 +2509,8 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
 
     lsp_completion_add_keywords(message->arena, items);
     lsp_completion_add_symbols(message->arena, items, doc);
+    lsp_completion_add_source_symbols(
+        message->arena, items, doc->source, offset);
     lsp_completion_filter_items(items, prefix);
     json_object_set_array(response, "result", items);
     lsp_send_response(message->arena, response);
