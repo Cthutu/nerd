@@ -250,11 +250,11 @@ internal string lsp_path_to_uri(Arena* arena, cstr path)
 internal JsonValue*
 lsp_module_decl_location(const ModuleInfo* module, Arena* arena, u32 decl_index)
 {
-    if (decl_index >= array_count(module->front_end.sema.decls)) {
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(&module->front_end.sema, decl_index, &decl)) {
         return NULL;
     }
 
-    const SemaDecl* decl = &module->front_end.sema.decls[decl_index];
     if (decl->bind_node_index == LSP_NO_DECL ||
         decl->bind_node_index >= array_count(module->front_end.ast.nodes)) {
         return NULL;
@@ -329,12 +329,11 @@ internal JsonValue* lsp_imported_symbol_location(const LspDocument* doc,
                                                  u32                module_type,
                                                  u32 symbol_handle)
 {
-    if (module_type == sema_no_type() ||
-        module_type >= array_count(doc->front_end.sema.types)) {
+    const SemaType* type = NULL;
+    if (!lsp_sema_type(&doc->front_end.sema, module_type, &type)) {
         return NULL;
     }
 
-    const SemaType* type = &doc->front_end.sema.types[module_type];
     if (type->kind != STK_Module || doc->program.modules == NULL ||
         type->return_type >= array_count(doc->program.modules)) {
         return NULL;
@@ -847,10 +846,10 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         return false;
     }
 
-    const SemaType* type = decl->kind == SK_GenericFunction
-                               ? NULL
-                               : &doc->front_end.sema.types[decl->type_index];
-    if (decl->kind != SK_GenericFunction && type->kind != STK_Function) {
+    const SemaType* type = NULL;
+    if (decl->kind != SK_GenericFunction &&
+        (!lsp_sema_type(&doc->front_end.sema, decl->type_index, &type) ||
+         type->kind != STK_Function)) {
         return false;
     }
     bool has_generic = signature->generic_params_index != U32_MAX;
@@ -1836,19 +1835,18 @@ internal JsonValue* lsp_field_location_from_type_node(const LspDocument* doc,
         return NULL;
     }
 
-    if (type_node->kind == AK_SymbolRef &&
-        type_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
-        u32 decl_index = doc->front_end.sema.node_decl_indices[type_node_index];
-        if (decl_index != sema_no_decl() &&
-            decl_index < array_count(doc->front_end.sema.decls)) {
-            const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
-            if (decl->kind == SK_TypeAlias &&
-                decl->bind_node_index < array_count(doc->front_end.ast.nodes)) {
-                const AstNode* bind =
-                    &doc->front_end.ast.nodes[decl->bind_node_index];
-                return lsp_field_location_from_type_node(
-                    doc, arena, uri, bind->b, field_symbol);
-            }
+    if (type_node->kind == AK_SymbolRef) {
+        u32             decl_index = sema_no_decl();
+        const SemaDecl* decl       = NULL;
+        if (lsp_sema_node_decl(
+                &doc->front_end.sema, type_node_index, &decl_index) &&
+            lsp_sema_decl(&doc->front_end.sema, decl_index, &decl) &&
+            decl->kind == SK_TypeAlias &&
+            decl->bind_node_index < array_count(doc->front_end.ast.nodes)) {
+            const AstNode* bind =
+                &doc->front_end.ast.nodes[decl->bind_node_index];
+            return lsp_field_location_from_type_node(
+                doc, arena, uri, bind->b, field_symbol);
         }
     }
 
@@ -2278,22 +2276,18 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
     u32 modref_node_index = lsp_find_modref_node_at_token(
         &doc->front_end.lexer, &doc->front_end.ast, token_index);
     if (modref_node_index != U32_MAX) {
-        if (modref_node_index <
-            array_count(doc->front_end.sema.node_type_indices)) {
-            u32 module_type =
-                doc->front_end.sema.node_type_indices[modref_node_index];
-            if (module_type != sema_no_type() &&
-                module_type < array_count(doc->front_end.sema.types)) {
-                const SemaType* type = &doc->front_end.sema.types[module_type];
-                if (type->kind == STK_Module && doc->program.modules != NULL &&
-                    type->return_type < array_count(doc->program.modules)) {
-                    JsonValue* location = lsp_module_file_location(
-                        &doc->program.modules[type->return_type],
-                        message->arena);
-                    json_object_set_object(response, "result", location);
-                    lsp_send_response(message->arena, response);
-                    return;
-                }
+        u32             module_type = sema_no_type();
+        const SemaType* type        = NULL;
+        if (lsp_sema_node_type(
+                &doc->front_end.sema, modref_node_index, &module_type) &&
+            lsp_sema_type(&doc->front_end.sema, module_type, &type)) {
+            if (type->kind == STK_Module && doc->program.modules != NULL &&
+                type->return_type < array_count(doc->program.modules)) {
+                JsonValue* location = lsp_module_file_location(
+                    &doc->program.modules[type->return_type], message->arena);
+                json_object_set_object(response, "result", location);
+                lsp_send_response(message->arena, response);
+                return;
             }
         }
 
@@ -2327,19 +2321,22 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     u32 local_index = lsp_find_local_index_for_token(doc, token_index);
     if (local_index != sema_no_local()) {
-        const SemaLocal* local    = &doc->front_end.sema.locals[local_index];
-        JsonValue*       location = NULL;
+        const SemaLocal* local = NULL;
+        if (!lsp_sema_local(&doc->front_end.sema, local_index, &local)) {
+            lsp_cancel(response, message->arena);
+            return;
+        }
+
+        JsonValue* location = NULL;
         if (local->decl_node_index < array_count(doc->front_end.ast.nodes)) {
             const AstNode* decl_node =
                 &doc->front_end.ast.nodes[local->decl_node_index];
+            u32 module_type = sema_no_type();
             if (decl_node->kind == AK_Use &&
-                decl_node->a <
-                    array_count(doc->front_end.sema.node_type_indices)) {
+                lsp_sema_node_type(
+                    &doc->front_end.sema, decl_node->a, &module_type)) {
                 location = lsp_imported_symbol_location(
-                    doc,
-                    message->arena,
-                    doc->front_end.sema.node_type_indices[decl_node->a],
-                    local->symbol_handle);
+                    doc, message->arena, module_type, local->symbol_handle);
             }
         }
         if (location == NULL) {
