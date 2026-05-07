@@ -323,6 +323,20 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     return staged.analysis_ok;
 }
 
+bool lsp_source_view(LspState* state, string uri, LspSourceView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->source_ready) {
+        return false;
+    }
+
+    *out_view = (LspSourceView){
+        .doc    = doc,
+        .source = doc->source,
+    };
+    return true;
+}
+
 bool lsp_token_view(LspState* state, string uri, LspTokenView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);

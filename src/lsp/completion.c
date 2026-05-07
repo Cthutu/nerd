@@ -3021,22 +3021,23 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc) {
+    LspSourceView view = {0};
+    if (!lsp_source_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);
         return;
     }
+    const LspDocument* doc = view.doc;
 
     u64 line      = 0;
     u64 character = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
-    usize  offset    = lsp_offset_from_position(doc->source, line, character);
-    string prefix    = lsp_completion_ident_before(doc->source, offset);
+    usize  offset    = lsp_offset_from_position(view.source, line, character);
+    string prefix    = lsp_completion_ident_before(view.source, offset);
 
     JsonValue* items = json_new_array(message->arena);
     string     use_path = {0};
-    if (lsp_completion_use_context(doc->source, offset, &use_path)) {
+    if (lsp_completion_use_context(view.source, offset, &use_path)) {
         lsp_completion_add_modules(message->arena, items, doc, use_path);
         lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
@@ -3045,7 +3046,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     }
 
     string receiver = {0};
-    if (lsp_completion_member_context(doc->source, offset, &receiver)) {
+    if (lsp_completion_member_context(view.source, offset, &receiver)) {
         lsp_completion_add_source_for_item_members(
             message->arena, items, doc, offset, receiver);
         if (array_count(items->array.values) == 0) {
@@ -3087,8 +3088,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
 
     lsp_completion_add_keywords(message->arena, items);
     lsp_completion_add_symbols(message->arena, items, doc);
-    lsp_completion_add_source_symbols(
-        message->arena, items, doc->source, offset);
+    lsp_completion_add_source_symbols(message->arena, items, view.source, offset);
     lsp_completion_filter_items(items, prefix);
     json_object_set_array(response, "result", items);
     lsp_send_response(message->arena, response);

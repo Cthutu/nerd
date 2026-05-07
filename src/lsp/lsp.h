@@ -45,6 +45,11 @@ typedef struct {
 typedef struct {
     const LspDocument* doc;
     string             source;
+} LspSourceView;
+
+typedef struct {
+    const LspDocument* doc;
+    string             source;
     const Lexer*       lexer;
 } LspTokenView;
 
@@ -87,6 +92,7 @@ void lsp_done(LspState* state);
 // LSP document utilities
 
 void  lsp_document_done(LspDocument* doc);
+bool  lsp_source_view(LspState* state, string uri, LspSourceView* out_view);
 bool  lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
 bool  lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
 bool  lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
