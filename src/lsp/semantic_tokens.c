@@ -153,6 +153,20 @@ internal u32 lsp_semantic_find_decl_index_by_symbol_handle(const Sema* sema,
 }
 
 //------------------------------------------------------------------------------
+// Return whether one declaration index names a function-like symbol.
+
+internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
+{
+    if (decl_index == U32_MAX || decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+
+    const SemaDecl* decl = &sema->decls[decl_index];
+    return decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
+           decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction;
+}
+
+//------------------------------------------------------------------------------
 // Classify one symbol token by semantic role.
 
 internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
@@ -162,12 +176,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
     if (bind_node_index != U32_MAX) {
         u32 decl_index = lsp_semantic_find_decl_index_by_symbol_handle(
             &doc->front_end.sema, doc->front_end.ast.nodes[bind_node_index].a);
-        if (decl_index != U32_MAX &&
-            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
-             doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_BuiltinFunction)) {
+        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
         return LSP_SEMANTIC_VARIABLE;
@@ -178,12 +187,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
     if (ref_node_index != U32_MAX &&
         ref_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
         u32 decl_index = doc->front_end.sema.node_decl_indices[ref_node_index];
-        if (decl_index != U32_MAX &&
-            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
-             doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_BuiltinFunction)) {
+        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
     }
@@ -194,12 +198,7 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
         field_node_index < array_count(doc->front_end.sema.node_decl_indices)) {
         u32 decl_index =
             doc->front_end.sema.node_decl_indices[field_node_index];
-        if (decl_index != U32_MAX &&
-            (doc->front_end.sema.decls[decl_index].kind == SK_Function ||
-             doc->front_end.sema.decls[decl_index].kind == SK_GenericFunction ||
-             doc->front_end.sema.decls[decl_index].kind == SK_FfiFunction ||
-             doc->front_end.sema.decls[decl_index].kind ==
-                 SK_BuiltinFunction)) {
+        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
     }
