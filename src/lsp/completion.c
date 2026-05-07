@@ -656,8 +656,7 @@ internal void lsp_completion_add_members(Arena*             arena,
         u32 target_type = sema_no_type();
         if (lsp_sema_node_type(
                 sema, method->target_type_node_index, &target_type)) {
-            target_type = sema_materialise_type(
-                sema, target_type);
+            target_type = sema_materialise_type(sema, target_type);
         }
 
         if (target_type != sema_no_type() &&

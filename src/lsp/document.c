@@ -210,14 +210,14 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->cst = (Cst){0};
     program_info_done(&doc->program);
     arena_done(&doc->arena);
-    doc->program        = (ProgramInfo){0};
-    doc->front_end      = (FrontEndState){0};
-    doc->analysis_ok    = false;
-    doc->tokens_ready   = false;
-    doc->syntax_ready   = false;
-    doc->sema_partial   = false;
-    doc->sema_complete  = false;
-    doc->cst_ready      = false;
+    doc->program       = (ProgramInfo){0};
+    doc->front_end     = (FrontEndState){0};
+    doc->analysis_ok   = false;
+    doc->tokens_ready  = false;
+    doc->syntax_ready  = false;
+    doc->sema_partial  = false;
+    doc->sema_complete = false;
+    doc->cst_ready     = false;
 }
 
 internal void lsp_document_set_source(LspDocument* doc, string content)
@@ -243,7 +243,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     staged->cst_ready     = false;
     staged->source        = content;
 
-    u8* uri_copy           = arena_alloc(&staged->arena, uri.count);
+    u8* uri_copy          = arena_alloc(&staged->arena, uri.count);
     memcpy(uri_copy, uri.data, uri.count);
     string stable_uri = {.data = uri_copy, .count = uri.count};
 
@@ -312,14 +312,14 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     }
     doc->front_end =
         doc->program.modules[doc->program.root_module_index].front_end;
-    doc->cst            = staged.cst;
-    doc->analysis_ok    = staged.analysis_ok;
-    doc->source_ready   = staged.source_ready;
-    doc->tokens_ready   = staged.tokens_ready;
-    doc->syntax_ready   = staged.syntax_ready;
-    doc->sema_partial   = staged.sema_partial;
-    doc->sema_complete  = staged.sema_complete;
-    doc->cst_ready      = staged.cst_ready;
+    doc->cst           = staged.cst;
+    doc->analysis_ok   = staged.analysis_ok;
+    doc->source_ready  = staged.source_ready;
+    doc->tokens_ready  = staged.tokens_ready;
+    doc->syntax_ready  = staged.syntax_ready;
+    doc->sema_partial  = staged.sema_partial;
+    doc->sema_complete = staged.sema_complete;
+    doc->cst_ready     = staged.cst_ready;
     return staged.analysis_ok;
 }
 
@@ -354,9 +354,7 @@ bool lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view)
     return true;
 }
 
-bool lsp_semantic_view(LspState* state,
-                       string    uri,
-                       LspSemanticView* out_view)
+bool lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
     if (!doc || !doc->sema_partial) {

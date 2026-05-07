@@ -20,19 +20,19 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena         source_arena;   // Arena for the current editor buffer
-    Arena         arena;          // Arena for analysis data
-    string        source;         // Current editor document source
-    ProgramInfo   program;        // Program analysis for the current document
-    FrontEndState front_end;      // Compiler front-end results for the document
-    Cst           cst;            // Concrete syntax tree for editor tooling
-    bool          analysis_ok;    // Whether front-end analysis succeeded
-    bool          source_ready;   // Whether editor source is stored
-    bool          tokens_ready;   // Whether lexer tokens are usable
-    bool          syntax_ready;   // Whether AST syntax is usable
-    bool          sema_partial;   // Whether partial semantic facts are usable
-    bool          sema_complete;  // Whether semantic analysis fully succeeded
-    bool          cst_ready;      // Whether CST parsing succeeded
+    Arena         source_arena;  // Arena for the current editor buffer
+    Arena         arena;         // Arena for analysis data
+    string        source;        // Current editor document source
+    ProgramInfo   program;       // Program analysis for the current document
+    FrontEndState front_end;     // Compiler front-end results for the document
+    Cst           cst;           // Concrete syntax tree for editor tooling
+    bool          analysis_ok;   // Whether front-end analysis succeeded
+    bool          source_ready;  // Whether editor source is stored
+    bool          tokens_ready;  // Whether lexer tokens are usable
+    bool          syntax_ready;  // Whether AST syntax is usable
+    bool          sema_partial;  // Whether partial semantic facts are usable
+    bool          sema_complete; // Whether semantic analysis fully succeeded
+    bool          cst_ready;     // Whether CST parsing succeeded
 } LspDocument;
 
 DEF_MAP(LspDocumentMap,
@@ -100,15 +100,11 @@ usize lsp_offset_from_position(string source, u64 line, u64 character);
 bool  lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
 bool  lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
 bool  lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
-bool  lsp_sema_node_decl(const Sema* sema,
-                         u32         node_index,
-                         u32*        out_decl_index);
+bool  lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
 bool  lsp_sema_node_local(const Sema* sema,
                           u32         node_index,
                           u32*        out_local_index);
-bool  lsp_sema_node_type(const Sema* sema,
-                         u32         node_index,
-                         u32*        out_type_index);
+bool  lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
 
 //------------------------------------------------------------------------------
 // LSP message handling

@@ -217,16 +217,16 @@ internal bool lsp_rename_parse_scratch_doc(LspRenameRequestContext* context,
     }
 
     context->scratch_doc = (LspDocument){
-        .source         = source_doc->source,
-        .front_end      = {.lexer = context->scratch_lexer,
-                           .ast   = context->scratch_ast},
-        .analysis_ok    = false,
-        .source_ready   = true,
-        .tokens_ready   = true,
-        .syntax_ready   = true,
-        .sema_partial   = false,
-        .sema_complete  = false,
-        .cst_ready      = false,
+        .source        = source_doc->source,
+        .front_end     = {.lexer = context->scratch_lexer,
+                          .ast   = context->scratch_ast},
+        .analysis_ok   = false,
+        .source_ready  = true,
+        .tokens_ready  = true,
+        .syntax_ready  = true,
+        .sema_partial  = false,
+        .sema_complete = false,
+        .cst_ready     = false,
     };
     context->doc         = &context->scratch_doc;
     context->has_scratch = true;

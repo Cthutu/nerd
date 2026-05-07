@@ -355,7 +355,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         lsp_cancel(response, message->arena);
         return;
     }
-    const LspDocument* doc = view.doc;
+    const LspDocument* doc                 = view.doc;
 
     JsonValue*              result         = json_new_object(message->arena);
     JsonValue*              data           = json_new_array(message->arena);
@@ -375,7 +375,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         }
 
         const Token* token = &view.lexer->tokens[i];
-        u32 end = (u32)lex_token_end_offset(view.lexer, token);
+        u32          end   = (u32)lex_token_end_offset(view.lexer, token);
         if (token->offset < visible.start_offset || end > visible.end_offset) {
             continue;
         }
