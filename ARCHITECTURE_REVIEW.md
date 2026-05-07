@@ -579,6 +579,9 @@ Possible readiness levels:
 6. `sema_complete`: full semantic analysis succeeded.
 7. `core_ready`: checked core exists and can lower to IR.
 
+Detailed evidence is recorded in `review/audits/lsp-crashes.md` and
+`review/audits/lsp-boundaries.md`.
+
 ## Memory Strategy Review
 
 Memory strategy should be part of the architecture discussion because the
