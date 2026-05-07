@@ -13,6 +13,13 @@
 
 #define FORMAT_WRAP_WIDTH 80
 
+typedef struct {
+    Array(u16) newlines_before_token;
+    Array(u32) first_comment_before_token;
+    Array(u16) comment_count_before_token;
+    Array(u32) trailing_comment_index_by_token;
+} FormatTrivia;
+
 internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Cst*     cst,
                                             const Lexer*   lexer,
@@ -89,6 +96,107 @@ internal bool format_emit_trailing_comment_for_node(StringBuilder* sb,
                                                     const Lexer*   lexer,
                                                     u32            node_index,
                                                     u32* io_comment_index);
+
+//------------------------------------------------------------------------------
+// Count newlines in a source range, saturating to the storage size used by
+// formatter trivia.
+
+internal u16 format_count_newlines_between(string source,
+                                           usize  start,
+                                           usize  end)
+{
+    if (end > source.count) {
+        end = source.count;
+    }
+    if (start > end) {
+        start = end;
+    }
+
+    u32 count = 0;
+    for (usize i = start; i < end; ++i) {
+        if (source.data[i] == '\n') {
+            count++;
+            if (count == U16_MAX) {
+                break;
+            }
+        }
+    }
+    return (u16)count;
+}
+
+//------------------------------------------------------------------------------
+// Build token-indexed trivia tables for a future token-stream formatter. The
+// final slot is an EOF slot used for trivia after the last real token.
+
+internal void format_trivia_build(const Lexer* lexer, FormatTrivia* out_trivia)
+{
+    *out_trivia     = (FormatTrivia){0};
+
+    u32 token_count = (u32)array_count(lexer->tokens);
+    u32 slot_count  = token_count + 1;
+    array_requires_size(out_trivia->newlines_before_token, slot_count);
+    array_requires_size(out_trivia->first_comment_before_token, slot_count);
+    array_requires_size(out_trivia->comment_count_before_token, slot_count);
+    array_requires_size(out_trivia->trailing_comment_index_by_token,
+                        slot_count);
+
+    for (u32 i = 0; i < slot_count; ++i) {
+        out_trivia->newlines_before_token[i]           = 0;
+        out_trivia->first_comment_before_token[i]      = U32_MAX;
+        out_trivia->comment_count_before_token[i]      = 0;
+        out_trivia->trailing_comment_index_by_token[i] = U32_MAX;
+    }
+
+    string source = lexer->source.source;
+    for (u32 i = 0; i < token_count; ++i) {
+        usize previous_end =
+            i == 0 ? 0 : lex_token_end_offset(lexer, &lexer->tokens[i - 1]);
+        usize current_start = lexer->tokens[i].offset;
+        out_trivia->newlines_before_token[i] =
+            format_count_newlines_between(source, previous_end, current_start);
+    }
+
+    usize final_start =
+        token_count == 0
+            ? 0
+            : lex_token_end_offset(lexer, &lexer->tokens[token_count - 1]);
+    out_trivia->newlines_before_token[token_count] =
+        format_count_newlines_between(source, final_start, source.count);
+
+    for (u32 i = 0; i < array_count(lexer->comments); ++i) {
+        const LexerComment* comment = &lexer->comments[i];
+        u32                 slot    = comment->token_index;
+        if (slot > token_count) {
+            slot = token_count;
+        }
+
+        if (slot > 0) {
+            usize previous_end =
+                lex_token_end_offset(lexer, &lexer->tokens[slot - 1]);
+            if (format_comment_is_trailing_after_offset(
+                    lexer->source, previous_end, *comment)) {
+                out_trivia->trailing_comment_index_by_token[slot - 1] = i;
+                continue;
+            }
+        }
+
+        if (out_trivia->first_comment_before_token[slot] == U32_MAX) {
+            out_trivia->first_comment_before_token[slot] = i;
+        }
+        if (out_trivia->comment_count_before_token[slot] < U16_MAX) {
+            out_trivia->comment_count_before_token[slot]++;
+        }
+    }
+}
+
+internal void format_trivia_done(FormatTrivia* trivia)
+{
+    array_free(trivia->newlines_before_token);
+    array_free(trivia->first_comment_before_token);
+    array_free(trivia->comment_count_before_token);
+    array_free(trivia->trailing_comment_index_by_token);
+    *trivia = (FormatTrivia){0};
+}
 
 //------------------------------------------------------------------------------
 // Trim leading and trailing ASCII whitespace from a string.
@@ -5115,8 +5223,12 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         return false;
     }
 
+    FormatTrivia trivia = {0};
+    format_trivia_build(&lexer, &trivia);
+
     Cst cst = {0};
     if (!cst_parse(&lexer, &cst) || array_count(cst.bindings) == 0) {
+        format_trivia_done(&trivia);
         cst_done(&cst);
         lex_done(&lexer);
         return false;
@@ -5357,6 +5469,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     }
 
     arena_done(&align_arena);
+    format_trivia_done(&trivia);
     cst_done(&cst);
     lex_done(&lexer);
     return true;
@@ -5421,6 +5534,9 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
             source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
         return false;
     }
+
+    FormatTrivia trivia = {0};
+    format_trivia_build(&lexer, &trivia);
 
     StringBuilder sb = {0};
     sb_init(&sb, arena);
@@ -5502,6 +5618,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                 });
             arena_done(&block_arena);
             if (!ok) {
+                format_trivia_done(&trivia);
                 lex_done(&lexer);
                 return false;
             }
@@ -5575,6 +5692,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
     }
 
     *out_text = sb_to_string(&sb);
+    format_trivia_done(&trivia);
     lex_done(&lexer);
     return true;
 }
