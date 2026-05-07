@@ -91,6 +91,11 @@ format_find_trailing_comment_index_after_offset(NerdSource   source,
                                                 const Lexer* lexer,
                                                 usize        end_offset,
                                                 u32*         out_comment_index);
+internal bool
+format_find_trailing_comment_index_after_offset_scan(NerdSource   source,
+                                                     const Lexer* lexer,
+                                                     usize        end_offset,
+                                                     u32* out_comment_index);
 internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
                                                         string comment_text,
                                                         usize  comment_column,
@@ -236,8 +241,9 @@ internal void format_trivia_validate(const Lexer*        lexer,
         usize end_offset =
             lex_token_end_offset(lexer, &lexer->tokens[token_index]);
         u32  old_comment_index = U32_MAX;
-        bool old_has_comment = format_find_trailing_comment_index_after_offset(
-            lexer->source, lexer, end_offset, &old_comment_index);
+        bool old_has_comment =
+            format_find_trailing_comment_index_after_offset_scan(
+                lexer->source, lexer, end_offset, &old_comment_index);
 
         u32  new_comment_index = U32_MAX;
         bool new_has_comment   = format_trivia_trailing_comment_after_token(
@@ -4174,6 +4180,19 @@ internal bool format_emit_trailing_comment_after_offset(StringBuilder* sb,
                                                         u32*  io_comment_index,
                                                         usize end_offset)
 {
+    if (g_format_trivia != NULL) {
+        for (u32 token_index = 0; token_index < array_count(lexer->tokens);
+             ++token_index) {
+            if (lex_token_end_offset(lexer, &lexer->tokens[token_index]) !=
+                end_offset) {
+                continue;
+            }
+
+            return format_emit_trailing_comment_after_token(
+                sb, lexer, io_comment_index, token_index);
+        }
+    }
+
     while (*io_comment_index < array_count(lexer->comments) &&
            lexer->comments[*io_comment_index].offset < end_offset) {
         (*io_comment_index)++;
@@ -4198,6 +4217,29 @@ format_find_trailing_comment_index_after_offset(NerdSource   source,
                                                 const Lexer* lexer,
                                                 usize        end_offset,
                                                 u32*         out_comment_index)
+{
+    if (g_format_trivia != NULL) {
+        for (u32 token_index = 0; token_index < array_count(lexer->tokens);
+             ++token_index) {
+            if (lex_token_end_offset(lexer, &lexer->tokens[token_index]) !=
+                end_offset) {
+                continue;
+            }
+
+            return format_trivia_trailing_comment_after_token(
+                g_format_trivia, token_index, out_comment_index);
+        }
+    }
+
+    return format_find_trailing_comment_index_after_offset_scan(
+        source, lexer, end_offset, out_comment_index);
+}
+
+internal bool
+format_find_trailing_comment_index_after_offset_scan(NerdSource   source,
+                                                     const Lexer* lexer,
+                                                     usize        end_offset,
+                                                     u32* out_comment_index)
 {
     for (u32 i = 0; i < array_count(lexer->comments); ++i) {
         LexerComment comment = lexer->comments[i];
