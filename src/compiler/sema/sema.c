@@ -9548,7 +9548,8 @@ internal bool sema_merge_control_break_type(const Lexer* lexer,
                                             u32* in_out_result_type_node)
 {
     const AstNode* break_node = &ast->nodes[break_node_index];
-    ASSERT(break_node->kind == AK_Break, "Expected break node");
+    ASSERT(break_node->kind == AK_Break || break_node->kind == AK_BreakExpr,
+           "Expected break node");
     ASSERT(break_node->a != U32_MAX, "Expected value-producing break");
 
     u32 break_expected = *in_out_result_type == sema_no_type()
@@ -9597,7 +9598,7 @@ internal bool sema_collect_value_breaks_for_target(const Lexer* lexer,
                                                    bool* out_has_value_break)
 {
     const AstNode* node = &ast->nodes[node_index];
-    if (node->kind == AK_Break) {
+    if (node->kind == AK_Break || node->kind == AK_BreakExpr) {
         if (node->a != U32_MAX &&
             (node->b == U32_MAX || node->b == target_label)) {
             if (!sema_merge_control_break_type(lexer,
@@ -9652,7 +9653,7 @@ internal bool sema_node_has_value_break_for_target(const Ast* ast,
                                                    u32        target_label)
 {
     const AstNode* node = &ast->nodes[node_index];
-    if (node->kind == AK_Break) {
+    if (node->kind == AK_Break || node->kind == AK_BreakExpr) {
         return node->a != U32_MAX &&
                (node->b == U32_MAX || node->b == target_label);
     }

@@ -4880,9 +4880,47 @@ internal IrValue ir_lower_node(const Lexer* lex,
                                AK_BreakExpr) {
                     const AstNode* branch_node =
                         &ast->nodes[branch->expr_node_index];
+                    const IrExprBlockTarget* expr_target =
+                        ir_find_expr_block_target(loop, branch_node->b);
                     const IrLoopTarget* loop_target =
                         ir_find_loop_target(loop, branch_node->b);
-                    if (loop_target != NULL) {
+                    if (branch_node->a != U32_MAX ||
+                        (branch_node->b != U32_MAX && loop_target == NULL) ||
+                        (loop.break_label < 0 && expr_target != NULL &&
+                         expr_target->result_type ==
+                             ir_builtin_type(sema, STK_Void))) {
+                        ASSERT(expr_target != NULL,
+                               "Expected expression block target");
+                        if (branch_node->a != U32_MAX) {
+                            IrValue value = ir_lower_node(lex,
+                                                          ast,
+                                                          sema,
+                                                          branch_node->a,
+                                                          loop,
+                                                          node_values,
+                                                          next_value_index,
+                                                          ir);
+                            ir_add_assign(
+                                ir,
+                                expr_target->result,
+                                expr_target->result_type,
+                                value,
+                                ir_node_type_index(ast, sema, branch_node->a));
+                        }
+                        if (loop.defers != NULL) {
+                            ir_emit_defers_no_pop(lex,
+                                                  ast,
+                                                  sema,
+                                                  ir_current_function_index(ir),
+                                                  loop,
+                                                  node_values,
+                                                  next_value_index,
+                                                  expr_target->defer_count,
+                                                  loop.defers,
+                                                  ir);
+                        }
+                        ir_add_jump(ir, expr_target->break_label);
+                    } else if (loop_target != NULL) {
                         if (loop.defers != NULL) {
                             ir_emit_defers_no_pop(lex,
                                                   ast,

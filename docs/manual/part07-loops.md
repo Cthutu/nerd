@@ -147,6 +147,23 @@ main :: fn () -> i32 {
 A finite value-producing loop needs `else`, because the loop might finish
 without hitting a value-producing `break`.
 
+An `on` branch does not capture loop control. A `break` or `continue` inside an
+`on` branch targets the surrounding loop, so this is a compact way to return a
+loop value when a condition is met:
+
+```nerd
+find :: fn (values: [..]i32, needle: i32) -> i32 {
+    return for value in values {
+        on value == needle => break value
+    } else {
+        break -1
+    }
+}
+```
+
+Expression blocks are still value targets, so `break $label <expr>` can target a
+labelled expression block when that is the nearest matching label.
+
 ## Labels
 
 Loops can also use labels when nested control flow needs an explicit target.
