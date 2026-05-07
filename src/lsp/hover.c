@@ -641,7 +641,10 @@ lsp_eval_ast_node(const LspDocument* doc, u32 node_index, i64* out_value)
 internal bool
 lsp_eval_decl_value(const LspDocument* doc, u32 decl_index, i64* out_value)
 {
-    const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
+        return false;
+    }
     if (decl->kind != SK_Constant) {
         return false;
     }
@@ -1011,14 +1014,15 @@ internal string lsp_infer_ast_type(const LspDocument* doc,
     const AstNode* node = &doc->front_end.ast.nodes[node_index];
     UNUSED(node);
 
-    if (node_index >= array_count(doc->front_end.sema.node_type_indices)) {
+    u32 type_index = sema_no_type();
+    if (!lsp_sema_node_type(&doc->front_end.sema, node_index, &type_index)) {
         return s("<unknown>");
     }
 
     return sema_type_name(&doc->front_end.lexer,
                           &doc->front_end.sema,
                           arena,
-                          doc->front_end.sema.node_type_indices[node_index]);
+                          type_index);
 }
 
 //------------------------------------------------------------------------------
@@ -1050,7 +1054,10 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                     Arena*             arena,
                                     u32                decl_index)
 {
-    const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
+        return s("<unknown>");
+    }
     string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
     string kind = s("value");
     string inferred_type = s("<unknown>");
@@ -1137,7 +1144,10 @@ internal string lsp_local_hover_text(const LspDocument* doc,
                                      Arena*             arena,
                                      u32                local_index)
 {
-    const SemaLocal* local = &doc->front_end.sema.locals[local_index];
+    const SemaLocal* local = NULL;
+    if (!lsp_sema_local(&doc->front_end.sema, local_index, &local)) {
+        return s("<unknown>");
+    }
     string name = lex_symbol(&doc->front_end.lexer, local->symbol_handle);
     string type = sema_type_name(
         &doc->front_end.lexer, &doc->front_end.sema, arena, local->type_index);
