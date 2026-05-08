@@ -15,11 +15,11 @@ internal bool lsp_signature_is_ident_char(u8 c)
            (c >= '0' && c <= '9') || c == '_';
 }
 
-internal string lsp_signature_trim_source(const LspDocument* doc,
-                                          usize              start,
-                                          usize              end)
+internal string lsp_signature_trim_source(const LspSemanticView* view,
+                                          usize                  start,
+                                          usize                  end)
 {
-    const string source = doc->front_end.lexer.source.source;
+    const string source = view->source;
     while (start < end &&
            (source.data[start] == ' ' || source.data[start] == '\t' ||
             source.data[start] == '\n' || source.data[start] == '\r')) {
@@ -33,14 +33,14 @@ internal string lsp_signature_trim_source(const LspDocument* doc,
     return (string){.data = source.data + start, .count = end - start};
 }
 
-internal string lsp_signature_default_param_source(const LspDocument* doc,
-                                                   const AstParam*    param)
+internal string lsp_signature_default_param_source(const LspSemanticView* view,
+                                                   const AstParam*        param)
 {
     if (param->default_node_index == U32_MAX) {
         return s("...");
     }
 
-    const Lexer* lexer = &doc->front_end.lexer;
+    const Lexer* lexer = view->lexer;
     if (param->token_index >= array_count(lexer->tokens)) {
         return s("...");
     }
@@ -91,13 +91,13 @@ internal string lsp_signature_default_param_source(const LspDocument* doc,
         end = lex_token_end_offset(lexer, &lexer->tokens[i]);
     }
 
-    return lsp_signature_trim_source(doc, start, end);
+    return lsp_signature_trim_source(view, start, end);
 }
 
-internal string lsp_signature_type_source(const LspDocument* doc,
-                                          const AstParam*    param)
+internal string lsp_signature_type_source(const LspSemanticView* view,
+                                          const AstParam*        param)
 {
-    const Lexer* lexer = &doc->front_end.lexer;
+    const Lexer* lexer = view->lexer;
     u32          colon = U32_MAX;
     for (u32 i = param->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
@@ -134,21 +134,25 @@ internal string lsp_signature_type_source(const LspDocument* doc,
         }
         end = lex_token_end_offset(lexer, &lexer->tokens[i]);
     }
-    return lsp_signature_trim_source(doc, start, end);
+    return lsp_signature_trim_source(view, start, end);
 }
 
-internal string lsp_signature_return_type_source(const LspDocument* doc,
+internal string lsp_signature_return_type_source(const LspSemanticView* view,
                                                  u32 return_type_node_index)
 {
-    if (return_type_node_index == U32_MAX) {
+    if (return_type_node_index == U32_MAX ||
+        return_type_node_index >= array_count(view->ast->nodes)) {
         return s("");
     }
 
-    const Lexer*   lexer = &doc->front_end.lexer;
-    const AstNode* node  = &doc->front_end.ast.nodes[return_type_node_index];
-    usize          start = lexer->tokens[node->token_index].offset;
-    usize          end   = start;
-    u32            depth = 0;
+    const Lexer*   lexer = view->lexer;
+    const AstNode* node  = &view->ast->nodes[return_type_node_index];
+    if (node->token_index >= array_count(lexer->tokens)) {
+        return s("");
+    }
+    usize start = lexer->tokens[node->token_index].offset;
+    usize end   = start;
+    u32   depth = 0;
     for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
         if (depth == 0 && (kind == TK_LBrace || kind == TK_FatArrow)) {
@@ -166,34 +170,48 @@ internal string lsp_signature_return_type_source(const LspDocument* doc,
         }
         end = lex_token_end_offset(lexer, &lexer->tokens[i]);
     }
-    return lsp_signature_trim_source(doc, start, end);
+    return lsp_signature_trim_source(view, start, end);
 }
 
 internal const AstFnSignature*
-lsp_signature_decl_ast_signature(const LspDocument* doc, const SemaDecl* decl)
+lsp_signature_decl_ast_signature(const LspSemanticView* view,
+                                 const SemaDecl*        decl)
 {
-    if (decl->value_node_index == sema_no_decl()) {
+    if (decl->value_node_index == sema_no_decl() ||
+        decl->value_node_index >= array_count(view->ast->nodes)) {
         return NULL;
     }
 
-    const Ast*     ast        = &doc->front_end.ast;
+    const Ast*     ast        = view->ast;
     const AstNode* value_node = &ast->nodes[decl->value_node_index];
     if (value_node->kind == AK_FnDef) {
+        if (value_node->a >= array_count(ast->nodes)) {
+            return NULL;
+        }
         const AstNode* fn_start = &ast->nodes[value_node->a];
+        if (fn_start->a >= array_count(ast->fn_signatures)) {
+            return NULL;
+        }
         return &ast->fn_signatures[fn_start->a];
     }
     if (value_node->kind == AK_FfiDef) {
+        if (value_node->a >= array_count(ast->ffi_infos)) {
+            return NULL;
+        }
         const AstFfiInfo* ffi = &ast->ffi_infos[value_node->a];
+        if (ffi->signature_index >= array_count(ast->fn_signatures)) {
+            return NULL;
+        }
         return &ast->fn_signatures[ffi->signature_index];
     }
     return NULL;
 }
 
-internal bool lsp_signature_decl_label(const LspDocument* doc,
-                                       Arena*             arena,
-                                       const SemaDecl*    decl,
-                                       string*            out_label,
-                                       JsonValue**        out_params)
+internal bool lsp_signature_decl_label(const LspSemanticView* view,
+                                       Arena*                 arena,
+                                       const SemaDecl*        decl,
+                                       string*                out_label,
+                                       JsonValue**            out_params)
 {
     if (decl->kind != SK_Function && decl->kind != SK_GenericFunction &&
         decl->kind != SK_FfiFunction && decl->kind != SK_BuiltinFunction) {
@@ -201,24 +219,22 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
     }
 
     const AstFnSignature* signature =
-        lsp_signature_decl_ast_signature(doc, decl);
+        lsp_signature_decl_ast_signature(view, decl);
     if (signature == NULL) {
-        string name = lex_symbol(&doc->front_end.lexer, decl->symbol_handle);
-        string type = sema_type_name(&doc->front_end.lexer,
-                                     &doc->front_end.sema,
-                                     arena,
-                                     decl->type_index);
-        *out_label  = string_format(
+        string name = lex_symbol(view->lexer, decl->symbol_handle);
+        string type =
+            sema_type_name(view->lexer, view->sema, arena, decl->type_index);
+        *out_label = string_format(
             arena, STRINGP ": " STRINGP, STRINGV(name), STRINGV(type));
         *out_params = json_new_array(arena);
         return true;
     }
 
-    const Ast*      ast         = &doc->front_end.ast;
+    const Ast*      ast         = view->ast;
     const SemaType* type        = NULL;
     bool            has_generic = signature->generic_params_index != U32_MAX;
     if (!has_generic) {
-        if (!lsp_sema_type(&doc->front_end.sema, decl->type_index, &type)) {
+        if (!lsp_sema_type(view->sema, decl->type_index, &type)) {
             return false;
         }
         if (type->kind != STK_Function) {
@@ -234,9 +250,14 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
     JsonValue*    params = json_new_array(arena);
     StringBuilder sb     = {0};
     sb_init(&sb, &build_arena);
-    sb_append_string(&sb,
-                     lex_symbol(&doc->front_end.lexer, decl->symbol_handle));
+    sb_append_string(&sb, lex_symbol(view->lexer, decl->symbol_handle));
     if (has_generic) {
+        if (signature->generic_params_index >=
+            array_count(ast->generic_params)) {
+            arena_done(&text_arena);
+            arena_done(&build_arena);
+            return false;
+        }
         const AstGenericParams* generic =
             &ast->generic_params[signature->generic_params_index];
         sb_append_cstr(&sb, "[");
@@ -244,15 +265,26 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
             if (i > 0) {
                 sb_append_cstr(&sb, ", ");
             }
+            u32 symbol_index = generic->first_symbol + i;
+            if (symbol_index >= array_count(ast->generic_param_symbols)) {
+                arena_done(&text_arena);
+                arena_done(&build_arena);
+                return false;
+            }
             sb_append_string(
                 &sb,
-                lex_symbol(
-                    &doc->front_end.lexer,
-                    ast->generic_param_symbols[generic->first_symbol + i]));
+                lex_symbol(view->lexer,
+                           ast->generic_param_symbols[symbol_index]));
         }
         sb_append_cstr(&sb, "]");
     }
     sb_append_cstr(&sb, "(");
+    if (signature->first_param + signature->param_count >
+        array_count(ast->params)) {
+        arena_done(&text_arena);
+        arena_done(&build_arena);
+        return false;
+    }
     for (u32 i = 0; i < signature->param_count; ++i) {
         if (i > 0) {
             sb_append_cstr(&sb, ", ");
@@ -265,30 +297,29 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
         StringBuilder   param_label = {0};
         sb_init(&param_label, &param_arena);
         if (param->symbol_handle != U32_MAX) {
-            string param_name =
-                lex_symbol(&doc->front_end.lexer, param->symbol_handle);
+            string param_name = lex_symbol(view->lexer, param->symbol_handle);
             sb_append_string(&param_label, param_name);
             sb_append_cstr(&param_label, ": ");
         }
         if (has_generic) {
             sb_append_string(&param_label,
-                             lsp_signature_type_source(doc, param));
+                             lsp_signature_type_source(view, param));
         } else {
-            u32 param_type =
-                i < type->param_count
-                    ? doc->front_end.sema
-                          .type_param_types[type->first_param_type + i]
-                    : sema_no_type();
-            sb_append_string(&param_label,
-                             sema_type_name(&doc->front_end.lexer,
-                                            &doc->front_end.sema,
-                                            &text_arena,
-                                            param_type));
+            u32 param_type       = sema_no_type();
+            u32 param_type_index = type->first_param_type + i;
+            if (i < type->param_count &&
+                param_type_index < array_count(view->sema->type_param_types)) {
+                param_type = view->sema->type_param_types[param_type_index];
+            }
+            sb_append_string(
+                &param_label,
+                sema_type_name(
+                    view->lexer, view->sema, &text_arena, param_type));
         }
         if (param->default_node_index != U32_MAX) {
             sb_append_cstr(&param_label, " = ");
             sb_append_string(&param_label,
-                             lsp_signature_default_param_source(doc, param));
+                             lsp_signature_default_param_source(view, param));
         }
 
         string param_text = sb_to_string(&param_label);
@@ -310,14 +341,13 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
                          lsp_signature_return_type_source(
-                             doc, signature->return_type_node_index));
+                             view, signature->return_type_node_index));
     } else if (!has_generic && type->return_type != sema_no_type()) {
         sb_append_cstr(&sb, " -> ");
-        sb_append_string(&sb,
-                         sema_type_name(&doc->front_end.lexer,
-                                        &doc->front_end.sema,
-                                        &text_arena,
-                                        type->return_type));
+        sb_append_string(
+            &sb,
+            sema_type_name(
+                view->lexer, view->sema, &text_arena, type->return_type));
     }
 
     *out_label  = string_format(arena, STRINGP, STRINGV(sb_to_string(&sb)));
@@ -327,17 +357,16 @@ internal bool lsp_signature_decl_label(const LspDocument* doc,
     return true;
 }
 
-internal const SemaDecl* lsp_signature_find_decl(const LspDocument* doc,
-                                                 string             name)
+internal const SemaDecl* lsp_signature_find_decl(const LspSemanticView* view,
+                                                 string                 name)
 {
-    if (!doc->sema_partial) {
-        return NULL;
-    }
-
-    const Lexer* lexer = &doc->front_end.lexer;
-    const Sema*  sema  = &doc->front_end.sema;
+    const Lexer* lexer = view->lexer;
+    const Sema*  sema  = view->sema;
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
-        const SemaDecl* decl = &sema->decls[i];
+        const SemaDecl* decl = NULL;
+        if (!lsp_sema_decl(sema, i, &decl)) {
+            continue;
+        }
         if (decl->symbol_handle != U32_MAX &&
             string_eq(lex_symbol(lexer, decl->symbol_handle), name) &&
             (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
@@ -349,10 +378,11 @@ internal const SemaDecl* lsp_signature_find_decl(const LspDocument* doc,
 
     for (u32 i = 0; i < array_count(sema->methods); ++i) {
         const SemaMethod* method = &sema->methods[i];
+        const SemaDecl*   decl   = NULL;
         if (method->symbol_handle != U32_MAX &&
             string_eq(lex_symbol(lexer, method->symbol_handle), name) &&
-            method->decl_index < array_count(sema->decls)) {
-            return &sema->decls[method->decl_index];
+            lsp_sema_decl(sema, method->decl_index, &decl)) {
+            return decl;
         }
     }
 
@@ -431,24 +461,22 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         lsp_cancel(response, message->arena);
         return;
     }
-    const LspDocument* doc = view.doc;
-
-    u64 line               = 0;
-    u64 character          = 0;
+    u64 line      = 0;
+    u64 character = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
-    usize offset = lsp_offset_from_position(doc->source, line, character);
+    usize offset = lsp_offset_from_position(view.source, line, character);
 
     string name  = {0};
     u32    active_param = 0;
     if (!lsp_signature_call_context(
-            doc->source, offset, &name, &active_param)) {
+            view.source, offset, &name, &active_param)) {
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
         return;
     }
 
-    const SemaDecl* decl = lsp_signature_find_decl(doc, name);
+    const SemaDecl* decl = lsp_signature_find_decl(&view, name);
     if (decl == NULL) {
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
@@ -458,7 +486,7 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
     string     label      = {0};
     JsonValue* parameters = NULL;
     if (!lsp_signature_decl_label(
-            doc, message->arena, decl, &label, &parameters)) {
+            &view, message->arena, decl, &label, &parameters)) {
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
         return;
