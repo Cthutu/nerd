@@ -2414,12 +2414,12 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                 lexer->source, previous_field_end_offset, group_start_offset)) {
             sb_append_char(sb, '\n');
         }
-        format_emit_block_comments_before_offset(sb,
-                                                 lexer,
-                                                 &comment_index,
-                                                 field_start_offset,
-                                                 indent_level + 1,
-                                                 NULL);
+        format_emit_block_comments_before_token(sb,
+                                                lexer,
+                                                &comment_index,
+                                                field->token_index,
+                                                indent_level + 1,
+                                                NULL);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
         if (format_plex_field_is_shorthand(cst, field)) {
@@ -2956,12 +2956,12 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                                                   group_start_offset)) {
             sb_append_char(sb, '\n');
         }
-        format_emit_block_comments_before_offset(sb,
-                                                 lexer,
-                                                 &comment_index,
-                                                 variant_start_offset,
-                                                 indent_level + 1,
-                                                 NULL);
+        format_emit_block_comments_before_token(sb,
+                                                lexer,
+                                                &comment_index,
+                                                variant->token_index,
+                                                indent_level + 1,
+                                                NULL);
         format_emit_indent(sb, indent_level + 1);
         format_emit_enum_variant_code(
             sb, cst, lexer, variant, variant_aligned_prefix_widths[i]);
@@ -3146,12 +3146,12 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                 lexer->source, previous_field_end_offset, group_start_offset)) {
             sb_append_char(sb, '\n');
         }
-        format_emit_block_comments_before_offset(sb,
-                                                 lexer,
-                                                 &comment_index,
-                                                 field_start_offset,
-                                                 indent_level + 1,
-                                                 NULL);
+        format_emit_block_comments_before_token(sb,
+                                                lexer,
+                                                &comment_index,
+                                                field->token_index,
+                                                indent_level + 1,
+                                                NULL);
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, field_name);
         for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
