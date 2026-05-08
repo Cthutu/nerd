@@ -44,7 +44,7 @@ Experiment:
 
 Result:
 
-- 101 of 105 formatter snapshots were idempotent.
+- 101 of 105 formatter snapshots were idempotent at baseline.
 - 4 snapshots changed on the second pass:
   - `tests/format/024-aligned-assignment.f`
   - `tests/format/078-string-reflow.f`
@@ -62,6 +62,12 @@ Follow-up:
 - Do not enable global idempotence in `build/test.py` until these are fixed.
 - Fix these cases one family at a time, then turn idempotence into a permanent
   formatter test gate.
+
+Update:
+
+- `tests/format/081-inherent-impl-methods.f` was fixed by avoiding duplicate
+  blank-line insertion between adjacent function bindings in blocks.
+- Remaining known non-idempotent snapshots: 3.
 
 ## Existing Coverage Groups
 

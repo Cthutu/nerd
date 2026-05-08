@@ -11,7 +11,6 @@ impl Stack[T] {
         self.data.push(item)
     }
 
-
     pub pop :: fn (self: ^Stack[T]) -> T {
         return self.data.pop()
     }

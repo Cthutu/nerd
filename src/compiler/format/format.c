@@ -4596,6 +4596,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
         if (!emitted_comments && previous_statement_index != U32_MAX &&
             format_statement_is_function_binding(cst, i) &&
+            !format_statement_is_function_binding(cst,
+                                                  previous_statement_index) &&
             !format_has_blank_line_between_statements(
                 cst, lexer, previous_statement_index, i)) {
             sb_append_char(sb, '\n');
