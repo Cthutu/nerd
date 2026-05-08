@@ -59,15 +59,21 @@ Classification:
 
 Follow-up:
 
-- Do not enable global idempotence in `build/test.py` until these are fixed.
-- Fix these cases one family at a time, then turn idempotence into a permanent
-  formatter test gate.
+- Keep global idempotence enabled in `build/test.py`.
+- Add new formatter snapshots for any future formatting instability before
+  changing the formatter.
 
 Update:
 
 - `tests/format/081-inherent-impl-methods.f` was fixed by avoiding duplicate
   blank-line insertion between adjacent function bindings in blocks.
-- Remaining known non-idempotent snapshots: 3.
+- `tests/format/024-aligned-assignment.f` and
+  `tests/format/078-string-reflow.f` were fixed by allowing already-wrapped
+  string literal payloads to stay in aligned declaration groups.
+- `tests/format/097-enum-and-union-trailing-comments.f` was fixed by treating
+  trailing-comment continuation lines as part of the preceding enum variant
+  when computing alignment groups.
+- Remaining known non-idempotent snapshots: 0.
 
 ## Existing Coverage Groups
 

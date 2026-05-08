@@ -112,11 +112,14 @@ format_merged_trailing_comment_text(const Lexer* lexer,
                                     usize        comment_column,
                                     usize        before_offset,
                                     u32*         out_next_comment_index);
-internal bool format_emit_trailing_comment_for_node(StringBuilder* sb,
-                                                    const Cst*     cst,
-                                                    const Lexer*   lexer,
-                                                    u32            node_index,
-                                                    u32* io_comment_index);
+internal usize format_trailing_comment_group_end_offset(const Lexer* lexer,
+                                                        u32 first_comment_index,
+                                                        usize before_offset);
+internal bool  format_emit_trailing_comment_for_node(StringBuilder* sb,
+                                                     const Cst*     cst,
+                                                     const Lexer*   lexer,
+                                                     u32            node_index,
+                                                     u32* io_comment_index);
 
 //------------------------------------------------------------------------------
 // Count newlines in a source range, saturating to the storage size used by
@@ -2845,6 +2848,17 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                 max_prefix_width = variant_prefix_widths[i];
             }
             previous_end = format_enum_variant_end_offset(cst, lexer, variant);
+            if (variant_has_comments[i]) {
+                usize before_offset = lexer->source.source.count;
+                if (i + 1 < enum_type->variant_count) {
+                    const CstEnumVariant* next_variant =
+                        &cst->enum_variants[enum_type->first_variant + i + 1];
+                    before_offset =
+                        lexer->tokens[next_variant->token_index].offset;
+                }
+                previous_end = format_trailing_comment_group_end_offset(
+                    lexer, variant_comment_indices[i], before_offset);
+            }
             have_previous_end = true;
             i++;
         }
@@ -2885,7 +2899,18 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                 variant_code_widths[i] + 1 > comment_column) {
                 comment_column = variant_code_widths[i] + 1;
             }
-            previous_end  = format_enum_variant_end_offset(cst, lexer, variant);
+            previous_end = format_enum_variant_end_offset(cst, lexer, variant);
+            if (variant_has_comments[i]) {
+                usize before_offset = lexer->source.source.count;
+                if (i + 1 < enum_type->variant_count) {
+                    const CstEnumVariant* next_variant =
+                        &cst->enum_variants[enum_type->first_variant + i + 1];
+                    before_offset =
+                        lexer->tokens[next_variant->token_index].offset;
+                }
+                previous_end = format_trailing_comment_group_end_offset(
+                    lexer, variant_comment_indices[i], before_offset);
+            }
             have_previous = true;
             i++;
         }
@@ -3228,9 +3253,6 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         string         type          = {0};
         string         value         = {0};
         const CstNode* value_payload = payload;
-        if (!format_statement_is_single_line(cst, lexer, node_index)) {
-            return false;
-        }
 
         if (payload->kind == CK_AnnotatedValue) {
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
@@ -3244,6 +3266,13 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         if (!format_node_is_value_constant_payload(value_payload)) {
+            return false;
+        }
+        bool is_multiline_string_value =
+            value_payload->kind == CK_StringLiteral ||
+            value_payload->kind == CK_StringConcat;
+        if (!format_statement_is_single_line(cst, lexer, node_index) &&
+            !is_multiline_string_value) {
             return false;
         }
 
@@ -4510,6 +4539,53 @@ internal string format_merged_trailing_comment_text(const Lexer* lexer,
         string_format(&temp_arena, STRINGP, STRINGV(sb_to_string(&sb)));
     arena_done(&arena);
     return merged;
+}
+
+internal usize format_trailing_comment_group_end_offset(const Lexer* lexer,
+                                                        u32 first_comment_index,
+                                                        usize before_offset)
+{
+    if (first_comment_index >= array_count(lexer->comments)) {
+        return 0;
+    }
+
+    LexerComment first = lexer->comments[first_comment_index];
+    usize        end   = first.end_offset;
+
+    u32 first_line     = 0;
+    u32 first_col      = 0;
+    if (!lex_offset_to_line_col(
+            lexer->source, first.offset, &first_line, &first_col)) {
+        return end;
+    }
+
+    u32 previous_line = first_line;
+    for (u32 i = first_comment_index + 1; i < array_count(lexer->comments);
+         ++i) {
+        LexerComment comment = lexer->comments[i];
+        if (comment.offset >= before_offset) {
+            break;
+        }
+
+        u32 line = 0;
+        u32 col  = 0;
+        if (!lex_offset_to_line_col(
+                lexer->source, comment.offset, &line, &col)) {
+            break;
+        }
+        string raw_text = comment.text;
+        if (line != previous_line + 1 || col != first_col ||
+            raw_text.count < 4 || raw_text.data[0] != ' ' ||
+            raw_text.data[1] != ' ' || raw_text.data[2] != ' ' ||
+            raw_text.data[3] != ' ') {
+            break;
+        }
+
+        end           = comment.end_offset;
+        previous_line = line;
+    }
+
+    return end;
 }
 
 internal bool format_emit_trailing_comment_for_node(StringBuilder* sb,

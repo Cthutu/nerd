@@ -342,7 +342,30 @@ def test_format(path: pathlib.Path) -> list[Failure]:
         failure = None
     if failure:
         return [failure]
+
+    idempotence_path = path.with_suffix(".idempotence.input.n")
+    idempotence_path.write_text(proc.stdout, encoding="utf-8", newline="\n")
+    idempotence_proc = run_cmd([str(NERD), "format", "--stdout", str(idempotence_path)])
+    if idempotence_proc.returncode != 0:
+        input_path.unlink(missing_ok=True)
+        idempotence_path.unlink(missing_ok=True)
+        return [
+            Failure(
+                path,
+                f"formatter idempotence failed with exit {idempotence_proc.returncode}\n"
+                f"{idempotence_proc.stderr}",
+            )
+        ]
+    idempotence_failure = check_equal(
+        path, "format idempotence", proc.stdout, idempotence_proc.stdout
+    )
+    if idempotence_failure:
+        input_path.unlink(missing_ok=True)
+        idempotence_path.unlink(missing_ok=True)
+        return [idempotence_failure]
+
     input_path.unlink(missing_ok=True)
+    idempotence_path.unlink(missing_ok=True)
     return []
 
 
