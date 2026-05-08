@@ -33,6 +33,36 @@ Interpretation:
 Record each formatter edge case with input, current output, expected output,
 idempotence result, classification, and follow-up.
 
+### Case 1: Idempotence baseline
+
+Date: 2026-05-08
+
+Experiment:
+
+- Temporarily ran every formatter snapshot output through `nerd format` a
+  second time.
+
+Result:
+
+- 101 of 105 formatter snapshots were idempotent.
+- 4 snapshots changed on the second pass:
+  - `tests/format/024-aligned-assignment.f`
+  - `tests/format/078-string-reflow.f`
+  - `tests/format/081-inherent-impl-methods.f`
+  - `tests/format/097-enum-and-union-trailing-comments.f`
+
+Classification:
+
+- aligned declaration/string reflow stability
+- blank-line stability inside `impl`
+- trailing-comment continuation alignment stability
+
+Follow-up:
+
+- Do not enable global idempotence in `build/test.py` until these are fixed.
+- Fix these cases one family at a time, then turn idempotence into a permanent
+  formatter test gate.
+
 ## Existing Coverage Groups
 
 The current suite already covers these important families:
