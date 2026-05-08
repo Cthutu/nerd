@@ -65,6 +65,12 @@ internal bool  format_emit_block_comments_before_offset(StringBuilder* sb,
                                                         usize  end_offset,
                                                         u32    indent_level,
                                                         usize* out_last_end);
+internal bool  format_emit_block_comments_before_token(StringBuilder* sb,
+                                                       const Lexer*   lexer,
+                                                       u32*   io_comment_index,
+                                                       u32    token_index,
+                                                       u32    indent_level,
+                                                       usize* out_last_end);
 internal void  format_skip_block_comments_before_offset(const Lexer* lexer,
                                                         u32*  io_comment_index,
                                                         usize end_offset);
@@ -228,6 +234,32 @@ internal bool format_trivia_trailing_comment_after_token(
 
     if (out_comment_index != NULL) {
         *out_comment_index = comment_index;
+    }
+    return true;
+}
+
+internal bool format_trivia_comments_before_token(const FormatTrivia* trivia,
+                                                  u32  token_index,
+                                                  u32* out_first_comment_index,
+                                                  u32* out_comment_count)
+{
+    if (trivia == NULL ||
+        token_index >= array_count(trivia->first_comment_before_token) ||
+        token_index >= array_count(trivia->comment_count_before_token)) {
+        return false;
+    }
+
+    u32 first_comment_index = trivia->first_comment_before_token[token_index];
+    u32 comment_count       = trivia->comment_count_before_token[token_index];
+    if (first_comment_index == U32_MAX || comment_count == 0) {
+        return false;
+    }
+
+    if (out_first_comment_index != NULL) {
+        *out_first_comment_index = first_comment_index;
+    }
+    if (out_comment_count != NULL) {
+        *out_comment_count = comment_count;
     }
     return true;
 }
@@ -4073,6 +4105,71 @@ internal bool format_emit_block_comments_before_offset(StringBuilder* sb,
     return emitted;
 }
 
+internal bool format_emit_block_comments_before_token(StringBuilder* sb,
+                                                      const Lexer*   lexer,
+                                                      u32*   io_comment_index,
+                                                      u32    token_index,
+                                                      u32    indent_level,
+                                                      usize* out_last_end)
+{
+    if (g_format_trivia == NULL || token_index >= array_count(lexer->tokens)) {
+        usize end_offset = token_index < array_count(lexer->tokens)
+                               ? lexer->tokens[token_index].offset
+                               : lexer->source.source.count;
+        return format_emit_block_comments_before_offset(sb,
+                                                        lexer,
+                                                        io_comment_index,
+                                                        end_offset,
+                                                        indent_level,
+                                                        out_last_end);
+    }
+
+    u32 first_comment_index = U32_MAX;
+    u32 comment_count       = 0;
+    if (!format_trivia_comments_before_token(g_format_trivia,
+                                             token_index,
+                                             &first_comment_index,
+                                             &comment_count)) {
+        return format_emit_block_comments_before_offset(
+            sb,
+            lexer,
+            io_comment_index,
+            lexer->tokens[token_index].offset,
+            indent_level,
+            out_last_end);
+    }
+
+    u32 end_comment_index = first_comment_index + comment_count;
+    if (*io_comment_index < first_comment_index) {
+        return format_emit_block_comments_before_offset(
+            sb,
+            lexer,
+            io_comment_index,
+            lexer->tokens[token_index].offset,
+            indent_level,
+            out_last_end);
+    }
+    if (*io_comment_index >= end_comment_index) {
+        return false;
+    }
+
+    bool emitted = false;
+    while (*io_comment_index < end_comment_index &&
+           *io_comment_index < array_count(lexer->comments)) {
+        LexerComment comment = lexer->comments[*io_comment_index];
+        format_emit_indent(sb, indent_level);
+        sb_append_cstr(sb, "--");
+        sb_append_string(sb, comment.text);
+        sb_append_char(sb, '\n');
+        emitted = true;
+        if (out_last_end) {
+            *out_last_end = comment.end_offset;
+        }
+        (*io_comment_index)++;
+    }
+    return emitted;
+}
+
 internal void format_skip_block_comments_before_offset(const Lexer* lexer,
                                                        u32*  io_comment_index,
                                                        usize end_offset)
@@ -4478,13 +4575,13 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 }
             }
             usize last_comment_end = 0;
-            emitted_comments =
-                format_emit_block_comments_before_offset(sb,
-                                                         lexer,
-                                                         &comment_index,
-                                                         statement_start_offset,
-                                                         indent_level,
-                                                         &last_comment_end);
+            emitted_comments       = format_emit_block_comments_before_token(
+                sb,
+                lexer,
+                &comment_index,
+                cst->nodes[i].token_index,
+                indent_level,
+                &last_comment_end);
             if (emitted_comments &&
                 format_has_blank_line_between_offsets(
                     lexer->source, last_comment_end, statement_start_offset)) {
