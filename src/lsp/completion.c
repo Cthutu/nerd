@@ -340,21 +340,19 @@ internal u32 lsp_completion_local_kind(SemaLocalKind kind)
     return 1; // Text
 }
 
-internal void lsp_completion_add_module_exports(Arena*            arena,
-                                                JsonValue*        items,
-                                                const ModuleInfo* module)
+internal void lsp_completion_add_module_exports(Arena*        arena,
+                                                JsonValue*    items,
+                                                LspModuleView module)
 {
-    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
-        u32             decl_index = module->export_decl_indices[i];
-        const SemaDecl* decl       = NULL;
-        if (!lsp_sema_decl(&module->front_end.sema, decl_index, &decl)) {
+    for (u32 i = 0; i < array_count(module.info->export_decl_indices); ++i) {
+        const SemaDecl* decl = NULL;
+        if (!lsp_module_export_decl(&module, i, &decl, NULL)) {
             continue;
         }
         if (decl->symbol_handle == U32_MAX) {
             continue;
         }
-        string label =
-            lex_symbol(&module->front_end.lexer, decl->symbol_handle);
+        string label = lex_symbol(module.lexer, decl->symbol_handle);
         if (lsp_completion_is_internal_label(label)) {
             continue;
         }
@@ -613,9 +611,8 @@ internal void lsp_completion_add_members(Arena*             arena,
         }
     }
 
-    if (type->kind == STK_Module && doc->program.modules != NULL &&
-        type->return_type < array_count(doc->program.modules)) {
-        const ModuleInfo* module = &doc->program.modules[type->return_type];
+    LspModuleView module = {0};
+    if (lsp_program_module_view_by_type(&doc->program, type, &module)) {
         lsp_completion_add_module_exports(arena, items, module);
         return;
     }
@@ -2376,19 +2373,6 @@ lsp_completion_add_source_on_payload_members(Arena*             arena,
         arena, items, doc, uri, module, enum_name, variant);
 }
 
-internal u32 lsp_completion_find_program_module_by_path(
-    const ProgramInfo* program, cstr resolved_path)
-{
-    for (u32 i = 0; i < array_count(program->modules); ++i) {
-        const ModuleInfo* module = &program->modules[i];
-        if (module->resolved_path != NULL &&
-            strcmp(module->resolved_path, resolved_path) == 0) {
-            return i;
-        }
-    }
-    return U32_MAX;
-}
-
 internal bool lsp_completion_add_module_exports_from_path(Arena*     arena,
                                                           JsonValue* items,
                                                           cstr resolved_path)
@@ -2423,13 +2407,12 @@ internal bool lsp_completion_add_module_exports_from_path(Arena*     arena,
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
-    bool added = false;
-    if (array_count(program.modules) > 0 &&
-        program.root_module_index < array_count(program.modules)) {
-        ModuleInfo* module = &program.modules[program.root_module_index];
-        if (ok || array_count(module->export_decl_indices) > 0) {
+    bool          added  = false;
+    LspModuleView module = {0};
+    if (lsp_program_module_view(&program, program.root_module_index, &module)) {
+        if (ok || array_count(module.info->export_decl_indices) > 0) {
             lsp_completion_add_module_exports(arena, items, module);
-            added = array_count(module->export_decl_indices) > 0;
+            added = array_count(module.info->export_decl_indices) > 0;
         }
     }
 
@@ -2447,11 +2430,10 @@ internal void lsp_completion_add_resolved_module_exports(Arena*     arena,
                                                          const LspDocument* doc,
                                                          cstr resolved_path)
 {
-    u32 module_index = lsp_completion_find_program_module_by_path(
-        &doc->program, resolved_path);
-    if (module_index != U32_MAX) {
-        lsp_completion_add_module_exports(
-            arena, items, &doc->program.modules[module_index]);
+    LspModuleView module = {0};
+    if (lsp_program_module_view_by_path(
+            &doc->program, resolved_path, &module)) {
+        lsp_completion_add_module_exports(arena, items, module);
     }
 
     (void)lsp_completion_add_module_exports_from_path(

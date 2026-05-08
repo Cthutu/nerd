@@ -68,6 +68,14 @@ typedef struct {
     const Sema*        sema;
 } LspSemanticView;
 
+typedef struct {
+    const ModuleInfo* info;
+    u32               module_index;
+    const Lexer*      lexer;
+    const Ast*        ast;
+    const Sema*       sema;
+} LspModuleView;
+
 //------------------------------------------------------------------------------
 
 void lsp_logv(cstr format, va_list args);
@@ -96,6 +104,15 @@ bool  lsp_source_view(LspState* state, string uri, LspSourceView* out_view);
 bool  lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
 bool  lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
 bool  lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
+bool  lsp_program_module_view(const ProgramInfo* program,
+                              u32                module_index,
+                              LspModuleView*     out_view);
+bool  lsp_program_module_view_by_path(const ProgramInfo* program,
+                                      cstr               resolved_path,
+                                      LspModuleView*     out_view);
+bool  lsp_program_module_view_by_type(const ProgramInfo* program,
+                                      const SemaType*    type,
+                                      LspModuleView*     out_view);
 bool  lsp_get_string_param(const LspMessage* message,
                            cstr              param_path,
                            string*           out_str);
@@ -111,6 +128,10 @@ bool  lsp_sema_node_local(const Sema* sema,
                           u32         node_index,
                           u32*        out_local_index);
 bool  lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
+bool  lsp_module_export_decl(const LspModuleView* view,
+                             u32                  export_index,
+                             const SemaDecl**     out_decl,
+                             u32*                 out_decl_index);
 
 //------------------------------------------------------------------------------
 // LSP message handling

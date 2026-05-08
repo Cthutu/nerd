@@ -188,3 +188,81 @@ bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index)
     }
     return true;
 }
+
+//------------------------------------------------------------------------------
+// Checked module accessors used by editor features. These keep feature handlers
+// from inferring imported-module readiness from raw ProgramInfo arrays.
+
+bool lsp_program_module_view(const ProgramInfo* program,
+                             u32                module_index,
+                             LspModuleView*     out_view)
+{
+    if (!program || module_index == U32_MAX ||
+        module_index >= array_count(program->modules)) {
+        return false;
+    }
+
+    const ModuleInfo* module = &program->modules[module_index];
+    if (!module->resolved_path) {
+        return false;
+    }
+
+    if (out_view) {
+        *out_view = (LspModuleView){
+            .info         = module,
+            .module_index = module_index,
+            .lexer        = &module->front_end.lexer,
+            .ast          = &module->front_end.ast,
+            .sema         = &module->front_end.sema,
+        };
+    }
+    return true;
+}
+
+bool lsp_program_module_view_by_path(const ProgramInfo* program,
+                                     cstr               resolved_path,
+                                     LspModuleView*     out_view)
+{
+    if (!program || !resolved_path) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        const ModuleInfo* module = &program->modules[i];
+        if (module->resolved_path &&
+            strcmp(module->resolved_path, resolved_path) == 0) {
+            return lsp_program_module_view(program, i, out_view);
+        }
+    }
+    return false;
+}
+
+bool lsp_program_module_view_by_type(const ProgramInfo* program,
+                                     const SemaType*    type,
+                                     LspModuleView*     out_view)
+{
+    if (!type || type->kind != STK_Module) {
+        return false;
+    }
+    return lsp_program_module_view(program, type->return_type, out_view);
+}
+
+bool lsp_module_export_decl(const LspModuleView* view,
+                            u32                  export_index,
+                            const SemaDecl**     out_decl,
+                            u32*                 out_decl_index)
+{
+    if (!view || !view->info || export_index == U32_MAX ||
+        export_index >= array_count(view->info->export_decl_indices)) {
+        return false;
+    }
+
+    u32 decl_index = view->info->export_decl_indices[export_index];
+    if (!lsp_sema_decl(view->sema, decl_index, out_decl)) {
+        return false;
+    }
+    if (out_decl_index) {
+        *out_decl_index = decl_index;
+    }
+    return true;
+}

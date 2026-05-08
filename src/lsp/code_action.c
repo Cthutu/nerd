@@ -808,19 +808,6 @@ internal u32 lsp_code_action_ast_module_path_for_binding(const LspDocument* doc,
     return U32_MAX;
 }
 
-internal u32 lsp_code_action_find_program_module_by_path(
-    const ProgramInfo* program, cstr resolved_path)
-{
-    for (u32 i = 0; i < array_count(program->modules); ++i) {
-        const ModuleInfo* module = &program->modules[i];
-        if (module->resolved_path != NULL &&
-            strcmp(module->resolved_path, resolved_path) == 0) {
-            return i;
-        }
-    }
-    return U32_MAX;
-}
-
 internal bool
 lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
                                                  const LspDocument* doc,
@@ -870,22 +857,20 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
         return false;
     }
 
-    u32 module_index = lsp_code_action_find_program_module_by_path(
-        &doc->program, resolved.resolved_path);
-    if (module_index == U32_MAX) {
+    LspModuleView module = {0};
+    if (!lsp_program_module_view_by_path(
+            &doc->program, resolved.resolved_path, &module)) {
         arena_done(&temp);
         return false;
     }
 
-    const ModuleInfo* module       = &doc->program.modules[module_index];
-    const Ast*        module_ast   = &module->front_end.ast;
-    const Lexer*      module_lexer = &module->front_end.lexer;
-    string            target_name  = lex_symbol(lexer, target->b);
+    const Ast*   module_ast   = module.ast;
+    const Lexer* module_lexer = module.lexer;
+    string       target_name  = lex_symbol(lexer, target->b);
 
-    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
-        u32             decl_index = module->export_decl_indices[i];
-        const SemaDecl* decl       = NULL;
-        if (!lsp_sema_decl(&module->front_end.sema, decl_index, &decl)) {
+    for (u32 i = 0; i < array_count(module.info->export_decl_indices); ++i) {
+        const SemaDecl* decl = NULL;
+        if (!lsp_module_export_decl(&module, i, &decl, NULL)) {
             continue;
         }
 
