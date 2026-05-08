@@ -868,7 +868,7 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
     const Lexer* module_lexer = module.lexer;
     string       target_name  = lex_symbol(lexer, target->b);
 
-    for (u32 i = 0; i < array_count(module.info->export_decl_indices); ++i) {
+    for (u32 i = 0; i < lsp_module_export_count(&module); ++i) {
         const SemaDecl* decl = NULL;
         if (!lsp_module_export_decl(&module, i, &decl, NULL)) {
             continue;

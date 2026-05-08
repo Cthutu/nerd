@@ -344,7 +344,7 @@ internal void lsp_completion_add_module_exports(Arena*        arena,
                                                 JsonValue*    items,
                                                 LspModuleView module)
 {
-    for (u32 i = 0; i < array_count(module.info->export_decl_indices); ++i) {
+    for (u32 i = 0; i < lsp_module_export_count(&module); ++i) {
         const SemaDecl* decl = NULL;
         if (!lsp_module_export_decl(&module, i, &decl, NULL)) {
             continue;
@@ -2410,9 +2410,10 @@ internal bool lsp_completion_add_module_exports_from_path(Arena*     arena,
     bool          added  = false;
     LspModuleView module = {0};
     if (lsp_program_module_view(&program, program.root_module_index, &module)) {
-        if (ok || array_count(module.info->export_decl_indices) > 0) {
+        u32 export_count = lsp_module_export_count(&module);
+        if (ok || export_count > 0) {
             lsp_completion_add_module_exports(arena, items, module);
-            added = array_count(module.info->export_decl_indices) > 0;
+            added = export_count > 0;
         }
     }
 

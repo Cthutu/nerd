@@ -266,3 +266,11 @@ bool lsp_module_export_decl(const LspModuleView* view,
     }
     return true;
 }
+
+u32 lsp_module_export_count(const LspModuleView* view)
+{
+    if (!view || !view->info) {
+        return 0;
+    }
+    return (u32)array_count(view->info->export_decl_indices);
+}

@@ -132,6 +132,7 @@ bool  lsp_module_export_decl(const LspModuleView* view,
                              u32                  export_index,
                              const SemaDecl**     out_decl,
                              u32*                 out_decl_index);
+u32   lsp_module_export_count(const LspModuleView* view);
 
 //------------------------------------------------------------------------------
 // LSP message handling
