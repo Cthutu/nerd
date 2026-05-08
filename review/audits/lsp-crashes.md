@@ -248,7 +248,10 @@ Likely features:
 
 Follow-up:
 
-- Define module readiness levels separately from document readiness.
+- A checked `LspModuleView` now covers module row lookup and export declaration
+  lookup.
+- Continue by deciding whether imported module token/syntax/sema readiness
+  needs separate flags.
 
 ### Range Mapping And Incremental Edits
 

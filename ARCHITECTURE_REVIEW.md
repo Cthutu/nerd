@@ -590,8 +590,10 @@ Migration status:
   direct lookup is contained in document/view construction and lifecycle code.
 - LSP feature code now uses checked accessors for semantic declaration, local,
   type, and AST-indexed side-table reads.
+- Imported module access now has a checked module view and export-declaration
+  accessor used by completion, hover/definition, and code actions.
 - The remaining architectural question is whether `sema_partial` should split
-  into declaration, binding, and type readiness products.
+  into declaration, binding, type, and imported-module readiness products.
 
 ## Memory Strategy Review
 

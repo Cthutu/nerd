@@ -119,8 +119,9 @@ Remaining risks:
 
 - there is still no distinction between declaration facts, binding facts, and
   checked type facts
-- imported module readiness is still inferred from the imported module's
-  front-end products rather than a named module view
+- imported module views currently prove only that a module row exists and expose
+  checked export-declaration lookup; they do not yet distinguish imported
+  token, syntax, declaration, or type readiness
 
 ## Feature Contracts
 
@@ -208,6 +209,14 @@ typedef struct {
     const Ast* ast;
     const Sema* sema;
 } LspSemanticView;
+
+typedef struct {
+    const ModuleInfo* info;
+    u32 module_index;
+    const Lexer* lexer;
+    const Ast* ast;
+    const Sema* sema;
+} LspModuleView;
 ```
 
 The constructor for each view checks readiness once. Feature handlers now use
@@ -226,6 +235,18 @@ map:
 Direct document-map lookup is now isolated to document/view construction and
 document lifecycle operations.
 
+Imported-module access now also goes through checked helpers:
+
+- `lsp_program_module_view`
+- `lsp_program_module_view_by_path`
+- `lsp_program_module_view_by_type`
+- `lsp_module_export_decl`
+
+Completion, hover/definition, and code actions use these helpers for imported
+module exports and module file locations. Remaining direct `ProgramInfo` access
+in LSP is lifecycle/root-module staging, rename's local/import filtering, and
+scratch program setup for syntax-export fallback completion.
+
 ## Open Questions
 
 - Should declaration/scope indexing become a guaranteed product even when type
@@ -242,6 +263,7 @@ document lifecycle operations.
 ## Next Actions
 
 1. Decide whether declaration and binding readiness need separate flags.
-2. Define a module/product view for imported module readiness.
+2. Decide whether imported module views need token/syntax/sema readiness levels
+   beyond "module row exists".
 3. Keep adding stress cases for chained edits, broken imports, incomplete type
    syntax, rename, and semantic tokens.
