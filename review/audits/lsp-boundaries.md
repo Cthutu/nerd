@@ -247,6 +247,12 @@ module exports and module file locations. Remaining direct `ProgramInfo` access
 in LSP is lifecycle/root-module staging, rename's local/import filtering, and
 scratch program setup for syntax-export fallback completion.
 
+Signature help now keeps its helper pipeline on `LspSemanticView` instead of
+reaching back through `LspDocument` for lexer, AST, sema, and source access.
+The same pass added bounds checks around signature AST nodes, FFI signature
+indices, generic parameter symbols, function parameter ranges, return type
+tokens, and type-parameter arrays.
+
 ## Open Questions
 
 - Should declaration/scope indexing become a guaranteed product even when type
@@ -265,5 +271,9 @@ scratch program setup for syntax-export fallback completion.
 1. Decide whether declaration and binding readiness need separate flags.
 2. Decide whether imported module views need token/syntax/sema readiness levels
    beyond "module row exists".
-3. Keep adding stress cases for chained edits, broken imports, incomplete type
+3. Decide whether hover internals should be converted from `LspDocument*`
+   helper plumbing to `LspSemanticView` plumbing. The entry point is already
+   view-gated, so this is now hardening work rather than a feature boundary
+   blocker.
+4. Keep adding stress cases for chained edits, broken imports, incomplete type
    syntax, rename, and semantic tokens.

@@ -111,6 +111,9 @@ Current migration status:
   token boundary, with scan fallback.
 - Block statement leading comments now use trivia comments attached to the
   statement's first token, with scan fallback.
+- Structured multiline field and variant leading comments in plex literals,
+  enum declarations, and plex declarations now emit from token-attached trivia,
+  with scan fallback.
 
 Follow-up:
 
@@ -151,9 +154,9 @@ Follow-up:
 
 ## Next Audit Tasks
 
-- Add an idempotence check plan for running formatter output through the
-  formatter a second time.
-- Pick 3-5 high-risk existing tests to use as the first token/trivia prototype
-  acceptance set.
-- Inspect current comment handling paths and classify which parts should become
-  trivia-table construction versus layout emission.
+- Classify the remaining offset-driven comment consumers as either cursor
+  advancement, source-range layout queries, or trivia-table emission.
+- Decide whether blank-line decisions between statements should stay as
+  source-range queries or move to token newline counts.
+- Keep adding focused snapshots for any formatter instability found during
+  trivia migration.
