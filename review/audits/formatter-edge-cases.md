@@ -61,9 +61,18 @@ Current formatter flow splits comment paragraphs, blank lines, code chunks, CST
 parsing, and CST emission across multiple paths. Edge cases are likely when a
 comment is both syntactically attached to a node and layout-sensitive as trivia.
 
+Current migration status:
+
+- `FormatTrivia` records newline counts, leading comment ranges, and trailing
+  comment indices by token.
+- Trailing-comment checks and emission use trivia when the offset maps to a
+  token boundary, with scan fallback.
+- Block statement leading comments now use trivia comments attached to the
+  statement's first token, with scan fallback.
+
 Follow-up:
 
-- Add explicit trivia tables before changing output behaviour.
+- Continue migrating one comment/newline consumer at a time.
 - Use the existing comment tests as regression coverage.
 
 ### Region Planning Versus Token Emission
