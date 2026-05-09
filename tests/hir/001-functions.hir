@@ -2,5 +2,5 @@ main :: fn() -> i32 {
     return 0
 }
 ¬
-hir
-  fn main decl=0 node=6 scope=0 type=8 params=()
+hir 0
+func main() -> i32

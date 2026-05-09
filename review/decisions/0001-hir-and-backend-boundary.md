@@ -59,6 +59,14 @@ it should not be shaped around C syntax. It should own:
 - stable references to semantic declarations, locals, types, symbols, and source
   spans needed for diagnostics and debug information
 
+HIR must also have a stable textual representation for tests and review. This
+text is a derived rendering of the HIR program, not a constraint on the in-memory
+layout. The renderer should prefer readable HIR concepts such as functions,
+parameters, blocks, typed values, and control-flow constructs over compiler
+implementation details such as AST node indices or sema table indices. Source
+and compiler provenance may be available as optional metadata/debug output, but
+the default snapshot form should describe the HIR language itself.
+
 LLVM backend rules:
 
 - Nerd-visible bindings keep the `$` prefix. A Nerd `main` binding is emitted
@@ -105,4 +113,3 @@ linking, varargs, debug metadata, and aggregate ABI choices.
 5. Add an experimental LLVM backend path that uses the proven runtime bridge.
 6. Decide when module merge moves out of current IR and into whole-program HIR
    construction or a backend context.
-

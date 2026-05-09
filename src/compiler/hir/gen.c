@@ -6,8 +6,6 @@
 
 #include <compiler/hir/hir.h>
 
-//------------------------------------------------------------------------------
-
 internal u32 hir_find_function_scope(const Ast* ast, u32 fn_node_index)
 {
     (void)ast;

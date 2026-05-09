@@ -861,7 +861,8 @@ bool back_end_program(const ProgramInfo*        program,
         program->root_module_index < array_count(program->modules)) {
         const FrontEndState* root =
             &program->modules[program->root_module_index].front_end;
-        if (!hir_save(&root->hir, &root->lexer, artifacts->hir_path)) {
+        if (!hir_save(
+                &root->hir, &root->lexer, &root->sema, artifacts->hir_path)) {
             return false;
         }
     }

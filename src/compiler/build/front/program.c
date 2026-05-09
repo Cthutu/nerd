@@ -209,7 +209,9 @@ internal bool program_front_end_generate_ir(ProgramInfo*           program,
             return false;
         }
         if (effective_options.verbose) {
-            hir_dump(&module->front_end.hir, &module->front_end.lexer);
+            hir_dump(&module->front_end.hir,
+                     &module->front_end.lexer,
+                     &module->front_end.sema);
         }
         if (!program_run_timed(
                 timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx)) {

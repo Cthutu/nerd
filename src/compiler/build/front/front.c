@@ -130,7 +130,7 @@ bool front_end(NerdSource             source,
             result = front_end_hir_gen(&ctx);
         }
         if (result && ctx.options.verbose) {
-            hir_dump(&ctx.results.hir, &ctx.results.lexer);
+            hir_dump(&ctx.results.hir, &ctx.results.lexer, &ctx.results.sema);
         }
     }
 
