@@ -394,14 +394,16 @@ import validation. But it could remove or simplify C-specific ordering work:
 Candidate naming model:
 
 ```llvm
-@fn.42 = internal ...       ; real generated backend function
-@main = alias ..., @fn.42   ; exported/runtime-visible Nerd binding when needed
+@$main = ...                ; Nerd-visible function binding
+@fn.42 = internal ...       ; compiler-generated helper or lowered function
 ```
 
-For most Nerd bindings, the generated symbol can be opaque (`@fn.N`,
-`@global.N`, `%type.N`) and the original source name can live in debug metadata
-or an alias table. Only externally visible symbols, FFI names, runtime entry
-points, and selected debug/export names need stable backend linkage.
+Nerd-visible bindings should keep the existing C backend convention: a `$`
+prefix followed by the Nerd binding name. For example, `main :: fn () { ... }`
+becomes `@$main` in LLVM IR. Opaque generated ids such as `@fn.N`, `@global.N`,
+and `%type.N` are still useful for compiler-created helpers, lowered lambdas,
+temporary globals, or internal runtime glue that has no direct Nerd binding.
+The original source name should also be available in debug metadata.
 
 Tradeoff:
 
@@ -418,8 +420,8 @@ Working assumption:
 - LLVM IR is attractive as an experimental backend after HIR exists.
 - It should simplify backend symbol ordering and naming, not semantic
   dependency analysis.
-- The first LLVM prototype should use generated backend ids plus explicit alias
-  or metadata records for Nerd-visible names.
+- The first LLVM prototype should preserve `$`-prefixed names for Nerd-visible
+  bindings and use generated backend ids only for compiler-created internals.
 - A LLVM backend must include a deliberate prelude/postlude/runtime plan before
   it can replace C generation.
 
@@ -439,9 +441,8 @@ Nerd code.
 
 Open details for this bridge:
 
-- `data/epilogue.c` currently names `$main()`, which is a generated C symbol;
-  the LLVM path would either generate a compatible alias or use a different
-  entry wrapper.
+- `data/epilogue.c` currently names `$main()`, which matches the intended
+  LLVM symbol convention for a Nerd `main` binding.
 - The prelude uses C library functions and thread-local storage, so the LLVM
   link step still needs the platform C runtime and correct target flags.
 - Runtime helper names such as `string_eq`, `string_slice`,
