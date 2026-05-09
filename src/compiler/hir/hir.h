@@ -26,6 +26,7 @@ typedef enum : u8 {
     HIR_STMT_Defer,
     HIR_STMT_Break,
     HIR_STMT_Continue,
+    HIR_STMT_Block,
 } HirStmtKind;
 
 typedef enum : u8 {
@@ -50,6 +51,7 @@ typedef enum : u8 {
     HIR_EXPR_Slice,
     HIR_EXPR_RangeExclusive,
     HIR_EXPR_RangeInclusive,
+    HIR_EXPR_Block,
 } HirExprKind;
 
 typedef enum : u8 {
@@ -131,6 +133,7 @@ typedef struct {
     u32         callee_expr_index;
     u32         first_arg;
     u32         arg_count;
+    u32         body_block_index;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
     bool        zero_missing;

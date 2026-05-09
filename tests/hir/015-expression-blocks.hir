@@ -1,0 +1,14 @@
+main :: fn() -> i32 {
+    result := $ {
+        break 7
+    }
+    return result
+}
+¬
+hir 0
+func main() -> i32 {
+  let result: i32 = untyped integer block {
+    break untyped integer 7
+  }
+  return i32 result
+}

@@ -133,6 +133,14 @@ internal void hir_render_expr(StringBuilder* sb,
                               Arena*         arena,
                               u32            expr_index);
 
+internal void hir_render_block_at_indent(StringBuilder* sb,
+                                         const Hir*     hir,
+                                         const Lexer*   lexer,
+                                         const Sema*    sema,
+                                         Arena*         arena,
+                                         u32            block_index,
+                                         u32            indent);
+
 internal void hir_render_expr_arg_list(StringBuilder* sb,
                                        const Hir*     hir,
                                        const Lexer*   lexer,
@@ -335,20 +343,23 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Block:
+        sb_append_cstr(sb, "block");
+        if (expr->symbol_handle != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        }
+        sb_append_cstr(sb, " {\n");
+        hir_render_block_at_indent(
+            sb, hir, lexer, sema, arena, expr->body_block_index, 2);
+        sb_append_cstr(sb, "  }");
+        break;
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");
         break;
     }
 }
-
-internal void hir_render_block_at_indent(StringBuilder* sb,
-                                         const Hir*     hir,
-                                         const Lexer*   lexer,
-                                         const Sema*    sema,
-                                         Arena*         arena,
-                                         u32            block_index,
-                                         u32            indent);
 
 internal void hir_append_indent(StringBuilder* sb, u32 indent)
 {
@@ -434,6 +445,14 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
             sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));
         }
         sb_append_char(sb, '\n');
+        break;
+    case HIR_STMT_Block:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "{\n");
+        hir_render_block_at_indent(
+            sb, hir, lexer, sema, arena, stmt->body_block_index, indent + 1);
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "}\n");
         break;
     case HIR_STMT_Expr:
     default:

@@ -48,6 +48,12 @@ internal u32 hir_find_function_scope(const Ast* ast, u32 fn_node_index)
     return U32_MAX;
 }
 
+internal u32 hir_lower_block_node(Hir*         hir,
+                                  const Lexer* lexer,
+                                  const Ast*   ast,
+                                  const Sema*  sema,
+                                  u32          block_node_index);
+
 internal u32 hir_add_expr(Hir* hir, HirExpr expr)
 {
     array_push(hir->exprs, expr);
@@ -191,6 +197,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Slice:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
+    case AK_ExprBlock:
     case AK_Expression:
         return true;
     default:
@@ -510,6 +517,16 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .rhs_expr_index = hir_lower_expr(
                                     hir, lexer, ast, sema, node->b),
                             });
+    case AK_ExprBlock:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Block,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle    = node->b,
+                                .local_index      = sema_no_local(),
+                                .body_block_index = hir_lower_block_node(
+                                    hir, lexer, ast, sema, node->a),
+                            });
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }
@@ -666,6 +683,17 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 .type_index = hir_node_type(sema, node_index),
                                 .body_block_index = hir_no_index(),
                             });
+    case AK_Block:
+        return hir_add_stmt(hir,
+                            (HirStmt){
+                                .kind          = HIR_STMT_Block,
+                                .expr_index    = hir_no_index(),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .type_index = hir_node_type(sema, node_index),
+                                .body_block_index = hir_lower_block_node(
+                                    hir, lexer, ast, sema, node_index),
+                            });
     default:
         return hir_add_stmt(
             hir,
@@ -678,6 +706,89 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .body_block_index = hir_no_index(),
             });
     }
+}
+
+internal u32 hir_lower_block_node(Hir*         hir,
+                                  const Lexer* lexer,
+                                  const Ast*   ast,
+                                  const Sema*  sema,
+                                  u32          block_node_index)
+{
+    block_node_index = hir_unwrap_node(ast, block_node_index);
+    if (block_node_index >= array_count(ast->nodes) ||
+        ast->nodes[block_node_index].kind != AK_Block) {
+        return hir_lower_single_stmt_block(
+            hir, lexer, ast, sema, block_node_index);
+    }
+
+    const AstNode* block_node = &ast->nodes[block_node_index];
+    u32            first      = block_node->a;
+    u32            end        = block_node->b;
+    if (end > array_count(ast->nodes)) {
+        end = (u32)array_count(ast->nodes);
+    }
+
+    u32 block_index = (u32)array_count(hir->blocks);
+    array_push(hir->blocks,
+               (HirBlock){
+                   .first_stmt = 0,
+                   .stmt_count = 0,
+               });
+
+    bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * end);
+    memset(owned_nodes, 0, sizeof(bool) * end);
+    for (u32 i = first; i < end; ++i) {
+        if (ast->nodes[i].kind == AK_ExprBlock) {
+            u32 child_block_index = ast->nodes[i].a;
+            if (child_block_index < end &&
+                ast->nodes[child_block_index].kind == AK_Block) {
+                owned_nodes[child_block_index] = true;
+                u32 child_first = ast->nodes[child_block_index].a;
+                u32 child_end   = ast->nodes[child_block_index].b;
+                if (child_end > end) {
+                    child_end = end;
+                }
+                for (u32 j = child_first; j < child_end; ++j) {
+                    owned_nodes[j] = true;
+                }
+            }
+        }
+
+        if (ast->nodes[i].kind != AK_Defer) {
+            continue;
+        }
+
+        u32 deferred_node = ast->nodes[i].a;
+        u32 deferred_root = hir_unwrap_node(ast, deferred_node);
+        if (deferred_node < end) {
+            owned_nodes[deferred_node] = true;
+        }
+        if (deferred_root < end) {
+            owned_nodes[deferred_root] = true;
+        }
+        for (u32 j = first; j < end; ++j) {
+            if ((ast->nodes[j].kind == AK_Statement ||
+                 ast->nodes[j].kind == AK_Expression) &&
+                (hir_unwrap_node(ast, j) == deferred_node ||
+                 hir_unwrap_node(ast, j) == deferred_root)) {
+                owned_nodes[j] = true;
+            }
+        }
+    }
+
+    for (u32 i = first; i < end; ++i) {
+        AstKind kind = ast->nodes[i].kind;
+        if (owned_nodes[i] || hir_ast_kind_is_expression_child(kind)) {
+            continue;
+        }
+        u32 stmt_index = hir_lower_stmt(hir, lexer, ast, sema, i);
+        if (stmt_index != hir_no_index()) {
+            array_push(hir->blocks[block_index].stmt_indices, stmt_index);
+            hir->blocks[block_index].stmt_count++;
+        }
+    }
+
+    return block_index;
 }
 
 internal u32 hir_lower_function_body(Hir*         hir,
@@ -714,6 +825,22 @@ internal u32 hir_lower_function_body(Hir*         hir,
     bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * fn_end);
     memset(owned_nodes, 0, sizeof(bool) * fn_end);
     for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
+        if (ast->nodes[i].kind == AK_ExprBlock) {
+            u32 child_block_index = ast->nodes[i].a;
+            if (child_block_index < fn_end &&
+                ast->nodes[child_block_index].kind == AK_Block) {
+                owned_nodes[child_block_index] = true;
+                u32 child_first = ast->nodes[child_block_index].a;
+                u32 child_end   = ast->nodes[child_block_index].b;
+                if (child_end > fn_end) {
+                    child_end = fn_end;
+                }
+                for (u32 j = child_first; j < child_end; ++j) {
+                    owned_nodes[j] = true;
+                }
+            }
+        }
+
         if (ast->nodes[i].kind != AK_Defer) {
             continue;
         }
