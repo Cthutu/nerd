@@ -9,7 +9,7 @@ lowercase_first :: fn (text: string) -> u8 {
     }
 
     chars := text
-    for ^c in chars {
+    for c in chars {
         return tolower(c^)
     }
 

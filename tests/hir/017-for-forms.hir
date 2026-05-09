@@ -19,13 +19,13 @@ sum_c_style :: fn() -> i32 {
 sum_for_in :: fn(values: []i32) -> i32 {
     total := 0
     for index, value in values {
-        total += value + index.as(i32)
+        total += value^ + index.as(i32)
     }
     return total
 }
 
 increment_first :: fn(values: []i32) -> i32 {
-    for ^value in values {
+    for value in values {
         value^ += 1
         break
     }
@@ -83,15 +83,15 @@ func sum_c_style() -> i32 {
 }
 func sum_for_in(values: []i32) -> i32 {
   let total: i32 = untyped integer 0
-  expr void for in index: usize, value: i32 in []i32 values {
+  expr void for in index: usize, value: ^i32 in []i32 values {
     body {
-      assign i32 total = i32 add(i32 total, i32 add(i32 value, i32 cast(usize index as i32)))
+      assign i32 total = i32 add(i32 total, i32 add(i32 deref(^i32 value), i32 cast(usize index as i32)))
     }
   }
   return i32 total
 }
 func increment_first(values: []i32) -> i32 {
-  expr void for in ^value: ^i32 in []i32 values {
+  expr void for in value: ^i32 in []i32 values {
     body {
       assign i32 deref(^i32 value) = i32 add(i32 deref(^i32 value), i32 1)
       break

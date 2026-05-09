@@ -9,7 +9,7 @@ FrameSystem :: plex {
 
 impl FrameSystem {
     delete_frame_info :: fn (fs: ^Self, handle: u64) {
-        for i, ^frame in fs.frames {
+        for i, frame in fs.frames {
             on frame.handle == handle => {
                 frame.title_heap.
             }

@@ -9901,9 +9901,7 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                         sema_type_name(
                             lexer, sema, &temp_arena, iterable_type));
                 }
-                if (for_info->item_is_pointer) {
-                    item_type = sema_add_pointer_type(sema, item_type);
-                }
+                item_type     = sema_add_pointer_type(sema, item_type);
                 u32 for_scope = sema->node_scope_indices[i];
                 if (for_scope != sema_no_scope()) {
                     u32 local_index = sema_lookup_local(
@@ -12167,9 +12165,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_type_name(
                             lexer, sema, &temp_arena, iterable_type));
                 }
-                if (for_info->item_is_pointer) {
-                    item_type = sema_add_pointer_type(sema, item_type);
-                }
+                item_type     = sema_add_pointer_type(sema, item_type);
                 u32 for_scope = sema->node_scope_indices[node_index];
                 if (for_scope != sema_no_scope()) {
                     u32 local_index = sema_lookup_local(

@@ -5991,23 +5991,13 @@ internal IrStatementResult ir_generate_statement(const Lexer* lex,
                 .type          = lowered_item_type,
                 .value.integer = (i64)(*next_value_index)++,
             };
-            if (for_info->item_is_pointer) {
-                ir_add_address_of_index(ir,
-                                        item_value,
-                                        lowered_item_type,
-                                        iterable_temp,
-                                        iterable_type,
-                                        index_temp,
-                                        usize_type);
-            } else {
-                ir_add_index(ir,
-                             item_value,
-                             lowered_item_type,
-                             iterable_temp,
-                             iterable_type,
-                             index_temp,
-                             usize_type);
-            }
+            ir_add_address_of_index(ir,
+                                    item_value,
+                                    lowered_item_type,
+                                    iterable_temp,
+                                    iterable_type,
+                                    index_temp,
+                                    usize_type);
             ir_add_local(ir,
                          function_index,
                          sema->locals[item_local_index].lowered_symbol_handle,

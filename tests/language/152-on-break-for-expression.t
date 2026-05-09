@@ -7,7 +7,7 @@ System :: plex {
 }
 
 find :: fn (system: ^System, handle: u64) -> ^Info {
-    return for ^info in system.infos {
+    return for info in system.infos {
         on info.handle == handle => break info
     } else {
         break nil

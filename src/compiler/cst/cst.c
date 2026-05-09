@@ -3743,7 +3743,6 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         .item_token_index     = U32_MAX,
         .label_symbol         = U32_MAX,
         .else_block_index     = U32_MAX,
-        .item_is_pointer      = false,
     };
     if (!cst_emit_node(state,
                        (CstNode){
@@ -3757,23 +3756,10 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
     bool starts_for_in = cst_current_token(state).kind == TK_Symbol &&
                          (cst_peek_kind_at(state, 1) == TK_in ||
                           (cst_peek_kind_at(state, 1) == TK_Comma &&
-                           (cst_peek_kind_at(state, 2) == TK_Symbol ||
-                            cst_peek_kind_at(state, 2) == TK_Caret)));
-    if (cst_current_token(state).kind == TK_Caret &&
-        cst_peek_kind_at(state, 1) == TK_Symbol &&
-        cst_peek_kind_at(state, 2) == TK_in) {
-        starts_for_in = true;
-    }
+                           cst_peek_kind_at(state, 2) == TK_Symbol));
     if (!cst_token_is_for_body_start(cst_current_token(state).kind) &&
         starts_for_in) {
         for_info.mode = CFM_In;
-        if (cst_current_token(state).kind == TK_Caret) {
-            for_info.item_is_pointer = true;
-            cst_advance(state);
-            if (cst_current_token(state).kind != TK_Symbol) {
-                return false;
-            }
-        }
         if (cst_current_token(state).kind == TK_Symbol &&
             cst_peek_kind_at(state, 1) == TK_Comma) {
             for_info.index_symbol      = cst_current_symbol_handle(state);
@@ -3781,10 +3767,6 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
             cst_advance(state);
             if (!cst_consume(state, TK_Comma)) {
                 return false;
-            }
-            if (cst_current_token(state).kind == TK_Caret) {
-                for_info.item_is_pointer = true;
-                cst_advance(state);
             }
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;

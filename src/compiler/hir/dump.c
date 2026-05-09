@@ -626,9 +626,6 @@ internal void hir_render_expr(StringBuilder* sb,
                         hir_dump_local_type(sema, loop->index_local_index));
                     sb_append_cstr(sb, ", ");
                 }
-                if (loop->item_is_pointer) {
-                    sb_append_char(sb, '^');
-                }
                 if (loop->item_symbol != U32_MAX) {
                     sb_append_string(sb, lex_symbol(lexer, loop->item_symbol));
                 } else {

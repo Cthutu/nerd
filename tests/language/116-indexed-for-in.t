@@ -32,10 +32,10 @@ $5 = []plex{description:string,tag:string}:$0.count
 $6 = usize:$1 < usize:$5
 branch.false bool:$6, L4
 local main$i$for42 = usize:$1
-$7 = []plex{description:string,tag:string}:$0[usize:$1]
-local main$loc$for44 = plex{description:string,tag:string}:$7
+$7 = ^[]plex{description:string,tag:string}:$0[usize:$1]
+local main$loc$for44 = ^plex{description:string,tag:string}:$7
 block
-$8 = plex{description:string,tag:string}:main$loc$for44.tag
+$8 = ^plex{description:string,tag:string}:main$loc$for44.tag
 $9 = string:noun == string:$8
 branch.false bool:$9, L10
 $11 = cast usize:main$i$for42

@@ -89,7 +89,7 @@ main :: fn () {
 ¬
 main :: fn () {
     text : []u8 = "a"[..]
-    for ^c in text {
+    for c in text {
         c^ := c^
     }
 }

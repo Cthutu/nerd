@@ -25,7 +25,7 @@ get_input :: fn () -> string {
 parse_and_execute :: fn (input: string) -> bool {
     parts := split(input, " ")
     defer parts.free()
-    for ^part in parts {
+    for part in parts {
         part^ = trim_whitespace(part^)
     }
 

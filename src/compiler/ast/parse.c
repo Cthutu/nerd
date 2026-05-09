@@ -2424,12 +2424,9 @@ internal bool ast_token_starts_for_in(const AstParseState* state)
     if (state->token.kind == TK_Symbol) {
         return ast_cursor_kind(state) == TK_in ||
                (ast_cursor_kind(state) == TK_Comma &&
-                (ast_peek_kind_at(state, 1) == TK_Symbol ||
-                 ast_peek_kind_at(state, 1) == TK_Caret));
+                ast_peek_kind_at(state, 1) == TK_Symbol);
     }
-    return state->token.kind == TK_Caret &&
-           ast_cursor_kind(state) == TK_Symbol &&
-           ast_peek_kind_at(state, 1) == TK_in;
+    return false;
 }
 
 internal bool ast_parse_for_body(AstParseState* state,
@@ -2489,7 +2486,6 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
         .item_token_index     = U32_MAX,
         .label_symbol         = U32_MAX,
         .else_block_index     = U32_MAX,
-        .item_is_pointer      = false,
     };
     u32 body_node = 0;
     if (!ast_emit_node(state,
@@ -2509,16 +2505,6 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     if (!ast_for_token_is_body_start(state->token.kind) &&
         ast_token_starts_for_in(state)) {
         for_info.mode = AFM_In;
-        if (state->token.kind == TK_Caret) {
-            for_info.item_is_pointer = true;
-            if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_Symbol,
-                    state->token.kind);
-            }
-        }
         ASSERT(state->token.kind == TK_Symbol,
                "Expected symbol token for for-in loop item");
         if (ast_cursor_kind(state) == TK_Comma) {
@@ -2531,16 +2517,6 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                     ast_token_span(state, &state->token),
                     TK_Symbol,
                     state->token.kind);
-            }
-            if (state->token.kind == TK_Caret) {
-                for_info.item_is_pointer = true;
-                if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_Symbol,
-                        state->token.kind);
-                }
             }
             if (state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(

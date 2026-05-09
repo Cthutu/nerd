@@ -9,7 +9,7 @@ FrameSystem :: plex {
 impl FrameSystem {
 find_frame_info :: fn (fs: ^Self, handle: u64)
 {
-return for ^frame in fs.frames {
+return for frame in fs.frames {
 on frame.handle == handle => frame
 } else {
 nil
@@ -28,7 +28,7 @@ FrameSystem :: plex {
 impl FrameSystem {
 
     find_frame_info :: fn (fs: ^Self, handle: u64) {
-        return for ^frame in fs.frames {
+        return for frame in fs.frames {
             on frame.handle == handle => frame
         } else {
             nil

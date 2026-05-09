@@ -1092,7 +1092,6 @@ internal u32 hir_lower_for(Hir*         hir,
             .item_symbol = for_info->item_symbol,
             .item_local_index =
                 hir_find_scope_local(sema, for_scope, for_info->item_symbol),
-            .item_is_pointer = for_info->item_is_pointer,
         });
 
     return hir_add_expr(hir,

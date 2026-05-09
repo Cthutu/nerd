@@ -20,7 +20,7 @@ impl Frame {
 
 impl FrameSystem {
     find :: fn (fs: ^Self) {
-        for ^frame in fs.frames {
+        for frame in fs.frames {
             frame.
         }
     }

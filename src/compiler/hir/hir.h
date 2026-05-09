@@ -217,7 +217,6 @@ typedef struct {
     u32        index_local_index;
     u32        item_symbol;
     u32        item_local_index;
-    bool       item_is_pointer;
 } HirFor;
 
 typedef struct {

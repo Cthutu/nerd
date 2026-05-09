@@ -1,6 +1,6 @@
 find :: fn (values: [..]i32, needle: i32) -> i32 {
 return for value in values {
-break on value == needle => value
+break on value^ == needle => value^
 } else {
 break -1
 }
@@ -15,7 +15,7 @@ break $pick 9
 ¬
 find :: fn (values: [..]i32, needle: i32) -> i32 {
     return for value in values {
-        break on value == needle => value
+        break on value^ == needle => value^
     } else {
         break -1
     }

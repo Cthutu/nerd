@@ -25,3 +25,4 @@ Date: YYYY-MM-DD
 ## Records
 
 - [0001: HIR And Backend Boundary](0001-hir-and-backend-boundary.md)
+- [0002: For-In Pointer Items](0002-for-in-pointer-items.md)
