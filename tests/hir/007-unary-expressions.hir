@@ -1,0 +1,22 @@
+not_value :: fn(value: bool) -> bool {
+    return !value
+}
+
+negative :: fn(value: i32) -> i32 {
+    return -value
+}
+
+main :: fn() -> i32 {
+    return 0
+}
+¬
+hir 0
+func not_value(value: bool) -> bool {
+  return bool logical_not(bool value)
+}
+func negative(value: i32) -> i32 {
+  return i32 negate(i32 value)
+}
+func main() -> i32 {
+  return i32 0
+}

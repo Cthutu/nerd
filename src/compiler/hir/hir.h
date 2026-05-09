@@ -28,9 +28,17 @@ typedef enum : u8 {
     HIR_EXPR_IntegerLiteral,
     HIR_EXPR_BoolLiteral,
     HIR_EXPR_LocalRef,
+    HIR_EXPR_Unary,
     HIR_EXPR_Binary,
     HIR_EXPR_Call,
 } HirExprKind;
+
+typedef enum : u8 {
+    HIR_UNARY_LogicalNot,
+    HIR_UNARY_Negate,
+    HIR_UNARY_AddressOf,
+    HIR_UNARY_Deref,
+} HirUnaryOp;
 
 typedef enum : u8 {
     HIR_BINARY_Add,
@@ -91,11 +99,13 @@ typedef struct {
     u32         local_index;
     i64         integer;
     bool        boolean;
+    u32         operand_expr_index;
     u32         lhs_expr_index;
     u32         rhs_expr_index;
     u32         callee_expr_index;
     u32         first_arg;
     u32         arg_count;
+    HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
 } HirExpr;
 

@@ -67,6 +67,26 @@ internal u32 hir_add_unsupported_expr(Hir*        hir,
                         });
 }
 
+internal bool hir_unary_op_from_ast_kind(AstKind kind, HirUnaryOp* out)
+{
+    switch (kind) {
+    case AK_LogicalNot:
+        *out = HIR_UNARY_LogicalNot;
+        return true;
+    case AK_IntegerNegate:
+        *out = HIR_UNARY_Negate;
+        return true;
+    case AK_AddressOf:
+        *out = HIR_UNARY_AddressOf;
+        return true;
+    case AK_Deref:
+        *out = HIR_UNARY_Deref;
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool hir_binary_op_from_ast_kind(AstKind kind, HirBinaryOp* out)
 {
     switch (kind) {
@@ -131,6 +151,11 @@ internal bool hir_binary_op_from_ast_kind(AstKind kind, HirBinaryOp* out)
 
 internal bool hir_ast_kind_is_expression_child(AstKind kind)
 {
+    HirUnaryOp ignored_unary;
+    if (hir_unary_op_from_ast_kind(kind, &ignored_unary)) {
+        return true;
+    }
+
     HirBinaryOp ignored;
     if (hir_binary_op_from_ast_kind(kind, &ignored)) {
         return true;
@@ -143,6 +168,16 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_SymbolRef:
+    case AK_TypeFn:
+    case AK_TypeApply:
+    case AK_TypeTuple:
+    case AK_TypeArray:
+    case AK_TypeSlice:
+    case AK_TypeDynamicArray:
+    case AK_TypePointer:
+    case AK_TypePlex:
+    case AK_TypeEnum:
+    case AK_AnnotatedValue:
     case AK_Call:
     case AK_Expression:
         return true;
@@ -163,7 +198,21 @@ internal u32 hir_lower_expr(Hir*         hir,
     }
 
     const AstNode* node = &ast->nodes[node_index];
-    HirBinaryOp    binary_op;
+    HirUnaryOp     unary_op;
+    if (hir_unary_op_from_ast_kind(node->kind, &unary_op)) {
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Unary,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle      = U32_MAX,
+                                .local_index        = sema_no_local(),
+                                .operand_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
+                                .unary_op = unary_op,
+                            });
+    }
+
+    HirBinaryOp binary_op;
     if (hir_binary_op_from_ast_kind(node->kind, &binary_op)) {
         u32 lhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->a);
         u32 rhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b);

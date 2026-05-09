@@ -103,6 +103,22 @@ internal cstr hir_binary_op_name(HirBinaryOp op)
     }
 }
 
+internal cstr hir_unary_op_name(HirUnaryOp op)
+{
+    switch (op) {
+    case HIR_UNARY_LogicalNot:
+        return "logical_not";
+    case HIR_UNARY_Negate:
+        return "negate";
+    case HIR_UNARY_AddressOf:
+        return "address_of";
+    case HIR_UNARY_Deref:
+        return "deref";
+    default:
+        return "unary";
+    }
+}
+
 internal void hir_render_expr(StringBuilder* sb,
                               const Hir*     hir,
                               const Lexer*   lexer,
@@ -159,6 +175,12 @@ internal void hir_render_expr(StringBuilder* sb,
         } else {
             sb_append_cstr(sb, "<local>");
         }
+        break;
+    case HIR_EXPR_Unary:
+        sb_append_cstr(sb, hir_unary_op_name(expr->unary_op));
+        sb_append_char(sb, '(');
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_append_char(sb, ')');
         break;
     case HIR_EXPR_Binary:
         sb_append_cstr(sb, hir_binary_op_name(expr->binary_op));
