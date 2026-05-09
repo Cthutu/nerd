@@ -11,12 +11,15 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func is_less(a: i32, b: i32) -> bool {
+bind is_less = fn.0
+bind is_ready = fn.1
+bind main = fn.2
+func fn.0(a: i32, b: i32) -> bool {
   return bool less(i32 a, i32 b)
 }
-func is_ready(a: bool, b: bool) -> bool {
+func fn.1(a: bool, b: bool) -> bool {
   return bool logical_or(bool logical_and(bool a, bool b), bool yes)
 }
-func main() -> i32 {
+func fn.2() -> i32 {
   return i32 0
 }

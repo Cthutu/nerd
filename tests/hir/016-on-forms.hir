@@ -60,7 +60,17 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func classify(value: i32) -> i32 {
+bind Point = type.0
+bind Choice = type.1
+bind classify = fn.0
+bind score = fn.1
+bind first_positive = fn.2
+bind describe_choice = fn.3
+bind compare_pattern = fn.4
+bind main = fn.5
+type type.0 = Point
+type type.1 = Choice
+func fn.0(value: i32) -> i32 {
   return i32 on i32 value {
     value(i32 0) => {
       expr i32 10
@@ -73,7 +83,7 @@ func classify(value: i32) -> i32 {
     }
   }
 }
-func score(point: Point) -> i32 {
+func fn.1(point: Point) -> i32 {
   return i32 on Point point {
     plex(x: value(i32 0), y: as y) => {
       expr i32 y
@@ -86,7 +96,7 @@ func score(point: Point) -> i32 {
     }
   }
 }
-func first_positive(value: i32) -> i32 {
+func fn.2(value: i32) -> i32 {
   expr void on bool greater(i32 value, i32 0) {
     value(bool yes) => {
       return i32 value
@@ -94,7 +104,7 @@ func first_positive(value: i32) -> i32 {
   }
   return i32 0
 }
-func describe_choice(choice: Choice) -> i32 {
+func fn.3(choice: Choice) -> i32 {
   return i32 on Choice choice {
     enum_variant(Empty) => {
       expr i32 0
@@ -110,7 +120,7 @@ func describe_choice(choice: Choice) -> i32 {
     }
   }
 }
-func compare_pattern(value: i32) -> i32 {
+func fn.4(value: i32) -> i32 {
   return i32 on i32 value {
     equal(i32 0) => {
       expr i32 1
@@ -135,7 +145,7 @@ func compare_pattern(value: i32) -> i32 {
     }
   }
 }
-func main() -> i32 {
+func fn.5() -> i32 {
   let point: Point = Point plex(x: i32 4, y: i32 9)
   return i32 on condition {
     bool equal(i32 call classify(i32 2), i32 22) => {

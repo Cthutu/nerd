@@ -6,7 +6,8 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func main() -> i32 {
+bind main = fn.0
+func fn.0() -> i32 {
   assert bool less(untyped integer 1, untyped integer 2), string "ok"
   let value: i32 = untyped integer 1
   defer {

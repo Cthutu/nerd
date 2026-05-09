@@ -5,7 +5,8 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func main() -> i32 {
+bind main = fn.0
+func fn.0() -> i32 {
   let left: i32 = i32 1
   let right: i32 = i32 2
   return i32 add(i32 left, i32 right)

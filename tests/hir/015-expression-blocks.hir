@@ -6,7 +6,8 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func main() -> i32 {
+bind main = fn.0
+func fn.0() -> i32 {
   let result: i32 = untyped integer block {
     break untyped integer 7
   }

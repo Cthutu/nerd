@@ -16,16 +16,20 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func addr(value: i32) -> ^i32 {
+bind addr = fn.0
+bind read = fn.1
+bind first = fn.2
+bind main = fn.3
+func fn.0(value: i32) -> ^i32 {
   return ^i32 address_of(i32 value)
 }
-func read(ptr: ^i32) -> i32 {
+func fn.1(ptr: ^i32) -> i32 {
   return i32 deref(^i32 ptr)
 }
-func first(values: [2]i32) -> i32 {
+func fn.2(values: [2]i32) -> i32 {
   return i32 index([2]i32 values, untyped integer 0)
 }
-func main() -> i32 {
+func fn.3() -> i32 {
   let values: [2]i32 = [2]i32 array(i32 1, i32 2)
   return i32 call first([2]i32 values)
 }

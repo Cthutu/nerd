@@ -24,35 +24,39 @@ internal cstr hir_function_prefix(HirFunctionKind kind)
     }
 }
 
-internal cstr hir_type_decl_prefix(HirTypeDeclKind kind)
+internal cstr hir_type_def_prefix(HirTypeDefKind kind)
 {
     switch (kind) {
-    case HIR_TYPE_GenericAlias:
+    case HIR_TYPE_Generic:
         return "generic type";
-    case HIR_TYPE_Alias:
+    case HIR_TYPE_Normal:
     default:
         return "type";
     }
 }
 
-internal cstr hir_global_prefix(HirGlobalKind kind)
+internal cstr hir_value_prefix(HirValueKind kind)
 {
     switch (kind) {
-    case HIR_GLOBAL_Variable:
+    case HIR_VALUE_Global:
         return "global";
-    case HIR_GLOBAL_Constant:
+    case HIR_VALUE_Constant:
     default:
         return "const";
     }
 }
 
-internal string hir_function_name(const HirFunction* function,
-                                  const Lexer*       lexer)
+internal cstr hir_binding_target_prefix(HirBindingKind kind)
 {
-    if (function->symbol_handle == U32_MAX) {
-        return s("<anonymous>");
+    switch (kind) {
+    case HIR_BINDING_Function:
+        return "fn";
+    case HIR_BINDING_Type:
+        return "type";
+    case HIR_BINDING_Value:
+    default:
+        return "value";
     }
-    return lex_symbol(lexer, function->symbol_handle);
 }
 
 internal string hir_symbol_name(u32 symbol_handle, const Lexer* lexer)
@@ -61,6 +65,13 @@ internal string hir_symbol_name(u32 symbol_handle, const Lexer* lexer)
         return s("<anonymous>");
     }
     return lex_symbol(lexer, symbol_handle);
+}
+
+internal void hir_append_binding_target(StringBuilder*    sb,
+                                        HirBindingKind    kind,
+                                        u32               target_index)
+{
+    sb_format(sb, "%s.%u", hir_binding_target_prefix(kind), target_index);
 }
 
 internal void hir_append_type_name(StringBuilder* sb,
@@ -870,33 +881,41 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
     sb_init(&sb, arena);
 
     sb_append_cstr(&sb, "hir 0\n");
-    for (u32 i = 0; i < array_count(hir->type_decls); ++i) {
-        const HirTypeDecl* decl = &hir->type_decls[i];
-        sb_append_cstr(&sb, hir_type_decl_prefix(decl->kind));
-        sb_append_char(&sb, ' ');
-        sb_append_string(&sb, hir_symbol_name(decl->symbol_handle, lexer));
+    for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        const HirBinding* binding = &hir->bindings[i];
+        sb_append_cstr(&sb, "bind ");
+        sb_append_string(&sb, hir_symbol_name(binding->symbol_handle, lexer));
         sb_append_cstr(&sb, " = ");
-        hir_append_type_name(&sb, lexer, sema, decl->type_index);
+        hir_append_binding_target(&sb, binding->kind, binding->target_index);
         sb_append_char(&sb, '\n');
     }
-    for (u32 i = 0; i < array_count(hir->globals); ++i) {
-        const HirGlobal* global = &hir->globals[i];
-        sb_append_cstr(&sb, hir_global_prefix(global->kind));
+    for (u32 i = 0; i < array_count(hir->type_defs); ++i) {
+        const HirTypeDef* type_def = &hir->type_defs[i];
+        sb_append_cstr(&sb, hir_type_def_prefix(type_def->kind));
         sb_append_char(&sb, ' ');
-        sb_append_string(&sb, hir_symbol_name(global->symbol_handle, lexer));
+        hir_append_binding_target(&sb, HIR_BINDING_Type, i);
+        sb_append_cstr(&sb, " = ");
+        hir_append_type_name(&sb, lexer, sema, type_def->type_index);
+        sb_append_char(&sb, '\n');
+    }
+    for (u32 i = 0; i < array_count(hir->values); ++i) {
+        const HirValue* value = &hir->values[i];
+        sb_append_cstr(&sb, hir_value_prefix(value->kind));
+        sb_append_char(&sb, ' ');
+        hir_append_binding_target(&sb, HIR_BINDING_Value, i);
         sb_append_cstr(&sb, ": ");
-        hir_append_type_name(&sb, lexer, sema, global->type_index);
-        if (global->value_expr_index != U32_MAX) {
+        hir_append_type_name(&sb, lexer, sema, value->type_index);
+        if (value->value_expr_index != U32_MAX) {
             sb_append_cstr(&sb, " = ");
             hir_render_expr(
-                &sb, hir, lexer, sema, arena, global->value_expr_index);
+                &sb, hir, lexer, sema, arena, value->value_expr_index);
         }
         sb_append_char(&sb, '\n');
     }
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         const HirFunction* function = &hir->functions[i];
         sb_format(&sb, "%s ", hir_function_prefix(function->kind));
-        sb_append_string(&sb, hir_function_name(function, lexer));
+        hir_append_binding_target(&sb, HIR_BINDING_Function, i);
         sb_append_char(&sb, '(');
         for (u32 p = 0; p < function->param_count; ++p) {
             if (p > 0) {

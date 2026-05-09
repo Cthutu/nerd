@@ -12,11 +12,16 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-type Score = i32
-type Point = Point
-const Answer: untyped integer = untyped integer 41
-global Counter: i32 = untyped integer 1
-func main() -> i32 {
+bind Answer = value.0
+bind Counter = value.1
+bind Score = type.0
+bind Point = type.1
+bind main = fn.0
+type type.0 = i32
+type type.1 = Point
+const value.0: untyped integer = untyped integer 41
+global value.1: i32 = untyped integer 1
+func fn.0() -> i32 {
   assign i32 Counter = i32 add(i32 Counter, i32 1)
   return i32 add(i32 Answer, i32 Counter)
 }

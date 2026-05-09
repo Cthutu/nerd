@@ -14,10 +14,14 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func sum_point(point: Point) -> i32 {
+bind Point = type.0
+bind sum_point = fn.0
+bind main = fn.1
+type type.0 = Point
+func fn.0(point: Point) -> i32 {
   return i32 add(i32 field(Point point, x), i32 field(Point point, y))
 }
-func main() -> i32 {
+func fn.1() -> i32 {
   let point: Point = Point plex(x: i32 1, y: i32 2)
   let moved: Point = Point plex_update(Point point, y: i32 3)
   return i32 call sum_point(Point moved)

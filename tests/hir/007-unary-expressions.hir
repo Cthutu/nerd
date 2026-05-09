@@ -11,12 +11,15 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func not_value(value: bool) -> bool {
+bind not_value = fn.0
+bind negative = fn.1
+bind main = fn.2
+func fn.0(value: bool) -> bool {
   return bool logical_not(bool value)
 }
-func negative(value: i32) -> i32 {
+func fn.1(value: i32) -> i32 {
   return i32 negate(i32 value)
 }
-func main() -> i32 {
+func fn.2() -> i32 {
   return i32 0
 }

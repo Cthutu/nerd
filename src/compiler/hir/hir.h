@@ -18,14 +18,20 @@ typedef enum : u8 {
 } HirFunctionKind;
 
 typedef enum : u8 {
-    HIR_TYPE_Alias,
-    HIR_TYPE_GenericAlias,
-} HirTypeDeclKind;
+    HIR_TYPE_Normal,
+    HIR_TYPE_Generic,
+} HirTypeDefKind;
 
 typedef enum : u8 {
-    HIR_GLOBAL_Constant,
-    HIR_GLOBAL_Variable,
-} HirGlobalKind;
+    HIR_VALUE_Constant,
+    HIR_VALUE_Global,
+} HirValueKind;
+
+typedef enum : u8 {
+    HIR_BINDING_Function,
+    HIR_BINDING_Type,
+    HIR_BINDING_Value,
+} HirBindingKind;
 
 typedef enum : u8 {
     HIR_STMT_Expr,
@@ -125,7 +131,6 @@ typedef enum : u8 {
 
 typedef struct {
     HirFunctionKind kind;
-    u32             symbol_handle;
     u32             decl_index;
     u32             fn_node_index;
     u32             root_scope_index;
@@ -136,19 +141,23 @@ typedef struct {
 } HirFunction;
 
 typedef struct {
-    HirTypeDeclKind kind;
-    u32             symbol_handle;
-    u32             decl_index;
-    u32             type_index;
-} HirTypeDecl;
+    HirTypeDefKind kind;
+    u32            decl_index;
+    u32            type_index;
+} HirTypeDef;
 
 typedef struct {
-    HirGlobalKind kind;
-    u32           symbol_handle;
-    u32           decl_index;
-    u32           type_index;
-    u32           value_expr_index;
-} HirGlobal;
+    HirValueKind kind;
+    u32          decl_index;
+    u32          type_index;
+    u32          value_expr_index;
+} HirValue;
+
+typedef struct {
+    HirBindingKind kind;
+    u32            symbol_handle;
+    u32            target_index;
+} HirBinding;
 
 typedef struct {
     u32 symbol_handle;
@@ -245,8 +254,9 @@ typedef struct {
 } HirFor;
 
 typedef struct {
-    Array(HirTypeDecl) type_decls;
-    Array(HirGlobal) globals;
+    Array(HirBinding) bindings;
+    Array(HirTypeDef) type_defs;
+    Array(HirValue) values;
     Array(HirFunction) functions;
     Array(HirParam) params;
     Array(HirBlock) blocks;

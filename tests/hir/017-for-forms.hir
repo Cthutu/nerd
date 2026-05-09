@@ -53,7 +53,14 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func sum_while(limit: i32) -> i32 {
+bind sum_while = fn.0
+bind sum_c_style = fn.1
+bind sum_for_in = fn.2
+bind increment_first = fn.3
+bind with_else = fn.4
+bind labelled_value = fn.5
+bind main = fn.6
+func fn.0(limit: i32) -> i32 {
   let total: i32 = untyped integer 0
   let i: i32 = untyped integer 0
   expr void for condition {
@@ -65,7 +72,7 @@ func sum_while(limit: i32) -> i32 {
   }
   return i32 total
 }
-func sum_c_style() -> i32 {
+func fn.1() -> i32 {
   let total: i32 = untyped integer 0
   expr void for c_style {
     init {
@@ -81,7 +88,7 @@ func sum_c_style() -> i32 {
   }
   return i32 total
 }
-func sum_for_in(values: []i32) -> i32 {
+func fn.2(values: []i32) -> i32 {
   let total: i32 = untyped integer 0
   expr void for in index: usize, value: ^i32 in []i32 values {
     body {
@@ -90,7 +97,7 @@ func sum_for_in(values: []i32) -> i32 {
   }
   return i32 total
 }
-func increment_first(values: []i32) -> i32 {
+func fn.3(values: []i32) -> i32 {
   expr void for in value: ^i32 in []i32 values {
     body {
       assign i32 deref(^i32 value) = i32 add(i32 deref(^i32 value), i32 1)
@@ -99,7 +106,7 @@ func increment_first(values: []i32) -> i32 {
   }
   return i32 index([]i32 values, untyped integer 0)
 }
-func with_else(limit: i32) -> i32 {
+func fn.4(limit: i32) -> i32 {
   return i32 for c_style {
     init {
       let i: i32 = untyped integer 0
@@ -116,14 +123,14 @@ func with_else(limit: i32) -> i32 {
     }
   }
 }
-func labelled_value() -> i32 {
+func fn.5() -> i32 {
   return i32 for condition $loop {
     body {
       break $loop i32 42
     }
   }
 }
-func main() -> i32 {
+func fn.6() -> i32 {
   let values: [3]i32 = [3]i32 array(untyped integer 1, i32 2, i32 3)
   return i32 add(i32 add(i32 add(i32 add(i32 add(i32 call sum_while(i32 3), i32 call sum_c_style()), i32 call sum_for_in([]i32 slice([3]i32 values, <none>, <none>))), i32 call increment_first([]i32 slice([3]i32 values, <none>, <none>))), i32 call with_else(i32 0)), i32 call labelled_value())
 }

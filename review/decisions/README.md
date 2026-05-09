@@ -26,3 +26,4 @@ Date: YYYY-MM-DD
 
 - [0001: HIR And Backend Boundary](0001-hir-and-backend-boundary.md)
 - [0002: For-In Pointer Items](0002-for-in-pointer-items.md)
+- [0003: HIR Entities And Bindings](0003-hir-entities-and-bindings.md)

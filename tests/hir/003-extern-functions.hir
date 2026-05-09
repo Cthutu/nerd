@@ -5,7 +5,9 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-extern func abs(i32) -> i32
-func main() -> i32 {
+bind abs = fn.0
+bind main = fn.1
+extern func fn.0(i32) -> i32
+func fn.1() -> i32 {
   return i32 0
 }
