@@ -31,6 +31,13 @@ internal u32 hir_node_decl(const Sema* sema, u32 node_index)
                : sema_no_decl();
 }
 
+internal u32 hir_node_scope(const Sema* sema, u32 node_index)
+{
+    return node_index < array_count(sema->node_scope_indices)
+               ? sema->node_scope_indices[node_index]
+               : hir_no_index();
+}
+
 internal u32 hir_local_type(const Sema* sema, u32 local_index)
 {
     return local_index < array_count(sema->locals)
@@ -121,6 +128,18 @@ internal u32 hir_lower_for(Hir*         hir,
                            const Ast*   ast,
                            const Sema*  sema,
                            u32          node_index);
+
+internal void hir_add_function(Hir*            hir,
+                               const Lexer*    lexer,
+                               const Ast*      ast,
+                               const Sema*     sema,
+                               HirFunctionKind kind,
+                               u32             binding_symbol_handle,
+                               u32             decl_index,
+                               u32             fn_node_index,
+                               u32             root_scope_index,
+                               u32             type_index,
+                               u32*            out_function_index);
 
 internal u32 hir_add_expr(Hir* hir, HirExpr expr)
 {
@@ -267,6 +286,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_RangeInclusive:
     case AK_ExprBlock:
     case AK_On:
+    case AK_FnDef:
     case AK_Expression:
         return true;
     default:
@@ -369,6 +389,30 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .symbol_handle = U32_MAX,
                                 .local_index   = sema_no_local(),
                             });
+    case AK_FnDef:
+        {
+            u32 function_index = hir_no_index();
+            hir_add_function(hir,
+                             lexer,
+                             ast,
+                             sema,
+                             HIR_FUNCTION_Normal,
+                             U32_MAX,
+                             hir_node_decl(sema, node_index),
+                             node_index,
+                             hir_node_scope(sema, node_index),
+                             hir_node_type(sema, node_index),
+                             &function_index);
+            return hir_add_expr(hir,
+                                (HirExpr){
+                                    .kind          = HIR_EXPR_FunctionRef,
+                                    .type_index    = hir_node_type(sema, node_index),
+                                    .symbol_handle = U32_MAX,
+                                    .local_index   = sema_no_local(),
+                                    .ref_kind      = HIR_REF_None,
+                                    .ref_index     = function_index,
+                                });
+        }
     case AK_SymbolRef:
         {
             u32 local_index = hir_node_local(sema, node_index);
@@ -1189,6 +1233,59 @@ internal void hir_mark_owned_ast_subtree(
     }
 }
 
+internal void hir_mark_owned_function_body(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 fn_node_index)
+{
+    if (fn_node_index >= end || ast->nodes[fn_node_index].kind != AK_FnDef) {
+        return;
+    }
+
+    const AstNode* fn_def = &ast->nodes[fn_node_index];
+    u32            fn_start_index = fn_def->a;
+    if (fn_start_index >= end ||
+        ast->nodes[fn_start_index].kind != AK_FnStart) {
+        return;
+    }
+
+    u32 fn_end = ast->nodes[fn_start_index].b;
+    if (fn_end > end) {
+        fn_end = end;
+    }
+    if (fn_node_index >= first) {
+        owned_nodes[fn_node_index] = true;
+    }
+    if (fn_start_index >= first) {
+        owned_nodes[fn_start_index] = true;
+    }
+    for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
+        owned_nodes[i] = true;
+    }
+}
+
+internal void hir_mark_owned_function_start(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 fn_start_index)
+{
+    if (fn_start_index >= end ||
+        ast->nodes[fn_start_index].kind != AK_FnStart) {
+        return;
+    }
+
+    u32 fn_end = ast->nodes[fn_start_index].b;
+    if (fn_end > end) {
+        fn_end = end;
+    }
+    for (u32 i = fn_start_index; i <= fn_end && i < end; ++i) {
+        if (i >= first) {
+            owned_nodes[i] = true;
+        }
+    }
+    u32 fn_def_index = fn_end + 1;
+    if (fn_def_index < end && ast->nodes[fn_def_index].kind == AK_FnDef &&
+        ast->nodes[fn_def_index].a == fn_start_index) {
+        owned_nodes[fn_def_index] = true;
+    }
+}
+
 internal void hir_mark_owned_on_branch_bodies(
     const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 on_node_index)
 {
@@ -1281,6 +1378,11 @@ internal void hir_mark_owned_statement_exprs(
                 ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
                 value_node_index = ast->nodes[value_node_index].b;
             }
+            u32 value_root = hir_unwrap_node(ast, value_node_index);
+            if (value_root < end && ast->nodes[value_root].kind == AK_FnDef) {
+                hir_mark_owned_function_body(
+                    ast, owned_nodes, first, end, value_root);
+            }
             hir_mark_owned_embedded_for_expr(
                 ast, owned_nodes, first, end, value_node_index);
             break;
@@ -1353,6 +1455,14 @@ internal u32 hir_lower_block_node(Hir*         hir,
 
         if (ast->nodes[i].kind == AK_For) {
             hir_mark_owned_for_parts(ast, owned_nodes, first, end, i);
+        }
+
+        if (ast->nodes[i].kind == AK_FnDef) {
+            hir_mark_owned_function_body(ast, owned_nodes, first, end, i);
+        }
+
+        if (ast->nodes[i].kind == AK_FnStart) {
+            hir_mark_owned_function_start(ast, owned_nodes, first, end, i);
         }
 
         hir_mark_owned_statement_exprs(ast, owned_nodes, first, end, i);
@@ -1451,6 +1561,16 @@ internal u32 hir_lower_function_body(Hir*         hir,
 
         if (ast->nodes[i].kind == AK_For) {
             hir_mark_owned_for_parts(
+                ast, owned_nodes, fn_start_index + 1, fn_end, i);
+        }
+
+        if (ast->nodes[i].kind == AK_FnDef) {
+            hir_mark_owned_function_body(
+                ast, owned_nodes, fn_start_index + 1, fn_end, i);
+        }
+
+        if (ast->nodes[i].kind == AK_FnStart) {
+            hir_mark_owned_function_start(
                 ast, owned_nodes, fn_start_index + 1, fn_end, i);
         }
 

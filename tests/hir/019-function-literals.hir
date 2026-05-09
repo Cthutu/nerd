@@ -1,0 +1,25 @@
+adder := fn(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+main :: fn() -> i32 {
+    local :: fn(value: i32) -> i32 {
+        return value + 1
+    }
+    return adder(20, 21) + local(1)
+}
+¬
+hir 0
+bind adder = value.0
+bind main = fn.1
+global value.0: fn (i32, i32) -> i32 = fn (i32, i32) -> i32 fn.0
+func fn.0(a: i32, b: i32) -> i32 {
+  return i32 add(i32 local.0(a), i32 local.1(b))
+}
+func fn.1() -> i32 {
+  let local: fn (i32) -> i32 = fn (i32) -> i32 fn.2
+  return i32 add(i32 call bind.0(adder)(i32 20, i32 21), i32 call local.2(local)(i32 1))
+}
+func fn.2(value: i32) -> i32 {
+  return i32 add(i32 local.3(value), i32 1)
+}

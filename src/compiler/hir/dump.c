@@ -497,6 +497,9 @@ internal void hir_render_expr(StringBuilder* sb,
     case HIR_EXPR_NilLiteral:
         sb_append_cstr(sb, "nil");
         break;
+    case HIR_EXPR_FunctionRef:
+        sb_format(sb, "fn.%u", expr->ref_index);
+        break;
     case HIR_EXPR_LocalRef:
         hir_render_ref(sb, lexer, expr);
         break;
