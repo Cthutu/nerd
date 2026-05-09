@@ -366,6 +366,63 @@ Working assumption:
 - Keep it as the stable backend input during migration.
 - Treat LLVM IR as a backend target for HIR, not as a replacement for HIR.
 
+#### 5c. LLVM IR As A Backend Target
+
+LLVM IR would remove some C-specific pressure from the pipeline, especially
+around declaration order and generated C spelling. The current code has several
+ordering paths with different motivations:
+
+- semantic declaration dependency ordering in `sema` for inference, constant
+  evaluation, and cycle diagnostics
+- type-declaration recursion and prototype emission in C generation
+- module postorder merge and init sequencing in the back end
+- function/type/symbol remapping during whole-program C generation
+
+LLVM IR would not remove semantic dependency analysis. The language still needs
+cycle diagnostics, type inference order, constant evaluation order, and module
+import validation. But it could remove or simplify C-specific ordering work:
+
+- functions can be emitted with generated internal names and referenced before
+  their textual definition
+- Nerd binding names can become aliases, metadata, or debug names instead of
+  direct backend symbol names
+- nominal runtime/type names can be generated from stable ids rather than from
+  C-safe spelling and topological declaration order
+- mutually referential functions and many aggregate references are less awkward
+  than in generated C
+
+Candidate naming model:
+
+```llvm
+@fn.42 = internal ...       ; real generated backend function
+@main = alias ..., @fn.42   ; exported/runtime-visible Nerd binding when needed
+```
+
+For most Nerd bindings, the generated symbol can be opaque (`@fn.N`,
+`@global.N`, `%type.N`) and the original source name can live in debug metadata
+or an alias table. Only externally visible symbols, FFI names, runtime entry
+points, and selected debug/export names need stable backend linkage.
+
+Tradeoff:
+
+- C currently gives the backend a large prelude/postlude for free: headers,
+  typedef spelling, platform C ABI integration, libc declarations, linking
+  conventions, startup shape, and runtime helper declarations.
+- LLVM would require us to own the equivalent: target triples/data layout,
+  linkage/visibility, function attributes, debug metadata, ABI details for
+  aggregates and varargs, runtime helper declarations, platform library
+  linkage, and the module entry/postlude shape.
+
+Working assumption:
+
+- LLVM IR is attractive as an experimental backend after HIR exists.
+- It should simplify backend symbol ordering and naming, not semantic
+  dependency analysis.
+- The first LLVM prototype should use generated backend ids plus explicit alias
+  or metadata records for Nerd-visible names.
+- A LLVM backend must include a deliberate prelude/postlude/runtime plan before
+  it can replace C generation.
+
 #### 6. Define LSP Feature Contracts
 
 Each LSP feature should have a declared minimum product:
