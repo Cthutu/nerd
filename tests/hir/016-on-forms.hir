@@ -39,6 +39,18 @@ describe_choice :: fn(choice: Choice) -> i32 {
     }
 }
 
+compare_pattern :: fn(value: i32) -> i32 {
+    return on value {
+        == 0 => 1
+        != 1 => 2
+        < 4 => 3
+        <= 5 => 4
+        > 6 => 5
+        >= 7 => 6
+        else => 7
+    }
+}
+
 main :: fn() -> i32 {
     point := Point { x: 4, y: 9 }
     return on {
@@ -95,6 +107,31 @@ func describe_choice(choice: Choice) -> i32 {
     }
     else => {
       expr i32 99
+    }
+  }
+}
+func compare_pattern(value: i32) -> i32 {
+  return i32 on i32 value {
+    equal(i32 0) => {
+      expr i32 1
+    }
+    not_equal(i32 1) => {
+      expr i32 2
+    }
+    less(i32 4) => {
+      expr i32 3
+    }
+    less_equal(i32 5) => {
+      expr i32 4
+    }
+    greater(i32 6) => {
+      expr i32 5
+    }
+    greater_equal(i32 7) => {
+      expr i32 6
+    }
+    else => {
+      expr i32 7
     }
   }
 }
