@@ -141,6 +141,13 @@ internal void hir_render_block_at_indent(StringBuilder* sb,
                                          u32            block_index,
                                          u32            indent);
 
+internal void hir_render_pattern(StringBuilder* sb,
+                                 const Hir*     hir,
+                                 const Lexer*   lexer,
+                                 const Sema*    sema,
+                                 Arena*         arena,
+                                 u32            pattern_index);
+
 internal void hir_render_expr_arg_list(StringBuilder* sb,
                                        const Hir*     hir,
                                        const Lexer*   lexer,
@@ -193,6 +200,133 @@ internal void hir_render_call_callee(StringBuilder* sb,
     }
 
     hir_render_expr(sb, hir, lexer, sema, arena, expr_index);
+}
+
+internal cstr hir_pattern_name(HirPatternKind kind)
+{
+    switch (kind) {
+    case HIR_PATTERN_Value:
+        return "value";
+    case HIR_PATTERN_Equal:
+        return "equal";
+    case HIR_PATTERN_NotEqual:
+        return "not_equal";
+    case HIR_PATTERN_Less:
+        return "less";
+    case HIR_PATTERN_LessEqual:
+        return "less_equal";
+    case HIR_PATTERN_Greater:
+        return "greater";
+    case HIR_PATTERN_GreaterEqual:
+        return "greater_equal";
+    case HIR_PATTERN_RangeExclusive:
+        return "range_exclusive";
+    case HIR_PATTERN_RangeInclusive:
+        return "range_inclusive";
+    default:
+        return "pattern";
+    }
+}
+
+internal void hir_render_pattern(StringBuilder* sb,
+                                 const Hir*     hir,
+                                 const Lexer*   lexer,
+                                 const Sema*    sema,
+                                 Arena*         arena,
+                                 u32            pattern_index)
+{
+    if (pattern_index == U32_MAX ||
+        pattern_index >= array_count(hir->patterns)) {
+        sb_append_cstr(sb, "<pattern>");
+        return;
+    }
+
+    const HirPattern* pattern = &hir->patterns[pattern_index];
+    switch (pattern->kind) {
+    case HIR_PATTERN_Ignore:
+        sb_append_cstr(sb, "_");
+        break;
+    case HIR_PATTERN_Bind:
+        sb_append_cstr(sb, "as ");
+        sb_append_string(sb, lex_symbol(lexer, pattern->symbol_handle));
+        break;
+    case HIR_PATTERN_Value:
+    case HIR_PATTERN_Equal:
+    case HIR_PATTERN_NotEqual:
+    case HIR_PATTERN_Less:
+    case HIR_PATTERN_LessEqual:
+    case HIR_PATTERN_Greater:
+    case HIR_PATTERN_GreaterEqual:
+        sb_append_cstr(sb, hir_pattern_name(pattern->kind));
+        sb_append_char(sb, '(');
+        hir_render_expr(sb, hir, lexer, sema, arena, pattern->expr_index);
+        sb_append_char(sb, ')');
+        break;
+    case HIR_PATTERN_RangeExclusive:
+    case HIR_PATTERN_RangeInclusive:
+        sb_append_cstr(sb, hir_pattern_name(pattern->kind));
+        sb_append_char(sb, '(');
+        hir_render_expr(sb, hir, lexer, sema, arena, pattern->expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, pattern->extra_expr_index);
+        sb_append_char(sb, ')');
+        break;
+    case HIR_PATTERN_Tuple:
+    case HIR_PATTERN_Plex:
+        sb_append_cstr(sb,
+                       pattern->kind == HIR_PATTERN_Tuple ? "tuple(" : "plex(");
+        for (u32 i = 0; i < pattern->child_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            u32 child_index = pattern->first_child + i;
+            if (child_index >= array_count(hir->pattern_children)) {
+                sb_append_cstr(sb, "<pattern>");
+                continue;
+            }
+            const HirPatternChild* child = &hir->pattern_children[child_index];
+            if (pattern->kind == HIR_PATTERN_Plex &&
+                child->symbol_handle != U32_MAX) {
+                sb_append_string(sb, lex_symbol(lexer, child->symbol_handle));
+                sb_append_cstr(sb, ": ");
+            }
+            hir_render_pattern(
+                sb, hir, lexer, sema, arena, child->pattern_index);
+        }
+        sb_append_char(sb, ')');
+        break;
+    case HIR_PATTERN_EnumVariant:
+        sb_append_cstr(sb, "enum_variant(");
+        if (pattern->expr_index != U32_MAX) {
+            hir_render_expr(sb, hir, lexer, sema, arena, pattern->expr_index);
+            sb_append_char(sb, '.');
+        }
+        if (pattern->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, pattern->symbol_handle));
+        } else {
+            sb_append_cstr(sb, "<variant>");
+        }
+        for (u32 i = 0; i < pattern->child_count; ++i) {
+            sb_append_cstr(sb, ", ");
+            u32 child_index = pattern->first_child + i;
+            if (child_index >= array_count(hir->pattern_children)) {
+                sb_append_cstr(sb, "<pattern>");
+                continue;
+            }
+            hir_render_pattern(
+                sb,
+                hir,
+                lexer,
+                sema,
+                arena,
+                hir->pattern_children[child_index].pattern_index);
+        }
+        sb_append_char(sb, ')');
+        break;
+    default:
+        sb_append_cstr(sb, "<pattern>");
+        break;
+    }
 }
 
 internal void hir_render_expr(StringBuilder* sb,
@@ -352,6 +486,66 @@ internal void hir_render_expr(StringBuilder* sb,
         sb_append_cstr(sb, " {\n");
         hir_render_block_at_indent(
             sb, hir, lexer, sema, arena, expr->body_block_index, 2);
+        sb_append_cstr(sb, "  }");
+        break;
+    case HIR_EXPR_On:
+        sb_append_cstr(sb, "on ");
+        if (expr->on_kind == HIR_ON_Condition) {
+            sb_append_cstr(sb, "condition");
+        } else {
+            hir_render_expr(
+                sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        }
+        sb_append_cstr(sb, " {\n");
+        for (u32 i = 0; i < expr->branch_count; ++i) {
+            u32 branch_index = expr->first_branch + i;
+            if (branch_index >= array_count(hir->on_branches)) {
+                continue;
+            }
+            const HirOnBranch* branch = &hir->on_branches[branch_index];
+            sb_append_cstr(sb, "    ");
+            if (branch->is_else) {
+                sb_append_cstr(sb, "else");
+            } else if (expr->on_kind == HIR_ON_Condition) {
+                hir_render_expr(
+                    sb, hir, lexer, sema, arena, branch->guard_expr_index);
+            } else {
+                for (u32 pattern = 0; pattern < branch->pattern_count;
+                     ++pattern) {
+                    if (pattern > 0) {
+                        sb_append_cstr(sb, ", ");
+                    }
+                    u32 pattern_index_index = branch->first_pattern + pattern;
+                    if (pattern_index_index >=
+                        array_count(hir->on_branch_patterns)) {
+                        sb_append_cstr(sb, "<pattern>");
+                        continue;
+                    }
+                    hir_render_pattern(
+                        sb,
+                        hir,
+                        lexer,
+                        sema,
+                        arena,
+                        hir->on_branch_patterns[pattern_index_index]);
+                }
+            }
+            if (branch->binder_symbol_handle != U32_MAX) {
+                sb_append_cstr(sb, " as ");
+                sb_append_string(
+                    sb, lex_symbol(lexer, branch->binder_symbol_handle));
+            }
+            if (branch->guard_expr_index != U32_MAX &&
+                expr->on_kind != HIR_ON_Condition) {
+                sb_append_cstr(sb, " when ");
+                hir_render_expr(
+                    sb, hir, lexer, sema, arena, branch->guard_expr_index);
+            }
+            sb_append_cstr(sb, " => {\n");
+            hir_render_block_at_indent(
+                sb, hir, lexer, sema, arena, branch->body_block_index, 3);
+            sb_append_cstr(sb, "    }\n");
+        }
         sb_append_cstr(sb, "  }");
         break;
     case HIR_EXPR_Unsupported:

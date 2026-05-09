@@ -54,6 +54,18 @@ internal u32 hir_lower_block_node(Hir*         hir,
                                   const Sema*  sema,
                                   u32          block_node_index);
 
+internal u32 hir_lower_single_stmt_block(Hir*         hir,
+                                         const Lexer* lexer,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index);
+
+internal u32 hir_lower_pattern(Hir*         hir,
+                               const Lexer* lexer,
+                               const Ast*   ast,
+                               const Sema*  sema,
+                               u32          pattern_index);
+
 internal u32 hir_add_expr(Hir* hir, HirExpr expr)
 {
     array_push(hir->exprs, expr);
@@ -198,6 +210,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_RangeExclusive:
     case AK_RangeInclusive:
     case AK_ExprBlock:
+    case AK_On:
     case AK_Expression:
         return true;
     default:
@@ -527,8 +540,247 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .body_block_index = hir_lower_block_node(
                                     hir, lexer, ast, sema, node->a),
                             });
+    case AK_On:
+        {
+            if (node->b >= array_count(ast->ons)) {
+                return hir_add_unsupported_expr(hir, sema, node_index);
+            }
+
+            const AstOnInfo* on           = &ast->ons[node->b];
+            u32              first_branch = (u32)array_count(hir->on_branches);
+            for (u32 i = 0; i < on->branch_count; ++i) {
+                const AstOnBranch* branch =
+                    &ast->on_branches[on->first_branch + i];
+                u32 first_pattern = (u32)array_count(hir->on_branch_patterns);
+                for (u32 pattern = 0; pattern < branch->pattern_count;
+                     ++pattern) {
+                    u32 ast_pattern_index =
+                        ast->pattern_items[branch->pattern_index + pattern];
+                    array_push(hir->on_branch_patterns,
+                               hir_lower_pattern(
+                                   hir, lexer, ast, sema, ast_pattern_index));
+                }
+
+                HirOnBranch hir_branch = {
+                    .is_else       = (branch->flags & AOBF_Else) != 0,
+                    .first_pattern = first_pattern,
+                    .pattern_count = branch->pattern_count,
+                    .guard_expr_index =
+                        branch->guard_node_index != U32_MAX
+                            ? hir_lower_expr(hir,
+                                             lexer,
+                                             ast,
+                                             sema,
+                                             branch->guard_node_index)
+                            : hir_no_index(),
+                    .body_block_index = hir_lower_single_stmt_block(
+                        hir, lexer, ast, sema, branch->expr_node_index),
+                    .binder_symbol_handle = branch->binder_symbol_handle,
+                };
+                array_push(hir->on_branches, hir_branch);
+            }
+
+            HirOnKind on_kind = HIR_ON_Condition;
+            if (on->kind == AOK_Bool) {
+                on_kind = HIR_ON_Bool;
+            } else if (on->kind == AOK_Value) {
+                on_kind = HIR_ON_Value;
+            }
+
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind          = HIR_EXPR_On,
+                    .type_index    = hir_node_type(sema, node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .operand_expr_index =
+                        node->a != U32_MAX
+                            ? hir_lower_expr(hir, lexer, ast, sema, node->a)
+                            : hir_no_index(),
+                    .first_branch = first_branch,
+                    .branch_count = on->branch_count,
+                    .on_kind      = on_kind,
+                });
+        }
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
+    }
+}
+
+internal HirPatternKind hir_pattern_kind_from_ast(AstPatternKind kind)
+{
+    switch (kind) {
+    case APK_Value:
+        return HIR_PATTERN_Value;
+    case APK_Ignore:
+        return HIR_PATTERN_Ignore;
+    case APK_Bind:
+        return HIR_PATTERN_Bind;
+    case APK_Equal:
+        return HIR_PATTERN_Equal;
+    case APK_NotEqual:
+        return HIR_PATTERN_NotEqual;
+    case APK_Less:
+        return HIR_PATTERN_Less;
+    case APK_LessEqual:
+        return HIR_PATTERN_LessEqual;
+    case APK_Greater:
+        return HIR_PATTERN_Greater;
+    case APK_GreaterEqual:
+        return HIR_PATTERN_GreaterEqual;
+    case APK_RangeExclusive:
+        return HIR_PATTERN_RangeExclusive;
+    case APK_RangeInclusive:
+        return HIR_PATTERN_RangeInclusive;
+    case APK_Tuple:
+        return HIR_PATTERN_Tuple;
+    case APK_Plex:
+        return HIR_PATTERN_Plex;
+    case APK_EnumVariant:
+        return HIR_PATTERN_EnumVariant;
+    default:
+        return HIR_PATTERN_Value;
+    }
+}
+
+internal u32 hir_add_pattern(Hir* hir, HirPattern pattern)
+{
+    array_push(hir->patterns, pattern);
+    return (u32)array_count(hir->patterns) - 1;
+}
+
+internal u32 hir_lower_pattern(Hir*         hir,
+                               const Lexer* lexer,
+                               const Ast*   ast,
+                               const Sema*  sema,
+                               u32          pattern_index)
+{
+    if (pattern_index >= array_count(ast->patterns)) {
+        return hir_add_pattern(hir, (HirPattern){.kind = HIR_PATTERN_Ignore});
+    }
+
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    switch (pattern->kind) {
+    case APK_Value:
+    case APK_Equal:
+    case APK_NotEqual:
+    case APK_Less:
+    case APK_LessEqual:
+    case APK_Greater:
+    case APK_GreaterEqual:
+        return hir_add_pattern(
+            hir,
+            (HirPattern){
+                .kind          = hir_pattern_kind_from_ast(pattern->kind),
+                .symbol_handle = U32_MAX,
+                .expr_index = hir_lower_expr(hir, lexer, ast, sema, pattern->a),
+                .extra_expr_index = hir_no_index(),
+            });
+    case APK_RangeExclusive:
+    case APK_RangeInclusive:
+        return hir_add_pattern(
+            hir,
+            (HirPattern){
+                .kind          = hir_pattern_kind_from_ast(pattern->kind),
+                .symbol_handle = U32_MAX,
+                .expr_index = hir_lower_expr(hir, lexer, ast, sema, pattern->a),
+                .extra_expr_index =
+                    hir_lower_expr(hir, lexer, ast, sema, pattern->b),
+            });
+    case APK_Bind:
+        return hir_add_pattern(hir,
+                               (HirPattern){
+                                   .kind          = HIR_PATTERN_Bind,
+                                   .symbol_handle = pattern->a,
+                                   .expr_index    = hir_no_index(),
+                               });
+    case APK_Ignore:
+        return hir_add_pattern(hir,
+                               (HirPattern){
+                                   .kind          = HIR_PATTERN_Ignore,
+                                   .symbol_handle = U32_MAX,
+                                   .expr_index    = hir_no_index(),
+                               });
+    case APK_Tuple:
+        {
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < pattern->b; ++i) {
+                u32 child = ast->pattern_items[pattern->a + i];
+                array_push(hir->pattern_children,
+                           (HirPatternChild){
+                               .symbol_handle = U32_MAX,
+                               .pattern_index = hir_lower_pattern(
+                                   hir, lexer, ast, sema, child),
+                           });
+            }
+            return hir_add_pattern(hir,
+                                   (HirPattern){
+                                       .kind          = HIR_PATTERN_Tuple,
+                                       .symbol_handle = U32_MAX,
+                                       .first_child   = first_child,
+                                       .child_count   = pattern->b,
+                                   });
+        }
+    case APK_Plex:
+        {
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < pattern->b; ++i) {
+                const AstPlexPatternField* field =
+                    &ast->pattern_fields[pattern->a + i];
+                array_push(hir->pattern_children,
+                           (HirPatternChild){
+                               .symbol_handle = field->symbol_handle,
+                               .pattern_index = hir_lower_pattern(
+                                   hir, lexer, ast, sema, field->pattern_index),
+                           });
+            }
+            return hir_add_pattern(hir,
+                                   (HirPattern){
+                                       .kind          = HIR_PATTERN_Plex,
+                                       .symbol_handle = U32_MAX,
+                                       .first_child   = first_child,
+                                       .child_count   = pattern->b,
+                                   });
+        }
+    case APK_EnumVariant:
+        {
+            if (pattern->a >= array_count(ast->enum_patterns)) {
+                return hir_add_pattern(
+                    hir, (HirPattern){.kind = HIR_PATTERN_Ignore});
+            }
+
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 child = ast->pattern_items[enum_pattern->first_pattern + i];
+                array_push(hir->pattern_children,
+                           (HirPatternChild){
+                               .symbol_handle = U32_MAX,
+                               .pattern_index = hir_lower_pattern(
+                                   hir, lexer, ast, sema, child),
+                           });
+            }
+            return hir_add_pattern(
+                hir,
+                (HirPattern){
+                    .kind          = HIR_PATTERN_EnumVariant,
+                    .symbol_handle = enum_pattern->symbol_handle,
+                    .expr_index =
+                        enum_pattern->qualifier_node_index != U32_MAX
+                            ? hir_lower_expr(hir,
+                                             lexer,
+                                             ast,
+                                             sema,
+                                             enum_pattern->qualifier_node_index)
+                            : hir_no_index(),
+                    .first_child = first_child,
+                    .child_count = enum_pattern->pattern_count,
+                });
+        }
+    default:
+        return hir_add_pattern(hir, (HirPattern){.kind = HIR_PATTERN_Ignore});
     }
 }
 
@@ -708,6 +960,62 @@ internal u32 hir_lower_stmt(Hir*         hir,
     }
 }
 
+internal void hir_mark_owned_ast_subtree(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 node_index)
+{
+    if (node_index >= end) {
+        return;
+    }
+
+    u32 root_index = hir_unwrap_node(ast, node_index);
+    if (node_index >= first) {
+        owned_nodes[node_index] = true;
+    }
+    if (root_index < end && root_index >= first) {
+        owned_nodes[root_index] = true;
+    }
+
+    if (root_index < end && ast->nodes[root_index].kind == AK_Block) {
+        u32 child_first = ast->nodes[root_index].a;
+        u32 child_end   = ast->nodes[root_index].b;
+        if (child_end > end) {
+            child_end = end;
+        }
+        for (u32 i = child_first; i < child_end; ++i) {
+            owned_nodes[i] = true;
+        }
+    }
+
+    for (u32 i = first; i < end; ++i) {
+        if ((ast->nodes[i].kind == AK_Statement ||
+             ast->nodes[i].kind == AK_Expression) &&
+            (hir_unwrap_node(ast, i) == node_index ||
+             hir_unwrap_node(ast, i) == root_index)) {
+            owned_nodes[i] = true;
+        }
+    }
+}
+
+internal void hir_mark_owned_on_branch_bodies(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 on_node_index)
+{
+    if (on_node_index >= end || ast->nodes[on_node_index].kind != AK_On) {
+        return;
+    }
+
+    const AstNode* on_node = &ast->nodes[on_node_index];
+    if (on_node->b >= array_count(ast->ons)) {
+        return;
+    }
+
+    const AstOnInfo* on = &ast->ons[on_node->b];
+    for (u32 i = 0; i < on->branch_count; ++i) {
+        const AstOnBranch* branch = &ast->on_branches[on->first_branch + i];
+        hir_mark_owned_ast_subtree(
+            ast, owned_nodes, first, end, branch->expr_node_index);
+    }
+}
+
 internal u32 hir_lower_block_node(Hir*         hir,
                                   const Lexer* lexer,
                                   const Ast*   ast,
@@ -752,6 +1060,10 @@ internal u32 hir_lower_block_node(Hir*         hir,
                     owned_nodes[j] = true;
                 }
             }
+        }
+
+        if (ast->nodes[i].kind == AK_On) {
+            hir_mark_owned_on_branch_bodies(ast, owned_nodes, first, end, i);
         }
 
         if (ast->nodes[i].kind != AK_Defer) {
@@ -839,6 +1151,11 @@ internal u32 hir_lower_function_body(Hir*         hir,
                     owned_nodes[j] = true;
                 }
             }
+        }
+
+        if (ast->nodes[i].kind == AK_On) {
+            hir_mark_owned_on_branch_bodies(
+                ast, owned_nodes, fn_start_index + 1, fn_end, i);
         }
 
         if (ast->nodes[i].kind != AK_Defer) {
@@ -1093,6 +1410,10 @@ void hir_done(Hir* hir)
     array_free(hir->stmts);
     array_free(hir->exprs);
     array_free(hir->call_args);
+    array_free(hir->on_branches);
+    array_free(hir->on_branch_patterns);
+    array_free(hir->patterns);
+    array_free(hir->pattern_children);
     arena_done(&hir->arena);
     *hir = (Hir){0};
 }
