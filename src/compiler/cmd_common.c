@@ -15,8 +15,10 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
 {
     return (NerdArtifactConfig){
         .binary_path    = "a.out",
+        .hir_path       = "_a.hir",
         .ir_path        = "_a.ir",
         .c_path         = "_a.gen.c",
+        .emit_hir_file  = false,
         .emit_ir_file   = false,
         .emit_c_file    = false,
         .compile_binary = true,

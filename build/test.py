@@ -56,6 +56,7 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 SUITE_LABELS = {
     "language": "language",
     "errors": "error",
+    "hir": "hir",
     "format": "format",
     "lsp": "lsp",
     "commands": "command",
@@ -274,6 +275,45 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         ir_path.unlink(missing_ok=True)
         c_path.unlink(missing_ok=True)
         (path.parent / f"_{path.stem}.out").unlink(missing_ok=True)
+    return failures
+
+
+def test_hir(path: pathlib.Path) -> list[Failure]:
+    parts = split_sections(path)
+    if len(parts) != 2:
+        return [Failure(path, "HIR test must have source and expected HIR sections")]
+
+    source, expected_hir = parts
+    input_path = path.with_suffix(".input.n")
+    output_root = path.parent / path.stem
+    hir_path = path.parent / f"_{path.stem}.hir"
+
+    input_path.write_text(source, encoding="utf-8", newline="\n")
+    hir_path.unlink(missing_ok=True)
+
+    proc = run_cmd([
+        str(NERD),
+        "build",
+        "--hir",
+        "--output",
+        str(output_root),
+        str(input_path),
+    ])
+
+    failures: list[Failure] = []
+    if proc.returncode != 0:
+        failures.append(Failure(path, f"build failed with {proc.returncode}\n{proc.stderr}"))
+    else:
+        actual_hir = hir_path.read_text(encoding="utf-8") if hir_path.exists() else ""
+        if not lines_are_subsequence(expected_hir, actual_hir):
+            hir_failure = check_equal(path, "hir", expected_hir, actual_hir)
+            if hir_failure:
+                failures.append(hir_failure)
+
+    if not failures:
+        input_path.unlink(missing_ok=True)
+        hir_path.unlink(missing_ok=True)
+        output_root.unlink(missing_ok=True)
     return failures
 
 
@@ -505,6 +545,7 @@ def collect() -> list[tuple[str, pathlib.Path]]:
     for kind, directory, suffix in [
         ("language", "tests/language", "*.t"),
         ("errors", "tests/errors", "*.e"),
+        ("hir", "tests/hir", "*.hir"),
         ("format", "tests/format", "*.f"),
         ("lsp", "tests/lsp", "*.lsp"),
         ("commands", "tests/commands", "*.cmd"),
@@ -522,6 +563,7 @@ def main() -> int:
     runners = {
         "language": test_language,
         "errors": test_errors,
+        "hir": test_hir,
         "format": test_format,
         "lsp": test_lsp,
         "commands": test_command,

@@ -45,6 +45,7 @@ typedef struct {
 Hir    hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema);
 void   hir_done(Hir* hir);
 string hir_render(const Hir* hir, const Lexer* lexer, Arena* arena);
+bool   hir_save(const Hir* hir, const Lexer* lexer, cstr path);
 void   hir_dump(const Hir* hir, const Lexer* lexer);
 
 //------------------------------------------------------------------------------

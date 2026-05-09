@@ -41,6 +41,7 @@ typedef struct {
 typedef struct {
     NerdSource source;
     string     output_path;
+    bool       emit_hir;
     bool       emit_ir;
     bool       emit_c;
     bool       release;
@@ -66,6 +67,7 @@ typedef struct {
 typedef struct {
     NerdSource source;
     string     output_path;
+    bool       emit_hir;
     bool       emit_ir;
     bool       emit_c;
     bool       keep_binary;
@@ -76,8 +78,10 @@ typedef struct {
 
 typedef struct {
     cstr binary_path;
+    cstr hir_path;
     cstr ir_path;
     cstr c_path;
+    bool emit_hir_file;
     bool emit_ir_file;
     bool emit_c_file;
     bool compile_binary;

@@ -4,7 +4,9 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/error/error.h>
 #include <compiler/hir/hir.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
@@ -68,6 +70,28 @@ void hir_dump(const Hir* hir, const Lexer* lexer)
     arena_init(&arena);
     epr(STRINGP, STRINGV(hir_render(hir, lexer, &arena)));
     arena_done(&arena);
+}
+
+bool hir_save(const Hir* hir, const Lexer* lexer, cstr path)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+    string rendered = hir_render(hir, lexer, &arena);
+
+    FILE* file      = fopen(path, "wb");
+    if (!file) {
+        arena_done(&arena);
+        return error_runtime("Failed to open file for writing: %s", path);
+    }
+
+    usize written      = fwrite(rendered.data, 1, rendered.count, file);
+    bool  close_failed = fclose(file) != 0;
+    arena_done(&arena);
+
+    if (written != rendered.count || close_failed) {
+        return error_runtime("Failed to write HIR file: %s", path);
+    }
+    return true;
 }
 
 //------------------------------------------------------------------------------

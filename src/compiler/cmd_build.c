@@ -17,12 +17,14 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
         compiler_cmd_output_root(arena, config->output_path, config->source);
 
     artifacts.binary_path = output_root;
-    artifacts.ir_path = compiler_cmd_sidecar_path(arena, output_root, ".ir");
-    artifacts.c_path  = compiler_cmd_sidecar_path(arena, output_root, ".gen.c");
-    artifacts.emit_ir_file = config->emit_ir;
-    artifacts.emit_c_file  = config->emit_c;
-    artifacts.release      = config->release;
-    artifacts.keywords     = config->keywords;
+    artifacts.hir_path = compiler_cmd_sidecar_path(arena, output_root, ".hir");
+    artifacts.ir_path  = compiler_cmd_sidecar_path(arena, output_root, ".ir");
+    artifacts.c_path = compiler_cmd_sidecar_path(arena, output_root, ".gen.c");
+    artifacts.emit_hir_file = config->emit_hir;
+    artifacts.emit_ir_file  = config->emit_ir;
+    artifacts.emit_c_file   = config->emit_c;
+    artifacts.release       = config->release;
+    artifacts.keywords      = config->keywords;
 
     return artifacts;
 }

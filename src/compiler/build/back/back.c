@@ -654,8 +654,10 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
 {
     return (NerdArtifactConfig){
         .binary_path    = "a.out",
+        .hir_path       = "_a.hir",
         .ir_path        = "_a.ir",
         .c_path         = "_a.gen.c",
+        .emit_hir_file  = false,
         .emit_ir_file   = false,
         .emit_c_file    = false,
         .compile_binary = true,
@@ -850,6 +852,20 @@ bool back_end_program(const ProgramInfo*        program,
                       bool                      verbose,
                       Timing*                   timing)
 {
+    NerdArtifactConfig default_artifacts = compiler_default_artifacts();
+    if (!artifacts) {
+        artifacts = &default_artifacts;
+    }
+
+    if (artifacts->emit_hir_file &&
+        program->root_module_index < array_count(program->modules)) {
+        const FrontEndState* root =
+            &program->modules[program->root_module_index].front_end;
+        if (!hir_save(&root->hir, &root->lexer, artifacts->hir_path)) {
+            return false;
+        }
+    }
+
     ProgramBackEndMerge merge = {0};
     if (!back_end_merge_program(program, &merge)) {
         back_end_merge_program_done(&merge);
