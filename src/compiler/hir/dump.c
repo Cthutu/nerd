@@ -342,21 +342,39 @@ internal void hir_render_expr(StringBuilder* sb,
     }
 }
 
-internal void hir_render_stmt(StringBuilder* sb,
-                              const Hir*     hir,
-                              const Lexer*   lexer,
-                              const Sema*    sema,
-                              Arena*         arena,
-                              const HirStmt* stmt)
+internal void hir_render_block_at_indent(StringBuilder* sb,
+                                         const Hir*     hir,
+                                         const Lexer*   lexer,
+                                         const Sema*    sema,
+                                         Arena*         arena,
+                                         u32            block_index,
+                                         u32            indent);
+
+internal void hir_append_indent(StringBuilder* sb, u32 indent)
+{
+    for (u32 i = 0; i < indent; ++i) {
+        sb_append_cstr(sb, "  ");
+    }
+}
+
+internal void hir_render_stmt_at_indent(StringBuilder* sb,
+                                        const Hir*     hir,
+                                        const Lexer*   lexer,
+                                        const Sema*    sema,
+                                        Arena*         arena,
+                                        const HirStmt* stmt,
+                                        u32            indent)
 {
     switch (stmt->kind) {
     case HIR_STMT_Return:
-        sb_append_cstr(sb, "  return ");
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "return ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
         break;
     case HIR_STMT_Let:
-        sb_append_cstr(sb, "  let ");
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "let ");
         if (stmt->symbol_handle != U32_MAX) {
             sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));
         } else {
@@ -369,18 +387,87 @@ internal void hir_render_stmt(StringBuilder* sb,
         sb_append_char(sb, '\n');
         break;
     case HIR_STMT_Assign:
-        sb_append_cstr(sb, "  assign ");
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "assign ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->target_expr_index);
         sb_append_cstr(sb, " = ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
         break;
+    case HIR_STMT_Assert:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "assert ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        if (stmt->target_expr_index != U32_MAX) {
+            sb_append_cstr(sb, ", ");
+            hir_render_expr(
+                sb, hir, lexer, sema, arena, stmt->target_expr_index);
+        }
+        sb_append_char(sb, '\n');
+        break;
+    case HIR_STMT_Defer:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "defer {\n");
+        hir_render_block_at_indent(
+            sb, hir, lexer, sema, arena, stmt->body_block_index, indent + 1);
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "}\n");
+        break;
+    case HIR_STMT_Break:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "break");
+        if (stmt->symbol_handle != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));
+        }
+        if (stmt->expr_index != U32_MAX) {
+            sb_append_char(sb, ' ');
+            hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        }
+        sb_append_char(sb, '\n');
+        break;
+    case HIR_STMT_Continue:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "continue");
+        if (stmt->symbol_handle != U32_MAX) {
+            sb_append_cstr(sb, " $");
+            sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));
+        }
+        sb_append_char(sb, '\n');
+        break;
     case HIR_STMT_Expr:
     default:
-        sb_append_cstr(sb, "  expr ");
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb, "expr ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
         break;
+    }
+}
+
+internal void hir_render_block_at_indent(StringBuilder* sb,
+                                         const Hir*     hir,
+                                         const Lexer*   lexer,
+                                         const Sema*    sema,
+                                         Arena*         arena,
+                                         u32            block_index,
+                                         u32            indent)
+{
+    if (block_index == U32_MAX || block_index >= array_count(hir->blocks)) {
+        return;
+    }
+
+    const HirBlock* block = &hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        if (i >= array_count(block->stmt_indices)) {
+            break;
+        }
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(hir->stmts)) {
+            break;
+        }
+        hir_render_stmt_at_indent(
+            sb, hir, lexer, sema, arena, &hir->stmts[stmt_index], indent);
     }
 }
 
@@ -391,18 +478,7 @@ internal void hir_render_block(StringBuilder* sb,
                                Arena*         arena,
                                u32            block_index)
 {
-    if (block_index == U32_MAX || block_index >= array_count(hir->blocks)) {
-        return;
-    }
-
-    const HirBlock* block = &hir->blocks[block_index];
-    for (u32 i = 0; i < block->stmt_count; ++i) {
-        u32 stmt_index = block->first_stmt + i;
-        if (stmt_index >= array_count(hir->stmts)) {
-            break;
-        }
-        hir_render_stmt(sb, hir, lexer, sema, arena, &hir->stmts[stmt_index]);
-    }
+    hir_render_block_at_indent(sb, hir, lexer, sema, arena, block_index, 1);
 }
 
 string

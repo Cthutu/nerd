@@ -521,33 +521,61 @@ internal u32 hir_add_stmt(Hir* hir, HirStmt stmt)
     return (u32)array_count(hir->stmts) - 1;
 }
 
-internal void hir_lower_stmt(Hir*         hir,
-                             const Lexer* lexer,
-                             const Ast*   ast,
-                             const Sema*  sema,
-                             u32          node_index)
+internal u32 hir_lower_stmt(Hir*         hir,
+                            const Lexer* lexer,
+                            const Ast*   ast,
+                            const Sema*  sema,
+                            u32          node_index);
+
+internal u32 hir_lower_single_stmt_block(Hir*         hir,
+                                         const Lexer* lexer,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index)
+{
+    u32 block_index = (u32)array_count(hir->blocks);
+    array_push(hir->blocks,
+               (HirBlock){
+                   .first_stmt = 0,
+                   .stmt_count = 0,
+               });
+
+    u32 stmt_index = hir_lower_stmt(hir, lexer, ast, sema, node_index);
+    if (stmt_index != hir_no_index()) {
+        array_push(hir->blocks[block_index].stmt_indices, stmt_index);
+        hir->blocks[block_index].stmt_count++;
+    }
+    return block_index;
+}
+
+internal u32 hir_lower_stmt(Hir*         hir,
+                            const Lexer* lexer,
+                            const Ast*   ast,
+                            const Sema*  sema,
+                            u32          node_index)
 {
     node_index = hir_unwrap_node(ast, node_index);
     if (node_index >= array_count(ast->nodes)) {
-        return;
+        return hir_no_index();
     }
 
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
     case AK_Return:
     case AK_ReturnExpr:
-        hir_add_stmt(hir,
-                     (HirStmt){
-                         .kind          = HIR_STMT_Return,
-                         .expr_index    = node->a != U32_MAX
-                                              ? hir_lower_expr(
-                                                    hir, lexer, ast, sema, node->a)
-                                              : hir_no_index(),
-                         .symbol_handle = U32_MAX,
-                         .local_index   = sema_no_local(),
-                         .type_index    = hir_node_type(sema, node_index),
-                     });
-        return;
+        return hir_add_stmt(
+            hir,
+            (HirStmt){
+                .kind = HIR_STMT_Return,
+                .expr_index =
+                    node->a != U32_MAX
+                        ? hir_lower_expr(hir, lexer, ast, sema, node->a)
+                        : hir_no_index(),
+                .symbol_handle    = U32_MAX,
+                .local_index      = sema_no_local(),
+                .type_index       = hir_node_type(sema, node_index),
+                .body_block_index = hir_no_index(),
+            });
     case AK_Bind:
     case AK_Variable:
         {
@@ -556,7 +584,7 @@ internal void hir_lower_stmt(Hir*         hir,
                 ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
                 value_node_index = ast->nodes[value_node_index].b;
             }
-            hir_add_stmt(
+            return hir_add_stmt(
                 hir,
                 (HirStmt){
                     .kind = HIR_STMT_Let,
@@ -569,33 +597,86 @@ internal void hir_lower_stmt(Hir*         hir,
                     .local_index   = hir_node_local(sema, node_index),
                     .type_index =
                         hir_local_type(sema, hir_node_local(sema, node_index)),
+                    .body_block_index = hir_no_index(),
                 });
-            return;
         }
     case AK_Assign:
-        hir_add_stmt(
+        return hir_add_stmt(
             hir,
             (HirStmt){
                 .kind       = HIR_STMT_Assign,
                 .expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b),
                 .target_expr_index =
                     hir_lower_expr(hir, lexer, ast, sema, node->a),
-                .symbol_handle = U32_MAX,
-                .local_index   = hir_node_local(sema, node_index),
-                .type_index    = hir_node_type(sema, node_index),
+                .symbol_handle    = U32_MAX,
+                .local_index      = hir_node_local(sema, node_index),
+                .type_index       = hir_node_type(sema, node_index),
+                .body_block_index = hir_no_index(),
             });
-        return;
+    case AK_Assert:
+        return hir_add_stmt(
+            hir,
+            (HirStmt){
+                .kind       = HIR_STMT_Assert,
+                .expr_index = hir_lower_expr(hir, lexer, ast, sema, node->a),
+                .target_expr_index =
+                    node->b != U32_MAX
+                        ? hir_lower_expr(hir, lexer, ast, sema, node->b)
+                        : hir_no_index(),
+                .symbol_handle    = U32_MAX,
+                .local_index      = sema_no_local(),
+                .type_index       = hir_node_type(sema, node_index),
+                .body_block_index = hir_no_index(),
+            });
+    case AK_Defer:
+        return hir_add_stmt(hir,
+                            (HirStmt){
+                                .kind              = HIR_STMT_Defer,
+                                .expr_index        = hir_no_index(),
+                                .target_expr_index = hir_no_index(),
+                                .symbol_handle     = U32_MAX,
+                                .local_index       = sema_no_local(),
+                                .type_index = hir_node_type(sema, node_index),
+                                .body_block_index = hir_lower_single_stmt_block(
+                                    hir, lexer, ast, sema, node->a),
+                            });
+    case AK_Break:
+    case AK_BreakExpr:
+        return hir_add_stmt(
+            hir,
+            (HirStmt){
+                .kind = HIR_STMT_Break,
+                .expr_index =
+                    node->a != U32_MAX
+                        ? hir_lower_expr(hir, lexer, ast, sema, node->a)
+                        : hir_no_index(),
+                .symbol_handle    = node->b,
+                .local_index      = sema_no_local(),
+                .type_index       = hir_node_type(sema, node_index),
+                .body_block_index = hir_no_index(),
+            });
+    case AK_Continue:
+    case AK_ContinueExpr:
+        return hir_add_stmt(hir,
+                            (HirStmt){
+                                .kind          = HIR_STMT_Continue,
+                                .expr_index    = hir_no_index(),
+                                .symbol_handle = node->b,
+                                .local_index   = sema_no_local(),
+                                .type_index = hir_node_type(sema, node_index),
+                                .body_block_index = hir_no_index(),
+                            });
     default:
-        hir_add_stmt(
+        return hir_add_stmt(
             hir,
             (HirStmt){
                 .kind       = HIR_STMT_Expr,
                 .expr_index = hir_lower_expr(hir, lexer, ast, sema, node_index),
-                .symbol_handle = U32_MAX,
-                .local_index   = sema_no_local(),
-                .type_index    = hir_node_type(sema, node_index),
+                .symbol_handle    = U32_MAX,
+                .local_index      = sema_no_local(),
+                .type_index       = hir_node_type(sema, node_index),
+                .body_block_index = hir_no_index(),
             });
-        return;
     }
 }
 
@@ -626,19 +707,48 @@ internal u32 hir_lower_function_body(Hir*         hir,
     u32 block_index = (u32)array_count(hir->blocks);
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt = (u32)array_count(hir->stmts),
+                   .first_stmt = 0,
                    .stmt_count = 0,
                });
 
+    bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * fn_end);
+    memset(owned_nodes, 0, sizeof(bool) * fn_end);
+    for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
+        if (ast->nodes[i].kind != AK_Defer) {
+            continue;
+        }
+
+        u32 deferred_node = ast->nodes[i].a;
+        u32 deferred_root = hir_unwrap_node(ast, deferred_node);
+        if (deferred_node < fn_end) {
+            owned_nodes[deferred_node] = true;
+        }
+        if (deferred_root < fn_end) {
+            owned_nodes[deferred_root] = true;
+        }
+        for (u32 j = fn_start_index + 1; j < fn_end; ++j) {
+            if ((ast->nodes[j].kind == AK_Statement ||
+                 ast->nodes[j].kind == AK_Expression) &&
+                (hir_unwrap_node(ast, j) == deferred_node ||
+                 hir_unwrap_node(ast, j) == deferred_root)) {
+                owned_nodes[j] = true;
+            }
+        }
+    }
+
     for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
         AstKind kind = ast->nodes[i].kind;
+        if (owned_nodes[i]) {
+            continue;
+        }
         if (hir_ast_kind_is_expression_child(kind)) {
             continue;
         }
-        u32 before = (u32)array_count(hir->stmts);
-        hir_lower_stmt(hir, lexer, ast, sema, i);
-        hir->blocks[block_index].stmt_count +=
-            (u32)array_count(hir->stmts) - before;
+        u32 stmt_index = hir_lower_stmt(hir, lexer, ast, sema, i);
+        if (stmt_index != hir_no_index()) {
+            array_push(hir->blocks[block_index].stmt_indices, stmt_index);
+            hir->blocks[block_index].stmt_count++;
+        }
     }
 
     return block_index;
@@ -849,6 +959,9 @@ void hir_done(Hir* hir)
 {
     array_free(hir->functions);
     array_free(hir->params);
+    for (u32 i = 0; i < array_count(hir->blocks); ++i) {
+        array_free(hir->blocks[i].stmt_indices);
+    }
     array_free(hir->blocks);
     array_free(hir->stmts);
     array_free(hir->exprs);

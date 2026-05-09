@@ -22,6 +22,10 @@ typedef enum : u8 {
     HIR_STMT_Return,
     HIR_STMT_Let,
     HIR_STMT_Assign,
+    HIR_STMT_Assert,
+    HIR_STMT_Defer,
+    HIR_STMT_Break,
+    HIR_STMT_Continue,
 } HirStmtKind;
 
 typedef enum : u8 {
@@ -97,6 +101,7 @@ typedef struct {
 typedef struct {
     u32 first_stmt;
     u32 stmt_count;
+    Array(u32) stmt_indices;
 } HirBlock;
 
 typedef struct {
@@ -106,6 +111,7 @@ typedef struct {
     u32         symbol_handle;
     u32         local_index;
     u32         type_index;
+    u32         body_block_index;
 } HirStmt;
 
 typedef struct {

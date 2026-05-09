@@ -1,0 +1,16 @@
+main :: fn() -> i32 {
+    assert 1 < 2, "ok"
+    value := 1
+    defer value = 2
+    return value
+}
+¬
+hir 0
+func main() -> i32 {
+  assert bool less(untyped integer 1, untyped integer 2), string "ok"
+  let value: i32 = untyped integer 1
+  defer {
+    assign i32 value = i32 2
+  }
+  return i32 value
+}
