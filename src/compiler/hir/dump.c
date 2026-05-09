@@ -24,6 +24,28 @@ internal cstr hir_function_prefix(HirFunctionKind kind)
     }
 }
 
+internal cstr hir_type_decl_prefix(HirTypeDeclKind kind)
+{
+    switch (kind) {
+    case HIR_TYPE_GenericAlias:
+        return "generic type";
+    case HIR_TYPE_Alias:
+    default:
+        return "type";
+    }
+}
+
+internal cstr hir_global_prefix(HirGlobalKind kind)
+{
+    switch (kind) {
+    case HIR_GLOBAL_Variable:
+        return "global";
+    case HIR_GLOBAL_Constant:
+    default:
+        return "const";
+    }
+}
+
 internal string hir_function_name(const HirFunction* function,
                                   const Lexer*       lexer)
 {
@@ -31,6 +53,14 @@ internal string hir_function_name(const HirFunction* function,
         return s("<anonymous>");
     }
     return lex_symbol(lexer, function->symbol_handle);
+}
+
+internal string hir_symbol_name(u32 symbol_handle, const Lexer* lexer)
+{
+    if (symbol_handle == U32_MAX) {
+        return s("<anonymous>");
+    }
+    return lex_symbol(lexer, symbol_handle);
 }
 
 internal void hir_append_type_name(StringBuilder* sb,
@@ -840,6 +870,29 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
     sb_init(&sb, arena);
 
     sb_append_cstr(&sb, "hir 0\n");
+    for (u32 i = 0; i < array_count(hir->type_decls); ++i) {
+        const HirTypeDecl* decl = &hir->type_decls[i];
+        sb_append_cstr(&sb, hir_type_decl_prefix(decl->kind));
+        sb_append_char(&sb, ' ');
+        sb_append_string(&sb, hir_symbol_name(decl->symbol_handle, lexer));
+        sb_append_cstr(&sb, " = ");
+        hir_append_type_name(&sb, lexer, sema, decl->type_index);
+        sb_append_char(&sb, '\n');
+    }
+    for (u32 i = 0; i < array_count(hir->globals); ++i) {
+        const HirGlobal* global = &hir->globals[i];
+        sb_append_cstr(&sb, hir_global_prefix(global->kind));
+        sb_append_char(&sb, ' ');
+        sb_append_string(&sb, hir_symbol_name(global->symbol_handle, lexer));
+        sb_append_cstr(&sb, ": ");
+        hir_append_type_name(&sb, lexer, sema, global->type_index);
+        if (global->value_expr_index != U32_MAX) {
+            sb_append_cstr(&sb, " = ");
+            hir_render_expr(
+                &sb, hir, lexer, sema, arena, global->value_expr_index);
+        }
+        sb_append_char(&sb, '\n');
+    }
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         const HirFunction* function = &hir->functions[i];
         sb_format(&sb, "%s ", hir_function_prefix(function->kind));

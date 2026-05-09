@@ -1,0 +1,22 @@
+Answer :: 41
+Counter := 1
+Score :: i32
+Point :: plex {
+    x i32
+    y i32
+}
+
+main :: fn() -> i32 {
+    Counter = Counter + 1
+    return Answer + Counter
+}
+¬
+hir 0
+type Score = i32
+type Point = Point
+const Answer: untyped integer = untyped integer 41
+global Counter: i32 = untyped integer 1
+func main() -> i32 {
+  assign i32 Counter = i32 add(i32 Counter, i32 1)
+  return i32 add(i32 Answer, i32 Counter)
+}
