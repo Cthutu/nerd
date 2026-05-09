@@ -181,6 +181,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Assign:
     case AK_Call:
     case AK_Cast:
+    case AK_Index:
     case AK_Expression:
         return true;
     default:
@@ -352,6 +353,18 @@ internal u32 hir_lower_expr(Hir*         hir,
                             : hir_no_index(),
                 });
         }
+    case AK_Index:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Index,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle      = U32_MAX,
+                                .local_index        = sema_no_local(),
+                                .operand_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
+                                .extra_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->b),
+                            });
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }

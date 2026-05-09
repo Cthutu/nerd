@@ -1,0 +1,31 @@
+addr :: fn(value: i32) -> ^i32 {
+    return ^value
+}
+
+read :: fn(ptr: ^i32) -> i32 {
+    return ptr^
+}
+
+first :: fn(values: [2]i32) -> i32 {
+    return values[0]
+}
+
+main :: fn() -> i32 {
+    values: [2]i32 = [1, 2]
+    return first(values)
+}
+¬
+hir 0
+func addr(value: i32) -> ^i32 {
+  return ^i32 address_of(i32 value)
+}
+func read(ptr: ^i32) -> i32 {
+  return i32 deref(^i32 ptr)
+}
+func first(values: [2]i32) -> i32 {
+  return i32 index([2]i32 values, untyped integer 0)
+}
+func main() -> i32 {
+  let values: [2]i32 = [2]i32 <unsupported>
+  return i32 call first([2]i32 values)
+}

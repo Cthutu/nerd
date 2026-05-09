@@ -36,6 +36,7 @@ typedef enum : u8 {
     HIR_EXPR_Binary,
     HIR_EXPR_Call,
     HIR_EXPR_Cast,
+    HIR_EXPR_Index,
 } HirExprKind;
 
 typedef enum : u8 {

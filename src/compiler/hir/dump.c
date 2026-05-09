@@ -250,6 +250,13 @@ internal void hir_render_expr(StringBuilder* sb,
         }
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Index:
+        sb_append_cstr(sb, "index(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->extra_expr_index);
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");
