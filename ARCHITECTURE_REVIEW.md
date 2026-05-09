@@ -38,6 +38,11 @@ Current implementation hotspots visible during the review:
 - LSP document analysis sets `keep_partial_results = true`, skips IR
   generation, and tries to retain partial compiler state for editor features.
 
+Active decision records:
+
+- `review/decisions/0001-hir-and-backend-boundary.md`: proposed HIR boundary,
+  current IR migration role, and C/LLVM backend direction.
+
 ## Initial Agreements
 
 - We should not make the syntax AST carry semantic meaning. That would conflict
