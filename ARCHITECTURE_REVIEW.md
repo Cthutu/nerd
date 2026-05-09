@@ -423,6 +423,34 @@ Working assumption:
 - A LLVM backend must include a deliberate prelude/postlude/runtime plan before
   it can replace C generation.
 
+Build-step option:
+
+- Keep the runtime prelude/postlude in C initially.
+- Compile `data/prelude.c` and `data/epilogue.c` to LLVM IR or bitcode with
+  clang as part of the backend build step.
+- Generate Nerd program LLVM IR separately from HIR.
+- Link the generated Nerd IR with the prelude/postlude IR using clang/LLVM
+  tools.
+
+This is a useful bridge because the current runtime is already isolated in
+`data/prelude.c` and `data/epilogue.c`. It lets the LLVM experiment avoid
+rewriting runtime helpers immediately while still testing generated LLVM IR for
+Nerd code.
+
+Open details for this bridge:
+
+- `data/epilogue.c` currently names `$main()`, which is a generated C symbol;
+  the LLVM path would either generate a compatible alias or use a different
+  entry wrapper.
+- The prelude uses C library functions and thread-local storage, so the LLVM
+  link step still needs the platform C runtime and correct target flags.
+- Runtime helper names such as `string_eq`, `string_slice`,
+  `string_builder_*`, and `to_string$*` need a stable LLVM naming/linkage
+  contract.
+- If prelude/postlude are compiled once and cached, the cache key must include
+  target triple, release/debug mode, relevant compiler flags, and runtime source
+  mtimes.
+
 #### 6. Define LSP Feature Contracts
 
 Each LSP feature should have a declared minimum product:
