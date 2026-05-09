@@ -120,6 +120,14 @@ internal bool program_front_end_ir(void* data)
     return true;
 }
 
+internal bool program_front_end_hir(void* data)
+{
+    ProgramFrontEndContext* ctx = data;
+    ctx->front_end->hir         = hir_generate(
+        &ctx->front_end->lexer, &ctx->front_end->ast, &ctx->front_end->sema);
+    return true;
+}
+
 internal bool program_front_end_parse_only(NerdSource             source,
                                            const FrontEndOptions* options,
                                            Timing*                timing,
@@ -196,6 +204,13 @@ internal bool program_front_end_generate_ir(ProgramInfo*           program,
             .options   = effective_options,
             .front_end = &module->front_end,
         };
+        if (!program_run_timed(
+                timing, COMPILER_PHASE_HIR_GEN, program_front_end_hir, &ctx)) {
+            return false;
+        }
+        if (effective_options.verbose) {
+            hir_dump(&module->front_end.hir, &module->front_end.lexer);
+        }
         if (!program_run_timed(
                 timing, COMPILER_PHASE_IR_GEN, program_front_end_ir, &ctx)) {
             return false;

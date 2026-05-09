@@ -44,6 +44,16 @@ internal bool front_end_sema(FrontEndContext* ctx)
 }
 
 //------------------------------------------------------------------------------
+// Lower the analysed front-end state to HIR.
+
+internal bool front_end_hir_gen(FrontEndContext* ctx)
+{
+    ctx->results.hir = hir_generate(
+        &ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
+    return true;
+}
+
+//------------------------------------------------------------------------------
 // Lower the analysed front-end state to IR.
 
 internal bool front_end_ir_gen(FrontEndContext* ctx)
@@ -111,6 +121,22 @@ bool front_end(NerdSource             source,
     if (result && !ctx.options.skip_ir_generation) {
         if (timing != NULL) {
             ThreadTimePoint start = thread_time_now();
+            result                = front_end_hir_gen(&ctx);
+            timing_add(timing,
+                       COMPILER_STAGE_FRONT_END,
+                       COMPILER_PHASE_HIR_GEN,
+                       thread_time_elapsed(start, thread_time_now()));
+        } else {
+            result = front_end_hir_gen(&ctx);
+        }
+        if (result && ctx.options.verbose) {
+            hir_dump(&ctx.results.hir, &ctx.results.lexer);
+        }
+    }
+
+    if (result && !ctx.options.skip_ir_generation) {
+        if (timing != NULL) {
+            ThreadTimePoint start = thread_time_now();
             result                = front_end_ir_gen(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
@@ -136,6 +162,9 @@ void front_end_results_done(FrontEndState* results)
 {
     ir_done(&results->ir);
     results->ir = (Ir){0};
+
+    hir_done(&results->hir);
+    results->hir = (Hir){0};
 
     sema_done(&results->sema);
     results->sema = (Sema){0};

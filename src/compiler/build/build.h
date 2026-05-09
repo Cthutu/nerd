@@ -9,6 +9,7 @@
 #include <compiler/ast/ast.h>
 #include <compiler/cgen/cgen.h>
 #include <compiler/compiler.h>
+#include <compiler/hir/hir.h>
 #include <compiler/ir/ir.h>
 #include <compiler/lexer/lexer.h>
 #include <compiler/sema/sema.h>
@@ -19,6 +20,7 @@ typedef struct FrontEndState {
     Lexer lexer;
     Ast   ast;
     Sema  sema;
+    Hir   hir;
     Ir    ir;
 } FrontEndState;
 
