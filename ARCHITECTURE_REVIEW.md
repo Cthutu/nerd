@@ -313,6 +313,59 @@ Questions:
 - Would direct HIR-to-C make generated C more readable and easier to debug?
 - Which existing IR tests/dumps would be replaced by HIR dumps?
 
+#### 5b. Consider Dropping The Current IR
+
+The current IR may be removable if HIR becomes the checked, typed, lowered
+program product. The important observation from the code review is that the
+current IR is not primarily an optimizer IR. It is a linear C-generation input
+plus several side tables:
+
+- program structure: globals, externs, functions, locals, params
+- typed values and temporaries
+- lowered calls, casts, aggregate construction, fields, indexes, and slices
+- dynamic-array and string-builder operation records
+- explicit labels, jumps, branches, init blocks, and returns
+- copied semantic type rows used by C generation
+- module merge/remapping support for symbols, types, strings, functions, and
+  init ordering
+
+That means dropping IR is plausible, but only if the replacement owns these
+services deliberately. The likely target is not "AST directly to C"; it is:
+
+```text
+lexer -> tolerant syntax -> sema/name/type facts -> checked HIR -> C or LLVM IR
+```
+
+In that model HIR would be the durable lowering boundary. C generation can walk
+HIR directly, and an LLVM experiment can also lower from HIR. The current IR
+would disappear once HIR can represent:
+
+- explicit function/global/extern records
+- explicit locals, params, and compiler temporaries
+- structured blocks plus enough lowered control flow for `on`, loops, `defer`,
+  and expression-valued control constructs
+- typed expression nodes for calls, casts, field/index operations, slices,
+  aggregates, string interpolation, and dynamic-array operations
+- module-level init sequencing
+- module merge or whole-program symbol/type identity
+
+Possible migration path:
+
+1. Add HIR as a new product after sema while keeping current IR/C generation.
+2. Lower one narrow construct to HIR and dump it for tests.
+3. Teach C generation to emit that construct from HIR in an experimental path.
+4. Move module merge/symbol remapping responsibilities out of `Ir` and into
+   either whole-program HIR construction or a backend context.
+5. Remove the current IR only after C generation no longer needs its instruction
+   stream or side tables.
+
+Working assumption:
+
+- Do not invest further in the current IR as a long-term abstraction until HIR
+  is designed.
+- Keep it as the stable backend input during migration.
+- Treat LLVM IR as a backend target for HIR, not as a replacement for HIR.
+
 #### 6. Define LSP Feature Contracts
 
 Each LSP feature should have a declared minimum product:
