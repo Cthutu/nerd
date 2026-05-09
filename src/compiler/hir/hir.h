@@ -53,6 +53,7 @@ typedef enum : u8 {
     HIR_EXPR_RangeInclusive,
     HIR_EXPR_Block,
     HIR_EXPR_On,
+    HIR_EXPR_For,
 } HirExprKind;
 
 typedef enum : u8 {
@@ -60,6 +61,12 @@ typedef enum : u8 {
     HIR_ON_Value,
     HIR_ON_Condition,
 } HirOnKind;
+
+typedef enum : u8 {
+    HIR_FOR_Condition,
+    HIR_FOR_CStyle,
+    HIR_FOR_In,
+} HirForKind;
 
 typedef enum : u8 {
     HIR_PATTERN_Value,
@@ -160,6 +167,7 @@ typedef struct {
     u32         body_block_index;
     u32         first_branch;
     u32         branch_count;
+    u32         for_index;
     HirOnKind   on_kind;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
@@ -195,6 +203,24 @@ typedef struct {
 } HirPatternChild;
 
 typedef struct {
+    HirForKind kind;
+    u32        label_symbol;
+    u32        condition_expr_index;
+    u32        iterable_expr_index;
+    u32        body_block_index;
+    u32        else_block_index;
+    u32        first_init_stmt;
+    u32        init_stmt_count;
+    u32        first_update_stmt;
+    u32        update_stmt_count;
+    u32        index_symbol;
+    u32        index_local_index;
+    u32        item_symbol;
+    u32        item_local_index;
+    bool       item_is_pointer;
+} HirFor;
+
+typedef struct {
     Array(HirFunction) functions;
     Array(HirParam) params;
     Array(HirBlock) blocks;
@@ -205,6 +231,9 @@ typedef struct {
     Array(u32) on_branch_patterns;
     Array(HirPattern) patterns;
     Array(HirPatternChild) pattern_children;
+    Array(HirFor) fors;
+    Array(u32) for_init_stmts;
+    Array(u32) for_update_stmts;
     Arena arena;
 } Hir;
 

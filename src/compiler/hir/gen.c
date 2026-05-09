@@ -31,6 +31,28 @@ internal u32 hir_local_type(const Sema* sema, u32 local_index)
                : sema_no_type();
 }
 
+internal u32 hir_find_scope_local(const Sema* sema,
+                                  u32         scope_index,
+                                  u32         symbol_handle)
+{
+    if (scope_index == U32_MAX || scope_index >= array_count(sema->scopes) ||
+        symbol_handle == U32_MAX) {
+        return sema_no_local();
+    }
+
+    const SemaScope* scope = &sema->scopes[scope_index];
+    for (u32 i = 0; i < scope->local_count; ++i) {
+        u32 local_index = scope->first_local + i;
+        if (local_index >= array_count(sema->locals)) {
+            break;
+        }
+        if (sema->locals[local_index].symbol_handle == symbol_handle) {
+            return local_index;
+        }
+    }
+    return sema_no_local();
+}
+
 internal u32 hir_unwrap_node(const Ast* ast, u32 node_index)
 {
     while (node_index < array_count(ast->nodes) &&
@@ -65,6 +87,12 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                const Ast*   ast,
                                const Sema*  sema,
                                u32          pattern_index);
+
+internal u32 hir_lower_for(Hir*         hir,
+                           const Lexer* lexer,
+                           const Ast*   ast,
+                           const Sema*  sema,
+                           u32          node_index);
 
 internal u32 hir_add_expr(Hir* hir, HirExpr expr)
 {
@@ -603,6 +631,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .on_kind      = on_kind,
                 });
         }
+    case AK_For:
+        return hir_lower_for(hir, lexer, ast, sema, node_index);
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }
@@ -960,6 +990,121 @@ internal u32 hir_lower_stmt(Hir*         hir,
     }
 }
 
+internal HirForKind hir_for_kind_from_ast(u32 mode)
+{
+    switch (mode) {
+    case AFM_CStyle:
+        return HIR_FOR_CStyle;
+    case AFM_In:
+        return HIR_FOR_In;
+    case AFM_Condition:
+    default:
+        return HIR_FOR_Condition;
+    }
+}
+
+internal u32 hir_lower_for_stmt_items(Hir*         hir,
+                                      const Lexer* lexer,
+                                      const Ast*   ast,
+                                      const Sema*  sema,
+                                      Array(u32) * out_items,
+                                      u32 first_item,
+                                      u32 item_count)
+{
+    u32 first = (u32)array_count(*out_items);
+    if (first_item == U32_MAX) {
+        return first;
+    }
+
+    for (u32 i = 0; i < item_count; ++i) {
+        u32 ast_item_index = ast->for_items[first_item + i];
+        u32 stmt_index = hir_lower_stmt(hir, lexer, ast, sema, ast_item_index);
+        if (stmt_index != hir_no_index()) {
+            array_push(*out_items, stmt_index);
+        }
+    }
+    return first;
+}
+
+internal u32 hir_lower_for(Hir*         hir,
+                           const Lexer* lexer,
+                           const Ast*   ast,
+                           const Sema*  sema,
+                           u32          node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return hir_add_unsupported_expr(hir, sema, node_index);
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->a >= array_count(ast->fors)) {
+        return hir_add_unsupported_expr(hir, sema, node_index);
+    }
+
+    const AstForInfo* for_info = &ast->fors[node->a];
+    u32 first_init             = hir_lower_for_stmt_items(hir,
+                                                          lexer,
+                                                          ast,
+                                                          sema,
+                                                          &hir->for_init_stmts,
+                                                          for_info->first_init,
+                                                          for_info->init_count);
+    u32 first_update = hir_lower_for_stmt_items(hir,
+                                                lexer,
+                                                ast,
+                                                sema,
+                                                &hir->for_update_stmts,
+                                                for_info->first_update,
+                                                for_info->update_count);
+    u32 for_scope    = node_index < array_count(sema->node_scope_indices)
+                           ? sema->node_scope_indices[node_index]
+                           : U32_MAX;
+    u32 for_index    = (u32)array_count(hir->fors);
+    array_push(
+        hir->fors,
+        (HirFor){
+            .kind         = hir_for_kind_from_ast(for_info->mode),
+            .label_symbol = for_info->label_symbol,
+            .condition_expr_index =
+                for_info->condition_node_index != U32_MAX
+                    ? hir_lower_expr(
+                          hir, lexer, ast, sema, for_info->condition_node_index)
+                    : hir_no_index(),
+            .iterable_expr_index =
+                for_info->iterable_node_index != U32_MAX
+                    ? hir_lower_expr(
+                          hir, lexer, ast, sema, for_info->iterable_node_index)
+                    : hir_no_index(),
+            .body_block_index =
+                hir_lower_block_node(hir, lexer, ast, sema, node->b),
+            .else_block_index =
+                for_info->else_block_index != U32_MAX
+                    ? hir_lower_block_node(
+                          hir, lexer, ast, sema, for_info->else_block_index)
+                    : hir_no_index(),
+            .first_init_stmt   = first_init,
+            .init_stmt_count   = for_info->init_count,
+            .first_update_stmt = first_update,
+            .update_stmt_count = for_info->update_count,
+            .index_symbol      = for_info->index_symbol,
+            .index_local_index =
+                hir_find_scope_local(sema, for_scope, for_info->index_symbol),
+            .item_symbol = for_info->item_symbol,
+            .item_local_index =
+                hir_find_scope_local(sema, for_scope, for_info->item_symbol),
+            .item_is_pointer = for_info->item_is_pointer,
+        });
+
+    return hir_add_expr(hir,
+                        (HirExpr){
+                            .kind          = HIR_EXPR_For,
+                            .type_index    = hir_node_type(sema, node_index),
+                            .symbol_handle = U32_MAX,
+                            .local_index   = sema_no_local(),
+                            .for_index     = for_index,
+                        });
+}
+
 internal void hir_mark_owned_ast_subtree(
     const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 node_index)
 {
@@ -1016,6 +1161,98 @@ internal void hir_mark_owned_on_branch_bodies(
     }
 }
 
+internal void hir_mark_owned_for_parts(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 for_node_index)
+{
+    if (for_node_index >= end || ast->nodes[for_node_index].kind != AK_For) {
+        return;
+    }
+
+    const AstNode* for_node = &ast->nodes[for_node_index];
+    if (for_node->a >= array_count(ast->fors)) {
+        return;
+    }
+
+    const AstForInfo* for_info = &ast->fors[for_node->a];
+    for (u32 i = 0; i < for_info->init_count; ++i) {
+        hir_mark_owned_ast_subtree(ast,
+                                   owned_nodes,
+                                   first,
+                                   end,
+                                   ast->for_items[for_info->first_init + i]);
+    }
+    for (u32 i = 0; i < for_info->update_count; ++i) {
+        hir_mark_owned_ast_subtree(ast,
+                                   owned_nodes,
+                                   first,
+                                   end,
+                                   ast->for_items[for_info->first_update + i]);
+    }
+    hir_mark_owned_ast_subtree(ast, owned_nodes, first, end, for_node->b);
+    if (for_info->else_block_index != U32_MAX) {
+        hir_mark_owned_ast_subtree(
+            ast, owned_nodes, first, end, for_info->else_block_index);
+    }
+}
+
+internal void hir_mark_owned_embedded_for_expr(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 expr_node_index)
+{
+    u32 root_index = hir_unwrap_node(ast, expr_node_index);
+    if (root_index >= end || ast->nodes[root_index].kind != AK_For) {
+        return;
+    }
+
+    if (root_index >= first) {
+        owned_nodes[root_index] = true;
+    }
+    hir_mark_owned_for_parts(ast, owned_nodes, first, end, root_index);
+}
+
+internal void hir_mark_owned_statement_exprs(
+    const Ast* ast, bool* owned_nodes, u32 first, u32 end, u32 node_index)
+{
+    if (node_index >= end) {
+        return;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_Return:
+    case AK_ReturnExpr:
+        if (node->a != U32_MAX) {
+            hir_mark_owned_embedded_for_expr(
+                ast, owned_nodes, first, end, node->a);
+        }
+        break;
+    case AK_Bind:
+    case AK_Variable:
+        {
+            u32 value_node_index = node->b;
+            if (value_node_index < end &&
+                ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
+                value_node_index = ast->nodes[value_node_index].b;
+            }
+            hir_mark_owned_embedded_for_expr(
+                ast, owned_nodes, first, end, value_node_index);
+            break;
+        }
+    case AK_Assign:
+        hir_mark_owned_embedded_for_expr(ast, owned_nodes, first, end, node->a);
+        hir_mark_owned_embedded_for_expr(ast, owned_nodes, first, end, node->b);
+        break;
+    case AK_Assert:
+        hir_mark_owned_embedded_for_expr(ast, owned_nodes, first, end, node->a);
+        if (node->b != U32_MAX) {
+            hir_mark_owned_embedded_for_expr(
+                ast, owned_nodes, first, end, node->b);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 internal u32 hir_lower_block_node(Hir*         hir,
                                   const Lexer* lexer,
                                   const Ast*   ast,
@@ -1065,6 +1302,12 @@ internal u32 hir_lower_block_node(Hir*         hir,
         if (ast->nodes[i].kind == AK_On) {
             hir_mark_owned_on_branch_bodies(ast, owned_nodes, first, end, i);
         }
+
+        if (ast->nodes[i].kind == AK_For) {
+            hir_mark_owned_for_parts(ast, owned_nodes, first, end, i);
+        }
+
+        hir_mark_owned_statement_exprs(ast, owned_nodes, first, end, i);
 
         if (ast->nodes[i].kind != AK_Defer) {
             continue;
@@ -1157,6 +1400,14 @@ internal u32 hir_lower_function_body(Hir*         hir,
             hir_mark_owned_on_branch_bodies(
                 ast, owned_nodes, fn_start_index + 1, fn_end, i);
         }
+
+        if (ast->nodes[i].kind == AK_For) {
+            hir_mark_owned_for_parts(
+                ast, owned_nodes, fn_start_index + 1, fn_end, i);
+        }
+
+        hir_mark_owned_statement_exprs(
+            ast, owned_nodes, fn_start_index + 1, fn_end, i);
 
         if (ast->nodes[i].kind != AK_Defer) {
             continue;
@@ -1414,6 +1665,9 @@ void hir_done(Hir* hir)
     array_free(hir->on_branch_patterns);
     array_free(hir->patterns);
     array_free(hir->pattern_children);
+    array_free(hir->fors);
+    array_free(hir->for_init_stmts);
+    array_free(hir->for_update_stmts);
     arena_done(&hir->arena);
     *hir = (Hir){0};
 }

@@ -51,6 +51,13 @@ internal void hir_append_type_name(StringBuilder* sb,
     arena_done(&temp);
 }
 
+internal u32 hir_dump_local_type(const Sema* sema, u32 local_index)
+{
+    return local_index < array_count(sema->locals)
+               ? sema->locals[local_index].type_index
+               : sema_no_type();
+}
+
 internal void hir_append_function_return_type_name(StringBuilder*     sb,
                                                    const HirFunction* function,
                                                    const Lexer*       lexer,
@@ -140,6 +147,14 @@ internal void hir_render_block_at_indent(StringBuilder* sb,
                                          Arena*         arena,
                                          u32            block_index,
                                          u32            indent);
+
+internal void hir_render_stmt_at_indent(StringBuilder* sb,
+                                        const Hir*     hir,
+                                        const Lexer*   lexer,
+                                        const Sema*    sema,
+                                        Arena*         arena,
+                                        const HirStmt* stmt,
+                                        u32            indent);
 
 internal void hir_render_pattern(StringBuilder* sb,
                                  const Hir*     hir,
@@ -326,6 +341,43 @@ internal void hir_render_pattern(StringBuilder* sb,
     default:
         sb_append_cstr(sb, "<pattern>");
         break;
+    }
+}
+
+internal cstr hir_for_kind_name(HirForKind kind)
+{
+    switch (kind) {
+    case HIR_FOR_CStyle:
+        return "c_style";
+    case HIR_FOR_In:
+        return "in";
+    case HIR_FOR_Condition:
+    default:
+        return "condition";
+    }
+}
+
+internal void hir_render_stmt_index_list(StringBuilder* sb,
+                                         const Hir*     hir,
+                                         const Lexer*   lexer,
+                                         const Sema*    sema,
+                                         Arena*         arena,
+                                         Array(u32) items,
+                                         u32 first,
+                                         u32 count,
+                                         u32 indent)
+{
+    for (u32 i = 0; i < count; ++i) {
+        u32 item_index = first + i;
+        if (item_index >= array_count(items)) {
+            break;
+        }
+        u32 stmt_index = items[item_index];
+        if (stmt_index >= array_count(hir->stmts)) {
+            break;
+        }
+        hir_render_stmt_at_indent(
+            sb, hir, lexer, sema, arena, &hir->stmts[stmt_index], indent);
     }
 }
 
@@ -548,6 +600,96 @@ internal void hir_render_expr(StringBuilder* sb,
         }
         sb_append_cstr(sb, "  }");
         break;
+    case HIR_EXPR_For:
+        {
+            if (expr->for_index >= array_count(hir->fors)) {
+                sb_append_cstr(sb, "for <missing>");
+                break;
+            }
+
+            const HirFor* loop = &hir->fors[expr->for_index];
+            sb_append_cstr(sb, "for ");
+            sb_append_cstr(sb, hir_for_kind_name(loop->kind));
+            if (loop->label_symbol != U32_MAX) {
+                sb_append_cstr(sb, " $");
+                sb_append_string(sb, lex_symbol(lexer, loop->label_symbol));
+            }
+            if (loop->kind == HIR_FOR_In) {
+                sb_append_cstr(sb, " ");
+                if (loop->index_symbol != U32_MAX) {
+                    sb_append_string(sb, lex_symbol(lexer, loop->index_symbol));
+                    sb_append_cstr(sb, ": ");
+                    hir_append_type_name(
+                        sb,
+                        lexer,
+                        sema,
+                        hir_dump_local_type(sema, loop->index_local_index));
+                    sb_append_cstr(sb, ", ");
+                }
+                if (loop->item_is_pointer) {
+                    sb_append_char(sb, '^');
+                }
+                if (loop->item_symbol != U32_MAX) {
+                    sb_append_string(sb, lex_symbol(lexer, loop->item_symbol));
+                } else {
+                    sb_append_cstr(sb, "<item>");
+                }
+                sb_append_cstr(sb, ": ");
+                hir_append_type_name(
+                    sb,
+                    lexer,
+                    sema,
+                    hir_dump_local_type(sema, loop->item_local_index));
+                sb_append_cstr(sb, " in ");
+                hir_render_expr(
+                    sb, hir, lexer, sema, arena, loop->iterable_expr_index);
+            }
+            sb_append_cstr(sb, " {\n");
+            if (loop->init_stmt_count > 0) {
+                sb_append_cstr(sb, "    init {\n");
+                hir_render_stmt_index_list(sb,
+                                           hir,
+                                           lexer,
+                                           sema,
+                                           arena,
+                                           hir->for_init_stmts,
+                                           loop->first_init_stmt,
+                                           loop->init_stmt_count,
+                                           3);
+                sb_append_cstr(sb, "    }\n");
+            }
+            if (loop->condition_expr_index != U32_MAX) {
+                sb_append_cstr(sb, "    condition ");
+                hir_render_expr(
+                    sb, hir, lexer, sema, arena, loop->condition_expr_index);
+                sb_append_char(sb, '\n');
+            }
+            sb_append_cstr(sb, "    body {\n");
+            hir_render_block_at_indent(
+                sb, hir, lexer, sema, arena, loop->body_block_index, 3);
+            sb_append_cstr(sb, "    }\n");
+            if (loop->update_stmt_count > 0) {
+                sb_append_cstr(sb, "    update {\n");
+                hir_render_stmt_index_list(sb,
+                                           hir,
+                                           lexer,
+                                           sema,
+                                           arena,
+                                           hir->for_update_stmts,
+                                           loop->first_update_stmt,
+                                           loop->update_stmt_count,
+                                           3);
+                sb_append_cstr(sb, "    }\n");
+            }
+            if (loop->else_block_index != U32_MAX) {
+                sb_append_cstr(sb, "    else {\n");
+                hir_render_block_at_indent(
+                    sb, hir, lexer, sema, arena, loop->else_block_index, 3);
+                sb_append_cstr(sb, "    }\n");
+            }
+            sb_append_cstr(sb, "  }");
+            break;
+        }
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");
