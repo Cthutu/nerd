@@ -74,6 +74,41 @@ internal void hir_append_binding_target(StringBuilder*    sb,
     sb_format(sb, "%s.%u", hir_binding_target_prefix(kind), target_index);
 }
 
+internal void hir_render_ref(StringBuilder*  sb,
+                             const Lexer*    lexer,
+                             const HirExpr*  expr)
+{
+    switch (expr->ref_kind) {
+    case HIR_REF_Local:
+        sb_append_cstr(sb, "local.");
+        sb_format(sb, "%u", expr->ref_index);
+        break;
+    case HIR_REF_Binding:
+        sb_append_cstr(sb, "bind.");
+        sb_format(sb, "%u", expr->ref_index);
+        break;
+    case HIR_REF_Decl:
+        sb_append_cstr(sb, "decl.");
+        sb_format(sb, "%u", expr->ref_index);
+        break;
+    case HIR_REF_None:
+    default:
+        break;
+    }
+
+    if (expr->symbol_handle != U32_MAX) {
+        if (expr->ref_kind != HIR_REF_None) {
+            sb_append_char(sb, '(');
+        }
+        sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        if (expr->ref_kind != HIR_REF_None) {
+            sb_append_char(sb, ')');
+        }
+    } else if (expr->ref_kind == HIR_REF_None) {
+        sb_append_cstr(sb, "<local>");
+    }
+}
+
 internal void hir_append_type_name(StringBuilder* sb,
                                    const Lexer*   lexer,
                                    const Sema*    sema,
@@ -251,7 +286,7 @@ internal void hir_render_call_callee(StringBuilder* sb,
 
     const HirExpr* expr = &hir->exprs[expr_index];
     if (expr->kind == HIR_EXPR_LocalRef && expr->symbol_handle != U32_MAX) {
-        sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        hir_render_ref(sb, lexer, expr);
         return;
     }
 
@@ -463,11 +498,7 @@ internal void hir_render_expr(StringBuilder* sb,
         sb_append_cstr(sb, "nil");
         break;
     case HIR_EXPR_LocalRef:
-        if (expr->symbol_handle != U32_MAX) {
-            sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
-        } else {
-            sb_append_cstr(sb, "<local>");
-        }
+        hir_render_ref(sb, lexer, expr);
         break;
     case HIR_EXPR_Unary:
         sb_append_cstr(sb, hir_unary_op_name(expr->unary_op));

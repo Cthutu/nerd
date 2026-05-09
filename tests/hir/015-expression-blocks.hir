@@ -11,5 +11,5 @@ func fn.0() -> i32 {
   let result: i32 = untyped integer block {
     break untyped integer 7
   }
-  return i32 result
+  return i32 local.0(result)
 }

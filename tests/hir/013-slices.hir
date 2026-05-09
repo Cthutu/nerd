@@ -9,7 +9,7 @@ hir 0
 bind main = fn.0
 func fn.0() -> i32 {
   let values: [4]i32 = [4]i32 array(untyped integer 1, i32 2, i32 3, i32 4)
-  let all: []i32 = []i32 slice([4]i32 values, <none>, <none>)
-  let middle: []i32 = []i32 slice([4]i32 values, untyped integer 1, untyped integer 3)
-  return i32 add(i32 index([]i32 all, untyped integer 0), i32 index([]i32 middle, untyped integer 0))
+  let all: []i32 = []i32 slice([4]i32 local.0(values), <none>, <none>)
+  let middle: []i32 = []i32 slice([4]i32 local.0(values), untyped integer 1, untyped integer 3)
+  return i32 add(i32 index([]i32 local.1(all), untyped integer 0), i32 index([]i32 local.2(middle), untyped integer 0))
 }

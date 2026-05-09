@@ -10,8 +10,8 @@ hir 0
 bind add = fn.0
 bind main = fn.1
 func fn.0(a: i32, b: i32) -> i32 {
-  return i32 add(i32 a, i32 b)
+  return i32 add(i32 local.0(a), i32 local.1(b))
 }
 func fn.1() -> i32 {
-  return i32 call add(i32 1, i32 2)
+  return i32 call bind.0(add)(i32 1, i32 2)
 }

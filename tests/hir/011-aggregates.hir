@@ -11,9 +11,9 @@ hir 0
 bind sum_pair = fn.0
 bind main = fn.1
 func fn.0(pair: (i32, i32)) -> i32 {
-  return i32 add(i32 tuple_field((i32, i32) pair, 0), i32 tuple_field((i32, i32) pair, 1))
+  return i32 add(i32 tuple_field((i32, i32) local.0(pair), 0), i32 tuple_field((i32, i32) local.0(pair), 1))
 }
 func fn.1() -> i32 {
   let pair: (i32, i32) = (i32, i32) tuple(i32 1, i32 2)
-  return i32 call sum_pair((i32, i32) pair)
+  return i32 call bind.0(sum_pair)((i32, i32) local.1(pair))
 }

@@ -45,6 +45,20 @@ internal u32 hir_decl_type(const Sema* sema, u32 decl_index)
                : sema_no_type();
 }
 
+internal u32 hir_decl_binding(const Hir* hir, u32 decl_index)
+{
+    return decl_index < array_count(hir->decl_binding_indices)
+               ? hir->decl_binding_indices[decl_index]
+               : hir_no_index();
+}
+
+internal void hir_set_decl_binding(Hir* hir, u32 decl_index, u32 binding_index)
+{
+    if (decl_index < array_count(hir->decl_binding_indices)) {
+        hir->decl_binding_indices[decl_index] = binding_index;
+    }
+}
+
 internal u32 hir_find_scope_local(const Sema* sema,
                                   u32         scope_index,
                                   u32         symbol_handle)
@@ -358,12 +372,28 @@ internal u32 hir_lower_expr(Hir*         hir,
     case AK_SymbolRef:
         {
             u32 local_index = hir_node_local(sema, node_index);
+            u32 decl_index  = hir_node_decl(sema, node_index);
             u32 type_index  = hir_node_type(sema, node_index);
             if (type_index == sema_no_type()) {
                 type_index = hir_local_type(sema, local_index);
             }
             if (type_index == sema_no_type()) {
-                type_index = hir_decl_type(sema, hir_node_decl(sema, node_index));
+                type_index = hir_decl_type(sema, decl_index);
+            }
+            HirRefKind ref_kind  = HIR_REF_None;
+            u32        ref_index = hir_no_index();
+            if (local_index != sema_no_local()) {
+                ref_kind  = HIR_REF_Local;
+                ref_index = local_index;
+            } else if (decl_index != sema_no_decl()) {
+                u32 binding_index = hir_decl_binding(hir, decl_index);
+                if (binding_index != hir_no_index()) {
+                    ref_kind  = HIR_REF_Binding;
+                    ref_index = binding_index;
+                } else {
+                    ref_kind  = HIR_REF_Decl;
+                    ref_index = decl_index;
+                }
             }
             return hir_add_expr(hir,
                                 (HirExpr){
@@ -371,6 +401,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                                     .type_index    = type_index,
                                     .symbol_handle = node->a,
                                     .local_index   = local_index,
+                                    .ref_kind      = ref_kind,
+                                    .ref_index     = ref_index,
                                 });
         }
     case AK_Call:
@@ -1555,11 +1587,17 @@ internal void hir_add_function_params(Hir*        hir,
     }
 }
 
+internal u32 hir_add_binding(Hir*           hir,
+                             HirBindingKind kind,
+                             u32            symbol_handle,
+                             u32            target_index);
+
 internal void hir_add_function(Hir*            hir,
                                const Lexer*    lexer,
                                const Ast*      ast,
                                const Sema*     sema,
                                HirFunctionKind kind,
+                               u32             binding_symbol_handle,
                                u32             decl_index,
                                u32             fn_node_index,
                                u32             root_scope_index,
@@ -1569,11 +1607,6 @@ internal void hir_add_function(Hir*            hir,
     if (root_scope_index == U32_MAX) {
         root_scope_index = hir_find_function_scope(ast, fn_node_index);
     }
-
-    u32 body_block_index =
-        kind == HIR_FUNCTION_Ffi
-            ? hir_no_index()
-            : hir_lower_function_body(hir, lexer, ast, sema, fn_node_index);
 
     u32 function_index = (u32)array_count(hir->functions);
     array_push(hir->functions,
@@ -1585,13 +1618,26 @@ internal void hir_add_function(Hir*            hir,
                    .type_index       = type_index,
                    .first_param      = (u32)array_count(hir->params),
                    .param_count      = 0,
-                   .body_block_index = body_block_index,
+                   .body_block_index = hir_no_index(),
                });
-    hir_add_function_params(
-        hir, ast, sema, function_index, fn_node_index, root_scope_index);
     if (out_function_index) {
         *out_function_index = function_index;
     }
+    if (binding_symbol_handle != U32_MAX) {
+        u32 binding_index = hir_add_binding(hir,
+                                            HIR_BINDING_Function,
+                                            binding_symbol_handle,
+                                            function_index);
+        hir_set_decl_binding(hir, decl_index, binding_index);
+    }
+
+    u32 body_block_index =
+        kind == HIR_FUNCTION_Ffi
+            ? hir_no_index()
+            : hir_lower_function_body(hir, lexer, ast, sema, fn_node_index);
+    hir->functions[function_index].body_block_index = body_block_index;
+    hir_add_function_params(
+        hir, ast, sema, function_index, fn_node_index, root_scope_index);
 }
 
 internal u32 hir_add_type_def(Hir*          hir,
@@ -1614,36 +1660,49 @@ internal u32 hir_add_value(Hir*        hir,
                            const Ast*   ast,
                            const Sema*  sema,
                            HirValueKind kind,
+                           u32          binding_symbol_handle,
                            u32          decl_index,
                            u32          type_index,
                            u32          value_node_index)
 {
-    u32 value_expr_index =
-        value_node_index != U32_MAX && value_node_index < array_count(ast->nodes)
-            ? hir_lower_expr(hir, lexer, ast, sema, value_node_index)
-            : hir_no_index();
     u32 value_index = (u32)array_count(hir->values);
     array_push(hir->values,
                (HirValue){
                    .kind             = kind,
                    .decl_index       = decl_index,
                    .type_index       = type_index,
-                   .value_expr_index = value_expr_index,
+                   .value_expr_index = hir_no_index(),
                });
+    if (binding_symbol_handle != U32_MAX) {
+        u32 binding_index = hir_add_binding(hir,
+                                            HIR_BINDING_Value,
+                                            binding_symbol_handle,
+                                            value_index);
+        hir_set_decl_binding(hir, decl_index, binding_index);
+    }
+
+    u32 value_expr_index =
+        value_node_index != U32_MAX && value_node_index < array_count(ast->nodes)
+            ? hir_lower_expr(hir, lexer, ast, sema, value_node_index)
+            : hir_no_index();
+    HirValue* value         = &hir->values[value_index];
+    value->value_expr_index = value_expr_index;
     return value_index;
 }
 
-internal void hir_add_binding(Hir*           hir,
-                              HirBindingKind kind,
-                              u32            symbol_handle,
-                              u32            target_index)
+internal u32 hir_add_binding(Hir*           hir,
+                             HirBindingKind kind,
+                             u32            symbol_handle,
+                             u32            target_index)
 {
+    u32 binding_index = (u32)array_count(hir->bindings);
     array_push(hir->bindings,
                (HirBinding){
                    .kind          = kind,
                    .symbol_handle = symbol_handle,
                    .target_index  = target_index,
                });
+    return binding_index;
 }
 
 internal u32 hir_decl_fn_node(const Ast* ast, const SemaDecl* decl)
@@ -1668,6 +1727,10 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
     Hir hir = {0};
     arena_init(&hir.arena);
 
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        array_push(hir.decl_binding_indices, hir_no_index());
+    }
+
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         u32 decl_index = sema->ordered_decl_indices[i];
         if (decl_index >= array_count(sema->decls)) {
@@ -1686,10 +1749,11 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                                          : HIR_TYPE_Normal,
                                      decl_index,
                                      decl->type_index);
-                hir_add_binding(&hir,
-                                HIR_BINDING_Type,
-                                decl->symbol_handle,
-                                type_def_index);
+                u32 binding_index = hir_add_binding(&hir,
+                                                    HIR_BINDING_Type,
+                                                    decl->symbol_handle,
+                                                    type_def_index);
+                hir_set_decl_binding(&hir, decl_index, binding_index);
                 break;
             }
         case SK_Constant:
@@ -1702,13 +1766,11 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                                   sema,
                                   decl->kind == SK_Variable ? HIR_VALUE_Global
                                                             : HIR_VALUE_Constant,
+                                  decl->symbol_handle,
                                   decl_index,
                                   decl->type_index,
                                   decl->value_node_index);
-                hir_add_binding(&hir,
-                                HIR_BINDING_Value,
-                                decl->symbol_handle,
-                                value_index);
+                (void)value_index;
                 break;
             }
         case SK_Function:
@@ -1729,15 +1791,12 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                                  decl->kind == SK_FfiFunction
                                      ? HIR_FUNCTION_Ffi
                                      : HIR_FUNCTION_Normal,
+                                 decl->symbol_handle,
                                  decl_index,
                                  fn_node_index,
                                  root_scope_index,
                                  decl->type_index,
                                  &function_index);
-                hir_add_binding(&hir,
-                                HIR_BINDING_Function,
-                                decl->symbol_handle,
-                                function_index);
                 break;
             }
         default:
@@ -1757,6 +1816,7 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                          ast,
                          &inst_sema,
                          HIR_FUNCTION_GenericInstantiation,
+                         U32_MAX,
                          inst->template_decl_index,
                          inst->fn_node_index,
                          inst->root_scope_index,
@@ -1788,6 +1848,7 @@ void hir_done(Hir* hir)
     array_free(hir->fors);
     array_free(hir->for_init_stmts);
     array_free(hir->for_update_stmts);
+    array_free(hir->decl_binding_indices);
     arena_done(&hir->arena);
     *hir = (Hir){0};
 }

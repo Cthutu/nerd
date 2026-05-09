@@ -15,10 +15,10 @@ bind not_value = fn.0
 bind negative = fn.1
 bind main = fn.2
 func fn.0(value: bool) -> bool {
-  return bool logical_not(bool value)
+  return bool logical_not(bool local.0(value))
 }
 func fn.1(value: i32) -> i32 {
-  return i32 negate(i32 value)
+  return i32 negate(i32 local.1(value))
 }
 func fn.2() -> i32 {
   return i32 0

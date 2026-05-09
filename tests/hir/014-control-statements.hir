@@ -11,7 +11,7 @@ func fn.0() -> i32 {
   assert bool less(untyped integer 1, untyped integer 2), string "ok"
   let value: i32 = untyped integer 1
   defer {
-    assign i32 value = i32 2
+    assign i32 local.0(value) = i32 2
   }
-  return i32 value
+  return i32 local.0(value)
 }

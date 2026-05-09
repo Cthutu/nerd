@@ -14,12 +14,12 @@ hir 0
 bind to_i32 = fn.0
 bind main = fn.1
 func fn.0(value: f64) -> i32 {
-  return i32 cast(f64 value as i32)
+  return i32 cast(f64 local.0(value) as i32)
 }
 func fn.1() -> i32 {
   let number: f64 = f64 1.5
   let _text: string = string "hello"
   let _c_text: ^u8 = ^u8 c"hello"
   let _ptr: ^i32 = ^i32 nil
-  return i32 call to_i32(f64 number)
+  return i32 call bind.0(to_i32)(f64 local.1(number))
 }

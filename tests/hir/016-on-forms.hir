@@ -71,25 +71,25 @@ bind main = fn.5
 type type.0 = Point
 type type.1 = Choice
 func fn.0(value: i32) -> i32 {
-  return i32 on i32 value {
+  return i32 on i32 local.0(value) {
     value(i32 0) => {
       expr i32 10
     }
-    range_exclusive(i32 1, i32 3) as matched when bool equal(i32 matched, i32 2) => {
-      expr i32 add(i32 matched, i32 20)
+    range_exclusive(i32 1, i32 3) as matched when bool equal(i32 local.1(matched), i32 2) => {
+      expr i32 add(i32 local.1(matched), i32 20)
     }
     else as other => {
-      expr i32 add(i32 other, i32 100)
+      expr i32 add(i32 local.2(other), i32 100)
     }
   }
 }
 func fn.1(point: Point) -> i32 {
-  return i32 on Point point {
+  return i32 on Point local.3(point) {
     plex(x: value(i32 0), y: as y) => {
-      expr i32 y
+      expr i32 local.4(y)
     }
     plex(x: as x, y: value(i32 9)) => {
-      expr i32 multiply(i32 x, i32 10)
+      expr i32 multiply(i32 local.5(x), i32 10)
     }
     else => {
       expr i32 0
@@ -97,23 +97,23 @@ func fn.1(point: Point) -> i32 {
   }
 }
 func fn.2(value: i32) -> i32 {
-  expr void on bool greater(i32 value, i32 0) {
+  expr void on bool greater(i32 local.6(value), i32 0) {
     value(bool yes) => {
-      return i32 value
+      return i32 local.6(value)
     }
   }
   return i32 0
 }
 func fn.3(choice: Choice) -> i32 {
-  return i32 on Choice choice {
+  return i32 on Choice local.7(choice) {
     enum_variant(Empty) => {
       expr i32 0
     }
     enum_variant(Value, as value) => {
-      expr i32 value
+      expr i32 local.8(value)
     }
     enum_variant(Pair, as left, value(i32 4)) => {
-      expr i32 left
+      expr i32 local.9(left)
     }
     else => {
       expr i32 99
@@ -121,7 +121,7 @@ func fn.3(choice: Choice) -> i32 {
   }
 }
 func fn.4(value: i32) -> i32 {
-  return i32 on i32 value {
+  return i32 on i32 local.10(value) {
     equal(i32 0) => {
       expr i32 1
     }
@@ -148,8 +148,8 @@ func fn.4(value: i32) -> i32 {
 func fn.5() -> i32 {
   let point: Point = Point plex(x: i32 4, y: i32 9)
   return i32 on condition {
-    bool equal(i32 call classify(i32 2), i32 22) => {
-      expr i32 call score(Point point)
+    bool equal(i32 call bind.2(classify)(i32 2), i32 22) => {
+      expr i32 call bind.3(score)(Point local.11(point))
     }
     else => {
       expr i32 0

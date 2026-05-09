@@ -34,6 +34,13 @@ typedef enum : u8 {
 } HirBindingKind;
 
 typedef enum : u8 {
+    HIR_REF_None,
+    HIR_REF_Local,
+    HIR_REF_Binding,
+    HIR_REF_Decl,
+} HirRefKind;
+
+typedef enum : u8 {
     HIR_STMT_Expr,
     HIR_STMT_Return,
     HIR_STMT_Let,
@@ -186,6 +193,8 @@ typedef struct {
     u32         type_index;
     u32         symbol_handle;
     u32         local_index;
+    HirRefKind  ref_kind;
+    u32         ref_index;
     i64         integer;
     f64         floating;
     u32         string_index;
@@ -270,6 +279,7 @@ typedef struct {
     Array(HirFor) fors;
     Array(u32) for_init_stmts;
     Array(u32) for_update_stmts;
+    Array(u32) decl_binding_indices;
     Arena arena;
 } Hir;
 

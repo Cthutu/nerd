@@ -64,13 +64,13 @@ func fn.0(limit: i32) -> i32 {
   let total: i32 = untyped integer 0
   let i: i32 = untyped integer 0
   expr void for condition {
-    condition bool less(i32 i, i32 limit)
+    condition bool less(i32 local.2(i), i32 local.0(limit))
     body {
-      assign i32 total = i32 add(i32 total, i32 i)
-      assign i32 i = i32 add(i32 i, i32 1)
+      assign i32 local.1(total) = i32 add(i32 local.1(total), i32 local.2(i))
+      assign i32 local.2(i) = i32 add(i32 local.2(i), i32 1)
     }
   }
-  return i32 total
+  return i32 local.1(total)
 }
 func fn.1() -> i32 {
   let total: i32 = untyped integer 0
@@ -78,45 +78,45 @@ func fn.1() -> i32 {
     init {
       let i: i32 = untyped integer 0
     }
-    condition bool less(i32 i, i32 3)
+    condition bool less(i32 local.4(i), i32 3)
     body {
-      assign i32 total = i32 add(i32 total, i32 i)
+      assign i32 local.3(total) = i32 add(i32 local.3(total), i32 local.4(i))
     }
     update {
-      assign i32 i = i32 add(i32 i, i32 1)
+      assign i32 local.4(i) = i32 add(i32 local.4(i), i32 1)
     }
   }
-  return i32 total
+  return i32 local.3(total)
 }
 func fn.2(values: []i32) -> i32 {
   let total: i32 = untyped integer 0
-  expr void for in index: usize, value: ^i32 in []i32 values {
+  expr void for in index: usize, value: ^i32 in []i32 local.5(values) {
     body {
-      assign i32 total = i32 add(i32 total, i32 add(i32 deref(^i32 value), i32 cast(usize index as i32)))
+      assign i32 local.6(total) = i32 add(i32 local.6(total), i32 add(i32 deref(^i32 local.8(value)), i32 cast(usize local.7(index) as i32)))
     }
   }
-  return i32 total
+  return i32 local.6(total)
 }
 func fn.3(values: []i32) -> i32 {
-  expr void for in value: ^i32 in []i32 values {
+  expr void for in value: ^i32 in []i32 local.9(values) {
     body {
-      assign i32 deref(^i32 value) = i32 add(i32 deref(^i32 value), i32 1)
+      assign i32 deref(^i32 local.10(value)) = i32 add(i32 deref(^i32 local.10(value)), i32 1)
       break
     }
   }
-  return i32 index([]i32 values, untyped integer 0)
+  return i32 index([]i32 local.9(values), untyped integer 0)
 }
 func fn.4(limit: i32) -> i32 {
   return i32 for c_style {
     init {
       let i: i32 = untyped integer 0
     }
-    condition bool less(i32 i, i32 limit)
+    condition bool less(i32 local.12(i), i32 local.11(limit))
     body {
-      break i32 i
+      break i32 local.12(i)
     }
     update {
-      assign i32 i = i32 add(i32 i, i32 1)
+      assign i32 local.12(i) = i32 add(i32 local.12(i), i32 1)
     }
     else {
       break i32 negate(i32 1)
@@ -132,5 +132,5 @@ func fn.5() -> i32 {
 }
 func fn.6() -> i32 {
   let values: [3]i32 = [3]i32 array(untyped integer 1, i32 2, i32 3)
-  return i32 add(i32 add(i32 add(i32 add(i32 add(i32 call sum_while(i32 3), i32 call sum_c_style()), i32 call sum_for_in([]i32 slice([3]i32 values, <none>, <none>))), i32 call increment_first([]i32 slice([3]i32 values, <none>, <none>))), i32 call with_else(i32 0)), i32 call labelled_value())
+  return i32 add(i32 add(i32 add(i32 add(i32 add(i32 call bind.0(sum_while)(i32 3), i32 call bind.1(sum_c_style)()), i32 call bind.2(sum_for_in)([]i32 slice([3]i32 local.13(values), <none>, <none>))), i32 call bind.3(increment_first)([]i32 slice([3]i32 local.13(values), <none>, <none>))), i32 call bind.4(with_else)(i32 0)), i32 call bind.5(labelled_value)())
 }

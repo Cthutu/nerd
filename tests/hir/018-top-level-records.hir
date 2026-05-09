@@ -22,6 +22,6 @@ type type.1 = Point
 const value.0: untyped integer = untyped integer 41
 global value.1: i32 = untyped integer 1
 func fn.0() -> i32 {
-  assign i32 Counter = i32 add(i32 Counter, i32 1)
-  return i32 add(i32 Answer, i32 Counter)
+  assign i32 bind.1(Counter) = i32 add(i32 bind.1(Counter), i32 1)
+  return i32 add(i32 bind.0(Answer), i32 bind.1(Counter))
 }

@@ -21,15 +21,15 @@ bind read = fn.1
 bind first = fn.2
 bind main = fn.3
 func fn.0(value: i32) -> ^i32 {
-  return ^i32 address_of(i32 value)
+  return ^i32 address_of(i32 local.0(value))
 }
 func fn.1(ptr: ^i32) -> i32 {
-  return i32 deref(^i32 ptr)
+  return i32 deref(^i32 local.1(ptr))
 }
 func fn.2(values: [2]i32) -> i32 {
-  return i32 index([2]i32 values, untyped integer 0)
+  return i32 index([2]i32 local.2(values), untyped integer 0)
 }
 func fn.3() -> i32 {
   let values: [2]i32 = [2]i32 array(i32 1, i32 2)
-  return i32 call first([2]i32 values)
+  return i32 call bind.2(first)([2]i32 local.3(values))
 }
