@@ -40,6 +40,9 @@ typedef enum : u8 {
     HIR_EXPR_Tuple,
     HIR_EXPR_TupleField,
     HIR_EXPR_Array,
+    HIR_EXPR_Field,
+    HIR_EXPR_Plex,
+    HIR_EXPR_PlexUpdate,
 } HirExprKind;
 
 typedef enum : u8 {
@@ -121,10 +124,12 @@ typedef struct {
     u32         arg_count;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
+    bool        zero_missing;
 } HirExpr;
 
 typedef struct {
     u32 expr_index;
+    u32 symbol_handle;
 } HirCallArg;
 
 typedef struct {

@@ -185,6 +185,9 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Tuple:
     case AK_TupleField:
     case AK_Array:
+    case AK_Field:
+    case AK_Plex:
+    case AK_PlexUpdate:
     case AK_Expression:
         return true;
     default:
@@ -318,6 +321,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                            (HirCallArg){
                                .expr_index = hir_lower_expr(
                                    hir, lexer, ast, sema, arg_node_index),
+                               .symbol_handle = U32_MAX,
                            });
             }
 
@@ -378,6 +382,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                            (HirCallArg){
                                .expr_index = hir_lower_expr(
                                    hir, lexer, ast, sema, item_node_index),
+                               .symbol_handle = U32_MAX,
                            });
             }
 
@@ -404,6 +409,58 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .operand_expr_index = hir_lower_expr(
                                     hir, lexer, ast, sema, node->a),
                             });
+    case AK_Field:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Field,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle      = node->b,
+                                .local_index        = sema_no_local(),
+                                .operand_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
+                            });
+    case AK_Plex:
+    case AK_PlexUpdate:
+        {
+            if (node->a >= array_count(ast->plex_literals)) {
+                return hir_add_unsupported_expr(hir, sema, node_index);
+            }
+
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                const AstPlexLiteralField* field =
+                    &ast->plex_literal_fields[literal->first_field + i];
+                array_push(
+                    hir->call_args,
+                    (HirCallArg){
+                        .expr_index = hir_lower_expr(
+                            hir, lexer, ast, sema, field->value_node_index),
+                        .symbol_handle = field->symbol_handle,
+                    });
+            }
+
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind       = node->kind == AK_Plex ? HIR_EXPR_Plex
+                                                        : HIR_EXPR_PlexUpdate,
+                    .type_index = hir_node_type(sema, node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .operand_expr_index =
+                        node->kind == AK_PlexUpdate
+                            ? hir_lower_expr(hir,
+                                             lexer,
+                                             ast,
+                                             sema,
+                                             literal->target_node_index)
+                            : hir_no_index(),
+                    .first_arg    = first_arg,
+                    .arg_count    = literal->field_count,
+                    .zero_missing = (literal->flags & APLF_ZeroMissing) != 0,
+                });
+        }
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }

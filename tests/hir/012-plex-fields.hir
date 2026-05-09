@@ -1,0 +1,24 @@
+Point :: plex {
+    x i32
+    y i32
+}
+
+sum_point :: fn(point: Point) -> i32 {
+    return point.x + point.y
+}
+
+main :: fn() -> i32 {
+    point := Point { x: 1, y: 2 }
+    moved := point with { y: 3 }
+    return sum_point(moved)
+}
+¬
+hir 0
+func sum_point(point: Point) -> i32 {
+  return i32 add(i32 field(Point point, x), i32 field(Point point, y))
+}
+func main() -> i32 {
+  let point: Point = Point plex(x: i32 1, y: i32 2)
+  let moved: Point = Point plex_update(Point point, y: i32 3)
+  return i32 call sum_point(Point moved)
+}

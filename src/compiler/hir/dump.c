@@ -133,6 +133,39 @@ internal void hir_render_expr(StringBuilder* sb,
                               Arena*         arena,
                               u32            expr_index);
 
+internal void hir_render_expr_arg_list(StringBuilder* sb,
+                                       const Hir*     hir,
+                                       const Lexer*   lexer,
+                                       const Sema*    sema,
+                                       Arena*         arena,
+                                       const HirExpr* expr,
+                                       bool           named,
+                                       bool           zero_missing)
+{
+    for (u32 i = 0; i < expr->arg_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        u32 arg_index = expr->first_arg + i;
+        if (arg_index >= array_count(hir->call_args)) {
+            sb_append_cstr(sb, "<missing>");
+            continue;
+        }
+        const HirCallArg* arg = &hir->call_args[arg_index];
+        if (named && arg->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, arg->symbol_handle));
+            sb_append_cstr(sb, ": ");
+        }
+        hir_render_expr(sb, hir, lexer, sema, arena, arg->expr_index);
+    }
+    if (zero_missing) {
+        if (expr->arg_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
+}
+
 internal void hir_render_call_callee(StringBuilder* sb,
                                      const Hir*     hir,
                                      const Lexer*   lexer,
@@ -220,22 +253,8 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_call_callee(
             sb, hir, lexer, sema, arena, expr->callee_expr_index);
         sb_append_char(sb, '(');
-        for (u32 i = 0; i < expr->arg_count; ++i) {
-            if (i > 0) {
-                sb_append_cstr(sb, ", ");
-            }
-            u32 arg_index = expr->first_arg + i;
-            if (arg_index >= array_count(hir->call_args)) {
-                sb_append_cstr(sb, "<missing>");
-                continue;
-            }
-            hir_render_expr(sb,
-                            hir,
-                            lexer,
-                            sema,
-                            arena,
-                            hir->call_args[arg_index].expr_index);
-        }
+        hir_render_expr_arg_list(
+            sb, hir, lexer, sema, arena, expr, false, false);
         sb_append_char(sb, ')');
         break;
     case HIR_EXPR_Cast:
@@ -260,28 +279,41 @@ internal void hir_render_expr(StringBuilder* sb,
     case HIR_EXPR_Tuple:
     case HIR_EXPR_Array:
         sb_append_cstr(sb, expr->kind == HIR_EXPR_Tuple ? "tuple(" : "array(");
-        for (u32 i = 0; i < expr->arg_count; ++i) {
-            if (i > 0) {
-                sb_append_cstr(sb, ", ");
-            }
-            u32 arg_index = expr->first_arg + i;
-            if (arg_index >= array_count(hir->call_args)) {
-                sb_append_cstr(sb, "<missing>");
-                continue;
-            }
-            hir_render_expr(sb,
-                            hir,
-                            lexer,
-                            sema,
-                            arena,
-                            hir->call_args[arg_index].expr_index);
-        }
+        hir_render_expr_arg_list(
+            sb, hir, lexer, sema, arena, expr, false, false);
         sb_append_char(sb, ')');
         break;
     case HIR_EXPR_TupleField:
         sb_append_cstr(sb, "tuple_field(");
         hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
         sb_format(sb, ", %lld)", (long long)expr->integer);
+        break;
+    case HIR_EXPR_Field:
+        sb_append_cstr(sb, "field(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_append_cstr(sb, ", ");
+        if (expr->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        } else {
+            sb_append_cstr(sb, "<field>");
+        }
+        sb_append_char(sb, ')');
+        break;
+    case HIR_EXPR_Plex:
+        sb_append_cstr(sb, "plex(");
+        hir_render_expr_arg_list(
+            sb, hir, lexer, sema, arena, expr, true, expr->zero_missing);
+        sb_append_char(sb, ')');
+        break;
+    case HIR_EXPR_PlexUpdate:
+        sb_append_cstr(sb, "plex_update(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        if (expr->arg_count > 0 || expr->zero_missing) {
+            sb_append_cstr(sb, ", ");
+        }
+        hir_render_expr_arg_list(
+            sb, hir, lexer, sema, arena, expr, true, expr->zero_missing);
+        sb_append_char(sb, ')');
         break;
     case HIR_EXPR_Unsupported:
     default:
