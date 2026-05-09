@@ -188,6 +188,9 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Field:
     case AK_Plex:
     case AK_PlexUpdate:
+    case AK_Slice:
+    case AK_RangeExclusive:
+    case AK_RangeInclusive:
     case AK_Expression:
         return true;
     default:
@@ -461,6 +464,52 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .zero_missing = (literal->flags & APLF_ZeroMissing) != 0,
                 });
         }
+    case AK_Slice:
+        {
+            if (node->a >= array_count(ast->slices)) {
+                return hir_add_unsupported_expr(hir, sema, node_index);
+            }
+
+            const AstSliceInfo* slice = &ast->slices[node->a];
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind               = HIR_EXPR_Slice,
+                    .type_index         = hir_node_type(sema, node_index),
+                    .symbol_handle      = U32_MAX,
+                    .local_index        = sema_no_local(),
+                    .operand_expr_index = hir_lower_expr(
+                        hir, lexer, ast, sema, slice->target_node_index),
+                    .lhs_expr_index =
+                        slice->start_node_index != U32_MAX
+                            ? hir_lower_expr(hir,
+                                             lexer,
+                                             ast,
+                                             sema,
+                                             slice->start_node_index)
+                            : hir_no_index(),
+                    .rhs_expr_index =
+                        slice->end_node_index != U32_MAX
+                            ? hir_lower_expr(
+                                  hir, lexer, ast, sema, slice->end_node_index)
+                            : hir_no_index(),
+                });
+        }
+    case AK_RangeExclusive:
+    case AK_RangeInclusive:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = node->kind == AK_RangeExclusive
+                                                  ? HIR_EXPR_RangeExclusive
+                                                  : HIR_EXPR_RangeInclusive,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle  = U32_MAX,
+                                .local_index    = sema_no_local(),
+                                .lhs_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
+                                .rhs_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->b),
+                            });
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }

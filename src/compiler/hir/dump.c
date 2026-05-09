@@ -315,6 +315,26 @@ internal void hir_render_expr(StringBuilder* sb,
             sb, hir, lexer, sema, arena, expr, true, expr->zero_missing);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Slice:
+        sb_append_cstr(sb, "slice(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->lhs_expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
+        sb_append_char(sb, ')');
+        break;
+    case HIR_EXPR_RangeExclusive:
+    case HIR_EXPR_RangeInclusive:
+        sb_append_cstr(sb,
+                       expr->kind == HIR_EXPR_RangeExclusive
+                           ? "range_exclusive("
+                           : "range_inclusive(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->lhs_expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");

@@ -43,6 +43,9 @@ typedef enum : u8 {
     HIR_EXPR_Field,
     HIR_EXPR_Plex,
     HIR_EXPR_PlexUpdate,
+    HIR_EXPR_Slice,
+    HIR_EXPR_RangeExclusive,
+    HIR_EXPR_RangeInclusive,
 } HirExprKind;
 
 typedef enum : u8 {
