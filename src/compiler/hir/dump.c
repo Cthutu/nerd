@@ -72,6 +72,32 @@ internal cstr hir_binary_op_name(HirBinaryOp op)
         return "divide";
     case HIR_BINARY_Modulo:
         return "modulo";
+    case HIR_BINARY_BitwiseAnd:
+        return "bitwise_and";
+    case HIR_BINARY_BitwiseXor:
+        return "bitwise_xor";
+    case HIR_BINARY_BitwiseOr:
+        return "bitwise_or";
+    case HIR_BINARY_ShiftLeft:
+        return "shift_left";
+    case HIR_BINARY_ShiftRight:
+        return "shift_right";
+    case HIR_BINARY_Equal:
+        return "equal";
+    case HIR_BINARY_NotEqual:
+        return "not_equal";
+    case HIR_BINARY_Less:
+        return "less";
+    case HIR_BINARY_LessEqual:
+        return "less_equal";
+    case HIR_BINARY_Greater:
+        return "greater";
+    case HIR_BINARY_GreaterEqual:
+        return "greater_equal";
+    case HIR_BINARY_LogicalAnd:
+        return "logical_and";
+    case HIR_BINARY_LogicalOr:
+        return "logical_or";
     default:
         return "binary";
     }
@@ -123,6 +149,9 @@ internal void hir_render_expr(StringBuilder* sb,
     switch (expr->kind) {
     case HIR_EXPR_IntegerLiteral:
         sb_format(sb, "%lld", (long long)expr->integer);
+        break;
+    case HIR_EXPR_BoolLiteral:
+        sb_append_cstr(sb, expr->boolean ? "yes" : "no");
         break;
     case HIR_EXPR_LocalRef:
         if (expr->symbol_handle != U32_MAX) {

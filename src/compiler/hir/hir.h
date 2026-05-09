@@ -26,6 +26,7 @@ typedef enum : u8 {
 typedef enum : u8 {
     HIR_EXPR_Unsupported,
     HIR_EXPR_IntegerLiteral,
+    HIR_EXPR_BoolLiteral,
     HIR_EXPR_LocalRef,
     HIR_EXPR_Binary,
     HIR_EXPR_Call,
@@ -37,6 +38,19 @@ typedef enum : u8 {
     HIR_BINARY_Multiply,
     HIR_BINARY_Divide,
     HIR_BINARY_Modulo,
+    HIR_BINARY_BitwiseAnd,
+    HIR_BINARY_BitwiseXor,
+    HIR_BINARY_BitwiseOr,
+    HIR_BINARY_ShiftLeft,
+    HIR_BINARY_ShiftRight,
+    HIR_BINARY_Equal,
+    HIR_BINARY_NotEqual,
+    HIR_BINARY_Less,
+    HIR_BINARY_LessEqual,
+    HIR_BINARY_Greater,
+    HIR_BINARY_GreaterEqual,
+    HIR_BINARY_LogicalAnd,
+    HIR_BINARY_LogicalOr,
 } HirBinaryOp;
 
 typedef struct {
@@ -76,6 +90,7 @@ typedef struct {
     u32         symbol_handle;
     u32         local_index;
     i64         integer;
+    bool        boolean;
     u32         lhs_expr_index;
     u32         rhs_expr_index;
     u32         callee_expr_index;

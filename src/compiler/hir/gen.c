@@ -85,6 +85,45 @@ internal bool hir_binary_op_from_ast_kind(AstKind kind, HirBinaryOp* out)
     case AK_IntegerModulo:
         *out = HIR_BINARY_Modulo;
         return true;
+    case AK_BitwiseAnd:
+        *out = HIR_BINARY_BitwiseAnd;
+        return true;
+    case AK_BitwiseXor:
+        *out = HIR_BINARY_BitwiseXor;
+        return true;
+    case AK_BitwiseOr:
+        *out = HIR_BINARY_BitwiseOr;
+        return true;
+    case AK_ShiftLeft:
+        *out = HIR_BINARY_ShiftLeft;
+        return true;
+    case AK_ShiftRight:
+        *out = HIR_BINARY_ShiftRight;
+        return true;
+    case AK_Equal:
+        *out = HIR_BINARY_Equal;
+        return true;
+    case AK_NotEqual:
+        *out = HIR_BINARY_NotEqual;
+        return true;
+    case AK_Less:
+        *out = HIR_BINARY_Less;
+        return true;
+    case AK_LessEqual:
+        *out = HIR_BINARY_LessEqual;
+        return true;
+    case AK_Greater:
+        *out = HIR_BINARY_Greater;
+        return true;
+    case AK_GreaterEqual:
+        *out = HIR_BINARY_GreaterEqual;
+        return true;
+    case AK_LogicalAnd:
+        *out = HIR_BINARY_LogicalAnd;
+        return true;
+    case AK_LogicalOr:
+        *out = HIR_BINARY_LogicalOr;
+        return true;
     default:
         return false;
     }
@@ -149,6 +188,15 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .symbol_handle = U32_MAX,
                                 .local_index   = sema_no_local(),
                                 .integer       = (i64)lexer->integers[node->a],
+                            });
+    case AK_BoolLiteral:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_BoolLiteral,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .boolean       = node->a != 0,
                             });
     case AK_SymbolRef:
         return hir_add_expr(hir,
