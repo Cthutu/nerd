@@ -283,6 +283,13 @@ internal void hir_render_stmt(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
         break;
+    case HIR_STMT_Assign:
+        sb_append_cstr(sb, "  assign ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->target_expr_index);
+        sb_append_cstr(sb, " = ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        sb_append_char(sb, '\n');
+        break;
     case HIR_STMT_Expr:
     default:
         sb_append_cstr(sb, "  expr ");

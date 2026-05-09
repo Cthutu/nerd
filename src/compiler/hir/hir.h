@@ -21,6 +21,7 @@ typedef enum : u8 {
     HIR_STMT_Expr,
     HIR_STMT_Return,
     HIR_STMT_Let,
+    HIR_STMT_Assign,
 } HirStmtKind;
 
 typedef enum : u8 {
@@ -91,6 +92,7 @@ typedef struct {
 typedef struct {
     HirStmtKind kind;
     u32         expr_index;
+    u32         target_expr_index;
     u32         symbol_handle;
     u32         local_index;
     u32         type_index;

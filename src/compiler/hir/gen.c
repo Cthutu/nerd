@@ -178,6 +178,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_TypePlex:
     case AK_TypeEnum:
     case AK_AnnotatedValue:
+    case AK_Assign:
     case AK_Call:
     case AK_Cast:
     case AK_Expression:
@@ -283,13 +284,20 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .local_index   = sema_no_local(),
                             });
     case AK_SymbolRef:
-        return hir_add_expr(hir,
-                            (HirExpr){
-                                .kind       = HIR_EXPR_LocalRef,
-                                .type_index = hir_node_type(sema, node_index),
-                                .symbol_handle = node->a,
-                                .local_index = hir_node_local(sema, node_index),
-                            });
+        {
+            u32 local_index = hir_node_local(sema, node_index);
+            u32 type_index  = hir_node_type(sema, node_index);
+            if (type_index == sema_no_type()) {
+                type_index = hir_local_type(sema, local_index);
+            }
+            return hir_add_expr(hir,
+                                (HirExpr){
+                                    .kind          = HIR_EXPR_LocalRef,
+                                    .type_index    = type_index,
+                                    .symbol_handle = node->a,
+                                    .local_index   = local_index,
+                                });
+        }
     case AK_Call:
         {
             if (node->b >= array_count(ast->calls)) {
@@ -406,6 +414,19 @@ internal void hir_lower_stmt(Hir*         hir,
                 });
             return;
         }
+    case AK_Assign:
+        hir_add_stmt(
+            hir,
+            (HirStmt){
+                .kind       = HIR_STMT_Assign,
+                .expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b),
+                .target_expr_index =
+                    hir_lower_expr(hir, lexer, ast, sema, node->a),
+                .symbol_handle = U32_MAX,
+                .local_index   = hir_node_local(sema, node_index),
+                .type_index    = hir_node_type(sema, node_index),
+            });
+        return;
     default:
         hir_add_stmt(
             hir,

@@ -1,0 +1,12 @@
+main :: fn() -> i32 {
+    value := 1
+    value = value + 1
+    return value
+}
+¬
+hir 0
+func main() -> i32 {
+  let value: i32 = untyped integer 1
+  assign i32 value = i32 add(i32 value, i32 1)
+  return i32 value
+}
