@@ -27,7 +27,17 @@ typedef enum : u8 {
     HIR_EXPR_Unsupported,
     HIR_EXPR_IntegerLiteral,
     HIR_EXPR_LocalRef,
+    HIR_EXPR_Binary,
+    HIR_EXPR_Call,
 } HirExprKind;
+
+typedef enum : u8 {
+    HIR_BINARY_Add,
+    HIR_BINARY_Subtract,
+    HIR_BINARY_Multiply,
+    HIR_BINARY_Divide,
+    HIR_BINARY_Modulo,
+} HirBinaryOp;
 
 typedef struct {
     HirFunctionKind kind;
@@ -66,7 +76,17 @@ typedef struct {
     u32         symbol_handle;
     u32         local_index;
     i64         integer;
+    u32         lhs_expr_index;
+    u32         rhs_expr_index;
+    u32         callee_expr_index;
+    u32         first_arg;
+    u32         arg_count;
+    HirBinaryOp binary_op;
 } HirExpr;
+
+typedef struct {
+    u32 expr_index;
+} HirCallArg;
 
 typedef struct {
     Array(HirFunction) functions;
@@ -74,6 +94,7 @@ typedef struct {
     Array(HirBlock) blocks;
     Array(HirStmt) stmts;
     Array(HirExpr) exprs;
+    Array(HirCallArg) call_args;
     Arena arena;
 } Hir;
 

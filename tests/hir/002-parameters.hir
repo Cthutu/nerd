@@ -1,5 +1,5 @@
-add :: fn(a: i32, _b: i32) -> i32 {
-    return a
+add :: fn(a: i32, b: i32) -> i32 {
+    return a + b
 }
 
 main :: fn() -> i32 {
@@ -7,9 +7,9 @@ main :: fn() -> i32 {
 }
 ¬
 hir 0
-func add(a: i32, _b: i32) -> i32 {
-  return i32 a
+func add(a: i32, b: i32) -> i32 {
+  return i32 add(i32 a, i32 b)
 }
 func main() -> i32 {
-  return i32 <unsupported>
+  return i32 call add(i32 1, i32 2)
 }

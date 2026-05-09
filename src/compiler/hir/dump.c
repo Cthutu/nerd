@@ -59,6 +59,52 @@ internal string hir_function_return_type_name(const HirFunction* function,
         lexer, sema, arena, sema->types[function->type_index].return_type);
 }
 
+internal cstr hir_binary_op_name(HirBinaryOp op)
+{
+    switch (op) {
+    case HIR_BINARY_Add:
+        return "add";
+    case HIR_BINARY_Subtract:
+        return "subtract";
+    case HIR_BINARY_Multiply:
+        return "multiply";
+    case HIR_BINARY_Divide:
+        return "divide";
+    case HIR_BINARY_Modulo:
+        return "modulo";
+    default:
+        return "binary";
+    }
+}
+
+internal void hir_render_expr(StringBuilder* sb,
+                              const Hir*     hir,
+                              const Lexer*   lexer,
+                              const Sema*    sema,
+                              Arena*         arena,
+                              u32            expr_index);
+
+internal void hir_render_call_callee(StringBuilder* sb,
+                                     const Hir*     hir,
+                                     const Lexer*   lexer,
+                                     const Sema*    sema,
+                                     Arena*         arena,
+                                     u32            expr_index)
+{
+    if (expr_index == U32_MAX || expr_index >= array_count(hir->exprs)) {
+        sb_append_cstr(sb, "<none>");
+        return;
+    }
+
+    const HirExpr* expr = &hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_LocalRef && expr->symbol_handle != U32_MAX) {
+        sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        return;
+    }
+
+    hir_render_expr(sb, hir, lexer, sema, arena, expr_index);
+}
+
 internal void hir_render_expr(StringBuilder* sb,
                               const Hir*     hir,
                               const Lexer*   lexer,
@@ -84,6 +130,37 @@ internal void hir_render_expr(StringBuilder* sb,
         } else {
             sb_append_cstr(sb, "<local>");
         }
+        break;
+    case HIR_EXPR_Binary:
+        sb_append_cstr(sb, hir_binary_op_name(expr->binary_op));
+        sb_append_char(sb, '(');
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->lhs_expr_index);
+        sb_append_cstr(sb, ", ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
+        sb_append_char(sb, ')');
+        break;
+    case HIR_EXPR_Call:
+        sb_append_cstr(sb, "call ");
+        hir_render_call_callee(
+            sb, hir, lexer, sema, arena, expr->callee_expr_index);
+        sb_append_char(sb, '(');
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            u32 arg_index = expr->first_arg + i;
+            if (arg_index >= array_count(hir->call_args)) {
+                sb_append_cstr(sb, "<missing>");
+                continue;
+            }
+            hir_render_expr(sb,
+                            hir,
+                            lexer,
+                            sema,
+                            arena,
+                            hir->call_args[arg_index].expr_index);
+        }
+        sb_append_char(sb, ')');
         break;
     case HIR_EXPR_Unsupported:
     default:

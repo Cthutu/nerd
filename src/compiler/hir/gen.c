@@ -67,20 +67,79 @@ internal u32 hir_add_unsupported_expr(Hir*        hir,
                         });
 }
 
+internal bool hir_binary_op_from_ast_kind(AstKind kind, HirBinaryOp* out)
+{
+    switch (kind) {
+    case AK_IntegerPlus:
+        *out = HIR_BINARY_Add;
+        return true;
+    case AK_IntegerMinus:
+        *out = HIR_BINARY_Subtract;
+        return true;
+    case AK_IntegerMultiply:
+        *out = HIR_BINARY_Multiply;
+        return true;
+    case AK_IntegerDivide:
+        *out = HIR_BINARY_Divide;
+        return true;
+    case AK_IntegerModulo:
+        *out = HIR_BINARY_Modulo;
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool hir_ast_kind_is_expression_child(AstKind kind)
+{
+    HirBinaryOp ignored;
+    if (hir_binary_op_from_ast_kind(kind, &ignored)) {
+        return true;
+    }
+
+    switch (kind) {
+    case AK_IntegerLiteral:
+    case AK_FloatLiteral:
+    case AK_StringLiteral:
+    case AK_BoolLiteral:
+    case AK_NilLiteral:
+    case AK_SymbolRef:
+    case AK_Call:
+    case AK_Expression:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal u32 hir_lower_expr(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
                             const Sema*  sema,
                             u32          node_index)
 {
-    (void)lexer;
-
     node_index = hir_unwrap_node(ast, node_index);
     if (node_index >= array_count(ast->nodes)) {
         return hir_add_unsupported_expr(hir, sema, node_index);
     }
 
     const AstNode* node = &ast->nodes[node_index];
+    HirBinaryOp    binary_op;
+    if (hir_binary_op_from_ast_kind(node->kind, &binary_op)) {
+        u32 lhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->a);
+        u32 rhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b);
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Binary,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle  = U32_MAX,
+                                .local_index    = sema_no_local(),
+                                .lhs_expr_index = lhs_expr_index,
+                                .rhs_expr_index = rhs_expr_index,
+                                .binary_op      = binary_op,
+                            });
+    }
+
     switch (node->kind) {
     case AK_IntegerLiteral:
         return hir_add_expr(hir,
@@ -99,6 +158,37 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .symbol_handle = node->a,
                                 .local_index = hir_node_local(sema, node_index),
                             });
+    case AK_Call:
+        {
+            if (node->b >= array_count(ast->calls)) {
+                return hir_add_unsupported_expr(hir, sema, node_index);
+            }
+
+            u32 callee_expr_index =
+                hir_lower_expr(hir, lexer, ast, sema, node->a);
+            const AstCallInfo* call      = &ast->calls[node->b];
+            u32                first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < call->arg_count; ++i) {
+                u32 arg_node_index = ast->call_args[call->first_arg + i];
+                array_push(hir->call_args,
+                           (HirCallArg){
+                               .expr_index = hir_lower_expr(
+                                   hir, lexer, ast, sema, arg_node_index),
+                           });
+            }
+
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind              = HIR_EXPR_Call,
+                    .type_index        = hir_node_type(sema, node_index),
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .callee_expr_index = callee_expr_index,
+                    .first_arg         = first_arg,
+                    .arg_count         = call->arg_count,
+                });
+        }
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);
     }
@@ -208,10 +298,7 @@ internal u32 hir_lower_function_body(Hir*         hir,
 
     for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
         AstKind kind = ast->nodes[i].kind;
-        if (kind == AK_IntegerLiteral || kind == AK_FloatLiteral ||
-            kind == AK_StringLiteral || kind == AK_BoolLiteral ||
-            kind == AK_NilLiteral || kind == AK_SymbolRef ||
-            kind == AK_Expression) {
+        if (hir_ast_kind_is_expression_child(kind)) {
             continue;
         }
         u32 before = (u32)array_count(hir->stmts);
@@ -431,6 +518,7 @@ void hir_done(Hir* hir)
     array_free(hir->blocks);
     array_free(hir->stmts);
     array_free(hir->exprs);
+    array_free(hir->call_args);
     arena_done(&hir->arena);
     *hir = (Hir){0};
 }
