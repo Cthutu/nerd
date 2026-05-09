@@ -31,6 +31,8 @@ typedef enum : u8 {
     HIR_BINDING_Function,
     HIR_BINDING_Type,
     HIR_BINDING_Value,
+    HIR_BINDING_Import,
+    HIR_BINDING_Module,
 } HirBindingKind;
 
 typedef enum : u8 {
@@ -168,6 +170,22 @@ typedef struct {
 } HirBinding;
 
 typedef struct {
+    u32 module_index;
+} HirModuleImport;
+
+typedef struct {
+    u32 module_index;
+    u32 decl_index;
+    u32 symbol_handle;
+    u32 type_index;
+} HirImport;
+
+typedef struct {
+    u32 decl_index;
+    u32 binding_index;
+} HirExport;
+
+typedef struct {
     u32 symbol_handle;
     u32 local_index;
     u32 type_index;
@@ -264,6 +282,10 @@ typedef struct {
 } HirFor;
 
 typedef struct {
+    u32 current_module_index;
+    Array(HirModuleImport) module_imports;
+    Array(HirImport) imports;
+    Array(HirExport) exports;
     Array(HirBinding) bindings;
     Array(HirTypeDef) type_defs;
     Array(HirValue) values;

@@ -6,6 +6,7 @@
 
 #include <compiler/error/error.h>
 #include <compiler/hir/hir.h>
+#include <compiler/build/build.h>
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
@@ -53,6 +54,10 @@ internal cstr hir_binding_target_prefix(HirBindingKind kind)
         return "fn";
     case HIR_BINDING_Type:
         return "type";
+    case HIR_BINDING_Import:
+        return "import";
+    case HIR_BINDING_Module:
+        return "module";
     case HIR_BINDING_Value:
     default:
         return "value";
@@ -72,6 +77,35 @@ internal void hir_append_binding_target(StringBuilder*    sb,
                                         u32               target_index)
 {
     sb_format(sb, "%s.%u", hir_binding_target_prefix(kind), target_index);
+}
+
+internal bool hir_should_render_module_records(const Hir* hir)
+{
+    return array_count(hir->module_imports) > 0 ||
+           array_count(hir->imports) > 0 ||
+           array_count(hir->exports) > 0;
+}
+
+internal string hir_module_name(const Sema* sema, u32 module_index)
+{
+    if (sema != NULL && sema->program != NULL &&
+        module_index < array_count(sema->program->modules)) {
+        return sema->program->modules[module_index].qualified_name;
+    }
+    return s("<unknown>");
+}
+
+internal void hir_render_module_ref(StringBuilder* sb,
+                                    const Sema*    sema,
+                                    u32            module_index)
+{
+    sb_format(sb, "module.%u", module_index);
+    string name = hir_module_name(sema, module_index);
+    if (name.count > 0) {
+        sb_append_char(sb, '(');
+        sb_append_string(sb, name);
+        sb_append_char(sb, ')');
+    }
 }
 
 internal void hir_render_ref(StringBuilder*  sb,
@@ -915,6 +949,30 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
     sb_init(&sb, arena);
 
     sb_append_cstr(&sb, "hir 0\n");
+    if (hir_should_render_module_records(hir)) {
+        sb_append_cstr(&sb, "module ");
+        hir_render_module_ref(&sb, sema, hir->current_module_index);
+        sb_append_char(&sb, '\n');
+    }
+    for (u32 i = 0; i < array_count(hir->module_imports); ++i) {
+        const HirModuleImport* import = &hir->module_imports[i];
+        sb_append_cstr(&sb, "import ");
+        hir_render_module_ref(&sb, sema, import->module_index);
+        sb_append_char(&sb, '\n');
+    }
+    for (u32 i = 0; i < array_count(hir->imports); ++i) {
+        const HirImport* import = &hir->imports[i];
+        sb_format(&sb, "import import.%u ", i);
+        sb_append_string(&sb, hir_symbol_name(import->symbol_handle, lexer));
+        sb_append_cstr(&sb, " from ");
+        hir_render_module_ref(&sb, sema, import->module_index);
+        if (import->decl_index != U32_MAX) {
+            sb_format(&sb, ".decl.%u", import->decl_index);
+        }
+        sb_append_cstr(&sb, ": ");
+        hir_append_type_name(&sb, lexer, sema, import->type_index);
+        sb_append_char(&sb, '\n');
+    }
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {
         const HirBinding* binding = &hir->bindings[i];
         sb_append_cstr(&sb, "bind ");
@@ -974,6 +1032,19 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
                 &sb, hir, lexer, sema, arena, function->body_block_index);
             sb_append_cstr(&sb, "}\n");
         }
+    }
+    for (u32 i = 0; i < array_count(hir->exports); ++i) {
+        const HirExport* export = &hir->exports[i];
+        sb_append_cstr(&sb, "export ");
+        if (export->binding_index < array_count(hir->bindings)) {
+            const HirBinding* binding = &hir->bindings[export->binding_index];
+            sb_format(&sb, "bind.%u(", export->binding_index);
+            sb_append_string(&sb, hir_symbol_name(binding->symbol_handle, lexer));
+            sb_append_char(&sb, ')');
+        } else {
+            sb_format(&sb, "decl.%u", export->decl_index);
+        }
+        sb_append_char(&sb, '\n');
     }
 
     return sb_to_string(&sb);

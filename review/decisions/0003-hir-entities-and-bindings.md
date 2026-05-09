@@ -63,5 +63,6 @@ backend should still preserve the `$` convention for Nerd-visible bindings.
    entities directly.
 2. Replace HIR expression symbol references to top-level values/functions with
    binding or entity references.
-3. Add module/import/export binding records so whole-program HIR can distinguish
-   local entity identity from exported Nerd names.
+3. Done in [0004](0004-hir-module-bindings.md): add module/import/export
+   binding records so whole-program HIR can distinguish local entity identity
+   from exported Nerd names.

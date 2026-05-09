@@ -1,0 +1,30 @@
+pub use test.folder_pub_use
+folder :: use test.folder_pub_use
+
+pub local :: fn() -> i32 {
+    return folder.local_answer()
+}
+
+main :: fn() -> i32 {
+    return child_answer() + local()
+}
+¬
+hir 0
+module module.0(020-module-bindings.input)
+import module.1(test.folder_pub_use)
+import import.0 local_answer from module.1(test.folder_pub_use).decl.0: fn () -> i32
+import import.1 child_answer from module.1(test.folder_pub_use).decl.1: fn () -> i32
+bind local_answer = import.0
+bind child_answer = import.1
+bind folder = module.1
+bind local = fn.0
+bind main = fn.1
+func fn.0() -> i32 {
+  return i32 call fn () -> i32 field(module bind.2(folder), local_answer)()
+}
+func fn.1() -> i32 {
+  return i32 add(i32 call bind.1(child_answer)(), i32 call bind.3(local)())
+}
+export bind.3(local)
+export bind.0(local_answer)
+export bind.1(child_answer)

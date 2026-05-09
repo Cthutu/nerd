@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/hir/hir.h>
+#include <compiler/build/build.h>
 
 //------------------------------------------------------------------------------
 
@@ -64,6 +65,20 @@ internal void hir_set_decl_binding(Hir* hir, u32 decl_index, u32 binding_index)
     if (decl_index < array_count(hir->decl_binding_indices)) {
         hir->decl_binding_indices[decl_index] = binding_index;
     }
+}
+
+internal u32 hir_find_current_module_index(const Sema* sema)
+{
+    if (sema == NULL || sema->program == NULL) {
+        return hir_no_index();
+    }
+
+    for (u32 i = 0; i < array_count(sema->program->modules); ++i) {
+        if (&sema->program->modules[i].front_end.sema == sema) {
+            return i;
+        }
+    }
+    return hir_no_index();
 }
 
 internal u32 hir_find_scope_local(const Sema* sema,
@@ -1825,6 +1840,80 @@ internal u32 hir_add_binding(Hir*           hir,
     return binding_index;
 }
 
+internal u32 hir_add_import(Hir*       hir,
+                            const Sema* sema,
+                            u32         decl_index)
+{
+    if (decl_index >= array_count(sema->decls)) {
+        return hir_no_index();
+    }
+
+    const SemaDecl* decl = &sema->decls[decl_index];
+    if (decl->import_module_index == sema_no_decl()) {
+        return hir_no_index();
+    }
+
+    u32 import_index = (u32)array_count(hir->imports);
+    array_push(hir->imports,
+               (HirImport){
+                   .module_index  = decl->import_module_index,
+                   .decl_index    = decl->import_decl_index,
+                   .symbol_handle = decl->symbol_handle,
+                   .type_index    = decl->type_index,
+               });
+
+    u32 binding_index = hir_add_binding(hir,
+                                        HIR_BINDING_Import,
+                                        decl->symbol_handle,
+                                        import_index);
+    hir_set_decl_binding(hir, decl_index, binding_index);
+    return binding_index;
+}
+
+internal void hir_add_import_bindings(Hir* hir, const Sema* sema)
+{
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        if (hir_decl_binding(hir, i) != hir_no_index()) {
+            continue;
+        }
+
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->import_module_index != sema_no_decl()) {
+            hir_add_import(hir, sema, i);
+        }
+    }
+}
+
+internal void hir_add_module_records(Hir* hir, const Sema* sema)
+{
+    if (hir->current_module_index == hir_no_index() ||
+        sema == NULL || sema->program == NULL ||
+        hir->current_module_index >= array_count(sema->program->modules)) {
+        return;
+    }
+
+    const ModuleInfo* module = &sema->program->modules[hir->current_module_index];
+    for (u32 i = 0; i < array_count(module->imported_module_indices); ++i) {
+        array_push(hir->module_imports,
+                   (HirModuleImport){
+                       .module_index = module->imported_module_indices[i],
+                   });
+    }
+
+    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
+        u32 decl_index = module->export_decl_indices[i];
+        u32 binding_index = hir_decl_binding(hir, decl_index);
+        if (binding_index == hir_no_index()) {
+            continue;
+        }
+        array_push(hir->exports,
+                   (HirExport){
+                       .decl_index     = decl_index,
+                       .binding_index  = binding_index,
+                   });
+    }
+}
+
 internal u32 hir_decl_fn_node(const Ast* ast, const SemaDecl* decl)
 {
     u32 value_node_index = decl->value_node_index;
@@ -1846,10 +1935,13 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 {
     Hir hir = {0};
     arena_init(&hir.arena);
+    hir.current_module_index = hir_find_current_module_index(sema);
 
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
         array_push(hir.decl_binding_indices, hir_no_index());
     }
+
+    hir_add_import_bindings(&hir, sema);
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         u32 decl_index = sema->ordered_decl_indices[i];
@@ -1859,6 +1951,20 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 
         const SemaDecl* decl = &sema->decls[decl_index];
         switch (decl->kind) {
+        case SK_Module:
+            {
+                u32 module_index = hir_no_index();
+                if (decl->type_index < array_count(sema->types) &&
+                    sema->types[decl->type_index].kind == STK_Module) {
+                    module_index = sema->types[decl->type_index].return_type;
+                }
+                u32 binding_index = hir_add_binding(&hir,
+                                                    HIR_BINDING_Module,
+                                                    decl->symbol_handle,
+                                                    module_index);
+                hir_set_decl_binding(&hir, decl_index, binding_index);
+                break;
+            }
         case SK_TypeAlias:
         case SK_GenericTypeAlias:
             {
@@ -1924,6 +2030,8 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         }
     }
 
+    hir_add_module_records(&hir, sema);
+
     for (u32 i = 0; i < array_count(sema->generic_fn_instantiations); ++i) {
         const SemaGenericFnInstantiation* inst =
             &sema->generic_fn_instantiations[i];
@@ -1949,6 +2057,9 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 
 void hir_done(Hir* hir)
 {
+    array_free(hir->module_imports);
+    array_free(hir->imports);
+    array_free(hir->exports);
     array_free(hir->bindings);
     array_free(hir->type_defs);
     array_free(hir->values);
