@@ -551,6 +551,8 @@ def collect() -> list[tuple[str, pathlib.Path]]:
         ("commands", "tests/commands", "*.cmd"),
     ]:
         for path in sorted((ROOT / directory).glob(suffix)):
+            if kind == "hir" and path.name.startswith("_"):
+                continue
             cases.append((kind, path))
     return cases
 

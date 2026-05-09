@@ -17,6 +17,18 @@ typedef enum : u8 {
     HIR_FUNCTION_GenericInstantiation,
 } HirFunctionKind;
 
+typedef enum : u8 {
+    HIR_STMT_Expr,
+    HIR_STMT_Return,
+    HIR_STMT_Let,
+} HirStmtKind;
+
+typedef enum : u8 {
+    HIR_EXPR_Unsupported,
+    HIR_EXPR_IntegerLiteral,
+    HIR_EXPR_LocalRef,
+} HirExprKind;
+
 typedef struct {
     HirFunctionKind kind;
     u32             symbol_handle;
@@ -26,6 +38,7 @@ typedef struct {
     u32             type_index;
     u32             first_param;
     u32             param_count;
+    u32             body_block_index;
 } HirFunction;
 
 typedef struct {
@@ -35,8 +48,32 @@ typedef struct {
 } HirParam;
 
 typedef struct {
+    u32 first_stmt;
+    u32 stmt_count;
+} HirBlock;
+
+typedef struct {
+    HirStmtKind kind;
+    u32         expr_index;
+    u32         symbol_handle;
+    u32         local_index;
+    u32         type_index;
+} HirStmt;
+
+typedef struct {
+    HirExprKind kind;
+    u32         type_index;
+    u32         symbol_handle;
+    u32         local_index;
+    i64         integer;
+} HirExpr;
+
+typedef struct {
     Array(HirFunction) functions;
     Array(HirParam) params;
+    Array(HirBlock) blocks;
+    Array(HirStmt) stmts;
+    Array(HirExpr) exprs;
     Arena arena;
 } Hir;
 

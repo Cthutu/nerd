@@ -1,0 +1,10 @@
+main :: fn() -> i32 {
+    value := 1
+    return value
+}
+¬
+hir 0
+func main() -> i32 {
+  let value: i32 = untyped integer 1
+  return i32 value
+}

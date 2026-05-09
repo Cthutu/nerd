@@ -1,0 +1,15 @@
+add :: fn(a: i32, _b: i32) -> i32 {
+    return a
+}
+
+main :: fn() -> i32 {
+    return add(1, 2)
+}
+¬
+hir 0
+func add(a: i32, _b: i32) -> i32 {
+  return i32 a
+}
+func main() -> i32 {
+  return i32 <unsupported>
+}

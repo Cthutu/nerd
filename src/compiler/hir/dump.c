@@ -59,6 +59,96 @@ internal string hir_function_return_type_name(const HirFunction* function,
         lexer, sema, arena, sema->types[function->type_index].return_type);
 }
 
+internal void hir_render_expr(StringBuilder* sb,
+                              const Hir*     hir,
+                              const Lexer*   lexer,
+                              const Sema*    sema,
+                              Arena*         arena,
+                              u32            expr_index)
+{
+    if (expr_index == U32_MAX || expr_index >= array_count(hir->exprs)) {
+        sb_append_cstr(sb, "<none>");
+        return;
+    }
+
+    const HirExpr* expr = &hir->exprs[expr_index];
+    sb_append_string(sb, hir_type_name(lexer, sema, arena, expr->type_index));
+    sb_append_char(sb, ' ');
+    switch (expr->kind) {
+    case HIR_EXPR_IntegerLiteral:
+        sb_format(sb, "%lld", (long long)expr->integer);
+        break;
+    case HIR_EXPR_LocalRef:
+        if (expr->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        } else {
+            sb_append_cstr(sb, "<local>");
+        }
+        break;
+    case HIR_EXPR_Unsupported:
+    default:
+        sb_append_cstr(sb, "<unsupported>");
+        break;
+    }
+}
+
+internal void hir_render_stmt(StringBuilder* sb,
+                              const Hir*     hir,
+                              const Lexer*   lexer,
+                              const Sema*    sema,
+                              Arena*         arena,
+                              const HirStmt* stmt)
+{
+    switch (stmt->kind) {
+    case HIR_STMT_Return:
+        sb_append_cstr(sb, "  return ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        sb_append_char(sb, '\n');
+        break;
+    case HIR_STMT_Let:
+        sb_append_cstr(sb, "  let ");
+        if (stmt->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));
+        } else {
+            sb_append_cstr(sb, "<local>");
+        }
+        sb_append_cstr(sb, ": ");
+        sb_append_string(sb,
+                         hir_type_name(lexer, sema, arena, stmt->type_index));
+        sb_append_cstr(sb, " = ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        sb_append_char(sb, '\n');
+        break;
+    case HIR_STMT_Expr:
+    default:
+        sb_append_cstr(sb, "  expr ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        sb_append_char(sb, '\n');
+        break;
+    }
+}
+
+internal void hir_render_block(StringBuilder* sb,
+                               const Hir*     hir,
+                               const Lexer*   lexer,
+                               const Sema*    sema,
+                               Arena*         arena,
+                               u32            block_index)
+{
+    if (block_index == U32_MAX || block_index >= array_count(hir->blocks)) {
+        return;
+    }
+
+    const HirBlock* block = &hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->first_stmt + i;
+        if (stmt_index >= array_count(hir->stmts)) {
+            break;
+        }
+        hir_render_stmt(sb, hir, lexer, sema, arena, &hir->stmts[stmt_index]);
+    }
+}
+
 string
 hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
 {
@@ -78,17 +168,24 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
             const HirParam* param = &hir->params[function->first_param + p];
             if (param->symbol_handle != U32_MAX) {
                 sb_append_string(&sb, lex_symbol(lexer, param->symbol_handle));
+                sb_append_cstr(&sb, ": ");
             } else {
-                sb_append_cstr(&sb, "<anonymous>");
+                sb_append_cstr(&sb, "");
             }
-            sb_append_cstr(&sb, ": ");
             sb_append_string(
                 &sb, hir_type_name(lexer, sema, arena, param->type_index));
         }
         sb_append_cstr(&sb, ") -> ");
         sb_append_string(
             &sb, hir_function_return_type_name(function, lexer, sema, arena));
-        sb_append_char(&sb, '\n');
+        if (function->body_block_index == U32_MAX) {
+            sb_append_char(&sb, '\n');
+        } else {
+            sb_append_cstr(&sb, " {\n");
+            hir_render_block(
+                &sb, hir, lexer, sema, arena, function->body_block_index);
+            sb_append_cstr(&sb, "}\n");
+        }
     }
 
     return sb_to_string(&sb);

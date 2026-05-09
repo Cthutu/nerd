@@ -6,6 +6,41 @@
 
 #include <compiler/hir/hir.h>
 
+//------------------------------------------------------------------------------
+
+internal u32 hir_no_index(void) { return U32_MAX; }
+
+internal u32 hir_node_type(const Sema* sema, u32 node_index)
+{
+    return node_index < array_count(sema->node_type_indices)
+               ? sema->node_type_indices[node_index]
+               : sema_no_type();
+}
+
+internal u32 hir_node_local(const Sema* sema, u32 node_index)
+{
+    return node_index < array_count(sema->node_local_indices)
+               ? sema->node_local_indices[node_index]
+               : sema_no_local();
+}
+
+internal u32 hir_local_type(const Sema* sema, u32 local_index)
+{
+    return local_index < array_count(sema->locals)
+               ? sema->locals[local_index].type_index
+               : sema_no_type();
+}
+
+internal u32 hir_unwrap_node(const Ast* ast, u32 node_index)
+{
+    while (node_index < array_count(ast->nodes) &&
+           (ast->nodes[node_index].kind == AK_Expression ||
+            ast->nodes[node_index].kind == AK_Statement)) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
 internal u32 hir_find_function_scope(const Ast* ast, u32 fn_node_index)
 {
     (void)ast;
@@ -13,13 +48,242 @@ internal u32 hir_find_function_scope(const Ast* ast, u32 fn_node_index)
     return U32_MAX;
 }
 
+internal u32 hir_add_expr(Hir* hir, HirExpr expr)
+{
+    array_push(hir->exprs, expr);
+    return (u32)array_count(hir->exprs) - 1;
+}
+
+internal u32 hir_add_unsupported_expr(Hir*        hir,
+                                      const Sema* sema,
+                                      u32         node_index)
+{
+    return hir_add_expr(hir,
+                        (HirExpr){
+                            .kind          = HIR_EXPR_Unsupported,
+                            .type_index    = hir_node_type(sema, node_index),
+                            .symbol_handle = U32_MAX,
+                            .local_index   = sema_no_local(),
+                        });
+}
+
+internal u32 hir_lower_expr(Hir*         hir,
+                            const Lexer* lexer,
+                            const Ast*   ast,
+                            const Sema*  sema,
+                            u32          node_index)
+{
+    (void)lexer;
+
+    node_index = hir_unwrap_node(ast, node_index);
+    if (node_index >= array_count(ast->nodes)) {
+        return hir_add_unsupported_expr(hir, sema, node_index);
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_IntegerLiteral:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_IntegerLiteral,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .integer       = (i64)lexer->integers[node->a],
+                            });
+    case AK_SymbolRef:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_LocalRef,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = node->a,
+                                .local_index = hir_node_local(sema, node_index),
+                            });
+    default:
+        return hir_add_unsupported_expr(hir, sema, node_index);
+    }
+}
+
+internal u32 hir_add_stmt(Hir* hir, HirStmt stmt)
+{
+    array_push(hir->stmts, stmt);
+    return (u32)array_count(hir->stmts) - 1;
+}
+
+internal void hir_lower_stmt(Hir*         hir,
+                             const Lexer* lexer,
+                             const Ast*   ast,
+                             const Sema*  sema,
+                             u32          node_index)
+{
+    node_index = hir_unwrap_node(ast, node_index);
+    if (node_index >= array_count(ast->nodes)) {
+        return;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_Return:
+    case AK_ReturnExpr:
+        hir_add_stmt(hir,
+                     (HirStmt){
+                         .kind          = HIR_STMT_Return,
+                         .expr_index    = node->a != U32_MAX
+                                              ? hir_lower_expr(
+                                                    hir, lexer, ast, sema, node->a)
+                                              : hir_no_index(),
+                         .symbol_handle = U32_MAX,
+                         .local_index   = sema_no_local(),
+                         .type_index    = hir_node_type(sema, node_index),
+                     });
+        return;
+    case AK_Bind:
+    case AK_Variable:
+        {
+            u32 value_node_index = node->b;
+            if (value_node_index < array_count(ast->nodes) &&
+                ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
+                value_node_index = ast->nodes[value_node_index].b;
+            }
+            hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind = HIR_STMT_Let,
+                    .expr_index =
+                        value_node_index < array_count(ast->nodes)
+                            ? hir_lower_expr(
+                                  hir, lexer, ast, sema, value_node_index)
+                            : hir_no_index(),
+                    .symbol_handle = node->a,
+                    .local_index   = hir_node_local(sema, node_index),
+                    .type_index =
+                        hir_local_type(sema, hir_node_local(sema, node_index)),
+                });
+            return;
+        }
+    default:
+        hir_add_stmt(
+            hir,
+            (HirStmt){
+                .kind       = HIR_STMT_Expr,
+                .expr_index = hir_lower_expr(hir, lexer, ast, sema, node_index),
+                .symbol_handle = U32_MAX,
+                .local_index   = sema_no_local(),
+                .type_index    = hir_node_type(sema, node_index),
+            });
+        return;
+    }
+}
+
+internal u32 hir_lower_function_body(Hir*         hir,
+                                     const Lexer* lexer,
+                                     const Ast*   ast,
+                                     const Sema*  sema,
+                                     u32          fn_node_index)
+{
+    if (fn_node_index >= array_count(ast->nodes) ||
+        ast->nodes[fn_node_index].kind != AK_FnDef) {
+        return hir_no_index();
+    }
+
+    const AstNode* fn_node        = &ast->nodes[fn_node_index];
+    u32            fn_start_index = fn_node->a;
+    if (fn_start_index >= array_count(ast->nodes) ||
+        ast->nodes[fn_start_index].kind != AK_FnStart) {
+        return hir_no_index();
+    }
+
+    const AstNode* fn_start = &ast->nodes[fn_start_index];
+    u32            fn_end   = fn_start->b;
+    if (fn_end > array_count(ast->nodes)) {
+        fn_end = (u32)array_count(ast->nodes);
+    }
+
+    u32 block_index = (u32)array_count(hir->blocks);
+    array_push(hir->blocks,
+               (HirBlock){
+                   .first_stmt = (u32)array_count(hir->stmts),
+                   .stmt_count = 0,
+               });
+
+    for (u32 i = fn_start_index + 1; i < fn_end; ++i) {
+        AstKind kind = ast->nodes[i].kind;
+        if (kind == AK_IntegerLiteral || kind == AK_FloatLiteral ||
+            kind == AK_StringLiteral || kind == AK_BoolLiteral ||
+            kind == AK_NilLiteral || kind == AK_SymbolRef ||
+            kind == AK_Expression) {
+            continue;
+        }
+        u32 before = (u32)array_count(hir->stmts);
+        hir_lower_stmt(hir, lexer, ast, sema, i);
+        hir->blocks[block_index].stmt_count +=
+            (u32)array_count(hir->stmts) - before;
+    }
+
+    return block_index;
+}
+
 internal void hir_add_function_params(Hir*        hir,
+                                      const Ast*  ast,
                                       const Sema* sema,
                                       u32         function_index,
+                                      u32         fn_node_index,
                                       u32         root_scope_index)
 {
     if (root_scope_index == U32_MAX ||
         root_scope_index >= array_count(sema->scopes)) {
+        HirFunction* function = &hir->functions[function_index];
+        if (function->type_index == sema_no_type() ||
+            function->type_index >= array_count(sema->types) ||
+            sema->types[function->type_index].kind != STK_Function) {
+            return;
+        }
+
+        const SemaType* function_type = &sema->types[function->type_index];
+        function->first_param         = (u32)array_count(hir->params);
+
+        if (fn_node_index >= array_count(ast->nodes) ||
+            ast->nodes[fn_node_index].kind != AK_FnDef) {
+            for (u32 i = 0; i < function_type->param_count; ++i) {
+                array_push(
+                    hir->params,
+                    (HirParam){
+                        .symbol_handle = U32_MAX,
+                        .local_index   = sema_no_local(),
+                        .type_index = sema->type_param_types
+                                          [function_type->first_param_type + i],
+                    });
+                function = &hir->functions[function_index];
+                function->param_count++;
+            }
+            return;
+        }
+
+        u32 fn_start_index = ast->nodes[fn_node_index].a;
+        if (fn_start_index >= array_count(ast->nodes) ||
+            ast->nodes[fn_start_index].kind != AK_FnStart) {
+            return;
+        }
+
+        const AstFnSignature* signature =
+            &ast->fn_signatures[ast->nodes[fn_start_index].a];
+        u32 count = signature->param_count < function_type->param_count
+                        ? signature->param_count
+                        : function_type->param_count;
+        for (u32 i = 0; i < count; ++i) {
+            const AstParam* param = &ast->params[signature->first_param + i];
+            array_push(
+                hir->params,
+                (HirParam){
+                    .symbol_handle = param->symbol_handle,
+                    .local_index   = sema_no_local(),
+                    .type_index =
+                        sema->type_param_types[function_type->first_param_type +
+                                               i],
+                });
+            function = &hir->functions[function_index];
+            function->param_count++;
+        }
         return;
     }
 
@@ -50,6 +314,7 @@ internal void hir_add_function_params(Hir*        hir,
 }
 
 internal void hir_add_function(Hir*            hir,
+                               const Lexer*    lexer,
                                const Ast*      ast,
                                const Sema*     sema,
                                HirFunctionKind kind,
@@ -63,6 +328,11 @@ internal void hir_add_function(Hir*            hir,
         root_scope_index = hir_find_function_scope(ast, fn_node_index);
     }
 
+    u32 body_block_index =
+        kind == HIR_FUNCTION_Ffi
+            ? hir_no_index()
+            : hir_lower_function_body(hir, lexer, ast, sema, fn_node_index);
+
     u32 function_index = (u32)array_count(hir->functions);
     array_push(hir->functions,
                (HirFunction){
@@ -74,8 +344,10 @@ internal void hir_add_function(Hir*            hir,
                    .type_index       = type_index,
                    .first_param      = (u32)array_count(hir->params),
                    .param_count      = 0,
+                   .body_block_index = body_block_index,
                });
-    hir_add_function_params(hir, sema, function_index, root_scope_index);
+    hir_add_function_params(
+        hir, ast, sema, function_index, fn_node_index, root_scope_index);
 }
 
 internal u32 hir_decl_fn_node(const Ast* ast, const SemaDecl* decl)
@@ -97,8 +369,6 @@ internal u32 hir_decl_fn_node(const Ast* ast, const SemaDecl* decl)
 
 Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 {
-    (void)lexer;
-
     Hir hir = {0};
     arena_init(&hir.arena);
 
@@ -120,6 +390,7 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                 ? sema->node_scope_indices[fn_node_index]
                 : U32_MAX;
         hir_add_function(&hir,
+                         lexer,
                          ast,
                          sema,
                          decl->kind == SK_FfiFunction ? HIR_FUNCTION_Ffi
@@ -139,6 +410,7 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         inst_sema.locals             = sema->locals;
         inst_sema.scopes             = sema->scopes;
         hir_add_function(&hir,
+                         lexer,
                          ast,
                          &inst_sema,
                          HIR_FUNCTION_GenericInstantiation,
@@ -156,6 +428,9 @@ void hir_done(Hir* hir)
 {
     array_free(hir->functions);
     array_free(hir->params);
+    array_free(hir->blocks);
+    array_free(hir->stmts);
+    array_free(hir->exprs);
     arena_done(&hir->arena);
     *hir = (Hir){0};
 }
