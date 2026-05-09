@@ -26,11 +26,15 @@ typedef enum : u8 {
 typedef enum : u8 {
     HIR_EXPR_Unsupported,
     HIR_EXPR_IntegerLiteral,
+    HIR_EXPR_FloatLiteral,
+    HIR_EXPR_StringLiteral,
     HIR_EXPR_BoolLiteral,
+    HIR_EXPR_NilLiteral,
     HIR_EXPR_LocalRef,
     HIR_EXPR_Unary,
     HIR_EXPR_Binary,
     HIR_EXPR_Call,
+    HIR_EXPR_Cast,
 } HirExprKind;
 
 typedef enum : u8 {
@@ -98,8 +102,12 @@ typedef struct {
     u32         symbol_handle;
     u32         local_index;
     i64         integer;
+    f64         floating;
+    u32         string_index;
     bool        boolean;
+    bool        string_is_cstring;
     u32         operand_expr_index;
+    u32         extra_expr_index;
     u32         lhs_expr_index;
     u32         rhs_expr_index;
     u32         callee_expr_index;

@@ -179,6 +179,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_TypeEnum:
     case AK_AnnotatedValue:
     case AK_Call:
+    case AK_Cast:
     case AK_Expression:
         return true;
     default:
@@ -238,6 +239,32 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .local_index   = sema_no_local(),
                                 .integer       = (i64)lexer->integers[node->a],
                             });
+    case AK_FloatLiteral:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_FloatLiteral,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .floating      = lexer->floats[node->a],
+                            });
+    case AK_StringLiteral:
+        {
+            TokenKind token_kind =
+                node->token_index < array_count(lexer->tokens)
+                    ? lexer->tokens[node->token_index].kind
+                    : TK_String;
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind              = HIR_EXPR_StringLiteral,
+                    .type_index        = hir_node_type(sema, node_index),
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .string_index      = node->a,
+                    .string_is_cstring = token_kind == TK_CString,
+                });
+        }
     case AK_BoolLiteral:
         return hir_add_expr(hir,
                             (HirExpr){
@@ -246,6 +273,14 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .symbol_handle = U32_MAX,
                                 .local_index   = sema_no_local(),
                                 .boolean       = node->a != 0,
+                            });
+    case AK_NilLiteral:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_NilLiteral,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
                             });
     case AK_SymbolRef:
         return hir_add_expr(hir,
@@ -284,6 +319,29 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .callee_expr_index = callee_expr_index,
                     .first_arg         = first_arg,
                     .arg_count         = call->arg_count,
+                });
+        }
+    case AK_Cast:
+        {
+            if (node->b >= array_count(ast->casts)) {
+                return hir_add_unsupported_expr(hir, sema, node_index);
+            }
+
+            const AstCastInfo* cast = &ast->casts[node->b];
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind          = HIR_EXPR_Cast,
+                    .type_index    = hir_node_type(sema, node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .operand_expr_index =
+                        hir_lower_expr(hir, lexer, ast, sema, node->a),
+                    .extra_expr_index =
+                        cast->extra_node_index != U32_MAX
+                            ? hir_lower_expr(
+                                  hir, lexer, ast, sema, cast->extra_node_index)
+                            : hir_no_index(),
                 });
         }
     default:

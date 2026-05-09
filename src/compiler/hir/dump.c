@@ -33,30 +33,37 @@ internal string hir_function_name(const HirFunction* function,
     return lex_symbol(lexer, function->symbol_handle);
 }
 
-internal string hir_type_name(const Lexer* lexer,
-                              const Sema*  sema,
-                              Arena*       arena,
-                              u32          type_index)
+internal void hir_append_type_name(StringBuilder* sb,
+                                   const Lexer*   lexer,
+                                   const Sema*    sema,
+                                   u32            type_index)
 {
     if (!sema || type_index == sema_no_type() ||
         type_index >= array_count(sema->types)) {
-        return s("<unknown>");
+        sb_append_cstr(sb, "<unknown>");
+        return;
     }
-    return sema_type_name(lexer, sema, arena, type_index);
+
+    Arena temp = {0};
+    arena_init(&temp);
+    string name = sema_type_name(lexer, sema, &temp, type_index);
+    sb_append_string(sb, name);
+    arena_done(&temp);
 }
 
-internal string hir_function_return_type_name(const HirFunction* function,
-                                              const Lexer*       lexer,
-                                              const Sema*        sema,
-                                              Arena*             arena)
+internal void hir_append_function_return_type_name(StringBuilder*     sb,
+                                                   const HirFunction* function,
+                                                   const Lexer*       lexer,
+                                                   const Sema*        sema)
 {
     if (!sema || function->type_index == sema_no_type() ||
         function->type_index >= array_count(sema->types) ||
         sema->types[function->type_index].kind != STK_Function) {
-        return s("<unknown>");
+        sb_append_cstr(sb, "<unknown>");
+        return;
     }
-    return hir_type_name(
-        lexer, sema, arena, sema->types[function->type_index].return_type);
+    hir_append_type_name(
+        sb, lexer, sema, sema->types[function->type_index].return_type);
 }
 
 internal cstr hir_binary_op_name(HirBinaryOp op)
@@ -160,14 +167,32 @@ internal void hir_render_expr(StringBuilder* sb,
     }
 
     const HirExpr* expr = &hir->exprs[expr_index];
-    sb_append_string(sb, hir_type_name(lexer, sema, arena, expr->type_index));
+    hir_append_type_name(sb, lexer, sema, expr->type_index);
     sb_append_char(sb, ' ');
     switch (expr->kind) {
     case HIR_EXPR_IntegerLiteral:
         sb_format(sb, "%lld", (long long)expr->integer);
         break;
+    case HIR_EXPR_FloatLiteral:
+        sb_format(sb, "%.17g", expr->floating);
+        break;
+    case HIR_EXPR_StringLiteral:
+        if (expr->string_is_cstring) {
+            sb_append_char(sb, 'c');
+        }
+        sb_append_char(sb, '"');
+        if (expr->string_index < array_count(lexer->strings)) {
+            sb_append_string(sb, lexer->strings[expr->string_index]);
+        } else {
+            sb_append_cstr(sb, "<missing>");
+        }
+        sb_append_char(sb, '"');
+        break;
     case HIR_EXPR_BoolLiteral:
         sb_append_cstr(sb, expr->boolean ? "yes" : "no");
+        break;
+    case HIR_EXPR_NilLiteral:
+        sb_append_cstr(sb, "nil");
         break;
     case HIR_EXPR_LocalRef:
         if (expr->symbol_handle != U32_MAX) {
@@ -213,6 +238,18 @@ internal void hir_render_expr(StringBuilder* sb,
         }
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Cast:
+        sb_append_cstr(sb, "cast(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_append_cstr(sb, " as ");
+        hir_append_type_name(sb, lexer, sema, expr->type_index);
+        if (expr->extra_expr_index != U32_MAX) {
+            sb_append_cstr(sb, ", ");
+            hir_render_expr(
+                sb, hir, lexer, sema, arena, expr->extra_expr_index);
+        }
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");
@@ -241,8 +278,7 @@ internal void hir_render_stmt(StringBuilder* sb,
             sb_append_cstr(sb, "<local>");
         }
         sb_append_cstr(sb, ": ");
-        sb_append_string(sb,
-                         hir_type_name(lexer, sema, arena, stmt->type_index));
+        hir_append_type_name(sb, lexer, sema, stmt->type_index);
         sb_append_cstr(sb, " = ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
@@ -300,12 +336,10 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
             } else {
                 sb_append_cstr(&sb, "");
             }
-            sb_append_string(
-                &sb, hir_type_name(lexer, sema, arena, param->type_index));
+            hir_append_type_name(&sb, lexer, sema, param->type_index);
         }
         sb_append_cstr(&sb, ") -> ");
-        sb_append_string(
-            &sb, hir_function_return_type_name(function, lexer, sema, arena));
+        hir_append_function_return_type_name(&sb, function, lexer, sema);
         if (function->body_block_index == U32_MAX) {
             sb_append_char(&sb, '\n');
         } else {
