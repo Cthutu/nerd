@@ -182,6 +182,9 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Call:
     case AK_Cast:
     case AK_Index:
+    case AK_Tuple:
+    case AK_TupleField:
+    case AK_Array:
     case AK_Expression:
         return true;
     default:
@@ -364,6 +367,42 @@ internal u32 hir_lower_expr(Hir*         hir,
                                     hir, lexer, ast, sema, node->a),
                                 .extra_expr_index = hir_lower_expr(
                                     hir, lexer, ast, sema, node->b),
+                            });
+    case AK_Tuple:
+    case AK_Array:
+        {
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < node->b; ++i) {
+                u32 item_node_index = ast->tuple_items[node->a + i];
+                array_push(hir->call_args,
+                           (HirCallArg){
+                               .expr_index = hir_lower_expr(
+                                   hir, lexer, ast, sema, item_node_index),
+                           });
+            }
+
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind          = node->kind == AK_Tuple ? HIR_EXPR_Tuple
+                                                            : HIR_EXPR_Array,
+                    .type_index    = hir_node_type(sema, node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .first_arg     = first_arg,
+                    .arg_count     = node->b,
+                });
+        }
+    case AK_TupleField:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_TupleField,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle      = U32_MAX,
+                                .local_index        = sema_no_local(),
+                                .integer            = node->b,
+                                .operand_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
                             });
     default:
         return hir_add_unsupported_expr(hir, sema, node_index);

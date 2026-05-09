@@ -257,6 +257,32 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, expr->extra_expr_index);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Tuple:
+    case HIR_EXPR_Array:
+        sb_append_cstr(sb, expr->kind == HIR_EXPR_Tuple ? "tuple(" : "array(");
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            u32 arg_index = expr->first_arg + i;
+            if (arg_index >= array_count(hir->call_args)) {
+                sb_append_cstr(sb, "<missing>");
+                continue;
+            }
+            hir_render_expr(sb,
+                            hir,
+                            lexer,
+                            sema,
+                            arena,
+                            hir->call_args[arg_index].expr_index);
+        }
+        sb_append_char(sb, ')');
+        break;
+    case HIR_EXPR_TupleField:
+        sb_append_cstr(sb, "tuple_field(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        sb_format(sb, ", %lld)", (long long)expr->integer);
+        break;
     case HIR_EXPR_Unsupported:
     default:
         sb_append_cstr(sb, "<unsupported>");

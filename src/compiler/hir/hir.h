@@ -37,6 +37,9 @@ typedef enum : u8 {
     HIR_EXPR_Call,
     HIR_EXPR_Cast,
     HIR_EXPR_Index,
+    HIR_EXPR_Tuple,
+    HIR_EXPR_TupleField,
+    HIR_EXPR_Array,
 } HirExprKind;
 
 typedef enum : u8 {
