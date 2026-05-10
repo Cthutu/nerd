@@ -684,6 +684,7 @@ typedef struct {
     u32                   next_temp;
     u32                   next_label;
     bool                  block_terminated;
+    bool                  emitted_break;
     string                break_label;
     string                continue_label;
     Array(LlvmLocalValue) locals;
@@ -3493,16 +3494,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
             string old_break    = ctx->break_label;
             string old_continue = ctx->continue_label;
+            bool   old_break_emitted = ctx->emitted_break;
             ctx->break_label    = end_label;
             ctx->continue_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
+            ctx->emitted_break = false;
             if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
                 ctx->break_label    = old_break;
                 ctx->continue_label = old_continue;
+                ctx->emitted_break  = old_break_emitted;
                 return (LlvmValue){0};
             }
+            bool loop_emitted_break = ctx->emitted_break;
             ctx->break_label    = old_break;
             ctx->continue_label = old_continue;
+            ctx->emitted_break  = old_break_emitted;
             string next_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
             if (!ctx->block_terminated) {
@@ -3525,7 +3531,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(cond_label));
             }
 
-            sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+            bool can_reach_end = loop_emitted_break ||
+                                 loop->condition_expr_index != U32_MAX;
+            if (can_reach_end) {
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                ctx->block_terminated = false;
+            }
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
@@ -3751,6 +3762,9 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
 internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt);
+internal bool llvm_emit_return(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt);
 
 internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
                                             const HirFunction*   function,
@@ -3798,6 +3812,8 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
         return llvm_emit_let(ctx, function, stmt);
     case HIR_STMT_Assign:
         return llvm_emit_assign(ctx, function, stmt);
+    case HIR_STMT_Return:
+        return llvm_emit_return(ctx, function, stmt);
     case HIR_STMT_Expr:
     case HIR_STMT_Assert:
         if (stmt->expr_index == U32_MAX) {
@@ -3814,6 +3830,7 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                   "  br label %%" STRINGP "\n",
                   STRINGV(ctx->break_label));
         ctx->block_terminated = true;
+        ctx->emitted_break     = true;
         return true;
     case HIR_STMT_Continue:
         if (ctx->continue_label.count == 0) {
