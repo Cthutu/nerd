@@ -35,7 +35,8 @@ extern func fn.1(i32) -> i32
 define i32 @fn.0() {
   %t0 = sub i32 0, 7
   %t1 = call i32 @abs(i32 %t0)
-  ret i32 0
+  %t2 = add i32 %t1, 12
+  ret i32 %t2
 }
 
 declare i32 @abs(i32)
