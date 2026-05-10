@@ -451,6 +451,13 @@ internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
     return sb_to_string(&sb);
 }
 
+internal u32 llvm_local_type(LlvmFunctionContext* ctx, u32 local_index)
+{
+    return ctx->sema != NULL && local_index < array_count(ctx->sema->locals)
+               ? ctx->sema->locals[local_index].type_index
+               : sema_no_type();
+}
+
 internal string llvm_param_value(const HirFunction* function,
                                  const Hir*         hir,
                                  const Lexer*       lexer,
@@ -1473,8 +1480,144 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
             const HirFor* loop = &ctx->hir->fors[expr->for_index];
             if (loop->kind != HIR_FOR_Condition &&
-                loop->kind != HIR_FOR_CStyle) {
+                loop->kind != HIR_FOR_CStyle && loop->kind != HIR_FOR_In) {
                 return (LlvmValue){0};
+            }
+
+            if (loop->kind == HIR_FOR_In) {
+                LlvmValue iterable =
+                    llvm_emit_expr(ctx, function, loop->iterable_expr_index);
+                if (!iterable.ok ||
+                    llvm_type_kind(ctx->sema, iterable.type_index) !=
+                        STK_Slice) {
+                    return (LlvmValue){0};
+                }
+
+                string slice_type = llvm_type_string(ctx, iterable.type_index);
+                string data_ptr   = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", 0\n",
+                          STRINGV(data_ptr),
+                          STRINGV(slice_type),
+                          STRINGV(iterable.value));
+                string count = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", 1\n",
+                          STRINGV(count),
+                          STRINGV(slice_type),
+                          STRINGV(iterable.value));
+
+                u32 index_type = llvm_local_type(ctx, loop->index_local_index);
+                if (index_type == sema_no_type()) {
+                    index_type = expr->type_index;
+                }
+                LlvmLocalSlot* index_slot = NULL;
+                if (loop->index_local_index != U32_MAX) {
+                    index_slot = llvm_ensure_local_slot(
+                        ctx, loop->index_local_index, index_type);
+                    llvm_store_local_slot(ctx,
+                                          index_slot,
+                                          (LlvmValue){
+                                              .ok         = true,
+                                              .type_index = index_type,
+                                              .value      = s("0"),
+                                          });
+                }
+
+                u32 item_type = llvm_local_type(ctx, loop->item_local_index);
+                LlvmLocalSlot* item_slot = NULL;
+                if (loop->item_local_index != U32_MAX) {
+                    item_slot = llvm_ensure_local_slot(
+                        ctx, loop->item_local_index, item_type);
+                }
+
+                string cond_label = llvm_label(ctx, "for.in.cond");
+                string body_label = llvm_label(ctx, "for.in.body");
+                string end_label  = llvm_label(ctx, "for.in.end");
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(cond_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
+                LlvmValue index_value =
+                    index_slot != NULL
+                        ? llvm_load_local_slot(ctx, index_slot)
+                        : (LlvmValue){.ok         = true,
+                                      .type_index = index_type,
+                                      .value      = s("0")};
+                string cond = llvm_temp(ctx);
+                string index_type_string =
+                    llvm_type_string(ctx, index_value.type_index);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp ult " STRINGP " " STRINGP
+                          ", " STRINGP "\n",
+                          STRINGV(cond),
+                          STRINGV(index_type_string),
+                          STRINGV(index_value.value),
+                          STRINGV(count));
+                sb_format(ctx->sb,
+                          "  br i1 " STRINGP ", label %%" STRINGP
+                          ", label %%" STRINGP "\n",
+                          STRINGV(cond),
+                          STRINGV(body_label),
+                          STRINGV(end_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                u32 value_type =
+                    llvm_collection_item_type(ctx->sema, iterable.type_index);
+                string value_type_string = llvm_type_string(ctx, value_type);
+                string item_ptr          = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr inbounds " STRINGP
+                          ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                          STRINGV(item_ptr),
+                          STRINGV(value_type_string),
+                          STRINGV(data_ptr),
+                          STRINGV(index_type_string),
+                          STRINGV(index_value.value));
+                if (item_slot != NULL) {
+                    llvm_store_local_slot(ctx,
+                                          item_slot,
+                                          (LlvmValue){
+                                              .ok         = true,
+                                              .type_index = item_type,
+                                              .value      = item_ptr,
+                                          });
+                }
+                if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
+                    return (LlvmValue){0};
+                }
+
+                if (index_slot != NULL) {
+                    LlvmValue current = llvm_load_local_slot(ctx, index_slot);
+                    string next       = llvm_temp(ctx);
+                    string type       = llvm_type_string(ctx, current.type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = add " STRINGP " " STRINGP
+                              ", 1\n",
+                              STRINGV(next),
+                              STRINGV(type),
+                              STRINGV(current.value));
+                    llvm_store_local_slot(ctx,
+                                          index_slot,
+                                          (LlvmValue){
+                                              .ok         = true,
+                                              .type_index = current.type_index,
+                                              .value      = next,
+                                          });
+                }
+
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(cond_label));
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s(""),
+                };
             }
 
             if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
@@ -1673,6 +1816,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
+            Array(LlvmValue) args = NULL;
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue value = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!value.ok) {
+                    array_free(args);
+                    return (LlvmValue){0};
+                }
+                array_push(args, value);
+            }
+
             string temp        = llvm_temp(ctx);
             string return_type = llvm_type_string(ctx, expr->type_index);
             sb_format(ctx->sb,
@@ -1684,12 +1839,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (i > 0) {
                     sb_append_cstr(ctx->sb, ", ");
                 }
-                const HirCallArg* arg =
-                    &ctx->hir->call_args[expr->first_arg + i];
-                LlvmValue value = llvm_emit_expr(ctx, function, arg->expr_index);
-                if (!value.ok) {
-                    return (LlvmValue){0};
-                }
+                LlvmValue value = args[i];
                 string type = llvm_type_string(ctx, value.type_index);
                 sb_format(ctx->sb,
                           STRINGP " " STRINGP,
@@ -1697,6 +1847,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(value.value));
             }
             sb_append_cstr(ctx->sb, ")\n");
+            array_free(args);
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
