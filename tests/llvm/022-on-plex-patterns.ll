@@ -42,8 +42,10 @@ on.end.0:
   ret i32 %t9
 }
 define i32 @fn.1() {
-  %t0 = call i32 @fn.0({ i32, i32 } { i32 4, i32 9 })
-  ret i32 %t0
+  %t0 = insertvalue { i32, i32 } poison, i32 4, 0
+  %t1 = insertvalue { i32, i32 } %t0, i32 9, 1
+  %t2 = call i32 @fn.0({ i32, i32 } %t1)
+  ret i32 %t2
 }
 @$score = alias i32 ({ i32, i32 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

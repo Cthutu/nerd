@@ -2810,28 +2810,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                                   expr->type_index);
             }
 
-            Arena plex_arena = {0};
-            arena_init(&plex_arena);
-            StringBuilder value = {0};
-            sb_init(&value, &plex_arena);
-
-            LlvmValue base = {0};
-            if (expr->kind == HIR_EXPR_PlexUpdate) {
-                base = llvm_emit_expr(ctx, function, expr->operand_expr_index);
-                if (!base.ok) {
-                    arena_done(&plex_arena);
-                    return (LlvmValue){0};
-                }
-                sb_append_string(&value, base.value);
-            } else {
-                sb_append_cstr(&value, "{ ");
+            if (expr->kind == HIR_EXPR_Plex) {
+                Array(LlvmValue) values = NULL;
                 u32 field_count =
                     llvm_record_field_count(ctx->sema, expr->type_index);
                 for (u32 i = 0; i < field_count; ++i) {
-                    if (i > 0) {
-                        sb_append_cstr(&value, ", ");
-                    }
-
                     LlvmValue field_value =
                         llvm_default_value(ctx,
                                            llvm_record_field_type(
@@ -2848,22 +2831,25 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         }
                     }
                     if (!field_value.ok) {
-                        arena_done(&plex_arena);
+                        array_free(values);
                         return (LlvmValue){0};
                     }
-                    string field_type =
-                        llvm_type_string(ctx, field_value.type_index);
-                    sb_format(&value,
-                              STRINGP " " STRINGP,
-                              STRINGV(field_type),
-                              STRINGV(field_value.value));
+                    array_push(values, field_value);
                 }
-                sb_append_cstr(&value, " }");
+                LlvmValue result = llvm_build_aggregate_value(ctx,
+                                                              expr->type_index,
+                                                              values,
+                                                              field_count);
+                array_free(values);
+                return result;
             }
 
-            string rendered =
-                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
-            arena_done(&plex_arena);
+            LlvmValue base =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!base.ok) {
+                return (LlvmValue){0};
+            }
+            string rendered = base.value;
 
             if (expr->kind == HIR_EXPR_PlexUpdate) {
                 for (u32 i = 0; i < expr->arg_count; ++i) {
@@ -2984,7 +2970,31 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 string type = llvm_type_string(ctx, lhs.type_index);
                 string temp = llvm_temp(ctx);
-                if (llvm_float_bits(ctx->sema, lhs.type_index) > 0 ||
+                if (llvm_type_kind(ctx->sema, lhs.type_index) == STK_Enum &&
+                    llvm_type_kind(ctx->sema, rhs.type_index) == STK_Enum) {
+                    string lhs_tag = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 0\n",
+                              STRINGV(lhs_tag),
+                              STRINGV(type),
+                              STRINGV(lhs.value));
+                    string rhs_type = llvm_type_string(ctx, rhs.type_index);
+                    string rhs_tag  = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 0\n",
+                              STRINGV(rhs_tag),
+                              STRINGV(rhs_type),
+                              STRINGV(rhs.value));
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = icmp " STRINGP " i64 "
+                              STRINGP ", " STRINGP "\n",
+                              STRINGV(temp),
+                              STRINGV(cmp),
+                              STRINGV(lhs_tag),
+                              STRINGV(rhs_tag));
+                } else if (llvm_float_bits(ctx->sema, lhs.type_index) > 0 ||
                     llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
                     cmp = llvm_float_compare_instruction(expr->binary_op);
                     if (cmp.count == 0) {
