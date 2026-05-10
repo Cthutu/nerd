@@ -1771,6 +1771,120 @@ internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
         return true;
     }
 
+    if (kind == STK_Slice) {
+        llvm_emit_append_byte(ctx, '[');
+        string slice_type = llvm_type_string(ctx, value.type_index);
+        string data       = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                  ", 0\n",
+                  STRINGV(data),
+                  STRINGV(slice_type),
+                  STRINGV(value.value));
+        string count = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                  ", 1\n",
+                  STRINGV(count),
+                  STRINGV(slice_type),
+                  STRINGV(value.value));
+
+        string index_ptr = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca i64\n"
+                  "  store i64 0, ptr " STRINGP "\n",
+                  STRINGV(index_ptr),
+                  STRINGV(index_ptr));
+
+        string cond_label = llvm_label(ctx, "slice.string.cond");
+        string body_label = llvm_label(ctx, "slice.string.body");
+        string sep_label  = llvm_label(ctx, "slice.string.sep");
+        string item_label = llvm_label(ctx, "slice.string.item");
+        string end_label  = llvm_label(ctx, "slice.string.end");
+
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
+        string index = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                  STRINGV(index),
+                  STRINGV(index_ptr));
+        string more = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp ult i64 " STRINGP ", " STRINGP
+                  "\n",
+                  STRINGV(more),
+                  STRINGV(index),
+                  STRINGV(count));
+        sb_format(ctx->sb,
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+                  STRINGP "\n",
+                  STRINGV(more),
+                  STRINGV(body_label),
+                  STRINGV(end_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+        string needs_sep = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp ne i64 " STRINGP ", 0\n",
+                  STRINGV(needs_sep),
+                  STRINGV(index));
+        sb_format(ctx->sb,
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+                  STRINGP "\n",
+                  STRINGV(needs_sep),
+                  STRINGV(sep_label),
+                  STRINGV(item_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(sep_label));
+        llvm_emit_append_byte(ctx, ',');
+        llvm_emit_append_byte(ctx, ' ');
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(item_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(item_label));
+        u32 item_type = llvm_collection_item_type(ctx->sema, value.type_index);
+        if (item_type == sema_no_type()) {
+            return false;
+        }
+        string item_type_string = llvm_type_string(ctx, item_type);
+        string item_ptr         = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n",
+                  STRINGV(item_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(index));
+        string item = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(item),
+                  STRINGV(item_type_string),
+                  STRINGV(item_ptr));
+        if (!llvm_emit_append_string_value(ctx,
+                                           (LlvmValue){
+                                               .ok         = true,
+                                               .type_index = item_type,
+                                               .value      = item,
+                                           })) {
+            return false;
+        }
+        string next = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = add i64 " STRINGP ", 1\n",
+                  STRINGV(next),
+                  STRINGV(index));
+        sb_format(ctx->sb,
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(next),
+                  STRINGV(index_ptr));
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+        llvm_emit_append_byte(ctx, ']');
+        return true;
+    }
+
     string suffix = llvm_string_helper_suffix(ctx->sema, value.type_index);
     if (suffix.count == 0) {
         return false;
@@ -2531,6 +2645,95 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
+            if (llvm_type_kind(ctx->sema, target_type) == STK_Slice) {
+                LlvmValue target =
+                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                if (!target.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string slice_type = llvm_type_string(ctx, target_type);
+                string data       = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", 0\n",
+                          STRINGV(data),
+                          STRINGV(slice_type),
+                          STRINGV(target.value));
+
+                string total_count = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", 1\n",
+                          STRINGV(total_count),
+                          STRINGV(slice_type),
+                          STRINGV(target.value));
+
+                i64 start_value = 0;
+                i64 end_value   = 0;
+                bool has_start = llvm_expr_integer_constant(
+                    ctx->hir, expr->lhs_expr_index, &start_value);
+                bool has_end = llvm_expr_integer_constant(
+                    ctx->hir, expr->rhs_expr_index, &end_value);
+
+                string start = has_start ? string_format(ctx->arena,
+                                                         "%lld",
+                                                         (long long)start_value)
+                                         : s("0");
+                string count = {0};
+                if (has_end) {
+                    count = string_format(ctx->arena,
+                                          "%lld",
+                                          (long long)(end_value -
+                                                      (has_start ? start_value
+                                                                 : 0)));
+                } else if (has_start && start_value != 0) {
+                    count = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = sub i64 " STRINGP
+                              ", %lld\n",
+                              STRINGV(count),
+                              STRINGV(total_count),
+                              (long long)start_value);
+                } else {
+                    count = total_count;
+                }
+
+                u32 item_type = llvm_collection_item_type(ctx->sema,
+                                                          target_type);
+                if (item_type == sema_no_type()) {
+                    return (LlvmValue){0};
+                }
+                string item_type_string = llvm_type_string(ctx, item_type);
+                string data_ptr         = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr inbounds " STRINGP
+                          ", ptr " STRINGP ", i64 " STRINGP "\n",
+                          STRINGV(data_ptr),
+                          STRINGV(item_type_string),
+                          STRINGV(data),
+                          STRINGV(start));
+                string slice0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr "
+                          STRINGP ", 0\n",
+                          STRINGV(slice0),
+                          STRINGV(data_ptr));
+                string slice1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } "
+                          STRINGP ", i64 " STRINGP ", 1\n",
+                          STRINGV(slice1),
+                          STRINGV(slice0),
+                          STRINGV(count));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = slice1,
+                };
+            }
+
             LlvmValue target_address =
                 llvm_address_of_expr(ctx, function, expr->operand_expr_index);
             if (!target_address.ok) {
@@ -2615,6 +2818,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 field_index = (u32)expr->integer;
             } else if (llvm_type_kind(ctx->sema, target.type_index) ==
                        STK_String) {
+                string field = lex_symbol(ctx->lexer, expr->symbol_handle);
+                if (string_eq_cstr(field, "data")) {
+                    field_index = 0;
+                } else if (string_eq_cstr(field, "count")) {
+                    field_index = 1;
+                }
+            } else if (llvm_type_kind(ctx->sema, target.type_index) ==
+                       STK_Slice) {
                 string field = lex_symbol(ctx->lexer, expr->symbol_handle);
                 if (string_eq_cstr(field, "data")) {
                     field_index = 0;
