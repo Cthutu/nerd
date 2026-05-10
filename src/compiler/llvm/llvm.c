@@ -1458,6 +1458,17 @@ internal LlvmValue llvm_emit_dynamic_array_free(LlvmFunctionContext* ctx,
                                                 const HirExpr*       call,
                                                 u32 receiver_expr_index);
 
+internal LlvmValue llvm_emit_dynamic_array_pop(LlvmFunctionContext* ctx,
+                                               const HirFunction*   function,
+                                               const HirExpr*       call,
+                                               u32 receiver_expr_index);
+
+internal LlvmValue llvm_emit_dynamic_array_delete(LlvmFunctionContext* ctx,
+                                                  const HirFunction*   function,
+                                                  const HirExpr*       call,
+                                                  u32 receiver_expr_index,
+                                                  bool                 swap);
+
 internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                u32                  target_expr_index,
@@ -5178,6 +5189,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return llvm_emit_dynamic_array_free(
                         ctx, function, expr, dynarray_receiver);
                 }
+                if (string_eq_cstr(dynarray_method, "pop")) {
+                    return llvm_emit_dynamic_array_pop(
+                        ctx, function, expr, dynarray_receiver);
+                }
+                if (string_eq_cstr(dynarray_method, "delete")) {
+                    return llvm_emit_dynamic_array_delete(
+                        ctx, function, expr, dynarray_receiver, false);
+                }
+                if (string_eq_cstr(dynarray_method, "swap_delete")) {
+                    return llvm_emit_dynamic_array_delete(
+                        ctx, function, expr, dynarray_receiver, true);
+                }
                 return (LlvmValue){0};
             }
 
@@ -6469,6 +6492,223 @@ internal LlvmValue llvm_emit_dynamic_array_free(LlvmFunctionContext* ctx,
 
     sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
     ctx->block_terminated = false;
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = call->type_index,
+        .value      = s(""),
+    };
+}
+
+internal LlvmValue llvm_emit_dynamic_array_pop(LlvmFunctionContext* ctx,
+                                               const HirFunction*   function,
+                                               const HirExpr*       call,
+                                               u32 receiver_expr_index)
+{
+    (void)function;
+    if (call->arg_count != 0 ||
+        receiver_expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+    const HirExpr* receiver = &ctx->hir->exprs[receiver_expr_index];
+    u32 item_type = llvm_collection_item_type(ctx->sema, receiver->type_index);
+    if (item_type == sema_no_type()) {
+        return (LlvmValue){0};
+    }
+
+    LlvmValue target = llvm_emit_expr(ctx, function, receiver_expr_index);
+    if (!target.ok) {
+        return (LlvmValue){0};
+    }
+
+    string data = llvm_dynamic_array_load_header_field(ctx, target.value, 0, s("ptr"));
+    string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, target.value, 1);
+    string count     = llvm_temp(ctx);
+    string last      = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load i64, ptr " STRINGP "\n"
+              "  " STRINGP " = sub i64 " STRINGP ", 1\n",
+              STRINGV(count),
+              STRINGV(count_ptr),
+              STRINGV(last),
+              STRINGV(count));
+
+    string item_type_string = llvm_type_string(ctx, item_type);
+    string item_ptr         = llvm_temp(ctx);
+    string item             = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = getelementptr inbounds " STRINGP
+              ", ptr " STRINGP ", i64 " STRINGP "\n"
+              "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n"
+              "  store i64 " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(item_ptr),
+              STRINGV(item_type_string),
+              STRINGV(data),
+              STRINGV(last),
+              STRINGV(item),
+              STRINGV(item_type_string),
+              STRINGV(item_ptr),
+              STRINGV(last),
+              STRINGV(count_ptr));
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = call->type_index,
+        .value      = item,
+    };
+}
+
+internal LlvmValue llvm_emit_dynamic_array_delete(LlvmFunctionContext* ctx,
+                                                  const HirFunction*   function,
+                                                  const HirExpr*       call,
+                                                  u32 receiver_expr_index,
+                                                  bool                 swap)
+{
+    if (call->arg_count != 1 ||
+        receiver_expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+    const HirExpr* receiver = &ctx->hir->exprs[receiver_expr_index];
+    u32 item_type = llvm_collection_item_type(ctx->sema, receiver->type_index);
+    if (item_type == sema_no_type()) {
+        return (LlvmValue){0};
+    }
+
+    LlvmValue target = llvm_emit_expr(ctx, function, receiver_expr_index);
+    const HirCallArg* arg = &ctx->hir->call_args[call->first_arg];
+    LlvmValue index = llvm_emit_expr(ctx, function, arg->expr_index);
+    if (!target.ok || !index.ok) {
+        return (LlvmValue){0};
+    }
+
+    string data = llvm_dynamic_array_load_header_field(ctx, target.value, 0, s("ptr"));
+    string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, target.value, 1);
+    string count     = llvm_temp(ctx);
+    string last      = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load i64, ptr " STRINGP "\n"
+              "  " STRINGP " = sub i64 " STRINGP ", 1\n",
+              STRINGV(count),
+              STRINGV(count_ptr),
+              STRINGV(last),
+              STRINGV(count));
+
+    string index_type = llvm_type_string(ctx, index.type_index);
+    string index_i64  = index.value;
+    if (!string_eq_cstr(index_type, "i64")) {
+        index_i64 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP " to i64\n",
+                  STRINGV(index_i64),
+                  STRINGV(index_type),
+                  STRINGV(index.value));
+    }
+
+    string item_type_string = llvm_type_string(ctx, item_type);
+    if (swap) {
+        string source_ptr = llvm_temp(ctx);
+        string target_ptr = llvm_temp(ctx);
+        string value      = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n"
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n"
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n"
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(source_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(last),
+                  STRINGV(target_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(index_i64),
+                  STRINGV(value),
+                  STRINGV(item_type_string),
+                  STRINGV(source_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(value),
+                  STRINGV(target_ptr),
+                  STRINGV(last),
+                  STRINGV(count_ptr));
+    } else {
+        string index_slot = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca i64\n"
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(index_slot),
+                  STRINGV(index_i64),
+                  STRINGV(index_slot));
+
+        string loop_label = llvm_label(ctx, "dynarray.delete.loop");
+        string body_label = llvm_label(ctx, "dynarray.delete.body");
+        string done_label = llvm_label(ctx, "dynarray.delete.done");
+        sb_format(ctx->sb,
+                  "  br label %%" STRINGP "\n"
+                  STRINGP ":\n",
+                  STRINGV(loop_label),
+                  STRINGV(loop_label));
+
+        string cursor = llvm_temp(ctx);
+        string more   = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load i64, ptr " STRINGP "\n"
+                  "  " STRINGP " = icmp ult i64 " STRINGP ", " STRINGP "\n"
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+                  STRINGP "\n",
+                  STRINGV(cursor),
+                  STRINGV(index_slot),
+                  STRINGV(more),
+                  STRINGV(cursor),
+                  STRINGV(last),
+                  STRINGV(more),
+                  STRINGV(body_label),
+                  STRINGV(done_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+        string next       = llvm_temp(ctx);
+        string source_ptr = llvm_temp(ctx);
+        string target_ptr = llvm_temp(ctx);
+        string value      = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = add i64 " STRINGP ", 1\n"
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n"
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n"
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n"
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n"
+                  "  br label %%" STRINGP "\n",
+                  STRINGV(next),
+                  STRINGV(cursor),
+                  STRINGV(source_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(next),
+                  STRINGV(target_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(cursor),
+                  STRINGV(value),
+                  STRINGV(item_type_string),
+                  STRINGV(source_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(value),
+                  STRINGV(target_ptr),
+                  STRINGV(next),
+                  STRINGV(index_slot),
+                  STRINGV(loop_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
+        sb_format(ctx->sb,
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(last),
+                  STRINGV(count_ptr));
+        ctx->block_terminated = false;
+    }
+
     return (LlvmValue){
         .ok         = true,
         .type_index = call->type_index,
