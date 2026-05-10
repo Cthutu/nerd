@@ -160,6 +160,27 @@ internal void llvm_append_function_name(StringBuilder* sb,
     llvm_append_symbol_name(sb, lex_symbol(lexer, binding->symbol_handle));
 }
 
+internal string llvm_function_name_string(const Hir*   hir,
+                                          const Lexer* lexer,
+                                          Arena*       arena,
+                                          u32          function_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_function_name(&sb, hir, lexer, function_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_symbol_name_string(const Lexer* lexer,
+                                        Arena*       arena,
+                                        u32          symbol_handle)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_symbol_name(&sb, lex_symbol(lexer, symbol_handle));
+    return sb_to_string(&sb);
+}
+
 internal void llvm_append_function_signature(StringBuilder*   sb,
                                              const Hir*        hir,
                                              const Lexer*      lexer,
@@ -228,6 +249,273 @@ internal void llvm_append_default_return(StringBuilder* sb,
     }
 }
 
+typedef struct {
+    StringBuilder* sb;
+    const Hir*     hir;
+    const Lexer*   lexer;
+    const Sema*    sema;
+    Arena*         arena;
+    u32            next_temp;
+} LlvmFunctionContext;
+
+typedef struct {
+    bool   ok;
+    u32    type_index;
+    string value;
+} LlvmValue;
+
+internal string llvm_temp(LlvmFunctionContext* ctx)
+{
+    return string_format(ctx->arena, "%%t%u", ctx->next_temp++);
+}
+
+internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, ctx->arena);
+    llvm_append_type(&sb, ctx->sema, type_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_param_value(const HirFunction* function,
+                                 const Hir*         hir,
+                                 const Lexer*       lexer,
+                                 Arena*             arena,
+                                 u32                local_index)
+{
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &hir->params[function->first_param + i];
+        if (param->local_index != local_index) {
+            continue;
+        }
+        return string_format(
+            arena, "%%%.*s", (int)lex_symbol(lexer, param->symbol_handle).count,
+            lex_symbol(lexer, param->symbol_handle).data);
+    }
+    return (string){0};
+}
+
+internal string llvm_binary_instruction(HirBinaryOp op)
+{
+    switch (op) {
+    case HIR_BINARY_Add:
+        return s("add");
+    case HIR_BINARY_Subtract:
+        return s("sub");
+    case HIR_BINARY_Multiply:
+        return s("mul");
+    case HIR_BINARY_Divide:
+        return s("sdiv");
+    case HIR_BINARY_Modulo:
+        return s("srem");
+    case HIR_BINARY_BitwiseAnd:
+        return s("and");
+    case HIR_BINARY_BitwiseXor:
+        return s("xor");
+    case HIR_BINARY_BitwiseOr:
+        return s("or");
+    case HIR_BINARY_ShiftLeft:
+        return s("shl");
+    case HIR_BINARY_ShiftRight:
+        return s("ashr");
+    default:
+        return (string){0};
+    }
+}
+
+internal bool llvm_callee_name(LlvmFunctionContext* ctx,
+                               u32                  callee_expr_index,
+                               string*              out)
+{
+    if (callee_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* callee = &ctx->hir->exprs[callee_expr_index];
+    if (callee->kind == HIR_EXPR_FunctionRef &&
+        callee->ref_index < array_count(ctx->hir->functions)) {
+        *out = llvm_function_name_string(
+            ctx->hir, ctx->lexer, ctx->arena, callee->ref_index);
+        return true;
+    }
+
+    if (callee->kind != HIR_EXPR_LocalRef ||
+        callee->ref_kind != HIR_REF_Binding ||
+        callee->ref_index >= array_count(ctx->hir->bindings)) {
+        return false;
+    }
+
+    const HirBinding* binding = &ctx->hir->bindings[callee->ref_index];
+    switch (binding->kind) {
+    case HIR_BINDING_Function:
+        *out = llvm_function_name_string(
+            ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
+        return true;
+    case HIR_BINDING_Import:
+        *out = llvm_symbol_name_string(
+            ctx->lexer, ctx->arena, binding->symbol_handle);
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  u32                  expr_index)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_IntegerLiteral:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value = string_format(ctx->arena, "%lld", (long long)expr->integer),
+        };
+    case HIR_EXPR_BoolLiteral:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value      = expr->boolean ? s("1") : s("0"),
+        };
+    case HIR_EXPR_LocalRef:
+        if (expr->ref_kind == HIR_REF_Local) {
+            string value = llvm_param_value(function,
+                                            ctx->hir,
+                                            ctx->lexer,
+                                            ctx->arena,
+                                            expr->ref_index);
+            return (LlvmValue){
+                .ok         = value.count > 0,
+                .type_index = expr->type_index,
+                .value      = value,
+            };
+        }
+        return (LlvmValue){0};
+    case HIR_EXPR_Binary:
+        {
+            string instr = llvm_binary_instruction(expr->binary_op);
+            if (instr.count == 0) {
+                return (LlvmValue){0};
+            }
+
+            LlvmValue lhs =
+                llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+            LlvmValue rhs =
+                llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+            if (!lhs.ok || !rhs.ok) {
+                return (LlvmValue){0};
+            }
+
+            string type = llvm_type_string(ctx, expr->type_index);
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
+                      ", " STRINGP "\n",
+                      STRINGV(temp),
+                      STRINGV(instr),
+                      STRINGV(type),
+                      STRINGV(lhs.value),
+                      STRINGV(rhs.value));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = temp,
+            };
+        }
+    case HIR_EXPR_Call:
+        {
+            string callee = {0};
+            if (!llvm_callee_name(ctx, expr->callee_expr_index, &callee)) {
+                return (LlvmValue){0};
+            }
+
+            string temp        = llvm_temp(ctx);
+            string return_type = llvm_type_string(ctx, expr->type_index);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = call " STRINGP " " STRINGP "(",
+                      STRINGV(temp),
+                      STRINGV(return_type),
+                      STRINGV(callee));
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(ctx->sb, ", ");
+                }
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue value = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!value.ok) {
+                    return (LlvmValue){0};
+                }
+                string type = llvm_type_string(ctx, value.type_index);
+                sb_format(ctx->sb,
+                          STRINGP " " STRINGP,
+                          STRINGV(type),
+                          STRINGV(value.value));
+            }
+            sb_append_cstr(ctx->sb, ")\n");
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = temp,
+            };
+        }
+    default:
+        return (LlvmValue){0};
+    }
+}
+
+internal bool llvm_emit_return(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt)
+{
+    u32 return_type = llvm_function_return_type(ctx->sema, function->type_index);
+    if (stmt->expr_index == U32_MAX || llvm_type_is_void(ctx->sema, return_type)) {
+        sb_append_cstr(ctx->sb, "  ret void\n");
+        return true;
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
+        return false;
+    }
+
+    string type = llvm_type_string(ctx, return_type);
+    sb_format(ctx->sb,
+              "  ret " STRINGP " " STRINGP "\n",
+              STRINGV(type),
+              STRINGV(value.value));
+    return true;
+}
+
+internal bool llvm_emit_block(LlvmFunctionContext* ctx,
+                              const HirFunction*   function,
+                              u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return false;
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            continue;
+        }
+
+        const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        if (stmt->kind == HIR_STMT_Return) {
+            return llvm_emit_return(ctx, function, stmt);
+        }
+    }
+
+    return false;
+}
+
 internal void llvm_render_import(StringBuilder* sb,
                                  const Lexer*   lexer,
                                  const Sema*    sema,
@@ -259,6 +547,7 @@ internal void llvm_render_function(StringBuilder*    sb,
                                    const Hir*         hir,
                                    const Lexer*       lexer,
                                    const Sema*        sema,
+                                   Arena*             arena,
                                    const HirFunction* function,
                                    u32                function_index)
 {
@@ -275,9 +564,23 @@ internal void llvm_render_function(StringBuilder*    sb,
     llvm_append_function_signature(
         sb, hir, lexer, sema, function, function_index);
     sb_append_cstr(sb, " {\n");
-    u32 return_type = llvm_function_return_type(sema, function->type_index);
-    llvm_append_default_return(sb, sema, return_type);
+    Arena temp = {0};
+    arena_init(&temp);
+    LlvmFunctionContext ctx = {
+        .sb        = sb,
+        .hir       = hir,
+        .lexer     = lexer,
+        .sema      = sema,
+        .arena     = &temp,
+        .next_temp = 0,
+    };
+    if (!llvm_emit_block(&ctx, function, function->body_block_index)) {
+        u32 return_type = llvm_function_return_type(sema, function->type_index);
+        llvm_append_default_return(sb, sema, return_type);
+    }
+    arena_done(&temp);
     sb_append_cstr(sb, "}\n");
+    (void)arena;
 }
 
 string llvm_render_hir(const Hir* hir,
@@ -299,7 +602,8 @@ string llvm_render_hir(const Hir* hir,
     }
 
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
-        llvm_render_function(&sb, hir, lexer, sema, &hir->functions[i], i);
+        llvm_render_function(
+            &sb, hir, lexer, sema, arena, &hir->functions[i], i);
         sb_append_char(&sb, '\n');
     }
 
