@@ -30,111 +30,131 @@ word = done
 flag = yes
 
 ¬
-fn main
-string.reset
-call fn(string)->void:pr, string:"first = "
-$0 = string.start
-local $2 = i32:0
-block
-$2 = i32:7
-jump L3
-end
-label L3
-string.append i32:$2
-$1 = string.finish $0
-call fn(string)->void:prn, string:$1
-string.reset
-$4 = string.start
-string.append string:"second = "
-local $6 = i32:0
-block
-$8 = i32:$2 + i32:5
-$6 = i32:$8
-jump L7
-end
-label L7
-string.append i32:$6
-$5 = string.finish $4
-call fn(string)->void:prn, string:$5
-string.reset
-$9 = string.start
-string.append string:"word = "
-local $11 = string:0
-block
-$11 = string:"done"
-jump L12
-end
-label L12
-string.append string:$11
-$10 = string.finish $9
-call fn(string)->void:prn, string:$10
-string.reset
-$13 = string.start
-string.append string:"flag = "
-local $15 = bool:no
-block
-$15 = bool:yes
-jump L16
-end
-label L16
-string.append bool:$15
-$14 = string.finish $13
-call fn(string)->void:prn, string:$14
-string.reset
-return i32:$6
-end
-¬
-void init() {}
-int $main() {
-    string_builder_reset();
-    pr((string){.data = (u8*)"first = ", .count = 8});
-    size_t $0 = string_builder_mark();
-    int $2 = 0;
-    {
-        $2 = 7;
-        goto L3;
-    }
-    L3: ;
-    string_builder_append_string(to_string$i32($2));
-    string $1 = string_builder_finish($0);
-    prn($1);
-    string_builder_reset();
-    size_t $4 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"second = ", .count = 9}));
-    int $6 = 0;
-    {
-        int $8 = $2 + 5;
-        $6 = $8;
-        goto L7;
-    }
-    L7: ;
-    string_builder_append_string(to_string$i32($6));
-    string $5 = string_builder_finish($4);
-    prn($5);
-    string_builder_reset();
-    size_t $9 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"word = ", .count = 7}));
-    string $11 = (string){0};
-    {
-        $11 = (string){.data = (u8*)"done", .count = 4};
-        goto L12;
-    }
-    L12: ;
-    string_builder_append_string(to_string$string($11));
-    string $10 = string_builder_finish($9);
-    prn($10);
-    string_builder_reset();
-    size_t $13 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"flag = ", .count = 7}));
-    bool $15 = false;
-    {
-        $15 = true;
-        goto L16;
-    }
-    L16: ;
-    string_builder_append_string(to_string$bool($15));
-    string $14 = string_builder_finish($13);
-    prn($14);
-    string_builder_reset();
-    return $6;
+hir 0
+module module.0(045-expression-block.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
+bind main = fn.0
+func fn.0() -> i32 {
+  let first: untyped integer = untyped integer block {
+    break untyped integer 7
+  }
+  let second: untyped integer = untyped integer block {
+    break untyped integer add(untyped integer local.0(first), untyped integer 5)
+  }
+  let word: string = string block {
+    break string "done"
+  }
+  let flag: bool = bool block {
+    break bool yes
+  }
+  expr void call bind.0(pr)(string "first = ")
+  expr void call bind.2(prn)(string interpolate(untyped integer local.0(first)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "second = ", untyped integer local.1(second)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "word = ", string local.2(word)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "flag = ", bool local.3(flag)))
+  return untyped integer local.1(second)
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [5 x i8] c"done\00"
+@.str.m0.1 = private unnamed_addr constant [9 x i8] c"first = \00"
+@.str.m0.2 = private unnamed_addr constant [10 x i8] c"second = \00"
+@.str.m0.3 = private unnamed_addr constant [8 x i8] c"word = \00"
+@.str.m0.4 = private unnamed_addr constant [8 x i8] c"flag = \00"
+
+declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare void @string_builder_reset()
+declare i64 @string_builder_mark()
+declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_byte(i8)
+declare { ptr, i64 } @string_builder_finish(i64)
+declare { ptr, i64 } @to_string$string({ ptr, i64 })
+declare { ptr, i64 } @to_string$bool(i1)
+declare { ptr, i64 } @to_string$i8(i8)
+declare { ptr, i64 } @to_string$i16(i16)
+declare { ptr, i64 } @to_string$i32(i32)
+declare { ptr, i64 } @to_string$i64(i64)
+declare { ptr, i64 } @to_string$u8(i8)
+declare { ptr, i64 } @to_string$u16(i16)
+declare { ptr, i64 } @to_string$u32(i32)
+declare { ptr, i64 } @to_string$u64(i64)
+declare { ptr, i64 } @to_string$isize(i64)
+declare { ptr, i64 } @to_string$usize(i64)
+declare { ptr, i64 } @to_string$f32(float)
+declare { ptr, i64 } @to_string$f64(double)
+
+declare void @$pr({ ptr, i64 })
+declare void @$epr({ ptr, i64 })
+declare void @$prn({ ptr, i64 })
+declare void @$eprn({ ptr, i64 })
+declare { ptr, i64 } @$input({ ptr, i64 })
+
+define i32 @fn.0() {
+  %t0 = alloca i32, align 4
+  store i32 0, ptr %t0, align 4
+  store i32 7, ptr %t0, align 4
+  br label %block.end.0
+block.end.0:
+  %t1 = load i32, ptr %t0, align 4
+  %t2 = alloca i32, align 4
+  store i32 0, ptr %t2, align 4
+  %t3 = add i32 %t1, 5
+  store i32 %t3, ptr %t2, align 4
+  br label %block.end.1
+block.end.1:
+  %t4 = load i32, ptr %t2, align 4
+  %t5 = alloca { ptr, i64 }, align 4
+  store { ptr, i64 } zeroinitializer, ptr %t5, align 4
+  store { ptr, i64 } { ptr @.str.m0.0, i64 4 }, ptr %t5, align 4
+  br label %block.end.2
+block.end.2:
+  %t6 = load { ptr, i64 }, ptr %t5, align 4
+  %t7 = alloca i1, align 4
+  store i1 0, ptr %t7, align 4
+  store i1 1, ptr %t7, align 4
+  br label %block.end.3
+block.end.3:
+  %t8 = load i1, ptr %t7, align 4
+  call void @$pr({ ptr, i64 } { ptr @.str.m0.1, i64 8 })
+  %t9 = call i64 @string_builder_mark()
+  %t10 = call { ptr, i64 } @to_string$i32(i32 %t1)
+  call void @string_builder_append_string({ ptr, i64 } %t10)
+  %t11 = call { ptr, i64 } @string_builder_finish(i64 %t9)
+  call void @$prn({ ptr, i64 } %t11)
+  %t12 = call i64 @string_builder_mark()
+  %t13 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 9 })
+  call void @string_builder_append_string({ ptr, i64 } %t13)
+  %t14 = call { ptr, i64 } @to_string$i32(i32 %t4)
+  call void @string_builder_append_string({ ptr, i64 } %t14)
+  %t15 = call { ptr, i64 } @string_builder_finish(i64 %t12)
+  call void @$prn({ ptr, i64 } %t15)
+  %t16 = call i64 @string_builder_mark()
+  %t17 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 7 })
+  call void @string_builder_append_string({ ptr, i64 } %t17)
+  %t18 = call { ptr, i64 } @to_string$string({ ptr, i64 } %t6)
+  call void @string_builder_append_string({ ptr, i64 } %t18)
+  %t19 = call { ptr, i64 } @string_builder_finish(i64 %t16)
+  call void @$prn({ ptr, i64 } %t19)
+  %t20 = call i64 @string_builder_mark()
+  %t21 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 7 })
+  call void @string_builder_append_string({ ptr, i64 } %t21)
+  %t22 = call { ptr, i64 } @to_string$bool(i1 %t8)
+  call void @string_builder_append_string({ ptr, i64 } %t22)
+  %t23 = call { ptr, i64 } @string_builder_finish(i64 %t20)
+  call void @$prn({ ptr, i64 } %t23)
+  ret i32 %t4
+}
+
+@$main = alias i32 (), ptr @fn.0

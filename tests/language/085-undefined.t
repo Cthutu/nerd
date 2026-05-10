@@ -8,15 +8,24 @@ main :: fn () {
 ¬
 
 ¬
-fn main
-local value = i32:
-value = i32:42
-return i32:value
-end
-¬
-void init() {}
-int $main() {
-    int $value;
-    $value = 42;
-    return $value;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  expr <unknown> <unsupported>
+  let value: i32 = <unknown> <unsupported>
+  assign i32 local.0(value) = i32 42
+  return i32 local.0(value)
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  %local.0 = alloca i32
+  store i32 0, ptr %local.0
+  store i32 42, ptr %local.0
+  %t0 = load i32, ptr %local.0
+  ret i32 %t0
+}
+
+@$main = alias i32 (), ptr @fn.0

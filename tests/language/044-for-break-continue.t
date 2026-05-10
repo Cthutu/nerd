@@ -10,56 +10,78 @@ main :: fn () {
 ¬
 8
 ¬
+
 ¬
-fn main
-local total = i32:0
-local i = i32:0
-label L0
-$3 = i32:i < i32:6
-branch.false bool:$3, L2
-block
-$4 = i32:i == i32:2
-branch.false bool:$4, L5
-jump L1
-label L5
-$6 = i32:i == i32:5
-branch.false bool:$6, L7
-jump L2
-label L7
-$8 = i32:total + i32:i
-total = i32:$8
-end
-label L1
-$9 = i32:i + i32:1
-i = i32:$9
-jump L0
-label L2
-return i32:total
-end
-¬
-void init() {}
-int $main() {
-    int $total = 0;
-    int $i = 0;
-    L0: ;
-    bool $3 = $i < 6;
-    if (!$3) goto L2;
-    {
-        bool $4 = $i == 2;
-        if (!$4) goto L5;
-        goto L1;
-        L5: ;
-        bool $6 = $i == 5;
-        if (!$6) goto L7;
-        goto L2;
-        L7: ;
-        int $8 = $total + $i;
-        $total = $8;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  let total: i32 = untyped integer 0
+  expr void for c_style {
+    init {
+      let i: i32 = untyped integer 0
     }
-    L1: ;
-    int $9 = $i + 1;
-    $i = $9;
-    goto L0;
-    L2: ;
-    return $total;
+    condition bool less(i32 local.1(i), i32 6)
+    body {
+      expr void on bool equal(i32 local.1(i), i32 2) {
+    value(bool yes) => {
+      continue
+    }
+  }
+      expr void on bool equal(i32 local.1(i), i32 5) {
+    value(bool yes) => {
+      break
+    }
+  }
+      assign i32 local.0(total) = i32 add(i32 local.0(total), i32 local.1(i))
+    }
+    update {
+      assign i32 local.1(i) = i32 add(i32 local.1(i), i32 1)
+    }
+  }
+  return i32 local.0(total)
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  %local.0 = alloca i32
+  store i32 0, ptr %local.0
+  %local.1 = alloca i32
+  store i32 0, ptr %local.1
+  br label %for.cond.0
+for.cond.0:
+  %t0 = load i32, ptr %local.1
+  %t1 = icmp slt i32 %t0, 6
+  br i1 %t1, label %for.body.1, label %for.end.3
+for.body.1:
+  %t2 = load i32, ptr %local.1
+  %t3 = icmp eq i32 %t2, 2
+  %t4 = icmp eq i1 %t3, 1
+  br i1 %t4, label %on.body.5, label %on.end.4
+on.body.5:
+  br label %for.update.2
+on.end.4:
+  %t5 = load i32, ptr %local.1
+  %t6 = icmp eq i32 %t5, 5
+  %t7 = icmp eq i1 %t6, 1
+  br i1 %t7, label %on.body.7, label %on.end.6
+on.body.7:
+  br label %for.end.3
+on.end.6:
+  %t8 = load i32, ptr %local.0
+  %t9 = load i32, ptr %local.1
+  %t10 = add i32 %t8, %t9
+  store i32 %t10, ptr %local.0
+  br label %for.update.2
+for.update.2:
+  %t11 = load i32, ptr %local.1
+  %t12 = add i32 %t11, 1
+  store i32 %t12, ptr %local.1
+  br label %for.cond.0
+for.end.3:
+  %t13 = load i32, ptr %local.0
+  ret i32 %t13
+}
+
+@$main = alias i32 (), ptr @fn.0

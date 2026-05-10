@@ -7,23 +7,32 @@ main :: fn () -> i32 {
 ¬
 42
 ¬
+
 ¬
-fn child_answer
-return i32:37
-end
-fn main
-$0 = call fn()->i32:child_answer
-$1 = call fn()->i32:local_answer
-$2 = i32:$0 + i32:$1
-return i32:$2
-end
+hir 0
+module module.0(132-public-use-reexports.input)
+import module.1(test.folder_pub_use)
+import import.0 local_answer from module.1(test.folder_pub_use).decl.0: fn () -> i32
+import import.1 child_answer from module.1(test.folder_pub_use).decl.1: fn () -> i32
+bind local_answer = import.0
+bind child_answer = import.1
+bind folder = module.1
+bind main = fn.0
+func fn.0() -> i32 {
+  return i32 add(i32 call bind.1(child_answer)(), i32 call fn () -> i32 field(module bind.2(folder), local_answer)())
+}
 ¬
-int $child_answer() {
-    return 37;
+; nerd llvm-ir 0
+; generated from HIR
+
+declare i32 @$local_answer()
+declare i32 @$child_answer()
+
+define i32 @fn.0() {
+  %t0 = call i32 @$child_answer()
+  %t1 = call i32 @$local_answer()
+  %t2 = add i32 %t0, %t1
+  ret i32 %t2
 }
-int $main() {
-    int $0 = $child_answer();
-    int $1 = $local_answer();
-    int $2 = $0 + $1;
-    return $2;
-}
+
+@$main = alias i32 (), ptr @fn.0

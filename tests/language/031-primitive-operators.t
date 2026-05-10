@@ -22,230 +22,193 @@ mod
 bits
 
 ¬
-global half
-global limit
-fn main
-local mask = u32:14
-local $0 = bool:no
-local $3 = bool:no
-local $6 = bool:no
-$9 = i32:3 < i32:4
-branch.false bool:$9, L7
-$10 = i32:4 <= i32:4
-branch.false bool:$10, L7
-$6 = bool:yes
-jump L8
-label L7
-$6 = bool:no
-label L8
-branch.false bool:$6, L4
-$11 = i32:4 < i32:5
-branch.false bool:$11, L4
-$3 = bool:yes
-jump L5
-label L4
-$3 = bool:no
-label L5
-branch.false bool:$3, L1
-$12 = i32:5 <= i32:5
-branch.false bool:$12, L1
-$0 = bool:yes
-jump L2
-label L1
-$0 = bool:no
-label L2
-local ordered = bool:$0
-local $13 = bool:no
-$16 = f64:1.5 < f64:limit
-branch.false bool:$16, L14
-$17 = !bool:no
-branch.false bool:$17, L14
-$13 = bool:yes
-jump L15
-label L14
-$13 = bool:no
-label L15
-local $18 = string:0
-branch.false bool:$13, L20
-$18 = string:"float"
-jump L19
-label L20
-$18 = string:"bad"
-label L19
-call fn(string)->void:prn, string:$18
-local $21 = string:0
-branch.false bool:ordered, L23
-$21 = string:"cmp"
-jump L22
-label L23
-$21 = string:"bad"
-label L22
-call fn(string)->void:prn, string:$21
-$24 = i32:1 == i32:1
-local $25 = string:0
-branch.false bool:$24, L27
-$25 = string:"mod"
-jump L26
-label L27
-$25 = string:"bad"
-label L26
-call fn(string)->void:prn, string:$25
-local $28 = bool:no
-$32 = u32:mask & u32:11
-$33 = u32:$32 ^ u32:3
-$34 = u32:$33 == u32:9
-branch.false bool:$34, L29
-$28 = bool:yes
-jump L31
-label L29
-branch.false bool:no, L30
-$28 = bool:yes
-jump L31
-label L30
-$28 = bool:no
-label L31
-local $35 = string:0
-branch.false bool:$28, L37
-$35 = string:"bits"
-jump L36
-label L37
-$35 = string:"bad"
-label L36
-call fn(string)->void:prn, string:$35
-local $38 = bool:no
-$41 = f32:half <= f32:0.5
-branch.false bool:$41, L39
-$42 = i32:3 != i32:4
-branch.false bool:$42, L39
-$38 = bool:yes
-jump L40
-label L39
-$38 = bool:no
-label L40
-local $43 = i32:0
-branch.false bool:$38, L45
-$43 = i32:1
-jump L44
-label L45
-$43 = i32:0
-label L44
-return i32:$43
-end
-init
-half = f32:0.5
-limit = f64:2.0
-end
+hir 0
+module module.0(031-primitive-operators.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
+bind half = value.0
+bind limit = value.1
+bind main = fn.0
+global value.0: f32 = f32 0.5
+global value.1: f64 = f64 2
+func fn.0() -> i32 {
+  let mask: u32 = u32 14
+  let ordered: bool = bool logical_and(bool logical_and(bool logical_and(bool less(untyped integer 3, untyped integer 4), bool less_equal(untyped integer 4, untyped integer 4)), bool greater(untyped integer 5, untyped integer 4)), bool greater_equal(untyped integer 5, untyped integer 5))
+  expr void call bind.2(prn)(string on bool logical_and(bool less(untyped float 1.5, f64 bind.6(limit)), bool logical_not(bool no)) {
+    value(bool yes) => {
+      expr string "float"
+    }
+    else => {
+      expr string "bad"
+    }
+  })
+  expr void call bind.2(prn)(string on bool local.1(ordered) {
+    value(bool yes) => {
+      expr string "cmp"
+    }
+    else => {
+      expr string "bad"
+    }
+  })
+  expr void call bind.2(prn)(string on bool equal(untyped integer modulo(untyped integer 5, untyped integer 2), untyped integer 1) {
+    value(bool yes) => {
+      expr string "mod"
+    }
+    else => {
+      expr string "bad"
+    }
+  })
+  expr void call bind.2(prn)(string on bool logical_or(bool equal(u32 bitwise_xor(u32 bitwise_and(u32 local.0(mask), u32 11), u32 3), u32 9), bool no) {
+    value(bool yes) => {
+      expr string "bits"
+    }
+    else => {
+      expr string "bad"
+    }
+  })
+  return untyped integer on bool logical_and(bool less_equal(f32 bind.5(half), f32 0.5), bool not_equal(untyped integer 3, untyped integer 4)) {
+    value(bool yes) => {
+      expr untyped integer 1
+    }
+    else => {
+      expr untyped integer 0
+    }
+  }
+}
 ¬
-float $half;
-double $limit;
-int $main() {
-    uint32_t $mask = 14;
-    bool $0 = false;
-    bool $3 = false;
-    bool $6 = false;
-    bool $9 = 3 < 4;
-    if (!$9) goto L7;
-    bool $10 = 4 <= 4;
-    if (!$10) goto L7;
-    $6 = true;
-    goto L8;
-    L7: ;
-    $6 = false;
-    L8: ;
-    if (!$6) goto L4;
-    bool $11 = 4 < 5;
-    if (!$11) goto L4;
-    $3 = true;
-    goto L5;
-    L4: ;
-    $3 = false;
-    L5: ;
-    if (!$3) goto L1;
-    bool $12 = 5 <= 5;
-    if (!$12) goto L1;
-    $0 = true;
-    goto L2;
-    L1: ;
-    $0 = false;
-    L2: ;
-    bool $ordered = $0;
-    bool $13 = false;
-    bool $16 = 1.5 < $limit;
-    if (!$16) goto L14;
-    bool $17 = !0;
-    if (!$17) goto L14;
-    $13 = true;
-    goto L15;
-    L14: ;
-    $13 = false;
-    L15: ;
-    string $18 = (string){0};
-    if (!$13) goto L20;
-    $18 = (string){.data = (u8*)"float", .count = 5};
-    goto L19;
-    L20: ;
-    $18 = (string){.data = (u8*)"bad", .count = 3};
-    L19: ;
-    prn($18);
-    string $21 = (string){0};
-    if (!$ordered) goto L23;
-    $21 = (string){.data = (u8*)"cmp", .count = 3};
-    goto L22;
-    L23: ;
-    $21 = (string){.data = (u8*)"bad", .count = 3};
-    L22: ;
-    prn($21);
-    bool $24 = 1 == 1;
-    string $25 = (string){0};
-    if (!$24) goto L27;
-    $25 = (string){.data = (u8*)"mod", .count = 3};
-    goto L26;
-    L27: ;
-    $25 = (string){.data = (u8*)"bad", .count = 3};
-    L26: ;
-    prn($25);
-    bool $28 = false;
-    uint32_t $32 = $mask & 11;
-    uint32_t $33 = $32 ^ 3;
-    bool $34 = $33 == 9;
-    if (!$34) goto L29;
-    $28 = true;
-    goto L31;
-    L29: ;
-    if (!0) goto L30;
-    $28 = true;
-    goto L31;
-    L30: ;
-    $28 = false;
-    L31: ;
-    string $35 = (string){0};
-    if (!$28) goto L37;
-    $35 = (string){.data = (u8*)"bits", .count = 4};
-    goto L36;
-    L37: ;
-    $35 = (string){.data = (u8*)"bad", .count = 3};
-    L36: ;
-    prn($35);
-    bool $38 = false;
-    bool $41 = $half <= 0.5f;
-    if (!$41) goto L39;
-    bool $42 = 3 != 4;
-    if (!$42) goto L39;
-    $38 = true;
-    goto L40;
-    L39: ;
-    $38 = false;
-    L40: ;
-    int $43 = 0;
-    if (!$38) goto L45;
-    $43 = 1;
-    goto L44;
-    L45: ;
-    $43 = 0;
-    L44: ;
-    return $43;
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [6 x i8] c"float\00"
+@.str.m0.1 = private unnamed_addr constant [4 x i8] c"bad\00"
+@.str.m0.2 = private unnamed_addr constant [4 x i8] c"cmp\00"
+@.str.m0.3 = private unnamed_addr constant [4 x i8] c"bad\00"
+@.str.m0.4 = private unnamed_addr constant [4 x i8] c"mod\00"
+@.str.m0.5 = private unnamed_addr constant [4 x i8] c"bad\00"
+@.str.m0.6 = private unnamed_addr constant [5 x i8] c"bits\00"
+@.str.m0.7 = private unnamed_addr constant [4 x i8] c"bad\00"
+
+declare void @$pr({ ptr, i64 })
+declare void @$epr({ ptr, i64 })
+declare void @$prn({ ptr, i64 })
+declare void @$eprn({ ptr, i64 })
+declare { ptr, i64 } @$input({ ptr, i64 })
+
+@$half = global float 0.000000e+00
+@$limit = global double 0.000000e+00
+
+define void @m0.init() {
+  store float 0x3FE0000000000000, ptr @$half
+  store double 0x4000000000000000, ptr @$limit
+  ret void
 }
-void init() {
-    $half = 0.5f;
-    $limit = 2.0;
+
+define i32 @fn.0() {
+  %t0 = icmp slt i32 3, 4
+  %t1 = icmp sle i32 4, 4
+  %t2 = and i1 %t0, %t1
+  %t3 = icmp sgt i32 5, 4
+  %t4 = and i1 %t2, %t3
+  %t5 = icmp sge i32 5, 5
+  %t6 = and i1 %t4, %t5
+  %t7 = load double, ptr @$limit
+  %t8 = fcmp olt double 0x3FF8000000000000, %t7
+  %t9 = xor i1 0, 1
+  %t10 = and i1 %t8, %t9
+  %t11 = icmp eq i1 %t10, 1
+  br i1 %t11, label %on.body.1, label %on.next.2
+on.body.1:
+  br label %on.value.3
+on.value.3:
+  br label %on.end.0
+on.next.2:
+  br label %on.body.4
+on.body.4:
+  br label %on.value.6
+on.value.6:
+  br label %on.end.0
+on.end.0:
+  %t12 = phi { ptr, i64 } [{ ptr @.str.m0.0, i64 5 }, %on.value.3], [{ ptr @.str.m0.1, i64 3 }, %on.value.6]
+  call void @$prn({ ptr, i64 } %t12)
+  %t13 = icmp eq i1 %t6, 1
+  br i1 %t13, label %on.body.8, label %on.next.9
+on.body.8:
+  br label %on.value.10
+on.value.10:
+  br label %on.end.7
+on.next.9:
+  br label %on.body.11
+on.body.11:
+  br label %on.value.13
+on.value.13:
+  br label %on.end.7
+on.end.7:
+  %t14 = phi { ptr, i64 } [{ ptr @.str.m0.2, i64 3 }, %on.value.10], [{ ptr @.str.m0.3, i64 3 }, %on.value.13]
+  call void @$prn({ ptr, i64 } %t14)
+  %t15 = srem i32 5, 2
+  %t16 = icmp eq i32 %t15, 1
+  %t17 = icmp eq i1 %t16, 1
+  br i1 %t17, label %on.body.15, label %on.next.16
+on.body.15:
+  br label %on.value.17
+on.value.17:
+  br label %on.end.14
+on.next.16:
+  br label %on.body.18
+on.body.18:
+  br label %on.value.20
+on.value.20:
+  br label %on.end.14
+on.end.14:
+  %t18 = phi { ptr, i64 } [{ ptr @.str.m0.4, i64 3 }, %on.value.17], [{ ptr @.str.m0.5, i64 3 }, %on.value.20]
+  call void @$prn({ ptr, i64 } %t18)
+  %t19 = and i32 14, 11
+  %t20 = xor i32 %t19, 3
+  %t21 = icmp eq i32 %t20, 9
+  %t22 = or i1 %t21, 0
+  %t23 = icmp eq i1 %t22, 1
+  br i1 %t23, label %on.body.22, label %on.next.23
+on.body.22:
+  br label %on.value.24
+on.value.24:
+  br label %on.end.21
+on.next.23:
+  br label %on.body.25
+on.body.25:
+  br label %on.value.27
+on.value.27:
+  br label %on.end.21
+on.end.21:
+  %t24 = phi { ptr, i64 } [{ ptr @.str.m0.6, i64 4 }, %on.value.24], [{ ptr @.str.m0.7, i64 3 }, %on.value.27]
+  call void @$prn({ ptr, i64 } %t24)
+  %t25 = load float, ptr @$half
+  %t26 = fcmp ole float %t25, 0x3FE0000000000000
+  %t27 = icmp ne i32 3, 4
+  %t28 = and i1 %t26, %t27
+  %t29 = icmp eq i1 %t28, 1
+  br i1 %t29, label %on.body.29, label %on.next.30
+on.body.29:
+  br label %on.value.31
+on.value.31:
+  br label %on.end.28
+on.next.30:
+  br label %on.body.32
+on.body.32:
+  br label %on.value.34
+on.value.34:
+  br label %on.end.28
+on.end.28:
+  %t30 = phi i32 [1, %on.value.31], [0, %on.value.34]
+  ret i32 %t30
 }
+
+@$main = alias i32 (), ptr @fn.0

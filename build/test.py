@@ -214,14 +214,13 @@ def lines_are_subsequence(expected: str, actual: str, *, strip_dollars: bool = F
 def test_language(path: pathlib.Path) -> list[Failure]:
     parts = split_sections(path)
     if len(parts) < 5:
-        return [Failure(path, "language test must have source, exit, stdout, ir, and c sections")]
+        return [Failure(path, "language test must have source, exit, stdout, HIR, and LLVM sections")]
 
-    source, expected_exit, expected_stdout, expected_ir, expected_c = parts[:5]
+    source, expected_exit, expected_stdout, expected_hir, expected_llvm = parts[:5]
     stdin = parts[5] if len(parts) > 5 else None
     input_path = path.with_suffix(".input.n")
-    output_root = path.parent / f"_{path.stem}"
     input_path.write_text(source, encoding="utf-8", newline="\n")
-    for suffix in (".ir", ".gen.c"):
+    for suffix in (".hir", ".ll", ".ir", ".gen.c"):
         sidecar = path.parent / f"_{path.stem}{suffix}"
         if sidecar.exists():
             sidecar.unlink()
@@ -230,8 +229,8 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         [
             str(NERD),
             "run",
-            "--ir",
-            "--cgen",
+            "--hir",
+            "--llvm",
             str(input_path),
         ],
         stdin=stdin,
@@ -248,33 +247,36 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         if stdout_failure:
             failures.append(stdout_failure)
 
-    ir_path = path.parent / f"_{path.stem}.ir"
-    if expected_ir.strip():
-        actual_ir = ir_path.read_text(encoding="utf-8") if ir_path.exists() else ""
-        if not lines_are_subsequence(expected_ir, actual_ir):
-            ir_failure = check_equal(path, "ir", expected_ir, actual_ir)
-            if ir_failure:
-                failures.append(ir_failure)
+    input_variants = {
+        str(input_path),
+        str(input_path).replace("\\", "\\\\"),
+        input_path.as_posix(),
+    }
 
-    c_path = path.parent / f"_{path.stem}.gen.c"
-    if expected_c.strip():
-        actual_c = c_path.read_text(encoding="utf-8") if c_path.exists() else ""
-        input_variants = {
-            str(input_path),
-            str(input_path).replace("\\", "\\\\"),
-            input_path.as_posix(),
-        }
+    hir_path = path.parent / f"_{path.stem}.hir"
+    if expected_hir.strip():
+        actual_hir = hir_path.read_text(encoding="utf-8") if hir_path.exists() else ""
         for input_variant in input_variants:
-            actual_c = actual_c.replace(input_variant, rel(path))
-        if not lines_are_subsequence(expected_c, actual_c, strip_dollars=True):
-            c_failure = check_equal(path, "c", expected_c, actual_c)
-            if c_failure:
-                failures.append(c_failure)
+            actual_hir = actual_hir.replace(input_variant, rel(path))
+        if not lines_are_subsequence(expected_hir, actual_hir):
+            hir_failure = check_equal(path, "hir", expected_hir, actual_hir)
+            if hir_failure:
+                failures.append(hir_failure)
+
+    llvm_path = path.parent / f"_{path.stem}.ll"
+    if expected_llvm.strip():
+        actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
+        for input_variant in input_variants:
+            actual_llvm = actual_llvm.replace(input_variant, rel(path))
+        if not lines_are_subsequence(expected_llvm, actual_llvm):
+            llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
+            if llvm_failure:
+                failures.append(llvm_failure)
 
     if not failures:
         input_path.unlink(missing_ok=True)
-        ir_path.unlink(missing_ok=True)
-        c_path.unlink(missing_ok=True)
+        hir_path.unlink(missing_ok=True)
+        llvm_path.unlink(missing_ok=True)
         (path.parent / f"_{path.stem}.out").unlink(missing_ok=True)
     return failures
 

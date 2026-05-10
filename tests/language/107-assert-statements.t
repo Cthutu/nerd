@@ -7,20 +7,31 @@ main :: fn () -> i32 {
 ¬
 0
 ¬
+
 ¬
-fn main
-$0 = i32:2 < i32:3
-assert bool:$0, string:"assertion failed", line 3
-$1 = i32:4 == i32:4
-assert bool:$1, string:"math still works", line 4
-return i32:0
-end
-¬
-void init() {}
-int $main() {
-    bool $0 = 2 < 3;
-    nerd_assert($0, "tests/language/107-assert-statements.t", 3, (string){.data = (u8*)"assertion failed", .count = 16});
-    bool $1 = 4 == 4;
-    nerd_assert($1, "tests/language/107-assert-statements.t", 4, (string){.data = (u8*)"math still works", .count = 16});
-    return 0;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  assert bool less(untyped integer 2, untyped integer 3)
+  assert bool equal(untyped integer 4, untyped integer 4), string "math still works"
+  return i32 0
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [17 x i8] c"math still works\00"
+@.source_path.m0 = private unnamed_addr constant [61 x i8] c"tests/language/107-assert-statements.t\00"
+@.assert.default.m0 = private unnamed_addr constant [17 x i8] c"assertion failed\00"
+
+declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })
+
+define i32 @fn.0() {
+  %t0 = icmp slt i32 2, 3
+  call void @nerd_assert(i1 %t0, ptr @.source_path.m0, i32 3, { ptr, i64 } { ptr @.assert.default.m0, i64 16 })
+  %t1 = icmp eq i32 4, 4
+  call void @nerd_assert(i1 %t1, ptr @.source_path.m0, i32 4, { ptr, i64 } { ptr @.str.m0.0, i64 16 })
+  ret i32 0
+}
+
+@$main = alias i32 (), ptr @fn.0

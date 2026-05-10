@@ -9,30 +9,40 @@ main :: fn () {
 ¬
 60
 ¬
+
 ¬
-fn main
-local x = i32:1
-local y = i32:64
-$0 = i32:x << i32:3
-x = i32:$0
-$1 = i32:y >> i32:2
-y = i32:$1
-$2 = i32:x + i32:y
-$3 = i32:$2 + i32:32
-$4 = i32:$3 + i32:4
-return i32:$4
-end
-¬
-void init() {}
-int $main() {
-    int $x = 1;
-    int $y = 64;
-    int $0 = $x << 3;
-    $x = $0;
-    int $1 = $y >> 2;
-    $y = $1;
-    int $2 = $x + $y;
-    int $3 = $2 + 32;
-    int $4 = $3 + 4;
-    return $4;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  let x: i32 = untyped integer 1
+  let y: i32 = untyped integer 64
+  assign i32 local.0(x) = i32 shift_left(i32 local.0(x), i32 3)
+  assign i32 local.1(y) = i32 shift_right(i32 local.1(y), i32 2)
+  return i32 add(i32 add(i32 add(i32 local.0(x), i32 local.1(y)), i32 shift_left(i32 2, i32 4)), i32 shift_right(i32 128, i32 5))
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  %local.0 = alloca i32
+  store i32 1, ptr %local.0
+  %local.1 = alloca i32
+  store i32 64, ptr %local.1
+  %t0 = load i32, ptr %local.0
+  %t1 = shl i32 %t0, 3
+  store i32 %t1, ptr %local.0
+  %t2 = load i32, ptr %local.1
+  %t3 = ashr i32 %t2, 2
+  store i32 %t3, ptr %local.1
+  %t4 = load i32, ptr %local.0
+  %t5 = load i32, ptr %local.1
+  %t6 = add i32 %t4, %t5
+  %t7 = shl i32 2, 4
+  %t8 = add i32 %t6, %t7
+  %t9 = ashr i32 128, 5
+  %t10 = add i32 %t8, %t9
+  ret i32 %t10
+}
+
+@$main = alias i32 (), ptr @fn.0

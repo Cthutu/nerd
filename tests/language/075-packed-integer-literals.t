@@ -21,166 +21,125 @@ main :: fn () -> i32 {
 ¬
 0
 ¬
+
 ¬
-fn main
-local $0 = bool:no
-local $3 = bool:no
-local $6 = bool:no
-$9 = u8:97 == u8:97
-branch.false bool:$9, L7
-$10 = u16:24930 == u16:24930
-branch.false bool:$10, L7
-$6 = bool:yes
-jump L8
-label L7
-$6 = bool:no
-label L8
-branch.false bool:$6, L4
-$11 = u32:6382179 == u32:6382179
-branch.false bool:$11, L4
-$3 = bool:yes
-jump L5
-label L4
-$3 = bool:no
-label L5
-branch.false bool:$3, L1
-$12 = u64:418262508645 == u64:418262508645
-branch.false bool:$12, L1
-$0 = bool:yes
-jump L2
-label L1
-$0 = bool:no
-label L2
-local ok = bool:$0
-local $13 = bool:no
-$17 = u8:65 <= u8:81
-branch.false bool:$17, L15
-$18 = u8:81 <= u8:90
-branch.false bool:$18, L15
-label L16
-$13 = bool:yes
-jump L14
-label L15
-$13 = bool:no
-label L14
-local upper = bool:$13
-local $19 = bool:no
-$23 = u8:65 <= u8:113
-branch.false bool:$23, L21
-$24 = u8:113 <= u8:90
-branch.false bool:$24, L21
-label L22
-$19 = bool:yes
-jump L20
-label L21
-$19 = bool:no
-label L20
-local lower = bool:$19
-local $25 = bool:no
-local $28 = bool:no
-branch.false bool:ok, L29
-branch.false bool:upper, L29
-$28 = bool:yes
-jump L30
-label L29
-$28 = bool:no
-label L30
-branch.false bool:$28, L26
-$31 = !bool:lower
-branch.false bool:$31, L26
-$25 = bool:yes
-jump L27
-label L26
-$25 = bool:no
-label L27
-local $32 = i32:0
-branch.false bool:$25, L34
-$32 = i32:0
-jump L33
-label L34
-$32 = i32:1
-label L33
-return i32:$32
-end
-¬
-void init() {}
-int $main() {
-    bool $0 = false;
-    bool $3 = false;
-    bool $6 = false;
-    bool $9 = 97 == 97;
-    if (!$9) goto L7;
-    bool $10 = 24930 == 24930;
-    if (!$10) goto L7;
-    $6 = true;
-    goto L8;
-    L7: ;
-    $6 = false;
-    L8: ;
-    if (!$6) goto L4;
-    bool $11 = 6382179 == 6382179;
-    if (!$11) goto L4;
-    $3 = true;
-    goto L5;
-    L4: ;
-    $3 = false;
-    L5: ;
-    if (!$3) goto L1;
-    bool $12 = 418262508645 == 418262508645;
-    if (!$12) goto L1;
-    $0 = true;
-    goto L2;
-    L1: ;
-    $0 = false;
-    L2: ;
-    bool $ok = $0;
-    bool $13 = false;
-    bool $17 = 65 <= 81;
-    if (!$17) goto L15;
-    bool $18 = 81 <= 90;
-    if (!$18) goto L15;
-    L16: ;
-    $13 = true;
-    goto L14;
-    L15: ;
-    $13 = false;
-    L14: ;
-    bool $upper = $13;
-    bool $19 = false;
-    bool $23 = 65 <= 113;
-    if (!$23) goto L21;
-    bool $24 = 113 <= 90;
-    if (!$24) goto L21;
-    L22: ;
-    $19 = true;
-    goto L20;
-    L21: ;
-    $19 = false;
-    L20: ;
-    bool $lower = $19;
-    bool $25 = false;
-    bool $28 = false;
-    if (!$ok) goto L29;
-    if (!$upper) goto L29;
-    $28 = true;
-    goto L30;
-    L29: ;
-    $28 = false;
-    L30: ;
-    if (!$28) goto L26;
-    bool $31 = !$lower;
-    if (!$31) goto L26;
-    $25 = true;
-    goto L27;
-    L26: ;
-    $25 = false;
-    L27: ;
-    int $32 = 0;
-    if (!$25) goto L34;
-    $32 = 0;
-    goto L33;
-    L34: ;
-    $32 = 1;
-    L33: ;
-    return $32;
+hir 0
+module module.0(075-packed-integer-literals.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
+bind a = value.0
+bind ab = value.1
+bind abc = value.2
+bind abcde = value.3
+bind main = fn.0
+const value.0: u8 = u8 97
+const value.1: u16 = u16 24930
+const value.2: u32 = u32 6382179
+const value.3: u64 = u64 418262508645
+func fn.0() -> i32 {
+  let ok: bool = bool logical_and(bool logical_and(bool logical_and(bool equal(u8 bind.5(a), u8 97), bool equal(u16 bind.6(ab), u16 24930)), bool equal(u32 bind.7(abc), u32 6382179)), bool equal(u64 bind.8(abcde), u64 418262508645))
+  let upper: bool = bool on u8 81 {
+    range_inclusive(u8 65, u8 90) => {
+      expr bool yes
+    }
+    else => {
+      expr bool no
+    }
+  }
+  let lower: bool = bool on u8 113 {
+    range_inclusive(u8 65, u8 90) => {
+      expr bool yes
+    }
+    else => {
+      expr bool no
+    }
+  }
+  return i32 on bool logical_and(bool logical_and(bool local.0(ok), bool local.1(upper)), bool logical_not(bool local.2(lower))) {
+    value(bool yes) => {
+      expr i32 0
+    }
+    else => {
+      expr i32 1
+    }
+  }
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+declare void @$pr({ ptr, i64 })
+declare void @$epr({ ptr, i64 })
+declare void @$prn({ ptr, i64 })
+declare void @$eprn({ ptr, i64 })
+declare { ptr, i64 } @$input({ ptr, i64 })
+
+define i32 @fn.0() {
+  %t0 = icmp eq i8 97, 97
+  %t1 = icmp eq i16 24930, 24930
+  %t2 = and i1 %t0, %t1
+  %t3 = icmp eq i32 6382179, 6382179
+  %t4 = and i1 %t2, %t3
+  %t5 = icmp eq i64 418262508645, 418262508645
+  %t6 = and i1 %t4, %t5
+  %t7 = icmp sge i8 81, 65
+  %t8 = icmp sle i8 81, 90
+  %t9 = and i1 %t7, %t8
+  br i1 %t9, label %on.body.1, label %on.next.2
+on.body.1:
+  br label %on.value.3
+on.value.3:
+  br label %on.end.0
+on.next.2:
+  br label %on.body.4
+on.body.4:
+  br label %on.value.6
+on.value.6:
+  br label %on.end.0
+on.end.0:
+  %t10 = phi i1 [1, %on.value.3], [0, %on.value.6]
+  %t11 = icmp sge i8 113, 65
+  %t12 = icmp sle i8 113, 90
+  %t13 = and i1 %t11, %t12
+  br i1 %t13, label %on.body.8, label %on.next.9
+on.body.8:
+  br label %on.value.10
+on.value.10:
+  br label %on.end.7
+on.next.9:
+  br label %on.body.11
+on.body.11:
+  br label %on.value.13
+on.value.13:
+  br label %on.end.7
+on.end.7:
+  %t14 = phi i1 [1, %on.value.10], [0, %on.value.13]
+  %t15 = and i1 %t6, %t10
+  %t16 = xor i1 %t14, 1
+  %t17 = and i1 %t15, %t16
+  %t18 = icmp eq i1 %t17, 1
+  br i1 %t18, label %on.body.15, label %on.next.16
+on.body.15:
+  br label %on.value.17
+on.value.17:
+  br label %on.end.14
+on.next.16:
+  br label %on.body.18
+on.body.18:
+  br label %on.value.20
+on.value.20:
+  br label %on.end.14
+on.end.14:
+  %t19 = phi i32 [0, %on.value.17], [1, %on.value.20]
+  ret i32 %t19
+}
+
+@$main = alias i32 (), ptr @fn.0

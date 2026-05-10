@@ -5,19 +5,21 @@ main :: fn () => 0
 ¬
 0
 ¬
+
 ¬
-global f
-fn main
-return i32:0
-end
-init
-f = untyped-float:3.1400000000000001
-end
+hir 0
+bind f = value.0
+bind main = fn.0
+const value.0: untyped float = untyped float 3.1400000000000001
+func fn.0() -> i32 {
+  return untyped integer 0
+}
 ¬
-double $f;
-int $main() {
-    return 0;
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  ret i32 0
 }
-void init() {
-    $f = 3.1400000000000001;
-}
+
+@$main = alias i32 (), ptr @fn.0

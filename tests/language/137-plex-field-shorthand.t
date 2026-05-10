@@ -14,43 +14,33 @@ main :: fn () -> i32 {
 ¬
 25
 ¬
+
 ¬
-fn main
-local x = i32:7
-local y = i32:11
-$0 = plex(x: i32:x, y: i32:y)
-local point = plex{x:i32,y:i32}:$0
-$1 = plex{x:i32,y:i32}:point.y
-$2 = plex(x: i32:x, y: i32:$1)
-local other = plex{x:i32,y:i32}:$2
-$3 = plex{x:i32,y:i32}:point.x
-$4 = plex{x:i32,y:i32}:point.y
-$5 = i32:$3 + i32:$4
-$6 = plex{x:i32,y:i32}:other.x
-$7 = i32:$5 + i32:$6
-return i32:$7
-end
-¬
-void init() {}
-#ifndef NERD_TYPE_plexfe8b8667
-#define NERD_TYPE_plexfe8b8667
-typedef struct plexfe8b8667 {
-    int $x;
-    int $y;
-} plexfe8b8667;
-#endif
-int $main() {
-    int $x = 7;
-    int $y = 11;
-    plexfe8b8667 $0 = (plexfe8b8667){.$x = $x, .$y = $y};
-    plexfe8b8667 $point = $0;
-    int $1 = $point.$y;
-    plexfe8b8667 $2 = (plexfe8b8667){.$x = $x, .$y = $1};
-    plexfe8b8667 $other = $2;
-    int $3 = $point.$x;
-    int $4 = $point.$y;
-    int $5 = $3 + $4;
-    int $6 = $other.$x;
-    int $7 = $5 + $6;
-    return $7;
+hir 0
+bind Point = type.0
+bind main = fn.0
+type type.0 = Point
+func fn.0() -> i32 {
+  let x: i32 = untyped integer 7
+  let y: i32 = untyped integer 11
+  let point: Point = Point plex(x: i32 local.0(x), y: i32 local.1(y))
+  let other: Point = Point plex_update(Point local.2(point), x: i32 local.0(x))
+  return i32 add(i32 add(i32 field(Point local.2(point), x), i32 field(Point local.2(point), y)), i32 field(Point local.3(other), x))
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  %t0 = insertvalue { i32, i32 } poison, i32 7, 0
+  %t1 = insertvalue { i32, i32 } %t0, i32 11, 1
+  %t2 = insertvalue { i32, i32 } %t1, i32 7, 0
+  %t3 = extractvalue { i32, i32 } %t1, 0
+  %t4 = extractvalue { i32, i32 } %t1, 1
+  %t5 = add i32 %t3, %t4
+  %t6 = extractvalue { i32, i32 } %t2, 0
+  %t7 = add i32 %t5, %t6
+  ret i32 %t7
+}
+
+@$main = alias i32 (), ptr @fn.0

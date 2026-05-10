@@ -27,104 +27,124 @@ first 1 2
 second 1 7
 
 ¬
-fn main
-string.reset
-$0 = plex(x: i32:1, y: i32:2, name: string:"first")
-local p = plex{x:i32,y:i32,name:string}:$0
-$1 = plex{x:i32,y:i32,name:string}:p.x
-$2 = plex(x: i32:$1, y: i32:7, name: string:"second")
-local q = plex{x:i32,y:i32,name:string}:$2
-$3 = ^plex{x:i32,y:i32,name:string}:q
-local pp = ^plex{x:i32,y:i32,name:string}:$3
-$4 = string.start
-$6 = plex{x:i32,y:i32,name:string}:p.name
-string.append string:$6
-string.append string:" "
-$7 = plex{x:i32,y:i32,name:string}:p.x
-string.append i32:$7
-string.append string:" "
-$8 = plex{x:i32,y:i32,name:string}:p.y
-string.append i32:$8
-$5 = string.finish $4
-call fn(string)->void:prn, string:$5
-string.reset
-$9 = string.start
-$11 = ^plex{x:i32,y:i32,name:string}:pp.name
-string.append string:$11
-string.append string:" "
-$12 = ^plex{x:i32,y:i32,name:string}:pp.x
-string.append i32:$12
-string.append string:" "
-$13 = ^plex{x:i32,y:i32,name:string}:pp.y
-string.append i32:$13
-$10 = string.finish $9
-call fn(string)->void:prn, string:$10
-string.reset
-$14 = plex(a: u8:1, b: i32:2)
-local packed = plex{a:u8,b:i32}:$14
-$15 = plex{x:i32,y:i32,name:string}:q.x
-$16 = plex{x:i32,y:i32,name:string}:q.y
-$17 = i32:$15 + i32:$16
-$18 = plex{a:u8,b:i32}:packed.b
-$19 = i32:$17 + i32:$18
-return i32:$19
-end
-¬
-void init() {}
-#ifndef NERD_TYPE_plexa7899fed
-#define NERD_TYPE_plexa7899fed
-typedef struct plexa7899fed {
-    int $x;
-    int $y;
-    string $name;
-} plexa7899fed;
-#endif
-#ifndef NERD_TYPE_plex1ee601f8
-#define NERD_TYPE_plex1ee601f8
-typedef struct __attribute__((packed)) plex1ee601f8 {
-    uint8_t $a;
-    int $b;
-} plex1ee601f8;
-#endif
-int $main() {
-    string_builder_reset();
-    plexa7899fed $0 = (plexa7899fed){.$x = 1, .$y = 2, .$name = (string){.data = (u8*)"first", .count = 5}};
-    plexa7899fed $p = $0;
-    int $1 = $p.$x;
-    plexa7899fed $2 = (plexa7899fed){.$x = $1, .$y = 7, .$name = (string){.data = (u8*)"second", .count = 6}};
-    plexa7899fed $q = $2;
-    struct plexa7899fed* $3 = &$q;
-    struct plexa7899fed* $pp = $3;
-    size_t $4 = string_builder_mark();
-    string $6 = $p.$name;
-    string_builder_append_string(to_string$string($6));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $7 = $p.$x;
-    string_builder_append_string(to_string$i32($7));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $8 = $p.$y;
-    string_builder_append_string(to_string$i32($8));
-    string $5 = string_builder_finish($4);
-    prn($5);
-    string_builder_reset();
-    size_t $9 = string_builder_mark();
-    string $11 = $pp->$name;
-    string_builder_append_string(to_string$string($11));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $12 = $pp->$x;
-    string_builder_append_string(to_string$i32($12));
-    string_builder_append_string(to_string$string((string){.data = (u8*)" ", .count = 1}));
-    int $13 = $pp->$y;
-    string_builder_append_string(to_string$i32($13));
-    string $10 = string_builder_finish($9);
-    prn($10);
-    string_builder_reset();
-    plex1ee601f8 $14 = (plex1ee601f8){.$a = 1, .$b = 2};
-    plex1ee601f8 $packed = $14;
-    int $15 = $q.$x;
-    int $16 = $q.$y;
-    int $17 = $15 + $16;
-    int $18 = $packed.$b;
-    int $19 = $17 + $18;
-    return $19;
+hir 0
+module module.0(058-plex-ergonomics.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
+bind Point = type.0
+bind Packed = type.1
+bind main = fn.0
+type type.0 = Point
+type type.1 = Packed
+func fn.0() -> i32 {
+  let p: Point = Point plex(x: i32 1, y: i32 2, name: string "first")
+  let q: Point = Point plex_update(Point local.0(p), y: i32 7, name: string "second")
+  let pp: ^Point = ^Point address_of(Point local.1(q))
+  expr void call bind.2(prn)(string interpolate(string field(Point local.0(p), name), <unknown> " ", i32 field(Point local.0(p), x), <unknown> " ", i32 field(Point local.0(p), y)))
+  expr void call bind.2(prn)(string interpolate(string field(^Point local.2(pp), name), <unknown> " ", i32 field(^Point local.2(pp), x), <unknown> " ", i32 field(^Point local.2(pp), y)))
+  let packed: Packed = Packed plex(a: u8 1, b: i32 2)
+  return i32 add(i32 add(i32 field(Point local.1(q), x), i32 field(Point local.1(q), y)), i32 field(Packed local.3(packed), b))
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [6 x i8] c"first\00"
+@.str.m0.1 = private unnamed_addr constant [7 x i8] c"second\00"
+@.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
+@.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
+@.str.m0.4 = private unnamed_addr constant [2 x i8] c" \00"
+@.str.m0.5 = private unnamed_addr constant [2 x i8] c" \00"
+
+declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare void @string_builder_reset()
+declare i64 @string_builder_mark()
+declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_byte(i8)
+declare { ptr, i64 } @string_builder_finish(i64)
+declare { ptr, i64 } @to_string$string({ ptr, i64 })
+declare { ptr, i64 } @to_string$bool(i1)
+declare { ptr, i64 } @to_string$i8(i8)
+declare { ptr, i64 } @to_string$i16(i16)
+declare { ptr, i64 } @to_string$i32(i32)
+declare { ptr, i64 } @to_string$i64(i64)
+declare { ptr, i64 } @to_string$u8(i8)
+declare { ptr, i64 } @to_string$u16(i16)
+declare { ptr, i64 } @to_string$u32(i32)
+declare { ptr, i64 } @to_string$u64(i64)
+declare { ptr, i64 } @to_string$isize(i64)
+declare { ptr, i64 } @to_string$usize(i64)
+declare { ptr, i64 } @to_string$f32(float)
+declare { ptr, i64 } @to_string$f64(double)
+
+declare void @$pr({ ptr, i64 })
+declare void @$epr({ ptr, i64 })
+declare void @$prn({ ptr, i64 })
+declare void @$eprn({ ptr, i64 })
+declare { ptr, i64 } @$input({ ptr, i64 })
+
+define i32 @fn.0() {
+  %t0 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 1, 0
+  %t1 = insertvalue { i32, i32, { ptr, i64 } } %t0, i32 2, 1
+  %t2 = insertvalue { i32, i32, { ptr, i64 } } %t1, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 2
+  %t3 = insertvalue { i32, i32, { ptr, i64 } } %t2, i32 7, 1
+  %t4 = insertvalue { i32, i32, { ptr, i64 } } %t3, { ptr, i64 } { ptr @.str.m0.1, i64 6 }, 2
+  %local.1 = alloca { i32, i32, { ptr, i64 } }
+  store { i32, i32, { ptr, i64 } } %t4, ptr %local.1
+  %t5 = call i64 @string_builder_mark()
+  %t6 = extractvalue { i32, i32, { ptr, i64 } } %t2, 2
+  %t7 = call { ptr, i64 } @to_string$string({ ptr, i64 } %t6)
+  call void @string_builder_append_string({ ptr, i64 } %t7)
+  %t8 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t8)
+  %t9 = extractvalue { i32, i32, { ptr, i64 } } %t2, 0
+  %t10 = call { ptr, i64 } @to_string$i32(i32 %t9)
+  call void @string_builder_append_string({ ptr, i64 } %t10)
+  %t11 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t11)
+  %t12 = extractvalue { i32, i32, { ptr, i64 } } %t2, 1
+  %t13 = call { ptr, i64 } @to_string$i32(i32 %t12)
+  call void @string_builder_append_string({ ptr, i64 } %t13)
+  %t14 = call { ptr, i64 } @string_builder_finish(i64 %t5)
+  call void @$prn({ ptr, i64 } %t14)
+  %t15 = call i64 @string_builder_mark()
+  %t16 = load { i32, i32, { ptr, i64 } }, ptr %local.1
+  %t17 = extractvalue { i32, i32, { ptr, i64 } } %t16, 2
+  %t18 = call { ptr, i64 } @to_string$string({ ptr, i64 } %t17)
+  call void @string_builder_append_string({ ptr, i64 } %t18)
+  %t19 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t19)
+  %t20 = load { i32, i32, { ptr, i64 } }, ptr %local.1
+  %t21 = extractvalue { i32, i32, { ptr, i64 } } %t20, 0
+  %t22 = call { ptr, i64 } @to_string$i32(i32 %t21)
+  call void @string_builder_append_string({ ptr, i64 } %t22)
+  %t23 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.5, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t23)
+  %t24 = load { i32, i32, { ptr, i64 } }, ptr %local.1
+  %t25 = extractvalue { i32, i32, { ptr, i64 } } %t24, 1
+  %t26 = call { ptr, i64 } @to_string$i32(i32 %t25)
+  call void @string_builder_append_string({ ptr, i64 } %t26)
+  %t27 = call { ptr, i64 } @string_builder_finish(i64 %t15)
+  call void @$prn({ ptr, i64 } %t27)
+  %t28 = insertvalue { i8, i32 } poison, i8 1, 0
+  %t29 = insertvalue { i8, i32 } %t28, i32 2, 1
+  %t30 = load { i32, i32, { ptr, i64 } }, ptr %local.1
+  %t31 = extractvalue { i32, i32, { ptr, i64 } } %t30, 0
+  %t32 = load { i32, i32, { ptr, i64 } }, ptr %local.1
+  %t33 = extractvalue { i32, i32, { ptr, i64 } } %t32, 1
+  %t34 = add i32 %t31, %t33
+  %t35 = extractvalue { i8, i32 } %t29, 1
+  %t36 = add i32 %t34, %t35
+  ret i32 %t36
+}
+
+@$main = alias i32 (), ptr @fn.0

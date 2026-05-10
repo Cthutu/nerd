@@ -12,28 +12,39 @@ main :: fn () {
 ¬
 
 ¬
-global base
-fn main
-$0 = i32:base + i32:1
-base = i32:$0
-local extra = i32:0
-extra = i32:1
-$1 = i32:base + i32:extra
-return i32:$1
-end
-init
-base = i32:40
-end
+hir 0
+bind base = value.0
+bind main = fn.0
+global value.0: i32 = untyped integer 40
+func fn.0() -> i32 {
+  assign i32 bind.0(base) = i32 add(i32 bind.0(base), i32 1)
+  expr <unknown> <unsupported>
+  let extra: i32 = <unknown> <unsupported>
+  assign i32 local.0(extra) = i32 1
+  return i32 add(i32 bind.0(base), i32 local.0(extra))
+}
 ¬
-int $base;
-int $main() {
-    int $0 = $base + 1;
-    $base = $0;
-    int $extra = 0;
-    $extra = 1;
-    int $1 = $base + $extra;
-    return $1;
+; nerd llvm-ir 0
+; generated from HIR
+
+@$base = global i32 0
+
+define void @m0.init() {
+  store i32 40, ptr @$base
+  ret void
 }
-void init() {
-    $base = 40;
+
+define i32 @fn.0() {
+  %t0 = load i32, ptr @$base
+  %t1 = add i32 %t0, 1
+  store i32 %t1, ptr @$base
+  %local.0 = alloca i32
+  store i32 0, ptr %local.0
+  store i32 1, ptr %local.0
+  %t2 = load i32, ptr @$base
+  %t3 = load i32, ptr %local.0
+  %t4 = add i32 %t2, %t3
+  ret i32 %t4
 }
+
+@$main = alias i32 (), ptr @fn.0

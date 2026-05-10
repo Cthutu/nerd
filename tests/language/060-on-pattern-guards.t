@@ -24,140 +24,159 @@ main :: fn () {
 50: 150
 
 ¬
-fn score
-param u32:size
-local $0 = u32:0
-$4 = u32:0 <= u32:size
-branch.false bool:$4, L2
-$5 = u32:size < u32:3
-branch.false bool:$5, L2
-label L3
-$6 = u32:size == u32:2
-branch.false bool:$6, L2
-$7 = u32:size + u32:20
-$0 = u32:$7
-jump L1
-label L2
-$10 = u32:0 <= u32:size
-branch.false bool:$10, L8
-$11 = u32:size < u32:3
-branch.false bool:$11, L8
-label L9
-$0 = u32:10
-jump L1
-label L8
-$14 = u32:size == u32:10
-branch.false bool:$14, L12
-label L13
-$15 = u32:size == u32:10
-branch.false bool:$15, L12
-$16 = u32:size * u32:10
-$0 = u32:$16
-jump L1
-label L12
-$17 = u32:size + u32:100
-$0 = u32:$17
-label L1
-return u32:$0
-end
-fn main
-string.reset
-$0 = string.start
-string.append string:"1: "
-$2 = call fn(u32)->u32:score, u32:1
-string.append u32:$2
-$1 = string.finish $0
-call fn(string)->void:prn, string:$1
-string.reset
-$3 = string.start
-string.append string:"2: "
-$5 = call fn(u32)->u32:score, u32:2
-string.append u32:$5
-$4 = string.finish $3
-call fn(string)->void:prn, string:$4
-string.reset
-$6 = string.start
-string.append string:"10: "
-$8 = call fn(u32)->u32:score, u32:10
-string.append u32:$8
-$7 = string.finish $6
-call fn(string)->void:prn, string:$7
-string.reset
-$9 = string.start
-string.append string:"50: "
-$11 = call fn(u32)->u32:score, u32:50
-string.append u32:$11
-$10 = string.finish $9
-call fn(string)->void:prn, string:$10
-string.reset
-return i32:0
-end
+hir 0
+module module.0(060-on-pattern-guards.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
+bind score = fn.0
+bind main = fn.1
+func fn.0(size: u32) -> u32 {
+  return u32 on u32 local.0(size) {
+    range_exclusive(u32 0, u32 3) as matched when bool equal(u32 local.1(matched), u32 2) => {
+      expr u32 add(u32 local.1(matched), u32 20)
+    }
+    range_exclusive(u32 0, u32 3) => {
+      expr u32 10
+    }
+    value(u32 10) as size when bool equal(u32 local.2(size), u32 10) => {
+      expr u32 multiply(u32 local.2(size), u32 10)
+    }
+    else as size => {
+      expr u32 add(u32 local.3(size), u32 100)
+    }
+  }
+}
+func fn.1() -> void {
+  expr void call bind.2(prn)(string interpolate(<unknown> "1: ", u32 call bind.5(score)(u32 1)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "2: ", u32 call bind.5(score)(u32 2)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "10: ", u32 call bind.5(score)(u32 10)))
+  expr void call bind.2(prn)(string interpolate(<unknown> "50: ", u32 call bind.5(score)(u32 50)))
+}
 ¬
-void init() {}
-uint32_t $score(uint32_t $size) {
-    uint32_t $0 = 0;
-    bool $4 = 0 <= $size;
-    if (!$4) goto L2;
-    bool $5 = $size < 3;
-    if (!$5) goto L2;
-    L3: ;
-    bool $6 = $size == 2;
-    if (!$6) goto L2;
-    uint32_t $7 = $size + 20;
-    $0 = $7;
-    goto L1;
-    L2: ;
-    bool $10 = 0 <= $size;
-    if (!$10) goto L8;
-    bool $11 = $size < 3;
-    if (!$11) goto L8;
-    L9: ;
-    $0 = 10;
-    goto L1;
-    L8: ;
-    bool $14 = $size == 10;
-    if (!$14) goto L12;
-    L13: ;
-    bool $15 = $size == 10;
-    if (!$15) goto L12;
-    uint32_t $16 = $size * 10;
-    $0 = $16;
-    goto L1;
-    L12: ;
-    uint32_t $17 = $size + 100;
-    $0 = $17;
-    L1: ;
-    return $0;
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [4 x i8] c"1: \00"
+@.str.m0.1 = private unnamed_addr constant [4 x i8] c"2: \00"
+@.str.m0.2 = private unnamed_addr constant [5 x i8] c"10: \00"
+@.str.m0.3 = private unnamed_addr constant [5 x i8] c"50: \00"
+
+declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare void @string_builder_reset()
+declare i64 @string_builder_mark()
+declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_byte(i8)
+declare { ptr, i64 } @string_builder_finish(i64)
+declare { ptr, i64 } @to_string$string({ ptr, i64 })
+declare { ptr, i64 } @to_string$bool(i1)
+declare { ptr, i64 } @to_string$i8(i8)
+declare { ptr, i64 } @to_string$i16(i16)
+declare { ptr, i64 } @to_string$i32(i32)
+declare { ptr, i64 } @to_string$i64(i64)
+declare { ptr, i64 } @to_string$u8(i8)
+declare { ptr, i64 } @to_string$u16(i16)
+declare { ptr, i64 } @to_string$u32(i32)
+declare { ptr, i64 } @to_string$u64(i64)
+declare { ptr, i64 } @to_string$isize(i64)
+declare { ptr, i64 } @to_string$usize(i64)
+declare { ptr, i64 } @to_string$f32(float)
+declare { ptr, i64 } @to_string$f64(double)
+
+declare void @$pr({ ptr, i64 })
+declare void @$epr({ ptr, i64 })
+declare void @$prn({ ptr, i64 })
+declare void @$eprn({ ptr, i64 })
+declare { ptr, i64 } @$input({ ptr, i64 })
+
+define i32 @fn.0(i32 %size) {
+  %t0 = icmp sge i32 %size, 0
+  %t1 = icmp slt i32 %size, 3
+  %t2 = and i1 %t0, %t1
+  br i1 %t2, label %on.guard.3, label %on.next.2
+on.guard.3:
+  %t3 = icmp eq i32 %size, 2
+  br i1 %t3, label %on.body.1, label %on.next.2
+on.body.1:
+  %t4 = add i32 %size, 20
+  br label %on.value.4
+on.value.4:
+  br label %on.end.0
+on.next.2:
+  %t5 = icmp sge i32 %size, 0
+  %t6 = icmp slt i32 %size, 3
+  %t7 = and i1 %t5, %t6
+  br i1 %t7, label %on.body.5, label %on.next.6
+on.body.5:
+  br label %on.value.7
+on.value.7:
+  br label %on.end.0
+on.next.6:
+  %t8 = icmp eq i32 %size, 10
+  br i1 %t8, label %on.guard.10, label %on.next.9
+on.guard.10:
+  %t9 = icmp eq i32 %size, 10
+  br i1 %t9, label %on.body.8, label %on.next.9
+on.body.8:
+  %t10 = mul i32 %size, 10
+  br label %on.value.11
+on.value.11:
+  br label %on.end.0
+on.next.9:
+  br label %on.body.12
+on.body.12:
+  %t11 = add i32 %size, 100
+  br label %on.value.14
+on.value.14:
+  br label %on.end.0
+on.end.0:
+  %t12 = phi i32 [%t4, %on.value.4], [10, %on.value.7], [%t10, %on.value.11], [%t11, %on.value.14]
+  ret i32 %t12
 }
-int $main() {
-    string_builder_reset();
-    size_t $0 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"1: ", .count = 3}));
-    uint32_t $2 = $score(1);
-    string_builder_append_string(to_string$u32($2));
-    string $1 = string_builder_finish($0);
-    prn($1);
-    string_builder_reset();
-    size_t $3 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"2: ", .count = 3}));
-    uint32_t $5 = $score(2);
-    string_builder_append_string(to_string$u32($5));
-    string $4 = string_builder_finish($3);
-    prn($4);
-    string_builder_reset();
-    size_t $6 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"10: ", .count = 4}));
-    uint32_t $8 = $score(10);
-    string_builder_append_string(to_string$u32($8));
-    string $7 = string_builder_finish($6);
-    prn($7);
-    string_builder_reset();
-    size_t $9 = string_builder_mark();
-    string_builder_append_string(to_string$string((string){.data = (u8*)"50: ", .count = 4}));
-    uint32_t $11 = $score(50);
-    string_builder_append_string(to_string$u32($11));
-    string $10 = string_builder_finish($9);
-    prn($10);
-    string_builder_reset();
-    return 0;
+
+define void @fn.1() {
+  %t0 = call i64 @string_builder_mark()
+  %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 3 })
+  call void @string_builder_append_string({ ptr, i64 } %t1)
+  %t2 = call i32 @fn.0(i32 1)
+  %t3 = call { ptr, i64 } @to_string$u32(i32 %t2)
+  call void @string_builder_append_string({ ptr, i64 } %t3)
+  %t4 = call { ptr, i64 } @string_builder_finish(i64 %t0)
+  call void @$prn({ ptr, i64 } %t4)
+  %t5 = call i64 @string_builder_mark()
+  %t6 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 3 })
+  call void @string_builder_append_string({ ptr, i64 } %t6)
+  %t7 = call i32 @fn.0(i32 2)
+  %t8 = call { ptr, i64 } @to_string$u32(i32 %t7)
+  call void @string_builder_append_string({ ptr, i64 } %t8)
+  %t9 = call { ptr, i64 } @string_builder_finish(i64 %t5)
+  call void @$prn({ ptr, i64 } %t9)
+  %t10 = call i64 @string_builder_mark()
+  %t11 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 4 })
+  call void @string_builder_append_string({ ptr, i64 } %t11)
+  %t12 = call i32 @fn.0(i32 10)
+  %t13 = call { ptr, i64 } @to_string$u32(i32 %t12)
+  call void @string_builder_append_string({ ptr, i64 } %t13)
+  %t14 = call { ptr, i64 } @string_builder_finish(i64 %t10)
+  call void @$prn({ ptr, i64 } %t14)
+  %t15 = call i64 @string_builder_mark()
+  %t16 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 4 })
+  call void @string_builder_append_string({ ptr, i64 } %t16)
+  %t17 = call i32 @fn.0(i32 50)
+  %t18 = call { ptr, i64 } @to_string$u32(i32 %t17)
+  call void @string_builder_append_string({ ptr, i64 } %t18)
+  %t19 = call { ptr, i64 } @string_builder_finish(i64 %t15)
+  call void @$prn({ ptr, i64 } %t19)
+  ret void
 }
+
+@$score = alias i32 (i32), ptr @fn.0
+@$main = alias void (), ptr @fn.1

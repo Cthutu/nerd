@@ -11,36 +11,31 @@ main :: fn () -> i32 {
 ¬
 42
 ¬
+
 ¬
-fn main
-$0 = cast i32:42
-local up = f32:$0
-local down = f32:3.8999999999999999
-$1 = -f32:3.8999999999999999
-local below = f32:$1
-$2 = cast f32:down
-local whole = i32:$2
-$3 = cast f32:below
-local negative = i32:$3
-$4 = cast f32:up
-$5 = i32:$4 + i32:whole
-$6 = i32:$5 + i32:negative
-return i32:$6
-end
-¬
-void init() {}
-int $main() {
-    float $0 = (float)42;
-    float $up = $0;
-    float $down = 3.8999999999999999f;
-    float $1 = -3.8999999999999999f;
-    float $below = $1;
-    int $2 = (int)$down;
-    int $whole = $2;
-    int $3 = (int)$below;
-    int $negative = $3;
-    int $4 = (int)$up;
-    int $5 = $4 + $whole;
-    int $6 = $5 + $negative;
-    return $6;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  let up: f32 = f32 cast(untyped integer 42 as f32)
+  let down: f32 = f32 3.8999999999999999
+  let below: f32 = f32 negate(f32 3.8999999999999999)
+  let whole: i32 = i32 cast(f32 local.1(down) as i32)
+  let negative: i32 = i32 cast(f32 local.2(below) as i32)
+  return i32 add(i32 add(i32 cast(f32 local.0(up) as i32), i32 local.3(whole)), i32 local.4(negative))
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  %t0 = sitofp i32 42 to float
+  %t1 = fneg float 0x400F333340000000
+  %t2 = fptosi float 0x400F333340000000 to i32
+  %t3 = fptosi float %t1 to i32
+  %t4 = fptosi float %t0 to i32
+  %t5 = add i32 %t4, %t2
+  %t6 = add i32 %t5, %t3
+  ret i32 %t6
+}
+
+@$main = alias i32 (), ptr @fn.0

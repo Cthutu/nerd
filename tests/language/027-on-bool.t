@@ -7,32 +7,48 @@ main :: fn () => on enabled => 42 else 7
 ¬
 
 ¬
-global enabled
-fn main
-local $0 = i32:0
-branch.false bool:enabled, L2
-$0 = i32:42
-jump L1
-label L2
-$0 = i32:7
-label L1
-return i32:$0
-end
-init
-enabled = bool:yes
-end
+hir 0
+bind enabled = value.0
+bind main = fn.0
+global value.0: bool = bool yes
+func fn.0() -> i32 {
+  return untyped integer on bool bind.0(enabled) {
+    value(bool yes) => {
+      expr untyped integer 42
+    }
+    else => {
+      expr untyped integer 7
+    }
+  }
+}
 ¬
-bool $enabled;
-int $main() {
-    int $0 = 0;
-    if (!$enabled) goto L2;
-    $0 = 42;
-    goto L1;
-    L2: ;
-    $0 = 7;
-    L1: ;
-    return $0;
+; nerd llvm-ir 0
+; generated from HIR
+
+@$enabled = global i1 0
+
+define void @m0.init() {
+  store i1 1, ptr @$enabled
+  ret void
 }
-void init() {
-    $enabled = true;
+
+define i32 @fn.0() {
+  %t0 = load i1, ptr @$enabled
+  %t1 = icmp eq i1 %t0, 1
+  br i1 %t1, label %on.body.1, label %on.next.2
+on.body.1:
+  br label %on.value.3
+on.value.3:
+  br label %on.end.0
+on.next.2:
+  br label %on.body.4
+on.body.4:
+  br label %on.value.6
+on.value.6:
+  br label %on.end.0
+on.end.0:
+  %t2 = phi i32 [42, %on.value.3], [7, %on.value.6]
+  ret i32 %t2
 }
+
+@$main = alias i32 (), ptr @fn.0

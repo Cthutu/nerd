@@ -10,34 +10,42 @@ main :: fn () => enabled.as(i32)
 ¬
 
 ¬
-global greeting
-global enabled
-global ratio
-global weight
-fn main
-$0 = cast bool:enabled
-return i32:$0
-end
-init
-greeting = string:"Hello"
-enabled = bool:yes
-$0 = cast i32:42
-ratio = f32:$0
-weight = f64:0
-end
+hir 0
+bind greeting = value.0
+bind enabled = value.1
+bind ratio = value.2
+bind weight = value.3
+bind main = fn.0
+global value.0: string = string "Hello"
+global value.1: bool = bool yes
+global value.2: f32 = f32 cast(untyped integer 42 as f32)
+global value.3: f64
+func fn.0() -> i32 {
+  return i32 cast(bool bind.1(enabled) as i32)
+}
 ¬
-string $greeting;
-bool $enabled;
-float $ratio;
-double $weight;
-int $main() {
-    int $0 = (int)$enabled;
-    return $0;
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [6 x i8] c"Hello\00"
+
+@$greeting = global { ptr, i64 } zeroinitializer
+@$enabled = global i1 0
+@$ratio = global float 0.000000e+00
+@$weight = global double 0.000000e+00
+
+define void @m0.init() {
+  store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr @$greeting
+  store i1 1, ptr @$enabled
+  %t0 = sitofp i32 42 to float
+  store float %t0, ptr @$ratio
+  ret void
 }
-void init() {
-    $greeting = (string){.data = (u8*)"Hello", .count = 5};
-    $enabled = true;
-    float $0 = (float)42;
-    $ratio = $0;
-    $weight = 0.0;
+
+define i32 @fn.0() {
+  %t0 = load i1, ptr @$enabled
+  %t1 = zext i1 %t0 to i32
+  ret i32 %t1
 }
+
+@$main = alias i32 (), ptr @fn.0

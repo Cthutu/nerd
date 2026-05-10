@@ -7,11 +7,17 @@ main :: fn () {
 ¬
 
 ¬
-fn main
-return i32:42
-end
-¬
-void init() {}
-int $main() {
-    return 42;
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  return untyped integer 42
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  ret i32 42
+}
+
+@$main = alias i32 (), ptr @fn.0

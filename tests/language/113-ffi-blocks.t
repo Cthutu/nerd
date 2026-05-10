@@ -10,23 +10,39 @@ main :: fn () -> i32 {
 ¬
 11
 ¬
-¬
-fn main
-$0 = call fn(i32)->i32:abs, i32:-7
-$1 = call fn(^u8)->usize:strlen, ^u8:"nerd"
-$2 = cast usize:$1
-$3 = i32:$0 + i32:$2
-return i32:$3
-end
-¬
-void init() {}
-int abs(int);
-uintptr_t strlen(const char*);
 
-int $main() {
-    int $0 = abs(-7);
-    uintptr_t $1 = strlen((const char*)(u8*)"nerd");
-    int $2 = (int)$1;
-    int $3 = $0 + $2;
-    return $3;
+¬
+hir 0
+module module.0(113-ffi-blocks.input)
+bind absolute = fn.0
+bind c_strlen = fn.1
+bind main = fn.2
+extern func fn.0(i32) -> i32
+extern func fn.1(^u8) -> usize
+func fn.2() -> i32 {
+  return i32 add(i32 call bind.0(absolute)(i32 negate(i32 7)), i32 cast(usize call bind.1(c_strlen)(^u8 c"nerd") as i32))
 }
+export bind.1(c_strlen)
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
+@.str.m0.1 = private unnamed_addr constant [5 x i8] c"nerd\00"
+
+declare i32 @absolute(i32)
+
+declare i64 @c_strlen(ptr)
+
+define i32 @fn.2() {
+  %t0 = sub i32 0, 7
+  %t1 = call i32 @absolute(i32 %t0)
+  %t2 = call i64 @c_strlen(ptr @.str.m0.1)
+  %t3 = trunc i64 %t2 to i32
+  %t4 = add i32 %t1, %t3
+  ret i32 %t4
+}
+
+@$main = alias i32 (), ptr @fn.2
+
+; export c_strlen

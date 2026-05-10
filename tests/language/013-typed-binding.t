@@ -5,12 +5,21 @@ main :: fn () => value
 ¬
 120
 ¬
+
 ¬
-fn main
-return i32:120
-end
-¬
-void init() {}
-int $main() {
-    return 120;
+hir 0
+bind value = value.0
+bind main = fn.0
+const value.0: i32 = i32 120
+func fn.0() -> i32 {
+  return i32 bind.0(value)
 }
+¬
+; nerd llvm-ir 0
+; generated from HIR
+
+define i32 @fn.0() {
+  ret i32 120
+}
+
+@$main = alias i32 (), ptr @fn.0
