@@ -126,6 +126,50 @@ internal u32 llvm_pointee_type(const Sema* sema, u32 type_index)
     return sema->types[type_index].first_param_type;
 }
 
+internal bool llvm_type_is_record(const Sema* sema, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    return kind == STK_Tuple || kind == STK_Plex;
+}
+
+internal u32 llvm_record_field_count(const Sema* sema, u32 type_index)
+{
+    if (!llvm_type_is_record(sema, type_index)) {
+        return 0;
+    }
+    return sema->types[type_index].param_count;
+}
+
+internal u32 llvm_record_field_type(const Sema* sema,
+                                    u32         type_index,
+                                    u32         field_index)
+{
+    if (!llvm_type_is_record(sema, type_index) ||
+        field_index >= sema->types[type_index].param_count) {
+        return sema_no_type();
+    }
+    return sema->type_param_types[sema->types[type_index].first_param_type +
+                                  field_index];
+}
+
+internal u32 llvm_record_field_index(const Sema* sema,
+                                     u32         type_index,
+                                     u32         symbol_handle)
+{
+    if (!llvm_type_is_record(sema, type_index)) {
+        return U32_MAX;
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
 internal void llvm_append_type(StringBuilder* sb,
                                const Sema*    sema,
                                u32            type_index)
@@ -177,15 +221,25 @@ internal void llvm_append_type(StringBuilder* sb,
         llvm_append_type(sb, sema, type->first_param_type);
         sb_append_char(sb, ']');
         break;
+    case STK_Tuple:
+    case STK_Plex:
+        sb_append_cstr(sb, "{ ");
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            llvm_append_type(
+                sb, sema, sema->type_param_types[type->first_param_type + i]);
+        }
+        sb_append_cstr(sb, " }");
+        break;
     case STK_Function:
     case STK_Pointer:
     case STK_String:
     case STK_Slice:
     case STK_DynamicArray:
-    case STK_Plex:
     case STK_Union:
     case STK_Enum:
-    case STK_Tuple:
     case STK_Module:
     default:
         sb_append_cstr(sb, "ptr");
@@ -501,6 +555,30 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
     };
 }
 
+internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(ctx->sema, type_index);
+    if (kind == STK_Pointer || kind == STK_String || kind == STK_Nil) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = type_index,
+            .value      = s("null"),
+        };
+    }
+    if (llvm_float_bits(ctx->sema, type_index) > 0) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = type_index,
+            .value      = s("0.0"),
+        };
+    }
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = type_index,
+        .value      = s("0"),
+    };
+}
+
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
                                         u32                  expr_index)
@@ -762,6 +840,135 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = rendered,
             };
         }
+    case HIR_EXPR_Tuple:
+        {
+            Arena tuple_arena = {0};
+            arena_init(&tuple_arena);
+            StringBuilder value = {0};
+            sb_init(&value, &tuple_arena);
+            sb_append_cstr(&value, "{ ");
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(&value, ", ");
+                }
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!item.ok) {
+                    arena_done(&tuple_arena);
+                    return (LlvmValue){0};
+                }
+                string item_type = llvm_type_string(ctx, item.type_index);
+                sb_format(&value,
+                          STRINGP " " STRINGP,
+                          STRINGV(item_type),
+                          STRINGV(item.value));
+            }
+            sb_append_cstr(&value, " }");
+            string rendered =
+                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
+            arena_done(&tuple_arena);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = rendered,
+            };
+        }
+    case HIR_EXPR_Plex:
+    case HIR_EXPR_PlexUpdate:
+        {
+            Arena plex_arena = {0};
+            arena_init(&plex_arena);
+            StringBuilder value = {0};
+            sb_init(&value, &plex_arena);
+
+            LlvmValue base = {0};
+            if (expr->kind == HIR_EXPR_PlexUpdate) {
+                base = llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                if (!base.ok) {
+                    arena_done(&plex_arena);
+                    return (LlvmValue){0};
+                }
+                sb_append_string(&value, base.value);
+            } else {
+                sb_append_cstr(&value, "{ ");
+                u32 field_count =
+                    llvm_record_field_count(ctx->sema, expr->type_index);
+                for (u32 i = 0; i < field_count; ++i) {
+                    if (i > 0) {
+                        sb_append_cstr(&value, ", ");
+                    }
+
+                    LlvmValue field_value =
+                        llvm_default_value(ctx,
+                                           llvm_record_field_type(
+                                               ctx->sema, expr->type_index, i));
+                    for (u32 j = 0; j < expr->arg_count; ++j) {
+                        const HirCallArg* arg =
+                            &ctx->hir->call_args[expr->first_arg + j];
+                        if (llvm_record_field_index(ctx->sema,
+                                                    expr->type_index,
+                                                    arg->symbol_handle) == i) {
+                            field_value =
+                                llvm_emit_expr(ctx, function, arg->expr_index);
+                            break;
+                        }
+                    }
+                    if (!field_value.ok) {
+                        arena_done(&plex_arena);
+                        return (LlvmValue){0};
+                    }
+                    string field_type =
+                        llvm_type_string(ctx, field_value.type_index);
+                    sb_format(&value,
+                              STRINGP " " STRINGP,
+                              STRINGV(field_type),
+                              STRINGV(field_value.value));
+                }
+                sb_append_cstr(&value, " }");
+            }
+
+            string rendered =
+                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
+            arena_done(&plex_arena);
+
+            if (expr->kind == HIR_EXPR_PlexUpdate) {
+                for (u32 i = 0; i < expr->arg_count; ++i) {
+                    const HirCallArg* arg =
+                        &ctx->hir->call_args[expr->first_arg + i];
+                    u32 field_index = llvm_record_field_index(
+                        ctx->sema, expr->type_index, arg->symbol_handle);
+                    if (field_index == U32_MAX) {
+                        return (LlvmValue){0};
+                    }
+                    LlvmValue field_value =
+                        llvm_emit_expr(ctx, function, arg->expr_index);
+                    if (!field_value.ok) {
+                        return (LlvmValue){0};
+                    }
+                    string temp        = llvm_temp(ctx);
+                    string record_type = llvm_type_string(ctx, expr->type_index);
+                    string field_type =
+                        llvm_type_string(ctx, field_value.type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = insertvalue " STRINGP " "
+                              STRINGP ", " STRINGP " " STRINGP ", %u\n",
+                              STRINGV(temp),
+                              STRINGV(record_type),
+                              STRINGV(rendered),
+                              STRINGV(field_type),
+                              STRINGV(field_value.value),
+                              field_index);
+                    rendered = temp;
+                }
+            }
+
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = rendered,
+            };
+        }
     case HIR_EXPR_LocalRef:
         if (expr->ref_kind == HIR_REF_Local) {
             LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
@@ -960,6 +1167,41 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .ok         = true,
                 .type_index = expr->type_index,
                 .value      = loaded,
+            };
+        }
+    case HIR_EXPR_TupleField:
+    case HIR_EXPR_Field:
+        {
+            LlvmValue target =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!target.ok) {
+                return (LlvmValue){0};
+            }
+
+            u32 field_index = U32_MAX;
+            if (expr->kind == HIR_EXPR_TupleField) {
+                field_index = (u32)expr->integer;
+            } else {
+                field_index = llvm_record_field_index(
+                    ctx->sema, target.type_index, expr->symbol_handle);
+            }
+            if (field_index == U32_MAX) {
+                return (LlvmValue){0};
+            }
+
+            string temp        = llvm_temp(ctx);
+            string record_type = llvm_type_string(ctx, target.type_index);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " "
+                      STRINGP ", %u\n",
+                      STRINGV(temp),
+                      STRINGV(record_type),
+                      STRINGV(target.value),
+                      field_index);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = temp,
             };
         }
     case HIR_EXPR_Cast:
