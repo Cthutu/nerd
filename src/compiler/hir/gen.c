@@ -1709,6 +1709,26 @@ internal u32 hir_lower_function_body(Hir*         hir,
                    .stmt_count = 0,
                });
 
+    if (fn_node->b == AFK_Expr) {
+        u32 expr_node_index = fn_end > 0 ? fn_end - 1 : hir_no_index();
+        if (expr_node_index < array_count(ast->nodes)) {
+            u32 stmt_index = hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind         = HIR_STMT_Return,
+                    .expr_index   = hir_lower_expr(
+                        hir, lexer, ast, sema, expr_node_index),
+                    .symbol_handle    = U32_MAX,
+                    .local_index      = sema_no_local(),
+                    .type_index       = hir_node_type(sema, expr_node_index),
+                    .body_block_index = hir_no_index(),
+                });
+            array_push(hir->blocks[block_index].stmt_indices, stmt_index);
+            hir->blocks[block_index].stmt_count++;
+        }
+        return block_index;
+    }
+
     bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * fn_end);
     memset(owned_nodes, 0, sizeof(bool) * fn_end);
     for (u32 i = fn_start_index + 1; i < fn_end; ++i) {

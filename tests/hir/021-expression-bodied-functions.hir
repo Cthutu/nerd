@@ -1,0 +1,7 @@
+main :: fn() => 42
+¬
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  return untyped integer 42
+}
