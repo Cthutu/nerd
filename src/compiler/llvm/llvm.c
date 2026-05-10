@@ -2687,6 +2687,77 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
                 array_push(values, item);
             }
+
+            if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Slice) {
+                u32 item_type =
+                    llvm_collection_item_type(ctx->sema, expr->type_index);
+                if (item_type == sema_no_type()) {
+                    array_free(values);
+                    return (LlvmValue){0};
+                }
+
+                string item_type_string = llvm_type_string(ctx, item_type);
+                string array_type = string_format(ctx->arena,
+                                                  "[%u x " STRINGP "]",
+                                                  expr->arg_count,
+                                                  STRINGV(item_type_string));
+                string current = expr->arg_count == 0 ? s("zeroinitializer")
+                                                      : s("poison");
+                for (u32 i = 0; i < expr->arg_count; ++i) {
+                    string temp       = llvm_temp(ctx);
+                    string value_type = llvm_type_string(ctx, values[i].type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = insertvalue " STRINGP " "
+                              STRINGP ", " STRINGP " " STRINGP ", %u\n",
+                              STRINGV(temp),
+                              STRINGV(array_type),
+                              STRINGV(current),
+                              STRINGV(value_type),
+                              STRINGV(values[i].value),
+                              i);
+                    current = temp;
+                }
+
+                string slot = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca " STRINGP "\n"
+                          "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                          "\n",
+                          STRINGV(slot),
+                          STRINGV(array_type),
+                          STRINGV(array_type),
+                          STRINGV(current),
+                          STRINGV(slot));
+
+                string data_ptr = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr inbounds " STRINGP
+                          ", ptr " STRINGP ", i64 0, i64 0\n",
+                          STRINGV(data_ptr),
+                          STRINGV(array_type),
+                          STRINGV(slot));
+                string slice0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr "
+                          STRINGP ", 0\n",
+                          STRINGV(slice0),
+                          STRINGV(data_ptr));
+                string slice1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } "
+                          STRINGP ", i64 %u, 1\n",
+                          STRINGV(slice1),
+                          STRINGV(slice0),
+                          expr->arg_count);
+                array_free(values);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = slice1,
+                };
+            }
+
             LlvmValue result = llvm_build_aggregate_value(ctx,
                                                           expr->type_index,
                                                           values,
