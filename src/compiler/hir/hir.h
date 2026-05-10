@@ -59,6 +59,7 @@ typedef enum : u8 {
     HIR_EXPR_IntegerLiteral,
     HIR_EXPR_FloatLiteral,
     HIR_EXPR_StringLiteral,
+    HIR_EXPR_StringConcat,
     HIR_EXPR_BoolLiteral,
     HIR_EXPR_NilLiteral,
     HIR_EXPR_FunctionRef,

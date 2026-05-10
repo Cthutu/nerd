@@ -480,6 +480,17 @@ internal void llvm_append_string_global_name(StringBuilder* sb,
     sb_format(sb, "@.str.m%u.%u", module_index, string_index);
 }
 
+internal void llvm_append_concat_string_global_name(StringBuilder* sb,
+                                                   const Hir*     hir,
+                                                   u32            expr_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.str.m%u.concat.%u", module_index, expr_index);
+}
+
 internal string llvm_string_global_name_string(const Hir* hir,
                                                Arena*     arena,
                                                u32        string_index)
@@ -487,6 +498,16 @@ internal string llvm_string_global_name_string(const Hir* hir,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     llvm_append_string_global_name(&sb, hir, string_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_concat_string_global_name_string(const Hir* hir,
+                                                     Arena*     arena,
+                                                     u32        expr_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_concat_string_global_name(&sb, hir, expr_index);
     return sb_to_string(&sb);
 }
 
@@ -861,6 +882,12 @@ internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* ou
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index);
+
+internal bool llvm_eval_hir_string_constant(const Hir*   hir,
+                                            const Lexer* lexer,
+                                            Arena*       arena,
+                                            u32          expr_index,
+                                            string*      out);
 
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
@@ -1567,6 +1594,27 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 "{ ptr " STRINGP ", i64 %zu }",
                 STRINGV(global),
                 ctx->lexer->strings[expr->string_index].count);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = value,
+            };
+        }
+    case HIR_EXPR_StringConcat:
+        {
+            string concat_value = {0};
+            if (!llvm_eval_hir_string_constant(
+                    ctx->hir, ctx->lexer, ctx->arena, expr_index, &concat_value)) {
+                return (LlvmValue){0};
+            }
+            string global =
+                llvm_concat_string_global_name_string(ctx->hir,
+                                                      ctx->arena,
+                                                      expr_index);
+            string value = string_format(ctx->arena,
+                                         "{ ptr " STRINGP ", i64 %zu }",
+                                         STRINGV(global),
+                                         concat_value.count);
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
@@ -3255,6 +3303,77 @@ internal void llvm_render_string_literals(StringBuilder* sb,
     }
 }
 
+internal bool llvm_eval_hir_string_constant(const Hir*   hir,
+                                            const Lexer* lexer,
+                                            Arena*       arena,
+                                            u32          expr_index,
+                                            string*      out)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* expr = &hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_StringLiteral) {
+        if (expr->string_index >= array_count(lexer->strings)) {
+            return false;
+        }
+        *out = lexer->strings[expr->string_index];
+        return true;
+    }
+
+    if (expr->kind != HIR_EXPR_StringConcat) {
+        return false;
+    }
+
+    string lhs = {0};
+    string rhs = {0};
+    if (!llvm_eval_hir_string_constant(
+            hir, lexer, arena, expr->lhs_expr_index, &lhs) ||
+        !llvm_eval_hir_string_constant(
+            hir, lexer, arena, expr->rhs_expr_index, &rhs)) {
+        return false;
+    }
+
+    u8* data = arena_alloc(arena, lhs.count + rhs.count);
+    memcpy(data, lhs.data, lhs.count);
+    memcpy(data + lhs.count, rhs.data, rhs.count);
+    *out = (string){
+        .data  = data,
+        .count = lhs.count + rhs.count,
+    };
+    return true;
+}
+
+internal void llvm_render_concat_string_literals(StringBuilder* sb,
+                                                 const Hir*      hir,
+                                                 const Lexer*    lexer,
+                                                 Arena*          arena)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        if (hir->exprs[i].kind != HIR_EXPR_StringConcat) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        string value = {0};
+        if (!llvm_eval_hir_string_constant(hir, lexer, &temp, i, &value)) {
+            arena_done(&temp);
+            continue;
+        }
+
+        llvm_append_concat_string_global_name(sb, hir, i);
+        sb_format(sb,
+                  " = private unnamed_addr constant [%zu x i8] c\"",
+                  value.count + 1);
+        llvm_append_escaped_string_bytes(sb, value);
+        sb_append_cstr(sb, "\\00\"\n");
+        arena_done(&temp);
+    }
+    (void)arena;
+}
+
 internal void llvm_render_import(StringBuilder* sb,
                                  const Lexer*   lexer,
                                  const Sema*    sema,
@@ -3459,6 +3578,7 @@ string llvm_render_hir(const Hir* hir,
 
     if (array_count(lexer->strings) > 0) {
         llvm_render_string_literals(&sb, hir, lexer);
+        llvm_render_concat_string_literals(&sb, hir, lexer, arena);
         sb_append_char(&sb, '\n');
     }
 

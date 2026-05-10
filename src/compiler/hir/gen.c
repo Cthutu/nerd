@@ -279,6 +279,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
     case AK_StringLiteral:
+    case AK_StringConcat:
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_SymbolRef:
@@ -509,6 +510,18 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .string_is_cstring = token_kind == TK_CString,
                 });
         }
+    case AK_StringConcat:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_StringConcat,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .lhs_expr_index =
+                                    hir_lower_expr(hir, lexer, ast, sema, node->a),
+                                .rhs_expr_index =
+                                    hir_lower_expr(hir, lexer, ast, sema, node->b),
+                            });
     case AK_BoolLiteral:
         return hir_add_expr(hir,
                             (HirExpr){
