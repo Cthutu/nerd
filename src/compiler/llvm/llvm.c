@@ -1267,6 +1267,59 @@ internal string llvm_param_value(const HirFunction* function,
     return (string){0};
 }
 
+internal string llvm_param_value_for_symbol(const HirFunction* function,
+                                            const Hir*         hir,
+                                            const Lexer*       lexer,
+                                            Arena*             arena,
+                                            u32                symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return (string){0};
+    }
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &hir->params[function->first_param + i];
+        if (param->symbol_handle != symbol_handle) {
+            continue;
+        }
+        string name = lex_symbol(lexer, param->symbol_handle);
+        if (string_eq_cstr(name, "_")) {
+            return string_format(arena, "%%_.%u", i);
+        }
+        return string_format(
+            arena, "%%%.*s", (int)name.count, name.data);
+    }
+    return (string){0};
+}
+
+internal u32 llvm_param_type(const HirFunction* function,
+                             const Hir*         hir,
+                             u32                local_index)
+{
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &hir->params[function->first_param + i];
+        if (param->local_index == local_index) {
+            return param->type_index;
+        }
+    }
+    return sema_no_type();
+}
+
+internal u32 llvm_param_type_for_symbol(const HirFunction* function,
+                                        const Hir*         hir,
+                                        u32                symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return sema_no_type();
+    }
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &hir->params[function->first_param + i];
+        if (param->symbol_handle == symbol_handle) {
+            return param->type_index;
+        }
+    }
+    return sema_no_type();
+}
+
 internal bool llvm_find_local_value(LlvmFunctionContext* ctx,
                                     u32                  local_index,
                                     LlvmValue*           out)
@@ -3426,6 +3479,142 @@ internal bool llvm_callee_function_index(LlvmFunctionContext* ctx,
     return false;
 }
 
+internal bool llvm_type_matches_for_call(const Sema* sema,
+                                         u32         expected_type,
+                                         u32         actual_type)
+{
+    if (expected_type == actual_type) {
+        return true;
+    }
+    if (expected_type == sema_no_type() || actual_type == sema_no_type()) {
+        return false;
+    }
+    if (sema_type_is_concrete_integer(sema, expected_type) &&
+        llvm_type_kind(sema, actual_type) == STK_UntypedInteger) {
+        return true;
+    }
+    if (sema_type_is_float(sema, expected_type) &&
+        llvm_type_kind(sema, actual_type) == STK_UntypedFloat) {
+        return true;
+    }
+    return false;
+}
+
+internal bool llvm_function_type_matches_call(LlvmFunctionContext* ctx,
+                                              const HirFunction*   candidate,
+                                              const HirExpr*       call)
+{
+    if (candidate == NULL || call == NULL ||
+        !llvm_type_is_function(ctx->sema, candidate->type_index)) {
+        return false;
+    }
+
+    u32 return_type =
+        llvm_function_return_type(ctx->sema, candidate->type_index);
+    if (!llvm_type_matches_for_call(ctx->sema, return_type, call->type_index)) {
+        return false;
+    }
+
+    u32 param_count =
+        llvm_function_param_count(ctx->sema, candidate->type_index);
+    if (param_count != call->arg_count) {
+        return false;
+    }
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        const HirCallArg* arg = &ctx->hir->call_args[call->first_arg + i];
+        if (arg->expr_index >= array_count(ctx->hir->exprs)) {
+            return false;
+        }
+        u32 param_type =
+            llvm_function_param_type(ctx->sema, candidate->type_index, i);
+        u32 arg_type = ctx->hir->exprs[arg->expr_index].type_index;
+        if (!llvm_type_matches_for_call(ctx->sema, param_type, arg_type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool llvm_generic_function_for_decl_call(LlvmFunctionContext* ctx,
+                                                  u32                  decl_index,
+                                                  const HirExpr*       call,
+                                                  u32*                 out)
+{
+    for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
+        const HirFunction* candidate = &ctx->hir->functions[i];
+        if (candidate->kind == HIR_FUNCTION_GenericInstantiation &&
+            candidate->decl_index == decl_index &&
+            llvm_function_type_matches_call(ctx, candidate, call)) {
+            *out = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_generic_function_for_decl_type(LlvmFunctionContext* ctx,
+                                                  u32                  decl_index,
+                                                  u32                  type_index,
+                                                  u32*                 out)
+{
+    for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
+        const HirFunction* candidate = &ctx->hir->functions[i];
+        if (candidate->kind == HIR_FUNCTION_GenericInstantiation &&
+            candidate->decl_index == decl_index &&
+            candidate->type_index == type_index) {
+            *out = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_explicit_generic_function_index(LlvmFunctionContext* ctx,
+                                                   const HirExpr*       expr,
+                                                   u32*                 out)
+{
+    if (expr == NULL || expr->kind != HIR_EXPR_Index ||
+        !llvm_type_is_function(ctx->sema, expr->type_index) ||
+        expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* target = &ctx->hir->exprs[expr->operand_expr_index];
+    if (target->kind == HIR_EXPR_LocalRef &&
+        target->ref_kind == HIR_REF_Decl) {
+        return llvm_generic_function_for_decl_type(
+            ctx, target->ref_index, expr->type_index, out);
+    }
+    return false;
+}
+
+internal bool llvm_generic_callee_name_for_call(LlvmFunctionContext* ctx,
+                                                const HirExpr*       call,
+                                                string*              out)
+{
+    if (call == NULL || call->kind != HIR_EXPR_Call ||
+        call->callee_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* callee = &ctx->hir->exprs[call->callee_expr_index];
+    u32 function_index = U32_MAX;
+    if (callee->kind == HIR_EXPR_LocalRef &&
+        callee->ref_kind == HIR_REF_Decl &&
+        llvm_generic_function_for_decl_call(
+            ctx, callee->ref_index, call, &function_index)) {
+        *out = llvm_function_name_string(
+            ctx->hir, ctx->lexer, ctx->arena, function_index);
+        return true;
+    }
+    if (llvm_explicit_generic_function_index(ctx, callee, &function_index)) {
+        *out = llvm_function_name_string(
+            ctx->hir, ctx->lexer, ctx->arena, function_index);
+        return true;
+    }
+    return false;
+}
+
 internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
                                       u32                  source_type,
                                       u32                  target_type)
@@ -3953,9 +4142,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                             ctx->lexer,
                                             ctx->arena,
                                             expr->ref_index);
+            u32 param_type = llvm_param_type(function, ctx->hir, expr->ref_index);
+            if (value.count == 0 && expr->symbol_handle != U32_MAX) {
+                value = llvm_param_value_for_symbol(function,
+                                                    ctx->hir,
+                                                    ctx->lexer,
+                                                    ctx->arena,
+                                                    expr->symbol_handle);
+                param_type = llvm_param_type_for_symbol(
+                    function, ctx->hir, expr->symbol_handle);
+            }
             return (LlvmValue){
                 .ok         = value.count > 0,
-                .type_index = expr->type_index,
+                .type_index = param_type != sema_no_type() ? param_type
+                                                           : expr->type_index,
                 .value      = value,
             };
         }
@@ -4311,6 +4511,19 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Index:
         {
+            u32 generic_function_index = U32_MAX;
+            if (llvm_explicit_generic_function_index(
+                    ctx, expr, &generic_function_index)) {
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = llvm_function_name_string(ctx->hir,
+                                                        ctx->lexer,
+                                                        ctx->arena,
+                                                        generic_function_index),
+                };
+            }
+
             LlvmValue target =
                 llvm_emit_expr(ctx, function, expr->operand_expr_index);
             LlvmValue index =
@@ -6173,7 +6386,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             string callee = {0};
-            if (!llvm_callee_name(ctx, function, expr->callee_expr_index, &callee)) {
+            if (!llvm_generic_callee_name_for_call(ctx, expr, &callee) &&
+                !llvm_callee_name(ctx, function, expr->callee_expr_index, &callee)) {
                 return (LlvmValue){0};
             }
 
@@ -6372,9 +6586,20 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
             return false;
         }
 
+        if (llvm_type_kind(ctx->sema, record.type_index) == STK_Union) {
+            LlvmValue union_value =
+                llvm_cast_to_union_storage(ctx, value, record.type_index);
+            if (!union_value.ok) {
+                return false;
+            }
+            return llvm_emit_assign(ctx,
+                                    function,
+                                    target->operand_expr_index,
+                                    union_value);
+        }
+
         u32 field_index = llvm_field_index_for_value(ctx, target, record);
-        if (field_index == U32_MAX ||
-            llvm_type_kind(ctx->sema, record.type_index) == STK_Union) {
+        if (field_index == U32_MAX) {
             return false;
         }
 

@@ -112,11 +112,41 @@ declare { ptr, i64 } @to_string$f64(double)
 declare void @$prn({ ptr, i64 })
 
 define void @fn.0() {
+  %t0 = call i32 @fn.1(i32 7)
+  %t1 = call { ptr, i64 } @fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
+  %t2 = add i32 %t0, 5
+  %t3 = call i32 @fn.1(i32 %t2)
+  %t4 = add i32 %t3, 30
+  %t5 = call i32 @fn.1(i32 %t4)
+  %t6 = call { { ptr, i64 } } @fn.3({ ptr, i64 } %t1)
+  %t7 = extractvalue { { ptr, i64 } } %t6, 0
+  %t8 = call { ptr, i64 } @fn.4({ ptr, i64 } %t7, { ptr, i64 } { ptr @.str.m0.1, i64 3 }, i1 1)
+  %t9 = call i64 @string_builder_mark()
+  %t10 = call { ptr, i64 } @to_string$i32(i32 %t0)
+  call void @string_builder_append_string({ ptr, i64 } %t10)
+  %t11 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t11)
+  %t12 = call { ptr, i64 } @to_string$string({ ptr, i64 } %t1)
+  call void @string_builder_append_string({ ptr, i64 } %t12)
+  %t13 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t13)
+  %t14 = call { ptr, i64 } @to_string$i32(i32 %t3)
+  call void @string_builder_append_string({ ptr, i64 } %t14)
+  %t15 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t15)
+  %t16 = call { ptr, i64 } @to_string$i32(i32 %t5)
+  call void @string_builder_append_string({ ptr, i64 } %t16)
+  %t17 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.5, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t17)
+  %t18 = call { ptr, i64 } @to_string$string({ ptr, i64 } %t8)
+  call void @string_builder_append_string({ ptr, i64 } %t18)
+  %t19 = call { ptr, i64 } @string_builder_finish(i64 %t9)
+  call void @$prn({ ptr, i64 } %t19)
   ret void
 }
 
 define i32 @fn.1(i32 %value) {
-  ret i32 0
+  ret i32 %value
 }
 
 define { ptr, i64 } @fn.2({ ptr, i64 } %value) {
