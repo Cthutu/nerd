@@ -846,6 +846,16 @@ internal cstr back_end_runtime_source_path(Arena* arena, cstr filename)
     return path_canonical(arena, from_exe);
 }
 
+internal bool back_end_hir_defines_init(const Hir* hir)
+{
+    for (u32 i = 0; i < array_count(hir->values); ++i) {
+        if (hir->values[i].kind == HIR_VALUE_Global) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                             const NerdArtifactConfig* artifacts)
 {
@@ -875,11 +885,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                       string_format(&arena,
                                     "%s.epilogue_bridge.c",
                                     artifacts->binary_path));
-    cstr init_ll_path =
-        back_end_cstr(&arena,
-                      string_format(&arena,
-                                    "%s.init.ll",
-                                    artifacts->binary_path));
+    bool module_defines_init = back_end_hir_defines_init(&root->hir);
+    cstr init_ll_path = module_defines_init
+                            ? NULL
+                            : back_end_cstr(
+                                  &arena,
+                                  string_format(&arena,
+                                                "%s.init.ll",
+                                                artifacts->binary_path));
     cstr prelude_path = back_end_runtime_source_path(&arena, "prelude.c");
     cstr epilogue_path = back_end_runtime_source_path(&arena, "epilogue.c");
     if (prelude_path == NULL || epilogue_path == NULL) {
@@ -895,23 +908,35 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         epilogue_path);
     string init_ll = s("define void @init() {\n  ret void\n}\n");
     if (!back_end_write_text_file(epilogue_bridge_path, epilogue_bridge) ||
-        !back_end_write_text_file(init_ll_path, init_ll)) {
+        (!module_defines_init &&
+         !back_end_write_text_file(init_ll_path, init_ll))) {
         arena_done(&arena);
         return false;
     }
 
     string opt_flags =
         artifacts->release ? s("-O2 -DNDEBUG") : s("-g -O0 -DDEBUG");
-    string command = string_format(
-        &arena,
-        "clang -std=gnu23 -Wno-dollar-in-identifier-extension " STRINGP
-        " -o \"%s\" \"%s\" \"%s\" \"%s\" \"%s\"",
-        STRINGV(opt_flags),
-        artifacts->binary_path,
-        prelude_path,
-        epilogue_bridge_path,
-        artifacts->llvm_path,
-        init_ll_path);
+    string command =
+        module_defines_init
+            ? string_format(&arena,
+                            "clang -std=gnu23 "
+                            "-Wno-dollar-in-identifier-extension " STRINGP
+                            " -o \"%s\" \"%s\" \"%s\" \"%s\"",
+                            STRINGV(opt_flags),
+                            artifacts->binary_path,
+                            prelude_path,
+                            epilogue_bridge_path,
+                            artifacts->llvm_path)
+            : string_format(&arena,
+                            "clang -std=gnu23 "
+                            "-Wno-dollar-in-identifier-extension " STRINGP
+                            " -o \"%s\" \"%s\" \"%s\" \"%s\" \"%s\"",
+                            STRINGV(opt_flags),
+                            artifacts->binary_path,
+                            prelude_path,
+                            epilogue_bridge_path,
+                            artifacts->llvm_path,
+                            init_ll_path);
     int compile_result = shell(back_end_cstr(&arena, command));
     if (compile_result != 0) {
         arena_done(&arena);
@@ -929,7 +954,9 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 #endif
 
     path_remove(epilogue_bridge_path);
-    path_remove(init_ll_path);
+    if (!module_defines_init) {
+        path_remove(init_ll_path);
+    }
     if (!artifacts->emit_llvm_file) {
         path_remove(artifacts->llvm_path);
     }
