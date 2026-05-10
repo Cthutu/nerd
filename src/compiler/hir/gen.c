@@ -64,6 +64,32 @@ internal u32 hir_local_type(const Sema* sema, u32 local_index)
                : sema_no_type();
 }
 
+internal u32 hir_local_dynamic_array_min_capacity(const Ast*  ast,
+                                                  const Sema* sema,
+                                                  u32         local_index)
+{
+    if (local_index >= array_count(sema->locals)) {
+        return 0;
+    }
+    u32 type_node_index = sema->locals[local_index].type_node_index;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    while (type_node->kind == AK_Expression &&
+           type_node->a < array_count(ast->nodes)) {
+        type_node_index = type_node->a;
+        type_node       = &ast->nodes[type_node_index];
+    }
+    if (type_node->kind != AK_TypeDynamicArray ||
+        type_node->a >= array_count(sema->node_const_known) ||
+        !sema->node_const_known[type_node->a]) {
+        return 0;
+    }
+    i64 value = sema->node_const_values[type_node->a];
+    return value > 0 ? (u32)value : 0;
+}
+
 internal u32 hir_decl_type(const Sema* sema, u32 decl_index)
 {
     return decl_index < array_count(sema->decls)
@@ -1291,19 +1317,27 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
                 value_node_index = ast->nodes[value_node_index].b;
             }
+            u32 expr_index =
+                value_node_index < array_count(ast->nodes)
+                    ? hir_lower_expr(hir, lexer, ast, sema, value_node_index)
+                    : hir_no_index();
+            u32 local_index = hir_node_local(sema, node_index);
+            u32 local_type  = hir_local_type(sema, local_index);
+            if (expr_index < array_count(hir->exprs) &&
+                hir->exprs[expr_index].kind == HIR_EXPR_Array &&
+                local_type < array_count(sema->types) &&
+                sema->types[local_type].kind == STK_DynamicArray) {
+                hir->exprs[expr_index].integer =
+                    hir_local_dynamic_array_min_capacity(ast, sema, local_index);
+            }
             return hir_add_stmt(
                 hir,
                 (HirStmt){
-                    .kind = HIR_STMT_Let,
-                    .expr_index =
-                        value_node_index < array_count(ast->nodes)
-                            ? hir_lower_expr(
-                                  hir, lexer, ast, sema, value_node_index)
-                            : hir_no_index(),
-                    .symbol_handle = node->a,
-                    .local_index   = hir_node_local(sema, node_index),
-                    .type_index =
-                        hir_local_type(sema, hir_node_local(sema, node_index)),
+                    .kind             = HIR_STMT_Let,
+                    .expr_index       = expr_index,
+                    .symbol_handle    = node->a,
+                    .local_index      = local_index,
+                    .type_index       = local_type,
                     .body_block_index = hir_no_index(),
                 });
         }

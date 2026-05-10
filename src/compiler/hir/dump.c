@@ -609,6 +609,12 @@ internal void hir_render_expr(StringBuilder* sb,
         sb_append_cstr(sb, expr->kind == HIR_EXPR_Tuple ? "tuple(" : "array(");
         hir_render_expr_arg_list(
             sb, hir, lexer, sema, arena, expr, false, false);
+        if (expr->kind == HIR_EXPR_Array &&
+            expr->type_index < array_count(sema->types) &&
+            sema->types[expr->type_index].kind == STK_DynamicArray &&
+            expr->integer > 0) {
+            sb_format(sb, "; min_capacity %lld", (long long)expr->integer);
+        }
         sb_append_char(sb, ')');
         break;
     case HIR_EXPR_TupleField:

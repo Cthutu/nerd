@@ -3190,6 +3190,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
+                u32 capacity = expr->arg_count;
+                if (expr->integer > 0 && (u64)expr->integer > capacity) {
+                    capacity = (u32)expr->integer;
+                }
+
                 string header = llvm_temp(ctx);
                 sb_format(ctx->sb,
                           "  " STRINGP " = call ptr @malloc(i64 24)\n",
@@ -3202,14 +3207,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_dynamic_array_header_field_ptr(ctx, header, 2);
 
                 string data = s("null");
-                if (expr->arg_count > 0) {
+                if (capacity > 0) {
                     u64 item_size =
                         llvm_type_storage_bytes(ctx->sema, item_type);
                     data = llvm_temp(ctx);
                     sb_format(ctx->sb,
                               "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
                               STRINGV(data),
-                              (unsigned long long)item_size * expr->arg_count);
+                              (unsigned long long)item_size * capacity);
 
                     string item_type_string = llvm_type_string(ctx, item_type);
                     for (u32 i = 0; i < expr->arg_count; ++i) {
@@ -3240,7 +3245,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(data_ptr_ptr),
                           expr->arg_count,
                           STRINGV(count_ptr),
-                          expr->arg_count,
+                          capacity,
                           STRINGV(capacity_ptr));
                 array_free(values);
                 return (LlvmValue){
