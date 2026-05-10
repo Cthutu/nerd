@@ -3802,9 +3802,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (loop->kind == HIR_FOR_In) {
                 LlvmValue iterable =
                     llvm_emit_expr(ctx, function, loop->iterable_expr_index);
+                SemaTypeKind iterable_kind =
+                    llvm_type_kind(ctx->sema, iterable.type_index);
                 if (!iterable.ok ||
-                    llvm_type_kind(ctx->sema, iterable.type_index) !=
-                        STK_Slice) {
+                    (iterable_kind != STK_Slice &&
+                     iterable_kind != STK_String)) {
                     return (LlvmValue){0};
                 }
 
