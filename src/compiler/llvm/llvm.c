@@ -4768,25 +4768,85 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_type_kind(ctx->sema, iterable.type_index);
                 if (!iterable.ok ||
                     (iterable_kind != STK_Slice &&
-                     iterable_kind != STK_String)) {
+                     iterable_kind != STK_String &&
+                     iterable_kind != STK_DynamicArray)) {
                     return (LlvmValue){0};
                 }
 
-                string slice_type = llvm_type_string(ctx, iterable.type_index);
                 string data_ptr   = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = extractvalue " STRINGP " "
-                          STRINGP ", 0\n",
-                          STRINGV(data_ptr),
-                          STRINGV(slice_type),
-                          STRINGV(iterable.value));
                 string count = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = extractvalue " STRINGP " "
-                          STRINGP ", 1\n",
-                          STRINGV(count),
-                          STRINGV(slice_type),
-                          STRINGV(iterable.value));
+                if (iterable_kind == STK_DynamicArray) {
+                    string data_slot  = llvm_temp(ctx);
+                    string count_slot = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = alloca ptr\n"
+                              "  " STRINGP " = alloca i64\n",
+                              STRINGV(data_slot),
+                              STRINGV(count_slot));
+
+                    string is_null = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = icmp eq ptr " STRINGP
+                              ", null\n",
+                              STRINGV(is_null),
+                              STRINGV(iterable.value));
+                    string empty_label = llvm_label(ctx, "for.in.empty");
+                    string load_label  = llvm_label(ctx, "for.in.load");
+                    string ready_label = llvm_label(ctx, "for.in.ready");
+                    sb_format(ctx->sb,
+                              "  br i1 " STRINGP ", label %%" STRINGP
+                              ", label %%" STRINGP "\n",
+                              STRINGV(is_null),
+                              STRINGV(empty_label),
+                              STRINGV(load_label));
+
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(empty_label));
+                    sb_format(ctx->sb,
+                              "  store ptr null, ptr " STRINGP "\n"
+                              "  store i64 0, ptr " STRINGP "\n"
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(data_slot),
+                              STRINGV(count_slot),
+                              STRINGV(ready_label));
+
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(load_label));
+                    string loaded_data = llvm_dynamic_array_load_header_field(
+                        ctx, iterable.value, 0, s("ptr"));
+                    string loaded_count = llvm_dynamic_array_load_header_field(
+                        ctx, iterable.value, 1, s("i64"));
+                    sb_format(ctx->sb,
+                              "  store ptr " STRINGP ", ptr " STRINGP "\n"
+                              "  store i64 " STRINGP ", ptr " STRINGP "\n"
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(loaded_data),
+                              STRINGV(data_slot),
+                              STRINGV(loaded_count),
+                              STRINGV(count_slot),
+                              STRINGV(ready_label));
+
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(ready_label));
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load ptr, ptr " STRINGP "\n"
+                              "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                              STRINGV(data_ptr),
+                              STRINGV(data_slot),
+                              STRINGV(count),
+                              STRINGV(count_slot));
+                } else {
+                    string slice_type = llvm_type_string(ctx, iterable.type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 0\n",
+                              STRINGV(data_ptr),
+                              STRINGV(slice_type),
+                              STRINGV(iterable.value));
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 1\n",
+                              STRINGV(count),
+                              STRINGV(slice_type),
+                              STRINGV(iterable.value));
+                }
 
                 u32 index_type = llvm_local_type(ctx, loop->index_local_index);
                 if (index_type == sema_no_type()) {
