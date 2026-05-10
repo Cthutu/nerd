@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from textwrap import wrap
 from typing import Iterable
@@ -56,6 +58,15 @@ def run_command(cmd: list[str]) -> None:
         print(colour(joined, GREY), file=sys.stderr)
         print(bar, file=sys.stderr)
         raise SystemExit(result.returncode)
+
+
+@dataclass(frozen=True)
+class RunDirective:
+    source: Path
+    line_no: int
+    command: list[str]
+    output: Path
+    deps: tuple[Path, ...]
 
 
 def available_projects() -> list[str]:
@@ -359,8 +370,10 @@ def _parse_command_lines(
                             f"Invalid define in {source}:{line_no}: use NAME or NAME=VALUE",
                             RED,
                         )
-                    )
+                )
                 _add_unique(defines, token)
+        elif command == "run" and require_prefix:
+            continue
         else:
             border_top = colour("┌──────┬───────────────────────┐", CYAN)
             border_mid = colour("├──────┼───────────────────────┤", CYAN)
@@ -386,6 +399,13 @@ def _parse_command_lines(
                 + colour("preprocessor defines", CYAN)
                 + colour("  │", CYAN)
             )
+            row_run = (
+                colour("│ ", CYAN)
+                + colour("run ", GREEN)
+                + colour(" │ ", CYAN)
+                + colour("generated build inputs", CYAN)
+                + colour("│", CYAN)
+            )
             table_lines = [
                 colour("Known commands:", YELLOW),
                 border_top,
@@ -393,6 +413,7 @@ def _parse_command_lines(
                 border_mid,
                 row_use,
                 row_def,
+                row_run,
                 border_bot,
             ]
             raise SystemExit(
@@ -410,6 +431,99 @@ def parse_sections_and_defines(src: Path) -> tuple[list[str], list[str]]:
     """Extract section names and compile-time defines from //> command: params markers."""
     text = src.read_text(encoding="utf-8", errors="ignore")
     return _parse_command_lines(text.splitlines(), src, require_prefix=True)
+
+
+def _path_from_command_token(token: str) -> Path:
+    path = Path(token)
+    return path if path.is_absolute() else ROOT / path
+
+
+def _run_directive_output(command: list[str], source: Path, line_no: int) -> Path:
+    for index, token in enumerate(command[:-1]):
+        if token == "-o":
+            return _path_from_command_token(command[index + 1])
+    raise SystemExit(
+        colour(
+            f"Invalid run directive in {source}:{line_no}: expected '-o <output>'",
+            RED,
+        )
+    )
+
+
+def _run_directive_deps(command: list[str], output: Path) -> tuple[Path, ...]:
+    deps: list[Path] = []
+    skip_next = False
+    for token in command:
+        if skip_next:
+            skip_next = False
+            continue
+        if token == "-o":
+            skip_next = True
+            continue
+        if token.startswith("-"):
+            continue
+        path = _path_from_command_token(token)
+        if path == output:
+            continue
+        if path.exists() and path.is_file():
+            deps.append(path)
+    return tuple(deps)
+
+
+def parse_run_directives(src: Path) -> list[RunDirective]:
+    text = src.read_text(encoding="utf-8", errors="ignore")
+    directives: list[RunDirective] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        match = re.match(r"\s*//>\s*run\s*:\s*(.*)$", line)
+        if not match:
+            continue
+        try:
+            command = shlex.split(match.group(1))
+        except ValueError as exc:
+            raise SystemExit(
+                colour(f"Invalid run directive in {src}:{line_no}: {exc}", RED)
+            )
+        if not command:
+            raise SystemExit(
+                colour(f"Invalid run directive in {src}:{line_no}: empty command", RED)
+            )
+        output = _run_directive_output(command, src, line_no)
+        directives.append(
+            RunDirective(
+                source=src,
+                line_no=line_no,
+                command=command,
+                output=output,
+                deps=_run_directive_deps(command, output),
+            )
+        )
+    return directives
+
+
+def run_directive_needs_rebuild(directive: RunDirective) -> bool:
+    if not directive.output.exists():
+        return True
+    output_mtime = directive.output.stat().st_mtime
+    deps = [directive.source, *directive.deps]
+    return any(dep.exists() and dep.stat().st_mtime > output_mtime for dep in deps)
+
+
+def run_build_directives(sources: Iterable[Path]) -> None:
+    seen_outputs: set[Path] = set()
+    skipped = 0
+    for src in sources:
+        for directive in parse_run_directives(src):
+            if directive.output in seen_outputs:
+                continue
+            seen_outputs.add(directive.output)
+            directive.output.parent.mkdir(parents=True, exist_ok=True)
+            if not run_directive_needs_rebuild(directive):
+                skipped += 1
+                continue
+            print(f"{prefix('run', YELLOW)} {directive.output.relative_to(ROOT)}")
+            run_command(directive.command)
+    if skipped:
+        print(f"{prefix('skip', GREY)} {skipped} run directive(s) up to date")
 
 
 def module_header_for_dir(directory: Path) -> Path | None:
@@ -557,6 +671,8 @@ def main(argv: list[str] | None = None) -> None:
     banner(profile, projects)
     if not all_sources:
         raise SystemExit(colour("No C sources found in src/", RED))
+
+    run_build_directives(all_sources)
 
     module_define_cache: dict[Path, list[str]] = {}
     extra_flags_by_source: dict[Path, list[str]] = {}

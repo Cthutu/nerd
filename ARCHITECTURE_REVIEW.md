@@ -433,29 +433,30 @@ Working assumption:
 Build-step option:
 
 - Keep the runtime prelude/postlude in C initially.
-- Compile `data/prelude.c` and `data/epilogue.c` to LLVM IR or bitcode with
-  clang as part of the backend build step.
+- Compile `data/prelude.c` and the LLVM-specific `data/epilogue_llvm.c` wrapper
+  to LLVM IR or bitcode with clang as part of the compiler build step.
 - Generate Nerd program LLVM IR separately from HIR.
-- Link the generated Nerd IR with the prelude/postlude IR using clang/LLVM
-  tools.
+- Link the generated Nerd IR with the generated runtime IR using clang/LLVM
+  tools rather than concatenating complete LLVM modules.
 
 This is a useful bridge because the current runtime is already isolated in
-`data/prelude.c` and `data/epilogue.c`. It lets the LLVM experiment avoid
+`data/prelude.c` and the epilogue is small. It lets the LLVM experiment avoid
 rewriting runtime helpers immediately while still testing generated LLVM IR for
 Nerd code.
 
 Open details for this bridge:
 
-- `data/epilogue.c` currently names `$main()`, which matches the intended
-  LLVM symbol convention for a Nerd `main` binding.
+- `data/epilogue_llvm.c` names `$main()`, which matches the intended LLVM
+  symbol convention for a Nerd `main` binding. Void-returning Nerd `main`
+  currently uses a tiny generated LLVM wrapper instead.
 - The prelude uses C library functions and thread-local storage, so the LLVM
   link step still needs the platform C runtime and correct target flags.
 - Runtime helper names such as `string_eq`, `string_slice`,
   `string_builder_*`, and `to_string$*` need a stable LLVM naming/linkage
   contract.
-- If prelude/postlude are compiled once and cached, the cache key must include
-  target triple, release/debug mode, relevant compiler flags, and runtime source
-  mtimes.
+- The current build cache is based on `//> run` directive outputs and dependency
+  mtimes. If we add target-specific runtime artifacts, the cache key must also
+  include target triple, release/debug mode, and relevant compiler flags.
 
 #### 6. Define LSP Feature Contracts
 

@@ -1,5 +1,7 @@
 //------------------------------------------------------------------------------
 //> use: core intern compiler timing table cli lsp object
+//> run: clang -S -emit-llvm -O0 -Xclang -disable-O0-optnone -std=gnu23 data/prelude.c -o _obj/llvm/prelude.ll
+//> run: clang -S -emit-llvm -O0 -Xclang -disable-O0-optnone -std=gnu23 -Wno-dollar-in-identifier-extension data/epilogue_llvm.c -o _obj/llvm/epilogue.ll
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
