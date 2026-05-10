@@ -5381,15 +5381,19 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             bool   old_break_emitted = ctx->emitted_break;
             u32    block_defer_base = array_count(ctx->defer_block_indices);
 
+            u32 block_result_type =
+                ctx->discard_expr_value ? llvm_builtin_type(ctx->sema, STK_Void)
+                                        : expr->type_index;
             string result_ptr = {0};
-            if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
-                string result_type = llvm_type_string(ctx, expr->type_index);
+            if (!llvm_type_is_void(ctx->sema, block_result_type)) {
+                string result_type = llvm_type_string(ctx, block_result_type);
                 result_ptr         = llvm_temp(ctx);
                 sb_format(ctx->sb,
                           "  " STRINGP " = alloca " STRINGP ", align 4\n",
                           STRINGV(result_ptr),
                           STRINGV(result_type));
-                LlvmValue default_value = llvm_default_value(ctx, expr->type_index);
+                LlvmValue default_value =
+                    llvm_default_value(ctx, block_result_type);
                 if (!default_value.ok) {
                     return (LlvmValue){0};
                 }
@@ -5402,9 +5406,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             ctx->break_label      = end_label;
-            ctx->continue_label   = (string){0};
+            ctx->continue_label   = old_continue;
             ctx->break_value_ptr  = result_ptr;
-            ctx->break_value_type = expr->type_index;
+            ctx->break_value_type = block_result_type;
             ctx->break_defer_count = block_defer_base;
             ctx->continue_defer_count = block_defer_base;
             ctx->emitted_break    = false;
@@ -5413,9 +5417,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 (LlvmControlTarget){
                     .symbol_handle    = expr->symbol_handle,
                     .break_label      = end_label,
-                    .continue_label   = (string){0},
+                    .continue_label   = old_continue,
                     .break_value_ptr  = result_ptr,
-                    .break_value_type = expr->type_index,
+                    .break_value_type = block_result_type,
                     .break_defer_count = block_defer_base,
                     .continue_defer_count = block_defer_base,
                 });
@@ -5455,15 +5459,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->block_terminated = false;
             }
 
-            if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+            if (llvm_type_is_void(ctx->sema, block_result_type)) {
                 return (LlvmValue){
                     .ok         = true,
-                    .type_index = expr->type_index,
+                    .type_index = block_result_type,
                     .value      = s(""),
                 };
             }
 
-            string result_type = llvm_type_string(ctx, expr->type_index);
+            string result_type = llvm_type_string(ctx, block_result_type);
             string loaded      = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP " = load " STRINGP ", ptr " STRINGP
@@ -5473,7 +5477,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                       STRINGV(result_ptr));
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index = block_result_type,
                 .value      = loaded,
             };
         }
