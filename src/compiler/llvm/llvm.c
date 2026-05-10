@@ -1429,6 +1429,12 @@ internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
                                                      u32                  field_index,
                                                      string               type);
 
+internal u64 llvm_type_storage_bytes(const Sema* sema, u32 type_index);
+
+internal string llvm_dynamic_array_header_field_ptr(LlvmFunctionContext* ctx,
+                                                    string               header,
+                                                    u32                  field_index);
+
 internal LlvmValue llvm_emit_dynamic_array_field(LlvmFunctionContext* ctx,
                                                  LlvmValue            target,
                                                  const HirExpr*       expr);
@@ -3172,6 +3178,75 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .ok         = true,
                     .type_index = expr->type_index,
                     .value      = slice1,
+                };
+            }
+
+            if (llvm_type_kind(ctx->sema, expr->type_index) ==
+                STK_DynamicArray) {
+                u32 item_type =
+                    llvm_collection_item_type(ctx->sema, expr->type_index);
+                if (item_type == sema_no_type()) {
+                    array_free(values);
+                    return (LlvmValue){0};
+                }
+
+                string header = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = call ptr @malloc(i64 24)\n",
+                          STRINGV(header));
+                string data_ptr_ptr =
+                    llvm_dynamic_array_header_field_ptr(ctx, header, 0);
+                string count_ptr =
+                    llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+                string capacity_ptr =
+                    llvm_dynamic_array_header_field_ptr(ctx, header, 2);
+
+                string data = s("null");
+                if (expr->arg_count > 0) {
+                    u64 item_size =
+                        llvm_type_storage_bytes(ctx->sema, item_type);
+                    data = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+                              STRINGV(data),
+                              (unsigned long long)item_size * expr->arg_count);
+
+                    string item_type_string = llvm_type_string(ctx, item_type);
+                    for (u32 i = 0; i < expr->arg_count; ++i) {
+                        string item_ptr = llvm_temp(ctx);
+                        string value_type =
+                            llvm_type_string(ctx, values[i].type_index);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP
+                                  " = getelementptr inbounds " STRINGP
+                                  ", ptr " STRINGP ", i64 %u\n"
+                                  "  store " STRINGP " " STRINGP
+                                  ", ptr " STRINGP "\n",
+                                  STRINGV(item_ptr),
+                                  STRINGV(item_type_string),
+                                  STRINGV(data),
+                                  i,
+                                  STRINGV(value_type),
+                                  STRINGV(values[i].value),
+                                  STRINGV(item_ptr));
+                    }
+                }
+
+                sb_format(ctx->sb,
+                          "  store ptr " STRINGP ", ptr " STRINGP "\n"
+                          "  store i64 %u, ptr " STRINGP "\n"
+                          "  store i64 %u, ptr " STRINGP "\n",
+                          STRINGV(data),
+                          STRINGV(data_ptr_ptr),
+                          expr->arg_count,
+                          STRINGV(count_ptr),
+                          expr->arg_count,
+                          STRINGV(capacity_ptr));
+                array_free(values);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = header,
                 };
             }
 
