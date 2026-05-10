@@ -7543,7 +7543,19 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
-        if (hir->exprs[i].kind == HIR_EXPR_InterpolatedString) {
+        const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind == HIR_EXPR_InterpolatedString) {
+            return true;
+        }
+        if (expr->kind == HIR_EXPR_Binary &&
+            (expr->binary_op == HIR_BINARY_Equal ||
+             expr->binary_op == HIR_BINARY_NotEqual) &&
+            expr->lhs_expr_index < array_count(hir->exprs) &&
+            expr->rhs_expr_index < array_count(hir->exprs) &&
+            llvm_type_kind(sema, hir->exprs[expr->lhs_expr_index].type_index) ==
+                STK_String &&
+            llvm_type_kind(sema, hir->exprs[expr->rhs_expr_index].type_index) ==
+                STK_String) {
             return true;
         }
     }
