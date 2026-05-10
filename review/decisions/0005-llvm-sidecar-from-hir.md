@@ -84,18 +84,18 @@ LLVM IR with `nerd build --llvm source.n`. The previous IR/C backend remains
 available for debugging with `--c-backend`.
 
 The compiler build now supports `//> run: ...` directives on source files.
-`src/nerd.c` uses these to compile `data/prelude.c` and a small
-`data/epilogue_llvm.c` wrapper into `_obj/llvm/prelude.ll` and
-`_obj/llvm/epilogue.ll` before compiling the compiler itself. Those generated
-runtime `.ll` files are embedded into the compiler with `#embed`. During a Nerd
-program build, the backend writes temporary copies beside the generated program
-LLVM IR and invokes clang on all LLVM inputs together. The backend removes
-those temporary runtime files after a successful link.
+`src/nerd.c` uses this to compile `data/prelude.c` into
+`_obj/llvm/prelude.ll` before compiling the compiler itself. That generated
+runtime `.ll` file is embedded into the compiler with `#embed`. During a Nerd
+program build, the backend writes a temporary prelude copy beside the generated
+program LLVM IR, emits the tiny LLVM `main` wrapper directly, and invokes clang
+on all LLVM inputs together. The backend removes those temporary runtime files
+after a successful link.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
-2. Consider changing the embedded runtime bridge artifacts from textual LLVM IR
+2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
 3. Remove the legacy IR/C backend once the runtime bridge no longer needs it
    for comparison and the installer has had one release cycle with

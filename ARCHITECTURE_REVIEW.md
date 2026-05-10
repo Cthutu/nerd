@@ -433,22 +433,22 @@ Working assumption:
 Build-step option:
 
 - Keep the runtime prelude/postlude in C initially.
-- Compile `data/prelude.c` and the LLVM-specific `data/epilogue_llvm.c` wrapper
-  to LLVM IR or bitcode with clang as part of the compiler build step.
+- Compile `data/prelude.c` to LLVM IR or bitcode with clang as part of the
+  compiler build step.
 - Generate Nerd program LLVM IR separately from HIR.
-- Link the generated Nerd IR with the generated runtime IR using clang/LLVM
-  tools rather than concatenating complete LLVM modules.
+- Generate the tiny LLVM `main` wrapper directly in the backend.
+- Link the generated Nerd IR with the generated runtime IR and wrapper using
+  clang/LLVM tools rather than concatenating complete LLVM modules.
 
-This is a useful bridge because the current runtime is already isolated in
-`data/prelude.c` and the epilogue is small. It lets the LLVM experiment avoid
-rewriting runtime helpers immediately while still testing generated LLVM IR for
-Nerd code.
+This is a useful bridge because the current runtime helpers are already
+isolated in `data/prelude.c` and the epilogue is small enough to generate as
+LLVM text. It lets the LLVM experiment avoid rewriting runtime helpers
+immediately while still testing generated LLVM IR for Nerd code.
 
 Open details for this bridge:
 
-- `data/epilogue_llvm.c` names `$main()`, which matches the intended LLVM
-  symbol convention for a Nerd `main` binding. Void-returning Nerd `main`
-  currently uses a tiny generated LLVM wrapper instead.
+- The generated LLVM wrapper names `$main()`, which matches the intended LLVM
+  symbol convention for a Nerd `main` binding.
 - The prelude uses C library functions and thread-local storage, so the LLVM
   link step still needs the platform C runtime and correct target flags.
 - Runtime helper names such as `string_eq`, `string_slice`,

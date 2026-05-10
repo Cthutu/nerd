@@ -26,10 +26,6 @@ static const char g_llvm_runtime_prelude[] = {
 #embed "../../../../_obj/llvm/prelude.ll"
     , 0};
 
-static const char g_llvm_runtime_epilogue[] = {
-#embed "../../../../_obj/llvm/epilogue.ll"
-    , 0};
-
 typedef struct {
     const FrontEndState*      front_end_results;
     const NerdArtifactConfig* artifacts;
@@ -987,7 +983,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                 "  call void @$main()\n"
                 "  ret i32 0\n"
                 "}\n")
-            : s(g_llvm_runtime_epilogue);
+            : s("declare void @init()\n"
+                "declare i32 @$main()\n"
+                "\n"
+                "define i32 @main() {\n"
+                "  call void @init()\n"
+                "  %result = call i32 @$main()\n"
+                "  ret i32 %result\n"
+                "}\n");
     StringBuilder init_ll_builder = {0};
     sb_init(&init_ll_builder, &arena);
     for (u32 i = 0; i < array_count(init_module_indices); ++i) {
@@ -1024,14 +1027,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     sb_init(&command_builder, &arena);
     sb_format(&command_builder,
               "clang -Wno-override-module " STRINGP
-              " -o \"%s\" \"%s\" \"%s\"",
+              " -o \"%s\" \"%s\"",
               STRINGV(opt_flags),
               artifacts->binary_path,
-              runtime_prelude_path,
-              runtime_epilogue_path);
+              runtime_prelude_path);
     for (u32 i = 0; i < array_count(llvm_paths); ++i) {
         sb_format(&command_builder, " \"%s\"", llvm_paths[i]);
     }
+    sb_format(&command_builder, " \"%s\"", runtime_epilogue_path);
     sb_format(&command_builder, " \"%s\"", init_ll_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
     string command        = sb_to_string(&command_builder);
