@@ -3086,6 +3086,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_TupleField:
     case HIR_EXPR_Field:
         {
+            if (expr->kind == HIR_EXPR_Field &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum &&
+                expr->symbol_handle != U32_MAX) {
+                u32 variant_index = llvm_enum_variant_index(
+                    ctx->sema, expr->type_index, expr->symbol_handle);
+                if (variant_index != U32_MAX) {
+                    return llvm_emit_enum_constructor(
+                        ctx, function, expr, variant_index);
+                }
+            }
+
             LlvmValue target =
                 llvm_emit_expr(ctx, function, expr->operand_expr_index);
             if (!target.ok) {

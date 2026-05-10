@@ -611,6 +611,17 @@ internal u32 hir_lower_expr(Hir*         hir,
             if (type_index == sema_no_type()) {
                 type_index = hir_decl_type(sema, decl_index);
             }
+            if (hir_enum_variant_index(sema, type_index, node->a) != U32_MAX) {
+                return hir_add_expr(hir,
+                                    (HirExpr){
+                                        .kind          = HIR_EXPR_LocalRef,
+                                        .type_index    = type_index,
+                                        .symbol_handle = node->a,
+                                        .local_index   = sema_no_local(),
+                                        .ref_kind      = HIR_REF_None,
+                                        .ref_index     = hir_no_index(),
+                                    });
+            }
             HirRefKind ref_kind  = HIR_REF_None;
             u32        ref_index = hir_no_index();
             if (local_index != sema_no_local()) {
