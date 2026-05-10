@@ -633,6 +633,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index);
 
+internal bool llvm_emit_block(LlvmFunctionContext* ctx,
+                              const HirFunction*   function,
+                              u32                  block_index);
+
 internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
                                          const HirFunction*   function,
                                          u32                  block_index)
@@ -1647,6 +1651,69 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
+                if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                    string end_label = llvm_label(ctx, "on.end");
+                    for (u32 i = 0; i < expr->branch_count; ++i) {
+                        const HirOnBranch* branch =
+                            &ctx->hir->on_branches[expr->first_branch + i];
+                        string body_label = llvm_label(ctx, "on.body");
+                        string next_label =
+                            i + 1 < expr->branch_count ? llvm_label(ctx, "on.next")
+                                                       : end_label;
+
+                        if (branch->is_else) {
+                            sb_format(ctx->sb,
+                                      "  br label %%" STRINGP "\n",
+                                      STRINGV(body_label));
+                        } else {
+                            LlvmValue condition =
+                                llvm_emit_branch_pattern_condition(
+                                    ctx, function, scrutinee, branch);
+                            if (!condition.ok) {
+                                return (LlvmValue){0};
+                            }
+                            sb_format(ctx->sb,
+                                      "  br i1 " STRINGP ", label %%"
+                                      STRINGP ", label %%" STRINGP "\n",
+                                      STRINGV(condition.value),
+                                      STRINGV(body_label),
+                                      STRINGV(next_label));
+                        }
+
+                        sb_format(ctx->sb,
+                                  STRINGP ":\n",
+                                  STRINGV(body_label));
+                        llvm_bind_symbol_value(
+                            ctx, branch->binder_symbol_handle, scrutinee);
+                        ctx->block_terminated = false;
+                        if (!llvm_emit_block(
+                                ctx, function, branch->body_block_index)) {
+                            return (LlvmValue){0};
+                        }
+                        if (!ctx->block_terminated) {
+                            sb_format(ctx->sb,
+                                      "  br label %%" STRINGP "\n",
+                                      STRINGV(end_label));
+                        }
+                        ctx->block_terminated = false;
+
+                        if (branch->is_else) {
+                            break;
+                        }
+                        if (!string_eq(next_label, end_label)) {
+                            sb_format(ctx->sb,
+                                      STRINGP ":\n",
+                                      STRINGV(next_label));
+                        }
+                    }
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = s(""),
+                    };
+                }
+
                 string end_label = llvm_label(ctx, "on.end");
                 Array(LlvmValue) phi_values = NULL;
                 Array(string)    phi_labels = NULL;
@@ -2452,6 +2519,7 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
               "  ret " STRINGP " " STRINGP "\n",
               STRINGV(type),
               STRINGV(value.value));
+    ctx->block_terminated = true;
     return true;
 }
 
