@@ -571,6 +571,17 @@ internal void llvm_append_assert_default_message_global_name(StringBuilder* sb,
     sb_format(sb, "@.assert.default.m%u", module_index);
 }
 
+internal void llvm_append_global_slice_backing_name(StringBuilder* sb,
+                                                   const Hir*     hir,
+                                                   u32            value_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.slice.literal.m%u.%u", module_index, value_index);
+}
+
 internal string llvm_string_global_name_string(const Hir* hir,
                                                Arena*     arena,
                                                u32        string_index)
@@ -605,6 +616,16 @@ internal string llvm_assert_default_message_global_name_string(const Hir* hir,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     llvm_append_assert_default_message_global_name(&sb, hir);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_global_slice_backing_name_string(const Hir* hir,
+                                                     Arena*     arena,
+                                                     u32        value_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_global_slice_backing_name(&sb, hir, value_index);
     return sb_to_string(&sb);
 }
 
@@ -787,6 +808,7 @@ typedef struct {
     string                continue_label;
     string                break_value_ptr;
     u32                   break_value_type;
+    u32                   global_init_value_index;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
@@ -2799,16 +2821,28 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     current = temp;
                 }
 
-                string slot = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = alloca " STRINGP "\n"
-                          "  store " STRINGP " " STRINGP ", ptr " STRINGP
-                          "\n",
-                          STRINGV(slot),
-                          STRINGV(array_type),
-                          STRINGV(array_type),
-                          STRINGV(current),
-                          STRINGV(slot));
+                string slot = {0};
+                if (ctx->global_init_value_index != U32_MAX) {
+                    slot = llvm_global_slice_backing_name_string(
+                        ctx->hir, ctx->arena, ctx->global_init_value_index);
+                    sb_format(ctx->sb,
+                              "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                              "\n",
+                              STRINGV(array_type),
+                              STRINGV(current),
+                              STRINGV(slot));
+                } else {
+                    slot = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = alloca " STRINGP "\n"
+                              "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                              "\n",
+                              STRINGV(slot),
+                              STRINGV(array_type),
+                              STRINGV(array_type),
+                              STRINGV(current),
+                              STRINGV(slot));
+                }
 
                 string data_ptr = llvm_temp(ctx);
                 sb_format(ctx->sb,
@@ -5570,6 +5604,33 @@ internal void llvm_render_global_values(StringBuilder* sb,
     (void)arena;
 }
 
+internal void llvm_render_global_slice_backing_values(StringBuilder* sb,
+                                                     const Hir*      hir,
+                                                     const Sema*     sema)
+{
+    for (u32 i = 0; i < array_count(hir->values); ++i) {
+        const HirValue* value = &hir->values[i];
+        if (value->kind != HIR_VALUE_Global ||
+            value->value_expr_index >= array_count(hir->exprs)) {
+            continue;
+        }
+        const HirExpr* expr = &hir->exprs[value->value_expr_index];
+        if (expr->kind != HIR_EXPR_Array ||
+            llvm_type_kind(sema, expr->type_index) != STK_Slice) {
+            continue;
+        }
+
+        u32 item_type = llvm_collection_item_type(sema, expr->type_index);
+        if (item_type == sema_no_type()) {
+            continue;
+        }
+        llvm_append_global_slice_backing_name(sb, hir, i);
+        sb_format(sb, " = private global [%u x ", expr->arg_count);
+        llvm_append_type(sb, sema, item_type);
+        sb_append_cstr(sb, "] zeroinitializer\n");
+    }
+}
+
 internal void llvm_render_global_init(StringBuilder* sb,
                                       const Hir*      hir,
                                       const Lexer*    lexer,
@@ -5592,6 +5653,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
         .sema      = sema,
         .arena     = &temp,
         .next_temp = 0,
+        .global_init_value_index = U32_MAX,
     };
     for (u32 i = 0; i < array_count(hir->values); ++i) {
         const HirValue* value = &hir->values[i];
@@ -5605,7 +5667,9 @@ internal void llvm_render_global_init(StringBuilder* sb,
             continue;
         }
 
+        ctx.global_init_value_index = i;
         LlvmValue init_value = llvm_emit_expr(&ctx, NULL, value->value_expr_index);
+        ctx.global_init_value_index = U32_MAX;
         if (!init_value.ok) {
             continue;
         }
@@ -5657,6 +5721,7 @@ internal void llvm_render_function(StringBuilder*    sb,
         .sema      = sema,
         .arena     = &temp,
         .next_temp = 0,
+        .global_init_value_index = U32_MAX,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
     bool emitted = llvm_emit_block(&ctx, function, function->body_block_index);
@@ -5740,7 +5805,8 @@ string llvm_render_hir(const Hir* hir,
     }
 
     if (llvm_hir_has_globals(hir)) {
-        llvm_render_global_values(&sb, hir, lexer, sema, arena);
+    llvm_render_global_slice_backing_values(&sb, hir, sema);
+    llvm_render_global_values(&sb, hir, lexer, sema, arena);
         sb_append_char(&sb, '\n');
         llvm_render_global_init(&sb, hir, lexer, sema, arena);
         sb_append_char(&sb, '\n');
