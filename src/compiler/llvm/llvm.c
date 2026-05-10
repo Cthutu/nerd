@@ -132,6 +132,8 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
     }
 }
 
+internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type);
+
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
     u32 int_bits = llvm_integer_bits(sema, type_index);
@@ -145,6 +147,28 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     if (llvm_type_kind(sema, type_index) == STK_Pointer ||
         llvm_type_kind(sema, type_index) == STK_Function) {
         return 64;
+    }
+    if (llvm_type_kind(sema, type_index) == STK_String ||
+        llvm_type_kind(sema, type_index) == STK_Slice) {
+        return 128;
+    }
+    if (llvm_type_kind(sema, type_index) == STK_Tuple ||
+        llvm_type_kind(sema, type_index) == STK_Plex) {
+        const SemaType* type = &sema->types[type_index];
+        u32             bits = 0;
+        for (u32 i = 0; i < type->param_count; ++i) {
+            bits += llvm_type_storage_bits(
+                sema, sema->type_param_types[type->first_param_type + i]);
+        }
+        return bits;
+    }
+    if (llvm_type_kind(sema, type_index) == STK_Array) {
+        const SemaType* type = &sema->types[type_index];
+        return (u32)type->param_count *
+               llvm_type_storage_bits(sema, type->first_param_type);
+    }
+    if (llvm_type_kind(sema, type_index) == STK_Union) {
+        return llvm_union_storage_bits(sema, type_index);
     }
     return 0;
 }
@@ -308,36 +332,24 @@ internal i64 llvm_enum_variant_discriminant(const Sema* sema,
                                    variant_index];
 }
 
-internal u32 llvm_enum_payload_width(const Sema* sema, u32 type_index)
-{
-    if (type_index == sema_no_type() || type_index >= array_count(sema->types)) {
-        return 0;
-    }
-
-    const SemaType* type = &sema->types[type_index];
-    return type->kind == STK_Tuple ? type->param_count : 1;
-}
-
-internal u32 llvm_enum_storage_payload_type(const Sema* sema, u32 enum_type)
+internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type)
 {
     if (sema == NULL || enum_type == sema_no_type() ||
         enum_type >= array_count(sema->types) ||
         sema->types[enum_type].kind != STK_Enum) {
-        return sema_no_type();
+        return 8;
     }
 
     const SemaType* type = &sema->types[enum_type];
-    u32             best = sema_no_type();
-    u32             best_width = 0;
+    u32             bits = 8;
     for (u32 i = 0; i < type->param_count; ++i) {
         u32 payload_type = llvm_enum_variant_payload_type(sema, enum_type, i);
-        u32 width        = llvm_enum_payload_width(sema, payload_type);
-        if (payload_type != sema_no_type() && width >= best_width) {
-            best       = payload_type;
-            best_width = width;
+        u32 payload_bits = llvm_type_storage_bits(sema, payload_type);
+        if (payload_bits > bits) {
+            bits = payload_bits;
         }
     }
-    return best;
+    return bits;
 }
 
 internal void llvm_append_type(StringBuilder* sb,
@@ -415,13 +427,9 @@ internal void llvm_append_type(StringBuilder* sb,
         break;
     case STK_Enum:
         {
-            u32 payload_type = llvm_enum_storage_payload_type(sema, type_index);
+            u32 payload_bits = llvm_enum_storage_payload_bits(sema, type_index);
             sb_append_cstr(sb, "{ i64, ");
-            if (payload_type == sema_no_type()) {
-                sb_append_cstr(sb, "i8");
-            } else {
-                llvm_append_type(sb, sema, payload_type);
-            }
+            sb_format(sb, "i%u", payload_bits);
             sb_append_cstr(sb, " }");
             break;
         }
@@ -1098,6 +1106,170 @@ internal LlvmValue llvm_cast_from_union_storage(LlvmFunctionContext* ctx,
     };
 }
 
+internal LlvmValue llvm_cast_to_storage_bits(LlvmFunctionContext* ctx,
+                                             LlvmValue            value,
+                                             u32                  storage_bits)
+{
+    if (storage_bits == 0) {
+        return (LlvmValue){0};
+    }
+
+    string storage_type = string_format(ctx->arena, "i%u", storage_bits);
+    u32    value_bits   = llvm_type_storage_bits(ctx->sema, value.type_index);
+    if (value_bits == storage_bits &&
+        llvm_integer_bits(ctx->sema, value.type_index) > 0) {
+        value.type_index = sema_no_type();
+        return value;
+    }
+
+    string value_type = llvm_type_string(ctx, value.type_index);
+    string temp       = llvm_temp(ctx);
+    if (llvm_float_bits(ctx->sema, value.type_index) == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = bitcast " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if ((llvm_type_kind(ctx->sema, value.type_index) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, value.type_index) == STK_Function) &&
+               value_bits == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = ptrtoint " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if (llvm_integer_bits(ctx->sema, value.type_index) > 0 &&
+               value_bits < storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if (llvm_integer_bits(ctx->sema, value.type_index) > 0 &&
+               value_bits > storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = trunc " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if (value_bits > 0 && value_bits <= storage_bits) {
+        string slot = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca " STRINGP "\n"
+                  "  store " STRINGP " 0, ptr " STRINGP "\n"
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(slot),
+                  STRINGV(storage_type),
+                  STRINGV(storage_type),
+                  STRINGV(slot),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(slot),
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(slot));
+    } else {
+        return (LlvmValue){0};
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = sema_no_type(),
+        .value      = temp,
+    };
+}
+
+internal LlvmValue llvm_cast_from_storage_bits(LlvmFunctionContext* ctx,
+                                               LlvmValue            value,
+                                               u32                  storage_bits,
+                                               u32                  result_type)
+{
+    u32 result_bits = llvm_type_storage_bits(ctx->sema, result_type);
+    if (storage_bits == 0 || result_bits == 0) {
+        return (LlvmValue){0};
+    }
+
+    if (llvm_integer_bits(ctx->sema, result_type) == storage_bits) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = result_type,
+            .value      = value.value,
+        };
+    }
+
+    string storage_type = string_format(ctx->arena, "i%u", storage_bits);
+    string result_type_s = llvm_type_string(ctx, result_type);
+    string temp          = llvm_temp(ctx);
+    if (llvm_float_bits(ctx->sema, result_type) == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = bitcast " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(result_type_s));
+    } else if ((llvm_type_kind(ctx->sema, result_type) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, result_type) == STK_Function) &&
+               result_bits == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = inttoptr " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(result_type_s));
+    } else if (llvm_integer_bits(ctx->sema, result_type) > 0 &&
+               result_bits < storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = trunc " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(result_type_s));
+    } else if (llvm_integer_bits(ctx->sema, result_type) > 0 &&
+               result_bits > storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(result_type_s));
+    } else if (result_bits <= storage_bits) {
+        string slot = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca " STRINGP "\n"
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(slot),
+                  STRINGV(storage_type),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(slot),
+                  STRINGV(temp),
+                  STRINGV(result_type_s),
+                  STRINGV(slot));
+    } else {
+        return (LlvmValue){0};
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = result_type,
+        .value      = temp,
+    };
+}
+
 internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
                                               u32                  type_index,
                                               const LlvmValue*     values,
@@ -1187,21 +1359,25 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
         array_push(args, value);
     }
 
-    u32 enum_type            = expr->type_index;
-    u32 storage_payload_type = llvm_enum_storage_payload_type(ctx->sema,
-                                                              enum_type);
-    string enum_type_string  = llvm_type_string(ctx, enum_type);
-    string payload_type_string = storage_payload_type == sema_no_type()
-                                     ? s("i8")
-                                     : llvm_type_string(ctx,
-                                                        storage_payload_type);
-    string payload_value = storage_payload_type == sema_no_type()
-                               ? s("0")
-                               : s("zeroinitializer");
+    u32    enum_type           = expr->type_index;
+    u32    storage_payload_bits =
+        llvm_enum_storage_payload_bits(ctx->sema, enum_type);
+    string enum_type_string = llvm_type_string(ctx, enum_type);
+    string payload_type_string =
+        string_format(ctx->arena, "i%u", storage_payload_bits);
+    string payload_value = s("0");
 
-    if (storage_payload_type != sema_no_type() && expr->arg_count > 0) {
-        if (llvm_type_is_record(ctx->sema, storage_payload_type)) {
-            payload_value = s("poison");
+    u32 variant_payload_type = llvm_enum_variant_payload_type(ctx->sema,
+                                                              enum_type,
+                                                              variant_index);
+    if (variant_payload_type != sema_no_type() && expr->arg_count > 0) {
+        LlvmValue payload = {0};
+        if (expr->arg_count == 1 && args[0].type_index == variant_payload_type) {
+            payload = args[0];
+        } else if (llvm_type_is_record(ctx->sema, variant_payload_type)) {
+            string variant_payload_type_string =
+                llvm_type_string(ctx, variant_payload_type);
+            string aggregate = s("poison");
             for (u32 i = 0; i < expr->arg_count; ++i) {
                 LlvmValue arg  = args[i];
                 string    temp = llvm_temp(ctx);
@@ -1210,16 +1386,28 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
                           "  " STRINGP " = insertvalue " STRINGP " "
                           STRINGP ", " STRINGP " " STRINGP ", %u\n",
                           STRINGV(temp),
-                          STRINGV(payload_type_string),
-                          STRINGV(payload_value),
+                          STRINGV(variant_payload_type_string),
+                          STRINGV(aggregate),
                           STRINGV(arg_type),
                           STRINGV(arg.value),
                           i);
-                payload_value = temp;
+                aggregate = temp;
             }
+            payload = (LlvmValue){
+                .ok         = true,
+                .type_index = variant_payload_type,
+                .value      = aggregate,
+            };
         } else {
-            payload_value = args[0].value;
+            payload = args[0];
         }
+
+        payload = llvm_cast_to_storage_bits(ctx, payload, storage_payload_bits);
+        if (!payload.ok) {
+            array_free(args);
+            return (LlvmValue){0};
+        }
+        payload_value = payload.value;
     }
 
     i64 tag = llvm_enum_variant_discriminant(ctx->sema,
@@ -1554,14 +1742,13 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                 return result;
             }
 
-            u32 storage_payload_type =
-                llvm_enum_storage_payload_type(ctx->sema, scrutinee.type_index);
+            u32 storage_payload_bits =
+                llvm_enum_storage_payload_bits(ctx->sema, scrutinee.type_index);
             u32 variant_payload_type =
                 llvm_enum_variant_payload_type(ctx->sema,
                                                scrutinee.type_index,
                                                variant_index);
-            if (storage_payload_type == sema_no_type() ||
-                variant_payload_type == sema_no_type()) {
+            if (variant_payload_type == sema_no_type()) {
                 return result;
             }
 
@@ -1575,6 +1762,18 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
 
             bool payload_is_tuple =
                 llvm_type_kind(ctx->sema, variant_payload_type) == STK_Tuple;
+            LlvmValue variant_payload = llvm_cast_from_storage_bits(
+                ctx,
+                (LlvmValue){
+                    .ok         = true,
+                    .type_index = sema_no_type(),
+                    .value      = payload,
+                },
+                storage_payload_bits,
+                variant_payload_type);
+            if (!variant_payload.ok) {
+                return (LlvmValue){0};
+            }
             for (u32 i = 0; i < pattern->child_count; ++i) {
                 u32 child_index = pattern->first_child + i;
                 if (child_index >= array_count(ctx->hir->pattern_children)) {
@@ -1582,21 +1781,21 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                 }
 
                 u32 child_type = variant_payload_type;
-                string child_value = payload;
-                if (payload_is_tuple || storage_payload_type != child_type) {
+                string child_value = variant_payload.value;
+                if (payload_is_tuple) {
                     child_type = payload_is_tuple
                                      ? llvm_record_field_type(
                                            ctx->sema, variant_payload_type, i)
                                      : variant_payload_type;
-                    string storage_type =
-                        llvm_type_string(ctx, storage_payload_type);
+                    string variant_payload_type_string =
+                        llvm_type_string(ctx, variant_payload_type);
                     child_value = llvm_temp(ctx);
                     sb_format(ctx->sb,
                               "  " STRINGP " = extractvalue " STRINGP " "
                               STRINGP ", %u\n",
                               STRINGV(child_value),
-                              STRINGV(storage_type),
-                              STRINGV(payload),
+                              STRINGV(variant_payload_type_string),
+                              STRINGV(variant_payload.value),
                               i);
                 }
 
