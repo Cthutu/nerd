@@ -1054,7 +1054,8 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(ctx->sema, type_index);
-    if (kind == STK_Pointer || kind == STK_DynamicArray || kind == STK_Nil) {
+    if (kind == STK_Pointer || kind == STK_Function ||
+        kind == STK_DynamicArray || kind == STK_Nil) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -1067,6 +1068,14 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
             .ok         = true,
             .type_index = type_index,
             .value      = s("zeroinitializer"),
+        };
+    }
+    string type = llvm_type_string(ctx, type_index);
+    if (string_eq_cstr(type, "ptr")) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = type_index,
+            .value      = s("null"),
         };
     }
     if (llvm_float_bits(ctx->sema, type_index) > 0) {
@@ -1895,7 +1904,7 @@ internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
               STRINGV(rhs.value));
     return (LlvmValue){
         .ok         = true,
-        .type_index = rhs.type_index,
+        .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
         .value      = temp,
     };
 }
@@ -3641,7 +3650,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
                 return (LlvmValue){
                     .ok         = true,
-                    .type_index = expr->type_index,
+                    .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
                     .value      = temp,
                 };
             }
@@ -3658,9 +3667,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
-            string type = llvm_type_string(ctx, expr->type_index);
+            u32 result_type = expr->type_index;
+            if (llvm_integer_bits(ctx->sema, result_type) == 0 &&
+                llvm_float_bits(ctx->sema, result_type) == 0) {
+                if (llvm_integer_bits(ctx->sema, lhs.type_index) > 0 ||
+                    llvm_float_bits(ctx->sema, lhs.type_index) > 0) {
+                    result_type = lhs.type_index;
+                } else if (llvm_integer_bits(ctx->sema, rhs.type_index) > 0 ||
+                           llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
+                    result_type = rhs.type_index;
+                }
+            }
+            string type = llvm_type_string(ctx, result_type);
             string temp = llvm_temp(ctx);
-            if (llvm_float_bits(ctx->sema, expr->type_index) > 0) {
+            if (llvm_float_bits(ctx->sema, result_type) > 0) {
                 instr = llvm_float_binary_instruction(expr->binary_op);
                 if (instr.count == 0) {
                     return (LlvmValue){0};
@@ -3676,7 +3696,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                       STRINGV(rhs.value));
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index = result_type,
                 .value      = temp,
             };
         }
@@ -4323,7 +4343,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 source_type = sema_materialise_type(ctx->sema, source_type);
                 return (LlvmValue){
                     .ok         = true,
-                    .type_index = expr->type_index,
+                    .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
                     .value =
                         string_format(ctx->arena,
                                       "%llu",
@@ -4426,7 +4446,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                       field_index);
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index =
+                    (expr->kind == HIR_EXPR_Field &&
+                     expr->symbol_handle != U32_MAX &&
+                     string_eq_cstr(lex_symbol(ctx->lexer,
+                                               expr->symbol_handle),
+                                    "count") &&
+                     (llvm_type_kind(ctx->sema, target.type_index) ==
+                          STK_String ||
+                      llvm_type_kind(ctx->sema, target.type_index) ==
+                          STK_Slice))
+                        ? llvm_builtin_type(ctx->sema, STK_Usize)
+                        : expr->type_index,
                 .value      = temp,
             };
         }
@@ -4489,6 +4520,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             ctx->emitted_break    = old_break_emitted;
             if (!emitted) {
                 return (LlvmValue){0};
+            }
+
+            if (ctx->block_terminated && !block_emitted_break) {
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s(""),
+                };
             }
 
             if (!ctx->block_terminated) {
@@ -4667,11 +4706,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    sb_format(ctx->sb,
-                              "  br label %%" STRINGP "\n",
-                              STRINGV(end_label));
-                    array_push(phi_values, value);
-                    array_push(phi_labels, body_label);
+                    if (!ctx->block_terminated) {
+                        sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n",
+                                  STRINGV(end_label));
+                        array_push(phi_values, value);
+                        array_push(phi_labels, body_label);
+                    }
+                    ctx->block_terminated = false;
 
                     if (branch->is_else) {
                         ended_with_else = true;
@@ -4680,14 +4722,19 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
                 }
 
-                if (!ended_with_else) {
+                if (!ended_with_else && array_count(phi_values) > 0) {
                     sb_append_cstr(ctx->sb, "  unreachable\n");
                 }
 
                 if (array_count(phi_values) == 0) {
                     array_free(phi_values);
                     array_free(phi_labels);
-                    return (LlvmValue){0};
+                    ctx->block_terminated = ended_with_else;
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = s(""),
+                    };
                 }
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
@@ -4775,11 +4822,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    sb_format(ctx->sb,
-                              "  br label %%" STRINGP "\n",
-                              STRINGV(end_label));
-                    array_push(phi_values, value);
-                    array_push(phi_labels, body_label);
+                    if (!ctx->block_terminated) {
+                        sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n",
+                                  STRINGV(end_label));
+                        array_push(phi_values, value);
+                        array_push(phi_labels, body_label);
+                    }
+                    ctx->block_terminated = false;
                 }
 
                 if (branch->is_else) {
@@ -4789,12 +4839,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
             }
 
-            if (!ended_with_else) {
+            if (!ended_with_else && array_count(phi_values) > 0) {
                 sb_append_cstr(ctx->sb, "  unreachable\n");
             }
 
-            sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
             if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 array_free(phi_values);
                 array_free(phi_labels);
                 return (LlvmValue){
@@ -4806,8 +4856,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (array_count(phi_values) == 0) {
                 array_free(phi_values);
                 array_free(phi_labels);
-                return (LlvmValue){0};
+                ctx->block_terminated = ended_with_else;
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s(""),
+                };
             }
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
             string type = llvm_type_string(ctx, expr->type_index);
             string phi  = llvm_temp(ctx);
             sb_format(ctx->sb,
@@ -5119,7 +5175,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
-            if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
+            if (!llvm_type_is_void(ctx->sema, expr->type_index) &&
+                (loop->else_block_index != U32_MAX ||
+                 loop->condition_expr_index == U32_MAX)) {
                 if (loop->kind == HIR_FOR_CStyle &&
                     !llvm_emit_effect_stmt_indices(ctx,
                                                    function,
@@ -5568,7 +5626,8 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
         return false;
     }
 
-    if (llvm_local_is_assigned(ctx, stmt->local_index)) {
+    if (llvm_local_is_assigned(ctx, stmt->local_index) ||
+        llvm_type_kind(ctx->sema, stmt->type_index) == STK_DynamicArray) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, stmt->local_index, stmt->type_index);
         llvm_store_local_slot(ctx, slot, value);
@@ -6359,9 +6418,14 @@ internal LlvmValue llvm_emit_dynamic_array_field(LlvmFunctionContext* ctx,
               STRINGV(field_type),
               STRINGV(result));
     ctx->block_terminated = false;
+    u32 result_type = expr->type_index;
+    if (string_eq_cstr(field, "count") ||
+        string_eq_cstr(field, "capacity")) {
+        result_type = llvm_builtin_type(ctx->sema, STK_Usize);
+    }
     return (LlvmValue){
         .ok         = true,
-        .type_index = expr->type_index,
+        .type_index = result_type,
         .value      = value,
     };
 }
