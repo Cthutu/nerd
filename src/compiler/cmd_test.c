@@ -543,7 +543,7 @@ int compiler_cmd_test(const NerdTestConfig* config)
     FrontEndOptions options = {
         .verbose             = config->verbose,
         .require_entry_point = false,
-        .skip_ir_generation  = true,
+        .skip_hir_generation = true,
         .keywords            = config->keywords,
     };
     NerdSource root_source = {

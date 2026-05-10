@@ -175,13 +175,13 @@ internal bool program_front_end_finish(ProgramInfo*           program,
     return result;
 }
 
-internal bool program_front_end_generate_ir(ProgramInfo*           program,
-                                            const FrontEndOptions* options,
-                                            Timing*                timing)
+internal bool program_front_end_generate_hir(ProgramInfo*           program,
+                                             const FrontEndOptions* options,
+                                             Timing*                timing)
 {
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
-    if (effective_options.skip_ir_generation) {
+    if (effective_options.skip_hir_generation) {
         return true;
     }
 
@@ -914,7 +914,7 @@ bool front_end_program(NerdSource             source,
     program_collect_module_exports(&program.modules[program.root_module_index]);
     program.modules[program.root_module_index].state = MODULE_Loaded;
 
-    if (!program_front_end_generate_ir(&program, &effective_options, timing)) {
+    if (!program_front_end_generate_hir(&program, &effective_options, timing)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;

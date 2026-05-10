@@ -20,7 +20,7 @@ Document open/change runs the compiler front end with:
 ```c
 FrontEndOptions options = {
     .require_entry_point = false,
-    .skip_ir_generation = true,
+    .skip_hir_generation = true,
     .keep_partial_results = true,
 };
 ```

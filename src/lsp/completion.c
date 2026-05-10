@@ -760,7 +760,7 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
         .verbose              = false,
         .release              = false,
         .require_entry_point  = false,
-        .skip_ir_generation   = true,
+        .skip_hir_generation  = true,
         .keep_partial_results = true,
     };
 
@@ -2391,7 +2391,7 @@ internal bool lsp_completion_add_module_exports_from_path(Arena*     arena,
         .verbose              = false,
         .release              = false,
         .require_entry_point  = false,
-        .skip_ir_generation   = true,
+        .skip_hir_generation  = true,
         .keep_partial_results = true,
     };
 

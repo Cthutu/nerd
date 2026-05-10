@@ -108,7 +108,7 @@ bool front_end(NerdSource             source,
         }
     }
 
-    if (result && !ctx.options.skip_ir_generation) {
+    if (result && !ctx.options.skip_hir_generation) {
         if (timing != NULL) {
             ThreadTimePoint start = thread_time_now();
             result                = front_end_hir_gen(&ctx);
