@@ -2664,11 +2664,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .value      = expr->boolean ? s("1") : s("0"),
         };
     case HIR_EXPR_NilLiteral:
-        return (LlvmValue){
-            .ok         = true,
-            .type_index = expr->type_index,
-            .value      = s("null"),
-        };
+        return llvm_default_value(ctx, expr->type_index);
     case HIR_EXPR_FunctionRef:
         if (expr->ref_index >= array_count(ctx->hir->functions)) {
             return (LlvmValue){0};
@@ -2975,7 +2971,65 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 string type = llvm_type_string(ctx, lhs.type_index);
                 string temp = llvm_temp(ctx);
-                if (llvm_type_kind(ctx->sema, lhs.type_index) == STK_Enum &&
+                SemaTypeKind lhs_kind = llvm_type_kind(ctx->sema, lhs.type_index);
+                SemaTypeKind rhs_kind = llvm_type_kind(ctx->sema, rhs.type_index);
+                if ((lhs_kind == STK_Slice || lhs_kind == STK_String) &&
+                    lhs_kind == rhs_kind) {
+                    string lhs_data = llvm_temp(ctx);
+                    string lhs_count = llvm_temp(ctx);
+                    string rhs_data = llvm_temp(ctx);
+                    string rhs_count = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 0\n"
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 1\n",
+                              STRINGV(lhs_data),
+                              STRINGV(type),
+                              STRINGV(lhs.value),
+                              STRINGV(lhs_count),
+                              STRINGV(type),
+                              STRINGV(lhs.value));
+                    string rhs_type = llvm_type_string(ctx, rhs.type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 0\n"
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", 1\n",
+                              STRINGV(rhs_data),
+                              STRINGV(rhs_type),
+                              STRINGV(rhs.value),
+                              STRINGV(rhs_count),
+                              STRINGV(rhs_type),
+                              STRINGV(rhs.value));
+                    string data_eq = llvm_temp(ctx);
+                    string count_eq = llvm_temp(ctx);
+                    string both_eq = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = icmp eq ptr " STRINGP ", "
+                              STRINGP "\n"
+                              "  " STRINGP " = icmp eq i64 " STRINGP ", "
+                              STRINGP "\n"
+                              "  " STRINGP " = and i1 " STRINGP ", " STRINGP
+                              "\n",
+                              STRINGV(data_eq),
+                              STRINGV(lhs_data),
+                              STRINGV(rhs_data),
+                              STRINGV(count_eq),
+                              STRINGV(lhs_count),
+                              STRINGV(rhs_count),
+                              STRINGV(both_eq),
+                              STRINGV(data_eq),
+                              STRINGV(count_eq));
+                    if (expr->binary_op == HIR_BINARY_Equal) {
+                        temp = both_eq;
+                    } else {
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                  STRINGV(temp),
+                                  STRINGV(both_eq));
+                    }
+                } else if (lhs_kind == STK_Enum &&
                     llvm_type_kind(ctx->sema, rhs.type_index) == STK_Enum) {
                     string lhs_tag = llvm_temp(ctx);
                     sb_format(ctx->sb,
