@@ -47,6 +47,8 @@ typedef enum : u8 {
     HIR_STMT_Return,
     HIR_STMT_Let,
     HIR_STMT_Assign,
+    HIR_STMT_DestructureLet,
+    HIR_STMT_DestructureAssign,
     HIR_STMT_Assert,
     HIR_STMT_Defer,
     HIR_STMT_Break,
@@ -210,6 +212,12 @@ typedef struct {
 } HirStmt;
 
 typedef struct {
+    u32 local_index;
+    u32 type_index;
+    u32 field_index;
+} HirDestructureItem;
+
+typedef struct {
     HirExprKind kind;
     u32         type_index;
     u32         symbol_handle;
@@ -295,6 +303,7 @@ typedef struct {
     Array(HirParam) params;
     Array(HirBlock) blocks;
     Array(HirStmt) stmts;
+    Array(HirDestructureItem) destructure_items;
     Array(HirExpr) exprs;
     Array(HirCallArg) call_args;
     Array(HirOnBranch) on_branches;

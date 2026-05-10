@@ -4406,6 +4406,61 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
+                                    const HirFunction*   function,
+                                    const HirStmt*       stmt)
+{
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
+        return false;
+    }
+
+    string tuple_type = llvm_type_string(ctx, value.type_index);
+    Array(LlvmValue) fields = NULL;
+    for (u32 i = 0; i < stmt->body_block_index; ++i) {
+        u32 item_index = stmt->target_expr_index + i;
+        if (item_index >= array_count(ctx->hir->destructure_items)) {
+            array_free(fields);
+            return false;
+        }
+
+        const HirDestructureItem* item =
+            &ctx->hir->destructure_items[item_index];
+        string field = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                  ", %u\n",
+                  STRINGV(field),
+                  STRINGV(tuple_type),
+                  STRINGV(value.value),
+                  item->field_index);
+        array_push(fields,
+                   (LlvmValue){
+                       .ok         = true,
+                       .type_index = item->type_index,
+                       .value      = field,
+                   });
+    }
+
+    for (u32 i = 0; i < stmt->body_block_index; ++i) {
+        const HirDestructureItem* item =
+            &ctx->hir->destructure_items[stmt->target_expr_index + i];
+        LlvmValue field = fields[i];
+        if (stmt->kind == HIR_STMT_DestructureLet &&
+            !llvm_local_is_assigned(ctx, item->local_index)) {
+            llvm_set_local_value(ctx, item->local_index, field);
+            continue;
+        }
+
+        LlvmLocalSlot* slot =
+            llvm_ensure_local_slot(ctx, item->local_index, item->type_index);
+        llvm_store_local_slot(ctx, slot, field);
+    }
+
+    array_free(fields);
+    return true;
+}
+
 internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt);
@@ -4459,6 +4514,9 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
         return llvm_emit_let(ctx, function, stmt);
     case HIR_STMT_Assign:
         return llvm_emit_assign(ctx, function, stmt);
+    case HIR_STMT_DestructureLet:
+    case HIR_STMT_DestructureAssign:
+        return llvm_emit_destructure(ctx, function, stmt);
     case HIR_STMT_Return:
         return llvm_emit_return(ctx, function, stmt);
     case HIR_STMT_Expr:
@@ -4614,6 +4672,16 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
                 llvm_mark_assigned_local(ctx, target->ref_index);
             }
         }
+        if (stmt->kind == HIR_STMT_DestructureAssign) {
+            for (u32 j = 0; j < stmt->body_block_index; ++j) {
+                u32 item_index = stmt->target_expr_index + j;
+                if (item_index < array_count(ctx->hir->destructure_items)) {
+                    llvm_mark_assigned_local(
+                        ctx,
+                        ctx->hir->destructure_items[item_index].local_index);
+                }
+            }
+        }
 
         if (stmt->kind == HIR_STMT_Block) {
             llvm_collect_assigned_locals(ctx, stmt->body_block_index);
@@ -4702,6 +4770,12 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             continue;
         } else if (stmt->kind == HIR_STMT_Assign) {
             if (!llvm_emit_assign(ctx, function, stmt)) {
+                return false;
+            }
+            continue;
+        } else if (stmt->kind == HIR_STMT_DestructureLet ||
+                   stmt->kind == HIR_STMT_DestructureAssign) {
+            if (!llvm_emit_destructure(ctx, function, stmt)) {
                 return false;
             }
             continue;

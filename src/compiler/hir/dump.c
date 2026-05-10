@@ -865,6 +865,39 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_char(sb, '\n');
         break;
+    case HIR_STMT_DestructureLet:
+    case HIR_STMT_DestructureAssign:
+        hir_append_indent(sb, indent);
+        sb_append_cstr(sb,
+                       stmt->kind == HIR_STMT_DestructureLet
+                           ? "destructure let "
+                           : "destructure assign ");
+        hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
+        sb_append_cstr(sb, " {");
+        for (u32 i = 0; i < stmt->body_block_index; ++i) {
+            u32 item_index = stmt->target_expr_index + i;
+            if (item_index >= array_count(hir->destructure_items)) {
+                continue;
+            }
+            const HirDestructureItem* item = &hir->destructure_items[item_index];
+            if (i > 0) {
+                sb_append_cstr(sb, ",");
+            }
+            sb_append_cstr(sb, " .");
+            sb_format(sb, "%u -> ", item->field_index);
+            if (item->local_index < array_count(sema->locals)) {
+                sb_append_string(
+                    sb,
+                    lex_symbol(lexer,
+                               sema->locals[item->local_index].symbol_handle));
+            } else {
+                sb_append_cstr(sb, "<local>");
+            }
+            sb_append_cstr(sb, ": ");
+            hir_append_type_name(sb, lexer, sema, item->type_index);
+        }
+        sb_append_cstr(sb, " }\n");
+        break;
     case HIR_STMT_Assert:
         hir_append_indent(sb, indent);
         sb_append_cstr(sb, "assert ");

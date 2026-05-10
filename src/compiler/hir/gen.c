@@ -1148,6 +1148,50 @@ internal u32 hir_add_stmt(Hir* hir, HirStmt stmt)
     return (u32)array_count(hir->stmts) - 1;
 }
 
+internal bool hir_append_destructure_tuple_items(Hir*        hir,
+                                                 const Ast*  ast,
+                                                 const Sema* sema,
+                                                 u32         pattern_index,
+                                                 u32*        out_count)
+{
+    if (pattern_index >= array_count(ast->patterns)) {
+        return false;
+    }
+
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+    if (pattern->kind != APK_Tuple) {
+        return false;
+    }
+
+    for (u32 i = 0; i < pattern->b; ++i) {
+        u32 child_index = ast->pattern_items[pattern->a + i];
+        if (child_index >= array_count(ast->patterns)) {
+            return false;
+        }
+
+        const AstPattern* child = &ast->patterns[child_index];
+        if (child->kind == APK_Ignore) {
+            continue;
+        }
+
+        u32 local_index = child_index < array_count(sema->pattern_local_indices)
+                              ? sema->pattern_local_indices[child_index]
+                              : sema_no_local();
+        if (local_index == sema_no_local()) {
+            return false;
+        }
+
+        array_push(hir->destructure_items,
+                   (HirDestructureItem){
+                       .local_index = local_index,
+                       .type_index  = hir_local_type(sema, local_index),
+                       .field_index = i,
+                   });
+        (*out_count)++;
+    }
+    return true;
+}
+
 internal u32 hir_lower_stmt(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
@@ -1240,6 +1284,50 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .type_index       = hir_node_type(sema, node_index),
                 .body_block_index = hir_no_index(),
             });
+    case AK_DestructureBind:
+    case AK_DestructureVariable:
+    case AK_DestructureAssign:
+        {
+            u32 value_node_index = node->b;
+            if (value_node_index < array_count(ast->nodes) &&
+                ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
+                value_node_index = ast->nodes[value_node_index].b;
+            }
+            u32 first_item = (u32)array_count(hir->destructure_items);
+            u32 item_count = 0;
+            if (!hir_append_destructure_tuple_items(
+                    hir, ast, sema, node->a, &item_count)) {
+                return hir_add_stmt(
+                    hir,
+                    (HirStmt){
+                        .kind       = HIR_STMT_Expr,
+                        .expr_index = hir_add_unsupported_expr(
+                            hir, sema, node_index),
+                        .symbol_handle    = U32_MAX,
+                        .local_index      = sema_no_local(),
+                        .type_index       = hir_node_type(sema, node_index),
+                        .body_block_index = hir_no_index(),
+                    });
+            }
+
+            return hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind = node->kind == AK_DestructureAssign
+                                ? HIR_STMT_DestructureAssign
+                                : HIR_STMT_DestructureLet,
+                    .expr_index =
+                        value_node_index < array_count(ast->nodes)
+                            ? hir_lower_expr(
+                                  hir, lexer, ast, sema, value_node_index)
+                            : hir_no_index(),
+                    .target_expr_index = first_item,
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .type_index        = hir_node_type(sema, node_index),
+                    .body_block_index  = item_count,
+                });
+        }
     case AK_Assert:
         return hir_add_stmt(
             hir,
@@ -2339,6 +2427,7 @@ void hir_done(Hir* hir)
     }
     array_free(hir->blocks);
     array_free(hir->stmts);
+    array_free(hir->destructure_items);
     array_free(hir->exprs);
     array_free(hir->call_args);
     array_free(hir->on_branches);
