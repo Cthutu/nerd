@@ -427,6 +427,7 @@ typedef struct {
     const Sema*           sema;
     Arena*                arena;
     u32                   next_temp;
+    u32                   next_label;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
@@ -435,6 +436,11 @@ typedef struct {
 internal string llvm_temp(LlvmFunctionContext* ctx)
 {
     return string_format(ctx->arena, "%%t%u", ctx->next_temp++);
+}
+
+internal string llvm_label(LlvmFunctionContext* ctx, cstr prefix)
+{
+    return string_format(ctx->arena, "%s.%u", prefix, ctx->next_label++);
 }
 
 internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
@@ -611,6 +617,34 @@ internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* ou
     }
     *out = expr->integer;
     return true;
+}
+
+internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  u32                  expr_index);
+
+internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
+                                         const HirFunction*   function,
+                                         u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return (LlvmValue){0};
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            return (LlvmValue){0};
+        }
+
+        const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        if (stmt->kind == HIR_STMT_Expr || stmt->kind == HIR_STMT_Break) {
+            return llvm_emit_expr(ctx, function, stmt->expr_index);
+        }
+    }
+
+    return (LlvmValue){0};
 }
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
@@ -1352,6 +1386,75 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             return (LlvmValue){0};
+        }
+    case HIR_EXPR_On:
+        {
+            if (expr->on_kind != HIR_ON_Condition || expr->branch_count != 2) {
+                return (LlvmValue){0};
+            }
+
+            const HirOnBranch* then_branch =
+                &ctx->hir->on_branches[expr->first_branch];
+            const HirOnBranch* else_branch =
+                &ctx->hir->on_branches[expr->first_branch + 1];
+            if (then_branch->is_else || !else_branch->is_else ||
+                then_branch->guard_expr_index == U32_MAX) {
+                return (LlvmValue){0};
+            }
+
+            LlvmValue condition =
+                llvm_emit_expr(ctx, function, then_branch->guard_expr_index);
+            if (!condition.ok) {
+                return (LlvmValue){0};
+            }
+
+            string then_label = llvm_label(ctx, "on.then");
+            string else_label = llvm_label(ctx, "on.else");
+            string end_label  = llvm_label(ctx, "on.end");
+            sb_format(ctx->sb,
+                      "  br i1 " STRINGP ", label %%" STRINGP
+                      ", label %%" STRINGP "\n",
+                      STRINGV(condition.value),
+                      STRINGV(then_label),
+                      STRINGV(else_label));
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(then_label));
+            LlvmValue then_value = llvm_emit_block_value(
+                ctx, function, then_branch->body_block_index);
+            if (!then_value.ok) {
+                return (LlvmValue){0};
+            }
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(end_label));
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
+            LlvmValue else_value = llvm_emit_block_value(
+                ctx, function, else_branch->body_block_index);
+            if (!else_value.ok) {
+                return (LlvmValue){0};
+            }
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(end_label));
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+            string type = llvm_type_string(ctx, expr->type_index);
+            string phi  = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = phi " STRINGP " [" STRINGP ", %%"
+                      STRINGP "], [" STRINGP ", %%" STRINGP "]\n",
+                      STRINGV(phi),
+                      STRINGV(type),
+                      STRINGV(then_value.value),
+                      STRINGV(then_label),
+                      STRINGV(else_value.value),
+                      STRINGV(else_label));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = phi,
+            };
         }
     case HIR_EXPR_Cast:
         {
