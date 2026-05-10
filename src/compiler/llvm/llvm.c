@@ -676,6 +676,14 @@ typedef struct {
 } LlvmLocalSlot;
 
 typedef struct {
+    u32    symbol_handle;
+    string break_label;
+    string continue_label;
+    string break_value_ptr;
+    u32    break_value_type;
+} LlvmControlTarget;
+
+typedef struct {
     StringBuilder*        sb;
     const Hir*            hir;
     const Lexer*          lexer;
@@ -687,9 +695,12 @@ typedef struct {
     bool                  emitted_break;
     string                break_label;
     string                continue_label;
+    string                break_value_ptr;
+    u32                   break_value_type;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
+    Array(LlvmControlTarget) control_targets;
 } LlvmFunctionContext;
 
 internal string llvm_temp(LlvmFunctionContext* ctx)
@@ -700,6 +711,38 @@ internal string llvm_temp(LlvmFunctionContext* ctx)
 internal string llvm_label(LlvmFunctionContext* ctx, cstr prefix)
 {
     return string_format(ctx->arena, "%s.%u", prefix, ctx->next_label++);
+}
+
+internal LlvmControlTarget* llvm_find_control_target(LlvmFunctionContext* ctx,
+                                                     u32 symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return NULL;
+    }
+
+    for (u32 i = array_count(ctx->control_targets); i > 0; --i) {
+        LlvmControlTarget* target = &ctx->control_targets[i - 1];
+        if (target->symbol_handle == symbol_handle) {
+            return target;
+        }
+    }
+    return NULL;
+}
+
+internal void llvm_push_control_target(LlvmFunctionContext* ctx,
+                                       LlvmControlTarget    target)
+{
+    if (target.symbol_handle != U32_MAX) {
+        array_push(ctx->control_targets, target);
+    }
+}
+
+internal void llvm_pop_control_target(LlvmFunctionContext* ctx,
+                                      u32                  symbol_handle)
+{
+    if (symbol_handle != U32_MAX && array_count(ctx->control_targets) > 0) {
+        array_pop(ctx->control_targets);
+    }
 }
 
 internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
@@ -2887,20 +2930,94 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
-            const HirBlock* block = &ctx->hir->blocks[expr->body_block_index];
-            for (u32 i = 0; i < block->stmt_count; ++i) {
-                u32 stmt_index = block->stmt_indices[i];
-                if (stmt_index >= array_count(ctx->hir->stmts)) {
+            string end_label = llvm_label(ctx, "block.end");
+            string old_break = ctx->break_label;
+            string old_continue = ctx->continue_label;
+            string old_break_value_ptr = ctx->break_value_ptr;
+            u32    old_break_value_type = ctx->break_value_type;
+            bool   old_break_emitted = ctx->emitted_break;
+
+            string result_ptr = {0};
+            if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
+                string result_type = llvm_type_string(ctx, expr->type_index);
+                result_ptr         = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca " STRINGP ", align 4\n",
+                          STRINGV(result_ptr),
+                          STRINGV(result_type));
+                LlvmValue default_value = llvm_default_value(ctx, expr->type_index);
+                if (!default_value.ok) {
                     return (LlvmValue){0};
                 }
-
-                const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
-                if (stmt->kind == HIR_STMT_Break) {
-                    return llvm_emit_expr(ctx, function, stmt->expr_index);
-                }
+                sb_format(ctx->sb,
+                          "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                          ", align 4\n",
+                          STRINGV(result_type),
+                          STRINGV(default_value.value),
+                          STRINGV(result_ptr));
             }
 
-            return (LlvmValue){0};
+            ctx->break_label      = end_label;
+            ctx->continue_label   = (string){0};
+            ctx->break_value_ptr  = result_ptr;
+            ctx->break_value_type = expr->type_index;
+            ctx->emitted_break    = false;
+            llvm_push_control_target(
+                ctx,
+                (LlvmControlTarget){
+                    .symbol_handle    = expr->symbol_handle,
+                    .break_label      = end_label,
+                    .continue_label   = (string){0},
+                    .break_value_ptr  = result_ptr,
+                    .break_value_type = expr->type_index,
+                });
+
+            bool emitted =
+                llvm_emit_effect_block(ctx, function, expr->body_block_index);
+            bool block_emitted_break = ctx->emitted_break;
+            llvm_pop_control_target(ctx, expr->symbol_handle);
+            ctx->break_label      = old_break;
+            ctx->continue_label   = old_continue;
+            ctx->break_value_ptr  = old_break_value_ptr;
+            ctx->break_value_type = old_break_value_type;
+            ctx->emitted_break    = old_break_emitted;
+            if (!emitted) {
+                return (LlvmValue){0};
+            }
+
+            if (!ctx->block_terminated) {
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(end_label));
+                block_emitted_break = true;
+            }
+
+            if (block_emitted_break) {
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                ctx->block_terminated = false;
+            }
+
+            if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s(""),
+                };
+            }
+
+            string result_type = llvm_type_string(ctx, expr->type_index);
+            string loaded      = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP
+                      ", align 4\n",
+                      STRINGV(loaded),
+                      STRINGV(result_type),
+                      STRINGV(result_ptr));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = loaded,
+            };
         }
     case HIR_EXPR_On:
         {
@@ -3306,9 +3423,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string old_continue = ctx->continue_label;
                 ctx->break_label    = end_label;
                 ctx->continue_label = cond_label;
+                llvm_push_control_target(
+                    ctx,
+                    (LlvmControlTarget){
+                        .symbol_handle    = loop->label_symbol,
+                        .break_label      = end_label,
+                        .continue_label   = cond_label,
+                        .break_value_ptr  = (string){0},
+                        .break_value_type = sema_no_type(),
+                    });
                 if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
+                    llvm_pop_control_target(ctx, loop->label_symbol);
                     return (LlvmValue){0};
                 }
+                llvm_pop_control_target(ctx, loop->label_symbol);
                 ctx->break_label    = old_break;
                 ctx->continue_label = old_continue;
 
@@ -3499,13 +3627,24 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             ctx->continue_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
             ctx->emitted_break = false;
+            llvm_push_control_target(
+                ctx,
+                (LlvmControlTarget){
+                    .symbol_handle    = loop->label_symbol,
+                    .break_label      = end_label,
+                    .continue_label   = ctx->continue_label,
+                    .break_value_ptr  = (string){0},
+                    .break_value_type = sema_no_type(),
+                });
             if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
+                llvm_pop_control_target(ctx, loop->label_symbol);
                 ctx->break_label    = old_break;
                 ctx->continue_label = old_continue;
                 ctx->emitted_break  = old_break_emitted;
                 return (LlvmValue){0};
             }
             bool loop_emitted_break = ctx->emitted_break;
+            llvm_pop_control_target(ctx, loop->label_symbol);
             ctx->break_label    = old_break;
             ctx->continue_label = old_continue;
             ctx->emitted_break  = old_break_emitted;
@@ -3823,24 +3962,57 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
     case HIR_STMT_Defer:
         return true;
     case HIR_STMT_Break:
-        if (ctx->break_label.count == 0) {
-            return false;
+        {
+            string break_label      = ctx->break_label;
+            string break_value_ptr  = ctx->break_value_ptr;
+            u32    break_value_type = ctx->break_value_type;
+            LlvmControlTarget* target =
+                llvm_find_control_target(ctx, stmt->symbol_handle);
+            if (target != NULL) {
+                break_label      = target->break_label;
+                break_value_ptr  = target->break_value_ptr;
+                break_value_type = target->break_value_type;
+            }
+            if (break_label.count == 0) {
+                return false;
+            }
+            if (stmt->expr_index != U32_MAX && break_value_ptr.count > 0) {
+                LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+                if (!value.ok) {
+                    return false;
+                }
+                string type = llvm_type_string(ctx, break_value_type);
+                sb_format(ctx->sb,
+                          "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                          ", align 4\n",
+                          STRINGV(type),
+                          STRINGV(value.value),
+                          STRINGV(break_value_ptr));
+            }
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(break_label));
+            ctx->block_terminated = true;
+            ctx->emitted_break     = true;
+            return true;
         }
-        sb_format(ctx->sb,
-                  "  br label %%" STRINGP "\n",
-                  STRINGV(ctx->break_label));
-        ctx->block_terminated = true;
-        ctx->emitted_break     = true;
-        return true;
     case HIR_STMT_Continue:
-        if (ctx->continue_label.count == 0) {
-            return false;
+        {
+            string continue_label = ctx->continue_label;
+            LlvmControlTarget* target =
+                llvm_find_control_target(ctx, stmt->symbol_handle);
+            if (target != NULL) {
+                continue_label = target->continue_label;
+            }
+            if (continue_label.count == 0) {
+                return false;
+            }
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(continue_label));
+            ctx->block_terminated = true;
+            return true;
         }
-        sb_format(ctx->sb,
-                  "  br label %%" STRINGP "\n",
-                  STRINGV(ctx->continue_label));
-        ctx->block_terminated = true;
-        return true;
     case HIR_STMT_Block:
         return llvm_emit_effect_block(ctx, function, stmt->body_block_index);
     default:
@@ -4337,6 +4509,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
+    array_free(ctx.control_targets);
     arena_done(&temp);
     (void)arena;
 }
@@ -4381,6 +4554,7 @@ internal void llvm_render_function(StringBuilder*    sb,
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
+    array_free(ctx.control_targets);
     arena_done(&temp);
     sb_append_cstr(sb, "}\n");
     (void)arena;
