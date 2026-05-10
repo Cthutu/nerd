@@ -1430,6 +1430,24 @@ internal string llvm_binary_instruction(HirBinaryOp op)
     }
 }
 
+internal string llvm_float_binary_instruction(HirBinaryOp op)
+{
+    switch (op) {
+    case HIR_BINARY_Add:
+        return s("fadd");
+    case HIR_BINARY_Subtract:
+        return s("fsub");
+    case HIR_BINARY_Multiply:
+        return s("fmul");
+    case HIR_BINARY_Divide:
+        return s("fdiv");
+    case HIR_BINARY_Modulo:
+        return s("frem");
+    default:
+        return (string){0};
+    }
+}
+
 internal string llvm_compare_instruction(HirBinaryOp op)
 {
     switch (op) {
@@ -1448,6 +1466,38 @@ internal string llvm_compare_instruction(HirBinaryOp op)
     default:
         return (string){0};
     }
+}
+
+internal string llvm_float_compare_instruction(HirBinaryOp op)
+{
+    switch (op) {
+    case HIR_BINARY_Equal:
+        return s("oeq");
+    case HIR_BINARY_NotEqual:
+        return s("one");
+    case HIR_BINARY_Less:
+        return s("olt");
+    case HIR_BINARY_LessEqual:
+        return s("ole");
+    case HIR_BINARY_Greater:
+        return s("ogt");
+    case HIR_BINARY_GreaterEqual:
+        return s("oge");
+    default:
+        return (string){0};
+    }
+}
+
+internal string llvm_float_literal_string(Arena* arena, f64 value)
+{
+    string result = string_format(arena, "%.17g", value);
+    for (usize i = 0; i < result.count; ++i) {
+        char ch = (char)result.data[i];
+        if (ch == '.' || ch == 'e' || ch == 'E') {
+            return result;
+        }
+    }
+    return string_format(arena, STRINGP ".0", STRINGV(result));
 }
 
 internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
@@ -1569,7 +1619,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){
             .ok         = true,
             .type_index = expr->type_index,
-            .value      = string_format(ctx->arena, "%.17g", expr->floating),
+            .value      = llvm_float_literal_string(ctx->arena, expr->floating),
         };
     case HIR_EXPR_StringLiteral:
         {
@@ -1867,14 +1917,30 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 string type = llvm_type_string(ctx, lhs.type_index);
                 string temp = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = icmp " STRINGP " " STRINGP
-                          " " STRINGP ", " STRINGP "\n",
-                          STRINGV(temp),
-                          STRINGV(cmp),
-                          STRINGV(type),
-                          STRINGV(lhs.value),
-                          STRINGV(rhs.value));
+                if (llvm_float_bits(ctx->sema, lhs.type_index) > 0 ||
+                    llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
+                    cmp = llvm_float_compare_instruction(expr->binary_op);
+                    if (cmp.count == 0) {
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = fcmp " STRINGP " " STRINGP
+                              " " STRINGP ", " STRINGP "\n",
+                              STRINGV(temp),
+                              STRINGV(cmp),
+                              STRINGV(type),
+                              STRINGV(lhs.value),
+                              STRINGV(rhs.value));
+                } else {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = icmp " STRINGP " " STRINGP
+                              " " STRINGP ", " STRINGP "\n",
+                              STRINGV(temp),
+                              STRINGV(cmp),
+                              STRINGV(type),
+                              STRINGV(lhs.value),
+                              STRINGV(rhs.value));
+                }
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = expr->type_index,
@@ -1897,6 +1963,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
             string type = llvm_type_string(ctx, expr->type_index);
             string temp = llvm_temp(ctx);
+            if (llvm_float_bits(ctx->sema, expr->type_index) > 0) {
+                instr = llvm_float_binary_instruction(expr->binary_op);
+                if (instr.count == 0) {
+                    return (LlvmValue){0};
+                }
+            }
             sb_format(ctx->sb,
                       "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
                       ", " STRINGP "\n",
