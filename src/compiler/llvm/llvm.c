@@ -1332,6 +1332,27 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = temp,
             };
         }
+    case HIR_EXPR_Block:
+        {
+            if (expr->body_block_index >= array_count(ctx->hir->blocks)) {
+                return (LlvmValue){0};
+            }
+
+            const HirBlock* block = &ctx->hir->blocks[expr->body_block_index];
+            for (u32 i = 0; i < block->stmt_count; ++i) {
+                u32 stmt_index = block->stmt_indices[i];
+                if (stmt_index >= array_count(ctx->hir->stmts)) {
+                    return (LlvmValue){0};
+                }
+
+                const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+                if (stmt->kind == HIR_STMT_Break) {
+                    return llvm_emit_expr(ctx, function, stmt->expr_index);
+                }
+            }
+
+            return (LlvmValue){0};
+        }
     case HIR_EXPR_Cast:
         {
             LlvmValue operand =
@@ -1540,6 +1561,22 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             continue;
         } else if (stmt->kind == HIR_STMT_Return) {
             return llvm_emit_return(ctx, function, stmt);
+        } else if (stmt->kind == HIR_STMT_Expr ||
+                   stmt->kind == HIR_STMT_Assert) {
+            if (stmt->expr_index != U32_MAX) {
+                LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+                if (!value.ok) {
+                    return false;
+                }
+            }
+            continue;
+        } else if (stmt->kind == HIR_STMT_Defer) {
+            continue;
+        } else if (stmt->kind == HIR_STMT_Block) {
+            if (!llvm_emit_block(ctx, function, stmt->body_block_index)) {
+                return false;
+            }
+            continue;
         }
     }
 
