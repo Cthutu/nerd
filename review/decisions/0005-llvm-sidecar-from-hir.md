@@ -23,10 +23,26 @@ nerd build --llvm source.n
 
 The first emitter writes textual `.ll` from root-module HIR and covers:
 
-- Nerd-visible function names with the `$` prefix, such as `@$main`.
-- Generated names for anonymous/unbound functions, such as `@fn.N`.
+- Generated names for all function entities, such as `@fn.N`.
+- Nerd-visible bindings with the `$` prefix as aliases, such as `@$main`.
 - Imported function declarations from HIR import bindings.
 - Export metadata comments from HIR export records.
+
+Function lowering must preserve the HIR entity/binding split. A function
+entity is always emitted with a generated name. A Nerd binding never changes
+the entity's symbol; it emits a target-level alias, export, or metadata record
+that points at the generated entity:
+
+```llvm
+define i32 @fn.0() {
+  ret i32 42
+}
+
+@$main = alias i32 (), ptr @fn.0
+```
+
+Calls produced inside lowered function bodies should target generated entity
+names, not Nerd binding aliases, when the callee is a known local HIR function.
 
 The existing executable path still goes through IR and C generation.
 
@@ -36,12 +52,14 @@ This gives us a stable place to grow LLVM lowering under tests without
 destabilising normal builds. It also validates that HIR now contains enough
 binding/module information to drive target symbol decisions.
 
-The current LLVM function bodies are scaffolds and return zero/default values.
-They are not intended to preserve program semantics yet.
+The current LLVM lowering covers a first semantic slice: simple returns,
+integer/bool literals, parameter references, integer binary operators, and
+direct calls. Unsupported bodies still fall back to default returns while the
+lowering surface grows.
 
 ## Follow-up
 
-1. Lower simple expressions and returns into real LLVM instructions.
+1. Add local `let`/assignment lowering.
 2. Add LLVM type/layout lowering for pointers, arrays, slices, strings, tuples,
    plexes, unions, and enums.
 3. Replace export comments with concrete LLVM linkage/alias decisions.
