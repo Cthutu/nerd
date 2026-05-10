@@ -297,12 +297,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
             build_flags,
-            nerd_cli_make_flag(arena,
-                               "llvm-backend",
-                               NULL,
-                               "Build executable with LLVM backend (default)"));
-        json_array_push(
-            build_flags,
             nerd_cli_make_flag(arena, "release", "r", "Build release binary"));
         json_array_push(build_params,
                         nerd_cli_make_param(arena,
@@ -342,12 +336,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             run_flags,
             nerd_cli_make_flag(
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
-        json_array_push(
-            run_flags,
-            nerd_cli_make_flag(arena,
-                               "llvm-backend",
-                               NULL,
-                               "Build executable with LLVM backend (default)"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(arena, "release", "r", "Build release binary"));

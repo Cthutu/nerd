@@ -38,15 +38,15 @@ continuing to grow this file.
   meaning, type resolution, and language rules in semantic analysis.
 - Use British spelling throughout code, comments, tests, documentation, and git
   commit messages where practical.
-- In generated C, emit a leading `$` prefix only for C symbols that correspond
-  directly to Nerd-language names. Keep hidden runtime/compiler helper names
-  such as `init` unprefixed.
+- In generated LLVM IR, emit Nerd-visible symbols with the `$` prefix and keep
+  compiler/runtime helper names generated and internal unless explicitly
+  exported.
 - Allow forward references between declarations where the language already
   supports them. Track dependencies explicitly and order declarations from that
   information.
 - Keep top-level constant bindings simple: lower them as globals/constants and
-  let the C compiler handle optimisation unless a specific compiler optimisation
-  has been designed.
+  let LLVM handle optimisation unless a specific compiler optimisation has been
+  designed.
 - When touching a compiler file, improve nearby comments and spelling where it
   is useful, but do not turn local fixes into unrelated rewrites.
 
@@ -55,7 +55,7 @@ continuing to grow this file.
 New language features should land across the toolchain together:
 
 - compiler parsing and semantic analysis
-- IR and C generation
+- HIR and LLVM lowering
 - formatter support
 - LSP/editor support where relevant
 - language tests
@@ -94,7 +94,7 @@ the roadmap before committing the implementation.
   codes remain broad and stable.
 - Treat OS, filesystem, shell, and toolchain failures as runtime errors, not
   user-source diagnostics or ICEs.
-- Treat IR generation and C generation invariant failures as ICEs.
+- Treat HIR generation and LLVM lowering invariant failures as ICEs.
 
 ## Test Artefact Policy
 
@@ -169,7 +169,7 @@ the roadmap before committing the implementation.
   - [x] enforce earlier-parameter-only references
   - [x] fill omitted trailing arguments during call checking for known function
     declarations
-- [x] IR/C generation work:
+- [x] Backend lowering work:
   - [x] lower substituted default expressions without adding new runtime
     calling-convention machinery
   - [x] keep generated function signatures unchanged
@@ -248,13 +248,13 @@ the roadmap before committing the implementation.
   - [x] key instantiations by canonical semantic type arguments
   - [x] canonicalise transparent type aliases so equivalent instantiations
     share one lowered body
-  - [x] generate C symbols with a readable stem plus a stable hash of canonical
-    generic arguments
-- [x] IR/C generation work:
-  - [x] lower monomorphised functions and types as concrete IR/C entities
-  - [x] lower generic types as concrete C entities
-  - [x] keep generic type templates out of generated C output
-  - [x] preserve stable generated C across rebuilds
+  - [x] generate backend symbols with a readable stem plus a stable hash of
+    canonical generic arguments
+- [x] Backend lowering work:
+  - [x] lower monomorphised functions and types as concrete backend entities
+  - [x] lower generic types as concrete backend entities
+  - [x] keep generic type templates out of generated backend output
+  - [x] preserve stable generated backend output across rebuilds
 - [x] Formatter work:
   - [x] format generic parameter lists
   - [x] format generic type applications
@@ -403,10 +403,10 @@ the roadmap before committing the implementation.
   - [ ] reject missing, duplicate, overlapping, or ambiguous implementations
   - [ ] provide useful `help` text when trait generic parameters are required
     but cannot be inferred
-- [ ] IR/C generation work:
+- [ ] Backend lowering work:
   - [ ] lower trait calls to statically selected concrete functions
-  - [ ] keep trait declarations out of generated C output
-  - [ ] emit implementation functions with stable generated C names
+  - [ ] keep trait declarations out of generated backend output
+  - [ ] emit implementation functions with stable generated backend names
   - [ ] preserve monomorphisation behaviour for generic impls
 - [ ] Formatter work:
   - [ ] format trait declarations

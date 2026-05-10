@@ -3,9 +3,13 @@
 Status: proposed
 Date: 2026-05-09
 
+Update: this decision has been carried out by the later LLVM backend work.
+HIR is now the compiler middle layer and LLVM is the only executable backend;
+the legacy IR/C backend has been removed.
+
 ## Context
 
-The current build pipeline is:
+At the time of this decision, the build pipeline was:
 
 ```text
 lexer -> AST parser -> sema -> IR -> C -> clang
@@ -37,14 +41,7 @@ The intended long-term build pipeline is:
 lexer -> tolerant syntax -> sema/name/type facts -> HIR -> backend
 ```
 
-Backends may include:
-
-- C generation from HIR
-- LLVM IR generation from HIR
-
-The current IR remains a migration tool and stable backend input until HIR can
-replace the services it provides. We should not invest further in the current
-IR as the long-term abstraction unless this decision is revised.
+The executable backend is now LLVM IR generation from HIR.
 
 HIR must be typed and name-resolved. It should not preserve parser trivia, and
 it should not be shaped around C syntax. It should own:
@@ -83,16 +80,16 @@ This keeps semantic dependency analysis separate from backend ordering. The
 language still needs dependency and cycle checks for inference, constants,
 types, imports, and diagnostics.
 
-This should reduce C-specific pressure in the middle of the compiler. C
+This reduced C-specific pressure in the middle of the compiler. C
 declaration/prototype ordering, C-safe type spelling, and generated C symbol
-constraints become backend concerns instead of core representation constraints.
+constraints were removed from the core representation constraints.
 
-The current IR cannot be deleted immediately. HIR or a backend context must
-first replace:
+HIR and the LLVM backend have replaced the legacy backend services that were
+called out during the migration:
 
 - current IR dumps used for debugging
 - module merge/remapping
-- copied semantic type rows used by C generation
+- copied semantic type rows used by the old C generation path
 - global/runtime initialization ordering
 - explicit temporary and local ownership
 - string/dynamic-array lowering records
@@ -108,8 +105,8 @@ linking, varargs, debug metadata, and aggregate ABI choices.
 2. Add HIR dumping before adding HIR-backed code generation.
 3. Lower a very small subset first: function records, blocks, integer
    literals, calls, returns, and `main`.
-4. Keep the existing IR/C backend as the default until the HIR path can run a
-   meaningful language snapshot.
-5. Add an experimental LLVM backend path that uses the proven runtime bridge.
-6. Decide when module merge moves out of current IR and into whole-program HIR
-   construction or a backend context.
+4. Completed: the existing IR/C backend has been removed after the HIR/LLVM
+   path became the default executable path.
+5. Completed: the LLVM backend path uses the proven runtime bridge.
+6. Completed: module merge and whole-program backend inputs now flow through
+   HIR/backend context instead of the legacy IR.

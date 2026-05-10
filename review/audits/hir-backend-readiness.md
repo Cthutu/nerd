@@ -1,6 +1,10 @@
 # HIR Backend Readiness Audit
 
-Status: started
+Status: historical
+
+Update: the migration described here has been completed. HIR is now the middle
+layer used by the executable LLVM backend, and the legacy IR/C backend has been
+removed. The notes below are retained as the audit trail for the migration.
 
 ## Current Shape
 
@@ -23,8 +27,8 @@ Current HIR owns:
   `else` blocks
 - stable text snapshots under `tests/hir/`
 
-This is enough to discuss HIR as a language in its own right, but it is not yet
-enough to replace the current IR/C path.
+This was enough to discuss HIR as a language in its own right. Later slices
+filled the missing backend records and replaced the current IR/C path.
 
 ## Backend Blockers
 
@@ -62,9 +66,9 @@ It needs a dedicated HIR-backend type/layout context.
 
 ### Runtime Operations
 
-Several language features are still represented as high-level expressions or
-lowered later by the current IR/C path. Direct LLVM lowering needs explicit HIR
-or backend operations for:
+Several language features were represented as high-level expressions or lowered
+later by the old IR/C path. Direct LLVM lowering needed explicit HIR or backend
+operations for:
 
 - dynamic-array reserve, resize, push, append, delete, swap-delete, pop, clear,
   and free
@@ -136,12 +140,14 @@ an explicit debug dump mode.
    and records ABI decisions.
 4. Add an experimental HIR-to-LLVM emitter for the smallest executable subset:
    functions, integers, locals, calls, returns, and `@"$main"`.
-5. Link generated LLVM with the existing clang-produced prelude/epilogue bridge.
+5. Link generated LLVM with the embedded clang-produced prelude bridge and the
+   generated LLVM epilogue wrapper.
 6. Grow LLVM lowering by feature families: aggregates, pointers/slices,
    structured control flow, `on`, dynamic arrays/strings, modules/globals, then
    generics/runtime polish.
-7. Retire current IR only after HIR owns every program product currently needed
-   by C generation and the LLVM path can run the meaningful language snapshots.
+7. Completed: retire current IR after HIR owns every program product needed by
+   the executable backend and the LLVM path can run the meaningful language
+   snapshots.
 
 ## Immediate Next Checks
 
@@ -149,4 +155,4 @@ an explicit debug dump mode.
   current omission visible.
 - Decide whether HIR should contain explicit `global`, `type`, and `init`
   records before adding LLVM emission.
-- Keep C generation on the current IR until those products exist.
+- Completed: remove C generation after those products exist.

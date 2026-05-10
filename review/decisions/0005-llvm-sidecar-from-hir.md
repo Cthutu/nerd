@@ -21,10 +21,10 @@ Start with a non-invasive LLVM sidecar artifact generated from HIR:
 nerd build --llvm source.n
 ```
 
-An opt-in execution backend is available separately:
+LLVM is also the executable backend used by normal builds and runs:
 
 ```text
-nerd run --llvm-backend source.n
+nerd run source.n
 ```
 
 This path writes generated LLVM IR and compiles it with build-generated LLVM
@@ -56,8 +56,8 @@ Calls produced inside lowered function bodies should target generated entity
 names, not Nerd binding aliases, when the callee is a known local HIR function.
 
 The legacy IR/C executable path is no longer exposed through the command-line
-build/run interface. The `--llvm-backend` flag remains accepted as a
-backwards-compatible no-op while LLVM is the only public executable backend.
+build/run interface. The earlier `--llvm-backend` compatibility flag has been
+removed because LLVM is no longer an alternate backend.
 
 ## Consequences
 
@@ -96,12 +96,13 @@ after a successful link.
 
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
 flags without consulting the old IR tables. The legacy IR and C generator have
-been removed from the build graph.
+been removed from the build graph, and command tests now exercise the default
+LLVM executable path directly.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
-3. Remove stale roadmap references to the deleted IR/C backend as adjacent
-   architecture plans are refreshed.
+3. Continue replacing historical IR/C wording in design notes when those notes
+   are edited for current work.
