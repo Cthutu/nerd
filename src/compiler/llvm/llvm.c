@@ -1063,6 +1063,36 @@ internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
+    if (llvm_type_kind(ctx->sema, scrutinee.type_index) == STK_String &&
+        (string_eq_cstr(pred, "eq") || string_eq_cstr(pred, "ne"))) {
+        string equal = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP
+                  " = call i1 @string_eq({ ptr, i64 } " STRINGP
+                  ", { ptr, i64 } " STRINGP ")\n",
+                  STRINGV(equal),
+                  STRINGV(scrutinee.value),
+                  STRINGV(rhs.value));
+        if (string_eq_cstr(pred, "eq")) {
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
+                .value      = equal,
+            };
+        }
+
+        string not_equal = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                  STRINGV(not_equal),
+                  STRINGV(equal));
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
+            .value      = not_equal,
+        };
+    }
+
     string type = llvm_type_string(ctx, scrutinee.type_index);
     string temp = llvm_temp(ctx);
     sb_format(ctx->sb,
@@ -3580,6 +3610,7 @@ internal void llvm_render_concat_string_literals(StringBuilder* sb,
 internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
 {
     sb_append_cstr(sb,
+                   "declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })\n"
                    "declare void @string_builder_reset()\n"
                    "declare i64 @string_builder_mark()\n"
                    "declare void @string_builder_append_string({ ptr, i64 })\n"
@@ -3600,10 +3631,21 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
                    "declare { ptr, i64 } @to_string$f64(double)\n");
 }
 
-internal bool llvm_hir_uses_string_runtime(const Hir* hir)
+internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
         if (hir->exprs[i].kind == HIR_EXPR_InterpolatedString) {
+            return true;
+        }
+    }
+    for (u32 i = 0; i < array_count(hir->patterns); ++i) {
+        const HirPattern* pattern = &hir->patterns[i];
+        if ((pattern->kind == HIR_PATTERN_Value ||
+             pattern->kind == HIR_PATTERN_Equal ||
+            pattern->kind == HIR_PATTERN_NotEqual) &&
+            pattern->expr_index < array_count(hir->exprs) &&
+            llvm_type_kind(sema, hir->exprs[pattern->expr_index].type_index) ==
+                STK_String) {
             return true;
         }
     }
@@ -3819,7 +3861,7 @@ string llvm_render_hir(const Hir* hir,
         sb_append_char(&sb, '\n');
     }
 
-    if (llvm_hir_uses_string_runtime(hir)) {
+    if (llvm_hir_uses_string_runtime(hir, sema)) {
         llvm_render_string_runtime_declarations(&sb);
         sb_append_char(&sb, '\n');
     }

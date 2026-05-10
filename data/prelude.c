@@ -45,7 +45,7 @@ nerd_assert(bool condition, const char* source_path, unsigned line, string messa
     exit(127);
 }
 
-static bool string_eq(string lhs, string rhs)
+bool string_eq(string lhs, string rhs)
 {
     if (lhs.count != rhs.count) {
         return false;

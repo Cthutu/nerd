@@ -529,13 +529,20 @@ internal u32 hir_lower_expr(Hir*         hir,
     case AK_InterpolatedString:
         {
             u32 first_arg = (u32)array_count(hir->call_args);
+            u32 arg_count = 0;
             for (u32 i = node->a; i < node->b; ++i) {
+                if (i >= array_count(ast->nodes) ||
+                    (ast->nodes[i].kind != AK_StringLiteral &&
+                     ast->nodes[i].kind != AK_InterpPartExpr)) {
+                    continue;
+                }
                 array_push(hir->call_args,
                            (HirCallArg){
                                .expr_index = hir_lower_expr(
                                    hir, lexer, ast, sema, i),
                                .symbol_handle = U32_MAX,
                            });
+                arg_count += 1;
             }
             return hir_add_expr(
                 hir,
@@ -545,7 +552,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .symbol_handle = U32_MAX,
                     .local_index   = sema_no_local(),
                     .first_arg     = first_arg,
-                    .arg_count     = node->b - node->a,
+                    .arg_count     = arg_count,
                 });
         }
     case AK_BoolLiteral:
