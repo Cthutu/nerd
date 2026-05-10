@@ -210,6 +210,7 @@ typedef struct {
     u32         local_index;
     u32         type_index;
     u32         body_block_index;
+    u32         source_line;
 } HirStmt;
 
 typedef struct {

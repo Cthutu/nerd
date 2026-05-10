@@ -39,6 +39,24 @@ internal u32 hir_node_scope(const Sema* sema, u32 node_index)
                : hir_no_index();
 }
 
+internal u32 hir_node_line(const Lexer* lexer, const Ast* ast, u32 node_index)
+{
+    if (lexer == NULL || ast == NULL || node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+    u32 token_index = ast->nodes[node_index].token_index;
+    if (token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(
+            lexer->source, lexer->tokens[token_index].offset, &line, &col)) {
+        return 0;
+    }
+    return line + 1;
+}
+
 internal u32 hir_local_type(const Sema* sema, u32 local_index)
 {
     return local_index < array_count(sema->locals)
@@ -1257,7 +1275,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .symbol_handle    = U32_MAX,
                 .local_index      = sema_no_local(),
                 .type_index       = hir_node_type(sema, node_index),
-                .body_block_index = hir_no_index(),
+                .body_block_index  = hir_no_index(),
+                .source_line       = hir_node_line(lexer, ast, node_index),
             });
     case AK_Bind:
     case AK_Variable:
@@ -1354,6 +1373,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .local_index      = sema_no_local(),
                 .type_index       = hir_node_type(sema, node_index),
                 .body_block_index = hir_no_index(),
+                .source_line       = hir_node_line(lexer, ast, node_index),
             });
     case AK_Defer:
         return hir_add_stmt(hir,

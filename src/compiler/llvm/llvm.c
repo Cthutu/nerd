@@ -551,6 +551,26 @@ internal void llvm_append_concat_string_global_name(StringBuilder* sb,
     sb_format(sb, "@.str.m%u.concat.%u", module_index, expr_index);
 }
 
+internal void llvm_append_source_path_global_name(StringBuilder* sb,
+                                                 const Hir*     hir)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.source_path.m%u", module_index);
+}
+
+internal void llvm_append_assert_default_message_global_name(StringBuilder* sb,
+                                                            const Hir*     hir)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.assert.default.m%u", module_index);
+}
+
 internal string llvm_string_global_name_string(const Hir* hir,
                                                Arena*     arena,
                                                u32        string_index)
@@ -568,6 +588,23 @@ internal string llvm_concat_string_global_name_string(const Hir* hir,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     llvm_append_concat_string_global_name(&sb, hir, expr_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_source_path_global_name_string(const Hir* hir, Arena* arena)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_source_path_global_name(&sb, hir);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_assert_default_message_global_name_string(const Hir* hir,
+                                                              Arena*     arena)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_assert_default_message_global_name(&sb, hir);
     return sb_to_string(&sb);
 }
 
@@ -4717,6 +4754,54 @@ internal bool llvm_emit_assign_stmt(LlvmFunctionContext* ctx,
     return llvm_emit_assign(ctx, function, stmt->target_expr_index, value);
 }
 
+internal u32 llvm_stmt_source_line(const LlvmFunctionContext* ctx,
+                                   const HirStmt*            stmt)
+{
+    (void)ctx;
+    return stmt != NULL ? stmt->source_line : 0;
+}
+
+internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt)
+{
+    if (stmt->expr_index == U32_MAX) {
+        return true;
+    }
+
+    LlvmValue condition = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!condition.ok) {
+        return false;
+    }
+
+    string message_value = {0};
+    if (stmt->target_expr_index != U32_MAX) {
+        LlvmValue message =
+            llvm_emit_expr(ctx, function, stmt->target_expr_index);
+        if (!message.ok) {
+            return false;
+        }
+        message_value = message.value;
+    } else {
+        string default_message =
+            llvm_assert_default_message_global_name_string(ctx->hir, ctx->arena);
+        message_value = string_format(ctx->arena,
+                                      "{ ptr " STRINGP ", i64 16 }",
+                                      STRINGV(default_message));
+    }
+
+    string source_path =
+        llvm_source_path_global_name_string(ctx->hir, ctx->arena);
+    sb_format(ctx->sb,
+              "  call void @nerd_assert(i1 " STRINGP
+              ", ptr " STRINGP ", i32 %u, { ptr, i64 } " STRINGP ")\n",
+              STRINGV(condition.value),
+              STRINGV(source_path),
+              llvm_stmt_source_line(ctx, stmt),
+              STRINGV(message_value));
+    return true;
+}
+
 internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt)
@@ -4831,11 +4916,12 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
     case HIR_STMT_Return:
         return llvm_emit_return(ctx, function, stmt);
     case HIR_STMT_Expr:
-    case HIR_STMT_Assert:
         if (stmt->expr_index == U32_MAX) {
             return true;
         }
         return llvm_emit_expr(ctx, function, stmt->expr_index).ok;
+    case HIR_STMT_Assert:
+        return llvm_emit_assert(ctx, function, stmt);
     case HIR_STMT_Defer:
         return true;
     case HIR_STMT_Break:
@@ -5114,20 +5200,23 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             continue;
         } else if (stmt->kind == HIR_STMT_Return) {
             return llvm_emit_return(ctx, function, stmt);
-        } else if (stmt->kind == HIR_STMT_Expr ||
-                   stmt->kind == HIR_STMT_Assert) {
+        } else if (stmt->kind == HIR_STMT_Expr) {
             if (stmt->expr_index != U32_MAX) {
                 const HirExpr* expr = stmt->expr_index < array_count(ctx->hir->exprs)
                                           ? &ctx->hir->exprs[stmt->expr_index]
                                           : NULL;
-                if (stmt->kind == HIR_STMT_Expr && expr != NULL &&
-                    expr->kind == HIR_EXPR_Unsupported) {
+                if (expr != NULL && expr->kind == HIR_EXPR_Unsupported) {
                     continue;
                 }
                 LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
                 if (!value.ok) {
                     return false;
                 }
+            }
+            continue;
+        } else if (stmt->kind == HIR_STMT_Assert) {
+            if (!llvm_emit_assert(ctx, function, stmt)) {
+                return false;
             }
             continue;
         } else if (stmt->kind == HIR_STMT_Defer) {
@@ -5179,6 +5268,50 @@ internal void llvm_render_string_literals(StringBuilder* sb,
                   " = private unnamed_addr constant [%zu x i8] c\"",
                   value.count + 1);
         llvm_append_escaped_string_bytes(sb, value);
+        sb_append_cstr(sb, "\\00\"\n");
+    }
+}
+
+internal bool llvm_hir_uses_assert(const Hir* hir)
+{
+    for (u32 i = 0; i < array_count(hir->stmts); ++i) {
+        if (hir->stmts[i].kind == HIR_STMT_Assert) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_hir_uses_default_assert_message(const Hir* hir)
+{
+    for (u32 i = 0; i < array_count(hir->stmts); ++i) {
+        if (hir->stmts[i].kind == HIR_STMT_Assert &&
+            hir->stmts[i].target_expr_index == U32_MAX) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void llvm_render_assert_globals(StringBuilder* sb,
+                                         const Hir*      hir,
+                                         const Lexer*    lexer)
+{
+    string source_path = lexer != NULL ? lexer->source.source_path : s("");
+    llvm_append_source_path_global_name(sb, hir);
+    sb_format(sb,
+              " = private unnamed_addr constant [%zu x i8] c\"",
+              source_path.count + 1);
+    llvm_append_escaped_string_bytes(sb, source_path);
+    sb_append_cstr(sb, "\\00\"\n");
+
+    if (llvm_hir_uses_default_assert_message(hir)) {
+        string message = s("assertion failed");
+        llvm_append_assert_default_message_global_name(sb, hir);
+        sb_format(sb,
+                  " = private unnamed_addr constant [%zu x i8] c\"",
+                  message.count + 1);
+        llvm_append_escaped_string_bytes(sb, message);
         sb_append_cstr(sb, "\\00\"\n");
     }
 }
@@ -5277,6 +5410,13 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
                    "declare { ptr, i64 } @to_string$usize(i64)\n"
                    "declare { ptr, i64 } @to_string$f32(float)\n"
                    "declare { ptr, i64 } @to_string$f64(double)\n");
+}
+
+internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
+{
+    sb_append_cstr(
+        sb,
+        "declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })\n");
 }
 
 internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
@@ -5508,11 +5648,21 @@ string llvm_render_hir(const Hir* hir,
     if (array_count(lexer->strings) > 0) {
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
+    }
+    if (llvm_hir_uses_assert(hir)) {
+        llvm_render_assert_globals(&sb, hir, lexer);
+    }
+    if (array_count(lexer->strings) > 0 || llvm_hir_uses_assert(hir)) {
         sb_append_char(&sb, '\n');
     }
 
     if (llvm_hir_uses_string_runtime(hir, sema)) {
         llvm_render_string_runtime_declarations(&sb);
+    }
+    if (llvm_hir_uses_assert(hir)) {
+        llvm_render_assert_runtime_declarations(&sb);
+    }
+    if (llvm_hir_uses_string_runtime(hir, sema) || llvm_hir_uses_assert(hir)) {
         sb_append_char(&sb, '\n');
     }
 

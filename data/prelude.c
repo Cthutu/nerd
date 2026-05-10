@@ -33,8 +33,10 @@ static void eprn(const char* format, ...)
     epr("\n");
 }
 
-static void
-nerd_assert(bool condition, const char* source_path, unsigned line, string message)
+void nerd_assert(bool condition,
+                 const char* source_path,
+                 unsigned    line,
+                 string      message)
 {
     if (condition) {
         return;
