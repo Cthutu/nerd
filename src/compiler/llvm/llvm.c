@@ -879,6 +879,35 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
     };
 }
 
+internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
+                                              u32                  type_index,
+                                              const LlvmValue*     values,
+                                              u32                  value_count)
+{
+    string aggregate_type = llvm_type_string(ctx, type_index);
+    string current        = value_count == 0 ? s("zeroinitializer") : s("poison");
+    for (u32 i = 0; i < value_count; ++i) {
+        string temp       = llvm_temp(ctx);
+        string value_type = llvm_type_string(ctx, values[i].type_index);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = insertvalue " STRINGP " " STRINGP ", "
+                  STRINGP " " STRINGP ", %u\n",
+                  STRINGV(temp),
+                  STRINGV(aggregate_type),
+                  STRINGV(current),
+                  STRINGV(value_type),
+                  STRINGV(values[i].value),
+                  i);
+        current = temp;
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = type_index,
+        .value      = current,
+    };
+}
+
 internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* out)
 {
     if (expr_index >= array_count(hir->exprs)) {
@@ -1820,70 +1849,43 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         };
     case HIR_EXPR_Array:
         {
-            Arena array_arena = {0};
-            arena_init(&array_arena);
-            StringBuilder value = {0};
-            sb_init(&value, &array_arena);
-            sb_append_char(&value, '[');
+            Array(LlvmValue) values = NULL;
             for (u32 i = 0; i < expr->arg_count; ++i) {
-                if (i > 0) {
-                    sb_append_cstr(&value, ", ");
-                }
                 const HirCallArg* arg =
                     &ctx->hir->call_args[expr->first_arg + i];
                 LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
                 if (!item.ok) {
+                    array_free(values);
                     return (LlvmValue){0};
                 }
-                string item_type = llvm_type_string(ctx, item.type_index);
-                sb_format(&value,
-                          STRINGP " " STRINGP,
-                          STRINGV(item_type),
-                          STRINGV(item.value));
+                array_push(values, item);
             }
-            sb_append_char(&value, ']');
-            string rendered =
-                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
-            arena_done(&array_arena);
-            return (LlvmValue){
-                .ok         = true,
-                .type_index = expr->type_index,
-                .value      = rendered,
-            };
+            LlvmValue result = llvm_build_aggregate_value(ctx,
+                                                          expr->type_index,
+                                                          values,
+                                                          array_count(values));
+            array_free(values);
+            return result;
         }
     case HIR_EXPR_Tuple:
         {
-            Arena tuple_arena = {0};
-            arena_init(&tuple_arena);
-            StringBuilder value = {0};
-            sb_init(&value, &tuple_arena);
-            sb_append_cstr(&value, "{ ");
+            Array(LlvmValue) values = NULL;
             for (u32 i = 0; i < expr->arg_count; ++i) {
-                if (i > 0) {
-                    sb_append_cstr(&value, ", ");
-                }
                 const HirCallArg* arg =
                     &ctx->hir->call_args[expr->first_arg + i];
                 LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
                 if (!item.ok) {
-                    arena_done(&tuple_arena);
+                    array_free(values);
                     return (LlvmValue){0};
                 }
-                string item_type = llvm_type_string(ctx, item.type_index);
-                sb_format(&value,
-                          STRINGP " " STRINGP,
-                          STRINGV(item_type),
-                          STRINGV(item.value));
+                array_push(values, item);
             }
-            sb_append_cstr(&value, " }");
-            string rendered =
-                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
-            arena_done(&tuple_arena);
-            return (LlvmValue){
-                .ok         = true,
-                .type_index = expr->type_index,
-                .value      = rendered,
-            };
+            LlvmValue result = llvm_build_aggregate_value(ctx,
+                                                          expr->type_index,
+                                                          values,
+                                                          array_count(values));
+            array_free(values);
+            return result;
         }
     case HIR_EXPR_Plex:
     case HIR_EXPR_PlexUpdate:

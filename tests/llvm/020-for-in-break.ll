@@ -38,13 +38,15 @@ for.in.end.2:
   ret i32 %t12
 }
 define i32 @fn.1() {
+  %t0 = insertvalue [2 x i32] poison, i32 1, 0
+  %t1 = insertvalue [2 x i32] %t0, i32 2, 1
   %local.2 = alloca [2 x i32]
-  store [2 x i32] [i32 1, i32 2], ptr %local.2
-  %t0 = getelementptr inbounds [2 x i32], ptr %local.2, i64 0, i64 0
-  %t1 = insertvalue { ptr, i64 } poison, ptr %t0, 0
-  %t2 = insertvalue { ptr, i64 } %t1, i64 2, 1
-  %t3 = call i32 @fn.0({ ptr, i64 } %t2)
-  ret i32 %t3
+  store [2 x i32] %t1, ptr %local.2
+  %t2 = getelementptr inbounds [2 x i32], ptr %local.2, i64 0, i64 0
+  %t3 = insertvalue { ptr, i64 } poison, ptr %t2, 0
+  %t4 = insertvalue { ptr, i64 } %t3, i64 2, 1
+  %t5 = call i32 @fn.0({ ptr, i64 } %t4)
+  ret i32 %t5
 }
 @$increment_first = alias i32 ({ ptr, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

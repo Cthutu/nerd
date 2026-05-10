@@ -29,8 +29,10 @@ define i32 @fn.2([2 x i32] %values) {
   ret i32 %t0
 }
 define i32 @fn.3() {
-  %t0 = call i32 @fn.2([2 x i32] [i32 1, i32 2])
-  ret i32 %t0
+  %t0 = insertvalue [2 x i32] poison, i32 1, 0
+  %t1 = insertvalue [2 x i32] %t0, i32 2, 1
+  %t2 = call i32 @fn.2([2 x i32] %t1)
+  ret i32 %t2
 }
 @$addr = alias ptr (i32), ptr @fn.0
 @$read = alias i32 (ptr), ptr @fn.1
