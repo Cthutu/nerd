@@ -188,6 +188,12 @@ typedef struct {
 } HirImport;
 
 typedef struct {
+    u32    symbol_handle;
+    u32    type_index;
+    string library;
+} HirExtern;
+
+typedef struct {
     u32 decl_index;
     u32 binding_index;
 } HirExport;
@@ -300,6 +306,7 @@ typedef struct {
     u32 current_module_index;
     Array(HirModuleImport) module_imports;
     Array(HirImport) imports;
+    Array(HirExtern) externs;
     Array(HirExport) exports;
     Array(HirBinding) bindings;
     Array(HirTypeDef) type_defs;

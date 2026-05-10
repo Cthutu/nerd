@@ -79,10 +79,39 @@ internal void hir_append_binding_target(StringBuilder* sb,
     sb_format(sb, "%s.%u", hir_binding_target_prefix(kind), target_index);
 }
 
+internal void hir_append_string_literal(StringBuilder* sb, string value)
+{
+    sb_append_char(sb, '"');
+    for (usize i = 0; i < value.count; ++i) {
+        switch (value.data[i]) {
+        case '\\':
+            sb_append_cstr(sb, "\\\\");
+            break;
+        case '"':
+            sb_append_cstr(sb, "\\\"");
+            break;
+        case '\n':
+            sb_append_cstr(sb, "\\n");
+            break;
+        case '\r':
+            sb_append_cstr(sb, "\\r");
+            break;
+        case '\t':
+            sb_append_cstr(sb, "\\t");
+            break;
+        default:
+            sb_append_char(sb, (char)value.data[i]);
+            break;
+        }
+    }
+    sb_append_char(sb, '"');
+}
+
 internal bool hir_should_render_module_records(const Hir* hir)
 {
     return array_count(hir->module_imports) > 0 ||
-           array_count(hir->imports) > 0 || array_count(hir->exports) > 0;
+           array_count(hir->imports) > 0 || array_count(hir->externs) > 0 ||
+           array_count(hir->exports) > 0;
 }
 
 internal string hir_module_name(const Sema* sema, u32 module_index)
@@ -1040,6 +1069,17 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
         }
         sb_append_cstr(&sb, ": ");
         hir_append_type_name(&sb, lexer, sema, import->type_index);
+        sb_append_char(&sb, '\n');
+    }
+    for (u32 i = 0; i < array_count(hir->externs); ++i) {
+        const HirExtern* extern_decl = &hir->externs[i];
+        sb_format(&sb, "extern extern.%u ", i);
+        sb_append_string(&sb,
+                         hir_symbol_name(extern_decl->symbol_handle, lexer));
+        sb_append_cstr(&sb, " from ");
+        hir_append_string_literal(&sb, extern_decl->library);
+        sb_append_cstr(&sb, ": ");
+        hir_append_type_name(&sb, lexer, sema, extern_decl->type_index);
         sb_append_char(&sb, '\n');
     }
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {

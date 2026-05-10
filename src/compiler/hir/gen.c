@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/build.h>
+#include <compiler/error/error.h>
 #include <compiler/hir/hir.h>
 
 //------------------------------------------------------------------------------
@@ -478,6 +479,170 @@ internal u32 hir_ffi_foreign_symbol_handle(const Lexer*    lexer,
     const AstFfiInfo* ffi_info = &source_ast->ffi_infos[ffi_node->a];
     return sema_import_symbol_handle(
         (Lexer*)lexer, source_lexer, ffi_info->foreign_symbol_handle);
+}
+
+internal bool hir_decl_ffi_info(const Lexer*       lexer,
+                                const Ast*         ast,
+                                const Sema*        sema,
+                                const SemaDecl*    decl,
+                                const Lexer**      out_lexer,
+                                const Ast**        out_ast,
+                                const Sema**       out_sema,
+                                const AstFfiInfo** out_info)
+{
+    const Lexer*    source_lexer = lexer;
+    const Ast*      source_ast   = ast;
+    const Sema*     source_sema  = sema;
+    const SemaDecl* source_decl  = decl;
+
+    if (decl->value_node_index == sema_no_decl() &&
+        !hir_imported_ffi_decl_source(sema,
+                                      decl,
+                                      &source_lexer,
+                                      &source_ast,
+                                      &source_sema,
+                                      &source_decl)) {
+        return false;
+    }
+
+    if (source_decl->value_node_index == sema_no_decl() ||
+        source_decl->value_node_index >= array_count(source_ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* ffi_node = &source_ast->nodes[source_decl->value_node_index];
+    if (ffi_node->kind != AK_FfiDef ||
+        ffi_node->a >= array_count(source_ast->ffi_infos)) {
+        return false;
+    }
+
+    *out_lexer = source_lexer;
+    *out_ast   = source_ast;
+    *out_sema  = source_sema;
+    *out_info  = &source_ast->ffi_infos[ffi_node->a];
+    return true;
+}
+
+internal bool hir_eval_string_constant(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       const Sema*  sema,
+                                       Hir*         hir,
+                                       u32          node_index,
+                                       string*      out)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_StringLiteral:
+        *out = ast_get_string(lexer, node);
+        return true;
+    case AK_StringConcat:
+        {
+            string lhs = {0};
+            string rhs = {0};
+            if (!hir_eval_string_constant(
+                    lexer, ast, sema, hir, node->a, &lhs) ||
+                !hir_eval_string_constant(
+                    lexer, ast, sema, hir, node->b, &rhs)) {
+                return false;
+            }
+            *out = string_format(
+                &hir->arena, STRINGP STRINGP, STRINGV(lhs), STRINGV(rhs));
+            return true;
+        }
+    case AK_Expression:
+    case AK_Statement:
+    case AK_InterpPartExpr:
+        return hir_eval_string_constant(lexer, ast, sema, hir, node->a, out);
+    case AK_SymbolRef:
+        if (node_index < array_count(sema->node_local_indices)) {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index != sema_no_local() &&
+                sema->locals[local_index].kind == SLK_Constant &&
+                sema->locals[local_index].value_node_index != sema_no_decl()) {
+                return hir_eval_string_constant(
+                    lexer,
+                    ast,
+                    sema,
+                    hir,
+                    sema->locals[local_index].value_node_index,
+                    out);
+            }
+        }
+        if (node_index < array_count(sema->node_decl_indices)) {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant &&
+                sema->decls[decl_index].value_node_index != sema_no_decl()) {
+                return hir_eval_string_constant(
+                    lexer,
+                    ast,
+                    sema,
+                    hir,
+                    sema->decls[decl_index].value_node_index,
+                    out);
+            }
+        }
+        return false;
+    case AK_AnnotatedValue:
+        return hir_eval_string_constant(lexer, ast, sema, hir, node->b, out);
+    default:
+        return false;
+    }
+}
+
+internal void hir_add_extern(Hir*            hir,
+                             const Lexer*    lexer,
+                             const Ast*      ast,
+                             const Sema*     sema,
+                             const SemaDecl* decl)
+{
+    if (decl == NULL || decl->kind != SK_FfiFunction) {
+        return;
+    }
+
+    const Lexer*      ffi_lexer = lexer;
+    const Ast*        ffi_ast   = ast;
+    const Sema*       ffi_sema  = sema;
+    const AstFfiInfo* ffi_info  = NULL;
+    if (!hir_decl_ffi_info(lexer,
+                           ast,
+                           sema,
+                           decl,
+                           &ffi_lexer,
+                           &ffi_ast,
+                           &ffi_sema,
+                           &ffi_info)) {
+        return;
+    }
+
+    string library = {0};
+    if (!hir_eval_string_constant(ffi_lexer,
+                                  ffi_ast,
+                                  ffi_sema,
+                                  hir,
+                                  ffi_info->library_node_index,
+                                  &library)) {
+        error_ice("Could not evaluate FFI library string");
+    }
+
+    u32 symbol_handle = sema_import_symbol_handle(
+        (Lexer*)lexer, ffi_lexer, ffi_info->foreign_symbol_handle);
+    for (u32 i = 0; i < array_count(hir->externs); ++i) {
+        if (hir->externs[i].symbol_handle == symbol_handle) {
+            return;
+        }
+    }
+
+    array_push(hir->externs,
+               (HirExtern){
+                   .symbol_handle = symbol_handle,
+                   .type_index    = decl->type_index,
+                   .library       = library,
+               });
 }
 
 internal u32 hir_call_arg_value_node(const Ast* ast,
@@ -2754,6 +2919,10 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         case SK_Function:
         case SK_FfiFunction:
             {
+                if (decl->kind == SK_FfiFunction) {
+                    hir_add_extern(&hir, lexer, ast, sema, decl);
+                }
+
                 u32 fn_node_index = hir_decl_fn_node(ast, decl);
                 u32 root_scope_index =
                     fn_node_index != sema_no_decl() &&
@@ -2811,6 +2980,7 @@ void hir_done(Hir* hir)
 {
     array_free(hir->module_imports);
     array_free(hir->imports);
+    array_free(hir->externs);
     array_free(hir->exports);
     array_free(hir->bindings);
     array_free(hir->type_defs);

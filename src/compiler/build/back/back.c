@@ -815,15 +815,14 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     return true;
 }
 
-internal void
-back_end_append_program_extern_link_flags(StringBuilder*     link_flags,
-                                          const ProgramInfo* program)
+internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
+                                                    const ProgramInfo* program)
 {
     for (u32 module_index = 0; module_index < array_count(program->modules);
          ++module_index) {
-        const Ir* ir = &program->modules[module_index].front_end.ir;
-        for (u32 i = 0; i < array_count(ir->externs); ++i) {
-            string library = ir->externs[i].library;
+        const Hir* hir = &program->modules[module_index].front_end.hir;
+        for (u32 i = 0; i < array_count(hir->externs); ++i) {
+            string library = hir->externs[i].library;
             if (string_eq(library, s("c"))) {
                 continue;
             }
@@ -836,13 +835,13 @@ back_end_append_program_extern_link_flags(StringBuilder*     link_flags,
             bool already_added = false;
             for (u32 previous_module = 0; previous_module <= module_index;
                  ++previous_module) {
-                const Ir* previous_ir =
-                    &program->modules[previous_module].front_end.ir;
+                const Hir* previous_hir =
+                    &program->modules[previous_module].front_end.hir;
                 u32 end = previous_module == module_index
                               ? i
-                              : (u32)array_count(previous_ir->externs);
+                              : (u32)array_count(previous_hir->externs);
                 for (u32 j = 0; j < end; ++j) {
-                    if (string_eq(previous_ir->externs[j].library, library)) {
+                    if (string_eq(previous_hir->externs[j].library, library)) {
                         already_added = true;
                         break;
                     }
@@ -1050,7 +1049,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
     StringBuilder link_flags = {0};
     sb_init(&link_flags, &arena);
-    back_end_append_program_extern_link_flags(&link_flags, program);
+    back_end_append_hir_extern_link_flags(&link_flags, program);
     StringBuilder command_builder = {0};
     sb_init(&command_builder, &arena);
     sb_format(&command_builder,

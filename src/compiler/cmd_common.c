@@ -125,10 +125,13 @@ bool compile(NerdSource                source,
     }
 
     FrontEndOptions front_end_options = {
-        .verbose             = dump_compiler_state,
-        .release             = artifacts->release,
-        .require_entry_point = true,
-        .keywords            = artifacts->keywords,
+        .verbose                   = dump_compiler_state,
+        .release                   = artifacts->release,
+        .require_entry_point       = true,
+        .skip_legacy_ir_generation = artifacts->use_llvm_backend &&
+                                     !artifacts->emit_ir_file &&
+                                     !artifacts->emit_c_file,
+        .keywords                  = artifacts->keywords,
     };
 
     ProgramInfo program = {0};

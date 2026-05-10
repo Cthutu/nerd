@@ -36,6 +36,8 @@ The first emitter writes textual `.ll` from root-module HIR and covers:
 - Generated names for all function entities, such as `@fn.N`.
 - Nerd-visible bindings with the `$` prefix as aliases, such as `@$main`.
 - Imported function declarations from HIR import bindings.
+- FFI extern records, including the source library name needed for backend link
+  flags.
 - Export metadata comments from HIR export records.
 
 Function lowering must preserve the HIR entity/binding split. A function
@@ -54,7 +56,9 @@ define i32 @fn.0() {
 Calls produced inside lowered function bodies should target generated entity
 names, not Nerd binding aliases, when the callee is a known local HIR function.
 
-The existing executable path still goes through IR and C generation.
+The legacy IR/C executable path remains available through `--c-backend` and
+artifact requests such as `--ir`/`--cgen`, but the default LLVM executable path
+does not generate legacy IR.
 
 ## Consequences
 
@@ -91,6 +95,12 @@ program build, the backend writes a temporary prelude copy beside the generated
 program LLVM IR, emits the tiny LLVM `main` wrapper directly, and invokes clang
 on all LLVM inputs together. The backend removes those temporary runtime files
 after a successful link.
+
+HIR now owns enough FFI metadata for the LLVM backend to derive external link
+flags without consulting the old IR tables. Normal LLVM builds request HIR but
+skip legacy IR generation unless the user explicitly asks for `--ir`, `--cgen`,
+or the C backend. This removes the old IR from the default compiler critical
+path while keeping it available as a migration and comparison tool.
 
 ## Follow-up
 
