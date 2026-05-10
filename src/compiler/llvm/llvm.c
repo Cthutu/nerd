@@ -4646,6 +4646,46 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
             string source_type = llvm_type_string(ctx, operand.type_index);
             string target_type = llvm_type_string(ctx, expr->type_index);
+            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Pointer &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_Slice &&
+                expr->extra_expr_index < array_count(ctx->hir->exprs)) {
+                LlvmValue count =
+                    llvm_emit_expr(ctx, function, expr->extra_expr_index);
+                if (!count.ok) {
+                    return (LlvmValue){0};
+                }
+                string count_value = count.value;
+                if (llvm_integer_bits(ctx->sema, count.type_index) != 64) {
+                    string count_type = llvm_type_string(ctx, count.type_index);
+                    count_value       = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = zext " STRINGP " " STRINGP
+                              " to i64\n",
+                              STRINGV(count_value),
+                              STRINGV(count_type),
+                              STRINGV(count.value));
+                }
+                string slice0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr "
+                          STRINGP ", 0\n",
+                          STRINGV(slice0),
+                          STRINGV(operand.value));
+                string slice1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } "
+                          STRINGP ", i64 " STRINGP ", 1\n",
+                          STRINGV(slice1),
+                          STRINGV(slice0),
+                          STRINGV(count_value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = slice1,
+                };
+            }
+
             string instr =
                 llvm_cast_instruction(ctx, operand.type_index, expr->type_index);
             if (instr.count == 0) {
