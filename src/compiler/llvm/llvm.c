@@ -5025,6 +5025,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               STRINGV(iterable.value));
                 }
 
+                string result_ptr = {0};
+                bool   has_result =
+                    !llvm_type_is_void(ctx->sema, expr->type_index);
+                if (has_result) {
+                    string result_type = llvm_type_string(ctx, expr->type_index);
+                    result_ptr         = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = alloca " STRINGP ", align 4\n",
+                              STRINGV(result_ptr),
+                              STRINGV(result_type));
+                    LlvmValue default_value =
+                        llvm_default_value(ctx, expr->type_index);
+                    if (!default_value.ok) {
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  store " STRINGP " " STRINGP ", ptr " STRINGP
+                              ", align 4\n",
+                              STRINGV(result_type),
+                              STRINGV(default_value.value),
+                              STRINGV(result_ptr));
+                }
+
                 u32 index_type = llvm_local_type(ctx, loop->index_local_index);
                 if (index_type == sema_no_type()) {
                     index_type = sema_no_type();
@@ -5075,7 +5098,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 string cond_label = llvm_label(ctx, "for.in.cond");
                 string body_label = llvm_label(ctx, "for.in.body");
+                string else_label = loop->else_block_index != U32_MAX
+                                        ? llvm_label(ctx, "for.in.else")
+                                        : (string){0};
                 string end_label  = llvm_label(ctx, "for.in.end");
+                string false_label = loop->else_block_index != U32_MAX
+                                         ? else_label
+                                         : end_label;
                 sb_format(ctx->sb,
                           "  br label %%" STRINGP "\n",
                           STRINGV(cond_label));
@@ -5112,7 +5141,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           ", label %%" STRINGP "\n",
                           STRINGV(cond),
                           STRINGV(body_label),
-                          STRINGV(end_label));
+                          STRINGV(false_label));
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
                 u32 value_type =
@@ -5138,24 +5167,33 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
                 string old_break    = ctx->break_label;
                 string old_continue = ctx->continue_label;
+                string old_break_value_ptr = ctx->break_value_ptr;
+                u32    old_break_value_type = ctx->break_value_type;
+                bool   old_break_emitted = ctx->emitted_break;
                 ctx->break_label    = end_label;
                 ctx->continue_label = cond_label;
+                ctx->break_value_ptr  = result_ptr;
+                ctx->break_value_type = expr->type_index;
+                ctx->emitted_break    = false;
                 llvm_push_control_target(
                     ctx,
                     (LlvmControlTarget){
                         .symbol_handle    = loop->label_symbol,
                         .break_label      = end_label,
                         .continue_label   = cond_label,
-                        .break_value_ptr  = (string){0},
-                        .break_value_type = sema_no_type(),
+                        .break_value_ptr  = result_ptr,
+                        .break_value_type = expr->type_index,
                     });
                 if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
                     llvm_pop_control_target(ctx, loop->label_symbol);
+                    ctx->break_label      = old_break;
+                    ctx->continue_label   = old_continue;
+                    ctx->break_value_ptr  = old_break_value_ptr;
+                    ctx->break_value_type = old_break_value_type;
+                    ctx->emitted_break    = old_break_emitted;
                     return (LlvmValue){0};
                 }
                 llvm_pop_control_target(ctx, loop->label_symbol);
-                ctx->break_label    = old_break;
-                ctx->continue_label = old_continue;
 
                 if (!ctx->block_terminated) {
                     LlvmValue current = {0};
@@ -5204,8 +5242,45 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               "  br label %%" STRINGP "\n",
                               STRINGV(cond_label));
                 }
+                if (loop->else_block_index != U32_MAX) {
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
+                    if (!llvm_emit_effect_block(
+                            ctx, function, loop->else_block_index)) {
+                        ctx->break_label      = old_break;
+                        ctx->continue_label   = old_continue;
+                        ctx->break_value_ptr  = old_break_value_ptr;
+                        ctx->break_value_type = old_break_value_type;
+                        ctx->emitted_break    = old_break_emitted;
+                        return (LlvmValue){0};
+                    }
+                    if (!ctx->block_terminated) {
+                        sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n",
+                                  STRINGV(end_label));
+                    }
+                }
+                ctx->break_label      = old_break;
+                ctx->continue_label   = old_continue;
+                ctx->break_value_ptr  = old_break_value_ptr;
+                ctx->break_value_type = old_break_value_type;
+                ctx->emitted_break    = old_break_emitted;
                 ctx->block_terminated = false;
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                if (has_result) {
+                    string result_type = llvm_type_string(ctx, expr->type_index);
+                    string loaded      = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load " STRINGP ", ptr "
+                              STRINGP ", align 4\n",
+                              STRINGV(loaded),
+                              STRINGV(result_type),
+                              STRINGV(result_ptr));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = loaded,
+                    };
+                }
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = expr->type_index,
