@@ -33,20 +33,18 @@ func fn.0() -> i32 {
 @$nodes = global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
-  %t0 = load { ptr, i64 }, ptr @$nodes
-  %t1 = extractvalue { ptr, i64 } %t0, 0
-  %t2 = getelementptr inbounds { i32, ptr }, ptr %t1, i32 1
-  %t3 = insertvalue { i32, ptr } poison, i32 1, 0
-  %t4 = insertvalue { i32, ptr } %t3, ptr %t2, 1
-  %t5 = insertvalue { i32, ptr } poison, i32 2, 0
-  %t6 = insertvalue { i32, ptr } %t5, ptr null, 1
-  %t7 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t4, 0
-  %t8 = insertvalue [2 x { i32, ptr }] %t7, { i32, ptr } %t6, 1
-  store [2 x { i32, ptr }] %t8, ptr @.slice.literal.m0.0
-  %t9 = getelementptr inbounds [2 x { i32, ptr }], ptr @.slice.literal.m0.0, i64 0, i64 0
-  %t10 = insertvalue { ptr, i64 } poison, ptr %t9, 0
-  %t11 = insertvalue { ptr, i64 } %t10, i64 2, 1
-  store { ptr, i64 } %t11, ptr @$nodes
+  %t0 = getelementptr inbounds { i32, ptr }, ptr @.slice.literal.m0.0, i32 1
+  %t1 = insertvalue { i32, ptr } poison, i32 1, 0
+  %t2 = insertvalue { i32, ptr } %t1, ptr %t0, 1
+  %t3 = insertvalue { i32, ptr } poison, i32 2, 0
+  %t4 = insertvalue { i32, ptr } %t3, ptr null, 1
+  %t5 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t2, 0
+  %t6 = insertvalue [2 x { i32, ptr }] %t5, { i32, ptr } %t4, 1
+  store [2 x { i32, ptr }] %t6, ptr @.slice.literal.m0.0
+  %t7 = getelementptr inbounds [2 x { i32, ptr }], ptr @.slice.literal.m0.0, i64 0, i64 0
+  %t8 = insertvalue { ptr, i64 } poison, ptr %t7, 0
+  %t9 = insertvalue { ptr, i64 } %t8, i64 2, 1
+  store { ptr, i64 } %t9, ptr @$nodes
   ret void
 }
 

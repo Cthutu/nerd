@@ -4,9 +4,9 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/build.h>
 #include <compiler/error/error.h>
 #include <compiler/hir/hir.h>
-#include <compiler/build/build.h>
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
@@ -72,9 +72,9 @@ internal string hir_symbol_name(u32 symbol_handle, const Lexer* lexer)
     return lex_symbol(lexer, symbol_handle);
 }
 
-internal void hir_append_binding_target(StringBuilder*    sb,
-                                        HirBindingKind    kind,
-                                        u32               target_index)
+internal void hir_append_binding_target(StringBuilder* sb,
+                                        HirBindingKind kind,
+                                        u32            target_index)
 {
     sb_format(sb, "%s.%u", hir_binding_target_prefix(kind), target_index);
 }
@@ -82,8 +82,7 @@ internal void hir_append_binding_target(StringBuilder*    sb,
 internal bool hir_should_render_module_records(const Hir* hir)
 {
     return array_count(hir->module_imports) > 0 ||
-           array_count(hir->imports) > 0 ||
-           array_count(hir->exports) > 0;
+           array_count(hir->imports) > 0 || array_count(hir->exports) > 0;
 }
 
 internal string hir_module_name(const Sema* sema, u32 module_index)
@@ -95,9 +94,8 @@ internal string hir_module_name(const Sema* sema, u32 module_index)
     return s("<unknown>");
 }
 
-internal void hir_render_module_ref(StringBuilder* sb,
-                                    const Sema*    sema,
-                                    u32            module_index)
+internal void
+hir_render_module_ref(StringBuilder* sb, const Sema* sema, u32 module_index)
 {
     sb_format(sb, "module.%u", module_index);
     string name = hir_module_name(sema, module_index);
@@ -108,9 +106,8 @@ internal void hir_render_module_ref(StringBuilder* sb,
     }
 }
 
-internal void hir_render_ref(StringBuilder*  sb,
-                             const Lexer*    lexer,
-                             const HirExpr*  expr)
+internal void
+hir_render_ref(StringBuilder* sb, const Lexer* lexer, const HirExpr* expr)
 {
     switch (expr->ref_kind) {
     case HIR_REF_Local:
@@ -619,12 +616,8 @@ internal void hir_render_expr(StringBuilder* sb,
                    sema->types[expr->type_index].kind == STK_DynamicArray &&
                    expr->extra_expr_index != U32_MAX) {
             sb_append_cstr(sb, "; min_capacity ");
-            hir_render_expr(sb,
-                            hir,
-                            lexer,
-                            sema,
-                            arena,
-                            expr->extra_expr_index);
+            hir_render_expr(
+                sb, hir, lexer, sema, arena, expr->extra_expr_index);
         }
         sb_append_char(sb, ')');
         break;
@@ -903,7 +896,8 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
             if (item_index >= array_count(hir->destructure_items)) {
                 continue;
             }
-            const HirDestructureItem* item = &hir->destructure_items[item_index];
+            const HirDestructureItem* item =
+                &hir->destructure_items[item_index];
             if (i > 0) {
                 sb_append_cstr(sb, ",");
             }
@@ -1114,7 +1108,8 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
         if (export->binding_index < array_count(hir->bindings)) {
             const HirBinding* binding = &hir->bindings[export->binding_index];
             sb_format(&sb, "bind.%u(", export->binding_index);
-            sb_append_string(&sb, hir_symbol_name(binding->symbol_handle, lexer));
+            sb_append_string(&sb,
+                             hir_symbol_name(binding->symbol_handle, lexer));
             sb_append_char(&sb, ')');
         } else {
             sb_format(&sb, "decl.%u", export->decl_index);

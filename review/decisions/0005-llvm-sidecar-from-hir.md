@@ -76,15 +76,17 @@ constant aggregate indexing, nested field access, and element address-taking on
 one lowering path, at the cost of less compact LLVM text until a later
 optimisation pass recognises pure value-only indexes.
 
-As of this slice, the checked test suite passes with the LLVM sidecar and
-opt-in LLVM execution tests enabled. The installed compiler can run the LLVM
-backend with `nerd run --llvm-backend source.n` or produce textual LLVM IR with
-`nerd build --llvm source.n`.
+As of this slice, the checked test suite passes with LLVM as the default
+executable backend. The installed compiler runs the LLVM backend with
+`nerd run source.n` or `nerd build source.n`, and it can still produce textual
+LLVM IR with `nerd build --llvm source.n`. The previous IR/C backend remains
+available for debugging with `--c-backend`.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Move the runtime bridge from C source compilation toward stable LLVM IR or
    bitcode artifacts.
-3. Decide when the LLVM backend becomes the default `run`/`build` path instead
-   of an opt-in backend flag.
+3. Remove the legacy IR/C backend once the runtime bridge no longer needs it
+   for comparison and the installer has had one release cycle with
+   `--c-backend` as an escape hatch.

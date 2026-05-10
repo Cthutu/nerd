@@ -663,18 +663,18 @@ internal bool back_end_merge_program(const ProgramInfo*   program,
 internal NerdArtifactConfig compiler_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path    = "a.out",
-        .hir_path       = "_a.hir",
-        .ir_path        = "_a.ir",
-        .llvm_path      = "_a.ll",
-        .c_path         = "_a.gen.c",
-        .emit_hir_file  = false,
-        .emit_ir_file   = false,
-        .emit_llvm_file = false,
-        .emit_c_file    = false,
+        .binary_path      = "a.out",
+        .hir_path         = "_a.hir",
+        .ir_path          = "_a.ir",
+        .llvm_path        = "_a.ll",
+        .c_path           = "_a.gen.c",
+        .emit_hir_file    = false,
+        .emit_ir_file     = false,
+        .emit_llvm_file   = false,
+        .emit_c_file      = false,
         .use_llvm_backend = false,
-        .compile_binary = true,
-        .release        = false,
+        .compile_binary   = true,
+        .release          = false,
     };
 }
 
@@ -811,9 +811,9 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     return true;
 }
 
-internal void back_end_append_program_extern_link_flags(
-    StringBuilder*     link_flags,
-    const ProgramInfo* program)
+internal void
+back_end_append_program_extern_link_flags(StringBuilder*     link_flags,
+                                          const ProgramInfo* program)
 {
     for (u32 module_index = 0; module_index < array_count(program->modules);
          ++module_index) {
@@ -861,8 +861,8 @@ internal bool back_end_write_text_file(cstr path, string text)
         return error_runtime("Failed to open file for writing: %s", path);
     }
 
-    usize written = fwrite(text.data, 1, text.count, file);
-    bool close_failed = fclose(file) != 0;
+    usize written      = fwrite(text.data, 1, text.count, file);
+    bool  close_failed = fclose(file) != 0;
     if (written != text.count || close_failed) {
         return error_runtime("Failed to write file: %s", path);
     }
@@ -871,8 +871,8 @@ internal bool back_end_write_text_file(cstr path, string text)
 
 internal cstr back_end_runtime_source_path(Arena* arena, cstr filename)
 {
-    cstr relative = back_end_cstr(
-        arena, string_format(arena, "data/%s", filename));
+    cstr relative =
+        back_end_cstr(arena, string_format(arena, "data/%s", filename));
     cstr result = path_canonical(arena, relative);
     if (result != NULL) {
         return result;
@@ -899,16 +899,17 @@ internal bool back_end_hir_has_globals(const Hir* hir)
     return false;
 }
 
-internal cstr back_end_module_llvm_path(Arena*                   arena,
+internal cstr back_end_module_llvm_path(Arena*                    arena,
                                         const NerdArtifactConfig* artifacts,
-                                        u32                      module_index)
+                                        u32                       module_index)
 {
     if (module_index == 0) {
         return artifacts->llvm_path;
     }
     return back_end_cstr(
         arena,
-        string_format(arena, "%s.m%u.ll", artifacts->binary_path, module_index));
+        string_format(
+            arena, "%s.m%u.ll", artifacts->binary_path, module_index));
 }
 
 internal bool back_end_root_main_returns_void(const FrontEndState* root)
@@ -920,7 +921,8 @@ internal bool back_end_root_main_returns_void(const FrontEndState* root)
         const HirBinding* binding = &hir->bindings[i];
         if (binding->kind != HIR_BINDING_Function ||
             binding->target_index >= array_count(hir->functions) ||
-            !string_eq_cstr(lex_symbol(lexer, binding->symbol_handle), "main")) {
+            !string_eq_cstr(lex_symbol(lexer, binding->symbol_handle),
+                            "main")) {
             continue;
         }
 
@@ -939,8 +941,7 @@ internal bool back_end_root_main_returns_void(const FrontEndState* root)
 internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                             const NerdArtifactConfig* artifacts)
 {
-    if (!artifacts->compile_binary &&
-        !artifacts->emit_llvm_file) {
+    if (!artifacts->compile_binary && !artifacts->emit_llvm_file) {
         return true;
     }
     if (program->root_module_index >= array_count(program->modules)) {
@@ -950,13 +951,15 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     Arena arena = {0};
     arena_init(&arena);
 
-    Array(cstr) llvm_paths = NULL;
+    Array(cstr) llvm_paths         = NULL;
     Array(u32) init_module_indices = NULL;
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         const FrontEndState* front_end = &program->modules[i].front_end;
         cstr llvm_path = back_end_module_llvm_path(&arena, artifacts, i);
-        if (!llvm_save_hir(
-                &front_end->hir, &front_end->lexer, &front_end->sema, llvm_path)) {
+        if (!llvm_save_hir(&front_end->hir,
+                           &front_end->lexer,
+                           &front_end->sema,
+                           llvm_path)) {
             array_free(llvm_paths);
             array_free(init_module_indices);
             arena_done(&arena);
@@ -974,17 +977,12 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         return true;
     }
 
-    cstr epilogue_bridge_path =
-        back_end_cstr(&arena,
-                      string_format(&arena,
-                                    "%s.epilogue_bridge.c",
-                                    artifacts->binary_path));
-    cstr init_ll_path =
-        back_end_cstr(&arena,
-                      string_format(&arena,
-                                    "%s.init.ll",
-                                    artifacts->binary_path));
-    cstr prelude_path = back_end_runtime_source_path(&arena, "prelude.c");
+    cstr epilogue_bridge_path = back_end_cstr(
+        &arena,
+        string_format(&arena, "%s.epilogue_bridge.c", artifacts->binary_path));
+    cstr init_ll_path = back_end_cstr(
+        &arena, string_format(&arena, "%s.init.ll", artifacts->binary_path));
+    cstr prelude_path  = back_end_runtime_source_path(&arena, "prelude.c");
     cstr epilogue_path = back_end_runtime_source_path(&arena, "epilogue.c");
     if (prelude_path == NULL || epilogue_path == NULL) {
         arena_done(&arena);
@@ -993,21 +991,20 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
-    bool root_main_returns_void = back_end_root_main_returns_void(root);
-    string epilogue_bridge =
-        root_main_returns_void
-            ? s("extern void init(void);\n"
-                "extern void $main(void);\n"
-                "int main(void) {\n"
-                "    init();\n"
-                "    $main();\n"
-                "    return 0;\n"
-                "}\n")
-            : string_format(&arena,
-                            "extern void init(void);\n"
-                            "extern int $main(void);\n"
-                            "#include \"%s\"\n",
-                            epilogue_path);
+    bool   root_main_returns_void = back_end_root_main_returns_void(root);
+    string epilogue_bridge = root_main_returns_void
+                                 ? s("extern void init(void);\n"
+                                     "extern void $main(void);\n"
+                                     "int main(void) {\n"
+                                     "    init();\n"
+                                     "    $main();\n"
+                                     "    return 0;\n"
+                                     "}\n")
+                                 : string_format(&arena,
+                                                 "extern void init(void);\n"
+                                                 "extern int $main(void);\n"
+                                                 "#include \"%s\"\n",
+                                                 epilogue_path);
     StringBuilder init_ll_builder = {0};
     sb_init(&init_ll_builder, &arena);
     for (u32 i = 0; i < array_count(init_module_indices); ++i) {
@@ -1053,8 +1050,8 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
     sb_format(&command_builder, " \"%s\"", init_ll_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
-    string command = sb_to_string(&command_builder);
-    int compile_result = shell(back_end_cstr(&arena, command));
+    string command        = sb_to_string(&command_builder);
+    int    compile_result = shell(back_end_cstr(&arena, command));
     if (compile_result != 0) {
         array_free(llvm_paths);
         array_free(init_module_indices);

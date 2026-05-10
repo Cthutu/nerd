@@ -212,7 +212,12 @@ def lines_are_subsequence(expected: str, actual: str, *, strip_dollars: bool = F
 
 
 def cleanup_generated_outputs(path: pathlib.Path) -> None:
-    for pattern in (f"_{path.stem}*", f"__{path.stem}*"):
+    for pattern in (
+        f"_{path.stem}*",
+        f"__{path.stem}*",
+        f"{path.stem}.m*.ll",
+        f"{path.stem}.input.m*.ll",
+    ):
         for sidecar in path.parent.glob(pattern):
             if sidecar.is_file():
                 sidecar.unlink(missing_ok=True)
@@ -598,6 +603,8 @@ def collect() -> list[tuple[str, pathlib.Path]]:
     ]:
         for path in sorted((ROOT / directory).glob(suffix)):
             if kind in {"hir", "llvm"} and path.name.startswith("_"):
+                continue
+            if kind == "llvm" and re.search(r"(\.input)?\.m\d+\.ll$", path.name):
                 continue
             cases.append((kind, path))
     return cases

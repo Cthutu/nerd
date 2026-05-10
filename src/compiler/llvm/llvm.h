@@ -10,13 +10,13 @@
 
 //------------------------------------------------------------------------------
 
-string llvm_render_hir(const Hir* hir,
+string llvm_render_hir(const Hir*   hir,
                        const Lexer* lexer,
-                       const Sema* sema,
-                       Arena* arena);
-bool llvm_save_hir(const Hir* hir,
-                   const Lexer* lexer,
-                   const Sema* sema,
-                   cstr path);
+                       const Sema*  sema,
+                       Arena*       arena);
+bool   llvm_save_hir(const Hir*   hir,
+                     const Lexer* lexer,
+                     const Sema*  sema,
+                     cstr         path);
 
 //------------------------------------------------------------------------------
