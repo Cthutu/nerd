@@ -21,7 +21,7 @@ func fn.0() -> i32 {
 ; generated from HIR
 
 @.str.m0.0 = private unnamed_addr constant [10 x i8] c"count is \00"
-@.source_path.m0 = private unnamed_addr constant [72 x i8] c"tests/language/136-interpolated-assert-messages.t\00"
+@.assert.source_path.m0.1 = private unnamed_addr constant [72 x i8] c"tests/language/136-interpolated-assert-messages.t\00"
 
 declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
 declare void @string_builder_reset()
@@ -53,7 +53,7 @@ define i32 @fn.0() {
   %t3 = call { ptr, i64 } @to_string$i32(i32 3)
   call void @string_builder_append_string({ ptr, i64 } %t3)
   %t4 = call { ptr, i64 } @string_builder_finish(i64 %t1)
-  call void @nerd_assert(i1 %t0, ptr @.source_path.m0, i32 4, { ptr, i64 } %t4)
+  call void @nerd_assert(i1 %t0, ptr @.assert.source_path.m0.1, i32 4, { ptr, i64 } %t4)
   ret i32 0
 }
 

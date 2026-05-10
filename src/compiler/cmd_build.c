@@ -24,8 +24,7 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
     artifacts.emit_hir_file    = config->emit_hir;
     artifacts.emit_ir_file     = config->emit_ir;
     artifacts.emit_llvm_file   = config->emit_llvm;
-    artifacts.emit_c_file      = config->emit_c;
-    artifacts.use_llvm_backend = config->llvm_backend;
+    artifacts.use_llvm_backend = true;
     artifacts.release          = config->release;
     artifacts.keywords         = config->keywords;
 

@@ -56,9 +56,9 @@ define i32 @fn.0() {
 Calls produced inside lowered function bodies should target generated entity
 names, not Nerd binding aliases, when the callee is a known local HIR function.
 
-The legacy IR/C executable path remains available through `--c-backend` and
-artifact requests such as `--ir`/`--cgen`, but the default LLVM executable path
-does not generate legacy IR.
+The legacy IR/C executable path is no longer exposed through the command-line
+build/run interface. The `--llvm-backend` flag remains accepted as a
+backwards-compatible no-op while LLVM is the only public executable backend.
 
 ## Consequences
 
@@ -84,8 +84,7 @@ optimisation pass recognises pure value-only indexes.
 As of this slice, the checked test suite passes with LLVM as the default
 executable backend. The installed compiler runs the LLVM backend with
 `nerd run source.n` or `nerd build source.n`, and it can still produce textual
-LLVM IR with `nerd build --llvm source.n`. The previous IR/C backend remains
-available for debugging with `--c-backend`.
+LLVM IR with `nerd build --llvm source.n`.
 
 The compiler build now supports `//> run: ...` directives on source files.
 `src/nerd.c` uses this to compile `data/prelude.c` into
@@ -98,15 +97,14 @@ after a successful link.
 
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
 flags without consulting the old IR tables. Normal LLVM builds request HIR but
-skip legacy IR generation unless the user explicitly asks for `--ir`, `--cgen`,
-or the C backend. This removes the old IR from the default compiler critical
-path while keeping it available as a migration and comparison tool.
+skip legacy IR generation unless the user explicitly asks for the legacy `--ir`
+debug artifact. This removes the old IR from the default compiler critical path
+while keeping it available briefly as a migration and comparison tool.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
-3. Remove the legacy IR/C backend once the runtime bridge no longer needs it
-   for comparison and the installer has had one release cycle with
-   `--c-backend` as an escape hatch.
+3. Remove the remaining legacy IR/C implementation files after the legacy `--ir`
+   debug artifact is replaced by HIR snapshots or deleted.

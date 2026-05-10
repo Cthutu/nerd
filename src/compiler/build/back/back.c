@@ -676,7 +676,7 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
         .emit_ir_file     = false,
         .emit_llvm_file   = false,
         .emit_c_file      = false,
-        .use_llvm_backend = false,
+        .use_llvm_backend = true,
         .compile_binary   = true,
         .release          = false,
     };

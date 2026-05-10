@@ -58,6 +58,52 @@ internal u32 hir_node_line(const Lexer* lexer, const Ast* ast, u32 node_index)
     return line + 1;
 }
 
+internal void hir_node_source_location(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       u32          node_index,
+                                       string*      out_source_path,
+                                       u32*         out_line)
+{
+    *out_source_path = lexer != NULL ? lexer->source.source_path : (string){0};
+    *out_line        = hir_node_line(lexer, ast, node_index);
+    if (lexer == NULL || ast == NULL || node_index >= array_count(ast->nodes)) {
+        return;
+    }
+
+    u32 token_index = ast->nodes[node_index].token_index;
+    if (token_index >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    usize      offset        = lexer->tokens[token_index].offset;
+    NerdSource mapped        = lexer->source;
+    usize      mapped_offset = offset;
+    for (u32 i = 0; i < array_count(lexer->source.fragments); ++i) {
+        NerdSourceFragment fragment = lexer->source.fragments[i];
+        if (offset < fragment.start || offset >= fragment.end) {
+            continue;
+        }
+
+        usize source_prefix_start = fragment.start - fragment.source_start;
+        usize source_count        = fragment.end - source_prefix_start;
+        mapped                    = (NerdSource){
+            .source = string_from(
+                lexer->source.source.data + source_prefix_start, source_count),
+            .source_path = fragment.source_path,
+        };
+        mapped_offset = offset - fragment.start + fragment.source_start;
+        break;
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(mapped, mapped_offset, &line, &col)) {
+        return;
+    }
+    *out_line        = line + 1;
+    *out_source_path = mapped.source_path;
+}
+
 internal u32 hir_local_type(const Sema* sema, u32 local_index)
 {
     return local_index < array_count(sema->locals)
@@ -1840,21 +1886,29 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 });
         }
     case AK_Assert:
-        return hir_add_stmt(
-            hir,
-            (HirStmt){
-                .kind       = HIR_STMT_Assert,
-                .expr_index = hir_lower_expr(hir, lexer, ast, sema, node->a),
-                .target_expr_index =
-                    node->b != U32_MAX
-                        ? hir_lower_expr(hir, lexer, ast, sema, node->b)
-                        : hir_no_index(),
-                .symbol_handle    = U32_MAX,
-                .local_index      = sema_no_local(),
-                .type_index       = hir_node_type(sema, node_index),
-                .body_block_index = hir_no_index(),
-                .source_line      = hir_node_line(lexer, ast, node_index),
-            });
+        {
+            string source_path = {0};
+            u32    source_line = 0;
+            hir_node_source_location(
+                lexer, ast, node_index, &source_path, &source_line);
+            return hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind = HIR_STMT_Assert,
+                    .expr_index =
+                        hir_lower_expr(hir, lexer, ast, sema, node->a),
+                    .target_expr_index =
+                        node->b != U32_MAX
+                            ? hir_lower_expr(hir, lexer, ast, sema, node->b)
+                            : hir_no_index(),
+                    .symbol_handle    = U32_MAX,
+                    .local_index      = sema_no_local(),
+                    .type_index       = hir_node_type(sema, node_index),
+                    .body_block_index = hir_no_index(),
+                    .source_line      = source_line,
+                    .source_path      = source_path,
+                });
+        }
     case AK_Defer:
         return hir_add_stmt(hir,
                             (HirStmt){

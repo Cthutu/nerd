@@ -23,7 +23,7 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
         .emit_ir_file     = false,
         .emit_llvm_file   = false,
         .emit_c_file      = false,
-        .use_llvm_backend = false,
+        .use_llvm_backend = true,
         .compile_binary   = true,
         .release          = false,
         .keywords         = NULL,
@@ -125,13 +125,12 @@ bool compile(NerdSource                source,
     }
 
     FrontEndOptions front_end_options = {
-        .verbose                   = dump_compiler_state,
-        .release                   = artifacts->release,
-        .require_entry_point       = true,
-        .skip_legacy_ir_generation = artifacts->use_llvm_backend &&
-                                     !artifacts->emit_ir_file &&
-                                     !artifacts->emit_c_file,
-        .keywords                  = artifacts->keywords,
+        .verbose             = dump_compiler_state,
+        .release             = artifacts->release,
+        .require_entry_point = true,
+        .skip_legacy_ir_generation =
+            artifacts->use_llvm_backend && !artifacts->emit_ir_file,
+        .keywords = artifacts->keywords,
     };
 
     ProgramInfo program = {0};

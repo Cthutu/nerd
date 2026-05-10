@@ -45,8 +45,6 @@ typedef struct {
     bool       emit_hir;
     bool       emit_ir;
     bool       emit_llvm;
-    bool       emit_c;
-    bool       llvm_backend;
     bool       release;
     bool       verbose;
     Array(string) keywords;
@@ -73,8 +71,6 @@ typedef struct {
     bool       emit_hir;
     bool       emit_ir;
     bool       emit_llvm;
-    bool       emit_c;
-    bool       llvm_backend;
     bool       keep_binary;
     bool       release;
     bool       verbose;

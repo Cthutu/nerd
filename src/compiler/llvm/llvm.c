@@ -765,14 +765,15 @@ internal void llvm_append_concat_string_global_name(StringBuilder* sb,
     sb_format(sb, "@.str.m%u.concat.%u", module_index, expr_index);
 }
 
-internal void llvm_append_source_path_global_name(StringBuilder* sb,
-                                                  const Hir*     hir)
+internal void llvm_append_assert_source_path_global_name(StringBuilder* sb,
+                                                         const Hir*     hir,
+                                                         u32 stmt_index)
 {
     u32 module_index = hir != NULL ? hir->current_module_index : 0;
     if (module_index == U32_MAX) {
         module_index = 0;
     }
-    sb_format(sb, "@.source_path.m%u", module_index);
+    sb_format(sb, "@.assert.source_path.m%u.%u", module_index, stmt_index);
 }
 
 internal void llvm_append_assert_default_message_global_name(StringBuilder* sb,
@@ -816,12 +817,13 @@ internal string llvm_concat_string_global_name_string(const Hir* hir,
     return sb_to_string(&sb);
 }
 
-internal string llvm_source_path_global_name_string(const Hir* hir,
-                                                    Arena*     arena)
+internal string llvm_assert_source_path_global_name_string(const Hir* hir,
+                                                           Arena*     arena,
+                                                           u32 stmt_index)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
-    llvm_append_source_path_global_name(&sb, hir);
+    llvm_append_assert_source_path_global_name(&sb, hir, stmt_index);
     return sb_to_string(&sb);
 }
 
@@ -7034,6 +7036,15 @@ internal u32 llvm_stmt_source_line(const LlvmFunctionContext* ctx,
     return stmt != NULL ? stmt->source_line : 0;
 }
 
+internal u32 llvm_stmt_index(const Hir* hir, const HirStmt* stmt)
+{
+    if (hir == NULL || stmt == NULL || stmt < hir->stmts ||
+        stmt >= hir->stmts + array_count(hir->stmts)) {
+        return U32_MAX;
+    }
+    return (u32)(stmt - hir->stmts);
+}
+
 internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                const HirStmt*       stmt)
@@ -7063,8 +7074,9 @@ internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
                                       STRINGV(default_message));
     }
 
-    string source_path =
-        llvm_source_path_global_name_string(ctx->hir, ctx->arena);
+    u32    stmt_index  = llvm_stmt_index(ctx->hir, stmt);
+    string source_path = llvm_assert_source_path_global_name_string(
+        ctx->hir, ctx->arena, stmt_index);
     sb_format(ctx->sb,
               "  call void @nerd_assert(i1 " STRINGP ", ptr " STRINGP
               ", i32 %u, { ptr, i64 } " STRINGP ")\n",
@@ -8805,13 +8817,22 @@ internal void llvm_render_assert_globals(StringBuilder* sb,
                                          const Hir*     hir,
                                          const Lexer*   lexer)
 {
-    string source_path = lexer != NULL ? lexer->source.source_path : s("");
-    llvm_append_source_path_global_name(sb, hir);
-    sb_format(sb,
-              " = private unnamed_addr constant [%zu x i8] c\"",
-              source_path.count + 1);
-    llvm_append_escaped_string_bytes(sb, source_path);
-    sb_append_cstr(sb, "\\00\"\n");
+    for (u32 i = 0; i < array_count(hir->stmts); ++i) {
+        const HirStmt* stmt = &hir->stmts[i];
+        if (stmt->kind != HIR_STMT_Assert) {
+            continue;
+        }
+        string source_path =
+            stmt->source_path.count > 0
+                ? stmt->source_path
+                : (lexer != NULL ? lexer->source.source_path : s(""));
+        llvm_append_assert_source_path_global_name(sb, hir, i);
+        sb_format(sb,
+                  " = private unnamed_addr constant [%zu x i8] c\"",
+                  source_path.count + 1);
+        llvm_append_escaped_string_bytes(sb, source_path);
+        sb_append_cstr(sb, "\\00\"\n");
+    }
 
     if (llvm_hir_uses_default_assert_message(hir)) {
         string message = s("assertion failed");
