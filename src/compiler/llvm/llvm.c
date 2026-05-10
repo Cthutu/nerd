@@ -657,6 +657,160 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
     return (LlvmValue){0};
 }
 
+internal u32 llvm_find_local_by_symbol(LlvmFunctionContext* ctx,
+                                       u32                  symbol_handle)
+{
+    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
+        return U32_MAX;
+    }
+
+    for (u32 i = 0; i < array_count(ctx->sema->locals); ++i) {
+        if (ctx->sema->locals[i].symbol_handle == symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
+                                     u32                  symbol_handle,
+                                     LlvmValue            value)
+{
+    u32 local_index = llvm_find_local_by_symbol(ctx, symbol_handle);
+    if (local_index != U32_MAX) {
+        value.type_index = llvm_local_type(ctx, local_index);
+        llvm_set_local_value(ctx, local_index, value);
+    }
+}
+
+internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
+                                             const HirFunction*   function,
+                                             LlvmValue            scrutinee,
+                                             u32                  expr_index,
+                                             string               pred)
+{
+    LlvmValue rhs = llvm_emit_expr(ctx, function, expr_index);
+    if (!rhs.ok) {
+        return (LlvmValue){0};
+    }
+
+    string type = llvm_type_string(ctx, scrutinee.type_index);
+    string temp = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = icmp " STRINGP " " STRINGP " " STRINGP
+              ", " STRINGP "\n",
+              STRINGV(temp),
+              STRINGV(pred),
+              STRINGV(type),
+              STRINGV(scrutinee.value),
+              STRINGV(rhs.value));
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = rhs.type_index,
+        .value      = temp,
+    };
+}
+
+internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
+                                               const HirFunction*   function,
+                                               LlvmValue            scrutinee,
+                                               u32                  pattern_index)
+{
+    if (pattern_index >= array_count(ctx->hir->patterns)) {
+        return (LlvmValue){0};
+    }
+
+    const HirPattern* pattern = &ctx->hir->patterns[pattern_index];
+    switch (pattern->kind) {
+    case HIR_PATTERN_Value:
+    case HIR_PATTERN_Equal:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("eq"));
+    case HIR_PATTERN_NotEqual:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("ne"));
+    case HIR_PATTERN_Less:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("slt"));
+    case HIR_PATTERN_LessEqual:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("sle"));
+    case HIR_PATTERN_Greater:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("sgt"));
+    case HIR_PATTERN_GreaterEqual:
+        return llvm_emit_pattern_compare(
+            ctx, function, scrutinee, pattern->expr_index, s("sge"));
+    case HIR_PATTERN_RangeExclusive:
+    case HIR_PATTERN_RangeInclusive:
+        {
+            LlvmValue lower = llvm_emit_pattern_compare(
+                ctx, function, scrutinee, pattern->expr_index, s("sge"));
+            LlvmValue upper = llvm_emit_pattern_compare(
+                ctx,
+                function,
+                scrutinee,
+                pattern->extra_expr_index,
+                pattern->kind == HIR_PATTERN_RangeInclusive ? s("sle")
+                                                            : s("slt"));
+            if (!lower.ok || !upper.ok) {
+                return (LlvmValue){0};
+            }
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = and i1 " STRINGP ", " STRINGP "\n",
+                      STRINGV(temp),
+                      STRINGV(lower.value),
+                      STRINGV(upper.value));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = lower.type_index,
+                .value      = temp,
+            };
+        }
+    default:
+        return (LlvmValue){0};
+    }
+}
+
+internal LlvmValue llvm_emit_branch_pattern_condition(
+    LlvmFunctionContext* ctx,
+    const HirFunction*   function,
+    LlvmValue            scrutinee,
+    const HirOnBranch*   branch)
+{
+    LlvmValue result = {0};
+    for (u32 i = 0; i < branch->pattern_count; ++i) {
+        u32 pattern_index_index = branch->first_pattern + i;
+        if (pattern_index_index >= array_count(ctx->hir->on_branch_patterns)) {
+            return (LlvmValue){0};
+        }
+
+        LlvmValue condition = llvm_emit_pattern_condition(
+            ctx,
+            function,
+            scrutinee,
+            ctx->hir->on_branch_patterns[pattern_index_index]);
+        if (!condition.ok) {
+            return (LlvmValue){0};
+        }
+
+        if (!result.ok) {
+            result = condition;
+            continue;
+        }
+
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = or i1 " STRINGP ", " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(result.value),
+                  STRINGV(condition.value));
+        result.value = temp;
+    }
+    return result;
+}
+
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
                                         u32                  expr_index)
@@ -1408,7 +1562,127 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_On:
         {
-            if (expr->on_kind != HIR_ON_Condition || expr->branch_count != 2) {
+            if (expr->on_kind != HIR_ON_Condition) {
+                LlvmValue scrutinee =
+                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                if (!scrutinee.ok || expr->branch_count == 0) {
+                    return (LlvmValue){0};
+                }
+
+                string end_label = llvm_label(ctx, "on.end");
+                Array(LlvmValue) phi_values = NULL;
+                Array(string)    phi_labels = NULL;
+
+                for (u32 i = 0; i < expr->branch_count; ++i) {
+                    const HirOnBranch* branch =
+                        &ctx->hir->on_branches[expr->first_branch + i];
+                    string body_label = llvm_label(ctx, "on.body");
+                    string next_label = llvm_label(ctx, "on.next");
+
+                    if (branch->is_else) {
+                        sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n",
+                                  STRINGV(body_label));
+                    } else {
+                        LlvmValue condition = llvm_emit_branch_pattern_condition(
+                            ctx, function, scrutinee, branch);
+                        if (!condition.ok) {
+                            array_free(phi_values);
+                            array_free(phi_labels);
+                            return (LlvmValue){0};
+                        }
+
+                        if (branch->guard_expr_index != U32_MAX) {
+                            string guard_label = llvm_label(ctx, "on.guard");
+                            sb_format(ctx->sb,
+                                      "  br i1 " STRINGP ", label %%"
+                                      STRINGP ", label %%" STRINGP "\n",
+                                      STRINGV(condition.value),
+                                      STRINGV(guard_label),
+                                      STRINGV(next_label));
+                            sb_format(ctx->sb,
+                                      STRINGP ":\n",
+                                      STRINGV(guard_label));
+                            llvm_bind_symbol_value(
+                                ctx, branch->binder_symbol_handle, scrutinee);
+                            LlvmValue guard = llvm_emit_expr(
+                                ctx, function, branch->guard_expr_index);
+                            if (!guard.ok) {
+                                array_free(phi_values);
+                                array_free(phi_labels);
+                                return (LlvmValue){0};
+                            }
+                            sb_format(ctx->sb,
+                                      "  br i1 " STRINGP ", label %%"
+                                      STRINGP ", label %%" STRINGP "\n",
+                                      STRINGV(guard.value),
+                                      STRINGV(body_label),
+                                      STRINGV(next_label));
+                        } else {
+                            sb_format(ctx->sb,
+                                      "  br i1 " STRINGP ", label %%"
+                                      STRINGP ", label %%" STRINGP "\n",
+                                      STRINGV(condition.value),
+                                      STRINGV(body_label),
+                                      STRINGV(next_label));
+                        }
+                    }
+
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                    llvm_bind_symbol_value(
+                        ctx, branch->binder_symbol_handle, scrutinee);
+                    LlvmValue value = llvm_emit_block_value(
+                        ctx, function, branch->body_block_index);
+                    if (!value.ok) {
+                        array_free(phi_values);
+                        array_free(phi_labels);
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(end_label));
+                    array_push(phi_values, value);
+                    array_push(phi_labels, body_label);
+
+                    if (branch->is_else) {
+                        break;
+                    }
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
+                }
+
+                if (array_count(phi_values) == 0) {
+                    array_free(phi_values);
+                    array_free(phi_labels);
+                    return (LlvmValue){0};
+                }
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                string type = llvm_type_string(ctx, expr->type_index);
+                string phi  = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = phi " STRINGP " ",
+                          STRINGV(phi),
+                          STRINGV(type));
+                for (u32 i = 0; i < array_count(phi_values); ++i) {
+                    if (i > 0) {
+                        sb_append_cstr(ctx->sb, ", ");
+                    }
+                    sb_format(ctx->sb,
+                              "[" STRINGP ", %%" STRINGP "]",
+                              STRINGV(phi_values[i].value),
+                              STRINGV(phi_labels[i]));
+                }
+                sb_append_char(ctx->sb, '\n');
+                array_free(phi_values);
+                array_free(phi_labels);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = phi,
+                };
+            }
+
+            if (expr->branch_count != 2) {
                 return (LlvmValue){0};
             }
 
