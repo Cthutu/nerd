@@ -683,16 +683,21 @@ internal u32 hir_lower_expr(Hir*         hir,
     case AK_Tuple:
     case AK_Array:
         {
-            u32 first_arg = (u32)array_count(hir->call_args);
+            Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < node->b; ++i) {
                 u32 item_node_index = ast->tuple_items[node->a + i];
-                array_push(hir->call_args,
+                array_push(lowered_args,
                            (HirCallArg){
                                .expr_index = hir_lower_expr(
                                    hir, lexer, ast, sema, item_node_index),
                                .symbol_handle = U32_MAX,
                            });
             }
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                array_push(hir->call_args, lowered_args[i]);
+            }
+            array_free(lowered_args);
 
             return hir_add_expr(
                 hir,
@@ -735,18 +740,23 @@ internal u32 hir_lower_expr(Hir*         hir,
             }
 
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
-            u32 first_arg = (u32)array_count(hir->call_args);
+            Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < literal->field_count; ++i) {
                 const AstPlexLiteralField* field =
                     &ast->plex_literal_fields[literal->first_field + i];
                 array_push(
-                    hir->call_args,
+                    lowered_args,
                     (HirCallArg){
                         .expr_index = hir_lower_expr(
                             hir, lexer, ast, sema, field->value_node_index),
                         .symbol_handle = field->symbol_handle,
                     });
             }
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                array_push(hir->call_args, lowered_args[i]);
+            }
+            array_free(lowered_args);
 
             return hir_add_expr(
                 hir,
