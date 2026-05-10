@@ -1477,6 +1477,93 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
+            if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
+                if (loop->kind == HIR_FOR_CStyle &&
+                    !llvm_emit_effect_stmt_indices(ctx,
+                                                   function,
+                                                   ctx->hir->for_init_stmts,
+                                                   loop->first_init_stmt,
+                                                   loop->init_stmt_count)) {
+                    return (LlvmValue){0};
+                }
+
+                string cond_label = llvm_label(ctx, "for.cond");
+                string body_label = llvm_label(ctx, "for.body");
+                string else_label = llvm_label(ctx, "for.else");
+                string end_label  = llvm_label(ctx, "for.end");
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(cond_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
+                if (loop->condition_expr_index != U32_MAX) {
+                    LlvmValue condition =
+                        llvm_emit_expr(ctx, function, loop->condition_expr_index);
+                    if (!condition.ok) {
+                        return (LlvmValue){0};
+                    }
+                    string false_label = loop->else_block_index != U32_MAX
+                                             ? else_label
+                                             : end_label;
+                    sb_format(ctx->sb,
+                              "  br i1 " STRINGP ", label %%" STRINGP
+                              ", label %%" STRINGP "\n",
+                              STRINGV(condition.value),
+                              STRINGV(body_label),
+                              STRINGV(false_label));
+                } else {
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(body_label));
+                }
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                LlvmValue body_value =
+                    llvm_emit_block_value(ctx, function, loop->body_block_index);
+                if (!body_value.ok) {
+                    return (LlvmValue){0};
+                }
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(end_label));
+
+                LlvmValue else_value = {0};
+                if (loop->else_block_index != U32_MAX) {
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
+                    else_value = llvm_emit_block_value(
+                        ctx, function, loop->else_block_index);
+                    if (!else_value.ok) {
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(end_label));
+                }
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                string type = llvm_type_string(ctx, expr->type_index);
+                string phi  = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = phi " STRINGP " [" STRINGP
+                          ", %%" STRINGP,
+                          STRINGV(phi),
+                          STRINGV(type),
+                          STRINGV(body_value.value),
+                          STRINGV(body_label));
+                if (else_value.ok) {
+                    sb_format(ctx->sb,
+                              "], [" STRINGP ", %%" STRINGP,
+                              STRINGV(else_value.value),
+                              STRINGV(else_label));
+                }
+                sb_append_cstr(ctx->sb, "]\n");
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = phi,
+                };
+            }
+
             if (loop->kind == HIR_FOR_CStyle &&
                 !llvm_emit_effect_stmt_indices(ctx,
                                                function,
