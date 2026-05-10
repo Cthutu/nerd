@@ -118,6 +118,14 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
     }
 }
 
+internal u32 llvm_pointee_type(const Sema* sema, u32 type_index)
+{
+    if (llvm_type_kind(sema, type_index) != STK_Pointer) {
+        return sema_no_type();
+    }
+    return sema->types[type_index].first_param_type;
+}
+
 internal void llvm_append_type(StringBuilder* sb,
                                const Sema*    sema,
                                u32            type_index)
@@ -164,10 +172,14 @@ internal void llvm_append_type(StringBuilder* sb,
     case STK_UntypedFloat:
         sb_append_cstr(sb, "double");
         break;
+    case STK_Array:
+        sb_format(sb, "[%u x ", type->return_type);
+        llvm_append_type(sb, sema, type->first_param_type);
+        sb_append_char(sb, ']');
+        break;
     case STK_Function:
     case STK_Pointer:
     case STK_String:
-    case STK_Array:
     case STK_Slice:
     case STK_DynamicArray:
     case STK_Plex:
@@ -489,6 +501,52 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
     };
 }
 
+internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
+                                        const HirFunction*   function,
+                                        u32                  expr_index)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind != HIR_EXPR_LocalRef || expr->ref_kind != HIR_REF_Local) {
+        return (LlvmValue){0};
+    }
+
+    LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
+    if (slot == NULL) {
+        slot = llvm_ensure_local_slot(ctx, expr->ref_index, expr->type_index);
+
+        LlvmValue current = {0};
+        if (llvm_find_local_value(ctx, expr->ref_index, &current)) {
+            llvm_store_local_slot(ctx, slot, current);
+        } else {
+            string param = llvm_param_value(function,
+                                            ctx->hir,
+                                            ctx->lexer,
+                                            ctx->arena,
+                                            expr->ref_index);
+            if (param.count == 0) {
+                return (LlvmValue){0};
+            }
+            llvm_store_local_slot(ctx,
+                                  slot,
+                                  (LlvmValue){
+                                      .ok         = true,
+                                      .type_index = expr->type_index,
+                                      .value      = param,
+                                  });
+        }
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = sema_no_type(),
+        .value      = slot->ptr,
+    };
+}
+
 internal string llvm_binary_instruction(HirBinaryOp op)
 {
     switch (op) {
@@ -671,6 +729,39 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .type_index = expr->type_index,
             .value      = s("null"),
         };
+    case HIR_EXPR_Array:
+        {
+            Arena array_arena = {0};
+            arena_init(&array_arena);
+            StringBuilder value = {0};
+            sb_init(&value, &array_arena);
+            sb_append_char(&value, '[');
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                if (i > 0) {
+                    sb_append_cstr(&value, ", ");
+                }
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!item.ok) {
+                    return (LlvmValue){0};
+                }
+                string item_type = llvm_type_string(ctx, item.type_index);
+                sb_format(&value,
+                          STRINGP " " STRINGP,
+                          STRINGV(item_type),
+                          STRINGV(item.value));
+            }
+            sb_append_char(&value, ']');
+            string rendered =
+                string_format(ctx->arena, STRINGP, STRINGV(sb_to_string(&value)));
+            arena_done(&array_arena);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = rendered,
+            };
+        }
     case HIR_EXPR_LocalRef:
         if (expr->ref_kind == HIR_REF_Local) {
             LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
@@ -788,9 +879,88 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .type_index = expr->type_index,
                     .value      = temp,
                 };
+            case HIR_UNARY_AddressOf:
+                {
+                    LlvmValue address =
+                        llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+                    if (!address.ok) {
+                        return (LlvmValue){0};
+                    }
+                    address.type_index = expr->type_index;
+                    return address;
+                }
+            case HIR_UNARY_Deref:
+                {
+                    string pointee = llvm_type_string(ctx, expr->type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load " STRINGP ", ptr "
+                              STRINGP "\n",
+                              STRINGV(temp),
+                              STRINGV(pointee),
+                              STRINGV(operand.value));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = temp,
+                    };
+                }
             default:
                 return (LlvmValue){0};
             }
+        }
+    case HIR_EXPR_Index:
+        {
+            LlvmValue target =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            LlvmValue index =
+                llvm_emit_expr(ctx, function, expr->extra_expr_index);
+            if (!target.ok || !index.ok) {
+                return (LlvmValue){0};
+            }
+
+            string temp = llvm_temp(ctx);
+            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Array) {
+                string array_type = llvm_type_string(ctx, target.type_index);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", " STRINGP "\n",
+                          STRINGV(temp),
+                          STRINGV(array_type),
+                          STRINGV(target.value),
+                          STRINGV(index.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
+            }
+
+            u32 item_type = llvm_pointee_type(ctx->sema, target.type_index);
+            if (item_type == sema_no_type()) {
+                item_type = expr->type_index;
+            }
+            string item_type_string = llvm_type_string(ctx, item_type);
+            string index_type       = llvm_type_string(ctx, index.type_index);
+            string ptr              = temp;
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                      STRINGV(ptr),
+                      STRINGV(item_type_string),
+                      STRINGV(target.value),
+                      STRINGV(index_type),
+                      STRINGV(index.value));
+            string loaded = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(loaded),
+                      STRINGV(item_type_string),
+                      STRINGV(ptr));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = loaded,
+            };
         }
     case HIR_EXPR_Cast:
         {
