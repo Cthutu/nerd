@@ -722,6 +722,19 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
 
     const HirPattern* pattern = &ctx->hir->patterns[pattern_index];
     switch (pattern->kind) {
+    case HIR_PATTERN_Ignore:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = sema_no_type(),
+            .value      = s("1"),
+        };
+    case HIR_PATTERN_Bind:
+        llvm_bind_symbol_value(ctx, pattern->symbol_handle, scrutinee);
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = sema_no_type(),
+            .value      = s("1"),
+        };
     case HIR_PATTERN_Value:
     case HIR_PATTERN_Equal:
         return llvm_emit_pattern_compare(
@@ -767,6 +780,71 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                 .type_index = lower.type_index,
                 .value      = temp,
             };
+        }
+    case HIR_PATTERN_Plex:
+    case HIR_PATTERN_Tuple:
+        {
+            LlvmValue result = {0};
+            for (u32 i = 0; i < pattern->child_count; ++i) {
+                u32 child_index = pattern->first_child + i;
+                if (child_index >= array_count(ctx->hir->pattern_children)) {
+                    return (LlvmValue){0};
+                }
+
+                const HirPatternChild* child =
+                    &ctx->hir->pattern_children[child_index];
+                u32 field_index =
+                    pattern->kind == HIR_PATTERN_Plex
+                        ? llvm_record_field_index(ctx->sema,
+                                                  scrutinee.type_index,
+                                                  child->symbol_handle)
+                        : i;
+                if (field_index == U32_MAX) {
+                    return (LlvmValue){0};
+                }
+
+                string temp        = llvm_temp(ctx);
+                string record_type = llvm_type_string(ctx, scrutinee.type_index);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", %u\n",
+                          STRINGV(temp),
+                          STRINGV(record_type),
+                          STRINGV(scrutinee.value),
+                          field_index);
+
+                LlvmValue field = {
+                    .ok         = true,
+                    .type_index = llvm_record_field_type(
+                        ctx->sema, scrutinee.type_index, field_index),
+                    .value = temp,
+                };
+                LlvmValue condition = llvm_emit_pattern_condition(
+                    ctx, function, field, child->pattern_index);
+                if (!condition.ok) {
+                    return (LlvmValue){0};
+                }
+
+                if (!result.ok) {
+                    result = condition;
+                    continue;
+                }
+
+                string and_temp = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = and i1 " STRINGP ", " STRINGP
+                          "\n",
+                          STRINGV(and_temp),
+                          STRINGV(result.value),
+                          STRINGV(condition.value));
+                result.value = and_temp;
+            }
+            return result.ok ? result
+                             : (LlvmValue){
+                                   .ok         = true,
+                                   .type_index = sema_no_type(),
+                                   .value      = s("1"),
+                               };
         }
     default:
         return (LlvmValue){0};
