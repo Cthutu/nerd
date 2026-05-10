@@ -183,6 +183,7 @@ typedef struct {
     u32 module_index;
     u32 decl_index;
     u32 symbol_handle;
+    u32 ffi_symbol_handle;
     u32 type_index;
 } HirImport;
 

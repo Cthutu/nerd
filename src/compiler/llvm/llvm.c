@@ -700,6 +700,67 @@ internal string llvm_symbol_name_string(const Lexer* lexer,
     return sb_to_string(&sb);
 }
 
+internal string llvm_import_name_string(const Lexer*    lexer,
+                                        Arena*          arena,
+                                        const HirImport* import)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    if (import->ffi_symbol_handle != U32_MAX) {
+        llvm_append_c_symbol_name(
+            &sb, lex_symbol(lexer, import->ffi_symbol_handle));
+    } else {
+        llvm_append_symbol_name(&sb, lex_symbol(lexer, import->symbol_handle));
+    }
+    return sb_to_string(&sb);
+}
+
+internal const HirImport* llvm_binding_import(const Hir* hir,
+                                              u32        binding_index)
+{
+    if (binding_index >= array_count(hir->bindings)) {
+        return NULL;
+    }
+
+    const HirBinding* binding = &hir->bindings[binding_index];
+    if (binding->kind != HIR_BINDING_Import ||
+        binding->target_index >= array_count(hir->imports)) {
+        return NULL;
+    }
+    return &hir->imports[binding->target_index];
+}
+
+internal const HirImport* llvm_field_import(const Hir*          hir,
+                                            const HirExpr*       field)
+{
+    if (field->kind != HIR_EXPR_Field ||
+        field->operand_expr_index >= array_count(hir->exprs) ||
+        field->symbol_handle == U32_MAX) {
+        return NULL;
+    }
+
+    const HirExpr* operand = &hir->exprs[field->operand_expr_index];
+    if (operand->kind != HIR_EXPR_LocalRef ||
+        operand->ref_kind != HIR_REF_Binding ||
+        operand->ref_index >= array_count(hir->bindings)) {
+        return NULL;
+    }
+
+    const HirBinding* module_binding = &hir->bindings[operand->ref_index];
+    if (module_binding->kind != HIR_BINDING_Module) {
+        return NULL;
+    }
+
+    for (u32 i = 0; i < array_count(hir->imports); ++i) {
+        const HirImport* import = &hir->imports[i];
+        if (import->module_index == module_binding->target_index &&
+            import->symbol_handle == field->symbol_handle) {
+            return import;
+        }
+    }
+    return NULL;
+}
+
 internal u32 llvm_value_symbol_handle(const Hir* hir, u32 value_index)
 {
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {
@@ -2935,6 +2996,11 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     if (callee->kind == HIR_EXPR_Field &&
         llvm_type_is_function(ctx->sema, callee->type_index) &&
         callee->symbol_handle != U32_MAX) {
+        const HirImport* import = llvm_field_import(ctx->hir, callee);
+        if (import != NULL) {
+            *out = llvm_import_name_string(ctx->lexer, ctx->arena, import);
+            return true;
+        }
         *out = llvm_symbol_name_string(ctx->lexer,
                                        ctx->arena,
                                        callee->symbol_handle);
@@ -2960,9 +3026,15 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
             ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
         return true;
     case HIR_BINDING_Import:
-        *out = llvm_symbol_name_string(
-            ctx->lexer, ctx->arena, binding->symbol_handle);
-        return true;
+        {
+            const HirImport* import =
+                llvm_binding_import(ctx->hir, callee->ref_index);
+            if (import == NULL) {
+                return false;
+            }
+            *out = llvm_import_name_string(ctx->lexer, ctx->arena, import);
+            return true;
+        }
     default:
         break;
     }
@@ -7871,13 +7943,45 @@ internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
     return false;
 }
 
-internal void llvm_render_import(StringBuilder* sb,
-                                 const Lexer*   lexer,
-                                 const Sema*    sema,
-                                 const HirImport* import)
+internal bool llvm_hir_has_ffi_function_symbol(const Hir* hir,
+                                               u32        symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return false;
+    }
+    for (u32 i = 0; i < array_count(hir->functions); ++i) {
+        const HirFunction* function = &hir->functions[i];
+        if (function->kind == HIR_FUNCTION_Ffi &&
+            function->ffi_symbol_handle == symbol_handle) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_imports_same_runtime_symbol(const HirImport* a,
+                                               const HirImport* b)
+{
+    if (a->ffi_symbol_handle != U32_MAX ||
+        b->ffi_symbol_handle != U32_MAX) {
+        return a->ffi_symbol_handle != U32_MAX &&
+               a->ffi_symbol_handle == b->ffi_symbol_handle;
+    }
+    return a->symbol_handle == b->symbol_handle;
+}
+
+internal void llvm_render_import(StringBuilder*    sb,
+                                 const Hir*        hir,
+                                 const Lexer*      lexer,
+                                 const Sema*       sema,
+                                 const HirImport*  import)
 {
     if (sema == NULL || import->type_index >= array_count(sema->types) ||
         sema->types[import->type_index].kind != STK_Function) {
+        return;
+    }
+    if (import->ffi_symbol_handle != U32_MAX &&
+        llvm_hir_has_ffi_function_symbol(hir, import->ffi_symbol_handle)) {
         return;
     }
 
@@ -7885,7 +7989,12 @@ internal void llvm_render_import(StringBuilder* sb,
     u32 return_type = llvm_function_return_type(sema, import->type_index);
     llvm_append_type(sb, sema, return_type);
     sb_append_char(sb, ' ');
-    llvm_append_symbol_name(sb, lex_symbol(lexer, import->symbol_handle));
+    if (import->ffi_symbol_handle != U32_MAX) {
+        llvm_append_c_symbol_name(
+            sb, lex_symbol(lexer, import->ffi_symbol_handle));
+    } else {
+        llvm_append_symbol_name(sb, lex_symbol(lexer, import->symbol_handle));
+    }
     sb_append_char(sb, '(');
     u32 param_count = llvm_function_param_count(sema, import->type_index);
     for (u32 i = 0; i < param_count; ++i) {
@@ -8137,10 +8246,24 @@ string llvm_render_hir(const Hir* hir,
         sb_append_char(&sb, '\n');
     }
 
+    bool rendered_import = false;
     for (u32 i = 0; i < array_count(hir->imports); ++i) {
-        llvm_render_import(&sb, lexer, sema, &hir->imports[i]);
+        bool already_rendered = false;
+        for (u32 j = 0; j < i; ++j) {
+            if (llvm_imports_same_runtime_symbol(&hir->imports[i],
+                                                 &hir->imports[j])) {
+                already_rendered = true;
+                break;
+            }
+        }
+        if (already_rendered) {
+            continue;
+        }
+        usize before = sb.size;
+        llvm_render_import(&sb, hir, lexer, sema, &hir->imports[i]);
+        rendered_import = rendered_import || sb.size != before;
     }
-    if (array_count(hir->imports) > 0) {
+    if (rendered_import) {
         sb_append_char(&sb, '\n');
     }
 

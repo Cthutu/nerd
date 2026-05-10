@@ -2521,9 +2521,11 @@ internal u32 hir_add_binding(Hir*           hir,
     return binding_index;
 }
 
-internal u32 hir_add_import(Hir*       hir,
-                            const Sema* sema,
-                            u32         decl_index)
+internal u32 hir_add_import(Hir*        hir,
+                            const Lexer* lexer,
+                            const Ast*   ast,
+                            const Sema*  sema,
+                            u32          decl_index)
 {
     if (decl_index >= array_count(sema->decls)) {
         return hir_no_index();
@@ -2534,13 +2536,17 @@ internal u32 hir_add_import(Hir*       hir,
         return hir_no_index();
     }
 
+    u32 ffi_symbol_handle = hir_ffi_foreign_symbol_handle(
+        lexer, ast, sema, decl);
+
     u32 import_index = (u32)array_count(hir->imports);
     array_push(hir->imports,
                (HirImport){
-                   .module_index  = decl->import_module_index,
-                   .decl_index    = decl->import_decl_index,
-                   .symbol_handle = decl->symbol_handle,
-                   .type_index    = decl->type_index,
+                   .module_index       = decl->import_module_index,
+                   .decl_index         = decl->import_decl_index,
+                   .symbol_handle      = decl->symbol_handle,
+                   .ffi_symbol_handle  = ffi_symbol_handle,
+                   .type_index         = decl->type_index,
                });
 
     u32 binding_index = hir_add_binding(hir,
@@ -2551,7 +2557,10 @@ internal u32 hir_add_import(Hir*       hir,
     return binding_index;
 }
 
-internal void hir_add_import_bindings(Hir* hir, const Sema* sema)
+internal void hir_add_import_bindings(Hir*        hir,
+                                      const Lexer* lexer,
+                                      const Ast*   ast,
+                                      const Sema*  sema)
 {
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
         if (hir_decl_binding(hir, i) != hir_no_index()) {
@@ -2560,7 +2569,7 @@ internal void hir_add_import_bindings(Hir* hir, const Sema* sema)
 
         const SemaDecl* decl = &sema->decls[i];
         if (decl->import_module_index != sema_no_decl()) {
-            hir_add_import(hir, sema, i);
+            hir_add_import(hir, lexer, ast, sema, i);
         }
     }
 }
@@ -2622,7 +2631,7 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         array_push(hir.decl_binding_indices, hir_no_index());
     }
 
-    hir_add_import_bindings(&hir, sema);
+    hir_add_import_bindings(&hir, lexer, ast, sema);
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         u32 decl_index = sema->ordered_decl_indices[i];

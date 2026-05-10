@@ -28,7 +28,6 @@ func fn.0() -> i32 {
 ; generated from HIR
 
 declare i32 @$test()
-declare i32 @$test()
 
 define i32 @fn.0() {
   %t0 = call i32 @$test()
