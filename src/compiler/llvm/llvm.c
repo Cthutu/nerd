@@ -2882,10 +2882,8 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     }
 
     if (expr->kind == HIR_EXPR_LocalRef &&
-        (expr->ref_kind == HIR_REF_Local ||
-         expr->ref_kind == HIR_REF_Binding)) {
-        if (expr->ref_kind == HIR_REF_Binding &&
-            expr->ref_index < array_count(ctx->hir->bindings)) {
+        expr->ref_kind == HIR_REF_Binding) {
+        if (expr->ref_index < array_count(ctx->hir->bindings)) {
             const HirBinding* binding = &ctx->hir->bindings[expr->ref_index];
             if (binding->kind == HIR_BINDING_Value &&
                 binding->target_index < array_count(ctx->hir->values)) {
@@ -2904,11 +2902,10 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                 }
             }
         }
+    }
 
-        if (expr->ref_kind != HIR_REF_Local) {
-            return (LlvmValue){0};
-        }
-
+    if (expr->kind == HIR_EXPR_LocalRef &&
+        expr->ref_kind == HIR_REF_Local) {
         LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
         if (slot == NULL) {
             slot = llvm_ensure_local_slot(ctx, expr->ref_index, expr->type_index);
