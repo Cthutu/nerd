@@ -9,7 +9,7 @@ main :: fn() {
 ¬
 ; nerd llvm-ir 0
 @$base = global i32 0
-define void @init() {
+define void @m0.init() {
   store i32 40, ptr @$base
   ret void
 }

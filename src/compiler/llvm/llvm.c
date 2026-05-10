@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/error/error.h>
+#include <compiler/build/build.h>
 #include <compiler/llvm/llvm.h>
 #include <stdio.h>
 
@@ -374,10 +375,40 @@ internal void llvm_append_symbol_name(StringBuilder* sb, string name)
     }
 }
 
-internal void llvm_append_generated_function_name(StringBuilder* sb,
-                                                 u32            function_index)
+internal void llvm_append_c_symbol_name(StringBuilder* sb, string name)
 {
-    sb_format(sb, "@fn.%u", function_index);
+    sb_append_char(sb, '@');
+    for (usize i = 0; i < name.count; ++i) {
+        u8 ch = name.data[i];
+        bool simple = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                      (ch >= '0' && ch <= '9') || ch == '_' || ch == '$' ||
+                      ch == '.';
+        sb_append_char(sb, simple ? (char)ch : '_');
+    }
+}
+
+internal u32 llvm_function_symbol_handle(const Hir* hir, u32 function_index)
+{
+    for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        const HirBinding* binding = &hir->bindings[i];
+        if (binding->kind == HIR_BINDING_Function &&
+            binding->target_index == function_index) {
+            return binding->symbol_handle;
+        }
+    }
+    return U32_MAX;
+}
+
+internal void llvm_append_generated_function_name(StringBuilder* sb,
+                                                  const Hir*     hir,
+                                                  u32            function_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == 0 || module_index == U32_MAX) {
+        sb_format(sb, "@fn.%u", function_index);
+    } else {
+        sb_format(sb, "@m%u.fn.%u", module_index, function_index);
+    }
 }
 
 internal void llvm_append_function_name(StringBuilder* sb,
@@ -385,9 +416,15 @@ internal void llvm_append_function_name(StringBuilder* sb,
                                         const Lexer*   lexer,
                                         u32            function_index)
 {
-    llvm_append_generated_function_name(sb, function_index);
-    (void)hir;
-    (void)lexer;
+    if (hir != NULL && function_index < array_count(hir->functions) &&
+        hir->functions[function_index].kind == HIR_FUNCTION_Ffi) {
+        u32 symbol_handle = llvm_function_symbol_handle(hir, function_index);
+        if (symbol_handle != U32_MAX) {
+            llvm_append_c_symbol_name(sb, lex_symbol(lexer, symbol_handle));
+            return;
+        }
+    }
+    llvm_append_generated_function_name(sb, hir, function_index);
 }
 
 internal string llvm_function_name_string(const Hir*   hir,
@@ -399,6 +436,15 @@ internal string llvm_function_name_string(const Hir*   hir,
     sb_init(&sb, arena);
     llvm_append_function_name(&sb, hir, lexer, function_index);
     return sb_to_string(&sb);
+}
+
+internal void llvm_append_module_init_name(StringBuilder* sb, const Hir* hir)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@m%u.init", module_index);
 }
 
 internal string llvm_symbol_name_string(const Lexer* lexer,
@@ -3179,7 +3225,9 @@ internal void llvm_render_global_init(StringBuilder* sb,
         return;
     }
 
-    sb_append_cstr(sb, "define void @init() {\n");
+    sb_append_cstr(sb, "define void ");
+    llvm_append_module_init_name(sb, hir);
+    sb_append_cstr(sb, "() {\n");
     Arena temp = {0};
     arena_init(&temp);
     LlvmFunctionContext ctx = {
@@ -3282,12 +3330,15 @@ internal void llvm_render_binding_alias(StringBuilder* sb,
     if (!llvm_type_is_function(sema, function->type_index)) {
         return;
     }
+    if (function->kind == HIR_FUNCTION_Ffi) {
+        return;
+    }
 
     llvm_append_symbol_name(sb, lex_symbol(lexer, binding->symbol_handle));
     sb_append_cstr(sb, " = alias ");
     llvm_append_function_type(sb, sema, function->type_index);
     sb_append_cstr(sb, ", ptr ");
-    llvm_append_generated_function_name(sb, binding->target_index);
+    llvm_append_function_name(sb, hir, lexer, binding->target_index);
     sb_append_char(sb, '\n');
 }
 
