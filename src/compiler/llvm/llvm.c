@@ -621,6 +621,45 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = temp,
             };
         }
+    case HIR_EXPR_Unary:
+        {
+            LlvmValue operand =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!operand.ok) {
+                return (LlvmValue){0};
+            }
+
+            string type = llvm_type_string(ctx, expr->type_index);
+            string temp = llvm_temp(ctx);
+            switch (expr->unary_op) {
+            case HIR_UNARY_LogicalNot:
+                sb_format(ctx->sb,
+                          "  " STRINGP " = xor " STRINGP " " STRINGP
+                          ", 1\n",
+                          STRINGV(temp),
+                          STRINGV(type),
+                          STRINGV(operand.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
+            case HIR_UNARY_Negate:
+                sb_format(ctx->sb,
+                          "  " STRINGP " = sub " STRINGP " 0, " STRINGP
+                          "\n",
+                          STRINGV(temp),
+                          STRINGV(type),
+                          STRINGV(operand.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
+            default:
+                return (LlvmValue){0};
+            }
+        }
     case HIR_EXPR_Call:
         {
             string callee = {0};
