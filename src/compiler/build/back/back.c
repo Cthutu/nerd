@@ -922,6 +922,28 @@ internal bool back_end_root_main_returns_void(const FrontEndState* root)
     return false;
 }
 
+internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
+                                                      bool        remove_llvm_paths,
+                                                      cstr        runtime_prelude_path,
+                                                      cstr        runtime_epilogue_path,
+                                                      cstr        init_ll_path)
+{
+    if (runtime_prelude_path != NULL) {
+        path_remove(runtime_prelude_path);
+    }
+    if (runtime_epilogue_path != NULL) {
+        path_remove(runtime_epilogue_path);
+    }
+    if (init_ll_path != NULL) {
+        path_remove(init_ll_path);
+    }
+    if (remove_llvm_paths) {
+        for (u32 i = 0; i < array_count(llvm_paths); ++i) {
+            path_remove(llvm_paths[i]);
+        }
+    }
+}
+
 internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                             const NerdArtifactConfig* artifacts)
 {
@@ -944,6 +966,8 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                            &front_end->lexer,
                            &front_end->sema,
                            llvm_path)) {
+            back_end_cleanup_llvm_compile_artifacts(
+                llvm_paths, !artifacts->emit_llvm_file, NULL, NULL, NULL);
             array_free(llvm_paths);
             array_free(init_module_indices);
             arena_done(&arena);
@@ -1013,6 +1037,11 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                   s(g_llvm_runtime_prelude)) ||
         !back_end_write_text_file(runtime_epilogue_path, runtime_epilogue) ||
         !back_end_write_text_file(init_ll_path, init_ll)) {
+        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                runtime_prelude_path,
+                                                runtime_epilogue_path,
+                                                init_ll_path);
         array_free(llvm_paths);
         array_free(init_module_indices);
         arena_done(&arena);
@@ -1040,6 +1069,11 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     string command        = sb_to_string(&command_builder);
     int    compile_result = shell(back_end_cstr(&arena, command));
     if (compile_result != 0) {
+        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                runtime_prelude_path,
+                                                runtime_epilogue_path,
+                                                init_ll_path);
         array_free(llvm_paths);
         array_free(init_module_indices);
         arena_done(&arena);
@@ -1050,6 +1084,11 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
 #if OS_POSIX
     if (chmod(artifacts->binary_path, 0755) != 0) {
+        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                runtime_prelude_path,
+                                                runtime_epilogue_path,
+                                                init_ll_path);
         array_free(llvm_paths);
         array_free(init_module_indices);
         arena_done(&arena);
@@ -1058,14 +1097,11 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
 #endif
 
-    path_remove(runtime_prelude_path);
-    path_remove(runtime_epilogue_path);
-    path_remove(init_ll_path);
-    if (!artifacts->emit_llvm_file) {
-        for (u32 i = 0; i < array_count(llvm_paths); ++i) {
-            path_remove(llvm_paths[i]);
-        }
-    }
+    back_end_cleanup_llvm_compile_artifacts(llvm_paths,
+                                            !artifacts->emit_llvm_file,
+                                            runtime_prelude_path,
+                                            runtime_epilogue_path,
+                                            init_ll_path);
 
     array_free(llvm_paths);
     array_free(init_module_indices);
