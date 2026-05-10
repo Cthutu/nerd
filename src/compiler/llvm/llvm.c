@@ -5828,6 +5828,22 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
 
     const HirExpr* target = &ctx->hir->exprs[target_expr_index];
 
+    if (target->kind == HIR_EXPR_Index) {
+        LlvmValue target_ptr =
+            llvm_address_of_expr(ctx, function, target_expr_index);
+        if (!target_ptr.ok) {
+            return false;
+        }
+
+        string value_type = llvm_type_string(ctx, value.type_index);
+        sb_format(ctx->sb,
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(target_ptr.value));
+        return true;
+    }
+
     if (target->kind == HIR_EXPR_Unary &&
         target->unary_op == HIR_UNARY_Deref) {
         LlvmValue pointer =
