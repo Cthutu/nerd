@@ -112,7 +112,41 @@ def headers_for_source(src: Path) -> list[Path]:
     for section in dependency_sections_for_source(src):
         headers.extend(section_headers(section))
 
+    headers.extend(local_include_headers(src))
+
     return sorted(set(headers))
+
+
+LOCAL_INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.MULTILINE)
+
+
+def local_include_headers(path: Path, seen: set[Path] | None = None) -> list[Path]:
+    """Return repo-local headers included directly or transitively by a file."""
+    if seen is None:
+        seen = set()
+    if path in seen or not path.exists():
+        return []
+    seen.add(path)
+
+    headers: list[Path] = []
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    for match in LOCAL_INCLUDE_RE.finditer(text):
+        include = match.group(1)
+        candidates = [
+            (path.parent / include).resolve(),
+            (SRC_DIR / include).resolve(),
+        ]
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            try:
+                candidate.relative_to(SRC_DIR)
+            except ValueError:
+                continue
+            headers.append(candidate)
+            headers.extend(local_include_headers(candidate, seen))
+            break
+    return headers
 
 
 def embedded_files_for_source(src: Path) -> list[Path]:
