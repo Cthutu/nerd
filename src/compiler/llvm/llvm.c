@@ -2425,6 +2425,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
+            while (llvm_type_kind(ctx->sema, target.type_index) ==
+                   STK_Pointer) {
+                u32 pointee_type = llvm_pointee_type(ctx->sema,
+                                                     target.type_index);
+                SemaTypeKind pointee_kind = llvm_type_kind(ctx->sema,
+                                                           pointee_type);
+                if (pointee_kind != STK_Tuple && pointee_kind != STK_Plex &&
+                    pointee_kind != STK_String) {
+                    break;
+                }
+
+                string pointee = llvm_type_string(ctx, pointee_type);
+                string loaded  = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load " STRINGP ", ptr "
+                          STRINGP "\n",
+                          STRINGV(loaded),
+                          STRINGV(pointee),
+                          STRINGV(target.value));
+                target.type_index = pointee_type;
+                target.value      = loaded;
+            }
+
             u32 field_index = U32_MAX;
             if (expr->kind == HIR_EXPR_TupleField) {
                 field_index = (u32)expr->integer;
