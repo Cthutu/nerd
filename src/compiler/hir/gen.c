@@ -932,8 +932,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
 
-            const AstOnInfo* on           = &ast->ons[node->b];
-            u32              first_branch = (u32)array_count(hir->on_branches);
+            const AstOnInfo* on = &ast->ons[node->b];
+            Array(HirOnBranch) lowered_branches = NULL;
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
@@ -963,8 +963,13 @@ internal u32 hir_lower_expr(Hir*         hir,
                         hir, lexer, ast, sema, branch->expr_node_index),
                     .binder_symbol_handle = branch->binder_symbol_handle,
                 };
-                array_push(hir->on_branches, hir_branch);
+                array_push(lowered_branches, hir_branch);
             }
+            u32 first_branch = (u32)array_count(hir->on_branches);
+            for (u32 i = 0; i < array_count(lowered_branches); ++i) {
+                array_push(hir->on_branches, lowered_branches[i]);
+            }
+            array_free(lowered_branches);
 
             HirOnKind on_kind = HIR_ON_Condition;
             if (on->kind == AOK_Bool) {
