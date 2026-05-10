@@ -854,6 +854,7 @@ typedef struct {
     string                break_value_ptr;
     u32                   break_value_type;
     u32                   global_init_value_index;
+    bool                  discard_expr_value;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
@@ -3889,6 +3890,26 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (item_type == sema_no_type()) {
                 item_type = expr->type_index;
             }
+            if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+                const HirExpr* target_expr =
+                    &ctx->hir->exprs[expr->operand_expr_index];
+                if (target_expr->kind == HIR_EXPR_Field &&
+                    target_expr->symbol_handle != U32_MAX &&
+                    string_eq_cstr(
+                        lex_symbol(ctx->lexer, target_expr->symbol_handle),
+                        "data") &&
+                    target_expr->operand_expr_index <
+                        array_count(ctx->hir->exprs)) {
+                    u32 source_type =
+                        ctx->hir->exprs[target_expr->operand_expr_index]
+                            .type_index;
+                    u32 source_item_type =
+                        llvm_collection_item_type(ctx->sema, source_type);
+                    if (source_item_type != sema_no_type()) {
+                        item_type = source_item_type;
+                    }
+                }
+            }
             string item_type_string = llvm_type_string(ctx, item_type);
             string index_type       = llvm_type_string(ctx, index.type_index);
             string ptr              = llvm_temp(ctx);
@@ -3906,9 +3927,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                       STRINGV(loaded),
                       STRINGV(item_type_string),
                       STRINGV(ptr));
+            u32 result_type = expr->type_index;
+            if (llvm_integer_bits(ctx->sema, result_type) == 0 &&
+                llvm_integer_bits(ctx->sema, item_type) > 0) {
+                result_type = item_type;
+            }
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index = result_type,
                 .value      = loaded,
             };
         }
@@ -4573,7 +4599,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
-                if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                if (llvm_type_is_void(ctx->sema, expr->type_index) ||
+                    ctx->discard_expr_value) {
                     string end_label = llvm_label(ctx, "on.end");
                     for (u32 i = 0; i < expr->branch_count; ++i) {
                         const HirOnBranch* branch =
@@ -4707,11 +4734,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         return (LlvmValue){0};
                     }
                     if (!ctx->block_terminated) {
+                        string value_label = llvm_label(ctx, "on.value");
                         sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n"
+                                  STRINGP ":\n"
                                   "  br label %%" STRINGP "\n",
+                                  STRINGV(value_label),
+                                  STRINGV(value_label),
                                   STRINGV(end_label));
                         array_push(phi_values, value);
-                        array_push(phi_labels, body_label);
+                        array_push(phi_labels, value_label);
                     }
                     ctx->block_terminated = false;
 
@@ -4823,11 +4855,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         return (LlvmValue){0};
                     }
                     if (!ctx->block_terminated) {
+                        string value_label = llvm_label(ctx, "on.value");
                         sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n"
+                                  STRINGP ":\n"
                                   "  br label %%" STRINGP "\n",
+                                  STRINGV(value_label),
+                                  STRINGV(value_label),
                                   STRINGV(end_label));
                         array_push(phi_values, value);
-                        array_push(phi_labels, body_label);
+                        array_push(phi_labels, value_label);
                     }
                     ctx->block_terminated = false;
                 }
@@ -4843,7 +4880,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 sb_append_cstr(ctx->sb, "  unreachable\n");
             }
 
-            if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+            if (llvm_type_is_void(ctx->sema, expr->type_index) ||
+                ctx->discard_expr_value) {
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 array_free(phi_values);
                 array_free(phi_labels);
@@ -5922,7 +5960,18 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
         if (stmt->expr_index == U32_MAX) {
             return true;
         }
-        return llvm_emit_expr(ctx, function, stmt->expr_index).ok;
+        {
+            const HirExpr* expr = stmt->expr_index < array_count(ctx->hir->exprs)
+                                      ? &ctx->hir->exprs[stmt->expr_index]
+                                      : NULL;
+            bool old_discard_expr_value = ctx->discard_expr_value;
+            if (expr != NULL && expr->kind == HIR_EXPR_On) {
+                ctx->discard_expr_value = true;
+            }
+            bool ok = llvm_emit_expr(ctx, function, stmt->expr_index).ok;
+            ctx->discard_expr_value = old_discard_expr_value;
+            return ok;
+        }
     case HIR_STMT_Assert:
         return llvm_emit_assert(ctx, function, stmt);
     case HIR_STMT_Defer:
