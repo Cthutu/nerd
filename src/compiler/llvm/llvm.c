@@ -1299,6 +1299,10 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
     };
 }
 
+internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  u32                  expr_index);
+
 internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* out)
 {
     if (expr_index >= array_count(hir->exprs)) {
@@ -1312,9 +1316,76 @@ internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* ou
     return true;
 }
 
-internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
+internal bool llvm_emit_index_i64(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
-                                  u32                  expr_index);
+                                  u32                  expr_index,
+                                  string*              out)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, expr_index);
+    if (!value.ok) {
+        return false;
+    }
+
+    u32 bits = llvm_integer_bits(ctx->sema, value.type_index);
+    if (bits == 0) {
+        return false;
+    }
+
+    if (bits == 64) {
+        *out = value.value;
+        return true;
+    }
+
+    string source_type = llvm_type_string(ctx, value.type_index);
+    string instr = bits > 64 ? s("trunc")
+                             : ((llvm_type_kind(ctx->sema, value.type_index) ==
+                                     STK_Bool ||
+                                 llvm_type_is_unsigned_integer(
+                                     ctx->sema, value.type_index))
+                                    ? s("zext")
+                                    : s("sext"));
+    string temp = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
+              " to i64\n",
+              STRINGV(temp),
+              STRINGV(instr),
+              STRINGV(source_type),
+              STRINGV(value.value));
+    *out = temp;
+    return true;
+}
+
+internal string llvm_slice_count_i64(LlvmFunctionContext* ctx,
+                                     string               start,
+                                     bool                 start_is_constant,
+                                     i64                  start_value,
+                                     string               end,
+                                     bool                 end_is_constant,
+                                     i64                  end_value)
+{
+    if (start_is_constant && end_is_constant) {
+        return string_format(ctx->arena,
+                             "%lld",
+                             (long long)(end_value - start_value));
+    }
+
+    if (start_is_constant && start_value == 0) {
+        return end;
+    }
+
+    string count = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = sub i64 " STRINGP ", " STRINGP "\n",
+              STRINGV(count),
+              STRINGV(end),
+              STRINGV(start));
+    return count;
+}
 
 internal bool llvm_eval_hir_string_constant(const Hir*   hir,
                                             const Lexer* lexer,
@@ -3096,35 +3167,44 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(total_count),
                           STRINGV(target.value));
 
-                i64 start_value = 0;
-                i64 end_value   = 0;
-                bool has_start = llvm_expr_integer_constant(
-                    ctx->hir, expr->lhs_expr_index, &start_value);
-                bool has_end = llvm_expr_integer_constant(
-                    ctx->hir, expr->rhs_expr_index, &end_value);
-
-                string start = has_start ? string_format(ctx->arena,
-                                                         "%lld",
-                                                         (long long)start_value)
-                                         : s("0");
-                string count = {0};
-                if (has_end) {
-                    count = string_format(ctx->arena,
-                                          "%lld",
-                                          (long long)(end_value -
-                                                      (has_start ? start_value
-                                                                 : 0)));
-                } else if (has_start && start_value != 0) {
-                    count = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = sub i64 " STRINGP
-                              ", %lld\n",
-                              STRINGV(count),
-                              STRINGV(total_count),
-                              (long long)start_value);
-                } else {
-                    count = total_count;
+                i64   start_value       = 0;
+                bool  start_is_constant = true;
+                string start             = s("0");
+                if (expr->lhs_expr_index < array_count(ctx->hir->exprs)) {
+                    start_is_constant = llvm_expr_integer_constant(
+                        ctx->hir, expr->lhs_expr_index, &start_value);
+                    if (start_is_constant) {
+                        start = string_format(ctx->arena,
+                                              "%lld",
+                                              (long long)start_value);
+                    } else {
+                        llvm_emit_index_i64(
+                            ctx, function, expr->lhs_expr_index, &start);
+                    }
                 }
+
+                i64   end_value       = 0;
+                bool  end_is_constant = false;
+                string end             = total_count;
+                if (expr->rhs_expr_index < array_count(ctx->hir->exprs)) {
+                    end_is_constant = llvm_expr_integer_constant(
+                        ctx->hir, expr->rhs_expr_index, &end_value);
+                    if (end_is_constant) {
+                        end = string_format(
+                            ctx->arena, "%lld", (long long)end_value);
+                    } else {
+                        llvm_emit_index_i64(
+                            ctx, function, expr->rhs_expr_index, &end);
+                    }
+                }
+
+                string count = llvm_slice_count_i64(ctx,
+                                                    start,
+                                                    start_is_constant,
+                                                    start_value,
+                                                    end,
+                                                    end_is_constant,
+                                                    end_value);
 
                 string data_ptr = llvm_temp(ctx);
                 sb_format(ctx->sb,
@@ -3178,35 +3258,44 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(slice_type),
                           STRINGV(target.value));
 
-                i64 start_value = 0;
-                i64 end_value   = 0;
-                bool has_start = llvm_expr_integer_constant(
-                    ctx->hir, expr->lhs_expr_index, &start_value);
-                bool has_end = llvm_expr_integer_constant(
-                    ctx->hir, expr->rhs_expr_index, &end_value);
-
-                string start = has_start ? string_format(ctx->arena,
-                                                         "%lld",
-                                                         (long long)start_value)
-                                         : s("0");
-                string count = {0};
-                if (has_end) {
-                    count = string_format(ctx->arena,
-                                          "%lld",
-                                          (long long)(end_value -
-                                                      (has_start ? start_value
-                                                                 : 0)));
-                } else if (has_start && start_value != 0) {
-                    count = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = sub i64 " STRINGP
-                              ", %lld\n",
-                              STRINGV(count),
-                              STRINGV(total_count),
-                              (long long)start_value);
-                } else {
-                    count = total_count;
+                i64   start_value       = 0;
+                bool  start_is_constant = true;
+                string start             = s("0");
+                if (expr->lhs_expr_index < array_count(ctx->hir->exprs)) {
+                    start_is_constant = llvm_expr_integer_constant(
+                        ctx->hir, expr->lhs_expr_index, &start_value);
+                    if (start_is_constant) {
+                        start = string_format(ctx->arena,
+                                              "%lld",
+                                              (long long)start_value);
+                    } else {
+                        llvm_emit_index_i64(
+                            ctx, function, expr->lhs_expr_index, &start);
+                    }
                 }
+
+                i64   end_value       = 0;
+                bool  end_is_constant = false;
+                string end             = total_count;
+                if (expr->rhs_expr_index < array_count(ctx->hir->exprs)) {
+                    end_is_constant = llvm_expr_integer_constant(
+                        ctx->hir, expr->rhs_expr_index, &end_value);
+                    if (end_is_constant) {
+                        end = string_format(
+                            ctx->arena, "%lld", (long long)end_value);
+                    } else {
+                        llvm_emit_index_i64(
+                            ctx, function, expr->rhs_expr_index, &end);
+                    }
+                }
+
+                string count = llvm_slice_count_i64(ctx,
+                                                    start,
+                                                    start_is_constant,
+                                                    start_value,
+                                                    end,
+                                                    end_is_constant,
+                                                    end_value);
 
                 u32 item_type = llvm_collection_item_type(ctx->sema,
                                                           target_type);
@@ -3254,23 +3343,55 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
-            i64 start_value = 0;
-            i64 end_value   = (i64)llvm_array_count(ctx->sema, target_type);
-            llvm_expr_integer_constant(
-                ctx->hir, expr->lhs_expr_index, &start_value);
-            llvm_expr_integer_constant(
-                ctx->hir, expr->rhs_expr_index, &end_value);
-            i64 count_value = end_value - start_value;
+            i64   start_value       = 0;
+            bool  start_is_constant = true;
+            string start             = s("0");
+            if (expr->lhs_expr_index < array_count(ctx->hir->exprs)) {
+                start_is_constant = llvm_expr_integer_constant(
+                    ctx->hir, expr->lhs_expr_index, &start_value);
+                if (start_is_constant) {
+                    start = string_format(
+                        ctx->arena, "%lld", (long long)start_value);
+                } else {
+                    llvm_emit_index_i64(
+                        ctx, function, expr->lhs_expr_index, &start);
+                }
+            }
+
+            i64 end_value = (i64)llvm_array_count(ctx->sema, target_type);
+            bool end_is_constant = true;
+            string end = string_format(ctx->arena,
+                                       "%lld",
+                                       (long long)end_value);
+            if (expr->rhs_expr_index < array_count(ctx->hir->exprs)) {
+                end_is_constant = llvm_expr_integer_constant(
+                    ctx->hir, expr->rhs_expr_index, &end_value);
+                if (end_is_constant) {
+                    end = string_format(
+                        ctx->arena, "%lld", (long long)end_value);
+                } else {
+                    llvm_emit_index_i64(
+                        ctx, function, expr->rhs_expr_index, &end);
+                }
+            }
+
+            string count = llvm_slice_count_i64(ctx,
+                                                start,
+                                                start_is_constant,
+                                                start_value,
+                                                end,
+                                                end_is_constant,
+                                                end_value);
 
             string target_type_string = llvm_type_string(ctx, target_type);
             string data_ptr           = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP " = getelementptr inbounds " STRINGP
-                      ", ptr " STRINGP ", i64 0, i64 %lld\n",
+                      ", ptr " STRINGP ", i64 0, i64 " STRINGP "\n",
                       STRINGV(data_ptr),
                       STRINGV(target_type_string),
                       STRINGV(target_address.value),
-                      (long long)start_value);
+                      STRINGV(start));
             string slice0 = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP " = insertvalue { ptr, i64 } poison, ptr "
@@ -3280,10 +3401,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             string slice1 = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
-                      ", i64 %lld, 1\n",
+                      ", i64 " STRINGP ", 1\n",
                       STRINGV(slice1),
                       STRINGV(slice0),
-                      (long long)count_value);
+                      STRINGV(count));
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
