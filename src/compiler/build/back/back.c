@@ -22,6 +22,14 @@
     "-Wno-unused-variable -Wno-unused-but-set-variable "                       \
     "-Wno-unused-parameter -Wno-format-security"
 
+static const char g_llvm_bridge_prelude[] = {
+#embed "../../../../data/prelude.c"
+    , 0};
+
+static const char g_llvm_bridge_epilogue[] = {
+#embed "../../../../data/epilogue.c"
+    , 0};
+
 typedef struct {
     const FrontEndState*      front_end_results;
     const NerdArtifactConfig* artifacts;
@@ -869,26 +877,6 @@ internal bool back_end_write_text_file(cstr path, string text)
     return true;
 }
 
-internal cstr back_end_runtime_source_path(Arena* arena, cstr filename)
-{
-    cstr relative =
-        back_end_cstr(arena, string_format(arena, "data/%s", filename));
-    cstr result = path_canonical(arena, relative);
-    if (result != NULL) {
-        return result;
-    }
-
-    cstr exe_dir = path_executable_dir(arena);
-    if (exe_dir == NULL) {
-        return NULL;
-    }
-    cstr from_exe = path_join(
-        arena,
-        path_join(arena, exe_dir, ".."),
-        back_end_cstr(arena, string_format(arena, "data/%s", filename)));
-    return path_canonical(arena, from_exe);
-}
-
 internal bool back_end_hir_has_globals(const Hir* hir)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
@@ -977,17 +965,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         return true;
     }
 
+    cstr prelude_bridge_path = back_end_cstr(
+        &arena,
+        string_format(&arena, "%s.prelude_bridge.c", artifacts->binary_path));
     cstr epilogue_bridge_path = back_end_cstr(
         &arena,
         string_format(&arena, "%s.epilogue_bridge.c", artifacts->binary_path));
     cstr init_ll_path = back_end_cstr(
         &arena, string_format(&arena, "%s.init.ll", artifacts->binary_path));
-    cstr prelude_path  = back_end_runtime_source_path(&arena, "prelude.c");
-    cstr epilogue_path = back_end_runtime_source_path(&arena, "epilogue.c");
-    if (prelude_path == NULL || epilogue_path == NULL) {
-        arena_done(&arena);
-        return error_runtime("Failed to resolve LLVM runtime bridge paths");
-    }
 
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
@@ -1003,8 +988,8 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                  : string_format(&arena,
                                                  "extern void init(void);\n"
                                                  "extern int $main(void);\n"
-                                                 "#include \"%s\"\n",
-                                                 epilogue_path);
+                                                 "%s\n",
+                                                 g_llvm_bridge_epilogue);
     StringBuilder init_ll_builder = {0};
     sb_init(&init_ll_builder, &arena);
     for (u32 i = 0; i < array_count(init_module_indices); ++i) {
@@ -1023,7 +1008,9 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
     sb_append_cstr(&init_ll_builder, "  ret void\n}\n");
     string init_ll = sb_to_string(&init_ll_builder);
-    if (!back_end_write_text_file(epilogue_bridge_path, epilogue_bridge) ||
+    if (!back_end_write_text_file(prelude_bridge_path,
+                                  s(g_llvm_bridge_prelude)) ||
+        !back_end_write_text_file(epilogue_bridge_path, epilogue_bridge) ||
         !back_end_write_text_file(init_ll_path, init_ll)) {
         array_free(llvm_paths);
         array_free(init_module_indices);
@@ -1039,11 +1026,11 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     StringBuilder command_builder = {0};
     sb_init(&command_builder, &arena);
     sb_format(&command_builder,
-              "clang -std=gnu23 -Wno-dollar-in-identifier-extension " STRINGP
-              " -o \"%s\" \"%s\" \"%s\"",
+              "clang -std=gnu23 -Wno-dollar-in-identifier-extension "
+              "-Wno-override-module " STRINGP " -o \"%s\" \"%s\" \"%s\"",
               STRINGV(opt_flags),
               artifacts->binary_path,
-              prelude_path,
+              prelude_bridge_path,
               epilogue_bridge_path);
     for (u32 i = 0; i < array_count(llvm_paths); ++i) {
         sb_format(&command_builder, " \"%s\"", llvm_paths[i]);
@@ -1071,6 +1058,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
 #endif
 
+    path_remove(prelude_bridge_path);
     path_remove(epilogue_bridge_path);
     path_remove(init_ll_path);
     if (!artifacts->emit_llvm_file) {
