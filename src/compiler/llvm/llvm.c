@@ -133,6 +133,16 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
 }
 
 internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type);
+internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type);
+
+internal u32 llvm_align_bits(u32 bits, u32 align_bits)
+{
+    if (bits == 0 || align_bits == 0) {
+        return bits;
+    }
+    u32 remainder = bits % align_bits;
+    return remainder == 0 ? bits : bits + align_bits - remainder;
+}
 
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
@@ -170,6 +180,9 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     }
     if (llvm_type_kind(sema, type_index) == STK_Union) {
         return llvm_union_storage_bits(sema, type_index);
+    }
+    if (llvm_type_kind(sema, type_index) == STK_Enum) {
+        return 64 + llvm_enum_storage_payload_bits(sema, type_index);
     }
     return 0;
 }
@@ -394,7 +407,7 @@ internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type)
             bits = payload_bits;
         }
     }
-    return bits;
+    return llvm_align_bits(bits, 64);
 }
 
 internal void llvm_append_type(StringBuilder* sb,
