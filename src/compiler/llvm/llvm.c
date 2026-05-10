@@ -2635,13 +2635,22 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 array_push(args, value);
             }
 
-            string temp        = llvm_temp(ctx);
             string return_type = llvm_type_string(ctx, expr->type_index);
-            sb_format(ctx->sb,
-                      "  " STRINGP " = call " STRINGP " " STRINGP "(",
-                      STRINGV(temp),
-                      STRINGV(return_type),
-                      STRINGV(callee));
+            bool   returns_void =
+                llvm_type_is_void(ctx->sema, expr->type_index);
+            string temp = returns_void ? (string){0} : llvm_temp(ctx);
+            if (returns_void) {
+                sb_format(ctx->sb,
+                          "  call " STRINGP " " STRINGP "(",
+                          STRINGV(return_type),
+                          STRINGV(callee));
+            } else {
+                sb_format(ctx->sb,
+                          "  " STRINGP " = call " STRINGP " " STRINGP "(",
+                          STRINGV(temp),
+                          STRINGV(return_type),
+                          STRINGV(callee));
+            }
             for (u32 i = 0; i < expr->arg_count; ++i) {
                 if (i > 0) {
                     sb_append_cstr(ctx->sb, ", ");
