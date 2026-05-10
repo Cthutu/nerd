@@ -132,6 +132,42 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
     }
 }
 
+internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
+{
+    u32 int_bits = llvm_integer_bits(sema, type_index);
+    if (int_bits > 0) {
+        return int_bits;
+    }
+    u32 float_bits = llvm_float_bits(sema, type_index);
+    if (float_bits > 0) {
+        return float_bits;
+    }
+    if (llvm_type_kind(sema, type_index) == STK_Pointer ||
+        llvm_type_kind(sema, type_index) == STK_Function) {
+        return 64;
+    }
+    return 0;
+}
+
+internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type)
+{
+    if (sema == NULL || union_type >= array_count(sema->types) ||
+        sema->types[union_type].kind != STK_Union) {
+        return 0;
+    }
+
+    const SemaType* type = &sema->types[union_type];
+    u32             bits = 8;
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 field_type = sema->type_param_types[type->first_param_type + i];
+        u32 field_bits = llvm_type_storage_bits(sema, field_type);
+        if (field_bits > bits) {
+            bits = field_bits;
+        }
+    }
+    return bits;
+}
+
 internal u32 llvm_pointee_type(const Sema* sema, u32 type_index)
 {
     if (llvm_type_kind(sema, type_index) != STK_Pointer) {
@@ -168,7 +204,8 @@ internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
 internal bool llvm_type_is_record(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
-    return kind == STK_Tuple || kind == STK_Plex || kind == STK_String;
+    return kind == STK_Tuple || kind == STK_Plex || kind == STK_Union ||
+           kind == STK_String;
 }
 
 internal u32 llvm_record_field_count(const Sema* sema, u32 type_index)
@@ -388,8 +425,10 @@ internal void llvm_append_type(StringBuilder* sb,
             sb_append_cstr(sb, " }");
             break;
         }
-    case STK_DynamicArray:
     case STK_Union:
+        sb_format(sb, "i%u", llvm_union_storage_bits(sema, type_index));
+        break;
+    case STK_DynamicArray:
     case STK_Module:
     default:
         sb_append_cstr(sb, "ptr");
@@ -619,9 +658,11 @@ internal void llvm_append_zero_value(StringBuilder* sb,
     case STK_Function:
     case STK_Pointer:
     case STK_DynamicArray:
-    case STK_Union:
     case STK_Module:
         sb_append_cstr(sb, "null");
+        break;
+    case STK_Union:
+        sb_append_cstr(sb, "0");
         break;
     case STK_Enum:
     case STK_Plex:
@@ -920,6 +961,140 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
         .ok         = true,
         .type_index = type_index,
         .value      = s("0"),
+    };
+}
+
+internal LlvmValue llvm_cast_to_union_storage(LlvmFunctionContext* ctx,
+                                              LlvmValue            value,
+                                              u32                  union_type)
+{
+    u32 storage_bits = llvm_union_storage_bits(ctx->sema, union_type);
+    if (storage_bits == 0) {
+        return (LlvmValue){0};
+    }
+
+    string storage_type = string_format(ctx->arena, "i%u", storage_bits);
+    u32    value_bits   = llvm_type_storage_bits(ctx->sema, value.type_index);
+    if (value_bits == storage_bits &&
+        llvm_integer_bits(ctx->sema, value.type_index) > 0) {
+        value.type_index = union_type;
+        return value;
+    }
+
+    string value_type = llvm_type_string(ctx, value.type_index);
+    string temp       = llvm_temp(ctx);
+    if (llvm_float_bits(ctx->sema, value.type_index) == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = bitcast " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if ((llvm_type_kind(ctx->sema, value.type_index) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, value.type_index) == STK_Function) &&
+               value_bits == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = ptrtoint " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if (value_bits < storage_bits &&
+               llvm_integer_bits(ctx->sema, value.type_index) > 0) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else if (value_bits > storage_bits &&
+               llvm_integer_bits(ctx->sema, value.type_index) > 0) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = trunc " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(storage_type));
+    } else {
+        return (LlvmValue){0};
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = union_type,
+        .value      = temp,
+    };
+}
+
+internal LlvmValue llvm_cast_from_union_storage(LlvmFunctionContext* ctx,
+                                                LlvmValue            value,
+                                                u32                  field_type)
+{
+    u32 storage_bits = llvm_union_storage_bits(ctx->sema, value.type_index);
+    u32 field_bits   = llvm_type_storage_bits(ctx->sema, field_type);
+    if (storage_bits == 0 || field_bits == 0) {
+        return (LlvmValue){0};
+    }
+
+    if (llvm_integer_bits(ctx->sema, field_type) == storage_bits) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = field_type,
+            .value      = value.value,
+        };
+    }
+
+    string storage_type = string_format(ctx->arena, "i%u", storage_bits);
+    string field_type_s = llvm_type_string(ctx, field_type);
+    string temp         = llvm_temp(ctx);
+    if (llvm_float_bits(ctx->sema, field_type) == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = bitcast " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(field_type_s));
+    } else if ((llvm_type_kind(ctx->sema, field_type) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, field_type) == STK_Function) &&
+               field_bits == storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = inttoptr " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(field_type_s));
+    } else if (llvm_integer_bits(ctx->sema, field_type) > 0 &&
+               field_bits < storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = trunc " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(field_type_s));
+    } else if (llvm_integer_bits(ctx->sema, field_type) > 0 &&
+               field_bits > storage_bits) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(field_type_s));
+    } else {
+        return (LlvmValue){0};
+    }
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = field_type,
+        .value      = temp,
     };
 }
 
@@ -2264,6 +2439,28 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_Plex:
     case HIR_EXPR_PlexUpdate:
         {
+            if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Union) {
+                if (expr->arg_count == 0) {
+                    return llvm_default_value(ctx, expr->type_index);
+                }
+
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg];
+                if (llvm_record_field_index(ctx->sema,
+                                            expr->type_index,
+                                            arg->symbol_handle) == U32_MAX) {
+                    return (LlvmValue){0};
+                }
+                LlvmValue field_value =
+                    llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!field_value.ok) {
+                    return (LlvmValue){0};
+                }
+                return llvm_cast_to_union_storage(ctx,
+                                                  field_value,
+                                                  expr->type_index);
+            }
+
             Arena plex_arena = {0};
             arena_init(&plex_arena);
             StringBuilder value = {0};
@@ -2902,7 +3099,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 SemaTypeKind pointee_kind = llvm_type_kind(ctx->sema,
                                                            pointee_type);
                 if (pointee_kind != STK_Tuple && pointee_kind != STK_Plex &&
-                    pointee_kind != STK_String) {
+                    pointee_kind != STK_Union && pointee_kind != STK_String) {
                     break;
                 }
 
@@ -2943,6 +3140,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             if (field_index == U32_MAX) {
                 return (LlvmValue){0};
+            }
+
+            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Union) {
+                u32 field_type = llvm_record_field_type(ctx->sema,
+                                                        target.type_index,
+                                                        field_index);
+                if (field_type == sema_no_type()) {
+                    return (LlvmValue){0};
+                }
+                return llvm_cast_from_union_storage(ctx, target, field_type);
             }
 
             string temp        = llvm_temp(ctx);
