@@ -2054,10 +2054,8 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             return (LlvmValue){0};
         }
 
-        LlvmValue target_address =
-            llvm_address_of_expr(ctx, function, expr->operand_expr_index);
         LlvmValue index = llvm_emit_expr(ctx, function, expr->extra_expr_index);
-        if (!target_address.ok || !index.ok) {
+        if (!index.ok) {
             return (LlvmValue){0};
         }
 
@@ -2065,6 +2063,12 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         u32 target_type = target_expr->type_index;
         u32 item_type   = sema_no_type();
         if (llvm_type_kind(ctx->sema, target_type) == STK_Array) {
+            LlvmValue target_address =
+                llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+            if (!target_address.ok) {
+                return (LlvmValue){0};
+            }
+
             item_type = llvm_collection_item_type(ctx->sema, target_type);
             string target_type_string = llvm_type_string(ctx, target_type);
             string index_type = llvm_type_string(ctx, index.type_index);
@@ -2084,6 +2088,52 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             };
         }
 
+        if (llvm_type_kind(ctx->sema, target_type) == STK_Slice ||
+            llvm_type_kind(ctx->sema, target_type) == STK_String) {
+            LlvmValue target =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!target.ok) {
+                return (LlvmValue){0};
+            }
+
+            item_type = llvm_collection_item_type(ctx->sema, target_type);
+            if (item_type == sema_no_type()) {
+                return (LlvmValue){0};
+            }
+
+            string target_type_string = llvm_type_string(ctx, target_type);
+            string data_ptr           = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 0\n",
+                      STRINGV(data_ptr),
+                      STRINGV(target_type_string),
+                      STRINGV(target.value));
+
+            string item_type_string = llvm_type_string(ctx, item_type);
+            string index_type       = llvm_type_string(ctx, index.type_index);
+            string ptr              = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                      STRINGV(ptr),
+                      STRINGV(item_type_string),
+                      STRINGV(data_ptr),
+                      STRINGV(index_type),
+                      STRINGV(index.value));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = sema_no_type(),
+                .value      = ptr,
+            };
+        }
+
+        LlvmValue target =
+            llvm_emit_expr(ctx, function, expr->operand_expr_index);
+        if (!target.ok) {
+            return (LlvmValue){0};
+        }
+
         item_type = llvm_collection_item_type(ctx->sema, target_type);
         if (item_type == sema_no_type()) {
             item_type = llvm_pointee_type(ctx->sema, target_type);
@@ -2100,7 +2150,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                   ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
                   STRINGV(ptr),
                   STRINGV(item_type_string),
-                  STRINGV(target_address.value),
+                  STRINGV(target.value),
                   STRINGV(index_type),
                   STRINGV(index.value));
         return (LlvmValue){
@@ -3287,6 +3337,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Unary:
         {
+            if (expr->unary_op == HIR_UNARY_AddressOf) {
+                LlvmValue address =
+                    llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+                if (!address.ok) {
+                    return (LlvmValue){0};
+                }
+                address.type_index = expr->type_index;
+                return address;
+            }
+
             LlvmValue operand =
                 llvm_emit_expr(ctx, function, expr->operand_expr_index);
             if (!operand.ok) {
@@ -3329,16 +3389,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .type_index = expr->type_index,
                     .value      = temp,
                 };
-            case HIR_UNARY_AddressOf:
-                {
-                    LlvmValue address =
-                        llvm_address_of_expr(ctx, function, expr->operand_expr_index);
-                    if (!address.ok) {
-                        return (LlvmValue){0};
-                    }
-                    address.type_index = expr->type_index;
-                    return address;
-                }
             case HIR_UNARY_Deref:
                 {
                     string pointee = llvm_type_string(ctx, expr->type_index);
