@@ -1009,7 +1009,7 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(ctx->sema, type_index);
-    if (kind == STK_Pointer || kind == STK_Nil) {
+    if (kind == STK_Pointer || kind == STK_DynamicArray || kind == STK_Nil) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -1052,7 +1052,7 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
-    if (target_kind == STK_Pointer &&
+    if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray) &&
         (source_kind == STK_Nil || source_kind == STK_UntypedInteger) &&
         string_eq_cstr(value.value, "0")) {
         value.type_index = target_type;
@@ -1060,7 +1060,7 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
         return value;
     }
 
-    if (target_kind == STK_Pointer &&
+    if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray) &&
         llvm_integer_bits(ctx->sema, value.type_index) > 0) {
         string source_type = llvm_type_string(ctx, value.type_index);
         string target_type_string = llvm_type_string(ctx, target_type);
@@ -2850,7 +2850,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
     switch (expr->kind) {
     case HIR_EXPR_IntegerLiteral:
-        if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Pointer) {
+        SemaTypeKind integer_type_kind = llvm_type_kind(ctx->sema,
+                                                        expr->type_index);
+        if (integer_type_kind == STK_Pointer ||
+            integer_type_kind == STK_DynamicArray) {
             if (expr->integer == 0) {
                 return (LlvmValue){
                     .ok         = true,
@@ -3137,10 +3140,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 u32 field_count =
                     llvm_record_field_count(ctx->sema, expr->type_index);
                 for (u32 i = 0; i < field_count; ++i) {
+                    u32 field_type =
+                        llvm_record_field_type(ctx->sema, expr->type_index, i);
                     LlvmValue field_value =
-                        llvm_default_value(ctx,
-                                           llvm_record_field_type(
-                                               ctx->sema, expr->type_index, i));
+                        llvm_default_value(ctx, field_type);
                     for (u32 j = 0; j < expr->arg_count; ++j) {
                         const HirCallArg* arg =
                             &ctx->hir->call_args[expr->first_arg + j];
@@ -3152,6 +3155,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             break;
                         }
                     }
+                    if (!field_value.ok) {
+                        array_free(values);
+                        return (LlvmValue){0};
+                    }
+                    field_value =
+                        llvm_coerce_value_to_type(ctx, field_value, field_type);
                     if (!field_value.ok) {
                         array_free(values);
                         return (LlvmValue){0};
