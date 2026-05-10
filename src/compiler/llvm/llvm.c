@@ -126,6 +126,23 @@ internal u32 llvm_pointee_type(const Sema* sema, u32 type_index)
     return sema->types[type_index].first_param_type;
 }
 
+internal u32 llvm_array_count(const Sema* sema, u32 type_index)
+{
+    if (llvm_type_kind(sema, type_index) != STK_Array) {
+        return 0;
+    }
+    return sema->types[type_index].return_type;
+}
+
+internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if (kind == STK_Array || kind == STK_Slice || kind == STK_Pointer) {
+        return sema->types[type_index].first_param_type;
+    }
+    return sema_no_type();
+}
+
 internal bool llvm_type_is_record(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
@@ -236,7 +253,11 @@ internal void llvm_append_type(StringBuilder* sb,
     case STK_Function:
     case STK_Pointer:
     case STK_String:
+        sb_append_cstr(sb, "ptr");
+        break;
     case STK_Slice:
+        sb_append_cstr(sb, "{ ptr, i64 }");
+        break;
     case STK_DynamicArray:
     case STK_Union:
     case STK_Enum:
@@ -577,6 +598,19 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
         .type_index = type_index,
         .value      = s("0"),
     };
+}
+
+internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* out)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    if (expr->kind != HIR_EXPR_IntegerLiteral) {
+        return false;
+    }
+    *out = expr->integer;
+    return true;
 }
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
@@ -1125,8 +1159,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
-            string temp = llvm_temp(ctx);
             if (llvm_type_kind(ctx->sema, target.type_index) == STK_Array) {
+                string temp       = llvm_temp(ctx);
                 string array_type = llvm_type_string(ctx, target.type_index);
                 sb_format(ctx->sb,
                           "  " STRINGP " = extractvalue " STRINGP " "
@@ -1142,13 +1176,53 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
+            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Slice) {
+                string slice_type = llvm_type_string(ctx, target.type_index);
+                string data_ptr   = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " "
+                          STRINGP ", 0\n",
+                          STRINGV(data_ptr),
+                          STRINGV(slice_type),
+                          STRINGV(target.value));
+
+                u32 item_type =
+                    llvm_collection_item_type(ctx->sema, target.type_index);
+                if (item_type == sema_no_type()) {
+                    item_type = expr->type_index;
+                }
+                string item_type_string = llvm_type_string(ctx, item_type);
+                string index_type       = llvm_type_string(ctx, index.type_index);
+                string item_ptr         = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr inbounds " STRINGP
+                          ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                          STRINGV(item_ptr),
+                          STRINGV(item_type_string),
+                          STRINGV(data_ptr),
+                          STRINGV(index_type),
+                          STRINGV(index.value));
+                string loaded = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load " STRINGP ", ptr " STRINGP
+                          "\n",
+                          STRINGV(loaded),
+                          STRINGV(item_type_string),
+                          STRINGV(item_ptr));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = loaded,
+                };
+            }
+
             u32 item_type = llvm_pointee_type(ctx->sema, target.type_index);
             if (item_type == sema_no_type()) {
                 item_type = expr->type_index;
             }
             string item_type_string = llvm_type_string(ctx, item_type);
             string index_type       = llvm_type_string(ctx, index.type_index);
-            string ptr              = temp;
+            string ptr              = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP " = getelementptr inbounds " STRINGP
                       ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
@@ -1167,6 +1241,60 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .ok         = true,
                 .type_index = expr->type_index,
                 .value      = loaded,
+            };
+        }
+    case HIR_EXPR_Slice:
+        {
+            LlvmValue target_address =
+                llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+            if (!target_address.ok ||
+                expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
+                return (LlvmValue){0};
+            }
+
+            const HirExpr* target_expr =
+                &ctx->hir->exprs[expr->operand_expr_index];
+            u32 target_type = target_expr->type_index;
+            u32 item_type =
+                llvm_collection_item_type(ctx->sema, target_type);
+            if (item_type == sema_no_type()) {
+                return (LlvmValue){0};
+            }
+
+            i64 start_value = 0;
+            i64 end_value   = (i64)llvm_array_count(ctx->sema, target_type);
+            llvm_expr_integer_constant(
+                ctx->hir, expr->lhs_expr_index, &start_value);
+            llvm_expr_integer_constant(
+                ctx->hir, expr->rhs_expr_index, &end_value);
+            i64 count_value = end_value - start_value;
+
+            string target_type_string = llvm_type_string(ctx, target_type);
+            string data_ptr           = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i64 0, i64 %lld\n",
+                      STRINGV(data_ptr),
+                      STRINGV(target_type_string),
+                      STRINGV(target_address.value),
+                      (long long)start_value);
+            string slice0 = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = insertvalue { ptr, i64 } poison, ptr "
+                      STRINGP ", 0\n",
+                      STRINGV(slice0),
+                      STRINGV(data_ptr));
+            string slice1 = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                      ", i64 %lld, 1\n",
+                      STRINGV(slice1),
+                      STRINGV(slice0),
+                      (long long)count_value);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = slice1,
             };
         }
     case HIR_EXPR_TupleField:
