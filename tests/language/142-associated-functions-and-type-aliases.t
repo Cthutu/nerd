@@ -50,19 +50,23 @@ inst func fn.2(self: IntBox) -> usize {
 @$global_box = global { i32 } zeroinitializer
 
 define void @m0.init() {
-  %t0 = call { i32 } @$init(i32 40)
+  %t0 = call { i32 } @fn.1(i32 40)
   store { i32 } %t0, ptr @$global_box
   ret void
 }
 
 define i32 @fn.0() {
-  %t0 = call { i32 } @$init(i32 2)
+  %t0 = call { i32 } @fn.1(i32 2)
   %t1 = load { i32 }, ptr @$global_box
   %t2 = extractvalue { i32 } %t1, 0
   %t3 = extractvalue { i32 } %t0, 0
   %t4 = add i32 %t2, %t3
-  %t5 = trunc i64 4 to i32
-  ret i32 0
+  %t5 = call i64 @fn.2({ i32 } %t0)
+  %t6 = trunc i64 %t5 to i32
+  %t7 = add i32 %t4, %t6
+  %t8 = trunc i64 4 to i32
+  %t9 = sub i32 %t7, %t8
+  ret i32 %t9
 }
 
 define { i32 } @fn.1(i32 %value) {

@@ -539,6 +539,70 @@ internal u32 llvm_function_symbol_handle(const Hir* hir, u32 function_index)
     return U32_MAX;
 }
 
+internal u32 llvm_function_decl_symbol_handle(const Sema* sema,
+                                              const HirFunction* function)
+{
+    if (sema == NULL || function == NULL) {
+        return U32_MAX;
+    }
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (method->decl_index < array_count(sema->decls) &&
+            sema->decls[method->decl_index].value_node_index ==
+                function->fn_node_index) {
+            return method->symbol_handle;
+        }
+    }
+    if (function->decl_index < array_count(sema->decls)) {
+        return sema->decls[function->decl_index].symbol_handle;
+    }
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->value_node_index == function->fn_node_index) {
+            return decl->symbol_handle;
+        }
+    }
+    return U32_MAX;
+}
+
+internal u32 llvm_function_method_symbol_handle(const Sema* sema,
+                                                const HirFunction* function)
+{
+    if (sema == NULL || function == NULL) {
+        return U32_MAX;
+    }
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (method->decl_index < array_count(sema->decls) &&
+            sema->decls[method->decl_index].value_node_index ==
+                function->fn_node_index) {
+            return method->symbol_handle;
+        }
+    }
+    return U32_MAX;
+}
+
+internal u32 llvm_generic_function_inst_symbol_handle(
+    const Sema* sema,
+    const HirFunction* function)
+{
+    if (sema == NULL || function == NULL ||
+        function->kind != HIR_FUNCTION_GenericInstantiation) {
+        return U32_MAX;
+    }
+
+    for (u32 i = 0; i < array_count(sema->generic_fn_instantiations); ++i) {
+        const SemaGenericFnInstantiation* inst =
+            &sema->generic_fn_instantiations[i];
+        if (inst->fn_node_index == function->fn_node_index &&
+            inst->root_scope_index == function->root_scope_index &&
+            inst->type_index == function->type_index) {
+            return inst->symbol_handle;
+        }
+    }
+    return U32_MAX;
+}
+
 internal void llvm_append_generated_function_name(StringBuilder* sb,
                                                   const Hir*     hir,
                                                   u32            function_index)
@@ -718,6 +782,73 @@ internal bool llvm_import_source_function(const Sema*     sema,
             *out_function_index = i;
             return true;
         }
+    }
+    return false;
+}
+
+internal bool llvm_import_source_generic_function(const Sema*     sema,
+                                                  const Lexer*    lexer,
+                                                  const HirImport* import,
+                                                  u32 callee_symbol_handle,
+                                                  u32 callee_type,
+                                                  const Hir** out_hir,
+                                                  u32* out_function_index)
+{
+    if (sema == NULL || sema->program == NULL ||
+        import->module_index >= array_count(sema->program->modules)) {
+        return false;
+    }
+
+    const ModuleInfo* module = &sema->program->modules[import->module_index];
+    const Hir*        hir    = &module->front_end.hir;
+    const Sema*       source_sema = &module->front_end.sema;
+    const Lexer*      source_lexer = &module->front_end.lexer;
+    string            callee_name =
+        callee_symbol_handle != U32_MAX ? lex_symbol(lexer, callee_symbol_handle)
+                                        : (string){0};
+    const Hir* unique_template_hir            = NULL;
+    u32        unique_template_function_index = U32_MAX;
+    u32        template_match_count           = 0;
+
+    for (u32 i = 0; i < array_count(hir->functions); ++i) {
+        const HirFunction* function = &hir->functions[i];
+        if (function->kind != HIR_FUNCTION_GenericInstantiation) {
+            continue;
+        }
+
+        bool template_matches = false;
+        if (import->decl_index < array_count(source_sema->decls) &&
+            source_sema->decls[import->decl_index].value_node_index ==
+                function->fn_node_index) {
+            template_matches = true;
+        }
+
+        u32 inst_symbol =
+            llvm_generic_function_inst_symbol_handle(source_sema, function);
+        bool symbol_matches =
+            callee_name.count > 0 && inst_symbol != U32_MAX &&
+            string_eq(callee_name, lex_symbol(source_lexer, inst_symbol));
+
+        bool no_type_discriminator =
+            callee_type == sema_no_type() ||
+            llvm_type_is_void(sema, callee_type);
+        if ((template_matches || symbol_matches) &&
+            (no_type_discriminator || function->type_index == callee_type ||
+             symbol_matches)) {
+            *out_hir            = hir;
+            *out_function_index = i;
+            return true;
+        }
+        if (template_matches) {
+            unique_template_hir            = hir;
+            unique_template_function_index = i;
+            template_match_count += 1;
+        }
+    }
+    if (template_match_count == 1) {
+        *out_hir            = unique_template_hir;
+        *out_function_index = unique_template_function_index;
+        return true;
     }
     return false;
 }
@@ -3144,14 +3275,58 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
         callee->symbol_handle != U32_MAX) {
         const HirImport* import = llvm_field_import(ctx->hir, callee);
         if (import != NULL) {
-            *out = llvm_import_name_string(
-                ctx->sema, ctx->lexer, ctx->arena, import);
+            const Hir* source_hir     = NULL;
+            u32        function_index = U32_MAX;
+            if (llvm_import_source_generic_function(ctx->sema,
+                                                    ctx->lexer,
+                                                    import,
+                                                    callee->symbol_handle,
+                                                    callee->type_index,
+                                                    &source_hir,
+                                                    &function_index)) {
+                *out = llvm_function_name_string(
+                    source_hir, ctx->lexer, ctx->arena, function_index);
+            } else {
+                *out = llvm_import_name_string(
+                    ctx->sema, ctx->lexer, ctx->arena, import);
+            }
             return true;
+        }
+        for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
+            const HirFunction* candidate = &ctx->hir->functions[i];
+            u32 candidate_symbol =
+                llvm_function_decl_symbol_handle(ctx->sema, candidate);
+            if (candidate_symbol == U32_MAX) {
+                candidate_symbol =
+                    llvm_function_method_symbol_handle(ctx->sema, candidate);
+            }
+            if (candidate_symbol != U32_MAX &&
+                string_eq(lex_symbol(ctx->lexer, candidate_symbol),
+                          lex_symbol(ctx->lexer, callee->symbol_handle))) {
+                *out = llvm_function_name_string(
+                    ctx->hir, ctx->lexer, ctx->arena, i);
+                return true;
+            }
         }
         *out = llvm_symbol_name_string(ctx->lexer,
                                        ctx->arena,
                                        callee->symbol_handle);
         return true;
+    }
+
+    if (callee->kind == HIR_EXPR_LocalRef &&
+        callee->ref_kind == HIR_REF_Decl &&
+        callee->ref_index < array_count(ctx->sema->decls)) {
+        const SemaDecl* decl = &ctx->sema->decls[callee->ref_index];
+        for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
+            const HirFunction* candidate = &ctx->hir->functions[i];
+            if (candidate->decl_index == callee->ref_index ||
+                candidate->fn_node_index == decl->value_node_index) {
+                *out = llvm_function_name_string(
+                    ctx->hir, ctx->lexer, ctx->arena, i);
+                return true;
+            }
+        }
     }
 
     if (callee->kind != HIR_EXPR_LocalRef ||
@@ -3179,8 +3354,21 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
             if (import == NULL) {
                 return false;
             }
-            *out = llvm_import_name_string(
-                ctx->sema, ctx->lexer, ctx->arena, import);
+            const Hir* source_hir     = NULL;
+            u32        function_index = U32_MAX;
+            if (llvm_import_source_generic_function(ctx->sema,
+                                                    ctx->lexer,
+                                                    import,
+                                                    callee->symbol_handle,
+                                                    callee->type_index,
+                                                    &source_hir,
+                                                    &function_index)) {
+                *out = llvm_function_name_string(
+                    source_hir, ctx->lexer, ctx->arena, function_index);
+            } else {
+                *out = llvm_import_name_string(
+                    ctx->sema, ctx->lexer, ctx->arena, import);
+            }
             return true;
         }
     default:
@@ -8303,6 +8491,44 @@ internal void llvm_render_import(StringBuilder*    sb,
     sb_append_cstr(sb, ")\n");
 }
 
+internal void llvm_render_imported_generic_function_declarations(
+    StringBuilder* sb,
+    const Hir*     hir,
+    const Sema*    sema)
+{
+    if (sema == NULL || sema->program == NULL) {
+        return;
+    }
+
+    for (u32 i = 0; i < array_count(hir->imports); ++i) {
+        const HirImport* import = &hir->imports[i];
+        if (import->module_index >= array_count(sema->program->modules)) {
+            continue;
+        }
+
+        const ModuleInfo* module =
+            &sema->program->modules[import->module_index];
+        const Hir*   source_hir   = &module->front_end.hir;
+        const Lexer* source_lexer = &module->front_end.lexer;
+        const Sema*  source_sema  = &module->front_end.sema;
+
+        for (u32 j = 0; j < array_count(source_hir->functions); ++j) {
+            const HirFunction* function = &source_hir->functions[j];
+            if (function->kind != HIR_FUNCTION_GenericInstantiation ||
+                import->decl_index >= array_count(source_sema->decls) ||
+                source_sema->decls[import->decl_index].value_node_index !=
+                    function->fn_node_index) {
+                continue;
+            }
+
+            sb_append_cstr(sb, "declare ");
+            llvm_append_function_signature(
+                sb, source_hir, source_lexer, source_sema, function, j);
+            sb_append_char(sb, '\n');
+        }
+    }
+}
+
 internal bool llvm_hir_has_globals(const Hir* hir)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
@@ -8565,6 +8791,11 @@ string llvm_render_hir(const Hir* hir,
         }
         usize before = sb.size;
         llvm_render_import(&sb, hir, lexer, sema, &hir->imports[i]);
+        rendered_import = rendered_import || sb.size != before;
+    }
+    {
+        usize before = sb.size;
+        llvm_render_imported_generic_function_declarations(&sb, hir, sema);
         rendered_import = rendered_import || sb.size != before;
     }
     if (rendered_import) {

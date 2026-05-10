@@ -98,6 +98,8 @@ declare { ptr, i64 } @to_string$f32(float)
 declare { ptr, i64 } @to_string$f64(double)
 
 declare void @$prn({ ptr, i64 })
+declare void @m2.fn.0(ptr %self, i32 %elem)
+declare i32 @m2.fn.1(ptr %self)
 
 define void @fn.0(ptr %self, i32 %amount) {
   %t0 = load { i32 }, ptr %self
@@ -122,15 +124,15 @@ define void @fn.2() {
   store { ptr } zeroinitializer, ptr %local.4
   %t0 = load { i32 }, ptr %local.3
   %t1 = call i32 @fn.1({ i32 } %t0)
-  call void @$__impl_7_push(ptr %local.4, i32 %t1)
-  call void @$__impl_7_push(ptr %local.4, i32 30)
+  call void @m2.fn.0(ptr %local.4, i32 %t1)
+  call void @m2.fn.0(ptr %local.4, i32 30)
   %t2 = call i64 @string_builder_mark()
-  %t3 = call i32 @$__impl_7_pop(ptr %local.4)
+  %t3 = call i32 @m2.fn.1(ptr %local.4)
   %t4 = call { ptr, i64 } @to_string$i32(i32 %t3)
   call void @string_builder_append_string({ ptr, i64 } %t4)
   %t5 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 1 })
   call void @string_builder_append_string({ ptr, i64 } %t5)
-  %t6 = call i32 @$__impl_7_pop(ptr %local.4)
+  %t6 = call i32 @m2.fn.1(ptr %local.4)
   %t7 = call { ptr, i64 } @to_string$i32(i32 %t6)
   call void @string_builder_append_string({ ptr, i64 } %t7)
   %t8 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 1 })

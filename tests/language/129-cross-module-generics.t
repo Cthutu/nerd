@@ -91,15 +91,18 @@ declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
+declare void @m2.fn.0(ptr %stack, i32 %elem)
+declare i32 @m2.fn.1(ptr %stack)
+declare { { ptr, i64 } } @m2.fn.2({ ptr, i64 } %value)
 
 define void @fn.0() {
   %local.0 = alloca { ptr }
   store { ptr } zeroinitializer, ptr %local.0
-  call void @$stack_push(ptr %local.0, i32 42)
-  call void @$stack_push(ptr %local.0, i32 13)
-  %t0 = call i32 @$stack_pop(ptr %local.0)
-  %t1 = call i32 @$stack_pop(ptr %local.0)
-  %t2 = call { { ptr, i64 } } @$make_box({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
+  call void @m2.fn.0(ptr %local.0, i32 42)
+  call void @m2.fn.0(ptr %local.0, i32 13)
+  %t0 = call i32 @m2.fn.1(ptr %local.0)
+  %t1 = call i32 @m2.fn.1(ptr %local.0)
+  %t2 = call { { ptr, i64 } } @m2.fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
   %t3 = call i64 @string_builder_mark()
   %t4 = call { ptr, i64 } @to_string$i32(i32 %t0)
   call void @string_builder_append_string({ ptr, i64 } %t4)

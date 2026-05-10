@@ -53,7 +53,8 @@ func fn.3() -> i32 {
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 
 define ptr @fn.0() {
-  ret ptr null
+  %t0 = call ptr @malloc(i64 1)
+  ret ptr %t0
 }
 
 declare ptr @malloc(i64)
