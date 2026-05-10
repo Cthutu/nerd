@@ -187,6 +187,88 @@ internal u32 llvm_record_field_index(const Sema* sema,
     return U32_MAX;
 }
 
+internal u32 llvm_enum_variant_index(const Sema* sema,
+                                     u32         enum_type,
+                                     u32         symbol_handle)
+{
+    if (sema == NULL || enum_type == sema_no_type() ||
+        enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal u32 llvm_enum_variant_payload_type(const Sema* sema,
+                                            u32         enum_type,
+                                            u32         variant_index)
+{
+    if (sema == NULL || enum_type == sema_no_type() ||
+        enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum ||
+        variant_index >= sema->types[enum_type].param_count) {
+        return sema_no_type();
+    }
+
+    return sema->type_param_types[sema->types[enum_type].first_param_type +
+                                  variant_index];
+}
+
+internal i64 llvm_enum_variant_discriminant(const Sema* sema,
+                                            u32         enum_type,
+                                            u32         variant_index)
+{
+    if (sema == NULL || enum_type == sema_no_type() ||
+        enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum ||
+        variant_index >= sema->types[enum_type].param_count) {
+        return 0;
+    }
+
+    return sema->type_param_values[sema->types[enum_type].first_param_type +
+                                   variant_index];
+}
+
+internal u32 llvm_enum_payload_width(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type() || type_index >= array_count(sema->types)) {
+        return 0;
+    }
+
+    const SemaType* type = &sema->types[type_index];
+    return type->kind == STK_Tuple ? type->param_count : 1;
+}
+
+internal u32 llvm_enum_storage_payload_type(const Sema* sema, u32 enum_type)
+{
+    if (sema == NULL || enum_type == sema_no_type() ||
+        enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return sema_no_type();
+    }
+
+    const SemaType* type = &sema->types[enum_type];
+    u32             best = sema_no_type();
+    u32             best_width = 0;
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 payload_type = llvm_enum_variant_payload_type(sema, enum_type, i);
+        u32 width        = llvm_enum_payload_width(sema, payload_type);
+        if (payload_type != sema_no_type() && width >= best_width) {
+            best       = payload_type;
+            best_width = width;
+        }
+    }
+    return best;
+}
+
 internal void llvm_append_type(StringBuilder* sb,
                                const Sema*    sema,
                                u32            type_index)
@@ -258,9 +340,20 @@ internal void llvm_append_type(StringBuilder* sb,
     case STK_Slice:
         sb_append_cstr(sb, "{ ptr, i64 }");
         break;
+    case STK_Enum:
+        {
+            u32 payload_type = llvm_enum_storage_payload_type(sema, type_index);
+            sb_append_cstr(sb, "{ i64, ");
+            if (payload_type == sema_no_type()) {
+                sb_append_cstr(sb, "i8");
+            } else {
+                llvm_append_type(sb, sema, payload_type);
+            }
+            sb_append_cstr(sb, " }");
+            break;
+        }
     case STK_DynamicArray:
     case STK_Union:
-    case STK_Enum:
     case STK_Module:
     default:
         sb_append_cstr(sb, "ptr");
@@ -390,12 +483,14 @@ internal void llvm_append_default_return(StringBuilder* sb,
     case STK_Array:
     case STK_Slice:
     case STK_DynamicArray:
-    case STK_Plex:
     case STK_Union:
-    case STK_Enum:
-    case STK_Tuple:
     case STK_Module:
         sb_append_cstr(sb, "null\n");
+        break;
+    case STK_Enum:
+    case STK_Plex:
+    case STK_Tuple:
+        sb_append_cstr(sb, "zeroinitializer\n");
         break;
     default:
         sb_append_cstr(sb, "0\n");
@@ -602,6 +697,14 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
             .value      = s("null"),
         };
     }
+    if (kind == STK_Enum || kind == STK_Tuple || kind == STK_Plex ||
+        kind == STK_Array || kind == STK_Slice) {
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = type_index,
+            .value      = s("zeroinitializer"),
+        };
+    }
     if (llvm_float_bits(ctx->sema, type_index) > 0) {
         return (LlvmValue){
             .ok         = true,
@@ -636,6 +739,102 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
                               u32                  block_index);
+
+internal bool llvm_callee_symbol_handle(LlvmFunctionContext* ctx,
+                                        u32                  callee_expr_index,
+                                        u32*                 out_symbol)
+{
+    if (callee_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* callee = &ctx->hir->exprs[callee_expr_index];
+    if ((callee->kind == HIR_EXPR_LocalRef || callee->kind == HIR_EXPR_Field) &&
+        callee->symbol_handle != U32_MAX) {
+        *out_symbol = callee->symbol_handle;
+        return true;
+    }
+    return false;
+}
+
+internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
+                                              const HirFunction*   function,
+                                              const HirExpr*       expr,
+                                              u32 variant_index)
+{
+    Array(LlvmValue) args = NULL;
+    for (u32 i = 0; i < expr->arg_count; ++i) {
+        const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
+        LlvmValue value = llvm_emit_expr(ctx, function, arg->expr_index);
+        if (!value.ok) {
+            array_free(args);
+            return (LlvmValue){0};
+        }
+        array_push(args, value);
+    }
+
+    u32 enum_type            = expr->type_index;
+    u32 storage_payload_type = llvm_enum_storage_payload_type(ctx->sema,
+                                                              enum_type);
+    string enum_type_string  = llvm_type_string(ctx, enum_type);
+    string payload_type_string = storage_payload_type == sema_no_type()
+                                     ? s("i8")
+                                     : llvm_type_string(ctx,
+                                                        storage_payload_type);
+    string payload_value = storage_payload_type == sema_no_type()
+                               ? s("0")
+                               : s("zeroinitializer");
+
+    if (storage_payload_type != sema_no_type() && expr->arg_count > 0) {
+        if (llvm_type_is_record(ctx->sema, storage_payload_type)) {
+            payload_value = s("poison");
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                LlvmValue arg  = args[i];
+                string    temp = llvm_temp(ctx);
+                string    arg_type = llvm_type_string(ctx, arg.type_index);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue " STRINGP " "
+                          STRINGP ", " STRINGP " " STRINGP ", %u\n",
+                          STRINGV(temp),
+                          STRINGV(payload_type_string),
+                          STRINGV(payload_value),
+                          STRINGV(arg_type),
+                          STRINGV(arg.value),
+                          i);
+                payload_value = temp;
+            }
+        } else {
+            payload_value = args[0].value;
+        }
+    }
+
+    i64 tag = llvm_enum_variant_discriminant(ctx->sema,
+                                             enum_type,
+                                             variant_index);
+    string with_tag = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue " STRINGP " poison, i64 %lld, 0\n",
+              STRINGV(with_tag),
+              STRINGV(enum_type_string),
+              (long long)tag);
+
+    string with_payload = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue " STRINGP " " STRINGP ", "
+              STRINGP " " STRINGP ", 1\n",
+              STRINGV(with_payload),
+              STRINGV(enum_type_string),
+              STRINGV(with_tag),
+              STRINGV(payload_type_string),
+              STRINGV(payload_value));
+
+    array_free(args);
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = enum_type,
+        .value      = with_payload,
+    };
+}
 
 internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
                                          const HirFunction*   function,
@@ -849,6 +1048,113 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                                    .type_index = sema_no_type(),
                                    .value      = s("1"),
                                };
+        }
+    case HIR_PATTERN_EnumVariant:
+        {
+            u32 variant_index = llvm_enum_variant_index(
+                ctx->sema, scrutinee.type_index, pattern->symbol_handle);
+            if (variant_index == U32_MAX) {
+                return (LlvmValue){0};
+            }
+
+            string enum_type = llvm_type_string(ctx, scrutinee.type_index);
+            string tag       = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 0\n",
+                      STRINGV(tag),
+                      STRINGV(enum_type),
+                      STRINGV(scrutinee.value));
+
+            string tag_matches = llvm_temp(ctx);
+            i64    discriminant = llvm_enum_variant_discriminant(
+                ctx->sema, scrutinee.type_index, variant_index);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n",
+                      STRINGV(tag_matches),
+                      STRINGV(tag),
+                      (long long)discriminant);
+
+            LlvmValue result = {
+                .ok         = true,
+                .type_index = sema_no_type(),
+                .value      = tag_matches,
+            };
+            if (pattern->child_count == 0) {
+                return result;
+            }
+
+            u32 storage_payload_type =
+                llvm_enum_storage_payload_type(ctx->sema, scrutinee.type_index);
+            u32 variant_payload_type =
+                llvm_enum_variant_payload_type(ctx->sema,
+                                               scrutinee.type_index,
+                                               variant_index);
+            if (storage_payload_type == sema_no_type() ||
+                variant_payload_type == sema_no_type()) {
+                return result;
+            }
+
+            string payload = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 1\n",
+                      STRINGV(payload),
+                      STRINGV(enum_type),
+                      STRINGV(scrutinee.value));
+
+            bool payload_is_tuple =
+                llvm_type_kind(ctx->sema, variant_payload_type) == STK_Tuple;
+            for (u32 i = 0; i < pattern->child_count; ++i) {
+                u32 child_index = pattern->first_child + i;
+                if (child_index >= array_count(ctx->hir->pattern_children)) {
+                    return (LlvmValue){0};
+                }
+
+                u32 child_type = variant_payload_type;
+                string child_value = payload;
+                if (payload_is_tuple || storage_payload_type != child_type) {
+                    child_type = payload_is_tuple
+                                     ? llvm_record_field_type(
+                                           ctx->sema, variant_payload_type, i)
+                                     : variant_payload_type;
+                    string storage_type =
+                        llvm_type_string(ctx, storage_payload_type);
+                    child_value = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", %u\n",
+                              STRINGV(child_value),
+                              STRINGV(storage_type),
+                              STRINGV(payload),
+                              i);
+                }
+
+                const HirPatternChild* child =
+                    &ctx->hir->pattern_children[child_index];
+                LlvmValue child_condition =
+                    llvm_emit_pattern_condition(ctx,
+                                                function,
+                                                (LlvmValue){
+                                                    .ok = true,
+                                                    .type_index = child_type,
+                                                    .value      = child_value,
+                                                },
+                                                child->pattern_index);
+                if (!child_condition.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string and_temp = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = and i1 " STRINGP ", " STRINGP
+                          "\n",
+                          STRINGV(and_temp),
+                          STRINGV(result.value),
+                          STRINGV(child_condition.value));
+                result.value = and_temp;
+            }
+            return result;
         }
     default:
         return (LlvmValue){0};
@@ -2299,6 +2605,19 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Call:
         {
+            if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum) {
+                u32 variant_symbol = U32_MAX;
+                if (llvm_callee_symbol_handle(
+                        ctx, expr->callee_expr_index, &variant_symbol)) {
+                    u32 variant_index = llvm_enum_variant_index(
+                        ctx->sema, expr->type_index, variant_symbol);
+                    if (variant_index != U32_MAX) {
+                        return llvm_emit_enum_constructor(
+                            ctx, function, expr, variant_index);
+                    }
+                }
+            }
+
             string callee = {0};
             if (!llvm_callee_name(ctx, expr->callee_expr_index, &callee)) {
                 return (LlvmValue){0};

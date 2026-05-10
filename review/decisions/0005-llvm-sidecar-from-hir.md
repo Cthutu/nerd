@@ -52,16 +52,22 @@ This gives us a stable place to grow LLVM lowering under tests without
 destabilising normal builds. It also validates that HIR now contains enough
 binding/module information to drive target symbol decisions.
 
-The current LLVM lowering covers a first semantic slice: simple returns,
-integer/bool literals, parameter references, integer binary operators, and
-direct calls. Unsupported bodies still fall back to default returns while the
-lowering surface grows.
+The current LLVM lowering covers the core scalar and structured slices needed
+for early backend replacement work: generated function aliases, imports,
+locals, assignments, pointer/index/deref operations, aggregate values, slices,
+structured control flow, `for` forms, `on` forms with value/plex/enum patterns,
+and enum construction for HIR-visible enum constructors.
+
+One HIR gap found during enum testing: enum constructor calls nested directly
+inside another call argument can already be simplified incorrectly before LLVM
+lowering sees them. Constructors that remain explicit in HIR, such as returned
+enum values or calls through helper functions, lower correctly. HIR generation
+needs to preserve contextual enum constructor expressions before LLVM can be
+the only backend.
 
 ## Follow-up
 
-1. Add local `let`/assignment lowering.
-2. Add LLVM type/layout lowering for pointers, arrays, slices, strings, tuples,
-   plexes, unions, and enums.
-3. Replace export comments with concrete LLVM linkage/alias decisions.
-4. Compile the generated `.ll` through clang or llc once runtime/prelude
+1. Preserve contextual enum constructors in HIR in every expression position.
+2. Replace export comments with concrete LLVM linkage/alias decisions.
+3. Compile the generated `.ll` through clang or llc once runtime/prelude
    dependencies are represented.
