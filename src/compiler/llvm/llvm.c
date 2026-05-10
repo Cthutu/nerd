@@ -138,6 +138,14 @@ internal u32 llvm_array_count(const Sema* sema, u32 type_index)
 internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if (kind == STK_String) {
+        for (u32 i = 0; i < array_count(sema->types); ++i) {
+            if (sema->types[i].kind == STK_U8) {
+                return i;
+            }
+        }
+        return sema_no_type();
+    }
     if (kind == STK_Array || kind == STK_Slice || kind == STK_Pointer) {
         return sema->types[type_index].first_param_type;
     }
@@ -147,11 +155,14 @@ internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
 internal bool llvm_type_is_record(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
-    return kind == STK_Tuple || kind == STK_Plex;
+    return kind == STK_Tuple || kind == STK_Plex || kind == STK_String;
 }
 
 internal u32 llvm_record_field_count(const Sema* sema, u32 type_index)
 {
+    if (llvm_type_kind(sema, type_index) == STK_String) {
+        return 2;
+    }
     if (!llvm_type_is_record(sema, type_index)) {
         return 0;
     }
@@ -162,6 +173,15 @@ internal u32 llvm_record_field_type(const Sema* sema,
                                     u32         type_index,
                                     u32         field_index)
 {
+    if (llvm_type_kind(sema, type_index) == STK_String) {
+        SemaTypeKind kind = field_index == 0 ? STK_Pointer : STK_Usize;
+        for (u32 i = 0; i < array_count(sema->types); ++i) {
+            if (sema->types[i].kind == kind) {
+                return i;
+            }
+        }
+        return sema_no_type();
+    }
     if (!llvm_type_is_record(sema, type_index) ||
         field_index >= sema->types[type_index].param_count) {
         return sema_no_type();
@@ -333,9 +353,11 @@ internal void llvm_append_type(StringBuilder* sb,
         }
         sb_append_cstr(sb, " }");
         break;
+    case STK_String:
+        sb_append_cstr(sb, "{ ptr, i64 }");
+        break;
     case STK_Function:
     case STK_Pointer:
-    case STK_String:
         sb_append_cstr(sb, "ptr");
         break;
     case STK_Slice:
@@ -447,6 +469,27 @@ internal void llvm_append_module_init_name(StringBuilder* sb, const Hir* hir)
     sb_format(sb, "@m%u.init", module_index);
 }
 
+internal void llvm_append_string_global_name(StringBuilder* sb,
+                                            const Hir*     hir,
+                                            u32            string_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.str.m%u.%u", module_index, string_index);
+}
+
+internal string llvm_string_global_name_string(const Hir* hir,
+                                               Arena*     arena,
+                                               u32        string_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_string_global_name(&sb, hir, string_index);
+    return sb_to_string(&sb);
+}
+
 internal string llvm_symbol_name_string(const Lexer* lexer,
                                         Arena*       arena,
                                         u32          symbol_handle)
@@ -541,7 +584,6 @@ internal void llvm_append_zero_value(StringBuilder* sb,
         break;
     case STK_Function:
     case STK_Pointer:
-    case STK_String:
     case STK_DynamicArray:
     case STK_Union:
     case STK_Module:
@@ -552,6 +594,7 @@ internal void llvm_append_zero_value(StringBuilder* sb,
     case STK_Tuple:
     case STK_Array:
     case STK_Slice:
+    case STK_String:
         sb_append_cstr(sb, "zeroinitializer");
         break;
     default:
@@ -773,7 +816,7 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(ctx->sema, type_index);
-    if (kind == STK_Pointer || kind == STK_String || kind == STK_Nil) {
+    if (kind == STK_Pointer || kind == STK_Nil) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -781,7 +824,7 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
         };
     }
     if (kind == STK_Enum || kind == STK_Tuple || kind == STK_Plex ||
-        kind == STK_Array || kind == STK_Slice) {
+        kind == STK_Array || kind == STK_Slice || kind == STK_String) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -1502,11 +1545,34 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .value      = string_format(ctx->arena, "%.17g", expr->floating),
         };
     case HIR_EXPR_StringLiteral:
-        return (LlvmValue){
-            .ok         = true,
-            .type_index = expr->type_index,
-            .value      = s("null"),
-        };
+        {
+            if (expr->string_index >= array_count(ctx->lexer->strings)) {
+                return (LlvmValue){0};
+            }
+
+            string global =
+                llvm_string_global_name_string(ctx->hir,
+                                               ctx->arena,
+                                               expr->string_index);
+            if (expr->string_is_cstring) {
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = global,
+                };
+            }
+
+            string value = string_format(
+                ctx->arena,
+                "{ ptr " STRINGP ", i64 %zu }",
+                STRINGV(global),
+                ctx->lexer->strings[expr->string_index].count);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = value,
+            };
+        }
     case HIR_EXPR_BoolLiteral:
         return (LlvmValue){
             .ok         = true,
@@ -2021,6 +2087,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             u32 field_index = U32_MAX;
             if (expr->kind == HIR_EXPR_TupleField) {
                 field_index = (u32)expr->integer;
+            } else if (llvm_type_kind(ctx->sema, target.type_index) ==
+                       STK_String) {
+                string field = lex_symbol(ctx->lexer, expr->symbol_handle);
+                if (string_eq_cstr(field, "data")) {
+                    field_index = 0;
+                } else if (string_eq_cstr(field, "count")) {
+                    field_index = 1;
+                }
             } else {
                 field_index = llvm_record_field_index(
                     ctx->sema, target.type_index, expr->symbol_handle);
@@ -3151,6 +3225,36 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
     return false;
 }
 
+internal void llvm_append_escaped_string_bytes(StringBuilder* sb, string value)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    for (usize i = 0; i < value.count; ++i) {
+        u8 ch = value.data[i];
+        if (ch >= 0x20 && ch <= 0x7e && ch != '"' && ch != '\\') {
+            sb_append_char(sb, (char)ch);
+            continue;
+        }
+        sb_append_char(sb, '\\');
+        sb_append_char(sb, hex[(ch >> 4) & 0xf]);
+        sb_append_char(sb, hex[ch & 0xf]);
+    }
+}
+
+internal void llvm_render_string_literals(StringBuilder* sb,
+                                          const Hir*      hir,
+                                          const Lexer*    lexer)
+{
+    for (u32 i = 0; i < array_count(lexer->strings); ++i) {
+        string value = lexer->strings[i];
+        llvm_append_string_global_name(sb, hir, i);
+        sb_format(sb,
+                  " = private unnamed_addr constant [%zu x i8] c\"",
+                  value.count + 1);
+        llvm_append_escaped_string_bytes(sb, value);
+        sb_append_cstr(sb, "\\00\"\n");
+    }
+}
+
 internal void llvm_render_import(StringBuilder* sb,
                                  const Lexer*   lexer,
                                  const Sema*    sema,
@@ -3352,6 +3456,11 @@ string llvm_render_hir(const Hir* hir,
 
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
     sb_append_cstr(&sb, "; generated from HIR\n\n");
+
+    if (array_count(lexer->strings) > 0) {
+        llvm_render_string_literals(&sb, hir, lexer);
+        sb_append_char(&sb, '\n');
+    }
 
     for (u32 i = 0; i < array_count(hir->imports); ++i) {
         llvm_render_import(&sb, lexer, sema, &hir->imports[i]);
