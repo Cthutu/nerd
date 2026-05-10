@@ -267,6 +267,12 @@ typedef struct {
 } LlvmLocalValue;
 
 typedef struct {
+    u32    local_index;
+    u32    type_index;
+    string ptr;
+} LlvmLocalSlot;
+
+typedef struct {
     StringBuilder*        sb;
     const Hir*            hir;
     const Lexer*          lexer;
@@ -274,6 +280,8 @@ typedef struct {
     Arena*                arena;
     u32                   next_temp;
     Array(LlvmLocalValue) locals;
+    Array(LlvmLocalSlot)  slots;
+    Array(u32)            assigned_locals;
 } LlvmFunctionContext;
 
 internal string llvm_temp(LlvmFunctionContext* ctx)
@@ -336,6 +344,88 @@ internal void llvm_set_local_value(LlvmFunctionContext* ctx,
                    .local_index = local_index,
                    .value       = value,
                });
+}
+
+internal bool llvm_local_is_assigned(LlvmFunctionContext* ctx, u32 local_index)
+{
+    for (u32 i = 0; i < array_count(ctx->assigned_locals); ++i) {
+        if (ctx->assigned_locals[i] == local_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void llvm_mark_assigned_local(LlvmFunctionContext* ctx, u32 local_index)
+{
+    if (local_index == U32_MAX || llvm_local_is_assigned(ctx, local_index)) {
+        return;
+    }
+    array_push(ctx->assigned_locals, local_index);
+}
+
+internal LlvmLocalSlot* llvm_find_local_slot(LlvmFunctionContext* ctx,
+                                             u32                  local_index)
+{
+    for (u32 i = 0; i < array_count(ctx->slots); ++i) {
+        if (ctx->slots[i].local_index == local_index) {
+            return &ctx->slots[i];
+        }
+    }
+    return NULL;
+}
+
+internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
+                                               u32                  local_index,
+                                               u32                  type_index)
+{
+    LlvmLocalSlot* slot = llvm_find_local_slot(ctx, local_index);
+    if (slot != NULL) {
+        return slot;
+    }
+
+    string ptr = string_format(ctx->arena, "%%local.%u", local_index);
+    array_push(ctx->slots,
+               (LlvmLocalSlot){
+                   .local_index = local_index,
+                   .type_index  = type_index,
+                   .ptr         = ptr,
+               });
+    string type = llvm_type_string(ctx, type_index);
+    sb_format(ctx->sb,
+              "  " STRINGP " = alloca " STRINGP "\n",
+              STRINGV(ptr),
+              STRINGV(type));
+    return &ctx->slots[array_count(ctx->slots) - 1];
+}
+
+internal void llvm_store_local_slot(LlvmFunctionContext* ctx,
+                                    LlvmLocalSlot*       slot,
+                                    LlvmValue            value)
+{
+    string type = llvm_type_string(ctx, slot->type_index);
+    sb_format(ctx->sb,
+              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(type),
+              STRINGV(value.value),
+              STRINGV(slot->ptr));
+}
+
+internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
+                                        LlvmLocalSlot*       slot)
+{
+    string type = llvm_type_string(ctx, slot->type_index);
+    string temp = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(temp),
+              STRINGV(type),
+              STRINGV(slot->ptr));
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = slot->type_index,
+        .value      = temp,
+    };
 }
 
 internal string llvm_binary_instruction(HirBinaryOp op)
@@ -427,6 +517,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         };
     case HIR_EXPR_LocalRef:
         if (expr->ref_kind == HIR_REF_Local) {
+            LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
+            if (slot != NULL) {
+                return llvm_load_local_slot(ctx, slot);
+            }
+
             LlvmValue local_value = {0};
             if (llvm_find_local_value(ctx, expr->ref_index, &local_value)) {
                 return local_value;
@@ -530,8 +625,42 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
         return false;
     }
 
+    if (llvm_local_is_assigned(ctx, stmt->local_index)) {
+        LlvmLocalSlot* slot =
+            llvm_ensure_local_slot(ctx, stmt->local_index, stmt->type_index);
+        llvm_store_local_slot(ctx, slot, value);
+        return true;
+    }
+
     value.type_index = stmt->type_index;
     llvm_set_local_value(ctx, stmt->local_index, value);
+    return true;
+}
+
+internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt)
+{
+    if (stmt->target_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
+    if (target->kind != HIR_EXPR_LocalRef ||
+        target->ref_kind != HIR_REF_Local) {
+        return false;
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
+        return false;
+    }
+
+    u32 type_index = target->type_index != sema_no_type() ? target->type_index
+                                                          : value.type_index;
+    LlvmLocalSlot* slot =
+        llvm_ensure_local_slot(ctx, target->ref_index, type_index);
+    llvm_store_local_slot(ctx, slot, value);
     return true;
 }
 
@@ -558,6 +687,34 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
+                                           u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return;
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            continue;
+        }
+
+        const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        if (stmt->kind != HIR_STMT_Assign ||
+            stmt->target_expr_index >= array_count(ctx->hir->exprs)) {
+            continue;
+        }
+
+        const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
+        if (target->kind == HIR_EXPR_LocalRef &&
+            target->ref_kind == HIR_REF_Local) {
+            llvm_mark_assigned_local(ctx, target->ref_index);
+        }
+    }
+}
+
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
                               u32                  block_index)
@@ -576,6 +733,11 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
         if (stmt->kind == HIR_STMT_Let) {
             if (!llvm_emit_let(ctx, function, stmt)) {
+                return false;
+            }
+            continue;
+        } else if (stmt->kind == HIR_STMT_Assign) {
+            if (!llvm_emit_assign(ctx, function, stmt)) {
                 return false;
             }
             continue;
@@ -645,11 +807,14 @@ internal void llvm_render_function(StringBuilder*    sb,
         .arena     = &temp,
         .next_temp = 0,
     };
+    llvm_collect_assigned_locals(&ctx, function->body_block_index);
     if (!llvm_emit_block(&ctx, function, function->body_block_index)) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         llvm_append_default_return(sb, sema, return_type);
     }
     array_free(ctx.locals);
+    array_free(ctx.slots);
+    array_free(ctx.assigned_locals);
     arena_done(&temp);
     sb_append_cstr(sb, "}\n");
     (void)arena;
