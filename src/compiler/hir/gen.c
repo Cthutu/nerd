@@ -377,6 +377,23 @@ internal u32 hir_function_param_type(const Sema* sema,
                                   param_index];
 }
 
+internal u32 hir_call_arg_value_node(const Ast* ast,
+                                     u32        arg_node_index,
+                                     u32*       out_symbol)
+{
+    *out_symbol = U32_MAX;
+    if (arg_node_index < array_count(ast->nodes) &&
+        ast->nodes[arg_node_index].kind == AK_Assign) {
+        const AstNode* assign = &ast->nodes[arg_node_index];
+        if (assign->a < array_count(ast->nodes) &&
+            ast->nodes[assign->a].kind == AK_SymbolRef) {
+            *out_symbol    = ast->nodes[assign->a].a;
+            arg_node_index = assign->b;
+        }
+    }
+    return arg_node_index;
+}
+
 internal u32 hir_enum_variant_index(const Sema* sema,
                                     u32         enum_type,
                                     u32         symbol_handle)
@@ -445,6 +462,9 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
         Array(HirCallArg) lowered_args = NULL;
         for (u32 i = 0; i < call->arg_count; ++i) {
             u32 arg_node_index = ast->call_args[call->first_arg + i];
+            u32 arg_symbol     = U32_MAX;
+            arg_node_index =
+                hir_call_arg_value_node(ast, arg_node_index, &arg_symbol);
             array_push(lowered_args,
                        (HirCallArg){
                            .expr_index =
@@ -453,7 +473,7 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
                                               ast,
                                               sema,
                                               arg_node_index),
-                           .symbol_handle = U32_MAX,
+                           .symbol_handle = arg_symbol,
                        });
         }
         u32 first_arg = (u32)array_count(hir->call_args);
@@ -719,6 +739,117 @@ internal u32 hir_lower_expr(Hir*         hir,
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
 
+            if (node_index < array_count(sema->node_method_call_decl_indices) &&
+                sema->node_method_call_decl_indices[node_index] !=
+                    sema_no_decl() &&
+                node->a < array_count(ast->nodes) &&
+                ast->nodes[node->a].kind == AK_Field) {
+                const AstNode* callee_node = &ast->nodes[node->a];
+                const AstCallInfo* call    = &ast->calls[node->b];
+                u32 decl_index =
+                    sema->node_method_call_decl_indices[node_index];
+                u32 callee_type = hir_node_type(sema, node->a);
+                u32 lowered_symbol =
+                    node->a < array_count(sema->node_lowered_symbol_handles)
+                        ? sema->node_lowered_symbol_handles[node->a]
+                        : U32_MAX;
+                u32 binding_index = hir_decl_binding(hir, decl_index);
+                u32 callee_expr_index =
+                    hir_add_expr(hir,
+                                 (HirExpr){
+                                     .kind          = HIR_EXPR_LocalRef,
+                                     .type_index    = callee_type,
+                                     .symbol_handle = lowered_symbol,
+                                     .local_index   = sema_no_local(),
+                                     .ref_kind =
+                                         binding_index != hir_no_index()
+                                             ? HIR_REF_Binding
+                                             : HIR_REF_Decl,
+                                     .ref_index =
+                                         binding_index != hir_no_index()
+                                             ? binding_index
+                                             : decl_index,
+                                 });
+
+                Array(HirCallArg) lowered_args = NULL;
+                u32 receiver_expr_index =
+                    hir_lower_expr(hir, lexer, ast, sema, callee_node->a);
+                u32 receiver_type =
+                    hir_function_param_type(sema, callee_type, 0);
+                if (receiver_type == sema_no_type()) {
+                    receiver_type = hir_node_type(sema, callee_node->a);
+                }
+                if (sema->node_method_call_receiver_refs[node_index]) {
+                    receiver_expr_index =
+                        hir_add_expr(hir,
+                                     (HirExpr){
+                                         .kind = HIR_EXPR_Unary,
+                                         .type_index = receiver_type,
+                                         .symbol_handle = U32_MAX,
+                                         .local_index = sema_no_local(),
+                                         .operand_expr_index =
+                                             receiver_expr_index,
+                                         .unary_op = HIR_UNARY_AddressOf,
+                                     });
+                } else if (sema->node_method_call_receiver_derefs[node_index]) {
+                    receiver_expr_index =
+                        hir_add_expr(hir,
+                                     (HirExpr){
+                                         .kind = HIR_EXPR_Unary,
+                                         .type_index = receiver_type,
+                                         .symbol_handle = U32_MAX,
+                                         .local_index = sema_no_local(),
+                                         .operand_expr_index =
+                                             receiver_expr_index,
+                                         .unary_op = HIR_UNARY_Deref,
+                                     });
+                }
+                array_push(lowered_args,
+                           (HirCallArg){
+                               .expr_index     = receiver_expr_index,
+                               .symbol_handle  = U32_MAX,
+                           });
+
+                for (u32 i = 0; i < call->arg_count; ++i) {
+                    u32 arg_node_index = ast->call_args[call->first_arg + i];
+                    u32 arg_symbol     = U32_MAX;
+                    arg_node_index = hir_call_arg_value_node(
+                        ast, arg_node_index, &arg_symbol);
+                    u32 expected_arg_type =
+                        hir_function_param_type(sema, callee_type, i + 1);
+                    array_push(lowered_args,
+                               (HirCallArg){
+                                   .expr_index = hir_lower_expr_with_expected(
+                                       hir,
+                                       lexer,
+                                       ast,
+                                       sema,
+                                       arg_node_index,
+                                       expected_arg_type),
+                                   .symbol_handle = arg_symbol,
+                               });
+                }
+
+                u32 first_arg = (u32)array_count(hir->call_args);
+                for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                    array_push(hir->call_args, lowered_args[i]);
+                }
+                u32 arg_count = (u32)array_count(lowered_args);
+                array_free(lowered_args);
+
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind              = HIR_EXPR_Call,
+                        .type_index        = hir_node_type(sema, node_index),
+                        .symbol_handle     = U32_MAX,
+                        .local_index       = sema_no_local(),
+                        .callee_expr_index = callee_expr_index,
+                        .first_arg         = first_arg,
+                        .arg_count         = arg_count,
+                    });
+            }
+
             u32 callee_expr_index =
                 hir_lower_expr(hir, lexer, ast, sema, node->a);
             const AstCallInfo* call      = &ast->calls[node->b];
@@ -730,6 +861,9 @@ internal u32 hir_lower_expr(Hir*         hir,
             Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < call->arg_count; ++i) {
                 u32 arg_node_index = ast->call_args[call->first_arg + i];
+                u32 arg_symbol     = U32_MAX;
+                arg_node_index =
+                    hir_call_arg_value_node(ast, arg_node_index, &arg_symbol);
                 u32 expected_arg_type =
                     hir_function_param_type(sema, callee_type, i);
                 array_push(lowered_args,
@@ -741,7 +875,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                                    sema,
                                    arg_node_index,
                                    expected_arg_type),
-                               .symbol_handle = U32_MAX,
+                               .symbol_handle = arg_symbol,
                            });
             }
             u32 first_arg = (u32)array_count(hir->call_args);

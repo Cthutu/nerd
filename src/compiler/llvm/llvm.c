@@ -2265,6 +2265,61 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if ((expr->kind == HIR_EXPR_Field || expr->kind == HIR_EXPR_TupleField) &&
+        expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+        const HirExpr* target_expr = &ctx->hir->exprs[expr->operand_expr_index];
+        u32 target_type = target_expr->type_index;
+        u32 record_type = target_type;
+        bool target_is_pointer =
+            llvm_type_kind(ctx->sema, target_type) == STK_Pointer;
+        if (target_is_pointer) {
+            record_type = llvm_pointee_type(ctx->sema, target_type);
+        }
+
+        u32 field_index = U32_MAX;
+        if (expr->kind == HIR_EXPR_TupleField) {
+            field_index = (u32)expr->integer;
+        } else if (llvm_type_kind(ctx->sema, record_type) == STK_String ||
+                   llvm_type_kind(ctx->sema, record_type) == STK_Slice) {
+            string field = lex_symbol(ctx->lexer, expr->symbol_handle);
+            if (string_eq_cstr(field, "data")) {
+                field_index = 0;
+            } else if (string_eq_cstr(field, "count")) {
+                field_index = 1;
+            }
+        } else {
+            field_index = llvm_record_field_index(
+                ctx->sema, record_type, expr->symbol_handle);
+        }
+        if (field_index == U32_MAX ||
+            llvm_type_kind(ctx->sema, record_type) == STK_Union) {
+            return (LlvmValue){0};
+        }
+
+        LlvmValue target_address =
+            target_is_pointer
+                ? llvm_emit_expr(ctx, function, expr->operand_expr_index)
+                : llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+        if (!target_address.ok) {
+            return (LlvmValue){0};
+        }
+
+        string record_type_string = llvm_type_string(ctx, record_type);
+        string ptr                = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 0, i32 %u\n",
+                  STRINGV(ptr),
+                  STRINGV(record_type_string),
+                  STRINGV(target_address.value),
+                  field_index);
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = sema_no_type(),
+            .value      = ptr,
+        };
+    }
+
     if (expr->kind == HIR_EXPR_Index) {
         if (expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
             return (LlvmValue){0};
@@ -5781,6 +5836,18 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
 
     if (target->kind == HIR_EXPR_TupleField ||
         target->kind == HIR_EXPR_Field) {
+        LlvmValue field_ptr =
+            llvm_address_of_expr(ctx, function, target_expr_index);
+        if (field_ptr.ok) {
+            string value_type = llvm_type_string(ctx, value.type_index);
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(value_type),
+                      STRINGV(value.value),
+                      STRINGV(field_ptr.value));
+            return true;
+        }
+
         LlvmValue record =
             llvm_emit_expr(ctx, function, target->operand_expr_index);
         if (!record.ok) {
