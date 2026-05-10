@@ -256,19 +256,25 @@ internal void llvm_append_default_return(StringBuilder* sb,
 }
 
 typedef struct {
-    StringBuilder* sb;
-    const Hir*     hir;
-    const Lexer*   lexer;
-    const Sema*    sema;
-    Arena*         arena;
-    u32            next_temp;
-} LlvmFunctionContext;
-
-typedef struct {
     bool   ok;
     u32    type_index;
     string value;
 } LlvmValue;
+
+typedef struct {
+    u32       local_index;
+    LlvmValue value;
+} LlvmLocalValue;
+
+typedef struct {
+    StringBuilder*        sb;
+    const Hir*            hir;
+    const Lexer*          lexer;
+    const Sema*           sema;
+    Arena*                arena;
+    u32                   next_temp;
+    Array(LlvmLocalValue) locals;
+} LlvmFunctionContext;
 
 internal string llvm_temp(LlvmFunctionContext* ctx)
 {
@@ -299,6 +305,37 @@ internal string llvm_param_value(const HirFunction* function,
             lex_symbol(lexer, param->symbol_handle).data);
     }
     return (string){0};
+}
+
+internal bool llvm_find_local_value(LlvmFunctionContext* ctx,
+                                    u32                  local_index,
+                                    LlvmValue*           out)
+{
+    for (u32 i = 0; i < array_count(ctx->locals); ++i) {
+        if (ctx->locals[i].local_index == local_index) {
+            *out = ctx->locals[i].value;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void llvm_set_local_value(LlvmFunctionContext* ctx,
+                                   u32                  local_index,
+                                   LlvmValue            value)
+{
+    for (u32 i = 0; i < array_count(ctx->locals); ++i) {
+        if (ctx->locals[i].local_index == local_index) {
+            ctx->locals[i].value = value;
+            return;
+        }
+    }
+
+    array_push(ctx->locals,
+               (LlvmLocalValue){
+                   .local_index = local_index,
+                   .value       = value,
+               });
 }
 
 internal string llvm_binary_instruction(HirBinaryOp op)
@@ -390,6 +427,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         };
     case HIR_EXPR_LocalRef:
         if (expr->ref_kind == HIR_REF_Local) {
+            LlvmValue local_value = {0};
+            if (llvm_find_local_value(ctx, expr->ref_index, &local_value)) {
+                return local_value;
+            }
+
             string value = llvm_param_value(function,
                                             ctx->hir,
                                             ctx->lexer,
@@ -475,6 +517,24 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     }
 }
 
+internal bool llvm_emit_let(LlvmFunctionContext* ctx,
+                            const HirFunction*   function,
+                            const HirStmt*       stmt)
+{
+    if (stmt->local_index == U32_MAX || stmt->expr_index == U32_MAX) {
+        return false;
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
+        return false;
+    }
+
+    value.type_index = stmt->type_index;
+    llvm_set_local_value(ctx, stmt->local_index, value);
+    return true;
+}
+
 internal bool llvm_emit_return(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                const HirStmt*       stmt)
@@ -514,7 +574,12 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
-        if (stmt->kind == HIR_STMT_Return) {
+        if (stmt->kind == HIR_STMT_Let) {
+            if (!llvm_emit_let(ctx, function, stmt)) {
+                return false;
+            }
+            continue;
+        } else if (stmt->kind == HIR_STMT_Return) {
             return llvm_emit_return(ctx, function, stmt);
         }
     }
@@ -584,6 +649,7 @@ internal void llvm_render_function(StringBuilder*    sb,
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         llvm_append_default_return(sb, sema, return_type);
     }
+    array_free(ctx.locals);
     arena_done(&temp);
     sb_append_cstr(sb, "}\n");
     (void)arena;
