@@ -57,6 +57,67 @@ internal bool llvm_type_is_function(const Sema* sema, u32 type_index)
            sema->types[type_index].kind == STK_Function;
 }
 
+internal SemaTypeKind llvm_type_kind(const Sema* sema, u32 type_index)
+{
+    if (sema == NULL || type_index == sema_no_type() ||
+        type_index >= array_count(sema->types)) {
+        return STK_Void;
+    }
+    return sema->types[type_index].kind;
+}
+
+internal bool llvm_type_is_unsigned_integer(const Sema* sema, u32 type_index)
+{
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Usize:
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal u32 llvm_integer_bits(const Sema* sema, u32 type_index)
+{
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_Bool:
+        return 1;
+    case STK_I8:
+    case STK_U8:
+        return 8;
+    case STK_I16:
+    case STK_U16:
+        return 16;
+    case STK_I32:
+    case STK_U32:
+    case STK_UntypedInteger:
+        return 32;
+    case STK_I64:
+    case STK_U64:
+    case STK_Isize:
+    case STK_Usize:
+        return 64;
+    default:
+        return 0;
+    }
+}
+
+internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
+{
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_F32:
+        return 32;
+    case STK_F64:
+    case STK_UntypedFloat:
+        return 64;
+    default:
+        return 0;
+    }
+}
+
 internal void llvm_append_type(StringBuilder* sb,
                                const Sema*    sema,
                                u32            type_index)
@@ -517,6 +578,59 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     }
 }
 
+internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
+                                      u32                  source_type,
+                                      u32                  target_type)
+{
+    u32 source_int_bits   = llvm_integer_bits(ctx->sema, source_type);
+    u32 target_int_bits   = llvm_integer_bits(ctx->sema, target_type);
+    u32 source_float_bits = llvm_float_bits(ctx->sema, source_type);
+    u32 target_float_bits = llvm_float_bits(ctx->sema, target_type);
+
+    if (source_int_bits > 0 && target_int_bits > 0) {
+        if (source_int_bits == target_int_bits) {
+            return s("");
+        }
+        return source_int_bits > target_int_bits
+                   ? s("trunc")
+                   : (llvm_type_is_unsigned_integer(ctx->sema, source_type)
+                          ? s("zext")
+                          : s("sext"));
+    }
+
+    if (source_float_bits > 0 && target_float_bits > 0) {
+        if (source_float_bits == target_float_bits) {
+            return s("");
+        }
+        return source_float_bits > target_float_bits ? s("fptrunc")
+                                                     : s("fpext");
+    }
+
+    if (source_float_bits > 0 && target_int_bits > 0) {
+        return llvm_type_is_unsigned_integer(ctx->sema, target_type)
+                   ? s("fptoui")
+                   : s("fptosi");
+    }
+
+    if (source_int_bits > 0 && target_float_bits > 0) {
+        return llvm_type_is_unsigned_integer(ctx->sema, source_type)
+                   ? s("uitofp")
+                   : s("sitofp");
+    }
+
+    if (llvm_type_kind(ctx->sema, source_type) == STK_Pointer &&
+        target_int_bits > 0) {
+        return s("ptrtoint");
+    }
+
+    if (source_int_bits > 0 &&
+        llvm_type_kind(ctx->sema, target_type) == STK_Pointer) {
+        return s("inttoptr");
+    }
+
+    return (string){0};
+}
+
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index)
@@ -533,11 +647,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .type_index = expr->type_index,
             .value = string_format(ctx->arena, "%lld", (long long)expr->integer),
         };
+    case HIR_EXPR_FloatLiteral:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value      = string_format(ctx->arena, "%.17g", expr->floating),
+        };
+    case HIR_EXPR_StringLiteral:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value      = s("null"),
+        };
     case HIR_EXPR_BoolLiteral:
         return (LlvmValue){
             .ok         = true,
             .type_index = expr->type_index,
             .value      = expr->boolean ? s("1") : s("0"),
+        };
+    case HIR_EXPR_NilLiteral:
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value      = s("null"),
         };
     case HIR_EXPR_LocalRef:
         if (expr->ref_kind == HIR_REF_Local) {
@@ -659,6 +791,41 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             default:
                 return (LlvmValue){0};
             }
+        }
+    case HIR_EXPR_Cast:
+        {
+            LlvmValue operand =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!operand.ok) {
+                return (LlvmValue){0};
+            }
+
+            string source_type = llvm_type_string(ctx, operand.type_index);
+            string target_type = llvm_type_string(ctx, expr->type_index);
+            string instr =
+                llvm_cast_instruction(ctx, operand.type_index, expr->type_index);
+            if (instr.count == 0) {
+                if (string_eq(source_type, target_type)) {
+                    operand.type_index = expr->type_index;
+                    return operand;
+                }
+                return (LlvmValue){0};
+            }
+
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
+                      " to " STRINGP "\n",
+                      STRINGV(temp),
+                      STRINGV(instr),
+                      STRINGV(source_type),
+                      STRINGV(operand.value),
+                      STRINGV(target_type));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = temp,
+            };
         }
     case HIR_EXPR_Call:
         {
