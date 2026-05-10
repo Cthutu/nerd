@@ -1916,6 +1916,7 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
                                      u32                  block_index);
 
 internal bool llvm_callee_name(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
                                u32                  callee_expr_index,
                                string*              out)
 {
@@ -1934,7 +1935,13 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     if (callee->kind != HIR_EXPR_LocalRef ||
         callee->ref_kind != HIR_REF_Binding ||
         callee->ref_index >= array_count(ctx->hir->bindings)) {
-        return false;
+        LlvmValue callee_value = llvm_emit_expr(ctx, function, callee_expr_index);
+        if (!callee_value.ok ||
+            !llvm_type_is_function(ctx->sema, callee_value.type_index)) {
+            return false;
+        }
+        *out = callee_value.value;
+        return true;
     }
 
     const HirBinding* binding = &ctx->hir->bindings[callee->ref_index];
@@ -1948,8 +1955,16 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
             ctx->lexer, ctx->arena, binding->symbol_handle);
         return true;
     default:
+        break;
+    }
+
+    LlvmValue callee_value = llvm_emit_expr(ctx, function, callee_expr_index);
+    if (!callee_value.ok ||
+        !llvm_type_is_function(ctx->sema, callee_value.type_index)) {
         return false;
     }
+    *out = callee_value.value;
+    return true;
 }
 
 internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
@@ -2125,6 +2140,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .ok         = true,
             .type_index = expr->type_index,
             .value      = s("null"),
+        };
+    case HIR_EXPR_FunctionRef:
+        if (expr->ref_index >= array_count(ctx->hir->functions)) {
+            return (LlvmValue){0};
+        }
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = expr->type_index,
+            .value      = llvm_function_name_string(
+                ctx->hir, ctx->lexer, ctx->arena, expr->ref_index),
         };
     case HIR_EXPR_Array:
         {
@@ -3558,7 +3583,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             string callee = {0};
-            if (!llvm_callee_name(ctx, expr->callee_expr_index, &callee)) {
+            if (!llvm_callee_name(ctx, function, expr->callee_expr_index, &callee)) {
                 return (LlvmValue){0};
             }
 
@@ -3830,6 +3855,45 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal void llvm_bind_block_function_values(LlvmFunctionContext* ctx,
+                                              u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return;
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            continue;
+        }
+
+        const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        if (stmt->kind != HIR_STMT_Let ||
+            stmt->local_index == U32_MAX ||
+            stmt->expr_index >= array_count(ctx->hir->exprs)) {
+            continue;
+        }
+
+        const HirExpr* expr = &ctx->hir->exprs[stmt->expr_index];
+        if (expr->kind != HIR_EXPR_FunctionRef ||
+            expr->ref_index >= array_count(ctx->hir->functions)) {
+            continue;
+        }
+
+        llvm_set_local_value(
+            ctx,
+            stmt->local_index,
+            (LlvmValue){
+                .ok         = true,
+                .type_index = stmt->type_index,
+                .value      = llvm_function_name_string(
+                    ctx->hir, ctx->lexer, ctx->arena, expr->ref_index),
+            });
+    }
+}
+
 internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
                                            u32                  block_index)
 {
@@ -3923,6 +3987,8 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
     if (block_index >= array_count(ctx->hir->blocks)) {
         return false;
     }
+
+    llvm_bind_block_function_values(ctx, block_index);
 
     const HirBlock* block = &ctx->hir->blocks[block_index];
     for (u32 i = 0; i < block->stmt_count; ++i) {
