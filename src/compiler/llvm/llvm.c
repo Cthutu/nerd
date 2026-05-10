@@ -1640,6 +1640,9 @@ internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
         if (source_int_bits == target_int_bits) {
             return s("");
         }
+        if (llvm_type_kind(ctx->sema, source_type) == STK_Bool) {
+            return s("zext");
+        }
         return source_int_bits > target_int_bits
                    ? s("trunc")
                    : (llvm_type_is_unsigned_integer(ctx->sema, source_type)
