@@ -23,6 +23,7 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
         .emit_ir_file   = false,
         .emit_llvm_file = false,
         .emit_c_file    = false,
+        .use_llvm_backend = false,
         .compile_binary = true,
         .release        = false,
         .keywords       = NULL,

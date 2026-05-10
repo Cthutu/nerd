@@ -8,6 +8,7 @@
 #if OS_POSIX
 #    include <sys/stat.h>
 #endif
+#include <stdio.h>
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
@@ -44,6 +45,14 @@ internal string back_end_copy_string(Arena* arena, string text)
     u8* copy = (u8*)arena_alloc(arena, text.count);
     memcpy(copy, text.data, text.count);
     return string_from(copy, text.count);
+}
+
+internal cstr back_end_cstr(Arena* arena, string text)
+{
+    char* copy = (char*)arena_alloc(arena, text.count + 1);
+    memcpy(copy, text.data, text.count);
+    copy[text.count] = '\0';
+    return copy;
 }
 
 internal u32 back_end_import_ir_string(ProgramBackEndMerge* merge, string text)
@@ -663,6 +672,7 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
         .emit_ir_file   = false,
         .emit_llvm_file = false,
         .emit_c_file    = false,
+        .use_llvm_backend = false,
         .compile_binary = true,
         .release        = false,
     };
@@ -801,6 +811,133 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     return true;
 }
 
+internal bool back_end_write_text_file(cstr path, string text)
+{
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        return error_runtime("Failed to open file for writing: %s", path);
+    }
+
+    usize written = fwrite(text.data, 1, text.count, file);
+    bool close_failed = fclose(file) != 0;
+    if (written != text.count || close_failed) {
+        return error_runtime("Failed to write file: %s", path);
+    }
+    return true;
+}
+
+internal cstr back_end_runtime_source_path(Arena* arena, cstr filename)
+{
+    cstr relative = back_end_cstr(
+        arena, string_format(arena, "data/%s", filename));
+    cstr result = path_canonical(arena, relative);
+    if (result != NULL) {
+        return result;
+    }
+
+    cstr exe_dir = path_executable_dir(arena);
+    if (exe_dir == NULL) {
+        return NULL;
+    }
+    cstr from_exe = path_join(
+        arena,
+        path_join(arena, exe_dir, ".."),
+        back_end_cstr(arena, string_format(arena, "data/%s", filename)));
+    return path_canonical(arena, from_exe);
+}
+
+internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
+                                            const NerdArtifactConfig* artifacts)
+{
+    if (!artifacts->compile_binary &&
+        !artifacts->emit_llvm_file) {
+        return true;
+    }
+    if (program->root_module_index >= array_count(program->modules)) {
+        return false;
+    }
+
+    const FrontEndState* root =
+        &program->modules[program->root_module_index].front_end;
+    if (!llvm_save_hir(
+            &root->hir, &root->lexer, &root->sema, artifacts->llvm_path)) {
+        return false;
+    }
+    if (!artifacts->compile_binary) {
+        return true;
+    }
+
+    Arena arena = {0};
+    arena_init(&arena);
+
+    cstr epilogue_bridge_path =
+        back_end_cstr(&arena,
+                      string_format(&arena,
+                                    "%s.epilogue_bridge.c",
+                                    artifacts->binary_path));
+    cstr init_ll_path =
+        back_end_cstr(&arena,
+                      string_format(&arena,
+                                    "%s.init.ll",
+                                    artifacts->binary_path));
+    cstr prelude_path = back_end_runtime_source_path(&arena, "prelude.c");
+    cstr epilogue_path = back_end_runtime_source_path(&arena, "epilogue.c");
+    if (prelude_path == NULL || epilogue_path == NULL) {
+        arena_done(&arena);
+        return error_runtime("Failed to resolve LLVM runtime bridge paths");
+    }
+
+    string epilogue_bridge = string_format(
+        &arena,
+        "extern void init(void);\n"
+        "extern int $main(void);\n"
+        "#include \"%s\"\n",
+        epilogue_path);
+    string init_ll = s("define void @init() {\n  ret void\n}\n");
+    if (!back_end_write_text_file(epilogue_bridge_path, epilogue_bridge) ||
+        !back_end_write_text_file(init_ll_path, init_ll)) {
+        arena_done(&arena);
+        return false;
+    }
+
+    string opt_flags =
+        artifacts->release ? s("-O2 -DNDEBUG") : s("-g -O0 -DDEBUG");
+    string command = string_format(
+        &arena,
+        "clang -std=gnu23 -Wno-dollar-in-identifier-extension " STRINGP
+        " -o \"%s\" \"%s\" \"%s\" \"%s\" \"%s\"",
+        STRINGV(opt_flags),
+        artifacts->binary_path,
+        prelude_path,
+        epilogue_bridge_path,
+        artifacts->llvm_path,
+        init_ll_path);
+    int compile_result = shell(back_end_cstr(&arena, command));
+    if (compile_result != 0) {
+        arena_done(&arena);
+        return error_runtime(
+            "Failed to compile generated LLVM file (exit code %d)",
+            compile_result);
+    }
+
+#if OS_POSIX
+    if (chmod(artifacts->binary_path, 0755) != 0) {
+        arena_done(&arena);
+        return error_runtime("Failed to make %s executable",
+                             artifacts->binary_path);
+    }
+#endif
+
+    path_remove(epilogue_bridge_path);
+    path_remove(init_ll_path);
+    if (!artifacts->emit_llvm_file) {
+        path_remove(artifacts->llvm_path);
+    }
+
+    arena_done(&arena);
+    return true;
+}
+
 bool back_end(const FrontEndState*      front_end_results,
               const NerdArtifactConfig* artifacts,
               bool                      verbose,
@@ -878,6 +1015,10 @@ bool back_end_program(const ProgramInfo*        program,
                 &root->hir, &root->lexer, &root->sema, artifacts->llvm_path)) {
             return false;
         }
+    }
+
+    if (artifacts->use_llvm_backend) {
+        return back_end_compile_llvm_program(program, artifacts);
     }
 
     ProgramBackEndMerge merge = {0};

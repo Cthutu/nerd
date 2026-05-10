@@ -21,6 +21,15 @@ Start with a non-invasive LLVM sidecar artifact generated from HIR:
 nerd build --llvm source.n
 ```
 
+An opt-in execution backend is available separately:
+
+```text
+nerd run --llvm-backend source.n
+```
+
+This path writes generated LLVM IR and compiles it with the existing C
+prelude/epilogue bridge. It is intentionally not the default backend yet.
+
 The first emitter writes textual `.ll` from root-module HIR and covers:
 
 - Generated names for all function entities, such as `@fn.N`.
@@ -62,5 +71,5 @@ call arguments.
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
-2. Compile the generated `.ll` through clang or llc once runtime/prelude
-   dependencies are represented.
+2. Move the runtime bridge from C source compilation toward stable LLVM IR or
+   bitcode artifacts.

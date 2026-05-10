@@ -297,6 +297,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
             build_flags,
+            nerd_cli_make_flag(arena,
+                               "llvm-backend",
+                               NULL,
+                               "Build executable with LLVM backend"));
+        json_array_push(
+            build_flags,
             nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
         json_array_push(
@@ -343,6 +349,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             run_flags,
             nerd_cli_make_flag(
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
+        json_array_push(
+            run_flags,
+            nerd_cli_make_flag(arena,
+                               "llvm-backend",
+                               NULL,
+                               "Build executable with LLVM backend"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(
@@ -577,6 +589,8 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .llvm_backend =
+            nerd_cli_flag_bool(cli_result, "command.flags.llvm-backend", false),
         .release =
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
@@ -631,6 +645,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
+        .llvm_backend =
+            nerd_cli_flag_bool(cli_result, "command.flags.llvm-backend", false),
         .keep_binary =
             nerd_cli_flag_bool(cli_result, "command.flags.keep", false),
         .release =
