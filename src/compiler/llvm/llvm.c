@@ -985,6 +985,8 @@ typedef struct {
     string continue_label;
     string break_value_ptr;
     u32    break_value_type;
+    u32    break_defer_count;
+    u32    continue_defer_count;
 } LlvmControlTarget;
 
 typedef struct {
@@ -1001,11 +1003,14 @@ typedef struct {
     string                continue_label;
     string                break_value_ptr;
     u32                   break_value_type;
+    u32                   break_defer_count;
+    u32                   continue_defer_count;
     u32                   global_init_value_index;
     bool                  discard_expr_value;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
+    Array(u32)            defer_block_indices;
     Array(LlvmControlTarget) control_targets;
 } LlvmFunctionContext;
 
@@ -3048,6 +3053,32 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
                                      const HirFunction*   function,
                                      u32                  block_index);
 
+internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  u32                  defer_count,
+                                  bool                 pop)
+{
+    if (defer_count > array_count(ctx->defer_block_indices)) {
+        return false;
+    }
+
+    u32 old_count = array_count(ctx->defer_block_indices);
+    for (u32 i = old_count; i > defer_count; --i) {
+        u32 block_index = ctx->defer_block_indices[i - 1];
+        if (!llvm_emit_effect_block(ctx, function, block_index)) {
+            return false;
+        }
+        if (ctx->block_terminated) {
+            return false;
+        }
+    }
+
+    if (pop && ctx->defer_block_indices != NULL) {
+        __array_count(ctx->defer_block_indices) = defer_count;
+    }
+    return true;
+}
+
 internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                u32                  callee_expr_index,
@@ -4725,7 +4756,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             string old_continue = ctx->continue_label;
             string old_break_value_ptr = ctx->break_value_ptr;
             u32    old_break_value_type = ctx->break_value_type;
+            u32    old_break_defer_count = ctx->break_defer_count;
+            u32    old_continue_defer_count = ctx->continue_defer_count;
             bool   old_break_emitted = ctx->emitted_break;
+            u32    block_defer_base = array_count(ctx->defer_block_indices);
 
             string result_ptr = {0};
             if (!llvm_type_is_void(ctx->sema, expr->type_index)) {
@@ -4751,6 +4785,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             ctx->continue_label   = (string){0};
             ctx->break_value_ptr  = result_ptr;
             ctx->break_value_type = expr->type_index;
+            ctx->break_defer_count = block_defer_base;
+            ctx->continue_defer_count = block_defer_base;
             ctx->emitted_break    = false;
             llvm_push_control_target(
                 ctx,
@@ -4760,6 +4796,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .continue_label   = (string){0},
                     .break_value_ptr  = result_ptr,
                     .break_value_type = expr->type_index,
+                    .break_defer_count = block_defer_base,
+                    .continue_defer_count = block_defer_base,
                 });
 
             bool emitted =
@@ -4770,6 +4808,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             ctx->continue_label   = old_continue;
             ctx->break_value_ptr  = old_break_value_ptr;
             ctx->break_value_type = old_break_value_type;
+            ctx->break_defer_count = old_break_defer_count;
+            ctx->continue_defer_count = old_continue_defer_count;
             ctx->emitted_break    = old_break_emitted;
             if (!emitted) {
                 return (LlvmValue){0};
@@ -5396,11 +5436,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string old_continue = ctx->continue_label;
                 string old_break_value_ptr = ctx->break_value_ptr;
                 u32    old_break_value_type = ctx->break_value_type;
+                u32    old_break_defer_count = ctx->break_defer_count;
+                u32    old_continue_defer_count = ctx->continue_defer_count;
                 bool   old_break_emitted = ctx->emitted_break;
+                u32    loop_defer_base = array_count(ctx->defer_block_indices);
                 ctx->break_label    = end_label;
                 ctx->continue_label = cond_label;
                 ctx->break_value_ptr  = result_ptr;
                 ctx->break_value_type = expr->type_index;
+                ctx->break_defer_count = loop_defer_base;
+                ctx->continue_defer_count = loop_defer_base;
                 ctx->emitted_break    = false;
                 llvm_push_control_target(
                     ctx,
@@ -5410,6 +5455,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         .continue_label   = cond_label,
                         .break_value_ptr  = result_ptr,
                         .break_value_type = expr->type_index,
+                        .break_defer_count = loop_defer_base,
+                        .continue_defer_count = loop_defer_base,
                     });
                 if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
                     llvm_pop_control_target(ctx, loop->label_symbol);
@@ -5417,6 +5464,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     ctx->continue_label   = old_continue;
                     ctx->break_value_ptr  = old_break_value_ptr;
                     ctx->break_value_type = old_break_value_type;
+                    ctx->break_defer_count = old_break_defer_count;
+                    ctx->continue_defer_count = old_continue_defer_count;
                     ctx->emitted_break    = old_break_emitted;
                     return (LlvmValue){0};
                 }
@@ -5477,6 +5526,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         ctx->continue_label   = old_continue;
                         ctx->break_value_ptr  = old_break_value_ptr;
                         ctx->break_value_type = old_break_value_type;
+                        ctx->break_defer_count = old_break_defer_count;
+                        ctx->continue_defer_count = old_continue_defer_count;
                         ctx->emitted_break    = old_break_emitted;
                         return (LlvmValue){0};
                     }
@@ -5490,6 +5541,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->continue_label   = old_continue;
                 ctx->break_value_ptr  = old_break_value_ptr;
                 ctx->break_value_type = old_break_value_type;
+                ctx->break_defer_count = old_break_defer_count;
+                ctx->continue_defer_count = old_continue_defer_count;
                 ctx->emitted_break    = old_break_emitted;
                 ctx->block_terminated = false;
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
@@ -5643,10 +5696,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
             string old_break    = ctx->break_label;
             string old_continue = ctx->continue_label;
+            u32    old_break_defer_count = ctx->break_defer_count;
+            u32    old_continue_defer_count = ctx->continue_defer_count;
             bool   old_break_emitted = ctx->emitted_break;
+            u32    loop_defer_base = array_count(ctx->defer_block_indices);
             ctx->break_label    = end_label;
             ctx->continue_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
+            ctx->break_defer_count = loop_defer_base;
+            ctx->continue_defer_count = loop_defer_base;
             ctx->emitted_break = false;
             llvm_push_control_target(
                 ctx,
@@ -5656,11 +5714,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .continue_label   = ctx->continue_label,
                     .break_value_ptr  = (string){0},
                     .break_value_type = sema_no_type(),
+                    .break_defer_count = loop_defer_base,
+                    .continue_defer_count = loop_defer_base,
                 });
             if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
                 llvm_pop_control_target(ctx, loop->label_symbol);
                 ctx->break_label    = old_break;
                 ctx->continue_label = old_continue;
+                ctx->break_defer_count = old_break_defer_count;
+                ctx->continue_defer_count = old_continue_defer_count;
                 ctx->emitted_break  = old_break_emitted;
                 return (LlvmValue){0};
             }
@@ -5668,6 +5730,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             llvm_pop_control_target(ctx, loop->label_symbol);
             ctx->break_label    = old_break;
             ctx->continue_label = old_continue;
+            ctx->break_defer_count = old_break_defer_count;
+            ctx->continue_defer_count = old_continue_defer_count;
             ctx->emitted_break  = old_break_emitted;
             string next_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
@@ -6267,9 +6331,24 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
     }
 
     const HirBlock* block = &ctx->hir->blocks[block_index];
+    u32 defer_base = array_count(ctx->defer_block_indices);
     ctx->block_terminated = false;
-    return llvm_emit_effect_stmt_indices(
+    bool ok = llvm_emit_effect_stmt_indices(
         ctx, function, block->stmt_indices, 0, block->stmt_count);
+    if (!ok) {
+        if (ctx->defer_block_indices != NULL) {
+            __array_count(ctx->defer_block_indices) = defer_base;
+        }
+        return false;
+    }
+    if (!ctx->block_terminated &&
+        !llvm_emit_defers_to(ctx, function, defer_base, true)) {
+        return false;
+    }
+    if (ctx->block_terminated && ctx->defer_block_indices != NULL) {
+        __array_count(ctx->defer_block_indices) = defer_base;
+    }
+    return true;
 }
 
 internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
@@ -6305,18 +6384,24 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
     case HIR_STMT_Assert:
         return llvm_emit_assert(ctx, function, stmt);
     case HIR_STMT_Defer:
+        if (stmt->body_block_index == U32_MAX) {
+            return false;
+        }
+        array_push(ctx->defer_block_indices, stmt->body_block_index);
         return true;
     case HIR_STMT_Break:
         {
             string break_label      = ctx->break_label;
             string break_value_ptr  = ctx->break_value_ptr;
             u32    break_value_type = ctx->break_value_type;
+            u32    break_defer_count = ctx->break_defer_count;
             LlvmControlTarget* target =
                 llvm_find_control_target(ctx, stmt->symbol_handle);
             if (target != NULL) {
-                break_label      = target->break_label;
-                break_value_ptr  = target->break_value_ptr;
-                break_value_type = target->break_value_type;
+                break_label       = target->break_label;
+                break_value_ptr   = target->break_value_ptr;
+                break_value_type  = target->break_value_type;
+                break_defer_count = target->break_defer_count;
             }
             if (break_label.count == 0) {
                 return false;
@@ -6334,6 +6419,9 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                           STRINGV(value.value),
                           STRINGV(break_value_ptr));
             }
+            if (!llvm_emit_defers_to(ctx, function, break_defer_count, false)) {
+                return false;
+            }
             sb_format(ctx->sb,
                       "  br label %%" STRINGP "\n",
                       STRINGV(break_label));
@@ -6344,12 +6432,18 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
     case HIR_STMT_Continue:
         {
             string continue_label = ctx->continue_label;
+            u32    continue_defer_count = ctx->continue_defer_count;
             LlvmControlTarget* target =
                 llvm_find_control_target(ctx, stmt->symbol_handle);
             if (target != NULL) {
-                continue_label = target->continue_label;
+                continue_label       = target->continue_label;
+                continue_defer_count = target->continue_defer_count;
             }
             if (continue_label.count == 0) {
+                return false;
+            }
+            if (!llvm_emit_defers_to(
+                    ctx, function, continue_defer_count, false)) {
                 return false;
             }
             sb_format(ctx->sb,
@@ -6371,12 +6465,19 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
 {
     u32 return_type = llvm_function_return_type(ctx->sema, function->type_index);
     if (stmt->expr_index == U32_MAX || llvm_type_is_void(ctx->sema, return_type)) {
+        if (!llvm_emit_defers_to(ctx, function, 0, false)) {
+            return false;
+        }
         sb_append_cstr(ctx->sb, "  ret void\n");
+        ctx->block_terminated = true;
         return true;
     }
 
     LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
     if (!value.ok) {
+        return false;
+    }
+    if (!llvm_emit_defers_to(ctx, function, 0, false)) {
         return false;
     }
 
@@ -6557,7 +6658,11 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
     llvm_bind_block_function_values(ctx, block_index);
 
     const HirBlock* block = &ctx->hir->blocks[block_index];
+    u32 defer_base = array_count(ctx->defer_block_indices);
     for (u32 i = 0; i < block->stmt_count; ++i) {
+        if (ctx->block_terminated) {
+            break;
+        }
         u32 stmt_index = block->stmt_indices[i];
         if (stmt_index >= array_count(ctx->hir->stmts)) {
             continue;
@@ -6581,7 +6686,11 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             }
             continue;
         } else if (stmt->kind == HIR_STMT_Return) {
-            return llvm_emit_return(ctx, function, stmt);
+            bool ok = llvm_emit_return(ctx, function, stmt);
+            if (ctx->defer_block_indices != NULL) {
+                __array_count(ctx->defer_block_indices) = defer_base;
+            }
+            return ok;
         } else if (stmt->kind == HIR_STMT_Expr) {
             if (stmt->expr_index != U32_MAX) {
                 const HirExpr* expr = stmt->expr_index < array_count(ctx->hir->exprs)
@@ -6602,15 +6711,25 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             }
             continue;
         } else if (stmt->kind == HIR_STMT_Defer) {
+            if (stmt->body_block_index == U32_MAX) {
+                return false;
+            }
+            array_push(ctx->defer_block_indices, stmt->body_block_index);
             continue;
         } else if (stmt->kind == HIR_STMT_Break) {
             if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
                 return false;
             }
+            if (ctx->defer_block_indices != NULL) {
+                __array_count(ctx->defer_block_indices) = defer_base;
+            }
             return true;
         } else if (stmt->kind == HIR_STMT_Continue) {
             if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
                 return false;
+            }
+            if (ctx->defer_block_indices != NULL) {
+                __array_count(ctx->defer_block_indices) = defer_base;
             }
             return true;
         } else if (stmt->kind == HIR_STMT_Block) {
@@ -6621,6 +6740,13 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
     }
 
+    if (!ctx->block_terminated &&
+        !llvm_emit_defers_to(ctx, function, defer_base, true)) {
+        return false;
+    }
+    if (ctx->block_terminated && ctx->defer_block_indices != NULL) {
+        __array_count(ctx->defer_block_indices) = defer_base;
+    }
     return true;
 }
 
@@ -8218,6 +8344,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
+    array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
     arena_done(&temp);
     (void)arena;

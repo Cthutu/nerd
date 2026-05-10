@@ -73,9 +73,7 @@ define void @fn.0({ ptr, i64 } %text) {
   br i1 %t2, label %on.body.1, label %on.end.0
 on.body.1:
   ret void
-  br label %on.end.0
 on.end.0:
-  ret void
   ret void
 }
 

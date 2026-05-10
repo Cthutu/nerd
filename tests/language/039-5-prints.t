@@ -94,7 +94,6 @@ for.body.1:
   br i1 %t2, label %on.body.5, label %on.end.4
 on.body.5:
   ret void
-  br label %on.end.4
 on.end.4:
   %t3 = call i64 @string_builder_mark()
   %t4 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 10 })

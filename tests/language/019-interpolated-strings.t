@@ -197,7 +197,6 @@ define void @fn.1() {
   br i1 %t15, label %on.body.1, label %on.end.0
 on.body.1:
   ret void
-  br label %on.end.0
 on.end.0:
   ret void
 }

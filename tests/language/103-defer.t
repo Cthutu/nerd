@@ -158,6 +158,8 @@ declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define i32 @fn.0() {
+  %local.0 = alloca i32
+  store i32 9, ptr %local.0
   ret i32 1
 }
 
@@ -165,69 +167,92 @@ define i32 @fn.1() {
   %t0 = call i32 @fn.0()
   %local.1 = alloca i32
   store i32 %t0, ptr %local.1
-  %t1 = load i32, ptr %local.1
-  %t2 = add i32 %t1, 0
-  store i32 %t2, ptr %local.1
-  %t3 = call i64 @string_builder_mark()
-  %t4 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 6 })
-  call void @string_builder_append_string({ ptr, i64 } %t4)
-  %t5 = call { ptr, i64 } @to_string$i32(i32 0)
-  call void @string_builder_append_string({ ptr, i64 } %t5)
-  %t6 = call { ptr, i64 } @string_builder_finish(i64 %t3)
-  call void @$prn({ ptr, i64 } %t6)
-  %t7 = load i32, ptr %local.1
-  %t8 = add i32 %t7, 1
+  %t1 = mul i32 0, 10
+  %t2 = add i32 %t1, 2
+  %local.2 = alloca i32
+  store i32 %t2, ptr %local.2
+  %t3 = load i32, ptr %local.2
+  %t4 = mul i32 %t3, 10
+  %t5 = add i32 %t4, 1
+  store i32 %t5, ptr %local.2
+  %t6 = load i32, ptr %local.1
+  %t7 = load i32, ptr %local.2
+  %t8 = add i32 %t6, %t7
   store i32 %t8, ptr %local.1
   %t9 = call i64 @string_builder_mark()
-  %t10 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 12 })
+  %t10 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 6 })
   call void @string_builder_append_string({ ptr, i64 } %t10)
-  %t11 = load i32, ptr %local.1
+  %t11 = load i32, ptr %local.2
   %t12 = call { ptr, i64 } @to_string$i32(i32 %t11)
   call void @string_builder_append_string({ ptr, i64 } %t12)
   %t13 = call { ptr, i64 } @string_builder_finish(i64 %t9)
   call void @$prn({ ptr, i64 } %t13)
+  %t14 = load i32, ptr %local.1
+  %t15 = add i32 %t14, 1
+  store i32 %t15, ptr %local.1
+  call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 20 })
+  %t16 = load i32, ptr %local.1
+  %t17 = add i32 %t16, 10
+  store i32 %t17, ptr %local.1
+  %t18 = call i64 @string_builder_mark()
+  %t19 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 12 })
+  call void @string_builder_append_string({ ptr, i64 } %t19)
+  %t20 = load i32, ptr %local.1
+  %t21 = call { ptr, i64 } @to_string$i32(i32 %t20)
+  call void @string_builder_append_string({ ptr, i64 } %t21)
+  %t22 = call { ptr, i64 } @string_builder_finish(i64 %t18)
+  call void @$prn({ ptr, i64 } %t22)
   %local.3 = alloca i32
   store i32 0, ptr %local.3
   br label %for.cond.0
 for.cond.0:
-  %t14 = load i32, ptr %local.3
-  %t15 = icmp slt i32 %t14, 3
-  br i1 %t15, label %for.body.1, label %for.end.3
+  %t23 = load i32, ptr %local.3
+  %t24 = icmp slt i32 %t23, 3
+  br i1 %t24, label %for.body.1, label %for.end.3
 for.body.1:
-  %t16 = load i32, ptr %local.3
-  %t17 = icmp eq i32 %t16, 0
-  %t18 = icmp eq i1 %t17, 1
-  br i1 %t18, label %on.body.5, label %on.end.4
+  %t25 = load i32, ptr %local.3
+  %t26 = icmp eq i32 %t25, 0
+  %t27 = icmp eq i1 %t26, 1
+  br i1 %t27, label %on.body.5, label %on.end.4
 on.body.5:
+  %t28 = load i32, ptr %local.1
+  %t29 = add i32 %t28, 100
+  store i32 %t29, ptr %local.1
   br label %for.update.2
 on.end.4:
-  %t19 = load i32, ptr %local.3
-  %t20 = icmp eq i32 %t19, 1
-  %t21 = icmp eq i1 %t20, 1
-  br i1 %t21, label %on.body.7, label %on.end.6
+  %t30 = load i32, ptr %local.3
+  %t31 = icmp eq i32 %t30, 1
+  %t32 = icmp eq i1 %t31, 1
+  br i1 %t32, label %on.body.7, label %on.end.6
 on.body.7:
+  %t33 = load i32, ptr %local.1
+  %t34 = add i32 %t33, 100
+  store i32 %t34, ptr %local.1
   br label %for.end.3
 on.end.6:
-  %t22 = load i32, ptr %local.1
-  %t23 = add i32 %t22, 1000
-  store i32 %t23, ptr %local.1
+  %t35 = load i32, ptr %local.1
+  %t36 = add i32 %t35, 1000
+  store i32 %t36, ptr %local.1
+  %t37 = load i32, ptr %local.1
+  %t38 = add i32 %t37, 100
+  store i32 %t38, ptr %local.1
   br label %for.update.2
 for.update.2:
-  %t24 = load i32, ptr %local.3
-  %t25 = add i32 %t24, 1
-  store i32 %t25, ptr %local.3
+  %t39 = load i32, ptr %local.3
+  %t40 = add i32 %t39, 1
+  store i32 %t40, ptr %local.3
   br label %for.cond.0
 for.end.3:
-  %t26 = call i64 @string_builder_mark()
-  %t27 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 11 })
-  call void @string_builder_append_string({ ptr, i64 } %t27)
-  %t28 = load i32, ptr %local.1
-  %t29 = call { ptr, i64 } @to_string$i32(i32 %t28)
-  call void @string_builder_append_string({ ptr, i64 } %t29)
-  %t30 = call { ptr, i64 } @string_builder_finish(i64 %t26)
-  call void @$prn({ ptr, i64 } %t30)
-  %t31 = load i32, ptr %local.1
-  ret i32 %t31
+  %t41 = call i64 @string_builder_mark()
+  %t42 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 11 })
+  call void @string_builder_append_string({ ptr, i64 } %t42)
+  %t43 = load i32, ptr %local.1
+  %t44 = call { ptr, i64 } @to_string$i32(i32 %t43)
+  call void @string_builder_append_string({ ptr, i64 } %t44)
+  %t45 = call { ptr, i64 } @string_builder_finish(i64 %t41)
+  call void @$prn({ ptr, i64 } %t45)
+  %t46 = load i32, ptr %local.1
+  ret i32 %t46
 }
 
 @$cleanup_return = alias i32 (), ptr @fn.0
