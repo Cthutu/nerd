@@ -2364,16 +2364,97 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Slice:
         {
-            LlvmValue target_address =
-                llvm_address_of_expr(ctx, function, expr->operand_expr_index);
-            if (!target_address.ok ||
-                expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
+            if (expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
                 return (LlvmValue){0};
             }
 
             const HirExpr* target_expr =
                 &ctx->hir->exprs[expr->operand_expr_index];
             u32 target_type = target_expr->type_index;
+            if (llvm_type_kind(ctx->sema, target_type) == STK_String) {
+                LlvmValue target =
+                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                if (!target.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string data = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue { ptr, i64 } "
+                          STRINGP ", 0\n",
+                          STRINGV(data),
+                          STRINGV(target.value));
+
+                string total_count = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue { ptr, i64 } "
+                          STRINGP ", 1\n",
+                          STRINGV(total_count),
+                          STRINGV(target.value));
+
+                i64 start_value = 0;
+                i64 end_value   = 0;
+                bool has_start = llvm_expr_integer_constant(
+                    ctx->hir, expr->lhs_expr_index, &start_value);
+                bool has_end = llvm_expr_integer_constant(
+                    ctx->hir, expr->rhs_expr_index, &end_value);
+
+                string start = has_start ? string_format(ctx->arena,
+                                                         "%lld",
+                                                         (long long)start_value)
+                                         : s("0");
+                string count = {0};
+                if (has_end) {
+                    count = string_format(ctx->arena,
+                                          "%lld",
+                                          (long long)(end_value -
+                                                      (has_start ? start_value
+                                                                 : 0)));
+                } else if (has_start && start_value != 0) {
+                    count = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = sub i64 " STRINGP
+                              ", %lld\n",
+                              STRINGV(count),
+                              STRINGV(total_count),
+                              (long long)start_value);
+                } else {
+                    count = total_count;
+                }
+
+                string data_ptr = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr inbounds i8, ptr "
+                          STRINGP ", i64 " STRINGP "\n",
+                          STRINGV(data_ptr),
+                          STRINGV(data),
+                          STRINGV(start));
+                string slice0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr "
+                          STRINGP ", 0\n",
+                          STRINGV(slice0),
+                          STRINGV(data_ptr));
+                string slice1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } "
+                          STRINGP ", i64 " STRINGP ", 1\n",
+                          STRINGV(slice1),
+                          STRINGV(slice0),
+                          STRINGV(count));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = slice1,
+                };
+            }
+
+            LlvmValue target_address =
+                llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+            if (!target_address.ok) {
+                return (LlvmValue){0};
+            }
             u32 item_type =
                 llvm_collection_item_type(ctx->sema, target_type);
             if (item_type == sema_no_type()) {
