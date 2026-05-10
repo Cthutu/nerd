@@ -3444,7 +3444,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
     }
 
-    return false;
+    return true;
 }
 
 internal void llvm_append_escaped_string_bytes(StringBuilder* sb, string value)
@@ -3733,7 +3733,8 @@ internal void llvm_render_function(StringBuilder*    sb,
         .next_temp = 0,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
-    if (!llvm_emit_block(&ctx, function, function->body_block_index)) {
+    bool emitted = llvm_emit_block(&ctx, function, function->body_block_index);
+    if (!emitted || !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         llvm_append_default_return(sb, sema, return_type);
     }
