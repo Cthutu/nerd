@@ -2265,6 +2265,17 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_Unary &&
+        expr->unary_op == HIR_UNARY_Deref) {
+        LlvmValue pointer =
+            llvm_emit_expr(ctx, function, expr->operand_expr_index);
+        if (!pointer.ok) {
+            return (LlvmValue){0};
+        }
+        pointer.type_index = sema_no_type();
+        return pointer;
+    }
+
     if ((expr->kind == HIR_EXPR_Field || expr->kind == HIR_EXPR_TupleField) &&
         expr->operand_expr_index < array_count(ctx->hir->exprs)) {
         const HirExpr* target_expr = &ctx->hir->exprs[expr->operand_expr_index];
