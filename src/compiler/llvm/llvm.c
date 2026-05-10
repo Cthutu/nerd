@@ -67,6 +67,19 @@ internal SemaTypeKind llvm_type_kind(const Sema* sema, u32 type_index)
     return sema->types[type_index].kind;
 }
 
+internal u32 llvm_builtin_type(const Sema* sema, SemaTypeKind kind)
+{
+    if (sema == NULL) {
+        return sema_no_type();
+    }
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == kind) {
+            return i;
+        }
+    }
+    return sema_no_type();
+}
+
 internal bool llvm_type_is_unsigned_integer(const Sema* sema, u32 type_index)
 {
     switch (llvm_type_kind(sema, type_index)) {
@@ -1500,6 +1513,44 @@ internal string llvm_float_literal_string(Arena* arena, f64 value)
     return string_format(arena, STRINGP ".0", STRINGV(result));
 }
 
+internal string llvm_string_helper_suffix(const Sema* sema, u32 type_index)
+{
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_UntypedInteger:
+    case STK_I32:
+        return s("i32");
+    case STK_String:
+        return s("string");
+    case STK_Bool:
+        return s("bool");
+    case STK_I8:
+        return s("i8");
+    case STK_I16:
+        return s("i16");
+    case STK_I64:
+        return s("i64");
+    case STK_U8:
+        return s("u8");
+    case STK_U16:
+        return s("u16");
+    case STK_U32:
+        return s("u32");
+    case STK_U64:
+        return s("u64");
+    case STK_F32:
+        return s("f32");
+    case STK_F64:
+    case STK_UntypedFloat:
+        return s("f64");
+    case STK_Isize:
+        return s("isize");
+    case STK_Usize:
+        return s("usize");
+    default:
+        return (string){0};
+    }
+}
+
 internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
                                             const HirFunction*   function,
                                             const u32*           stmt_indices,
@@ -1646,7 +1697,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->lexer->strings[expr->string_index].count);
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index = expr->type_index != sema_no_type()
+                                  ? expr->type_index
+                                  : llvm_builtin_type(ctx->sema, STK_String),
                 .value      = value,
             };
         }
@@ -1667,8 +1720,57 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                          concat_value.count);
             return (LlvmValue){
                 .ok         = true,
-                .type_index = expr->type_index,
+                .type_index = expr->type_index != sema_no_type()
+                                  ? expr->type_index
+                                  : llvm_builtin_type(ctx->sema, STK_String),
                 .value      = value,
+            };
+        }
+    case HIR_EXPR_InterpolatedString:
+        {
+            string mark = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = call i64 @string_builder_mark()\n",
+                      STRINGV(mark));
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue part = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!part.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string suffix =
+                    llvm_string_helper_suffix(ctx->sema, part.type_index);
+                if (suffix.count == 0) {
+                    return (LlvmValue){0};
+                }
+
+                string part_type = llvm_type_string(ctx, part.type_index);
+                string converted = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = call { ptr, i64 } @to_string$"
+                          STRINGP "(" STRINGP " " STRINGP ")\n",
+                          STRINGV(converted),
+                          STRINGV(suffix),
+                          STRINGV(part_type),
+                          STRINGV(part.value));
+                sb_format(ctx->sb,
+                          "  call void @string_builder_append_string({ ptr, "
+                          "i64 } " STRINGP ")\n",
+                          STRINGV(converted));
+            }
+            string result = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP
+                      " = call { ptr, i64 } @string_builder_finish(i64 "
+                      STRINGP ")\n",
+                      STRINGV(result),
+                      STRINGV(mark));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = result,
             };
         }
     case HIR_EXPR_BoolLiteral:
@@ -3446,6 +3548,39 @@ internal void llvm_render_concat_string_literals(StringBuilder* sb,
     (void)arena;
 }
 
+internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
+{
+    sb_append_cstr(sb,
+                   "declare void @string_builder_reset()\n"
+                   "declare i64 @string_builder_mark()\n"
+                   "declare void @string_builder_append_string({ ptr, i64 })\n"
+                   "declare { ptr, i64 } @string_builder_finish(i64)\n"
+                   "declare { ptr, i64 } @to_string$string({ ptr, i64 })\n"
+                   "declare { ptr, i64 } @to_string$bool(i1)\n"
+                   "declare { ptr, i64 } @to_string$i8(i8)\n"
+                   "declare { ptr, i64 } @to_string$i16(i16)\n"
+                   "declare { ptr, i64 } @to_string$i32(i32)\n"
+                   "declare { ptr, i64 } @to_string$i64(i64)\n"
+                   "declare { ptr, i64 } @to_string$u8(i8)\n"
+                   "declare { ptr, i64 } @to_string$u16(i16)\n"
+                   "declare { ptr, i64 } @to_string$u32(i32)\n"
+                   "declare { ptr, i64 } @to_string$u64(i64)\n"
+                   "declare { ptr, i64 } @to_string$isize(i64)\n"
+                   "declare { ptr, i64 } @to_string$usize(i64)\n"
+                   "declare { ptr, i64 } @to_string$f32(float)\n"
+                   "declare { ptr, i64 } @to_string$f64(double)\n");
+}
+
+internal bool llvm_hir_uses_string_runtime(const Hir* hir)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        if (hir->exprs[i].kind == HIR_EXPR_InterpolatedString) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void llvm_render_import(StringBuilder* sb,
                                  const Lexer*   lexer,
                                  const Sema*    sema,
@@ -3651,6 +3786,11 @@ string llvm_render_hir(const Hir* hir,
     if (array_count(lexer->strings) > 0) {
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
+        sb_append_char(&sb, '\n');
+    }
+
+    if (llvm_hir_uses_string_runtime(hir)) {
+        llvm_render_string_runtime_declarations(&sb);
         sb_append_char(&sb, '\n');
     }
 

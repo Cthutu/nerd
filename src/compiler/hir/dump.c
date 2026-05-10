@@ -532,6 +532,17 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_InterpolatedString:
+        sb_append_cstr(sb, "interpolate(");
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
+            hir_render_expr(sb, hir, lexer, sema, arena, arg->expr_index);
+        }
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_BoolLiteral:
         sb_append_cstr(sb, expr->boolean ? "yes" : "no");
         break;

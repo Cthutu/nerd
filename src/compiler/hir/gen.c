@@ -280,6 +280,8 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_FloatLiteral:
     case AK_StringLiteral:
     case AK_StringConcat:
+    case AK_InterpolatedString:
+    case AK_InterpPartExpr:
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_SymbolRef:
@@ -522,6 +524,30 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .rhs_expr_index =
                                     hir_lower_expr(hir, lexer, ast, sema, node->b),
                             });
+    case AK_InterpPartExpr:
+        return hir_lower_expr(hir, lexer, ast, sema, node->a);
+    case AK_InterpolatedString:
+        {
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = node->a; i < node->b; ++i) {
+                array_push(hir->call_args,
+                           (HirCallArg){
+                               .expr_index = hir_lower_expr(
+                                   hir, lexer, ast, sema, i),
+                               .symbol_handle = U32_MAX,
+                           });
+            }
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind          = HIR_EXPR_InterpolatedString,
+                    .type_index    = hir_node_type(sema, node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .first_arg     = first_arg,
+                    .arg_count     = node->b - node->a,
+                });
+        }
     case AK_BoolLiteral:
         return hir_add_expr(hir,
                             (HirExpr){
