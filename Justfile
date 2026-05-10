@@ -85,7 +85,8 @@ install:
     just build-release nerd
     rm -rf {{user_mods_dir}}
     mkdir -p {{user_bin_dir}} {{user_mods_dir}}
-    cp _bin/nerd{{exe_suffix}} {{user_bin_nerd}}
+    cp _bin/nerd{{exe_suffix}} {{user_bin_nerd}}.tmp
+    mv {{user_bin_nerd}}.tmp {{user_bin_nerd}}
     cp -R mods/. {{user_mods_dir}}/
     just install-nvim
     just uninstall
