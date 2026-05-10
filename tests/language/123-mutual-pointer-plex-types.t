@@ -45,34 +45,25 @@ define void @m0.init() {
   %t0 = insertvalue { i32, ptr } poison, i32 1, 0
   %t1 = insertvalue { i32, ptr } %t0, ptr null, 1
   store { i32, ptr } %t1, ptr @$left
-  %t2 = load { i32, ptr }, ptr @$left
-  %t3 = alloca { i32, ptr }
-  store { i32, ptr } %t2, ptr %t3
-  %t4 = insertvalue { i32, ptr } poison, i32 2, 0
-  %t5 = insertvalue { i32, ptr } %t4, ptr %t3, 1
-  store { i32, ptr } %t5, ptr @$right
+  %t2 = insertvalue { i32, ptr } poison, i32 2, 0
+  %t3 = insertvalue { i32, ptr } %t2, ptr @$left, 1
+  store { i32, ptr } %t3, ptr @$right
   ret void
 }
 
 define i32 @fn.0() {
-  %t0 = load { i32, ptr }, ptr @$right
-  %t1 = alloca { i32, ptr }
-  store { i32, ptr } %t0, ptr %t1
-  %t2 = load { i32, ptr }, ptr @$left
-  %t3 = alloca { i32, ptr }
-  store { i32, ptr } %t2, ptr %t3
-  %t4 = getelementptr inbounds { i32, ptr }, ptr %t3, i64 0, i32 1
-  store ptr %t1, ptr %t4
-  %t5 = load { i32, ptr }, ptr @$left
+  %t0 = getelementptr inbounds { i32, ptr }, ptr @$left, i64 0, i32 1
+  store ptr @$right, ptr %t0
+  %t1 = load { i32, ptr }, ptr @$left
+  %t2 = extractvalue { i32, ptr } %t1, 1
+  %t3 = load { i32, ptr }, ptr %t2
+  %t4 = extractvalue { i32, ptr } %t3, 0
+  %t5 = load { i32, ptr }, ptr @$right
   %t6 = extractvalue { i32, ptr } %t5, 1
   %t7 = load { i32, ptr }, ptr %t6
   %t8 = extractvalue { i32, ptr } %t7, 0
-  %t9 = load { i32, ptr }, ptr @$right
-  %t10 = extractvalue { i32, ptr } %t9, 1
-  %t11 = load { i32, ptr }, ptr %t10
-  %t12 = extractvalue { i32, ptr } %t11, 0
-  %t13 = add i32 %t8, %t12
-  ret i32 %t13
+  %t9 = add i32 %t4, %t8
+  ret i32 %t9
 }
 
 @$main = alias i32 (), ptr @fn.0

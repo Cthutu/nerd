@@ -204,59 +204,61 @@ dynarray.store.7:
   %t58 = getelementptr inbounds i8, ptr %t57, i32 1
   %t59 = call i64 @string_builder_mark()
   %t60 = load [3 x i32], ptr %local.0
-  %t61 = extractvalue [3 x i32] %t60, 1
-  %t62 = call { ptr, i64 } @to_string$i32(i32 %t61)
-  call void @string_builder_append_string({ ptr, i64 } %t62)
-  %t63 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 1 })
+  %t61 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 1
+  %t62 = load i32, ptr %t61
+  %t63 = call { ptr, i64 } @to_string$i32(i32 %t62)
   call void @string_builder_append_string({ ptr, i64 } %t63)
-  %t64 = extractvalue { ptr, i64 } %t6, 0
-  %t65 = getelementptr inbounds i32, ptr %t64, i32 2
-  %t66 = load i32, ptr %t65
-  %t67 = call { ptr, i64 } @to_string$i32(i32 %t66)
-  call void @string_builder_append_string({ ptr, i64 } %t67)
-  %t68 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
+  %t64 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t64)
+  %t65 = extractvalue { ptr, i64 } %t6, 0
+  %t66 = getelementptr inbounds i32, ptr %t65, i32 2
+  %t67 = load i32, ptr %t66
+  %t68 = call { ptr, i64 } @to_string$i32(i32 %t67)
   call void @string_builder_append_string({ ptr, i64 } %t68)
-  %t69 = load ptr, ptr %local.4
-  %t70 = getelementptr inbounds { ptr, i64, i64 }, ptr %t69, i64 0, i32 0
-  %t71 = load ptr, ptr %t70
-  %t72 = getelementptr inbounds i32, ptr %t71, i32 1
-  %t73 = load i32, ptr %t72
-  %t74 = call { ptr, i64 } @to_string$i32(i32 %t73)
-  call void @string_builder_append_string({ ptr, i64 } %t74)
-  %t75 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
+  %t69 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t69)
+  %t70 = load ptr, ptr %local.4
+  %t71 = getelementptr inbounds { ptr, i64, i64 }, ptr %t70, i64 0, i32 0
+  %t72 = load ptr, ptr %t71
+  %t73 = getelementptr inbounds i32, ptr %t72, i32 1
+  %t74 = load i32, ptr %t73
+  %t75 = call { ptr, i64 } @to_string$i32(i32 %t74)
   call void @string_builder_append_string({ ptr, i64 } %t75)
-  %t76 = load i8, ptr %t58
-  %t77 = call { ptr, i64 } @to_string$u8(i8 %t76)
-  call void @string_builder_append_string({ ptr, i64 } %t77)
-  %t78 = call { ptr, i64 } @string_builder_finish(i64 %t59)
-  call void @$prn({ ptr, i64 } %t78)
-  %t79 = load [3 x i32], ptr %local.0
-  %t80 = extractvalue [3 x i32] %t79, 1
-  %t81 = extractvalue { ptr, i64 } %t6, 0
-  %t82 = getelementptr inbounds i32, ptr %t81, i32 2
-  %t83 = load i32, ptr %t82
-  %t84 = add i32 %t80, %t83
-  %t85 = load ptr, ptr %local.4
-  %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %t85, i64 0, i32 0
-  %t87 = load ptr, ptr %t86
-  %t88 = getelementptr inbounds i32, ptr %t87, i32 1
-  %t89 = load i32, ptr %t88
-  %t90 = add i32 %t84, %t89
-  %t91 = load i8, ptr %t58
-  %t92 = zext i8 %t91 to i32
-  %t93 = add i32 %t90, %t92
-  %t94 = load ptr, ptr %local.4
-  %t95 = icmp eq ptr %t94, null
-  br i1 %t95, label %dynarray.free.done.9, label %dynarray.free.8
+  %t76 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
+  call void @string_builder_append_string({ ptr, i64 } %t76)
+  %t77 = load i8, ptr %t58
+  %t78 = call { ptr, i64 } @to_string$u8(i8 %t77)
+  call void @string_builder_append_string({ ptr, i64 } %t78)
+  %t79 = call { ptr, i64 } @string_builder_finish(i64 %t59)
+  call void @$prn({ ptr, i64 } %t79)
+  %t80 = load [3 x i32], ptr %local.0
+  %t81 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 1
+  %t82 = load i32, ptr %t81
+  %t83 = extractvalue { ptr, i64 } %t6, 0
+  %t84 = getelementptr inbounds i32, ptr %t83, i32 2
+  %t85 = load i32, ptr %t84
+  %t86 = add i32 %t82, %t85
+  %t87 = load ptr, ptr %local.4
+  %t88 = getelementptr inbounds { ptr, i64, i64 }, ptr %t87, i64 0, i32 0
+  %t89 = load ptr, ptr %t88
+  %t90 = getelementptr inbounds i32, ptr %t89, i32 1
+  %t91 = load i32, ptr %t90
+  %t92 = add i32 %t86, %t91
+  %t93 = load i8, ptr %t58
+  %t94 = zext i8 %t93 to i32
+  %t95 = add i32 %t92, %t94
+  %t96 = load ptr, ptr %local.4
+  %t97 = icmp eq ptr %t96, null
+  br i1 %t97, label %dynarray.free.done.9, label %dynarray.free.8
 dynarray.free.8:
-  %t96 = getelementptr inbounds { ptr, i64, i64 }, ptr %t94, i64 0, i32 0
-  %t97 = load ptr, ptr %t96
-  call void @free(ptr %t97)
-  call void @free(ptr %t94)
+  %t98 = getelementptr inbounds { ptr, i64, i64 }, ptr %t96, i64 0, i32 0
+  %t99 = load ptr, ptr %t98
+  call void @free(ptr %t99)
+  call void @free(ptr %t96)
   store ptr null, ptr %local.4
   br label %dynarray.free.done.9
 dynarray.free.done.9:
-  ret i32 %t93
+  ret i32 %t95
 }
 
 @$main = alias i32 (), ptr @fn.0

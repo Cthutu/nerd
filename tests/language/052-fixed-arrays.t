@@ -89,65 +89,81 @@ define i32 @fn.0() {
   %t5 = call i64 @string_builder_mark()
   %t6 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 5 })
   call void @string_builder_append_string({ ptr, i64 } %t6)
-  %t7 = extractvalue [3 x i32] %t2, 0
-  %t8 = call { ptr, i64 } @to_string$i32(i32 %t7)
-  call void @string_builder_append_string({ ptr, i64 } %t8)
-  %t9 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 2 })
+  %local.0 = alloca [3 x i32]
+  store [3 x i32] %t2, ptr %local.0
+  %t7 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 0
+  %t8 = load i32, ptr %t7
+  %t9 = call { ptr, i64 } @to_string$i32(i32 %t8)
   call void @string_builder_append_string({ ptr, i64 } %t9)
-  %t10 = extractvalue [3 x i32] %t2, 2
-  %t11 = call { ptr, i64 } @to_string$i32(i32 %t10)
-  call void @string_builder_append_string({ ptr, i64 } %t11)
-  %t12 = call { ptr, i64 } @string_builder_finish(i64 %t5)
-  call void @$prn({ ptr, i64 } %t12)
-  %t13 = call i64 @string_builder_mark()
-  %t14 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 11 })
+  %t10 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 2 })
+  call void @string_builder_append_string({ ptr, i64 } %t10)
+  %t11 = load [3 x i32], ptr %local.0
+  %t12 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 2
+  %t13 = load i32, ptr %t12
+  %t14 = call { ptr, i64 } @to_string$i32(i32 %t13)
   call void @string_builder_append_string({ ptr, i64 } %t14)
+  %t15 = call { ptr, i64 } @string_builder_finish(i64 %t5)
+  call void @$prn({ ptr, i64 } %t15)
+  %t16 = call i64 @string_builder_mark()
+  %t17 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 11 })
+  call void @string_builder_append_string({ ptr, i64 } %t17)
+  %t18 = load [3 x i32], ptr %local.0
   call void @string_builder_append_byte(i8 91)
-  %t15 = extractvalue [3 x i32] %t2, 0
-  %t16 = call { ptr, i64 } @to_string$i32(i32 %t15)
-  call void @string_builder_append_string({ ptr, i64 } %t16)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
-  %t17 = extractvalue [3 x i32] %t2, 1
-  %t18 = call { ptr, i64 } @to_string$i32(i32 %t17)
-  call void @string_builder_append_string({ ptr, i64 } %t18)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
-  %t19 = extractvalue [3 x i32] %t2, 2
+  %t19 = extractvalue [3 x i32] %t18, 0
   %t20 = call { ptr, i64 } @to_string$i32(i32 %t19)
   call void @string_builder_append_string({ ptr, i64 } %t20)
-  call void @string_builder_append_byte(i8 93)
-  %t21 = call { ptr, i64 } @string_builder_finish(i64 %t13)
-  call void @$prn({ ptr, i64 } %t21)
-  %t22 = call i64 @string_builder_mark()
-  %t23 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 5 })
-  call void @string_builder_append_string({ ptr, i64 } %t23)
-  %t24 = extractvalue [2 x i32] %t4, 1
-  %t25 = call { ptr, i64 } @to_string$i32(i32 %t24)
-  call void @string_builder_append_string({ ptr, i64 } %t25)
-  %t26 = call { ptr, i64 } @string_builder_finish(i64 %t22)
-  call void @$prn({ ptr, i64 } %t26)
-  %t27 = call i64 @string_builder_mark()
-  %t28 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 11 })
-  call void @string_builder_append_string({ ptr, i64 } %t28)
-  call void @string_builder_append_byte(i8 91)
-  %t29 = extractvalue [2 x i32] %t4, 0
-  %t30 = call { ptr, i64 } @to_string$i32(i32 %t29)
-  call void @string_builder_append_string({ ptr, i64 } %t30)
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
-  %t31 = extractvalue [2 x i32] %t4, 1
-  %t32 = call { ptr, i64 } @to_string$i32(i32 %t31)
-  call void @string_builder_append_string({ ptr, i64 } %t32)
+  %t21 = extractvalue [3 x i32] %t18, 1
+  %t22 = call { ptr, i64 } @to_string$i32(i32 %t21)
+  call void @string_builder_append_string({ ptr, i64 } %t22)
+  call void @string_builder_append_byte(i8 44)
+  call void @string_builder_append_byte(i8 32)
+  %t23 = extractvalue [3 x i32] %t18, 2
+  %t24 = call { ptr, i64 } @to_string$i32(i32 %t23)
+  call void @string_builder_append_string({ ptr, i64 } %t24)
   call void @string_builder_append_byte(i8 93)
-  %t33 = call { ptr, i64 } @string_builder_finish(i64 %t27)
-  call void @$prn({ ptr, i64 } %t33)
-  %t34 = extractvalue [3 x i32] %t2, 1
-  %t35 = extractvalue [2 x i32] %t4, 0
-  %t36 = add i32 %t34, %t35
-  %t37 = extractvalue [2 x i32] %t4, 1
-  %t38 = add i32 %t36, %t37
-  ret i32 %t38
+  %t25 = call { ptr, i64 } @string_builder_finish(i64 %t16)
+  call void @$prn({ ptr, i64 } %t25)
+  %t26 = call i64 @string_builder_mark()
+  %t27 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 5 })
+  call void @string_builder_append_string({ ptr, i64 } %t27)
+  %local.1 = alloca [2 x i32]
+  store [2 x i32] %t4, ptr %local.1
+  %t28 = getelementptr inbounds [2 x i32], ptr %local.1, i64 0, i32 1
+  %t29 = load i32, ptr %t28
+  %t30 = call { ptr, i64 } @to_string$i32(i32 %t29)
+  call void @string_builder_append_string({ ptr, i64 } %t30)
+  %t31 = call { ptr, i64 } @string_builder_finish(i64 %t26)
+  call void @$prn({ ptr, i64 } %t31)
+  %t32 = call i64 @string_builder_mark()
+  %t33 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 11 })
+  call void @string_builder_append_string({ ptr, i64 } %t33)
+  %t34 = load [2 x i32], ptr %local.1
+  call void @string_builder_append_byte(i8 91)
+  %t35 = extractvalue [2 x i32] %t34, 0
+  %t36 = call { ptr, i64 } @to_string$i32(i32 %t35)
+  call void @string_builder_append_string({ ptr, i64 } %t36)
+  call void @string_builder_append_byte(i8 44)
+  call void @string_builder_append_byte(i8 32)
+  %t37 = extractvalue [2 x i32] %t34, 1
+  %t38 = call { ptr, i64 } @to_string$i32(i32 %t37)
+  call void @string_builder_append_string({ ptr, i64 } %t38)
+  call void @string_builder_append_byte(i8 93)
+  %t39 = call { ptr, i64 } @string_builder_finish(i64 %t32)
+  call void @$prn({ ptr, i64 } %t39)
+  %t40 = load [3 x i32], ptr %local.0
+  %t41 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 1
+  %t42 = load i32, ptr %t41
+  %t43 = load [2 x i32], ptr %local.1
+  %t44 = getelementptr inbounds [2 x i32], ptr %local.1, i64 0, i32 0
+  %t45 = load i32, ptr %t44
+  %t46 = add i32 %t42, %t45
+  %t47 = load [2 x i32], ptr %local.1
+  %t48 = getelementptr inbounds [2 x i32], ptr %local.1, i64 0, i32 1
+  %t49 = load i32, ptr %t48
+  %t50 = add i32 %t46, %t49
+  ret i32 %t50
 }
 
 @$main = alias i32 (), ptr @fn.0

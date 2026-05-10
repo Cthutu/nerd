@@ -47,11 +47,18 @@ func fn.1() -> i32 {
 
 define i32 @fn.0({ [4 x i32] } %cell) {
   %t0 = extractvalue { [4 x i32] } %cell, 0
-  %t1 = extractvalue [4 x i32] %t0, 1
-  %t2 = extractvalue { [4 x i32] } %cell, 0
-  %t3 = extractvalue [4 x i32] %t2, 2
-  %t4 = add i32 %t1, %t3
-  ret i32 %t4
+  %local.0 = alloca { [4 x i32] }
+  store { [4 x i32] } %cell, ptr %local.0
+  %t1 = getelementptr inbounds { [4 x i32] }, ptr %local.0, i64 0, i32 0
+  %t2 = getelementptr inbounds [4 x i32], ptr %t1, i64 0, i32 1
+  %t3 = load i32, ptr %t2
+  %t4 = load { [4 x i32] }, ptr %local.0
+  %t5 = extractvalue { [4 x i32] } %t4, 0
+  %t6 = getelementptr inbounds { [4 x i32] }, ptr %local.0, i64 0, i32 0
+  %t7 = getelementptr inbounds [4 x i32], ptr %t6, i64 0, i32 2
+  %t8 = load i32, ptr %t7
+  %t9 = add i32 %t3, %t8
+  ret i32 %t9
 }
 
 define i32 @fn.1() {
@@ -74,14 +81,20 @@ define i32 @fn.1() {
   %t12 = load { { [4 x i32] } }, ptr %local.1
   %t13 = extractvalue { { [4 x i32] } } %t12, 0
   %t14 = extractvalue { [4 x i32] } %t13, 0
-  %t15 = extractvalue [4 x i32] %t14, 1
-  %t16 = load { { [4 x i32] } }, ptr %local.1
-  %t17 = extractvalue { { [4 x i32] } } %t16, 0
-  %t18 = extractvalue { [4 x i32] } %t17, 0
-  %t19 = extractvalue [4 x i32] %t18, 2
-  %t20 = add i32 %t15, %t19
-  %t21 = add i32 %t20, %t11
-  ret i32 %t21
+  %t15 = getelementptr inbounds { { [4 x i32] } }, ptr %local.1, i64 0, i32 0
+  %t16 = getelementptr inbounds { [4 x i32] }, ptr %t15, i64 0, i32 0
+  %t17 = getelementptr inbounds [4 x i32], ptr %t16, i64 0, i32 1
+  %t18 = load i32, ptr %t17
+  %t19 = load { { [4 x i32] } }, ptr %local.1
+  %t20 = extractvalue { { [4 x i32] } } %t19, 0
+  %t21 = extractvalue { [4 x i32] } %t20, 0
+  %t22 = getelementptr inbounds { { [4 x i32] } }, ptr %local.1, i64 0, i32 0
+  %t23 = getelementptr inbounds { [4 x i32] }, ptr %t22, i64 0, i32 0
+  %t24 = getelementptr inbounds [4 x i32], ptr %t23, i64 0, i32 2
+  %t25 = load i32, ptr %t24
+  %t26 = add i32 %t18, %t25
+  %t27 = add i32 %t26, %t11
+  ret i32 %t27
 }
 
 @$take_cell = alias i32 ({ [4 x i32] }), ptr @fn.0

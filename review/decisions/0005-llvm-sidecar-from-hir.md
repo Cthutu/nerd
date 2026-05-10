@@ -68,8 +68,23 @@ structured control flow, `for` forms, `on` forms with value/plex/enum patterns,
 and enum construction, including contextual enum constructors nested inside
 call arguments.
 
+Array, field, and pointer indexing now use addressable lowering when the value
+is used as an lvalue or when a later operation needs a stable element address.
+For non-global constant bindings, the backend may materialise the aggregate into
+a temporary stack slot before issuing `getelementptr` and `load`. That keeps
+constant aggregate indexing, nested field access, and element address-taking on
+one lowering path, at the cost of less compact LLVM text until a later
+optimisation pass recognises pure value-only indexes.
+
+As of this slice, the checked test suite passes with the LLVM sidecar and
+opt-in LLVM execution tests enabled. The installed compiler can run the LLVM
+backend with `nerd run --llvm-backend source.n` or produce textual LLVM IR with
+`nerd build --llvm source.n`.
+
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Move the runtime bridge from C source compilation toward stable LLVM IR or
    bitcode artifacts.
+3. Decide when the LLVM backend becomes the default `run`/`build` path instead
+   of an opt-in backend flag.
