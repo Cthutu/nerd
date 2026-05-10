@@ -2375,6 +2375,14 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
             ctx->hir, ctx->lexer, ctx->arena, callee->ref_index);
         return true;
     }
+    if (callee->kind == HIR_EXPR_Field &&
+        llvm_type_is_function(ctx->sema, callee->type_index) &&
+        callee->symbol_handle != U32_MAX) {
+        *out = llvm_symbol_name_string(ctx->lexer,
+                                       ctx->arena,
+                                       callee->symbol_handle);
+        return true;
+    }
 
     if (callee->kind != HIR_EXPR_LocalRef ||
         callee->ref_kind != HIR_REF_Binding ||
