@@ -2026,9 +2026,10 @@ internal u32 hir_lower_function_body(Hir*         hir,
     return block_index;
 }
 
-internal void hir_add_function_params(Hir*        hir,
-                                      const Ast*  ast,
-                                      const Sema* sema,
+internal void hir_add_function_params(Hir*         hir,
+                                      const Lexer* lexer,
+                                      const Ast*   ast,
+                                      const Sema*  sema,
                                       u32         function_index,
                                       u32         fn_node_index,
                                       u32         root_scope_index)
@@ -2055,6 +2056,7 @@ internal void hir_add_function_params(Hir*        hir,
                         .local_index   = sema_no_local(),
                         .type_index = sema->type_param_types
                                           [function_type->first_param_type + i],
+                        .default_expr_index = hir_no_index(),
                     });
                 function = &hir->functions[function_index];
                 function->param_count++;
@@ -2083,6 +2085,14 @@ internal void hir_add_function_params(Hir*        hir,
                     .type_index =
                         sema->type_param_types[function_type->first_param_type +
                                                i],
+                    .default_expr_index =
+                        param->default_node_index != U32_MAX
+                            ? hir_lower_expr(hir,
+                                             lexer,
+                                             ast,
+                                             sema,
+                                             param->default_node_index)
+                            : hir_no_index(),
                 });
             function = &hir->functions[function_index];
             function->param_count++;
@@ -2093,6 +2103,16 @@ internal void hir_add_function_params(Hir*        hir,
     HirFunction*     function = &hir->functions[function_index];
     const SemaScope* scope    = &sema->scopes[root_scope_index];
     function->first_param     = (u32)array_count(hir->params);
+    const AstFnSignature* signature = NULL;
+    if (fn_node_index < array_count(ast->nodes) &&
+        ast->nodes[fn_node_index].kind == AK_FnDef) {
+        u32 fn_start_index = ast->nodes[fn_node_index].a;
+        if (fn_start_index < array_count(ast->nodes) &&
+            ast->nodes[fn_start_index].kind == AK_FnStart &&
+            ast->nodes[fn_start_index].a < array_count(ast->fn_signatures)) {
+            signature = &ast->fn_signatures[ast->nodes[fn_start_index].a];
+        }
+    }
 
     for (u32 i = 0; i < scope->local_count; ++i) {
         u32 local_index = scope->first_local + i;
@@ -2104,12 +2124,31 @@ internal void hir_add_function_params(Hir*        hir,
         if (local->kind != SLK_Param) {
             continue;
         }
+        u32 default_node_index = U32_MAX;
+        if (signature != NULL) {
+            for (u32 j = 0; j < signature->param_count; ++j) {
+                const AstParam* param =
+                    &ast->params[signature->first_param + j];
+                if (param->symbol_handle == local->symbol_handle) {
+                    default_node_index = param->default_node_index;
+                    break;
+                }
+            }
+        }
 
         array_push(hir->params,
                    (HirParam){
                        .symbol_handle = local->symbol_handle,
                        .local_index   = local_index,
                        .type_index    = local->type_index,
+                       .default_expr_index =
+                           default_node_index != U32_MAX
+                               ? hir_lower_expr(hir,
+                                                lexer,
+                                                ast,
+                                                sema,
+                                                default_node_index)
+                               : hir_no_index(),
                    });
         function = &hir->functions[function_index];
         function->param_count++;
@@ -2166,7 +2205,7 @@ internal void hir_add_function(Hir*            hir,
             : hir_lower_function_body(hir, lexer, ast, sema, fn_node_index);
     hir->functions[function_index].body_block_index = body_block_index;
     hir_add_function_params(
-        hir, ast, sema, function_index, fn_node_index, root_scope_index);
+        hir, lexer, ast, sema, function_index, fn_node_index, root_scope_index);
 }
 
 internal u32 hir_add_type_def(Hir*          hir,

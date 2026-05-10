@@ -2596,6 +2596,48 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal bool llvm_callee_function_index(LlvmFunctionContext* ctx,
+                                         u32                  callee_expr_index,
+                                         u32*                 out)
+{
+    if (callee_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* callee = &ctx->hir->exprs[callee_expr_index];
+    if (callee->kind == HIR_EXPR_FunctionRef &&
+        callee->ref_index < array_count(ctx->hir->functions)) {
+        *out = callee->ref_index;
+        return true;
+    }
+    if (callee->kind == HIR_EXPR_LocalRef &&
+        callee->ref_kind == HIR_REF_Binding &&
+        callee->ref_index < array_count(ctx->hir->bindings)) {
+        const HirBinding* binding = &ctx->hir->bindings[callee->ref_index];
+        if (binding->kind == HIR_BINDING_Function &&
+            binding->target_index < array_count(ctx->hir->functions)) {
+            *out = binding->target_index;
+            return true;
+        }
+    }
+    if (callee->kind == HIR_EXPR_LocalRef &&
+        callee->ref_kind == HIR_REF_Local) {
+        LlvmValue callee_value = {0};
+        if (!llvm_find_local_value(ctx, callee->ref_index, &callee_value)) {
+            return false;
+        }
+        for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
+            string name =
+                llvm_function_name_string(ctx->hir, ctx->lexer, ctx->arena, i);
+            if (string_eq(name, callee_value.value)) {
+                *out = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
                                       u32                  source_type,
                                       u32                  target_type)
@@ -4650,6 +4692,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             Array(LlvmValue) args = NULL;
+            u32 callee_function_index = U32_MAX;
+            const HirFunction* callee_function = NULL;
+            if (llvm_callee_function_index(
+                    ctx, expr->callee_expr_index, &callee_function_index)) {
+                callee_function = &ctx->hir->functions[callee_function_index];
+            }
             for (u32 i = 0; i < expr->arg_count; ++i) {
                 const HirCallArg* arg =
                     &ctx->hir->call_args[expr->first_arg + i];
@@ -4659,6 +4707,41 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
                 array_push(args, value);
+            }
+            if (callee_function != NULL) {
+                Array(LlvmValue) default_values = NULL;
+                for (u32 i = 0; i < callee_function->param_count; ++i) {
+                    const HirParam* param =
+                        &ctx->hir->params[callee_function->first_param + i];
+                    LlvmValue context_value = {0};
+                    if (param->default_expr_index != U32_MAX) {
+                        context_value = llvm_emit_expr(
+                            ctx, function, param->default_expr_index);
+                        if (!context_value.ok) {
+                            array_free(default_values);
+                            array_free(args);
+                            return (LlvmValue){0};
+                        }
+                    } else if (i < array_count(args)) {
+                        context_value = args[i];
+                    }
+                    array_push(default_values, context_value);
+                    if (context_value.ok && param->local_index != U32_MAX) {
+                        llvm_set_local_value(ctx,
+                                             param->local_index,
+                                             context_value);
+                    }
+                }
+
+                for (u32 i = expr->arg_count; i < callee_function->param_count;
+                     ++i) {
+                    if (i >= array_count(default_values) ||
+                        !default_values[i].ok) {
+                        break;
+                    }
+                    array_push(args, default_values[i]);
+                }
+                array_free(default_values);
             }
 
             string return_type = llvm_type_string(ctx, expr->type_index);
@@ -4677,7 +4760,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(return_type),
                           STRINGV(callee));
             }
-            for (u32 i = 0; i < expr->arg_count; ++i) {
+            for (u32 i = 0; i < array_count(args); ++i) {
                 if (i > 0) {
                     sb_append_cstr(ctx->sb, ", ");
                 }

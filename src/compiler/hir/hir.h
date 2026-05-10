@@ -194,6 +194,7 @@ typedef struct {
     u32 symbol_handle;
     u32 local_index;
     u32 type_index;
+    u32 default_expr_index;
 } HirParam;
 
 typedef struct {
