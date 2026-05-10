@@ -1,0 +1,43 @@
+Choice :: enum {
+    Empty
+    Value(i32)
+    Pair(i32, i32)
+}
+
+describe_choice :: fn(choice: Choice) -> i32 {
+    return on choice {
+        Empty() => 0
+        Value(as value) => value
+        Pair(as left, 4) => left
+        else => 99
+    }
+}
+
+main :: fn() -> i32 {
+    return describe_choice(Pair(7, 4)) + describe_choice(Value(3))
+}
+¬
+hir 0
+bind Choice = type.0
+bind describe_choice = fn.0
+bind main = fn.1
+type type.0 = Choice
+func fn.0(choice: Choice) -> i32 {
+  return i32 on Choice local.0(choice) {
+    enum_variant(Empty) => {
+      expr i32 0
+    }
+    enum_variant(Value, as value) => {
+      expr i32 local.1(value)
+    }
+    enum_variant(Pair, as left, value(i32 4)) => {
+      expr i32 local.2(left)
+    }
+    else => {
+      expr i32 99
+    }
+  }
+}
+func fn.1() -> i32 {
+  return i32 add(i32 call bind.1(describe_choice)(Choice call Pair(i32 7, i32 4)), i32 call bind.1(describe_choice)(Choice call Value(i32 3)))
+}

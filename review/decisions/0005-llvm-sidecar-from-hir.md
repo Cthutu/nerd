@@ -56,18 +56,11 @@ The current LLVM lowering covers the core scalar and structured slices needed
 for early backend replacement work: generated function aliases, imports,
 locals, assignments, pointer/index/deref operations, aggregate values, slices,
 structured control flow, `for` forms, `on` forms with value/plex/enum patterns,
-and enum construction for HIR-visible enum constructors.
-
-One HIR gap found during enum testing: enum constructor calls nested directly
-inside another call argument can already be simplified incorrectly before LLVM
-lowering sees them. Constructors that remain explicit in HIR, such as returned
-enum values or calls through helper functions, lower correctly. HIR generation
-needs to preserve contextual enum constructor expressions before LLVM can be
-the only backend.
+and enum construction, including contextual enum constructors nested inside
+call arguments.
 
 ## Follow-up
 
-1. Preserve contextual enum constructors in HIR in every expression position.
-2. Replace export comments with concrete LLVM linkage/alias decisions.
-3. Compile the generated `.ll` through clang or llc once runtime/prelude
+1. Replace export comments with concrete LLVM linkage/alias decisions.
+2. Compile the generated `.ll` through clang or llc once runtime/prelude
    dependencies are represented.

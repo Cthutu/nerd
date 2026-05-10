@@ -144,6 +144,12 @@ internal u32 hir_lower_for(Hir*         hir,
                            const Sema*  sema,
                            u32          node_index);
 
+internal u32 hir_lower_expr(Hir*         hir,
+                            const Lexer* lexer,
+                            const Ast*   ast,
+                            const Sema*  sema,
+                            u32          node_index);
+
 internal void hir_add_function(Hir*            hir,
                                const Lexer*    lexer,
                                const Ast*      ast,
@@ -276,6 +282,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_SymbolRef:
+    case AK_EnumVariant:
     case AK_TypeFn:
     case AK_TypeApply:
     case AK_TypeTuple:
@@ -307,6 +314,121 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     default:
         return false;
     }
+}
+
+internal u32 hir_function_param_type(const Sema* sema,
+                                     u32         function_type,
+                                     u32         param_index)
+{
+    if (function_type == sema_no_type() ||
+        function_type >= array_count(sema->types) ||
+        sema->types[function_type].kind != STK_Function ||
+        param_index >= sema->types[function_type].param_count) {
+        return sema_no_type();
+    }
+    return sema->type_param_types[sema->types[function_type].first_param_type +
+                                  param_index];
+}
+
+internal u32 hir_enum_variant_index(const Sema* sema,
+                                    u32         enum_type,
+                                    u32         symbol_handle)
+{
+    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            symbol_handle) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal bool hir_call_callee_symbol(const Ast* ast,
+                                     u32        call_node_index,
+                                     u32*       out_symbol)
+{
+    call_node_index = hir_unwrap_node(ast, call_node_index);
+    if (call_node_index >= array_count(ast->nodes) ||
+        ast->nodes[call_node_index].kind != AK_Call) {
+        return false;
+    }
+
+    u32 callee_index = hir_unwrap_node(ast, ast->nodes[call_node_index].a);
+    if (callee_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* callee = &ast->nodes[callee_index];
+    if (callee->kind == AK_SymbolRef || callee->kind == AK_EnumVariant) {
+        *out_symbol = callee->a;
+        return true;
+    }
+    if (callee->kind == AK_Field) {
+        *out_symbol = callee->b;
+        return true;
+    }
+    return false;
+}
+
+internal u32 hir_lower_expr_with_expected(Hir*         hir,
+                                          const Lexer* lexer,
+                                          const Ast*   ast,
+                                          const Sema*  sema,
+                                          u32          node_index,
+                                          u32          expected_type)
+{
+    u32 symbol_handle = U32_MAX;
+    if (expected_type != sema_no_type() &&
+        expected_type < array_count(sema->types) &&
+        sema->types[expected_type].kind == STK_Enum &&
+        hir_call_callee_symbol(ast, node_index, &symbol_handle) &&
+        hir_enum_variant_index(sema, expected_type, symbol_handle) != U32_MAX) {
+        u32 call_node_index = hir_unwrap_node(ast, node_index);
+        const AstNode* call_node = &ast->nodes[call_node_index];
+        const AstCallInfo* call = &ast->calls[call_node->b];
+
+        u32 callee_expr_index =
+            hir_lower_expr(hir, lexer, ast, sema, call_node->a);
+        Array(HirCallArg) lowered_args = NULL;
+        for (u32 i = 0; i < call->arg_count; ++i) {
+            u32 arg_node_index = ast->call_args[call->first_arg + i];
+            array_push(lowered_args,
+                       (HirCallArg){
+                           .expr_index =
+                               hir_lower_expr(hir,
+                                              lexer,
+                                              ast,
+                                              sema,
+                                              arg_node_index),
+                           .symbol_handle = U32_MAX,
+                       });
+        }
+        u32 first_arg = (u32)array_count(hir->call_args);
+        for (u32 i = 0; i < array_count(lowered_args); ++i) {
+            array_push(hir->call_args, lowered_args[i]);
+        }
+        array_free(lowered_args);
+
+        return hir_add_expr(
+            hir,
+            (HirExpr){
+                .kind              = HIR_EXPR_Call,
+                .type_index        = expected_type,
+                .symbol_handle     = U32_MAX,
+                .local_index       = sema_no_local(),
+                .callee_expr_index = callee_expr_index,
+                .first_arg         = first_arg,
+                .arg_count         = call->arg_count,
+            });
+    }
+
+    return hir_lower_expr(hir, lexer, ast, sema, node_index);
 }
 
 internal u32 hir_lower_expr(Hir*         hir,
@@ -464,6 +586,16 @@ internal u32 hir_lower_expr(Hir*         hir,
                                     .ref_index     = ref_index,
                                 });
         }
+    case AK_EnumVariant:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind          = HIR_EXPR_LocalRef,
+                                .type_index    = hir_node_type(sema, node_index),
+                                .symbol_handle = node->a,
+                                .local_index   = sema_no_local(),
+                                .ref_kind      = HIR_REF_None,
+                                .ref_index     = hir_no_index(),
+                            });
     case AK_Call:
         {
             if (node->b >= array_count(ast->calls)) {
@@ -473,16 +605,33 @@ internal u32 hir_lower_expr(Hir*         hir,
             u32 callee_expr_index =
                 hir_lower_expr(hir, lexer, ast, sema, node->a);
             const AstCallInfo* call      = &ast->calls[node->b];
-            u32                first_arg = (u32)array_count(hir->call_args);
+            u32                callee_type = hir_node_type(sema, node->a);
+            if (callee_type == sema_no_type() &&
+                callee_expr_index < array_count(hir->exprs)) {
+                callee_type = hir->exprs[callee_expr_index].type_index;
+            }
+            Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < call->arg_count; ++i) {
                 u32 arg_node_index = ast->call_args[call->first_arg + i];
-                array_push(hir->call_args,
+                u32 expected_arg_type =
+                    hir_function_param_type(sema, callee_type, i);
+                array_push(lowered_args,
                            (HirCallArg){
-                               .expr_index = hir_lower_expr(
-                                   hir, lexer, ast, sema, arg_node_index),
+                               .expr_index = hir_lower_expr_with_expected(
+                                   hir,
+                                   lexer,
+                                   ast,
+                                   sema,
+                                   arg_node_index,
+                                   expected_arg_type),
                                .symbol_handle = U32_MAX,
                            });
             }
+            u32 first_arg = (u32)array_count(hir->call_args);
+            for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                array_push(hir->call_args, lowered_args[i]);
+            }
+            array_free(lowered_args);
 
             return hir_add_expr(
                 hir,
