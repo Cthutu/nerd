@@ -3663,67 +3663,116 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
-            if (expr->branch_count != 2) {
-                return (LlvmValue){0};
+            string end_label = llvm_label(ctx, "on.end");
+            Array(LlvmValue) phi_values = NULL;
+            Array(string)    phi_labels = NULL;
+            bool             ended_with_else = false;
+
+            for (u32 i = 0; i < expr->branch_count; ++i) {
+                const HirOnBranch* branch =
+                    &ctx->hir->on_branches[expr->first_branch + i];
+                string body_label = llvm_label(ctx, "on.body");
+                string next_label = llvm_label(ctx, "on.next");
+
+                if (branch->is_else) {
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(body_label));
+                } else {
+                    if (branch->guard_expr_index == U32_MAX) {
+                        array_free(phi_values);
+                        array_free(phi_labels);
+                        return (LlvmValue){0};
+                    }
+                    LlvmValue condition =
+                        llvm_emit_expr(ctx, function, branch->guard_expr_index);
+                    if (!condition.ok) {
+                        array_free(phi_values);
+                        array_free(phi_labels);
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  br i1 " STRINGP ", label %%" STRINGP
+                              ", label %%" STRINGP "\n",
+                              STRINGV(condition.value),
+                              STRINGV(body_label),
+                              STRINGV(next_label));
+                }
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                    ctx->block_terminated = false;
+                    if (!llvm_emit_block(
+                            ctx, function, branch->body_block_index)) {
+                        array_free(phi_values);
+                        array_free(phi_labels);
+                        return (LlvmValue){0};
+                    }
+                    if (!ctx->block_terminated) {
+                        sb_format(ctx->sb,
+                                  "  br label %%" STRINGP "\n",
+                                  STRINGV(end_label));
+                    }
+                    ctx->block_terminated = false;
+                } else {
+                    LlvmValue value = llvm_emit_block_value(
+                        ctx, function, branch->body_block_index);
+                    if (!value.ok) {
+                        array_free(phi_values);
+                        array_free(phi_labels);
+                        return (LlvmValue){0};
+                    }
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(end_label));
+                    array_push(phi_values, value);
+                    array_push(phi_labels, body_label);
+                }
+
+                if (branch->is_else) {
+                    ended_with_else = true;
+                    break;
+                }
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
             }
 
-            const HirOnBranch* then_branch =
-                &ctx->hir->on_branches[expr->first_branch];
-            const HirOnBranch* else_branch =
-                &ctx->hir->on_branches[expr->first_branch + 1];
-            if (then_branch->is_else || !else_branch->is_else ||
-                then_branch->guard_expr_index == U32_MAX) {
-                return (LlvmValue){0};
+            if (!ended_with_else) {
+                sb_append_cstr(ctx->sb, "  unreachable\n");
             }
-
-            LlvmValue condition =
-                llvm_emit_expr(ctx, function, then_branch->guard_expr_index);
-            if (!condition.ok) {
-                return (LlvmValue){0};
-            }
-
-            string then_label = llvm_label(ctx, "on.then");
-            string else_label = llvm_label(ctx, "on.else");
-            string end_label  = llvm_label(ctx, "on.end");
-            sb_format(ctx->sb,
-                      "  br i1 " STRINGP ", label %%" STRINGP
-                      ", label %%" STRINGP "\n",
-                      STRINGV(condition.value),
-                      STRINGV(then_label),
-                      STRINGV(else_label));
-
-            sb_format(ctx->sb, STRINGP ":\n", STRINGV(then_label));
-            LlvmValue then_value = llvm_emit_block_value(
-                ctx, function, then_branch->body_block_index);
-            if (!then_value.ok) {
-                return (LlvmValue){0};
-            }
-            sb_format(ctx->sb,
-                      "  br label %%" STRINGP "\n",
-                      STRINGV(end_label));
-
-            sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
-            LlvmValue else_value = llvm_emit_block_value(
-                ctx, function, else_branch->body_block_index);
-            if (!else_value.ok) {
-                return (LlvmValue){0};
-            }
-            sb_format(ctx->sb,
-                      "  br label %%" STRINGP "\n",
-                      STRINGV(end_label));
 
             sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+            if (llvm_type_is_void(ctx->sema, expr->type_index)) {
+                array_free(phi_values);
+                array_free(phi_labels);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s(""),
+                };
+            }
+            if (array_count(phi_values) == 0) {
+                array_free(phi_values);
+                array_free(phi_labels);
+                return (LlvmValue){0};
+            }
             string type = llvm_type_string(ctx, expr->type_index);
             string phi  = llvm_temp(ctx);
             sb_format(ctx->sb,
-                      "  " STRINGP " = phi " STRINGP " [" STRINGP ", %%"
-                      STRINGP "], [" STRINGP ", %%" STRINGP "]\n",
+                      "  " STRINGP " = phi " STRINGP " ",
                       STRINGV(phi),
-                      STRINGV(type),
-                      STRINGV(then_value.value),
-                      STRINGV(then_label),
-                      STRINGV(else_value.value),
-                      STRINGV(else_label));
+                      STRINGV(type));
+            for (u32 i = 0; i < array_count(phi_values); ++i) {
+                if (i > 0) {
+                    sb_append_cstr(ctx->sb, ", ");
+                }
+                sb_format(ctx->sb,
+                          "[" STRINGP ", %%" STRINGP "]",
+                          STRINGV(phi_values[i].value),
+                          STRINGV(phi_labels[i]));
+            }
+            sb_append_char(ctx->sb, '\n');
+            array_free(phi_values);
+            array_free(phi_labels);
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
