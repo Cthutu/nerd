@@ -1443,6 +1443,21 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
                                                 const HirExpr*       call,
                                                 u32                  receiver_expr_index);
 
+internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
+                                                   const HirFunction*   function,
+                                                   const HirExpr*       call,
+                                                   u32 receiver_expr_index);
+
+internal LlvmValue llvm_emit_dynamic_array_clear(LlvmFunctionContext* ctx,
+                                                 const HirFunction*   function,
+                                                 const HirExpr*       call,
+                                                 u32 receiver_expr_index);
+
+internal LlvmValue llvm_emit_dynamic_array_free(LlvmFunctionContext* ctx,
+                                                const HirFunction*   function,
+                                                const HirExpr*       call,
+                                                u32 receiver_expr_index);
+
 internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                u32                  target_expr_index,
@@ -5151,6 +5166,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return llvm_emit_dynamic_array_push(
                         ctx, function, expr, dynarray_receiver);
                 }
+                if (string_eq_cstr(dynarray_method, "reserve")) {
+                    return llvm_emit_dynamic_array_reserve(
+                        ctx, function, expr, dynarray_receiver);
+                }
+                if (string_eq_cstr(dynarray_method, "clear")) {
+                    return llvm_emit_dynamic_array_clear(
+                        ctx, function, expr, dynarray_receiver);
+                }
+                if (string_eq_cstr(dynarray_method, "free")) {
+                    return llvm_emit_dynamic_array_free(
+                        ctx, function, expr, dynarray_receiver);
+                }
                 return (LlvmValue){0};
             }
 
@@ -6234,6 +6261,213 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
               STRINGV(needed),
               STRINGV(count_ptr));
 
+    ctx->block_terminated = false;
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = call->type_index,
+        .value      = s(""),
+    };
+}
+
+internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
+                                                   const HirFunction*   function,
+                                                   const HirExpr*       call,
+                                                   u32 receiver_expr_index)
+{
+    if (call->arg_count != 1 ||
+        receiver_expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+    const HirExpr* receiver = &ctx->hir->exprs[receiver_expr_index];
+    u32 item_type = llvm_collection_item_type(ctx->sema, receiver->type_index);
+    if (item_type == sema_no_type()) {
+        return (LlvmValue){0};
+    }
+
+    const HirCallArg* arg = &ctx->hir->call_args[call->first_arg];
+    LlvmValue requested = llvm_emit_expr(ctx, function, arg->expr_index);
+    if (!requested.ok) {
+        return (LlvmValue){0};
+    }
+    string requested_type = llvm_type_string(ctx, requested.type_index);
+    string requested_i64  = requested.value;
+    if (!string_eq_cstr(requested_type, "i64")) {
+        requested_i64 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext " STRINGP " " STRINGP " to i64\n",
+                  STRINGV(requested_i64),
+                  STRINGV(requested_type),
+                  STRINGV(requested.value));
+    }
+
+    LlvmValue slot =
+        llvm_address_of_expr(ctx, function, receiver_expr_index);
+    if (!slot.ok) {
+        return (LlvmValue){0};
+    }
+
+    string header = {0};
+    if (!llvm_dynamic_array_ensure_header(ctx, slot.value, &header)) {
+        return (LlvmValue){0};
+    }
+
+    string data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
+    string capacity_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 2);
+    string data         = llvm_temp(ctx);
+    string capacity     = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load ptr, ptr " STRINGP "\n"
+              "  " STRINGP " = load i64, ptr " STRINGP "\n",
+              STRINGV(data),
+              STRINGV(data_ptr_ptr),
+              STRINGV(capacity),
+              STRINGV(capacity_ptr));
+
+    string grows = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = icmp ugt i64 " STRINGP ", " STRINGP "\n",
+              STRINGV(grows),
+              STRINGV(requested_i64),
+              STRINGV(capacity));
+    string grow_label = llvm_label(ctx, "dynarray.reserve.grow");
+    string done_label = llvm_label(ctx, "dynarray.reserve.done");
+    sb_format(ctx->sb,
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+              STRINGP "\n",
+              STRINGV(grows),
+              STRINGV(grow_label),
+              STRINGV(done_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(grow_label));
+    u64 item_size  = llvm_type_storage_bytes(ctx->sema, item_type);
+    string bytes   = llvm_temp(ctx);
+    string new_data = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
+              "  " STRINGP " = call ptr @realloc(ptr " STRINGP
+              ", i64 " STRINGP ")\n"
+              "  store ptr " STRINGP ", ptr " STRINGP "\n"
+              "  store i64 " STRINGP ", ptr " STRINGP "\n"
+              "  br label %%" STRINGP "\n",
+              STRINGV(bytes),
+              STRINGV(requested_i64),
+              (unsigned long long)item_size,
+              STRINGV(new_data),
+              STRINGV(data),
+              STRINGV(bytes),
+              STRINGV(new_data),
+              STRINGV(data_ptr_ptr),
+              STRINGV(requested_i64),
+              STRINGV(capacity_ptr),
+              STRINGV(done_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
+    ctx->block_terminated = false;
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = call->type_index,
+        .value      = s(""),
+    };
+}
+
+internal LlvmValue llvm_emit_dynamic_array_clear(LlvmFunctionContext* ctx,
+                                                 const HirFunction*   function,
+                                                 const HirExpr*       call,
+                                                 u32 receiver_expr_index)
+{
+    if (call->arg_count != 0 ||
+        receiver_expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+    LlvmValue slot =
+        llvm_address_of_expr(ctx, function, receiver_expr_index);
+    if (!slot.ok) {
+        return (LlvmValue){0};
+    }
+
+    string header = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load ptr, ptr " STRINGP "\n",
+              STRINGV(header),
+              STRINGV(slot.value));
+    string is_null = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = icmp eq ptr " STRINGP ", null\n",
+              STRINGV(is_null),
+              STRINGV(header));
+    string clear_label = llvm_label(ctx, "dynarray.clear");
+    string done_label  = llvm_label(ctx, "dynarray.clear.done");
+    sb_format(ctx->sb,
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+              STRINGP "\n",
+              STRINGV(is_null),
+              STRINGV(done_label),
+              STRINGV(clear_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(clear_label));
+    string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+    sb_format(ctx->sb,
+              "  store i64 0, ptr " STRINGP "\n"
+              "  br label %%" STRINGP "\n",
+              STRINGV(count_ptr),
+              STRINGV(done_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
+    ctx->block_terminated = false;
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = call->type_index,
+        .value      = s(""),
+    };
+}
+
+internal LlvmValue llvm_emit_dynamic_array_free(LlvmFunctionContext* ctx,
+                                                const HirFunction*   function,
+                                                const HirExpr*       call,
+                                                u32 receiver_expr_index)
+{
+    if (call->arg_count != 0 ||
+        receiver_expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+    LlvmValue slot =
+        llvm_address_of_expr(ctx, function, receiver_expr_index);
+    if (!slot.ok) {
+        return (LlvmValue){0};
+    }
+
+    string header = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load ptr, ptr " STRINGP "\n",
+              STRINGV(header),
+              STRINGV(slot.value));
+    string is_null = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = icmp eq ptr " STRINGP ", null\n",
+              STRINGV(is_null),
+              STRINGV(header));
+    string free_label = llvm_label(ctx, "dynarray.free");
+    string done_label = llvm_label(ctx, "dynarray.free.done");
+    sb_format(ctx->sb,
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%"
+              STRINGP "\n",
+              STRINGV(is_null),
+              STRINGV(done_label),
+              STRINGV(free_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(free_label));
+    string data = llvm_dynamic_array_load_header_field(ctx, header, 0, s("ptr"));
+    sb_format(ctx->sb,
+              "  call void @free(ptr " STRINGP ")\n"
+              "  call void @free(ptr " STRINGP ")\n"
+              "  store ptr null, ptr " STRINGP "\n"
+              "  br label %%" STRINGP "\n",
+              STRINGV(data),
+              STRINGV(header),
+              STRINGV(slot.value),
+              STRINGV(done_label));
+
+    sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
     ctx->block_terminated = false;
     return (LlvmValue){
         .ok         = true,
