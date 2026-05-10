@@ -428,6 +428,9 @@ typedef struct {
     Arena*                arena;
     u32                   next_temp;
     u32                   next_label;
+    bool                  block_terminated;
+    string                break_label;
+    string                continue_label;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot)  slots;
     Array(u32)            assigned_locals;
@@ -1511,12 +1514,36 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 u32 index_type = llvm_local_type(ctx, loop->index_local_index);
                 if (index_type == sema_no_type()) {
-                    index_type = expr->type_index;
+                    index_type = sema_no_type();
+                    for (u32 i = 0; i < array_count(ctx->sema->types); ++i) {
+                        if (ctx->sema->types[i].kind == STK_Usize) {
+                            index_type = i;
+                            break;
+                        }
+                    }
                 }
                 LlvmLocalSlot* index_slot = NULL;
+                LlvmLocalSlot  hidden_index_slot = {0};
+                bool           hidden_index      = loop->index_local_index == U32_MAX;
                 if (loop->index_local_index != U32_MAX) {
                     index_slot = llvm_ensure_local_slot(
                         ctx, loop->index_local_index, index_type);
+                } else {
+                    hidden_index_slot = (LlvmLocalSlot){
+                        .local_index = U32_MAX,
+                        .type_index  = index_type,
+                        .ptr         = llvm_temp(ctx),
+                    };
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = alloca i64\n",
+                              STRINGV(hidden_index_slot.ptr));
+                    index_slot = &hidden_index_slot;
+                }
+                if (hidden_index) {
+                    sb_format(ctx->sb,
+                              "  store i64 0, ptr " STRINGP "\n",
+                              STRINGV(index_slot->ptr));
+                } else {
                     llvm_store_local_slot(ctx,
                                           index_slot,
                                           (LlvmValue){
@@ -1541,15 +1568,25 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(cond_label));
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
-                LlvmValue index_value =
-                    index_slot != NULL
-                        ? llvm_load_local_slot(ctx, index_slot)
-                        : (LlvmValue){.ok         = true,
-                                      .type_index = index_type,
-                                      .value      = s("0")};
+                LlvmValue index_value = {0};
+                if (hidden_index) {
+                    string loaded = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                              STRINGV(loaded),
+                              STRINGV(index_slot->ptr));
+                    index_value = (LlvmValue){
+                        .ok         = true,
+                        .type_index = sema_no_type(),
+                        .value      = loaded,
+                    };
+                } else {
+                    index_value = llvm_load_local_slot(ctx, index_slot);
+                }
                 string cond = llvm_temp(ctx);
                 string index_type_string =
-                    llvm_type_string(ctx, index_value.type_index);
+                    hidden_index ? s("i64")
+                                 : llvm_type_string(ctx, index_value.type_index);
                 sb_format(ctx->sb,
                           "  " STRINGP " = icmp ult " STRINGP " " STRINGP
                           ", " STRINGP "\n",
@@ -1586,32 +1623,64 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                               .value      = item_ptr,
                                           });
                 }
+                string old_break    = ctx->break_label;
+                string old_continue = ctx->continue_label;
+                ctx->break_label    = end_label;
+                ctx->continue_label = cond_label;
                 if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
                     return (LlvmValue){0};
                 }
+                ctx->break_label    = old_break;
+                ctx->continue_label = old_continue;
 
-                if (index_slot != NULL) {
-                    LlvmValue current = llvm_load_local_slot(ctx, index_slot);
+                if (!ctx->block_terminated) {
+                    LlvmValue current = {0};
+                    if (hidden_index) {
+                        string loaded = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = load i64, ptr " STRINGP
+                                  "\n",
+                                  STRINGV(loaded),
+                                  STRINGV(index_slot->ptr));
+                        current = (LlvmValue){
+                            .ok         = true,
+                            .type_index = sema_no_type(),
+                            .value      = loaded,
+                        };
+                    } else {
+                        current = llvm_load_local_slot(ctx, index_slot);
+                    }
                     string next       = llvm_temp(ctx);
-                    string type       = llvm_type_string(ctx, current.type_index);
+                    string type = hidden_index ? s("i64")
+                                               : llvm_type_string(
+                                                     ctx, current.type_index);
                     sb_format(ctx->sb,
                               "  " STRINGP " = add " STRINGP " " STRINGP
                               ", 1\n",
                               STRINGV(next),
                               STRINGV(type),
                               STRINGV(current.value));
-                    llvm_store_local_slot(ctx,
-                                          index_slot,
-                                          (LlvmValue){
-                                              .ok         = true,
-                                              .type_index = current.type_index,
-                                              .value      = next,
-                                          });
+                    if (hidden_index) {
+                        sb_format(ctx->sb,
+                                  "  store i64 " STRINGP ", ptr " STRINGP
+                                  "\n",
+                                  STRINGV(next),
+                                  STRINGV(index_slot->ptr));
+                    } else {
+                        llvm_store_local_slot(ctx,
+                                              index_slot,
+                                              (LlvmValue){
+                                                  .ok = true,
+                                                  .type_index =
+                                                      current.type_index,
+                                                  .value = next,
+                                              });
+                    }
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(cond_label));
                 }
-
-                sb_format(ctx->sb,
-                          "  br label %%" STRINGP "\n",
-                          STRINGV(cond_label));
+                ctx->block_terminated = false;
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 return (LlvmValue){
                     .ok         = true,
@@ -1893,13 +1962,30 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
-    if (target->kind != HIR_EXPR_LocalRef ||
-        target->ref_kind != HIR_REF_Local) {
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
         return false;
     }
 
-    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
-    if (!value.ok) {
+    if (target->kind == HIR_EXPR_Unary &&
+        target->unary_op == HIR_UNARY_Deref) {
+        LlvmValue pointer =
+            llvm_emit_expr(ctx, function, target->operand_expr_index);
+        if (!pointer.ok) {
+            return false;
+        }
+
+        string type = llvm_type_string(ctx, target->type_index);
+        sb_format(ctx->sb,
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(type),
+                  STRINGV(value.value),
+                  STRINGV(pointer.value));
+        return true;
+    }
+
+    if (target->kind != HIR_EXPR_LocalRef ||
+        target->ref_kind != HIR_REF_Local) {
         return false;
     }
 
@@ -1922,6 +2008,9 @@ internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
                                             u32                  stmt_count)
 {
     for (u32 i = 0; i < stmt_count; ++i) {
+        if (ctx->block_terminated) {
+            return true;
+        }
         u32 stmt_index = stmt_indices[first_stmt + i];
         if (stmt_index >= array_count(ctx->hir->stmts)) {
             return false;
@@ -1944,6 +2033,7 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
     }
 
     const HirBlock* block = &ctx->hir->blocks[block_index];
+    ctx->block_terminated = false;
     return llvm_emit_effect_stmt_indices(
         ctx, function, block->stmt_indices, 0, block->stmt_count);
 }
@@ -1964,6 +2054,24 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
         }
         return llvm_emit_expr(ctx, function, stmt->expr_index).ok;
     case HIR_STMT_Defer:
+        return true;
+    case HIR_STMT_Break:
+        if (ctx->break_label.count == 0) {
+            return false;
+        }
+        sb_format(ctx->sb,
+                  "  br label %%" STRINGP "\n",
+                  STRINGV(ctx->break_label));
+        ctx->block_terminated = true;
+        return true;
+    case HIR_STMT_Continue:
+        if (ctx->continue_label.count == 0) {
+            return false;
+        }
+        sb_format(ctx->sb,
+                  "  br label %%" STRINGP "\n",
+                  STRINGV(ctx->continue_label));
+        ctx->block_terminated = true;
         return true;
     case HIR_STMT_Block:
         return llvm_emit_effect_block(ctx, function, stmt->body_block_index);
