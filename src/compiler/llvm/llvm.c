@@ -1610,6 +1610,107 @@ internal string llvm_string_helper_suffix(const Sema* sema, u32 type_index)
     }
 }
 
+internal void llvm_emit_append_byte(LlvmFunctionContext* ctx, u8 byte)
+{
+    sb_format(ctx->sb,
+              "  call void @string_builder_append_byte(i8 %u)\n",
+              (u32)byte);
+}
+
+internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
+                                            LlvmValue            value)
+{
+    SemaTypeKind kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (kind == STK_Tuple || kind == STK_Plex) {
+        llvm_emit_append_byte(ctx, '(');
+        u32 field_count = llvm_record_field_count(ctx->sema, value.type_index);
+        string record_type = llvm_type_string(ctx, value.type_index);
+        for (u32 i = 0; i < field_count; ++i) {
+            if (i > 0) {
+                llvm_emit_append_byte(ctx, ',');
+                llvm_emit_append_byte(ctx, ' ');
+            }
+
+            u32 field_type = llvm_record_field_type(ctx->sema,
+                                                    value.type_index,
+                                                    i);
+            string field = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " "
+                      STRINGP ", %u\n",
+                      STRINGV(field),
+                      STRINGV(record_type),
+                      STRINGV(value.value),
+                      i);
+            if (!llvm_emit_append_string_value(ctx,
+                                               (LlvmValue){
+                                                   .ok         = true,
+                                                   .type_index = field_type,
+                                                   .value      = field,
+                                               })) {
+                return false;
+            }
+        }
+        if (field_count == 1) {
+            llvm_emit_append_byte(ctx, ',');
+        }
+        llvm_emit_append_byte(ctx, ')');
+        return true;
+    }
+
+    if (kind == STK_Array) {
+        llvm_emit_append_byte(ctx, '[');
+        u32 item_count = llvm_array_count(ctx->sema, value.type_index);
+        u32 item_type  = llvm_collection_item_type(ctx->sema, value.type_index);
+        string array_type = llvm_type_string(ctx, value.type_index);
+        for (u32 i = 0; i < item_count; ++i) {
+            if (i > 0) {
+                llvm_emit_append_byte(ctx, ',');
+                llvm_emit_append_byte(ctx, ' ');
+            }
+
+            string item = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " "
+                      STRINGP ", %u\n",
+                      STRINGV(item),
+                      STRINGV(array_type),
+                      STRINGV(value.value),
+                      i);
+            if (!llvm_emit_append_string_value(ctx,
+                                               (LlvmValue){
+                                                   .ok         = true,
+                                                   .type_index = item_type,
+                                                   .value      = item,
+                                               })) {
+                return false;
+            }
+        }
+        llvm_emit_append_byte(ctx, ']');
+        return true;
+    }
+
+    string suffix = llvm_string_helper_suffix(ctx->sema, value.type_index);
+    if (suffix.count == 0) {
+        return false;
+    }
+
+    string value_type = llvm_type_string(ctx, value.type_index);
+    string converted  = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = call { ptr, i64 } @to_string$" STRINGP
+              "(" STRINGP " " STRINGP ")\n",
+              STRINGV(converted),
+              STRINGV(suffix),
+              STRINGV(value_type),
+              STRINGV(value.value));
+    sb_format(ctx->sb,
+              "  call void @string_builder_append_string({ ptr, i64 } "
+              STRINGP ")\n",
+              STRINGV(converted));
+    return true;
+}
+
 internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
                                             const HirFunction*   function,
                                             const u32*           stmt_indices,
@@ -1801,26 +1902,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (!part.ok) {
                     return (LlvmValue){0};
                 }
-
-                string suffix =
-                    llvm_string_helper_suffix(ctx->sema, part.type_index);
-                if (suffix.count == 0) {
+                if (!llvm_emit_append_string_value(ctx, part)) {
                     return (LlvmValue){0};
                 }
-
-                string part_type = llvm_type_string(ctx, part.type_index);
-                string converted = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = call { ptr, i64 } @to_string$"
-                          STRINGP "(" STRINGP " " STRINGP ")\n",
-                          STRINGV(converted),
-                          STRINGV(suffix),
-                          STRINGV(part_type),
-                          STRINGV(part.value));
-                sb_format(ctx->sb,
-                          "  call void @string_builder_append_string({ ptr, "
-                          "i64 } " STRINGP ")\n",
-                          STRINGV(converted));
             }
             string result = llvm_temp(ctx);
             sb_format(ctx->sb,
@@ -3619,6 +3703,7 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
                    "declare void @string_builder_reset()\n"
                    "declare i64 @string_builder_mark()\n"
                    "declare void @string_builder_append_string({ ptr, i64 })\n"
+                   "declare void @string_builder_append_byte(i8)\n"
                    "declare { ptr, i64 } @string_builder_finish(i64)\n"
                    "declare { ptr, i64 } @to_string$string({ ptr, i64 })\n"
                    "declare { ptr, i64 } @to_string$bool(i1)\n"

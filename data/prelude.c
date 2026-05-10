@@ -98,6 +98,16 @@ void string_builder_append_string(string str)
     }
 }
 
+void string_builder_append_byte(u8 byte)
+{
+    if (g_string_arena_cursor + 1 > NERD_STRING_ARENA_CAPACITY) {
+        eprn("fatal: string arena overflow");
+        abort();
+    }
+
+    g_string_arena[g_string_arena_cursor++] = byte;
+}
+
 string string_builder_finish(size_t start)
 {
     return (string){.data = g_string_arena + start,
