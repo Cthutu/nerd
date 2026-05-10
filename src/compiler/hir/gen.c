@@ -1673,6 +1673,19 @@ internal u32 hir_lower_block_node(Hir*         hir,
             }
         }
 
+        u32 owned_root = hir_unwrap_node(ast, i);
+        if (owned_root < array_count(ast->nodes) &&
+            ast->nodes[owned_root].kind == AK_Block) {
+            u32 child_first = ast->nodes[owned_root].a;
+            u32 child_end   = ast->nodes[owned_root].b;
+            if (child_end > end) {
+                child_end = end;
+            }
+            for (u32 j = child_first; j < child_end; ++j) {
+                owned_nodes[j] = true;
+            }
+        }
+
         if (ast->nodes[i].kind == AK_On) {
             hir_mark_owned_on_branch_bodies(ast, owned_nodes, first, end, i);
         }
@@ -1795,6 +1808,19 @@ internal u32 hir_lower_function_body(Hir*         hir,
                 for (u32 j = child_first; j < child_end; ++j) {
                     owned_nodes[j] = true;
                 }
+            }
+        }
+
+        u32 owned_root = hir_unwrap_node(ast, i);
+        if (owned_root < array_count(ast->nodes) &&
+            ast->nodes[owned_root].kind == AK_Block) {
+            u32 child_first = ast->nodes[owned_root].a;
+            u32 child_end   = ast->nodes[owned_root].b;
+            if (child_end > fn_end) {
+                child_end = fn_end;
+            }
+            for (u32 j = child_first; j < child_end; ++j) {
+                owned_nodes[j] = true;
             }
         }
 
