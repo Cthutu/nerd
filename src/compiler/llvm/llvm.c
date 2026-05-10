@@ -2161,16 +2161,21 @@ internal string llvm_float_compare_instruction(HirBinaryOp op)
     }
 }
 
-internal string llvm_float_literal_string(Arena* arena, f64 value)
+internal string llvm_float_literal_string(const Sema* sema,
+                                          Arena*      arena,
+                                          u32         type_index,
+                                          f64         value)
 {
-    string result = string_format(arena, "%.17g", value);
-    for (usize i = 0; i < result.count; ++i) {
-        char ch = (char)result.data[i];
-        if (ch == '.' || ch == 'e' || ch == 'E') {
-            return result;
-        }
+    if (llvm_type_kind(sema, type_index) == STK_F32) {
+        value = (f64)(f32)value;
     }
-    return string_format(arena, STRINGP ".0", STRINGV(result));
+    union {
+        f64 value;
+        u64 bits;
+    } repr = {.value = value};
+    return string_format(arena,
+                         "0x%016llX",
+                         (unsigned long long)repr.bits);
 }
 
 internal string llvm_string_helper_suffix(const Sema* sema, u32 type_index)
@@ -2571,7 +2576,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){
             .ok         = true,
             .type_index = expr->type_index,
-            .value      = llvm_float_literal_string(ctx->arena, expr->floating),
+            .value      = llvm_float_literal_string(
+                ctx->sema, ctx->arena, expr->type_index, expr->floating),
         };
     case HIR_EXPR_StringLiteral:
         {
@@ -3153,12 +3159,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = temp,
                 };
             case HIR_UNARY_Negate:
-                sb_format(ctx->sb,
-                          "  " STRINGP " = sub " STRINGP " 0, " STRINGP
-                          "\n",
-                          STRINGV(temp),
-                          STRINGV(type),
-                          STRINGV(operand.value));
+                if (llvm_float_bits(ctx->sema, expr->type_index) > 0) {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = fneg " STRINGP " " STRINGP
+                              "\n",
+                              STRINGV(temp),
+                              STRINGV(type),
+                              STRINGV(operand.value));
+                } else {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = sub " STRINGP " 0, " STRINGP
+                              "\n",
+                              STRINGV(temp),
+                              STRINGV(type),
+                              STRINGV(operand.value));
+                }
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = expr->type_index,

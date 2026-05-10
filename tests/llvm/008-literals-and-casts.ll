@@ -15,7 +15,7 @@ define i32 @fn.0(double %value) {
   ret i32 %t0
 }
 define i32 @fn.1() {
-  %t0 = call i32 @fn.0(double 1.5)
+  %t0 = call i32 @fn.0(double 0x3FF8000000000000)
   ret i32 %t0
 }
 @$to_i32 = alias i32 (double), ptr @fn.0
