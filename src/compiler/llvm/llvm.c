@@ -3520,8 +3520,23 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string temp = llvm_temp(ctx);
                 SemaTypeKind lhs_kind = llvm_type_kind(ctx->sema, lhs.type_index);
                 SemaTypeKind rhs_kind = llvm_type_kind(ctx->sema, rhs.type_index);
-                if ((lhs_kind == STK_Slice || lhs_kind == STK_String) &&
-                    lhs_kind == rhs_kind) {
+                if (lhs_kind == STK_String && rhs_kind == STK_String) {
+                    sb_format(ctx->sb,
+                              "  " STRINGP
+                              " = call i1 @string_eq({ ptr, i64 } " STRINGP
+                              ", { ptr, i64 } " STRINGP ")\n",
+                              STRINGV(temp),
+                              STRINGV(lhs.value),
+                              STRINGV(rhs.value));
+                    if (expr->binary_op == HIR_BINARY_NotEqual) {
+                        string inverted = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                  STRINGV(inverted),
+                                  STRINGV(temp));
+                        temp = inverted;
+                    }
+                } else if (lhs_kind == STK_Slice && rhs_kind == STK_Slice) {
                     string lhs_data = llvm_temp(ctx);
                     string lhs_count = llvm_temp(ctx);
                     string rhs_data = llvm_temp(ctx);
