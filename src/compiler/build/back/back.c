@@ -12,6 +12,7 @@
 #include <compiler/build/back/back.h>
 #include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
+#include <compiler/llvm/llvm.h>
 
 //------------------------------------------------------------------------------
 
@@ -656,9 +657,11 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
         .binary_path    = "a.out",
         .hir_path       = "_a.hir",
         .ir_path        = "_a.ir",
+        .llvm_path      = "_a.ll",
         .c_path         = "_a.gen.c",
         .emit_hir_file  = false,
         .emit_ir_file   = false,
+        .emit_llvm_file = false,
         .emit_c_file    = false,
         .compile_binary = true,
         .release        = false,
@@ -863,6 +866,16 @@ bool back_end_program(const ProgramInfo*        program,
             &program->modules[program->root_module_index].front_end;
         if (!hir_save(
                 &root->hir, &root->lexer, &root->sema, artifacts->hir_path)) {
+            return false;
+        }
+    }
+
+    if (artifacts->emit_llvm_file &&
+        program->root_module_index < array_count(program->modules)) {
+        const FrontEndState* root =
+            &program->modules[program->root_module_index].front_end;
+        if (!llvm_save_hir(
+                &root->hir, &root->lexer, &root->sema, artifacts->llvm_path)) {
             return false;
         }
     }

@@ -43,6 +43,7 @@ typedef struct {
     string     output_path;
     bool       emit_hir;
     bool       emit_ir;
+    bool       emit_llvm;
     bool       emit_c;
     bool       release;
     bool       verbose;
@@ -69,6 +70,7 @@ typedef struct {
     string     output_path;
     bool       emit_hir;
     bool       emit_ir;
+    bool       emit_llvm;
     bool       emit_c;
     bool       keep_binary;
     bool       release;
@@ -80,9 +82,11 @@ typedef struct {
     cstr binary_path;
     cstr hir_path;
     cstr ir_path;
+    cstr llvm_path;
     cstr c_path;
     bool emit_hir_file;
     bool emit_ir_file;
+    bool emit_llvm_file;
     bool emit_c_file;
     bool compile_binary;
     bool release;

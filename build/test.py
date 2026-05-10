@@ -57,6 +57,7 @@ SUITE_LABELS = {
     "language": "language",
     "errors": "error",
     "hir": "hir",
+    "llvm": "llvm",
     "format": "format",
     "lsp": "lsp",
     "commands": "command",
@@ -317,6 +318,46 @@ def test_hir(path: pathlib.Path) -> list[Failure]:
     return failures
 
 
+def test_llvm(path: pathlib.Path) -> list[Failure]:
+    parts = split_sections(path)
+    if len(parts) != 2:
+        return [Failure(path, "LLVM test must have source and expected LLVM sections")]
+
+    source, expected_llvm = parts
+    input_path = path.with_suffix(".input.n")
+    output_root = path.parent / path.stem
+    llvm_path = path.parent / f"_{path.stem}.ll"
+
+    input_path.write_text(source, encoding="utf-8", newline="\n")
+    llvm_path.unlink(missing_ok=True)
+
+    proc = run_cmd([
+        str(NERD),
+        "build",
+        "--llvm",
+        str(input_path),
+        "--output",
+        str(output_root),
+    ])
+
+    failures: list[Failure] = []
+    if proc.returncode != 0:
+        failures.append(Failure(path, f"build failed with {proc.returncode}\n{proc.stderr}"))
+    else:
+        actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
+        if not lines_are_subsequence(expected_llvm, actual_llvm):
+            llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
+            if llvm_failure:
+                failures.append(llvm_failure)
+
+    if not failures:
+        input_path.unlink(missing_ok=True)
+        llvm_path.unlink(missing_ok=True)
+        output_root.unlink(missing_ok=True)
+        input_path.with_suffix("").unlink(missing_ok=True)
+    return failures
+
+
 def normalize_error_json(text: str, source_file: str) -> str:
     parsed = json.loads(text)
     parsed["source_file"] = source_file
@@ -546,12 +587,13 @@ def collect() -> list[tuple[str, pathlib.Path]]:
         ("language", "tests/language", "*.t"),
         ("errors", "tests/errors", "*.e"),
         ("hir", "tests/hir", "*.hir"),
+        ("llvm", "tests/llvm", "*.ll"),
         ("format", "tests/format", "*.f"),
         ("lsp", "tests/lsp", "*.lsp"),
         ("commands", "tests/commands", "*.cmd"),
     ]:
         for path in sorted((ROOT / directory).glob(suffix)):
-            if kind == "hir" and path.name.startswith("_"):
+            if kind in {"hir", "llvm"} and path.name.startswith("_"):
                 continue
             cases.append((kind, path))
     return cases
@@ -566,6 +608,7 @@ def main() -> int:
         "language": test_language,
         "errors": test_errors,
         "hir": test_hir,
+        "llvm": test_llvm,
         "format": test_format,
         "lsp": test_lsp,
         "commands": test_command,

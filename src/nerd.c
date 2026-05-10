@@ -294,6 +294,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(
             build_flags,
             nerd_cli_make_flag(
+                arena, "llvm", NULL, "Write generated LLVM IR to a file"));
+        json_array_push(
+            build_flags,
+            nerd_cli_make_flag(
                 arena, "cgen", NULL, "Write generated C to a file"));
         json_array_push(
             build_flags,
@@ -335,6 +339,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(run_flags,
                         nerd_cli_make_flag(
                             arena, "ir", NULL, "Write generated IR to a file"));
+        json_array_push(
+            run_flags,
+            nerd_cli_make_flag(
+                arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(
@@ -566,6 +574,8 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             cli_result, "command.params.output", (string){0}),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_ir  = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
+        .emit_llvm =
+            nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .release =
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
@@ -618,6 +628,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
             cli_result, "command.params.output", (string){0}),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_ir  = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
+        .emit_llvm =
+            nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .keep_binary =
             nerd_cli_flag_bool(cli_result, "command.flags.keep", false),
