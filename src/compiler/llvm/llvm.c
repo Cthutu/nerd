@@ -1621,6 +1621,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = value,
             };
         }
+        if (expr->ref_kind == HIR_REF_Binding &&
+            expr->ref_index < array_count(ctx->hir->bindings)) {
+            const HirBinding* binding = &ctx->hir->bindings[expr->ref_index];
+            if (binding->kind == HIR_BINDING_Value &&
+                binding->target_index < array_count(ctx->hir->values)) {
+                const HirValue* value = &ctx->hir->values[binding->target_index];
+                if (value->kind == HIR_VALUE_Constant &&
+                    value->value_expr_index != U32_MAX) {
+                    return llvm_emit_expr(ctx, function, value->value_expr_index);
+                }
+            }
+        }
         return (LlvmValue){0};
     case HIR_EXPR_Binary:
         {
