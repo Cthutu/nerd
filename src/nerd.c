@@ -291,9 +291,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             build_flags,
             nerd_cli_make_flag(
                 arena, "hir", NULL, "Write generated HIR to a file"));
-        json_array_push(build_flags,
-                        nerd_cli_make_flag(
-                            arena, "ir", NULL, "Write generated IR to a file"));
         json_array_push(
             build_flags,
             nerd_cli_make_flag(
@@ -341,9 +338,6 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             run_flags,
             nerd_cli_make_flag(
                 arena, "hir", NULL, "Write generated HIR to a file"));
-        json_array_push(run_flags,
-                        nerd_cli_make_flag(
-                            arena, "ir", NULL, "Write generated IR to a file"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(
@@ -580,7 +574,6 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
-        .emit_ir  = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .release =
@@ -633,7 +626,6 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
-        .emit_ir  = nerd_cli_flag_bool(cli_result, "command.flags.ir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .keep_binary =

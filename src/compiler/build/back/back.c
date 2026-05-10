@@ -669,11 +669,9 @@ internal NerdArtifactConfig compiler_default_artifacts(void)
     return (NerdArtifactConfig){
         .binary_path      = "a.out",
         .hir_path         = "_a.hir",
-        .ir_path          = "_a.ir",
         .llvm_path        = "_a.ll",
         .c_path           = "_a.gen.c",
         .emit_hir_file    = false,
-        .emit_ir_file     = false,
         .emit_llvm_file   = false,
         .emit_c_file      = false,
         .use_llvm_backend = true,
@@ -1115,14 +1113,6 @@ bool back_end(const FrontEndState*      front_end_results,
     NerdArtifactConfig default_artifacts = compiler_default_artifacts();
     if (!artifacts) {
         artifacts = &default_artifacts;
-    }
-
-    if (artifacts->emit_ir_file) {
-        if (!ir_save(&front_end_results->ir,
-                     &front_end_results->lexer,
-                     artifacts->ir_path)) {
-            return false;
-        }
     }
 
     BackEndContext ctx = {.front_end_results = front_end_results,

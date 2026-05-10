@@ -97,14 +97,12 @@ after a successful link.
 
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
 flags without consulting the old IR tables. Normal LLVM builds request HIR but
-skip legacy IR generation unless the user explicitly asks for the legacy `--ir`
-debug artifact. This removes the old IR from the default compiler critical path
-while keeping it available briefly as a migration and comparison tool.
+always skip legacy IR generation. This removes the old IR from the default
+compiler critical path and from the public artifact interface.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
-3. Remove the remaining legacy IR/C implementation files after the legacy `--ir`
-   debug artifact is replaced by HIR snapshots or deleted.
+3. Remove the remaining legacy IR/C implementation files.
