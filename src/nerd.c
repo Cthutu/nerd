@@ -1,6 +1,8 @@
 //------------------------------------------------------------------------------
 //> use: core intern compiler timing table cli lsp object
+// clang-format off
 //> run: clang -S -emit-llvm -O0 -Xclang -disable-O0-optnone -std=gnu23 data/prelude.c -o _obj/llvm/prelude.ll
+// clang-format on
 
 #include <cli/cli.h>
 #include <compiler/compiler.h>
@@ -302,12 +304,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                "llvm-backend",
                                NULL,
                                "Build executable with LLVM backend (default)"));
-        json_array_push(build_flags,
-                        nerd_cli_make_flag(
-                            arena,
-                            "c-backend",
-                            NULL,
-                            "Build executable with legacy IR/C backend"));
+        json_array_push(
+            build_flags,
+            nerd_cli_make_flag(arena,
+                               "c-backend",
+                               NULL,
+                               "Build executable with legacy IR/C backend"));
         json_array_push(
             build_flags,
             nerd_cli_make_flag(
@@ -362,12 +364,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                "llvm-backend",
                                NULL,
                                "Build executable with LLVM backend (default)"));
-        json_array_push(run_flags,
-                        nerd_cli_make_flag(
-                            arena,
-                            "c-backend",
-                            NULL,
-                            "Build executable with legacy IR/C backend"));
+        json_array_push(
+            run_flags,
+            nerd_cli_make_flag(arena,
+                               "c-backend",
+                               NULL,
+                               "Build executable with legacy IR/C backend"));
         json_array_push(
             run_flags,
             nerd_cli_make_flag(
@@ -603,7 +605,8 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .llvm_backend =
-            nerd_cli_flag_bool(cli_result, "command.flags.llvm-backend", false) ||
+            nerd_cli_flag_bool(
+                cli_result, "command.flags.llvm-backend", false) ||
             !nerd_cli_flag_bool(cli_result, "command.flags.c-backend", false),
         .release =
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
@@ -660,7 +663,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
         .emit_c = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .llvm_backend =
-            nerd_cli_flag_bool(cli_result, "command.flags.llvm-backend", false) ||
+            nerd_cli_flag_bool(
+                cli_result, "command.flags.llvm-backend", false) ||
             !nerd_cli_flag_bool(cli_result, "command.flags.c-backend", false),
         .keep_binary =
             nerd_cli_flag_bool(cli_result, "command.flags.keep", false),

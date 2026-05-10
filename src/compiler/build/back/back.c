@@ -922,11 +922,12 @@ internal bool back_end_root_main_returns_void(const FrontEndState* root)
     return false;
 }
 
-internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
-                                                      bool        remove_llvm_paths,
-                                                      cstr        runtime_prelude_path,
-                                                      cstr        runtime_epilogue_path,
-                                                      cstr        init_ll_path)
+internal void
+back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
+                                        bool remove_llvm_paths,
+                                        cstr runtime_prelude_path,
+                                        cstr runtime_epilogue_path,
+                                        cstr init_ll_path)
 {
     if (runtime_prelude_path != NULL) {
         path_remove(runtime_prelude_path);
@@ -986,8 +987,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
 
     cstr runtime_prelude_path = back_end_cstr(
-        &arena,
-        string_format(&arena, "%s.prelude.ll", artifacts->binary_path));
+        &arena, string_format(&arena, "%s.prelude.ll", artifacts->binary_path));
     cstr runtime_epilogue_path = back_end_cstr(
         &arena,
         string_format(&arena, "%s.epilogue.ll", artifacts->binary_path));
@@ -997,24 +997,23 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
     bool   root_main_returns_void = back_end_root_main_returns_void(root);
-    string runtime_epilogue =
-        root_main_returns_void
-            ? s("declare void @init()\n"
-                "declare void @$main()\n"
-                "\n"
-                "define i32 @main() {\n"
-                "  call void @init()\n"
-                "  call void @$main()\n"
-                "  ret i32 0\n"
-                "}\n")
-            : s("declare void @init()\n"
-                "declare i32 @$main()\n"
-                "\n"
-                "define i32 @main() {\n"
-                "  call void @init()\n"
-                "  %result = call i32 @$main()\n"
-                "  ret i32 %result\n"
-                "}\n");
+    string runtime_epilogue       = root_main_returns_void
+                                        ? s("declare void @init()\n"
+                                            "declare void @$main()\n"
+                                            "\n"
+                                            "define i32 @main() {\n"
+                                            "  call void @init()\n"
+                                            "  call void @$main()\n"
+                                            "  ret i32 0\n"
+                                            "}\n")
+                                        : s("declare void @init()\n"
+                                            "declare i32 @$main()\n"
+                                            "\n"
+                                            "define i32 @main() {\n"
+                                            "  call void @init()\n"
+                                            "  %result = call i32 @$main()\n"
+                                            "  ret i32 %result\n"
+                                            "}\n");
     StringBuilder init_ll_builder = {0};
     sb_init(&init_ll_builder, &arena);
     for (u32 i = 0; i < array_count(init_module_indices); ++i) {
@@ -1048,15 +1047,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         return false;
     }
 
-    string opt_flags = artifacts->release ? s("-O2") : s("-g -O0");
+    string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
     StringBuilder link_flags = {0};
     sb_init(&link_flags, &arena);
     back_end_append_program_extern_link_flags(&link_flags, program);
     StringBuilder command_builder = {0};
     sb_init(&command_builder, &arena);
     sb_format(&command_builder,
-              "clang -Wno-override-module " STRINGP
-              " -o \"%s\" \"%s\"",
+              "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\"",
               STRINGV(opt_flags),
               artifacts->binary_path,
               runtime_prelude_path);
