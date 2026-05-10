@@ -1352,6 +1352,36 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                                u32                  target_expr_index,
                                LlvmValue            value);
 
+internal u32 llvm_field_index_for_value(LlvmFunctionContext* ctx,
+                                        const HirExpr*       field_expr,
+                                        LlvmValue            target)
+{
+    if (field_expr == NULL) {
+        return U32_MAX;
+    }
+    if (field_expr->kind == HIR_EXPR_TupleField) {
+        return (u32)field_expr->integer;
+    }
+    if (field_expr->kind != HIR_EXPR_Field) {
+        return U32_MAX;
+    }
+
+    SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target.type_index);
+    if (target_kind == STK_String || target_kind == STK_Slice) {
+        string field = lex_symbol(ctx->lexer, field_expr->symbol_handle);
+        if (string_eq_cstr(field, "data")) {
+            return 0;
+        }
+        if (string_eq_cstr(field, "count")) {
+            return 1;
+        }
+        return U32_MAX;
+    }
+
+    return llvm_record_field_index(
+        ctx->sema, target.type_index, field_expr->symbol_handle);
+}
+
 internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* out)
 {
     if (expr_index >= array_count(hir->exprs)) {
@@ -4697,6 +4727,42 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                   STRINGV(value.value),
                   STRINGV(pointer.value));
         return true;
+    }
+
+    if (target->kind == HIR_EXPR_TupleField ||
+        target->kind == HIR_EXPR_Field) {
+        LlvmValue record =
+            llvm_emit_expr(ctx, function, target->operand_expr_index);
+        if (!record.ok) {
+            return false;
+        }
+
+        u32 field_index = llvm_field_index_for_value(ctx, target, record);
+        if (field_index == U32_MAX ||
+            llvm_type_kind(ctx->sema, record.type_index) == STK_Union) {
+            return false;
+        }
+
+        string record_type = llvm_type_string(ctx, record.type_index);
+        string value_type  = llvm_type_string(ctx, value.type_index);
+        string updated     = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = insertvalue " STRINGP " " STRINGP ", "
+                  STRINGP " " STRINGP ", %u\n",
+                  STRINGV(updated),
+                  STRINGV(record_type),
+                  STRINGV(record.value),
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  field_index);
+        return llvm_emit_assign(ctx,
+                                function,
+                                target->operand_expr_index,
+                                (LlvmValue){
+                                    .ok         = true,
+                                    .type_index = record.type_index,
+                                    .value      = updated,
+                                });
     }
 
     if (target->kind != HIR_EXPR_LocalRef ||
