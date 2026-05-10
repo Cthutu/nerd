@@ -211,6 +211,13 @@ def lines_are_subsequence(expected: str, actual: str, *, strip_dollars: bool = F
     return index == len(expected_lines)
 
 
+def cleanup_generated_outputs(path: pathlib.Path) -> None:
+    for pattern in (f"_{path.stem}*", f"__{path.stem}*"):
+        for sidecar in path.parent.glob(pattern):
+            if sidecar.is_file():
+                sidecar.unlink(missing_ok=True)
+
+
 def test_language(path: pathlib.Path) -> list[Failure]:
     parts = split_sections(path)
     if len(parts) < 5:
@@ -220,10 +227,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
     stdin = parts[5] if len(parts) > 5 else None
     input_path = path.with_suffix(".input.n")
     input_path.write_text(source, encoding="utf-8", newline="\n")
-    for suffix in (".hir", ".ll", ".ir", ".gen.c"):
-        sidecar = path.parent / f"_{path.stem}{suffix}"
-        if sidecar.exists():
-            sidecar.unlink()
+    cleanup_generated_outputs(path)
 
     proc = run_cmd(
         [
@@ -275,9 +279,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     if not failures:
         input_path.unlink(missing_ok=True)
-        hir_path.unlink(missing_ok=True)
-        llvm_path.unlink(missing_ok=True)
-        (path.parent / f"_{path.stem}.out").unlink(missing_ok=True)
+        cleanup_generated_outputs(path)
     return failures
 
 
@@ -292,7 +294,7 @@ def test_hir(path: pathlib.Path) -> list[Failure]:
     hir_path = path.parent / f"_{path.stem}.hir"
 
     input_path.write_text(source, encoding="utf-8", newline="\n")
-    hir_path.unlink(missing_ok=True)
+    cleanup_generated_outputs(path)
 
     proc = run_cmd([
         str(NERD),
@@ -315,7 +317,7 @@ def test_hir(path: pathlib.Path) -> list[Failure]:
 
     if not failures:
         input_path.unlink(missing_ok=True)
-        hir_path.unlink(missing_ok=True)
+        cleanup_generated_outputs(path)
         output_root.unlink(missing_ok=True)
     return failures
 
@@ -331,7 +333,7 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
     llvm_path = path.parent / f"_{path.stem}.ll"
 
     input_path.write_text(source, encoding="utf-8", newline="\n")
-    llvm_path.unlink(missing_ok=True)
+    cleanup_generated_outputs(path)
 
     proc = run_cmd([
         str(NERD),
@@ -354,7 +356,7 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
 
     if not failures:
         input_path.unlink(missing_ok=True)
-        llvm_path.unlink(missing_ok=True)
+        cleanup_generated_outputs(path)
         output_root.unlink(missing_ok=True)
         input_path.with_suffix("").unlink(missing_ok=True)
     return failures
