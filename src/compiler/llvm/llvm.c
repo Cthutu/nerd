@@ -1038,6 +1038,51 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
     };
 }
 
+internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
+                                             LlvmValue            value,
+                                             u32                  target_type)
+{
+    if (!value.ok || target_type == sema_no_type()) {
+        return value;
+    }
+
+    if (value.type_index == target_type) {
+        return value;
+    }
+
+    SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
+    SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (target_kind == STK_Pointer &&
+        (source_kind == STK_Nil || source_kind == STK_UntypedInteger) &&
+        string_eq_cstr(value.value, "0")) {
+        value.type_index = target_type;
+        value.value      = s("null");
+        return value;
+    }
+
+    if (target_kind == STK_Pointer &&
+        llvm_integer_bits(ctx->sema, value.type_index) > 0) {
+        string source_type = llvm_type_string(ctx, value.type_index);
+        string target_type_string = llvm_type_string(ctx, target_type);
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = inttoptr " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(source_type),
+                  STRINGV(value.value),
+                  STRINGV(target_type_string));
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = target_type,
+            .value      = temp,
+        };
+    }
+
+    value.type_index = target_type;
+    return value;
+}
+
 internal LlvmValue llvm_cast_to_union_storage(LlvmFunctionContext* ctx,
                                               LlvmValue            value,
                                               u32                  union_type)
@@ -2755,6 +2800,26 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
     switch (expr->kind) {
     case HIR_EXPR_IntegerLiteral:
+        if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Pointer) {
+            if (expr->integer == 0) {
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = s("null"),
+                };
+            }
+
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = inttoptr i64 %lld to ptr\n",
+                      STRINGV(temp),
+                      (long long)expr->integer);
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = temp,
+            };
+        }
         return (LlvmValue){
             .ok         = true,
             .type_index = expr->type_index,
@@ -4895,6 +4960,10 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
     if (!value.ok) {
         return false;
     }
+    value = llvm_coerce_value_to_type(ctx, value, stmt->type_index);
+    if (!value.ok) {
+        return false;
+    }
 
     if (llvm_local_is_assigned(ctx, stmt->local_index)) {
         LlvmLocalSlot* slot =
@@ -4903,7 +4972,6 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
         return true;
     }
 
-    value.type_index = stmt->type_index;
     llvm_set_local_value(ctx, stmt->local_index, value);
     return true;
 }
