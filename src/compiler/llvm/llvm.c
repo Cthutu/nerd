@@ -1130,6 +1130,38 @@ internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
+    if (llvm_type_kind(ctx->sema, scrutinee.type_index) == STK_Enum &&
+        (string_eq_cstr(pred, "eq") || string_eq_cstr(pred, "ne"))) {
+        string enum_type = llvm_type_string(ctx, scrutinee.type_index);
+        string lhs_tag   = llvm_temp(ctx);
+        string rhs_tag   = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                  ", 0\n",
+                  STRINGV(lhs_tag),
+                  STRINGV(enum_type),
+                  STRINGV(scrutinee.value));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                  ", 0\n",
+                  STRINGV(rhs_tag),
+                  STRINGV(enum_type),
+                  STRINGV(rhs.value));
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp " STRINGP " i64 " STRINGP ", "
+                  STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(pred),
+                  STRINGV(lhs_tag),
+                  STRINGV(rhs_tag));
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
+            .value      = temp,
+        };
+    }
+
     if (llvm_type_kind(ctx->sema, scrutinee.type_index) == STK_String &&
         (string_eq_cstr(pred, "eq") || string_eq_cstr(pred, "ne"))) {
         string equal = llvm_temp(ctx);
@@ -2381,6 +2413,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
             }
         }
+        if (expr->ref_kind == HIR_REF_None &&
+            llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum &&
+            expr->symbol_handle != U32_MAX) {
+            u32 variant_index = llvm_enum_variant_index(
+                ctx->sema, expr->type_index, expr->symbol_handle);
+            if (variant_index != U32_MAX) {
+                return llvm_emit_enum_constructor(
+                    ctx, function, expr, variant_index);
+            }
+        }
         return (LlvmValue){0};
     case HIR_EXPR_Binary:
         {
@@ -3088,6 +3130,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string end_label = llvm_label(ctx, "on.end");
                 Array(LlvmValue) phi_values = NULL;
                 Array(string)    phi_labels = NULL;
+                bool             ended_with_else = false;
 
                 for (u32 i = 0; i < expr->branch_count; ++i) {
                     const HirOnBranch* branch =
@@ -3161,9 +3204,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     array_push(phi_labels, body_label);
 
                     if (branch->is_else) {
+                        ended_with_else = true;
                         break;
                     }
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
+                }
+
+                if (!ended_with_else) {
+                    sb_append_cstr(ctx->sb, "  unreachable\n");
                 }
 
                 if (array_count(phi_values) == 0) {
