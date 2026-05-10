@@ -55,8 +55,10 @@ static void eprn(const char* format, ...)
     epr("\n");
 }
 
-static void
-nerd_assert(bool condition, const char* source_path, unsigned line, string message)
+void nerd_assert(bool condition,
+                 const char* source_path,
+                 unsigned    line,
+                 string      message)
 {
     if (condition) {
         return;
@@ -67,7 +69,7 @@ nerd_assert(bool condition, const char* source_path, unsigned line, string messa
     exit(127);
 }
 
-static bool string_eq(string lhs, string rhs)
+bool string_eq(string lhs, string rhs)
 {
     if (lhs.count != rhs.count) {
         return false;
@@ -118,6 +120,16 @@ void string_builder_append_string(string str)
         memcpy(g_string_arena + g_string_arena_cursor, str.data, str.count);
         g_string_arena_cursor += str.count;
     }
+}
+
+void string_builder_append_byte(u8 byte)
+{
+    if (g_string_arena_cursor + 1 > NERD_STRING_ARENA_CAPACITY) {
+        eprn("fatal: string arena overflow");
+        abort();
+    }
+
+    g_string_arena[g_string_arena_cursor++] = byte;
 }
 
 string string_builder_finish(size_t start)
