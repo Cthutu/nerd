@@ -1099,29 +1099,23 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
     return (LlvmValue){0};
 }
 
-internal u32 llvm_find_local_by_symbol(LlvmFunctionContext* ctx,
-                                       u32                  symbol_handle)
-{
-    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
-        return U32_MAX;
-    }
-
-    for (u32 i = 0; i < array_count(ctx->sema->locals); ++i) {
-        if (ctx->sema->locals[i].symbol_handle == symbol_handle) {
-            return i;
-        }
-    }
-    return U32_MAX;
-}
-
 internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
                                      u32                  symbol_handle,
                                      LlvmValue            value)
 {
-    u32 local_index = llvm_find_local_by_symbol(ctx, symbol_handle);
-    if (local_index != U32_MAX) {
-        value.type_index = llvm_local_type(ctx, local_index);
-        llvm_set_local_value(ctx, local_index, value);
+    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
+        return;
+    }
+
+    for (u32 local_index = 0; local_index < array_count(ctx->sema->locals);
+         ++local_index) {
+        if (ctx->sema->locals[local_index].symbol_handle != symbol_handle) {
+            continue;
+        }
+
+        LlvmValue local_value = value;
+        local_value.type_index = llvm_local_type(ctx, local_index);
+        llvm_set_local_value(ctx, local_index, local_value);
     }
 }
 
