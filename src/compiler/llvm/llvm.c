@@ -624,8 +624,12 @@ internal void llvm_append_function_signature(StringBuilder*   sb,
         const HirParam* param = &hir->params[function->first_param + i];
         llvm_append_type(sb, sema, param->type_index);
         if (param->symbol_handle != U32_MAX) {
+            string param_name = lex_symbol(lexer, param->symbol_handle);
             sb_append_cstr(sb, " %");
-            sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
+            sb_append_string(sb, param_name);
+            if (string_eq_cstr(param_name, "_")) {
+                sb_format(sb, ".%u", i);
+            }
         }
     }
     sb_append_char(sb, ')');
@@ -820,9 +824,12 @@ internal string llvm_param_value(const HirFunction* function,
         if (param->local_index != local_index) {
             continue;
         }
+        string name = lex_symbol(lexer, param->symbol_handle);
+        if (string_eq_cstr(name, "_")) {
+            return string_format(arena, "%%_.%u", i);
+        }
         return string_format(
-            arena, "%%%.*s", (int)lex_symbol(lexer, param->symbol_handle).count,
-            lex_symbol(lexer, param->symbol_handle).data);
+            arena, "%%%.*s", (int)name.count, name.data);
     }
     return (string){0};
 }
