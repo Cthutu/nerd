@@ -2016,11 +2016,61 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                               i);
                 }
 
-                const HirPatternChild* child =
-                    &ctx->hir->pattern_children[child_index];
-                LlvmValue child_condition =
-                    llvm_emit_pattern_condition(ctx,
-                                                function,
+	                const HirPatternChild* child =
+	                    &ctx->hir->pattern_children[child_index];
+	                if (!payload_is_tuple &&
+	                    llvm_type_is_record(ctx->sema, variant_payload_type) &&
+	                    child->pattern_index < array_count(ctx->hir->patterns)) {
+	                    const HirPattern* child_pattern =
+	                        &ctx->hir->patterns[child->pattern_index];
+	                    u32 child_expr_index = child_pattern->expr_index;
+	                    if ((child_pattern->kind == HIR_PATTERN_Value ||
+	                         child_pattern->kind == HIR_PATTERN_Equal ||
+	                         child_pattern->kind == HIR_PATTERN_NotEqual ||
+	                         child_pattern->kind == HIR_PATTERN_Less ||
+	                         child_pattern->kind == HIR_PATTERN_LessEqual ||
+	                         child_pattern->kind == HIR_PATTERN_Greater ||
+	                         child_pattern->kind == HIR_PATTERN_GreaterEqual) &&
+	                        child_expr_index < array_count(ctx->hir->exprs)) {
+	                        u32 pattern_value_type =
+	                            ctx->hir->exprs[child_expr_index].type_index;
+	                        if (pattern_value_type != sema_no_type() &&
+	                            pattern_value_type != child_type) {
+	                            u32 field_count = llvm_record_field_count(
+	                                ctx->sema, variant_payload_type);
+	                            for (u32 field_index = 0;
+	                                 field_index < field_count;
+	                                 ++field_index) {
+	                                u32 field_type = llvm_record_field_type(
+	                                    ctx->sema,
+	                                    variant_payload_type,
+	                                    field_index);
+	                                if (field_type != pattern_value_type) {
+	                                    continue;
+	                                }
+
+	                                string variant_payload_type_string =
+	                                    llvm_type_string(ctx,
+	                                                     variant_payload_type);
+	                                child_value = llvm_temp(ctx);
+	                                sb_format(ctx->sb,
+	                                          "  " STRINGP
+	                                          " = extractvalue " STRINGP " "
+	                                          STRINGP ", %u\n",
+	                                          STRINGV(child_value),
+	                                          STRINGV(
+	                                              variant_payload_type_string),
+	                                          STRINGV(variant_payload.value),
+	                                          field_index);
+	                                child_type = field_type;
+	                                break;
+	                            }
+	                        }
+	                    }
+	                }
+	                LlvmValue child_condition =
+	                    llvm_emit_pattern_condition(ctx,
+	                                                function,
                                                 (LlvmValue){
                                                     .ok = true,
                                                     .type_index = child_type,
