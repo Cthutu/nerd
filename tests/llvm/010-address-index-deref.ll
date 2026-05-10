@@ -30,11 +30,8 @@ define i32 @fn.1(ptr %ptr) {
 }
 
 define i32 @fn.2([2 x i32] %values) {
-  %local.2 = alloca [2 x i32]
-  store [2 x i32] %values, ptr %local.2
-  %t0 = getelementptr inbounds [2 x i32], ptr %local.2, i64 0, i32 0
-  %t1 = load i32, ptr %t0
-  ret i32 %t1
+  %t0 = extractvalue [2 x i32] %values, 0
+  ret i32 %t0
 }
 
 define i32 @fn.3() {

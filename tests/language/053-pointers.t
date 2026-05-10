@@ -146,19 +146,15 @@ define i32 @fn.0() {
   call void @$prn({ ptr, i64 } %t35)
   %t36 = getelementptr inbounds [3 x i32], ptr %local.0, i32 0
   %t37 = load [3 x i32], ptr %t36
-  %t38 = getelementptr inbounds [3 x i32], ptr %local.0, i32 0
-  %t39 = getelementptr inbounds [3 x i32], ptr %t38, i64 0, i32 0
+  %t38 = extractvalue [3 x i32] %t37, 0
+  %t39 = getelementptr inbounds i32, ptr %t3, i32 0
   %t40 = load i32, ptr %t39
-  %t41 = getelementptr inbounds i32, ptr %t3, i32 0
-  %t42 = load i32, ptr %t41
-  %t43 = add i32 %t40, %t42
-  %t44 = getelementptr inbounds [3 x i32], ptr %t7, i32 0
-  %t45 = load [3 x i32], ptr %t44
-  %t46 = getelementptr inbounds [3 x i32], ptr %t7, i32 0
-  %t47 = getelementptr inbounds [3 x i32], ptr %t46, i64 0, i32 2
-  %t48 = load i32, ptr %t47
-  %t49 = add i32 %t43, %t48
-  ret i32 %t49
+  %t41 = add i32 %t38, %t40
+  %t42 = getelementptr inbounds [3 x i32], ptr %t7, i32 0
+  %t43 = load [3 x i32], ptr %t42
+  %t44 = extractvalue [3 x i32] %t43, 2
+  %t45 = add i32 %t41, %t44
+  ret i32 %t45
 }
 
 @$main = alias i32 (), ptr @fn.0

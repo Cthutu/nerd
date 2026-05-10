@@ -4656,6 +4656,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (item_type == sema_no_type()) {
                     item_type = expr->type_index;
                 }
+
+                i64 index_value = 0;
+                if (llvm_expr_integer_constant(
+                        ctx->hir, expr->extra_expr_index, &index_value) &&
+                    index_value >= 0 &&
+                    (u64)index_value < llvm_array_count(ctx->sema,
+                                                        target.type_index)) {
+                    string array_type = llvm_type_string(ctx, target.type_index);
+                    string loaded     = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP " "
+                              STRINGP ", %lld\n",
+                              STRINGV(loaded),
+                              STRINGV(array_type),
+                              STRINGV(target.value),
+                              (long long)index_value);
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = item_type,
+                        .value      = loaded,
+                    };
+                }
+
                 LlvmValue item_ptr =
                     llvm_address_of_expr(ctx, function, expr_index);
                 if (!item_ptr.ok) {

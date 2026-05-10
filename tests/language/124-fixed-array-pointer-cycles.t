@@ -60,26 +60,23 @@ define void @m0.init() {
 
 define i32 @fn.0() {
   %t0 = load [2 x { i32, ptr }], ptr @$direct
-  %t1 = getelementptr inbounds [2 x { i32, ptr }], ptr @$direct, i64 0, i32 0
-  %t2 = load { i32, ptr }, ptr %t1
-  %t3 = extractvalue { i32, ptr } %t2, 1
-  %t4 = load { i32, ptr }, ptr %t3
-  %t5 = extractvalue { i32, ptr } %t4, 0
-  %t6 = load [2 x { i32, ptr }], ptr @$aliased
-  %t7 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 0
+  %t1 = extractvalue [2 x { i32, ptr }] %t0, 0
+  %t2 = extractvalue { i32, ptr } %t1, 1
+  %t3 = load { i32, ptr }, ptr %t2
+  %t4 = extractvalue { i32, ptr } %t3, 0
+  %t5 = load [2 x { i32, ptr }], ptr @$aliased
+  %t6 = extractvalue [2 x { i32, ptr }] %t5, 0
+  %t7 = extractvalue { i32, ptr } %t6, 1
   %t8 = load { i32, ptr }, ptr %t7
-  %t9 = extractvalue { i32, ptr } %t8, 1
-  %t10 = load { i32, ptr }, ptr %t9
-  %t11 = extractvalue { i32, ptr } %t10, 0
-  %t12 = add i32 %t5, %t11
-  %t13 = load [2 x { i32, ptr }], ptr @$aliased
-  %t14 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 1
-  %t15 = load { i32, ptr }, ptr %t14
-  %t16 = extractvalue { i32, ptr } %t15, 1
-  %t17 = load { i32, ptr }, ptr %t16
-  %t18 = extractvalue { i32, ptr } %t17, 0
-  %t19 = add i32 %t12, %t18
-  ret i32 %t19
+  %t9 = extractvalue { i32, ptr } %t8, 0
+  %t10 = add i32 %t4, %t9
+  %t11 = load [2 x { i32, ptr }], ptr @$aliased
+  %t12 = extractvalue [2 x { i32, ptr }] %t11, 1
+  %t13 = extractvalue { i32, ptr } %t12, 1
+  %t14 = load { i32, ptr }, ptr %t13
+  %t15 = extractvalue { i32, ptr } %t14, 0
+  %t16 = add i32 %t10, %t15
+  ret i32 %t16
 }
 
 @$main = alias i32 (), ptr @fn.0

@@ -24,3 +24,10 @@ just test
 python3 build/build.py
 ./_bin/nerd --help
 ```
+
+LLVM backend status:
+
+- `nerd build --llvm source.n` writes the HIR-derived LLVM IR sidecar.
+- `nerd run --llvm-backend source.n` runs through the opt-in LLVM backend.
+- The default run/build path still uses the current stable backend while the
+  LLVM path finishes its runtime and default-backend migration.
