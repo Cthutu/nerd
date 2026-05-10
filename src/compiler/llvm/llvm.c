@@ -1433,40 +1433,121 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
-    if (expr->kind != HIR_EXPR_LocalRef || expr->ref_kind != HIR_REF_Local) {
+    if (expr->kind == HIR_EXPR_Index) {
+        if (expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
+            return (LlvmValue){0};
+        }
+
+        LlvmValue target_address =
+            llvm_address_of_expr(ctx, function, expr->operand_expr_index);
+        LlvmValue index = llvm_emit_expr(ctx, function, expr->extra_expr_index);
+        if (!target_address.ok || !index.ok) {
+            return (LlvmValue){0};
+        }
+
+        const HirExpr* target_expr = &ctx->hir->exprs[expr->operand_expr_index];
+        u32 target_type = target_expr->type_index;
+        u32 item_type   = sema_no_type();
+        if (llvm_type_kind(ctx->sema, target_type) == STK_Array) {
+            item_type = llvm_collection_item_type(ctx->sema, target_type);
+            string target_type_string = llvm_type_string(ctx, target_type);
+            string index_type = llvm_type_string(ctx, index.type_index);
+            string ptr        = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i64 0, " STRINGP " " STRINGP "\n",
+                      STRINGV(ptr),
+                      STRINGV(target_type_string),
+                      STRINGV(target_address.value),
+                      STRINGV(index_type),
+                      STRINGV(index.value));
+            return (LlvmValue){
+                .ok         = item_type != sema_no_type(),
+                .type_index = sema_no_type(),
+                .value      = ptr,
+            };
+        }
+
+        item_type = llvm_collection_item_type(ctx->sema, target_type);
+        if (item_type == sema_no_type()) {
+            item_type = llvm_pointee_type(ctx->sema, target_type);
+        }
+        if (item_type == sema_no_type()) {
+            return (LlvmValue){0};
+        }
+
+        string item_type_string = llvm_type_string(ctx, item_type);
+        string index_type       = llvm_type_string(ctx, index.type_index);
+        string ptr              = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                  STRINGV(ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(target_address.value),
+                  STRINGV(index_type),
+                  STRINGV(index.value));
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = sema_no_type(),
+            .value      = ptr,
+        };
+    }
+
+    if (expr->kind == HIR_EXPR_LocalRef && expr->ref_kind == HIR_REF_Local) {
+        LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
+        if (slot == NULL) {
+            slot = llvm_ensure_local_slot(ctx, expr->ref_index, expr->type_index);
+
+            LlvmValue current = {0};
+            if (llvm_find_local_value(ctx, expr->ref_index, &current)) {
+                llvm_store_local_slot(ctx, slot, current);
+            } else {
+                string param = llvm_param_value(function,
+                                                ctx->hir,
+                                                ctx->lexer,
+                                                ctx->arena,
+                                                expr->ref_index);
+                if (param.count == 0) {
+                    return (LlvmValue){0};
+                }
+                llvm_store_local_slot(ctx,
+                                      slot,
+                                      (LlvmValue){
+                                          .ok         = true,
+                                          .type_index = expr->type_index,
+                                          .value      = param,
+                                      });
+            }
+        }
+
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = sema_no_type(),
+            .value      = slot->ptr,
+        };
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, expr_index);
+    if (!value.ok) {
         return (LlvmValue){0};
     }
 
-    LlvmLocalSlot* slot = llvm_find_local_slot(ctx, expr->ref_index);
-    if (slot == NULL) {
-        slot = llvm_ensure_local_slot(ctx, expr->ref_index, expr->type_index);
-
-        LlvmValue current = {0};
-        if (llvm_find_local_value(ctx, expr->ref_index, &current)) {
-            llvm_store_local_slot(ctx, slot, current);
-        } else {
-            string param = llvm_param_value(function,
-                                            ctx->hir,
-                                            ctx->lexer,
-                                            ctx->arena,
-                                            expr->ref_index);
-            if (param.count == 0) {
-                return (LlvmValue){0};
-            }
-            llvm_store_local_slot(ctx,
-                                  slot,
-                                  (LlvmValue){
-                                      .ok         = true,
-                                      .type_index = expr->type_index,
-                                      .value      = param,
-                                  });
-        }
-    }
-
+    string type = llvm_type_string(ctx, value.type_index);
+    string ptr  = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = alloca " STRINGP "\n",
+              STRINGV(ptr),
+              STRINGV(type));
+    sb_format(ctx->sb,
+              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(type),
+              STRINGV(value.value),
+              STRINGV(ptr));
     return (LlvmValue){
         .ok         = true,
         .type_index = sema_no_type(),
-        .value      = slot->ptr,
+        .value      = ptr,
     };
 }
 
