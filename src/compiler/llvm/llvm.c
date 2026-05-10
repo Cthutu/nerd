@@ -4218,22 +4218,14 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         } else if (stmt->kind == HIR_STMT_Defer) {
             continue;
         } else if (stmt->kind == HIR_STMT_Break) {
-            if (ctx->break_label.count == 0) {
+            if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
                 return false;
             }
-            sb_format(ctx->sb,
-                      "  br label %%" STRINGP "\n",
-                      STRINGV(ctx->break_label));
-            ctx->block_terminated = true;
             return true;
         } else if (stmt->kind == HIR_STMT_Continue) {
-            if (ctx->continue_label.count == 0) {
+            if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
                 return false;
             }
-            sb_format(ctx->sb,
-                      "  br label %%" STRINGP "\n",
-                      STRINGV(ctx->continue_label));
-            ctx->block_terminated = true;
             return true;
         } else if (stmt->kind == HIR_STMT_Block) {
             if (!llvm_emit_block(ctx, function, stmt->body_block_index)) {

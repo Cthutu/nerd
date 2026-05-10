@@ -1377,39 +1377,42 @@ internal u32 hir_lower_for(Hir*         hir,
                            ? sema->node_scope_indices[node_index]
                            : U32_MAX;
     u32 for_index    = (u32)array_count(hir->fors);
-    array_push(
-        hir->fors,
-        (HirFor){
-            .kind         = hir_for_kind_from_ast(for_info->mode),
-            .label_symbol = for_info->label_symbol,
-            .condition_expr_index =
-                for_info->condition_node_index != U32_MAX
-                    ? hir_lower_expr(
-                          hir, lexer, ast, sema, for_info->condition_node_index)
-                    : hir_no_index(),
-            .iterable_expr_index =
-                for_info->iterable_node_index != U32_MAX
-                    ? hir_lower_expr(
-                          hir, lexer, ast, sema, for_info->iterable_node_index)
-                    : hir_no_index(),
-            .body_block_index =
-                hir_lower_block_node(hir, lexer, ast, sema, node->b),
-            .else_block_index =
-                for_info->else_block_index != U32_MAX
-                    ? hir_lower_block_node(
-                          hir, lexer, ast, sema, for_info->else_block_index)
-                    : hir_no_index(),
-            .first_init_stmt   = first_init,
-            .init_stmt_count   = for_info->init_count,
-            .first_update_stmt = first_update,
-            .update_stmt_count = for_info->update_count,
-            .index_symbol      = for_info->index_symbol,
-            .index_local_index =
-                hir_find_scope_local(sema, for_scope, for_info->index_symbol),
-            .item_symbol = for_info->item_symbol,
-            .item_local_index =
-                hir_find_scope_local(sema, for_scope, for_info->item_symbol),
-        });
+    array_push(hir->fors, (HirFor){0});
+
+    u32 condition_expr_index =
+        for_info->condition_node_index != U32_MAX
+            ? hir_lower_expr(
+                  hir, lexer, ast, sema, for_info->condition_node_index)
+            : hir_no_index();
+    u32 iterable_expr_index =
+        for_info->iterable_node_index != U32_MAX
+            ? hir_lower_expr(hir, lexer, ast, sema, for_info->iterable_node_index)
+            : hir_no_index();
+    u32 body_block_index = hir_lower_block_node(hir, lexer, ast, sema, node->b);
+    u32 else_block_index =
+        for_info->else_block_index != U32_MAX
+            ? hir_lower_block_node(
+                  hir, lexer, ast, sema, for_info->else_block_index)
+            : hir_no_index();
+
+    hir->fors[for_index] = (HirFor){
+        .kind                 = hir_for_kind_from_ast(for_info->mode),
+        .label_symbol         = for_info->label_symbol,
+        .condition_expr_index = condition_expr_index,
+        .iterable_expr_index  = iterable_expr_index,
+        .body_block_index     = body_block_index,
+        .else_block_index     = else_block_index,
+        .first_init_stmt      = first_init,
+        .init_stmt_count      = for_info->init_count,
+        .first_update_stmt    = first_update,
+        .update_stmt_count    = for_info->update_count,
+        .index_symbol         = for_info->index_symbol,
+        .index_local_index =
+            hir_find_scope_local(sema, for_scope, for_info->index_symbol),
+        .item_symbol = for_info->item_symbol,
+        .item_local_index =
+            hir_find_scope_local(sema, for_scope, for_info->item_symbol),
+    };
 
     return hir_add_expr(hir,
                         (HirExpr){
