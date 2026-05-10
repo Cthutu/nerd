@@ -558,7 +558,10 @@ internal void llvm_append_function_name(StringBuilder* sb,
 {
     if (hir != NULL && function_index < array_count(hir->functions) &&
         hir->functions[function_index].kind == HIR_FUNCTION_Ffi) {
-        u32 symbol_handle = llvm_function_symbol_handle(hir, function_index);
+        u32 symbol_handle = hir->functions[function_index].ffi_symbol_handle;
+        if (symbol_handle == U32_MAX) {
+            symbol_handle = llvm_function_symbol_handle(hir, function_index);
+        }
         if (symbol_handle != U32_MAX) {
             llvm_append_c_symbol_name(sb, lex_symbol(lexer, symbol_handle));
             return;

@@ -377,6 +377,79 @@ internal u32 hir_function_param_type(const Sema* sema,
                                   param_index];
 }
 
+internal bool hir_imported_ffi_decl_source(const Sema*      sema,
+                                           const SemaDecl*  decl,
+                                           const Lexer**    out_lexer,
+                                           const Ast**      out_ast,
+                                           const Sema**     out_sema,
+                                           const SemaDecl** out_decl)
+{
+    if (decl->import_module_index == sema_no_decl() ||
+        decl->import_decl_index == sema_no_decl() || sema->program == NULL ||
+        decl->import_module_index >= array_count(sema->program->modules)) {
+        return false;
+    }
+
+    const ModuleInfo* module =
+        &sema->program->modules[decl->import_module_index];
+    if (decl->import_decl_index >= array_count(module->front_end.sema.decls)) {
+        return false;
+    }
+
+    const SemaDecl* source_decl =
+        &module->front_end.sema.decls[decl->import_decl_index];
+    if (source_decl->kind != SK_FfiFunction ||
+        source_decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    *out_lexer = &module->front_end.lexer;
+    *out_ast   = &module->front_end.ast;
+    *out_sema  = &module->front_end.sema;
+    *out_decl  = source_decl;
+    return true;
+}
+
+internal u32 hir_ffi_foreign_symbol_handle(const Lexer*    lexer,
+                                           const Ast*      ast,
+                                           const Sema*     sema,
+                                           const SemaDecl* decl)
+{
+    if (decl == NULL || decl->kind != SK_FfiFunction) {
+        return U32_MAX;
+    }
+
+    const Lexer*    source_lexer = lexer;
+    const Ast*      source_ast   = ast;
+    const Sema*     source_sema  = sema;
+    const SemaDecl* source_decl  = decl;
+    if (decl->value_node_index == sema_no_decl() &&
+        !hir_imported_ffi_decl_source(sema,
+                                      decl,
+                                      &source_lexer,
+                                      &source_ast,
+                                      &source_sema,
+                                      &source_decl)) {
+        return U32_MAX;
+    }
+    UNUSED(source_sema);
+
+    if (source_decl->value_node_index == sema_no_decl() ||
+        source_decl->value_node_index >= array_count(source_ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* ffi_node = &source_ast->nodes[source_decl->value_node_index];
+    if (ffi_node->kind != AK_FfiDef ||
+        ffi_node->a >= array_count(source_ast->ffi_infos)) {
+        return U32_MAX;
+    }
+
+    const AstFfiInfo* ffi_info = &source_ast->ffi_infos[ffi_node->a];
+    return sema_import_symbol_handle(
+        (Lexer*)lexer, source_lexer, ffi_info->foreign_symbol_handle);
+}
+
 internal u32 hir_call_arg_value_node(const Ast* ast,
                                      u32        arg_node_index,
                                      u32*       out_symbol)
@@ -2344,6 +2417,12 @@ internal void hir_add_function(Hir*            hir,
         root_scope_index = hir_find_function_scope(ast, fn_node_index);
     }
 
+    u32 ffi_symbol_handle = U32_MAX;
+    if (kind == HIR_FUNCTION_Ffi && decl_index < array_count(sema->decls)) {
+        ffi_symbol_handle = hir_ffi_foreign_symbol_handle(
+            lexer, ast, sema, &sema->decls[decl_index]);
+    }
+
     u32 function_index = (u32)array_count(hir->functions);
     array_push(hir->functions,
                (HirFunction){
@@ -2352,6 +2431,7 @@ internal void hir_add_function(Hir*            hir,
                    .fn_node_index    = fn_node_index,
                    .root_scope_index = root_scope_index,
                    .type_index       = type_index,
+                   .ffi_symbol_handle = ffi_symbol_handle,
                    .first_param      = (u32)array_count(hir->params),
                    .param_count      = 0,
                    .body_block_index = hir_no_index(),

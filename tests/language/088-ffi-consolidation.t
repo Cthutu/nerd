@@ -84,19 +84,19 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-declare void @seed_rng(i32)
+declare void @srand(i32)
 
-declare i32 @write_line(ptr)
+declare i32 @puts(ptr)
 
-declare void @accept_point_ffi({ i32, i32 })
+declare void @accept_point({ i32, i32 })
 
-declare void @accept_packed_ffi({ i8, i32 })
+declare void @accept_packed({ i8, i32 })
 
-declare i32 @flip_blob_ffi(i32)
+declare i32 @flip_blob(i32)
 
 define void @fn.5() {
-  call void @seed_rng(i32 1)
-  %t0 = call i32 @write_line(ptr @.str.m0.2)
+  call void @srand(i32 1)
+  %t0 = call i32 @puts(ptr @.str.m0.2)
   ret void
 }
 

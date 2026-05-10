@@ -29,10 +29,10 @@ func fn.2() -> i32 {
 
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 
-declare ptr @c_realloc(ptr, i64)
+declare ptr @realloc(ptr, i64)
 
 define ptr @fn.1(ptr %ptr, i64 %size) {
-  %t0 = call ptr @c_realloc(ptr %ptr, i64 %size)
+  %t0 = call ptr @realloc(ptr %ptr, i64 %size)
   ret ptr %t0
 }
 

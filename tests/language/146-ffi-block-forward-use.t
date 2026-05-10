@@ -56,9 +56,9 @@ define ptr @fn.0() {
   ret ptr null
 }
 
-declare ptr @c_malloc(i64)
+declare ptr @malloc(i64)
 
-declare void @c_free(ptr)
+declare void @free(ptr)
 
 define i32 @fn.3() {
   %t0 = call ptr @fn.0()
@@ -73,7 +73,7 @@ on.next.2:
 on.body.4:
   %t2 = alloca i32, align 4
   store i32 0, ptr %t2, align 4
-  call void @c_free(ptr %t0)
+  call void @free(ptr %t0)
   store i32 0, ptr %t2, align 4
   br label %block.end.6
 block.end.6:

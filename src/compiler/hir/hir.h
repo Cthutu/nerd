@@ -150,6 +150,7 @@ typedef struct {
     u32             fn_node_index;
     u32             root_scope_index;
     u32             type_index;
+    u32             ffi_symbol_handle;
     u32             first_param;
     u32             param_count;
     u32             body_block_index;

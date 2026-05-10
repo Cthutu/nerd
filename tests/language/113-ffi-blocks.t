@@ -30,14 +30,14 @@ export bind.1(c_strlen)
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"nerd\00"
 
-declare i32 @absolute(i32)
+declare i32 @abs(i32)
 
-declare i64 @c_strlen(ptr)
+declare i64 @strlen(ptr)
 
 define i32 @fn.2() {
   %t0 = sub i32 0, 7
-  %t1 = call i32 @absolute(i32 %t0)
-  %t2 = call i64 @c_strlen(ptr @.str.m0.1)
+  %t1 = call i32 @abs(i32 %t0)
+  %t2 = call i64 @strlen(ptr @.str.m0.1)
   %t3 = trunc i64 %t2 to i32
   %t4 = add i32 %t1, %t3
   ret i32 %t4

@@ -811,6 +811,49 @@ internal bool back_end_compile_c(BackEndContext* ctx)
     return true;
 }
 
+internal void back_end_append_program_extern_link_flags(
+    StringBuilder*     link_flags,
+    const ProgramInfo* program)
+{
+    for (u32 module_index = 0; module_index < array_count(program->modules);
+         ++module_index) {
+        const Ir* ir = &program->modules[module_index].front_end.ir;
+        for (u32 i = 0; i < array_count(ir->externs); ++i) {
+            string library = ir->externs[i].library;
+            if (string_eq(library, s("c"))) {
+                continue;
+            }
+#if OS_WINDOWS
+            if (string_eq(library, s("m"))) {
+                continue;
+            }
+#endif
+
+            bool already_added = false;
+            for (u32 previous_module = 0; previous_module <= module_index;
+                 ++previous_module) {
+                const Ir* previous_ir =
+                    &program->modules[previous_module].front_end.ir;
+                u32 end = previous_module == module_index
+                              ? i
+                              : (u32)array_count(previous_ir->externs);
+                for (u32 j = 0; j < end; ++j) {
+                    if (string_eq(previous_ir->externs[j].library, library)) {
+                        already_added = true;
+                        break;
+                    }
+                }
+                if (already_added) {
+                    break;
+                }
+            }
+            if (!already_added) {
+                sb_format(link_flags, " -l" STRINGP, STRINGV(library));
+            }
+        }
+    }
+}
+
 internal bool back_end_write_text_file(cstr path, string text)
 {
     FILE* file = fopen(path, "wb");
@@ -993,6 +1036,9 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
     string opt_flags =
         artifacts->release ? s("-O2 -DNDEBUG") : s("-g -O0 -DDEBUG");
+    StringBuilder link_flags = {0};
+    sb_init(&link_flags, &arena);
+    back_end_append_program_extern_link_flags(&link_flags, program);
     StringBuilder command_builder = {0};
     sb_init(&command_builder, &arena);
     sb_format(&command_builder,
@@ -1006,6 +1052,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         sb_format(&command_builder, " \"%s\"", llvm_paths[i]);
     }
     sb_format(&command_builder, " \"%s\"", init_ll_path);
+    sb_append_string(&command_builder, sb_to_string(&link_flags));
     string command = sb_to_string(&command_builder);
     int compile_result = shell(back_end_cstr(&arena, command));
     if (compile_result != 0) {
