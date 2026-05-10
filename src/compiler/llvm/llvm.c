@@ -745,6 +745,15 @@ internal string llvm_compare_instruction(HirBinaryOp op)
     }
 }
 
+internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
+                                            const HirFunction*   function,
+                                            const u32*           stmt_indices,
+                                            u32                  first_stmt,
+                                            u32                  stmt_count);
+internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
+                                     const HirFunction*   function,
+                                     u32                  block_index);
+
 internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                                u32                  callee_expr_index,
                                string*              out)
@@ -1456,6 +1465,85 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = phi,
             };
         }
+    case HIR_EXPR_For:
+        {
+            if (expr->for_index >= array_count(ctx->hir->fors)) {
+                return (LlvmValue){0};
+            }
+
+            const HirFor* loop = &ctx->hir->fors[expr->for_index];
+            if (loop->kind != HIR_FOR_Condition &&
+                loop->kind != HIR_FOR_CStyle) {
+                return (LlvmValue){0};
+            }
+
+            if (loop->kind == HIR_FOR_CStyle &&
+                !llvm_emit_effect_stmt_indices(ctx,
+                                               function,
+                                               ctx->hir->for_init_stmts,
+                                               loop->first_init_stmt,
+                                               loop->init_stmt_count)) {
+                return (LlvmValue){0};
+            }
+
+            string cond_label   = llvm_label(ctx, "for.cond");
+            string body_label   = llvm_label(ctx, "for.body");
+            string update_label = llvm_label(ctx, "for.update");
+            string end_label    = llvm_label(ctx, "for.end");
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(cond_label));
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
+            if (loop->condition_expr_index != U32_MAX) {
+                LlvmValue condition =
+                    llvm_emit_expr(ctx, function, loop->condition_expr_index);
+                if (!condition.ok) {
+                    return (LlvmValue){0};
+                }
+                sb_format(ctx->sb,
+                          "  br i1 " STRINGP ", label %%" STRINGP
+                          ", label %%" STRINGP "\n",
+                          STRINGV(condition.value),
+                          STRINGV(body_label),
+                          STRINGV(end_label));
+            } else {
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(body_label));
+            }
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+            if (!llvm_emit_effect_block(ctx, function, loop->body_block_index)) {
+                return (LlvmValue){0};
+            }
+            string next_label =
+                loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n",
+                      STRINGV(next_label));
+
+            if (loop->kind == HIR_FOR_CStyle) {
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(update_label));
+                if (!llvm_emit_effect_stmt_indices(ctx,
+                                                   function,
+                                                   ctx->hir->for_update_stmts,
+                                                   loop->first_update_stmt,
+                                                   loop->update_stmt_count)) {
+                    return (LlvmValue){0};
+                }
+                sb_format(ctx->sb,
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(cond_label));
+            }
+
+            sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value      = s(""),
+            };
+        }
     case HIR_EXPR_Cast:
         {
             LlvmValue operand =
@@ -1585,6 +1673,67 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
+                                    const HirFunction*   function,
+                                    const HirStmt*       stmt);
+
+internal bool llvm_emit_effect_stmt_indices(LlvmFunctionContext* ctx,
+                                            const HirFunction*   function,
+                                            const u32*           stmt_indices,
+                                            u32                  first_stmt,
+                                            u32                  stmt_count)
+{
+    for (u32 i = 0; i < stmt_count; ++i) {
+        u32 stmt_index = stmt_indices[first_stmt + i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            return false;
+        }
+        if (!llvm_emit_effect_stmt(ctx,
+                                   function,
+                                   &ctx->hir->stmts[stmt_index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
+                                     const HirFunction*   function,
+                                     u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return false;
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    return llvm_emit_effect_stmt_indices(
+        ctx, function, block->stmt_indices, 0, block->stmt_count);
+}
+
+internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
+                                    const HirFunction*   function,
+                                    const HirStmt*       stmt)
+{
+    switch (stmt->kind) {
+    case HIR_STMT_Let:
+        return llvm_emit_let(ctx, function, stmt);
+    case HIR_STMT_Assign:
+        return llvm_emit_assign(ctx, function, stmt);
+    case HIR_STMT_Expr:
+    case HIR_STMT_Assert:
+        if (stmt->expr_index == U32_MAX) {
+            return true;
+        }
+        return llvm_emit_expr(ctx, function, stmt->expr_index).ok;
+    case HIR_STMT_Defer:
+        return true;
+    case HIR_STMT_Block:
+        return llvm_emit_effect_block(ctx, function, stmt->body_block_index);
+    default:
+        return false;
+    }
+}
+
 internal bool llvm_emit_return(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
                                const HirStmt*       stmt)
@@ -1623,15 +1772,73 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
         }
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
-        if (stmt->kind != HIR_STMT_Assign ||
-            stmt->target_expr_index >= array_count(ctx->hir->exprs)) {
-            continue;
+        if (stmt->kind == HIR_STMT_Assign &&
+            stmt->target_expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
+            if (target->kind == HIR_EXPR_LocalRef &&
+                target->ref_kind == HIR_REF_Local) {
+                llvm_mark_assigned_local(ctx, target->ref_index);
+            }
         }
 
-        const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
-        if (target->kind == HIR_EXPR_LocalRef &&
-            target->ref_kind == HIR_REF_Local) {
-            llvm_mark_assigned_local(ctx, target->ref_index);
+        if (stmt->kind == HIR_STMT_Block) {
+            llvm_collect_assigned_locals(ctx, stmt->body_block_index);
+        }
+
+        if (stmt->expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* expr = &ctx->hir->exprs[stmt->expr_index];
+            if (expr->kind == HIR_EXPR_For &&
+                expr->for_index < array_count(ctx->hir->fors)) {
+                const HirFor* loop = &ctx->hir->fors[expr->for_index];
+                llvm_collect_assigned_locals(ctx, loop->body_block_index);
+                llvm_collect_assigned_locals(ctx, loop->else_block_index);
+                for (u32 j = 0; j < loop->init_stmt_count; ++j) {
+                    u32 init_stmt_index =
+                        ctx->hir->for_init_stmts[loop->first_init_stmt + j];
+                    if (init_stmt_index < array_count(ctx->hir->stmts)) {
+                        const HirStmt* init_stmt =
+                            &ctx->hir->stmts[init_stmt_index];
+                        if (init_stmt->kind == HIR_STMT_Assign &&
+                            init_stmt->target_expr_index <
+                                array_count(ctx->hir->exprs)) {
+                            const HirExpr* init_target =
+                                &ctx->hir->exprs[init_stmt->target_expr_index];
+                            if (init_target->kind == HIR_EXPR_LocalRef &&
+                                init_target->ref_kind == HIR_REF_Local) {
+                                llvm_mark_assigned_local(ctx,
+                                                         init_target->ref_index);
+                            }
+                        }
+                        if (init_stmt->kind == HIR_STMT_Block) {
+                            llvm_collect_assigned_locals(
+                                ctx, init_stmt->body_block_index);
+                        }
+                    }
+                }
+                for (u32 j = 0; j < loop->update_stmt_count; ++j) {
+                    u32 update_stmt_index =
+                        ctx->hir->for_update_stmts[loop->first_update_stmt + j];
+                    if (update_stmt_index < array_count(ctx->hir->stmts)) {
+                        const HirStmt* update_stmt =
+                            &ctx->hir->stmts[update_stmt_index];
+                        if (update_stmt->kind == HIR_STMT_Assign &&
+                            update_stmt->target_expr_index <
+                                array_count(ctx->hir->exprs)) {
+                            const HirExpr* update_target =
+                                &ctx->hir->exprs[update_stmt->target_expr_index];
+                            if (update_target->kind == HIR_EXPR_LocalRef &&
+                                update_target->ref_kind == HIR_REF_Local) {
+                                llvm_mark_assigned_local(
+                                    ctx, update_target->ref_index);
+                            }
+                        }
+                        if (update_stmt->kind == HIR_STMT_Block) {
+                            llvm_collect_assigned_locals(
+                                ctx, update_stmt->body_block_index);
+                        }
+                    }
+                }
+            }
         }
     }
 }
