@@ -3924,9 +3924,48 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
-                u32 capacity = expr->arg_count;
-                if (expr->integer > 0 && (u64)expr->integer > capacity) {
-                    capacity = (u32)expr->integer;
+                string capacity_value = {0};
+                bool runtime_capacity =
+                    expr->extra_expr_index != U32_MAX &&
+                    expr->extra_expr_index < array_count(ctx->hir->exprs);
+                if (runtime_capacity) {
+                    LlvmValue capacity =
+                        llvm_emit_expr(ctx, function, expr->extra_expr_index);
+                    if (!capacity.ok) {
+                        array_free(values);
+                        return (LlvmValue){0};
+                    }
+                    capacity = llvm_coerce_value_to_type(
+                        ctx, capacity, llvm_builtin_type(ctx->sema, STK_Usize));
+                    if (!capacity.ok) {
+                        array_free(values);
+                        return (LlvmValue){0};
+                    }
+                    capacity_value = capacity.value;
+                    if (expr->arg_count > 0) {
+                        string enough = llvm_temp(ctx);
+                        string count  = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = icmp uge i64 " STRINGP
+                                  ", %u\n"
+                                  "  " STRINGP " = select i1 " STRINGP
+                                  ", i64 " STRINGP ", i64 %u\n",
+                                  STRINGV(enough),
+                                  STRINGV(capacity_value),
+                                  expr->arg_count,
+                                  STRINGV(count),
+                                  STRINGV(enough),
+                                  STRINGV(capacity_value),
+                                  expr->arg_count);
+                        capacity_value = count;
+                    }
+                } else {
+                    u32 capacity = expr->arg_count;
+                    if (expr->integer > 0 && (u64)expr->integer > capacity) {
+                        capacity = (u32)expr->integer;
+                    }
+                    capacity_value =
+                        string_format(ctx->arena, "%u", capacity);
                 }
 
                 string header = llvm_temp(ctx);
@@ -3940,15 +3979,35 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string capacity_ptr =
                     llvm_dynamic_array_header_field_ptr(ctx, header, 2);
 
-                string data = s("null");
-                if (capacity > 0) {
-                    u64 item_size =
-                        llvm_type_storage_bytes(ctx->sema, item_type);
+                u64 item_size = llvm_type_storage_bytes(ctx->sema, item_type);
+                string data   = s("null");
+                if (runtime_capacity || !string_eq_cstr(capacity_value, "0")) {
+                    string data_bytes = {0};
+                    if (runtime_capacity) {
+                        data_bytes = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = mul i64 " STRINGP
+                                  ", %llu\n",
+                                  STRINGV(data_bytes),
+                                  STRINGV(capacity_value),
+                                  (unsigned long long)item_size);
+                    } else {
+                        u64 capacity = (u64)expr->arg_count;
+                        if (expr->integer > 0 &&
+                            (u64)expr->integer > capacity) {
+                            capacity = (u64)expr->integer;
+                        }
+                        data_bytes = string_format(ctx->arena,
+                                                   "%llu",
+                                                   (unsigned long long)(
+                                                       capacity * item_size));
+                    }
                     data = llvm_temp(ctx);
                     sb_format(ctx->sb,
-                              "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+                              "  " STRINGP " = call ptr @malloc(i64 " STRINGP
+                              ")\n",
                               STRINGV(data),
-                              (unsigned long long)item_size * capacity);
+                              STRINGV(data_bytes));
 
                     string item_type_string = llvm_type_string(ctx, item_type);
                     for (u32 i = 0; i < expr->arg_count; ++i) {
@@ -3974,12 +4033,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 sb_format(ctx->sb,
                           "  store ptr " STRINGP ", ptr " STRINGP "\n"
                           "  store i64 %u, ptr " STRINGP "\n"
-                          "  store i64 %u, ptr " STRINGP "\n",
+                          "  store i64 " STRINGP ", ptr " STRINGP "\n",
                           STRINGV(data),
                           STRINGV(data_ptr_ptr),
                           expr->arg_count,
                           STRINGV(count_ptr),
-                          capacity,
+                          STRINGV(capacity_value),
                           STRINGV(capacity_ptr));
                 array_free(values);
                 return (LlvmValue){
@@ -6868,6 +6927,9 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
             if (expr != NULL && expr->kind == HIR_EXPR_On) {
                 ctx->discard_expr_value = true;
             }
+            if (expr != NULL && expr->kind == HIR_EXPR_Unsupported) {
+                return true;
+            }
             bool ok = llvm_emit_expr(ctx, function, stmt->expr_index).ok;
             ctx->discard_expr_value = old_discard_expr_value;
             return ok;
@@ -7193,6 +7255,19 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                 LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
                 if (!value.ok) {
                     return false;
+                }
+                if (expr != NULL && expr->kind == HIR_EXPR_On) {
+                    bool exhaustive = false;
+                    if (expr->branch_count > 0) {
+                        u32 branch_index =
+                            expr->first_branch + expr->branch_count - 1;
+                        exhaustive =
+                            branch_index < array_count(ctx->hir->on_branches) &&
+                            ctx->hir->on_branches[branch_index].is_else;
+                    }
+                    if (!exhaustive) {
+                        ctx->block_terminated = false;
+                    }
                 }
             }
             continue;

@@ -614,6 +614,17 @@ internal void hir_render_expr(StringBuilder* sb,
             sema->types[expr->type_index].kind == STK_DynamicArray &&
             expr->integer > 0) {
             sb_format(sb, "; min_capacity %lld", (long long)expr->integer);
+        } else if (expr->kind == HIR_EXPR_Array &&
+                   expr->type_index < array_count(sema->types) &&
+                   sema->types[expr->type_index].kind == STK_DynamicArray &&
+                   expr->extra_expr_index != U32_MAX) {
+            sb_append_cstr(sb, "; min_capacity ");
+            hir_render_expr(sb,
+                            hir,
+                            lexer,
+                            sema,
+                            arena,
+                            expr->extra_expr_index);
         }
         sb_append_char(sb, ')');
         break;

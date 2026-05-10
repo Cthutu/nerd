@@ -90,6 +90,36 @@ internal u32 hir_local_dynamic_array_min_capacity(const Ast*  ast,
     return value > 0 ? (u32)value : 0;
 }
 
+internal u32 hir_local_dynamic_array_min_capacity_node(const Ast*  ast,
+                                                       const Sema* sema,
+                                                       u32         local_index)
+{
+    if (local_index >= array_count(sema->locals)) {
+        return hir_no_index();
+    }
+    u32 type_node_index = sema->locals[local_index].type_node_index;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return hir_no_index();
+    }
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    while (type_node->kind == AK_Expression &&
+           type_node->a < array_count(ast->nodes)) {
+        type_node_index = type_node->a;
+        type_node       = &ast->nodes[type_node_index];
+    }
+    if (type_node->kind != AK_TypeDynamicArray ||
+        type_node->a >= array_count(ast->nodes)) {
+        return hir_no_index();
+    }
+    return type_node->a;
+}
+
+internal bool hir_node_is_const_known(const Sema* sema, u32 node_index)
+{
+    return node_index < array_count(sema->node_const_known) &&
+           sema->node_const_known[node_index];
+}
+
 internal u32 hir_decl_type(const Sema* sema, u32 decl_index)
 {
     return decl_index < array_count(sema->decls)
@@ -1033,6 +1063,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .local_index   = sema_no_local(),
                     .first_arg     = first_arg,
                     .arg_count     = node->b,
+                    .extra_expr_index = hir_no_index(),
                 });
         }
     case AK_TupleField:
@@ -1530,12 +1561,62 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     : hir_no_index();
             u32 local_index = hir_node_local(sema, node_index);
             u32 local_type  = hir_local_type(sema, local_index);
-            if (expr_index < array_count(hir->exprs) &&
-                hir->exprs[expr_index].kind == HIR_EXPR_Array &&
-                local_type < array_count(sema->types) &&
+            if (local_type < array_count(sema->types) &&
                 sema->types[local_type].kind == STK_DynamicArray) {
-                hir->exprs[expr_index].integer =
-                    hir_local_dynamic_array_min_capacity(ast, sema, local_index);
+                u32 min_capacity_node =
+                    hir_local_dynamic_array_min_capacity_node(
+                        ast, sema, local_index);
+                u32 min_capacity =
+                    hir_local_dynamic_array_min_capacity(ast,
+                                                         sema,
+                                                         local_index);
+                bool min_capacity_is_runtime =
+                    min_capacity_node != hir_no_index() &&
+                    !hir_node_is_const_known(sema, min_capacity_node);
+                bool should_make_array_init =
+                    min_capacity_node != hir_no_index() &&
+                    expr_index >= array_count(hir->exprs);
+                if (expr_index < array_count(hir->exprs) &&
+                    hir->exprs[expr_index].kind == HIR_EXPR_Unsupported) {
+                    u32 init_node = value_node_index;
+                    while (init_node < array_count(ast->nodes) &&
+                           ast->nodes[init_node].kind == AK_Expression) {
+                        init_node = ast->nodes[init_node].a;
+                    }
+                    should_make_array_init =
+                        min_capacity_node != hir_no_index() &&
+                        init_node < array_count(ast->nodes) &&
+                        (ast->nodes[init_node].kind == AK_ZeroInit ||
+                         ast->nodes[init_node].kind == AK_Undefined);
+                }
+                if (should_make_array_init) {
+                    u32 min_capacity_expr_index =
+                        min_capacity_is_runtime
+                            ? hir_lower_expr(
+                                  hir, lexer, ast, sema, min_capacity_node)
+                            : hir_no_index();
+                    expr_index = hir_add_expr(
+                        hir,
+                        (HirExpr){
+                            .kind             = HIR_EXPR_Array,
+                            .type_index       = local_type,
+                            .symbol_handle    = U32_MAX,
+                            .local_index      = sema_no_local(),
+                            .extra_expr_index = min_capacity_expr_index,
+                        });
+                }
+                if (expr_index < array_count(hir->exprs) &&
+                    hir->exprs[expr_index].kind == HIR_EXPR_Array) {
+                    hir->exprs[expr_index].integer = min_capacity;
+                    if (hir->exprs[expr_index].extra_expr_index ==
+                            hir_no_index() &&
+                        min_capacity_is_runtime) {
+                        u32 min_capacity_expr_index = hir_lower_expr(
+                            hir, lexer, ast, sema, min_capacity_node);
+                        hir->exprs[expr_index].extra_expr_index =
+                            min_capacity_expr_index;
+                    }
+                }
             }
             return hir_add_stmt(
                 hir,
