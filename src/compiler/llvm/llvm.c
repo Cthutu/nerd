@@ -145,7 +145,8 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
         return float_bits;
     }
     if (llvm_type_kind(sema, type_index) == STK_Pointer ||
-        llvm_type_kind(sema, type_index) == STK_Function) {
+        llvm_type_kind(sema, type_index) == STK_Function ||
+        llvm_type_kind(sema, type_index) == STK_DynamicArray) {
         return 64;
     }
     if (llvm_type_kind(sema, type_index) == STK_String ||
@@ -164,13 +165,51 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     }
     if (llvm_type_kind(sema, type_index) == STK_Array) {
         const SemaType* type = &sema->types[type_index];
-        return (u32)type->param_count *
+        return (u32)type->return_type *
                llvm_type_storage_bits(sema, type->first_param_type);
     }
     if (llvm_type_kind(sema, type_index) == STK_Union) {
         return llvm_union_storage_bits(sema, type_index);
     }
     return 0;
+}
+
+internal bool
+llvm_record_type_has_field(const Sema* sema, u32 type_index, u32 symbol_handle)
+{
+    u32 target_type = type_index;
+    if (llvm_type_kind(sema, target_type) == STK_Pointer) {
+        u32 pointee_type = sema->types[target_type].first_param_type;
+        SemaTypeKind pointee_kind = llvm_type_kind(sema, pointee_type);
+        if (pointee_kind == STK_Plex || pointee_kind == STK_Union) {
+            target_type = pointee_type;
+        }
+    }
+
+    SemaTypeKind kind = llvm_type_kind(sema, target_type);
+    if (kind != STK_Plex && kind != STK_Union) {
+        return false;
+    }
+
+    const SemaType* record = &sema->types[target_type];
+    for (u32 i = 0; i < record->param_count; ++i) {
+        if (sema->type_param_symbols[record->first_param_type + i] ==
+            symbol_handle) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal u64 llvm_type_sizeof_bytes(const Sema* sema, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if (kind == STK_Void || kind == STK_Nil || kind == STK_Module) {
+        return 0;
+    }
+
+    u32 bits = llvm_type_storage_bits(sema, type_index);
+    return bits == 0 ? 0 : (bits + 7) / 8;
 }
 
 internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type)
@@ -4256,6 +4295,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_TupleField:
     case HIR_EXPR_Field:
         {
+            if (expr->kind == HIR_EXPR_Field &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(
+                    lex_symbol(ctx->lexer, expr->symbol_handle), "size") &&
+                !llvm_record_type_has_field(
+                    ctx->sema,
+                    ctx->hir->exprs[expr->operand_expr_index].type_index,
+                    expr->symbol_handle)) {
+                u32 source_type =
+                    ctx->hir->exprs[expr->operand_expr_index].type_index;
+                source_type = sema_materialise_type(ctx->sema, source_type);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value =
+                        string_format(ctx->arena,
+                                      "%llu",
+                                      (unsigned long long)
+                                          llvm_type_sizeof_bytes(ctx->sema,
+                                                                 source_type)),
+                };
+            }
+
             if (expr->kind == HIR_EXPR_Field &&
                 llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum &&
                 expr->symbol_handle != U32_MAX) {
