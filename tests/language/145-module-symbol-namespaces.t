@@ -27,11 +27,12 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-declare i32 @$test()
+declare i32 @m1.fn.0()
+declare i32 @m2.fn.0()
 
 define i32 @fn.0() {
-  %t0 = call i32 @$test()
-  %t1 = call i32 @$test()
+  %t0 = call i32 @m1.fn.0()
+  %t1 = call i32 @m2.fn.0()
   %t2 = add i32 %t0, %t1
   ret i32 %t2
 }
