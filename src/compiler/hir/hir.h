@@ -69,6 +69,7 @@ typedef enum : u8 {
     HIR_EXPR_LocalRef,
     HIR_EXPR_Unary,
     HIR_EXPR_Binary,
+    HIR_EXPR_Assign,
     HIR_EXPR_Call,
     HIR_EXPR_Cast,
     HIR_EXPR_Index,

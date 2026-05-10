@@ -569,6 +569,13 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Assign:
+        sb_append_cstr(sb, "assign(");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->lhs_expr_index);
+        sb_append_cstr(sb, " = ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->rhs_expr_index);
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_Call:
         sb_append_cstr(sb, "call ");
         hir_render_call_callee(

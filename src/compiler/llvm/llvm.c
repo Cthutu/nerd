@@ -1303,6 +1303,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index);
 
+internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               u32                  target_expr_index,
+                               LlvmValue            value);
+
 internal bool llvm_expr_integer_constant(const Hir* hir, u32 expr_index, i64* out)
 {
     if (expr_index >= array_count(hir->exprs)) {
@@ -3024,7 +3029,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = temp,
                 };
             }
-
             string instr = llvm_binary_instruction(expr->binary_op);
             if (instr.count == 0) {
                 return (LlvmValue){0};
@@ -3059,6 +3063,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .type_index = expr->type_index,
                 .value      = temp,
             };
+        }
+    case HIR_EXPR_Assign:
+        {
+            LlvmValue value =
+                llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+            if (!value.ok ||
+                !llvm_emit_assign(ctx, function, expr->lhs_expr_index, value)) {
+                return (LlvmValue){0};
+            }
+            value.type_index = expr->type_index;
+            return value;
         }
     case HIR_EXPR_Unary:
         {
@@ -4545,17 +4560,14 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
 
 internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
-                               const HirStmt*       stmt)
+                               u32                  target_expr_index,
+                               LlvmValue            value)
 {
-    if (stmt->target_expr_index >= array_count(ctx->hir->exprs)) {
+    if (target_expr_index >= array_count(ctx->hir->exprs)) {
         return false;
     }
 
-    const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
-    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
-    if (!value.ok) {
-        return false;
-    }
+    const HirExpr* target = &ctx->hir->exprs[target_expr_index];
 
     if (target->kind == HIR_EXPR_Unary &&
         target->unary_op == HIR_UNARY_Deref) {
@@ -4616,6 +4628,17 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         llvm_ensure_local_slot(ctx, target->ref_index, type_index);
     llvm_store_local_slot(ctx, slot, value);
     return true;
+}
+
+internal bool llvm_emit_assign_stmt(LlvmFunctionContext* ctx,
+                                    const HirFunction*   function,
+                                    const HirStmt*       stmt)
+{
+    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    if (!value.ok) {
+        return false;
+    }
+    return llvm_emit_assign(ctx, function, stmt->target_expr_index, value);
 }
 
 internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
@@ -4725,7 +4748,7 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
     case HIR_STMT_Let:
         return llvm_emit_let(ctx, function, stmt);
     case HIR_STMT_Assign:
-        return llvm_emit_assign(ctx, function, stmt);
+        return llvm_emit_assign_stmt(ctx, function, stmt);
     case HIR_STMT_DestructureLet:
     case HIR_STMT_DestructureAssign:
         return llvm_emit_destructure(ctx, function, stmt);
@@ -4901,6 +4924,28 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
 
         if (stmt->expr_index < array_count(ctx->hir->exprs)) {
             const HirExpr* expr = &ctx->hir->exprs[stmt->expr_index];
+            if (expr->kind == HIR_EXPR_Block) {
+                llvm_collect_assigned_locals(ctx, expr->body_block_index);
+            }
+            if (expr->kind == HIR_EXPR_On) {
+                for (u32 j = 0; j < expr->branch_count; ++j) {
+                    u32 branch_index = expr->first_branch + j;
+                    if (branch_index < array_count(ctx->hir->on_branches)) {
+                        llvm_collect_assigned_locals(
+                            ctx,
+                            ctx->hir->on_branches[branch_index].body_block_index);
+                    }
+                }
+            }
+            if (expr->kind == HIR_EXPR_Assign &&
+                expr->lhs_expr_index < array_count(ctx->hir->exprs)) {
+                const HirExpr* target =
+                    &ctx->hir->exprs[expr->lhs_expr_index];
+                if (target->kind == HIR_EXPR_LocalRef &&
+                    target->ref_kind == HIR_REF_Local) {
+                    llvm_mark_assigned_local(ctx, target->ref_index);
+                }
+            }
             if (expr->kind == HIR_EXPR_For &&
                 expr->for_index < array_count(ctx->hir->fors)) {
                 const HirFor* loop = &ctx->hir->fors[expr->for_index];
@@ -4981,7 +5026,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             }
             continue;
         } else if (stmt->kind == HIR_STMT_Assign) {
-            if (!llvm_emit_assign(ctx, function, stmt)) {
+            if (!llvm_emit_assign_stmt(ctx, function, stmt)) {
                 return false;
             }
             continue;

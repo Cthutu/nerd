@@ -576,6 +576,18 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .symbol_handle = U32_MAX,
                                 .local_index   = sema_no_local(),
                             });
+    case AK_Assign:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Assign,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle  = U32_MAX,
+                                .local_index    = sema_no_local(),
+                                .lhs_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
+                                .rhs_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->b),
+                            });
     case AK_FnDef:
         {
             u32 function_index = hir_no_index();
