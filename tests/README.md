@@ -18,7 +18,7 @@ source files. Repository regression tests are run by the Python harness via
 
 - `language`
   End-to-end source tests. `.t` files contain source, expected process return
-  value, expected stdout, expected IR, and expected generated C, separated by
+  value, expected stdout, expected HIR, and expected LLVM IR, separated by
   `¬`.
 - `errors`
   Structured compiler diagnostic tests. `.e` files contain source and expected

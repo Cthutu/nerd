@@ -53,16 +53,6 @@ internal bool front_end_hir_gen(FrontEndContext* ctx)
     return true;
 }
 
-//------------------------------------------------------------------------------
-// Lower the analysed front-end state to IR.
-
-internal bool front_end_ir_gen(FrontEndContext* ctx)
-{
-    ctx->results.ir =
-        ir_generate(&ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
-    return true;
-}
-
 bool front_end(NerdSource             source,
                const FrontEndOptions* options,
                Timing*                timing,
@@ -134,23 +124,6 @@ bool front_end(NerdSource             source,
         }
     }
 
-    if (result && !ctx.options.skip_ir_generation &&
-        !ctx.options.skip_legacy_ir_generation) {
-        if (timing != NULL) {
-            ThreadTimePoint start = thread_time_now();
-            result                = front_end_ir_gen(&ctx);
-            timing_add(timing,
-                       COMPILER_STAGE_FRONT_END,
-                       COMPILER_PHASE_IR_GEN,
-                       thread_time_elapsed(start, thread_time_now()));
-        } else {
-            result = front_end_ir_gen(&ctx);
-        }
-        if (result && ctx.options.verbose) {
-            ir_dump(&ctx.results.ir, &ctx.results.lexer);
-        }
-    }
-
     if (out_results != NULL) {
         *out_results = ctx.results;
     } else {
@@ -161,9 +134,6 @@ bool front_end(NerdSource             source,
 
 void front_end_results_done(FrontEndState* results)
 {
-    ir_done(&results->ir);
-    results->ir = (Ir){0};
-
     hir_done(&results->hir);
     results->hir = (Hir){0};
 

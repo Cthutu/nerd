@@ -29,6 +29,6 @@ LLVM backend status:
 
 - `nerd build --llvm source.n` writes the HIR-derived LLVM IR sidecar.
 - `nerd run source.n` and `nerd build source.n` compile executables with the
-  LLVM backend by default.
-- `nerd run --c-backend source.n` and `nerd build --c-backend source.n` keep the
-  legacy IR/C backend available while the migration is finished.
+  LLVM backend.
+- The previous IR/C backend has been removed; HIR is the compiler middle layer
+  and LLVM IR is the executable backend output.

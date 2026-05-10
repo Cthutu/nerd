@@ -32,7 +32,6 @@ typedef struct {
     bool               release;
     bool               require_entry_point;
     bool               skip_ir_generation;
-    bool               skip_legacy_ir_generation;
     bool               keep_partial_results;
     const ProgramInfo* program;
     u32                current_module_index;
@@ -79,11 +78,8 @@ typedef struct {
     cstr binary_path;
     cstr hir_path;
     cstr llvm_path;
-    cstr c_path;
     bool emit_hir_file;
     bool emit_llvm_file;
-    bool emit_c_file;
-    bool use_llvm_backend;
     bool compile_binary;
     bool release;
     Array(string) keywords;

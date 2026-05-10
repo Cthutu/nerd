@@ -28,8 +28,7 @@ nerd run --llvm-backend source.n
 ```
 
 This path writes generated LLVM IR and compiles it with build-generated LLVM
-runtime bridge artifacts. The LLVM backend is now the default executable path;
-the C backend remains available as an escape hatch.
+runtime bridge artifacts. The LLVM backend is now the only executable backend.
 
 The first emitter writes textual `.ll` from root-module HIR and covers:
 
@@ -96,13 +95,13 @@ on all LLVM inputs together. The backend removes those temporary runtime files
 after a successful link.
 
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
-flags without consulting the old IR tables. Normal LLVM builds request HIR but
-always skip legacy IR generation. This removes the old IR from the default
-compiler critical path and from the public artifact interface.
+flags without consulting the old IR tables. The legacy IR and C generator have
+been removed from the build graph.
 
 ## Follow-up
 
 1. Replace export comments with concrete LLVM linkage/alias decisions.
 2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
-3. Remove the remaining legacy IR/C implementation files.
+3. Remove stale roadmap references to the deleted IR/C backend as adjacent
+   architecture plans are refreshed.

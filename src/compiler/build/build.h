@@ -7,10 +7,8 @@
 #pragma once
 
 #include <compiler/ast/ast.h>
-#include <compiler/cgen/cgen.h>
 #include <compiler/compiler.h>
 #include <compiler/hir/hir.h>
-#include <compiler/ir/ir.h>
 #include <compiler/lexer/lexer.h>
 #include <compiler/sema/sema.h>
 
@@ -21,7 +19,6 @@ typedef struct FrontEndState {
     Ast   ast;
     Sema  sema;
     Hir   hir;
-    Ir    ir;
 } FrontEndState;
 
 typedef enum : u8 {
@@ -46,7 +43,3 @@ typedef struct ProgramInfo {
     Array(ModuleInfo) modules;
     u32 root_module_index;
 } ProgramInfo;
-
-typedef struct BackEndState {
-    CGen cgen;
-} BackEndState;

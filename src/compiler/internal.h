@@ -18,9 +18,5 @@
 #define COMPILER_PHASE_PARSE "parse tokens into AST"
 #define COMPILER_PHASE_SEMA "analyse AST semantics"
 #define COMPILER_PHASE_HIR_GEN "generate HIR from sema"
-#define COMPILER_PHASE_IR_GEN "generate IR from AST"
-#define COMPILER_PHASE_C_GEN "generate C code from IR"
-#define COMPILER_PHASE_C_SAVE "save generated C file"
-#define COMPILER_PHASE_C_COMPILE "compile generated C file"
 
 //------------------------------------------------------------------------------

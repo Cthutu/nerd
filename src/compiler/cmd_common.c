@@ -14,17 +14,14 @@
 NerdArtifactConfig compiler_cmd_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path      = "a.out",
-        .hir_path         = "_a.hir",
-        .llvm_path        = "_a.ll",
-        .c_path           = "_a.gen.c",
-        .emit_hir_file    = false,
-        .emit_llvm_file   = false,
-        .emit_c_file      = false,
-        .use_llvm_backend = true,
-        .compile_binary   = true,
-        .release          = false,
-        .keywords         = NULL,
+        .binary_path    = "a.out",
+        .hir_path       = "_a.hir",
+        .llvm_path      = "_a.ll",
+        .emit_hir_file  = false,
+        .emit_llvm_file = false,
+        .compile_binary = true,
+        .release        = false,
+        .keywords       = NULL,
     };
 }
 
@@ -123,11 +120,10 @@ bool compile(NerdSource                source,
     }
 
     FrontEndOptions front_end_options = {
-        .verbose                   = dump_compiler_state,
-        .release                   = artifacts->release,
-        .require_entry_point       = true,
-        .skip_legacy_ir_generation = true,
-        .keywords                  = artifacts->keywords,
+        .verbose             = dump_compiler_state,
+        .release             = artifacts->release,
+        .require_entry_point = true,
+        .keywords            = artifacts->keywords,
     };
 
     ProgramInfo program = {0};

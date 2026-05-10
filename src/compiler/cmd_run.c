@@ -23,12 +23,10 @@ compiler_cmd_run_artifacts(Arena* arena, const NerdRunConfig* config)
                             : compiler_cmd_temp_binary_path(arena, output_root);
     artifacts.hir_path  = compiler_cmd_sidecar_path(arena, output_root, ".hir");
     artifacts.llvm_path = compiler_cmd_sidecar_path(arena, output_root, ".ll");
-    artifacts.c_path = compiler_cmd_sidecar_path(arena, output_root, ".gen.c");
-    artifacts.emit_hir_file    = config->emit_hir;
-    artifacts.emit_llvm_file   = config->emit_llvm;
-    artifacts.use_llvm_backend = true;
-    artifacts.release          = config->release;
-    artifacts.keywords         = config->keywords;
+    artifacts.emit_hir_file  = config->emit_hir;
+    artifacts.emit_llvm_file = config->emit_llvm;
+    artifacts.release        = config->release;
+    artifacts.keywords       = config->keywords;
 
     return artifacts;
 }
