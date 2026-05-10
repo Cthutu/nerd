@@ -451,6 +451,30 @@ internal string llvm_binary_instruction(HirBinaryOp op)
         return s("shl");
     case HIR_BINARY_ShiftRight:
         return s("ashr");
+    case HIR_BINARY_LogicalAnd:
+        return s("and");
+    case HIR_BINARY_LogicalOr:
+        return s("or");
+    default:
+        return (string){0};
+    }
+}
+
+internal string llvm_compare_instruction(HirBinaryOp op)
+{
+    switch (op) {
+    case HIR_BINARY_Equal:
+        return s("eq");
+    case HIR_BINARY_NotEqual:
+        return s("ne");
+    case HIR_BINARY_Less:
+        return s("slt");
+    case HIR_BINARY_LessEqual:
+        return s("sle");
+    case HIR_BINARY_Greater:
+        return s("sgt");
+    case HIR_BINARY_GreaterEqual:
+        return s("sge");
     default:
         return (string){0};
     }
@@ -541,6 +565,33 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     case HIR_EXPR_Binary:
         {
+            string cmp = llvm_compare_instruction(expr->binary_op);
+            if (cmp.count > 0) {
+                LlvmValue lhs =
+                    llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+                LlvmValue rhs =
+                    llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+                if (!lhs.ok || !rhs.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string type = llvm_type_string(ctx, lhs.type_index);
+                string temp = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp " STRINGP " " STRINGP
+                          " " STRINGP ", " STRINGP "\n",
+                          STRINGV(temp),
+                          STRINGV(cmp),
+                          STRINGV(type),
+                          STRINGV(lhs.value),
+                          STRINGV(rhs.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
+            }
+
             string instr = llvm_binary_instruction(expr->binary_op);
             if (instr.count == 0) {
                 return (LlvmValue){0};
