@@ -332,77 +332,69 @@ internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
     }
 }
 
-internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
-                                            const NerdArtifactConfig* artifacts)
+typedef struct {
+    Array(cstr) llvm_paths;
+    Array(string) module_llvms;
+    Array(u32) init_module_indices;
+} BackEndLlvmModules;
+
+internal void back_end_llvm_modules_done(BackEndLlvmModules* modules)
 {
-    if (!artifacts->compile_binary && !artifacts->emit_llvm_file) {
-        return true;
-    }
-    if (program->root_module_index >= array_count(program->modules)) {
-        return false;
-    }
+    array_free(modules->llvm_paths);
+    array_free(modules->module_llvms);
+    array_free(modules->init_module_indices);
+    *modules = (BackEndLlvmModules){0};
+}
 
-    Arena arena = {0};
-    arena_init(&arena);
-
-    Array(cstr) llvm_paths         = NULL;
-    Array(string) module_llvms     = NULL;
-    Array(u32) init_module_indices = NULL;
+internal bool back_end_render_llvm_modules(Arena*                    arena,
+                                           const ProgramInfo*        program,
+                                           const NerdArtifactConfig* artifacts,
+                                           BackEndLlvmModules*       out)
+{
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         const FrontEndState* front_end   = &program->modules[i].front_end;
         string               module_llvm = llvm_render_hir(
-            &front_end->hir, &front_end->lexer, &front_end->sema, &arena);
-        array_push(module_llvms, module_llvm);
+            &front_end->hir, &front_end->lexer, &front_end->sema, arena);
+        array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
-            cstr llvm_path = back_end_module_llvm_path(&arena, artifacts, i);
+            cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
             if (!back_end_write_text_file(llvm_path, module_llvm)) {
-                back_end_cleanup_llvm_compile_artifacts(
-                    llvm_paths, false, NULL);
-                array_free(llvm_paths);
-                array_free(module_llvms);
-                array_free(init_module_indices);
-                arena_done(&arena);
                 return false;
             }
-            array_push(llvm_paths, llvm_path);
+            array_push(out->llvm_paths, llvm_path);
         }
         if (back_end_hir_has_globals(&front_end->hir)) {
-            array_push(init_module_indices, i);
+            array_push(out->init_module_indices, i);
         }
     }
-    if (!artifacts->compile_binary) {
-        array_free(llvm_paths);
-        array_free(module_llvms);
-        array_free(init_module_indices);
-        arena_done(&arena);
-        return true;
-    }
+    return true;
+}
 
-    cstr combined_llvm_path = back_end_cstr(
-        &arena, string_format(&arena, "%s.link.ll", artifacts->binary_path));
+internal string back_end_runtime_epilogue(bool root_main_returns_void)
+{
+    return root_main_returns_void ? s("declare void @init()\n"
+                                      "declare void @$main()\n"
+                                      "\n"
+                                      "define i32 @main() {\n"
+                                      "  call void @init()\n"
+                                      "  call void @$main()\n"
+                                      "  ret i32 0\n"
+                                      "}\n")
+                                  : s("declare void @init()\n"
+                                      "declare i32 @$main()\n"
+                                      "\n"
+                                      "define i32 @main() {\n"
+                                      "  call void @init()\n"
+                                      "  %result = call i32 @$main()\n"
+                                      "  ret i32 %result\n"
+                                      "}\n");
+}
 
-    const FrontEndState* root =
-        &program->modules[program->root_module_index].front_end;
-    bool   root_main_returns_void = back_end_root_main_returns_void(root);
-    string runtime_epilogue       = root_main_returns_void
-                                        ? s("declare void @init()\n"
-                                            "declare void @$main()\n"
-                                            "\n"
-                                            "define i32 @main() {\n"
-                                            "  call void @init()\n"
-                                            "  call void @$main()\n"
-                                            "  ret i32 0\n"
-                                            "}\n")
-                                        : s("declare void @init()\n"
-                                            "declare i32 @$main()\n"
-                                            "\n"
-                                            "define i32 @main() {\n"
-                                            "  call void @init()\n"
-                                            "  %result = call i32 @$main()\n"
-                                            "  ret i32 %result\n"
-                                            "}\n");
+internal string back_end_render_init_llvm(Arena* arena,
+                                          Array(u32) init_module_indices)
+{
     StringBuilder init_ll_builder = {0};
-    sb_init(&init_ll_builder, &arena);
+    sb_init(&init_ll_builder, arena);
     for (u32 i = 0; i < array_count(init_module_indices); ++i) {
         sb_format(&init_ll_builder,
                   "declare void @m%u.init()\n",
@@ -418,8 +410,14 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                   init_module_indices[i]);
     }
     sb_append_cstr(&init_ll_builder, "  ret void\n}\n");
-    string init_ll                = sb_to_string(&init_ll_builder);
+    return sb_to_string(&init_ll_builder);
+}
 
+internal string back_end_build_combined_llvm(Arena* arena,
+                                             Array(string) module_llvms,
+                                             string runtime_epilogue,
+                                             string init_ll)
+{
     Array(string) defined_symbols = NULL;
     back_end_collect_llvm_defined_symbols(&defined_symbols,
                                           s(g_llvm_runtime_prelude));
@@ -432,7 +430,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
     StringBuilder combined_llvm_builder = {0};
     Array(string) declared_symbols      = NULL;
-    sb_init(&combined_llvm_builder, &arena);
+    sb_init(&combined_llvm_builder, arena);
     back_end_append_llvm_without_satisfied_declarations(
         &combined_llvm_builder,
         s(g_llvm_runtime_prelude),
@@ -454,25 +452,24 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     sb_append_cstr(&combined_llvm_builder, "\n");
     back_end_append_llvm_without_satisfied_declarations(
         &combined_llvm_builder, init_ll, defined_symbols, &declared_symbols);
-    string combined_llvm = sb_to_string(&combined_llvm_builder);
-    if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
-        back_end_cleanup_llvm_compile_artifacts(
-            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
-        array_free(llvm_paths);
-        array_free(module_llvms);
-        array_free(defined_symbols);
-        array_free(declared_symbols);
-        array_free(init_module_indices);
-        arena_done(&arena);
-        return false;
-    }
 
+    string combined_llvm = sb_to_string(&combined_llvm_builder);
+    array_free(defined_symbols);
+    array_free(declared_symbols);
+    return combined_llvm;
+}
+
+internal bool back_end_link_combined_llvm(Arena*                    arena,
+                                          const ProgramInfo*        program,
+                                          const NerdArtifactConfig* artifacts,
+                                          cstr combined_llvm_path)
+{
     string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
     StringBuilder link_flags = {0};
-    sb_init(&link_flags, &arena);
+    sb_init(&link_flags, arena);
     back_end_append_hir_extern_link_flags(&link_flags, program);
     StringBuilder command_builder = {0};
-    sb_init(&command_builder, &arena);
+    sb_init(&command_builder, arena);
     sb_format(&command_builder,
               "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\"",
               STRINGV(opt_flags),
@@ -480,16 +477,8 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
               combined_llvm_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
     string command        = sb_to_string(&command_builder);
-    int    compile_result = shell(back_end_cstr(&arena, command));
+    int    compile_result = shell(back_end_cstr(arena, command));
     if (compile_result != 0) {
-        back_end_cleanup_llvm_compile_artifacts(
-            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
-        array_free(llvm_paths);
-        array_free(module_llvms);
-        array_free(defined_symbols);
-        array_free(declared_symbols);
-        array_free(init_module_indices);
-        arena_done(&arena);
         return error_runtime(
             "Failed to compile generated LLVM file (exit code %d)",
             compile_result);
@@ -497,27 +486,73 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
 #if OS_POSIX
     if (chmod(artifacts->binary_path, 0755) != 0) {
-        back_end_cleanup_llvm_compile_artifacts(
-            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
-        array_free(llvm_paths);
-        array_free(module_llvms);
-        array_free(defined_symbols);
-        array_free(declared_symbols);
-        array_free(init_module_indices);
-        arena_done(&arena);
         return error_runtime("Failed to make %s executable",
                              artifacts->binary_path);
     }
 #endif
 
-    back_end_cleanup_llvm_compile_artifacts(
-        llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+    return true;
+}
 
-    array_free(llvm_paths);
-    array_free(module_llvms);
-    array_free(defined_symbols);
-    array_free(declared_symbols);
-    array_free(init_module_indices);
+internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
+                                            const NerdArtifactConfig* artifacts)
+{
+    if (!artifacts->compile_binary && !artifacts->emit_llvm_file) {
+        return true;
+    }
+    if (program->root_module_index >= array_count(program->modules)) {
+        return false;
+    }
+
+    Arena arena = {0};
+    arena_init(&arena);
+
+    BackEndLlvmModules modules = {0};
+    if (!back_end_render_llvm_modules(&arena, program, artifacts, &modules)) {
+        back_end_cleanup_llvm_compile_artifacts(
+            modules.llvm_paths, false, NULL);
+        back_end_llvm_modules_done(&modules);
+        arena_done(&arena);
+        return false;
+    }
+    if (!artifacts->compile_binary) {
+        back_end_llvm_modules_done(&modules);
+        arena_done(&arena);
+        return true;
+    }
+
+    cstr combined_llvm_path = back_end_cstr(
+        &arena, string_format(&arena, "%s.link.ll", artifacts->binary_path));
+
+    const FrontEndState* root =
+        &program->modules[program->root_module_index].front_end;
+    bool   root_main_returns_void = back_end_root_main_returns_void(root);
+    string runtime_epilogue = back_end_runtime_epilogue(root_main_returns_void);
+    string init_ll =
+        back_end_render_init_llvm(&arena, modules.init_module_indices);
+    string combined_llvm = back_end_build_combined_llvm(
+        &arena, modules.module_llvms, runtime_epilogue, init_ll);
+    if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
+        back_end_cleanup_llvm_compile_artifacts(
+            modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+        back_end_llvm_modules_done(&modules);
+        arena_done(&arena);
+        return false;
+    }
+
+    if (!back_end_link_combined_llvm(
+            &arena, program, artifacts, combined_llvm_path)) {
+        back_end_cleanup_llvm_compile_artifacts(
+            modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+        back_end_llvm_modules_done(&modules);
+        arena_done(&arena);
+        return false;
+    }
+
+    back_end_cleanup_llvm_compile_artifacts(
+        modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+
+    back_end_llvm_modules_done(&modules);
     arena_done(&arena);
     return true;
 }
