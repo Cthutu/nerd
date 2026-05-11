@@ -56,7 +56,7 @@ func fn.0() -> void {
   expr void call fn (string) -> void field(module bind.1(io), prn)(string interpolate(i32 local.0(number), <unknown> " ", string local.1(text), <unknown> " ", i32 local.2(explicit), <unknown> " ", i32 local.4(from_value), <unknown> " ", string local.6(chosen)))
 }
 inst func fn.1(value: i32) -> i32 {
-  return string local.8(value)
+  return i32 local.7(value)
 }
 inst func fn.2(value: string) -> string {
   return string local.8(value)

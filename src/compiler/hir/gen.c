@@ -3011,9 +3011,20 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         const SemaGenericFnInstantiation* inst =
             &sema->generic_fn_instantiations[i];
         Sema inst_sema               = *sema;
+        inst_sema.node_decl_indices  = inst->node_decl_indices;
+        inst_sema.node_local_indices = inst->node_local_indices;
         inst_sema.node_scope_indices = inst->node_scope_indices;
-        inst_sema.locals             = sema->locals;
-        inst_sema.scopes             = sema->scopes;
+        inst_sema.node_lowered_symbol_handles =
+            inst->node_lowered_symbol_handles;
+        inst_sema.node_type_indices = inst->node_type_indices;
+        inst_sema.node_method_call_decl_indices =
+            inst->node_method_call_decl_indices;
+        inst_sema.node_method_call_receiver_refs =
+            inst->node_method_call_receiver_refs;
+        inst_sema.node_method_call_receiver_derefs =
+            inst->node_method_call_receiver_derefs;
+        inst_sema.locals = sema->locals;
+        inst_sema.scopes = sema->scopes;
         hir_add_function(&hir,
                          lexer,
                          ast,
