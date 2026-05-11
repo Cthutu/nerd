@@ -2552,7 +2552,33 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
             .value      = s("1"),
         };
     case HIR_PATTERN_Bind:
-        llvm_bind_symbol_value(ctx, pattern->symbol_handle, scrutinee);
+        {
+            LlvmValue bound = scrutinee;
+            if (pattern->symbol_handle != U32_MAX &&
+                llvm_type_is_record(ctx->sema, scrutinee.type_index)) {
+                u32 field_index = llvm_record_field_index(
+                    ctx->sema, scrutinee.type_index, pattern->symbol_handle);
+                if (field_index != U32_MAX) {
+                    string temp        = llvm_temp(ctx);
+                    string record_type =
+                        llvm_type_string(ctx, scrutinee.type_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP
+                              " " STRINGP ", %u\n",
+                              STRINGV(temp),
+                              STRINGV(record_type),
+                              STRINGV(scrutinee.value),
+                              field_index);
+                    bound = (LlvmValue){
+                        .ok         = true,
+                        .type_index = llvm_record_field_type(
+                            ctx->sema, scrutinee.type_index, field_index),
+                        .value = temp,
+                    };
+                }
+            }
+            llvm_bind_symbol_value(ctx, pattern->symbol_handle, bound);
+        }
         return (LlvmValue){
             .ok         = true,
             .type_index = sema_no_type(),

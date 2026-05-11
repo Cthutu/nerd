@@ -1,0 +1,67 @@
+Item :: plex {
+    value i32
+}
+
+Choice :: enum {
+    Empty
+    One(Item)
+}
+
+sum_items :: fn(items: []Item) -> i32 {
+    total := 0
+    for item in items {
+        total += item.value
+    }
+    return total
+}
+
+main :: fn() -> i32 {
+    fixed := [Item { value: 1 }, Item { value: 2 }]
+    first := ^fixed[0]
+    first.value = 5
+
+    dyn: [2..]Item
+    dyn.push({ value: 3 })
+    dyn.push({ value: 4 })
+
+    choice: Choice = One(first^)
+    return sum_items(fixed[..]) + sum_items(dyn[..]) + on choice {
+        One({ value: as value }) => value
+        else => 0
+    }
+}
+¬
+hir 0
+bind Item = type.0
+bind Choice = type.1
+bind sum_items = fn.0
+bind main = fn.1
+type type.0 = Item
+type type.1 = Choice
+func fn.0(items: []Item) -> i32 {
+  let total: i32 = untyped integer 0
+  expr void for in item: ^Item in []Item local.0(items) {
+    body {
+      assign i32 local.1(total) = i32 add(i32 local.1(total), i32 field(^Item local.2(item), value))
+    }
+  }
+  return i32 local.1(total)
+}
+func fn.1() -> i32 {
+  let fixed: [2]Item = [2]Item array(Item plex(value: i32 1), Item plex(value: i32 2))
+  let first: ^Item = ^Item address_of(Item index([2]Item local.3(fixed), untyped integer 0))
+  assign i32 field(^Item local.4(first), value) = i32 5
+  expr <unknown> default
+  let dyn: [..]Item = [..]Item array(; min_capacity 2)
+  expr void call fn (Item) -> void field([..]Item local.5(dyn), push)(Item plex(value: i32 3))
+  expr void call fn (Item) -> void field([..]Item local.5(dyn), push)(Item plex(value: i32 4))
+  let choice: Choice = Choice call One(Item deref(^Item local.4(first)))
+  return i32 add(i32 add(i32 call bind.2(sum_items)([]Item slice([2]Item local.3(fixed), <none>, <none>)), i32 call bind.2(sum_items)([]Item slice([..]Item local.5(dyn), <none>, <none>))), i32 on Choice local.6(choice) {
+    enum_variant(One, as value) => {
+      expr i32 local.7(value)
+    }
+    else => {
+      expr i32 0
+    }
+  })
+}

@@ -178,7 +178,7 @@ Working rules for this review:
   - LLVM should own phi construction where structured HIR branches produce a
     value.
 
-- [ ] Commit: cover aggregate, enum, slice, dynamic-array, and pointer cases
+- [x] Commit: cover aggregate, enum, slice, dynamic-array, and pointer cases
   - Include member auto-deref behavior.
   - Include `for item in collection` where `item` is always a pointer.
 
