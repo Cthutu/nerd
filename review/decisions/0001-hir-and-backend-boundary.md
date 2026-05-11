@@ -70,9 +70,9 @@ LLVM backend rules:
   as `@"$main"`.
 - Generated opaque names such as `@fn.N`, `@global.N`, and `%type.N` are
   reserved for compiler-created internals.
-- The first LLVM backend may compile `data/prelude.c` and `data/epilogue.c` to
-  LLVM IR or bitcode with clang, then link those products with generated Nerd
-  LLVM IR.
+- The first LLVM backend may compile `data/prelude.c` to LLVM IR or bitcode
+  with clang, generate the tiny epilogue wrapper directly, then link those
+  products with generated Nerd LLVM IR.
 
 ## Consequences
 

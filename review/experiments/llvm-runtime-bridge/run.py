@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -22,15 +21,31 @@ def require_tool(name: str) -> None:
         raise SystemExit(f"required tool not found: {name}")
 
 
-def write_epilogue_bridge(path: Path) -> None:
-    epilogue_path = (ROOT / "data" / "epilogue.c").as_posix()
+def llvm_target_lines(prelude_ll: Path) -> list[str]:
+    return [
+        line
+        for line in prelude_ll.read_text(encoding="utf-8").splitlines()
+        if line.startswith("target datalayout = ") or line.startswith(
+            "target triple = "
+        )
+    ]
+
+
+def write_epilogue_ll(prelude_ll: Path, path: Path) -> None:
     path.write_text(
         '\n'.join(
             [
-                "extern void init(void);",
-                "extern int $main(void);",
-                f'#include "{epilogue_path}"',
+                *llvm_target_lines(prelude_ll),
                 "",
+                'declare void @init()',
+                'declare i32 @"$main"()',
+                "",
+                "define i32 @main() {",
+                "entry:",
+                "  call void @init()",
+                '  %result = call i32 @"$main"()',
+                "  ret i32 %result",
+                "}",
             ]
         ),
         encoding="utf-8",
@@ -40,13 +55,6 @@ def write_epilogue_bridge(path: Path) -> None:
 def write_targeted_program_ll(prelude_ll: Path,
                               source_ll: Path,
                               output_ll: Path) -> None:
-    target_lines: list[str] = []
-    for line in prelude_ll.read_text(encoding="utf-8").splitlines():
-        if line.startswith("target datalayout = ") or line.startswith(
-            "target triple = "
-        ):
-            target_lines.append(line)
-
     body_lines = [
         line
         for line in source_ll.read_text(encoding="utf-8").splitlines()
@@ -54,7 +62,7 @@ def write_targeted_program_ll(prelude_ll: Path,
         and not line.startswith("target triple = ")
     ]
     output_ll.write_text(
-        "\n".join([*target_lines, "", *body_lines, ""]),
+        "\n".join([*llvm_target_lines(prelude_ll), "", *body_lines, ""]),
         encoding="utf-8",
     )
 
@@ -64,8 +72,6 @@ def main() -> int:
     require_tool("llvm-link")
 
     OUT.mkdir(parents=True, exist_ok=True)
-    epilogue_bridge = OUT / "epilogue_bridge.c"
-    write_epilogue_bridge(epilogue_bridge)
 
     common_c_flags = [
         "clang",
@@ -88,7 +94,7 @@ def main() -> int:
         "-o",
         str(prelude_ll),
     ])
-    run([*common_c_flags, str(epilogue_bridge), "-o", str(epilogue_ll)])
+    write_epilogue_ll(prelude_ll, epilogue_ll)
     write_targeted_program_ll(prelude_ll, program_template_ll, program_ll)
     run([
         "llvm-link",
