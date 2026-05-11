@@ -7,6 +7,8 @@ This folder holds detailed architecture review material.
   - `audits/lsp-boundaries.md`: current LSP product/readiness boundaries.
   - `audits/hir-backend-readiness.md`: current HIR surface and LLVM backend
     blockers.
+  - `audits/hir-manual-coverage.md`: manual-to-HIR coverage matrix and
+    remaining accepted `<unsupported>` HIR cases.
 - `prototypes/`: prototype notes and design sketches.
 - `measurements/`: profiling, benchmark, and allocation results.
 

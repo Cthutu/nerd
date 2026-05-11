@@ -163,7 +163,7 @@ Working rules for this review:
 
 ### Milestone 4: Complete HIR Coverage For Language Lowering
 
-- [ ] Commit: audit HIR coverage against the manual
+- [x] Commit: audit HIR coverage against the manual
   - Walk manual chapters and ensure every source construct has either HIR
     lowering, an explicit unsupported diagnostic, or a tracked TODO.
 
