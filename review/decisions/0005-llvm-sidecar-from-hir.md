@@ -6,7 +6,7 @@ Date: 2026-05-10
 ## Context
 
 The review direction is to make HIR the target-agnostic program form and lower
-it directly to LLVM IR, eventually replacing the current custom IR and C
+it directly to LLVM IR. That migration has replaced the old custom IR and C
 generation path.
 
 Jumping straight to executable LLVM would mix several decisions at once:
@@ -85,24 +85,24 @@ executable backend. The installed compiler runs the LLVM backend with
 `nerd run source.n` or `nerd build source.n`, and it can still produce textual
 LLVM IR with `nerd build --llvm source.n`.
 
-The compiler build now supports `//> run: ...` directives on source files.
-`src/nerd.c` uses this to compile `data/prelude.c` into
-`_obj/llvm/prelude.ll` before compiling the compiler itself. That generated
-runtime `.ll` file is embedded into the compiler with `#embed`. During a Nerd
-program build, the backend renders module LLVM IR in memory, writes inspection
-sidecars only when `--llvm` is requested, concatenates the embedded prelude,
-generated modules, generated init wrapper, and tiny LLVM `main` wrapper into one
-temporary combined LLVM file, and invokes clang on that single input. The
-backend removes the combined temporary file after a successful link.
+The compiler build supports `//> run: ...` directives on source files.
+`src/nerd.c` uses this to compile `data/nrt.c` into `_obj/runtime/nrt.o` before
+compiling the compiler itself. That runtime object is embedded into the compiler
+with `#embed`. During a Nerd program build, the backend renders module LLVM IR
+in memory, writes inspection sidecars only when `--llvm` is requested,
+concatenates generated modules, the generated init wrapper, and the tiny LLVM
+`main` wrapper into one temporary combined LLVM file, writes the embedded
+runtime object beside it, and invokes clang on both inputs. The backend removes
+the combined temporary file and runtime object copy after a successful link.
 
 The executable backend contract is now:
 
 - generated module LLVM text stays in memory unless `--llvm` is requested
-- `_obj/llvm/prelude.ll` is generated while building the compiler and embedded
+- `_obj/runtime/nrt.o` is generated while building the compiler and embedded
   into `nerd`
 - generated runtime glue is emitted directly as LLVM text by the backend
-- all executable builds compile one temporary `<output>.link.ll` file with
-  clang
+- all executable builds compile one temporary `<output>.link.ll` file plus one
+  temporary `<output>.nrt.o` runtime object copy with clang
 - the combiner drops declarations satisfied by definitions or aliases in that
   combined input, but preserves one declaration for unresolved external symbols
 - successful builds remove temporary link inputs and unrequested module sidecars

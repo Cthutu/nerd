@@ -1,6 +1,6 @@
 # 0001: HIR And Backend Boundary
 
-Status: proposed
+Status: accepted
 Date: 2026-05-09
 
 Update: this decision has been carried out by the later LLVM backend work.
@@ -15,7 +15,7 @@ At the time of this decision, the build pipeline was:
 lexer -> AST parser -> sema -> IR -> C -> clang
 ```
 
-The current IR is useful, but it is not mainly an optimizer IR. It is a
+The old IR was useful, but it was not mainly an optimizer IR. It was a
 linearized C-generation input with side tables for globals, externs, functions,
 locals, call arguments, aggregate construction, strings, dynamic arrays, copied
 semantic types, and module merge/remapping.
@@ -27,9 +27,9 @@ The architecture review identified two related goals:
 - avoid making C generation the permanent center of the architecture, because
   LLVM IR is a plausible backend target
 
-The LLVM runtime bridge experiment has shown that the existing C prelude and
-epilogue can be compiled to LLVM IR and linked with a hand-written module that
-defines `@"$main"`.
+The LLVM runtime bridge work now compiles `data/nrt.c` to a runtime object that
+is embedded into the compiler. Generated modules are linked with that object and
+with generated LLVM glue that calls the Nerd `@"$main"` binding.
 
 ## Decision
 
@@ -70,9 +70,9 @@ LLVM backend rules:
   as `@"$main"`.
 - Generated opaque names such as `@fn.N`, `@global.N`, and `%type.N` are
   reserved for compiler-created internals.
-- The first LLVM backend may compile `data/prelude.c` to LLVM IR or bitcode
-  with clang, generate the tiny epilogue wrapper directly, then link those
-  products with generated Nerd LLVM IR.
+- The LLVM backend writes generated LLVM IR, emits the tiny runtime wrappers
+  directly, writes the embedded `nrt.o` beside the link input, then links those
+  products with clang.
 
 ## Consequences
 
@@ -87,17 +87,17 @@ constraints were removed from the core representation constraints.
 HIR and the LLVM backend have replaced the legacy backend services that were
 called out during the migration:
 
-- current IR dumps used for debugging
+- HIR dumps used for debugging
 - module merge/remapping
 - copied semantic type rows used by the old C generation path
 - global/runtime initialization ordering
 - explicit temporary and local ownership
 - string/dynamic-array lowering records
 
-LLVM support will still require deliberate ABI and runtime work. The C runtime
-bridge avoids rewriting helper functions initially, but does not remove the
-need to manage target triples, data layouts, linkage, platform C runtime
-linking, varargs, debug metadata, and aggregate ABI choices.
+LLVM support still requires deliberate ABI and runtime work. The runtime object
+bridge avoids rewriting helper functions initially, but does not remove the need
+to manage target triples, data layouts, linkage, platform C runtime linking,
+varargs, debug metadata, and aggregate ABI choices.
 
 ## Follow-up
 

@@ -50,7 +50,7 @@ start with [manual/README.md](/home/matt/nerd/docs/manual/README.md).
 - [type-system.md](/home/matt/nerd/docs/type-system.md)
   How semantic types are represented and inferred today.
 - [string-runtime.md](/home/matt/nerd/docs/string-runtime.md)
-  Interpolated-string lowering, IR string ops, and runtime helper model.
+  Interpolated-string lowering, HIR/LLVM string ops, and runtime helper model.
 - [stdlib.md](/home/matt/nerd/docs/stdlib.md)
   Working notes for the evolving standard library surface.
 - [lsp.md](/home/matt/nerd/docs/lsp.md)

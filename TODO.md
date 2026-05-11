@@ -157,7 +157,7 @@ Working rules for this review:
     - combined link LLVM only when requested or debugging
     - executable output
 
-- [ ] Commit: update docs after removal
+- [x] Commit: update docs after removal
   - Remove C backend references from current docs.
   - Preserve historical notes only where useful for context.
 
