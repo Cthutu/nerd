@@ -55,7 +55,7 @@ pointer-heavy.
 Function values currently reuse the same canonical signature rows. Named
 functions therefore have a semantic function type such as `fn (i32, i32) ->
 i32`, and when they are used as runtime values the back end lowers them through
-function-pointer-compatible storage in generated C.
+function-pointer-compatible storage in LLVM IR.
 
 Tuple types also use the flattened `Sema.type_param_types` side table. The
 tuple row stores its element count in `param_count` and the first element type in
@@ -81,12 +81,13 @@ so `^i32` and `^[3]i32` are distinct types.
 
 Plex types are written `plex { field Type ... }`. A plex row stores its named
 field types in source order, with field symbols carried alongside field types in
-semantic side tables. The current layout is source-order and C-compatible for
-predictable lowering and debugging; compiler-reordered layouts are deferred.
+semantic side tables. The current layout is source-order for predictable
+lowering, FFI compatibility, and debugging; compiler-reordered layouts are
+deferred.
 
 Raw union types are written `union { field Type ... }`. They share the same
-named-field storage model as plexes, but generated C lowers them as C unions:
-all fields overlap and the programmer is responsible for knowing which field is
+named-field storage model as plexes, but lower to overlapping storage: all
+fields overlap and the programmer is responsible for knowing which field is
 currently valid. A union value is constructed with exactly one field, such as
 `Value { i: 42 }`, and fields are read with dot notation. Raw unions are meant
 for low-level and FFI-facing code, so they are intentionally not supported in
@@ -282,8 +283,8 @@ Tuple fields are accessed with zero-based dot indices:
 - `pair.1`
 
 The semantic pass checks that field access is applied to a tuple and that the
-index is within range. Tuple values currently lower to generated C structs with
-numbered fields such as `_0` and `_1`.
+index is within range. Tuple values currently lower to aggregate storage with
+numbered fields.
 
 ## Plexes
 
@@ -301,7 +302,7 @@ Plex values are constructed with a named instance literal:
 Every field must be supplied exactly once. Unknown fields, duplicate fields,
 missing fields, and field value type mismatches are rejected during semantic
 analysis. Literal field order does not have to match declaration order because
-lowering uses named C designators.
+lowering maps each named field back to its declared storage slot.
 
 Existing plex values can be copied with selected fields replaced:
 
@@ -318,8 +319,7 @@ Plex fields are accessed with dot syntax:
 - `point_ptr.x`
 
 Field access on `^Plex` automatically dereferences the pointer for the field
-lookup. Generated C lowers this through `->`, while direct plex values continue
-to lower through `.`.
+lookup.
 
 Plex aliases may be recursively linked through pointer fields:
 
@@ -334,9 +334,10 @@ used by that collection's initializer:
 - `first :: ^nodes[0]`
 
 Dependency analysis treats that shape as an address constant rather than an
-ordinary value edge from the collection to the pointer alias. IR lowering then
-inlines the address expression while generating the collection initializer, so
-the collection does not read the alias before it has been initialized.
+ordinary value edge from the collection to the pointer alias. HIR/backend
+lowering then inlines the address expression while generating the collection
+initializer, so the collection does not read the alias before it has been
+initialized.
 
 Plex layout annotations are written after `plex`:
 
@@ -344,8 +345,8 @@ Plex layout annotations are written after `plex`:
 - `PackedHeader :: plex #packed { tag u8 length u32 }`
 
 `#c` requests explicit source-order C-compatible layout. `#packed` emits a
-packed generated C struct and implies `#c`. Unannotated plexes currently also
-use source-order layout for predictable lowering and debugging; compiler-driven
+packed storage layout and implies `#c`. Unannotated plexes currently also use
+source-order layout for predictable lowering and debugging; compiler-driven
 field reordering is reserved for a future optimisation milestone.
 
 ## Fixed Arrays
@@ -370,7 +371,7 @@ Fixed arrays are indexed with square brackets:
 - `values[0]`
 - `values[i]`
 
-The index expression must be an integer type. In debug builds, generated C emits
+The index expression must be an integer type. In debug builds, the backend emits
 a bounds check before each fixed-array index and aborts with a fatal message if
 the index is outside the fixed length. Release builds may omit those checks.
 
@@ -406,7 +407,7 @@ Slices are indexed with the same square-bracket syntax as fixed arrays:
 - `slice[0]`
 - `slice[i]`
 
-The index expression must be an integer type. In debug builds, generated C emits
+The index expression must be an integer type. In debug builds, the backend emits
 a bounds check before each slice index and aborts with a fatal message if the
 index is outside `slice.count`. Release builds may omit those checks.
 
@@ -418,9 +419,9 @@ type:
 - `text[1..4]`
 - `text[..]`
 
-String slicing returns `string`, not `[]u8`. Generated C checks that string slice
-bounds are within range and on UTF-8 codepoint boundaries before producing the
-result. Byte-oriented access remains explicit through `.data`, whose type is
+String slicing returns `string`, not `[]u8`. The backend checks that string
+slice bounds are within range and on UTF-8 codepoint boundaries before producing
+the result. Byte-oriented access remains explicit through `.data`, whose type is
 `^u8`.
 
 ## Pointers
@@ -442,7 +443,7 @@ Pointer indexing uses the same `value[index]` syntax as fixed arrays:
 - `array_ptr[0][2]`
 
 The index expression must be an integer type. Raw pointer indexing has no known
-length in the type system, so generated C does not emit bounds checks for it.
+length in the type system, so the backend does not emit bounds checks for it.
 
 Local variables are resolved through semantic scope rows, not through AST node
 payloads. A function body creates a root scope, and each nested block statement
@@ -473,11 +474,11 @@ hidden environment object.
 The lowering strategy keeps this simple:
 
 - semantic analysis records a lowered symbol handle for each function node
-- nested functions are mangled by lexical ownership, for example `main$add`
-- generated C uses the corresponding Nerd-visible symbol form, for example
-  `$main$add`
+- HIR gives each function an internal identity
+- LLVM generation emits a generated implementation symbol and binds any
+  Nerd-visible name with an alias
 
-This keeps the IR and generated C closure-free while still allowing nested
+This keeps HIR and LLVM generation closure-free while still allowing nested
 functions and function values.
 
 ## Casts

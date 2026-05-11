@@ -10,26 +10,27 @@ The current implementation is intentionally simple:
 
 - interpolated strings with only compile-time parts lower to string literals
 - runtime interpolated strings are temporary values only
-- lowering is explicit in IR
-- generated C uses a global append-only arena-backed builder
+- lowering is explicit in HIR and LLVM
+- the runtime prelude uses a global append-only arena-backed builder
 - conversion support is limited to built-in primitive types and `string`
 
 This is a first runtime model, not the final VM-oriented design.
 
-## IR Model
+## HIR And LLVM Model
 
-Interpolated strings lower through explicit IR instructions in
-[src/compiler/ir/ir.h](/home/matt/nerd/src/compiler/ir/ir.h) and
-[src/compiler/ir/gen.c](/home/matt/nerd/src/compiler/ir/gen.c):
+Interpolated strings lower through explicit HIR nodes in
+[src/compiler/hir/hir.h](/home/matt/nerd/src/compiler/hir/hir.h) and
+[src/compiler/hir/gen.c](/home/matt/nerd/src/compiler/hir/gen.c), then to
+runtime helper calls in
+[src/compiler/llvm/llvm.c](/home/matt/nerd/src/compiler/llvm/llvm.c):
 
 - `string.reset`
 - `string.start`
 - `string.append`
 - `string.finish`
 
-That keeps interpolation visible in IR rather than hiding it inside C code
-generation. The current C backend still uses semantic type tables for some type
-lookups, but the string-building behaviour itself now exists as IR operations.
+That keeps interpolation visible in the middle layer rather than hiding it
+inside backend string concatenation code.
 
 ## Runtime Helpers
 

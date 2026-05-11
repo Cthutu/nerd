@@ -22,7 +22,7 @@ The repository contains:
 - `src/cli`
   Schema-driven command-line parsing.
 - `src/compiler`
-  The compiler front end, IR, C generation, error system, and commands.
+  The compiler front end, HIR, LLVM generation, error system, and commands.
 - `src/lsp`
   The language server built on the compiler front end and CST.
 - `build/test.py`
@@ -68,13 +68,14 @@ The compiler front end currently runs:
 1. lexing
 2. AST parsing
 3. semantic analysis
-4. IR generation
+4. HIR generation
 
 The back end currently runs:
 
-1. C generation
-2. optional save of generated C
-3. optional native compilation of generated C
+1. optional save of generated HIR
+2. LLVM IR generation
+3. optional save of generated LLVM IR
+4. native compilation through clang
 
 ## Important Architectural Rules
 
@@ -92,10 +93,10 @@ The back end currently runs:
   Compact syntax tree nodes.
 - `Sema`
   Semantic declarations, type rows, dependency edges, and AST-indexed side tables.
-- `Ir`
-  Lowered compiler IR used by C generation.
-- `Cgen`
-  Generated C text and related state.
+- `Hir`
+  Semantically checked lowered program used by the executable backend.
+- `LLVM`
+  Generated LLVM IR text and backend lowering state.
 - `Cst`
   Concrete syntax tree used mainly for formatter and LSP tooling.
 
@@ -107,10 +108,10 @@ The back end currently runs:
   Syntax parsing, AST utilities, and AST dumping.
 - `src/compiler/sema`
   Name resolution, dependency ordering, constant folding, and type analysis.
-- `src/compiler/ir`
-  IR data model, lowering, and rendering.
-- `src/compiler/cgen`
-  C emission.
+- `src/compiler/hir`
+  HIR data model, lowering, and rendering.
+- `src/compiler/llvm`
+  LLVM IR emission.
 - `src/compiler/error`
   Structured diagnostics and renderers.
 - `src/compiler/format`

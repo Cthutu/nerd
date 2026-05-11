@@ -13,7 +13,8 @@ Nerd source code. It is not the repository regression harness.
 The repository currently has five main test families:
 
 - `tests/language`
-  End-to-end compiler tests with expected runtime result, stdout, IR, and C.
+  End-to-end compiler tests with expected runtime result, stdout, HIR, and LLVM
+  IR.
 - `tests/errors`
   Structured error-rendering tests in JSON form.
 - `tests/format`
@@ -30,8 +31,8 @@ Language tests use `.t` files with five sections separated by `¬`:
 1. source code
 2. expected return value
 3. expected stdout
-4. expected IR
-5. expected generated C
+4. expected HIR
+5. expected generated LLVM IR
 
 The first section is also valid source input by itself, which makes local
 debugging straightforward.

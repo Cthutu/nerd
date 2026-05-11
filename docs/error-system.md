@@ -46,14 +46,14 @@ compiler phases have done their job.
 
 Failures outside the source program are runtime errors. Use
 `error_runtime(...)` for OS, filesystem, shell, and toolchain failures such as
-being unable to write generated files or compile the generated C. These are not
-language diagnostics, and they are not ICEs unless they expose a compiler
-invariant violation.
+being unable to write generated files or compile the generated LLVM IR. These
+are not language diagnostics, and they are not ICEs unless they expose a
+compiler invariant violation.
 
-IR generation and C generation should not invent user-facing language errors.
-If those phases see an invalid AST, invalid IR operation, invalid IR value, or
-unsupported internal type state, report an ICE. Earlier phases are responsible
-for rejecting invalid source programs.
+HIR generation and LLVM generation should not invent user-facing language
+errors. If those phases see an invalid AST, invalid HIR operation, invalid HIR
+value, or unsupported internal type state, report an ICE. Earlier phases are
+responsible for rejecting invalid source programs.
 
 `help` and `note` messages have different roles:
 

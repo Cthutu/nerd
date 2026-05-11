@@ -13,17 +13,17 @@ The current stage order is:
 1. `lex`
 2. `ast_parse`
 3. `sema_analyse`
-4. `ir_generate`
+4. `hir_generate`
 
 The front end returns `FrontEndState`, which contains:
 
 - `Lexer`
 - `Ast`
 - `Sema`
-- `Ir`
+- `Hir`
 
 This ordering is important. The parser stays syntax-only, semantic analysis
-resolves names and types, and IR generation lowers from semantic results rather
+resolves names and types, and HIR generation lowers from semantic results rather
 than raw syntax guesses.
 
 ## Back End
@@ -33,14 +33,15 @@ The back end is orchestrated in
 
 It currently:
 
-1. generates C from IR
-2. optionally saves generated C
-3. optionally invokes the native compiler
+1. optionally saves HIR
+2. renders LLVM IR from HIR
+3. optionally saves generated LLVM IR sidecars
+4. invokes clang on one combined LLVM IR input
 
-The current code generator is a C back end, so the user-facing compiler flow is
+The current executable back end is LLVM, so the user-facing compiler flow is
 effectively:
 
-`Nerd source -> lexer -> AST -> sema -> IR -> C -> native binary`
+`Nerd source -> lexer -> AST -> sema -> HIR -> LLVM IR -> native binary`
 
 ## Lexer
 
@@ -90,43 +91,44 @@ Local variable scopes are also semantic side tables. Each function body creates
 a root local scope, and nested block statements create child scopes. Lookup is
 lexical and declaration-order aware.
 
-## IR Generation
+## HIR Generation
 
-IR lowering in [src/compiler/ir/gen.c](/home/matt/nerd/src/compiler/ir/gen.c)
-uses the semantic output to emit:
+HIR lowering in [src/compiler/hir/gen.c](/home/matt/nerd/src/compiler/hir/gen.c)
+uses the semantic output to produce:
 
 - global declarations
 - init-time work
 - function bodies
 - assignments, locals, calls, arithmetic, and returns
-- explicit block start/end markers for nested scopes
+- structured blocks, loops, `on`, `defer`, and expression-valued control flow
 - explicit string-builder operations for interpolated strings
 
-The current IR is intentionally straightforward. It acts as the bridge from
-semantic structure to stable C emission.
+HIR is the semantically checked middle layer. It is intentionally target-agnostic
+at the language level: functions, types, values, imports, exports, locals, and
+control-flow constructs are represented as compiler facts rather than as C or
+LLVM spelling.
 
-The IR is also becoming self-contained. `IrValue` carries its semantic type, and
-`Ir` owns copies of the semantic type rows plus explicit records for globals,
-functions, and locals. Back ends should prefer those IR facts over reaching back
-into semantic side tables. This keeps the representation suitable for future
-non-C back ends and VM-style execution.
+HIR also has a stable textual representation for tests. The text is derived
+from the in-memory HIR; it is not the shape the data structures have to use.
 
-## C Generation
+## LLVM Generation
 
-The C back end translates IR operations to emitted C. Generated C remains a
-tooling artefact as well as the current executable back end, so stability
-matters for tests.
+The LLVM back end translates HIR to textual LLVM IR in
+[src/compiler/llvm/llvm.c](/home/matt/nerd/src/compiler/llvm/llvm.c).
+Generated LLVM IR remains a tooling artefact as well as the executable backend
+input, so stability matters for tests.
 
 The naming rule to remember is:
 
-- Nerd-visible names become C symbols with a leading `$`
-- hidden runtime/compiler helpers do not
+- Nerd-visible bindings keep the `$` prefix and are emitted as LLVM aliases
+  such as `@"$main"`
+- generated implementation names such as `@fn.N` are compiler internals
 
-When same-named exported functions from different modules would collide after
-module IR is merged, the runtime symbol is disambiguated with the module path
-included, using `$` between path segments. For example, `std.gfx.test` may lower
-to the C symbol `$std$gfx$test`. Non-conflicting imported functions keep their
-normal Nerd-visible runtime name.
+The backend renders each module in memory, writes `.ll` sidecars only when
+requested with `--llvm`, concatenates the embedded LLVM prelude, generated
+modules, generated epilogue wrapper, and init wrapper into one temporary
+`.link.ll` file, then invokes clang on that single input. Temporary link inputs
+are removed after successful builds.
 
 ## Renderers And Dumpers
 
@@ -137,4 +139,4 @@ The codebase distinguishes between:
 - dumpers
   human-oriented diagnostic output for local inspection
 
-That split shows up across the compiler, especially in IR and C generation.
+That split shows up across the compiler, especially in HIR and LLVM generation.
