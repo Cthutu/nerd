@@ -37,7 +37,7 @@ It currently:
 2. renders LLVM IR from HIR
 3. optionally saves generated LLVM IR sidecars
 4. builds one combined LLVM IR link input
-5. invokes clang on that combined LLVM IR input
+5. invokes clang on one combined LLVM IR input plus that runtime object
 
 The current executable back end is LLVM, so the user-facing compiler flow is
 effectively:
@@ -50,8 +50,8 @@ The backend is intentionally split into small pieces:
   owns artifact policy, module iteration, temporary paths, external link flags,
   and process orchestration.
 - `llvm_runtime.c`
-  owns the embedded runtime prelude and generated runtime glue such as the
-  `init` wrapper and tiny C-compatible `main` wrapper.
+  owns the embedded runtime object and generated runtime glue such as the `init`
+  wrapper and tiny C-compatible `main` wrapper.
 - `llvm_text.c`
   owns textual LLVM concatenation and declaration filtering for the combined
   input.
@@ -137,24 +137,23 @@ The naming rule to remember is:
   such as `@"$main"`
 - generated implementation names such as `@fn.N` are compiler internals
 
-The compiler build produces the runtime prelude before compiling `nerd` itself.
-`src/nerd.c` has a build directive that runs clang over `data/prelude.c` and
-writes `_obj/llvm/prelude.ll`; `llvm_runtime.c` embeds that generated text with
-`#embed`.
+The compiler build produces the runtime object before compiling `nerd` itself.
+`src/nerd.c` has a build directive that compiles `data/nrt.c` to
+`_obj/runtime/nrt.o`; `llvm_runtime.c` embeds that object with `#embed`.
 
 For a normal program build, the backend renders each module's LLVM IR in memory.
 It writes module `.ll` sidecars only when requested with `--llvm`. Executable
 builds then concatenate:
 
-1. the embedded runtime prelude
-2. each generated module
-3. the generated runtime `main` wrapper
-4. the generated `init` wrapper for modules with global initialisation
+1. each generated module
+2. the generated runtime `main` wrapper
+3. the generated `init` wrapper for modules with global initialisation
 
 The concatenated text is written to one temporary `<output>.link.ll` file and
-compiled with clang. Using a single LLVM input avoids backend-specific C
-dependency ordering and lets LLVM resolve function/type ordering within the
-module.
+the embedded runtime object is written beside it as `<output>.nrt.o`. The
+backend then invokes clang on both inputs. Using a single generated LLVM input
+avoids backend-specific C dependency ordering and lets LLVM resolve
+function/type ordering within the module.
 
 The combiner removes declarations that are satisfied by definitions or aliases
 inside the combined input, and keeps one declaration for unresolved external
@@ -162,14 +161,22 @@ symbols such as libc calls. This matters because clang accepts separate `.ll`
 inputs that each declare the same symbol, but rejects one textual LLVM module
 that both declares and defines the same symbol.
 
-Temporary link inputs are removed after successful builds. Module sidecars are
-also removed unless `--llvm` requested them for inspection. Failed builds retain
-generated files where possible so the failing LLVM can be inspected locally.
+Temporary link inputs and runtime object copies are removed after successful
+builds. Module sidecars are also removed unless `--llvm` requested them for
+inspection. Failed builds retain generated files where possible so the failing
+LLVM can be inspected locally.
 
 The current toolchain contract is textual LLVM IR plus clang. The compiler does
 not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
 surface small while still allowing a future measurement-backed switch to LLVM
 CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
+
+Runtime helpers that exchange Nerd strings use a stable pointer/scalar ABI
+rather than C by-value structs. Generated LLVM stores `{ ptr, i64 }` string
+values into stack slots and passes pointers to runtime helpers such as
+`string_eq`, `to_string$...`, `string_builder_append_string`, and
+`nerd_assert`. This keeps the generated LLVM independent of platform-specific C
+aggregate calling conventions.
 
 ## Renderers And Dumpers
 

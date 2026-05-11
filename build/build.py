@@ -487,11 +487,14 @@ def parse_run_directives(src: Path) -> list[RunDirective]:
     text = src.read_text(encoding="utf-8", errors="ignore")
     directives: list[RunDirective] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
-        match = re.match(r"\s*//>\s*run\s*:\s*(.*)$", line)
+        match = re.match(r"\s*//>\s*run(?:\(([^)]*)\))?\s*:\s*(.*)$", line)
         if not match:
             continue
+        platform, command_text = match.groups()
+        if platform is not None and not run_directive_platform_matches(platform):
+            continue
         try:
-            command = shlex.split(match.group(1))
+            command = shlex.split(command_text)
         except ValueError as exc:
             raise SystemExit(
                 colour(f"Invalid run directive in {src}:{line_no}: {exc}", RED)
@@ -511,6 +514,24 @@ def parse_run_directives(src: Path) -> list[RunDirective]:
             )
         )
     return directives
+
+
+def run_directive_platform_matches(platform: str) -> bool:
+    names = {name.strip().lower() for name in platform.split(",") if name.strip()}
+    if not names:
+        return True
+    current: set[str] = set()
+    if os.name == "nt":
+        current.add("windows")
+    else:
+        current.add("posix")
+        if sys.platform.startswith("linux"):
+            current.add("linux")
+        elif sys.platform == "darwin":
+            current.add("macos")
+        elif "bsd" in sys.platform:
+            current.add("bsd")
+    return bool(names & current)
 
 
 def run_directive_needs_rebuild(directive: RunDirective) -> bool:

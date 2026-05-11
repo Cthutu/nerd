@@ -30,11 +30,11 @@ scores 0 5 30 100
 hir 0
 module module.0(065-enum-payloads.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2
@@ -78,26 +78,26 @@ func fn.1() -> i32 {
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.4 = private unnamed_addr constant [2 x i8] c" \00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 
 declare void @$pr({ ptr, i64 })
 declare void @$epr({ ptr, i64 })
@@ -185,30 +185,48 @@ define internal i32 @fn.1() {
   %t13 = insertvalue { i64, i128 } poison, i64 3, 0
   %t14 = insertvalue { i64, i128 } %t13, i128 %t11, 1
   %t15 = call i64 @string_builder_mark()
-  %t16 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 7 })
-  call void @string_builder_append_string({ ptr, i64 } %t16)
-  %t17 = call i32 @fn.0({ i64, i128 } %t1)
-  %t18 = call { ptr, i64 } @to_string$i32(i32 %t17)
-  call void @string_builder_append_string({ ptr, i64 } %t18)
-  %t19 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t19)
-  %t20 = call i32 @fn.0({ i64, i128 } %t4)
-  %t21 = call { ptr, i64 } @to_string$i32(i32 %t20)
-  call void @string_builder_append_string({ ptr, i64 } %t21)
-  %t22 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t22)
-  %t23 = call i32 @fn.0({ i64, i128 } %t10)
-  %t24 = call { ptr, i64 } @to_string$i32(i32 %t23)
-  call void @string_builder_append_string({ ptr, i64 } %t24)
-  %t25 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t25)
-  %t26 = call i32 @fn.0({ i64, i128 } %t14)
-  %t27 = call { ptr, i64 } @to_string$i32(i32 %t26)
-  call void @string_builder_append_string({ ptr, i64 } %t27)
-  %t28 = call { ptr, i64 } @string_builder_finish(i64 %t15)
-  call void @$prn({ ptr, i64 } %t28)
-  %t29 = call i32 @fn.0({ i64, i128 } %t10)
-  ret i32 %t29
+  %t16 = alloca { ptr, i64 }
+  %t17 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 7 }, ptr %t17
+  call void @to_string$string(ptr %t16, ptr %t17)
+  call void @string_builder_append_string(ptr %t16)
+  %t18 = call i32 @fn.0({ i64, i128 } %t1)
+  %t19 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t19, i32 %t18)
+  call void @string_builder_append_string(ptr %t19)
+  %t20 = alloca { ptr, i64 }
+  %t21 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t21
+  call void @to_string$string(ptr %t20, ptr %t21)
+  call void @string_builder_append_string(ptr %t20)
+  %t22 = call i32 @fn.0({ i64, i128 } %t4)
+  %t23 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t23, i32 %t22)
+  call void @string_builder_append_string(ptr %t23)
+  %t24 = alloca { ptr, i64 }
+  %t25 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t25
+  call void @to_string$string(ptr %t24, ptr %t25)
+  call void @string_builder_append_string(ptr %t24)
+  %t26 = call i32 @fn.0({ i64, i128 } %t10)
+  %t27 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t27, i32 %t26)
+  call void @string_builder_append_string(ptr %t27)
+  %t28 = alloca { ptr, i64 }
+  %t29 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.4, i64 1 }, ptr %t29
+  call void @to_string$string(ptr %t28, ptr %t29)
+  call void @string_builder_append_string(ptr %t28)
+  %t30 = call i32 @fn.0({ i64, i128 } %t14)
+  %t31 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t31, i32 %t30)
+  call void @string_builder_append_string(ptr %t31)
+  %t32 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t32, i64 %t15)
+  %t33 = load { ptr, i64 }, ptr %t32
+  call void @$prn({ ptr, i64 } %t33)
+  %t34 = call i32 @fn.0({ i64, i128 } %t10)
+  ret i32 %t34
 }
 
 @$score = internal alias i32 ({ i64, i128 }), ptr @fn.0

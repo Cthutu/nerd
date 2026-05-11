@@ -17,12 +17,14 @@ func fn.0() -> void {
 ; generated from HIR
 
 @.str.m0.0 = private unnamed_addr constant [8 x i8] c"stopped\00"
-@.assert.source_path.m0.0 = private unnamed_addr constant [63 x i8] c"tests/language/111-assert-failure-exit.t\00"
+@.assert.source_path.m0.0 = private unnamed_addr constant [41 x i8] c"tests/language/111-assert-failure-exit.t\00"
 
-declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })
+declare void @nerd_assert(i1, ptr, i32, ptr)
 
 define internal void @fn.0() {
-  call void @nerd_assert(i1 0, ptr @.assert.source_path.m0.0, i32 3, { ptr, i64 } { ptr @.str.m0.0, i64 7 })
+  %t0 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 7 }, ptr %t0
+  call void @nerd_assert(i1 0, ptr @.assert.source_path.m0.0, i32 3, ptr %t0)
   ret void
 }
 

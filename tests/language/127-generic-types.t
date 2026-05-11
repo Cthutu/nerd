@@ -33,7 +33,7 @@ generic 8
 hir 0
 module module.0(127-generic-types.input)
 import module.1(std.io)
-import import.0 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.0 prn from module.1(std.io).decl.8: fn (string) -> void
 bind prn = import.0
 bind io = module.1
 bind Box = type.0
@@ -67,26 +67,26 @@ func fn.0() -> void {
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"generic \00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"none\00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 
@@ -114,20 +114,26 @@ define internal void @fn.0() {
   br i1 %t14, label %on.body.1, label %on.next.2
 on.body.1:
   %t15 = call i64 @string_builder_mark()
-  %t16 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 8 })
-  call void @string_builder_append_string({ ptr, i64 } %t16)
-  %t17 = call { ptr, i64 } @to_string$i32(i32 %t13)
-  call void @string_builder_append_string({ ptr, i64 } %t17)
-  %t18 = call { ptr, i64 } @string_builder_finish(i64 %t15)
-  call void @$prn({ ptr, i64 } %t18)
+  %t16 = alloca { ptr, i64 }
+  %t17 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t17
+  call void @to_string$string(ptr %t16, ptr %t17)
+  call void @string_builder_append_string(ptr %t16)
+  %t18 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t18, i32 %t13)
+  call void @string_builder_append_string(ptr %t18)
+  %t19 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t19, i64 %t15)
+  %t20 = load { ptr, i64 }, ptr %t19
+  call void @$prn({ ptr, i64 } %t20)
   br label %on.end.0
 on.next.2:
-  %t19 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t20 = insertvalue { i64, i64 } %t19, i64 0, 1
-  %t21 = extractvalue { i64, i64 } %t9, 0
-  %t22 = extractvalue { i64, i64 } %t20, 0
-  %t23 = icmp eq i64 %t21, %t22
-  br i1 %t23, label %on.body.3, label %on.end.0
+  %t21 = insertvalue { i64, i64 } poison, i64 0, 0
+  %t22 = insertvalue { i64, i64 } %t21, i64 0, 1
+  %t23 = extractvalue { i64, i64 } %t9, 0
+  %t24 = extractvalue { i64, i64 } %t22, 0
+  %t25 = icmp eq i64 %t23, %t24
+  br i1 %t25, label %on.body.3, label %on.end.0
 on.body.3:
   call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
   br label %on.end.0

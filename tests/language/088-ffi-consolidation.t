@@ -37,11 +37,16 @@ ffi ok
 hir 0
 module module.0(088-ffi-consolidation.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
+extern extern.0 srand from "c": fn (u32) -> void
+extern extern.1 puts from "c": fn (^u8^u8) ->
+extern extern.2 accept_point from "c": fn (Point) -> void
+extern extern.3 accept_packed from "c": fn (Packed) -> void
+extern extern.4 flip_blob from "c": fn (Blob) -> Blob
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2

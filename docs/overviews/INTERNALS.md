@@ -27,6 +27,8 @@ The repository contains:
   The language server built on the compiler front end and CST.
 - `build/test.py`
   The repository regression test runner.
+- `data/nrt.c`
+  C implementation of runtime helpers linked into generated executables.
 - `tests`
   Language, error, formatter, and LSP test inputs.
 
@@ -75,7 +77,7 @@ The back end currently runs:
 1. optional save of generated HIR
 2. LLVM IR generation
 3. optional save of generated LLVM IR
-4. native compilation through clang
+4. native compilation through clang, linking the embedded Nerd runtime object
 
 ## Important Architectural Rules
 

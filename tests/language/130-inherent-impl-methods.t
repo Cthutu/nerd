@@ -39,7 +39,7 @@ import module.2(std.collections)
 import import.0 Stack from module.2(std.collections).decl.0: <unknown>
 import import.1 __impl_7_push from module.2(std.collections).decl.1: <unknown>
 import import.2 __impl_7_pop from module.2(std.collections).decl.2: <unknown>
-import import.3 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 prn from module.1(std.io).decl.8: fn (string) -> void
 bind Stack = import.0
 bind __impl_7_push = import.1
 bind __impl_7_pop = import.2
@@ -76,26 +76,26 @@ func fn.2() -> void {
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare void @m2.fn.0(ptr %self, i32 %elem)
@@ -128,21 +128,32 @@ define internal void @fn.2() {
   call void @m2.fn.0(ptr %local.4, i32 30)
   %t2 = call i64 @string_builder_mark()
   %t3 = call i32 @m2.fn.1(ptr %local.4)
-  %t4 = call { ptr, i64 } @to_string$i32(i32 %t3)
-  call void @string_builder_append_string({ ptr, i64 } %t4)
-  %t5 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t5)
-  %t6 = call i32 @m2.fn.1(ptr %local.4)
-  %t7 = call { ptr, i64 } @to_string$i32(i32 %t6)
-  call void @string_builder_append_string({ ptr, i64 } %t7)
-  %t8 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t8)
-  %t9 = load { i32 }, ptr %local.3
-  %t10 = call i32 @fn.1({ i32 } %t9)
-  %t11 = call { ptr, i64 } @to_string$i32(i32 %t10)
-  call void @string_builder_append_string({ ptr, i64 } %t11)
-  %t12 = call { ptr, i64 } @string_builder_finish(i64 %t2)
-  call void @$prn({ ptr, i64 } %t12)
+  %t4 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t4, i32 %t3)
+  call void @string_builder_append_string(ptr %t4)
+  %t5 = alloca { ptr, i64 }
+  %t6 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t6
+  call void @to_string$string(ptr %t5, ptr %t6)
+  call void @string_builder_append_string(ptr %t5)
+  %t7 = call i32 @m2.fn.1(ptr %local.4)
+  %t8 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t8, i32 %t7)
+  call void @string_builder_append_string(ptr %t8)
+  %t9 = alloca { ptr, i64 }
+  %t10 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t10
+  call void @to_string$string(ptr %t9, ptr %t10)
+  call void @string_builder_append_string(ptr %t9)
+  %t11 = load { i32 }, ptr %local.3
+  %t12 = call i32 @fn.1({ i32 } %t11)
+  %t13 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t13, i32 %t12)
+  call void @string_builder_append_string(ptr %t13)
+  %t14 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t14, i64 %t2)
+  %t15 = load { ptr, i64 }, ptr %t14
+  call void @$prn({ ptr, i64 } %t15)
   ret void
 }
 

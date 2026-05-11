@@ -35,10 +35,10 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
         const Hir* hir = &program->modules[module_index].front_end.hir;
         for (u32 i = 0; i < array_count(hir->externs); ++i) {
             string library = hir->externs[i].library;
-            if (string_eq(library, s("c"))) {
+            if (string_eq(library, s("c")) || string_eq(library, s("nrt"))) {
                 continue;
             }
-#if OS_WINDOWS
+#if OS_WINDOWS || OS_MACOS
             if (string_eq(library, s("m"))) {
                 continue;
             }
@@ -112,10 +112,14 @@ internal cstr back_end_module_llvm_path(Arena*                    arena,
 
 internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
                                                       bool remove_llvm_paths,
-                                                      cstr combined_llvm_path)
+                                                      cstr combined_llvm_path,
+                                                      cstr runtime_object_path)
 {
     if (combined_llvm_path != NULL) {
         path_remove(combined_llvm_path);
+    }
+    if (runtime_object_path != NULL) {
+        path_remove(runtime_object_path);
     }
     if (remove_llvm_paths) {
         for (u32 i = 0; i < array_count(llvm_paths); ++i) {
@@ -165,7 +169,8 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
 internal bool back_end_link_combined_llvm(Arena*                    arena,
                                           const ProgramInfo*        program,
                                           const NerdArtifactConfig* artifacts,
-                                          cstr combined_llvm_path)
+                                          cstr combined_llvm_path,
+                                          cstr runtime_object_path)
 {
     string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
     StringBuilder link_flags = {0};
@@ -174,10 +179,11 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
     StringBuilder command_builder = {0};
     sb_init(&command_builder, arena);
     sb_format(&command_builder,
-              "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\"",
+              "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\" \"%s\"",
               STRINGV(opt_flags),
               artifacts->binary_path,
-              combined_llvm_path);
+              combined_llvm_path,
+              runtime_object_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
     string command        = sb_to_string(&command_builder);
     int    compile_result = shell(back_end_cstr(arena, command));
@@ -213,7 +219,7 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     BackEndLlvmModules modules = {0};
     if (!back_end_render_llvm_modules(&arena, program, artifacts, &modules)) {
         back_end_cleanup_llvm_compile_artifacts(
-            modules.llvm_paths, false, NULL);
+            modules.llvm_paths, false, NULL, NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
@@ -226,6 +232,8 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
     cstr combined_llvm_path = back_end_cstr(
         &arena, string_format(&arena, "%s.link.ll", artifacts->binary_path));
+    cstr runtime_object_path = back_end_cstr(
+        &arena, string_format(&arena, "%s.nrt.o", artifacts->binary_path));
 
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
@@ -235,31 +243,45 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
         back_end_llvm_runtime_epilogue(root_main_returns_void);
     string init_ll =
         back_end_llvm_runtime_render_init(&arena, modules.init_module_indices);
-    string combined_llvm =
-        back_end_llvm_text_build_combined(&arena,
-                                          back_end_llvm_runtime_prelude(),
-                                          modules.module_llvms,
-                                          runtime_epilogue,
-                                          init_ll);
+    string combined_llvm = back_end_llvm_text_build_combined(
+        &arena, modules.module_llvms, runtime_epilogue, init_ll);
     if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
-        back_end_cleanup_llvm_compile_artifacts(
-            modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                combined_llvm_path,
+                                                NULL);
+        back_end_llvm_modules_done(&modules);
+        arena_done(&arena);
+        return false;
+    }
+    if (!back_end_llvm_runtime_write_object(runtime_object_path)) {
+        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                combined_llvm_path,
+                                                runtime_object_path);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
 
-    if (!back_end_link_combined_llvm(
-            &arena, program, artifacts, combined_llvm_path)) {
-        back_end_cleanup_llvm_compile_artifacts(
-            modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+    if (!back_end_link_combined_llvm(&arena,
+                                     program,
+                                     artifacts,
+                                     combined_llvm_path,
+                                     runtime_object_path)) {
+        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
+                                                !artifacts->emit_llvm_file,
+                                                combined_llvm_path,
+                                                runtime_object_path);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
 
-    back_end_cleanup_llvm_compile_artifacts(
-        modules.llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
+    back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
+                                            !artifacts->emit_llvm_file,
+                                            combined_llvm_path,
+                                            runtime_object_path);
 
     back_end_llvm_modules_done(&modules);
     arena_done(&arena);

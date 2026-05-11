@@ -34,11 +34,11 @@ data first = 20
 hir 0
 module module.0(054-slices.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2
@@ -74,26 +74,26 @@ func fn.0() -> i32 {
 @.str.m0.5 = private unnamed_addr constant [17 x i8] c"reslice count = \00"
 @.str.m0.6 = private unnamed_addr constant [14 x i8] c"data first = \00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 
 declare void @$pr({ ptr, i64 })
 declare void @$epr({ ptr, i64 })
@@ -135,199 +135,241 @@ define internal i32 @fn.0() {
   %t27 = insertvalue { ptr, i64 } poison, ptr %t26, 0
   %t28 = insertvalue { ptr, i64 } %t27, i64 2, 1
   %t29 = call i64 @string_builder_mark()
-  %t30 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 6 })
-  call void @string_builder_append_string({ ptr, i64 } %t30)
+  %t30 = alloca { ptr, i64 }
+  %t31 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 6 }, ptr %t31
+  call void @to_string$string(ptr %t30, ptr %t31)
+  call void @string_builder_append_string(ptr %t30)
   call void @string_builder_append_byte(i8 91)
-  %t31 = extractvalue { ptr, i64 } %t7, 0
-  %t32 = extractvalue { ptr, i64 } %t7, 1
-  %t33 = alloca i64
-  store i64 0, ptr %t33
+  %t32 = extractvalue { ptr, i64 } %t7, 0
+  %t33 = extractvalue { ptr, i64 } %t7, 1
+  %t34 = alloca i64
+  store i64 0, ptr %t34
   br label %slice.string.cond.0
 slice.string.cond.0:
-  %t34 = load i64, ptr %t33
-  %t35 = icmp ult i64 %t34, %t32
-  br i1 %t35, label %slice.string.body.1, label %slice.string.end.4
+  %t35 = load i64, ptr %t34
+  %t36 = icmp ult i64 %t35, %t33
+  br i1 %t36, label %slice.string.body.1, label %slice.string.end.4
 slice.string.body.1:
-  %t36 = icmp ne i64 %t34, 0
-  br i1 %t36, label %slice.string.sep.2, label %slice.string.item.3
+  %t37 = icmp ne i64 %t35, 0
+  br i1 %t37, label %slice.string.sep.2, label %slice.string.item.3
 slice.string.sep.2:
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
   br label %slice.string.item.3
 slice.string.item.3:
-  %t37 = getelementptr inbounds i32, ptr %t31, i64 %t34
-  %t38 = load i32, ptr %t37
-  %t39 = call { ptr, i64 } @to_string$i32(i32 %t38)
-  call void @string_builder_append_string({ ptr, i64 } %t39)
-  %t40 = add i64 %t34, 1
-  store i64 %t40, ptr %t33
+  %t38 = getelementptr inbounds i32, ptr %t32, i64 %t35
+  %t39 = load i32, ptr %t38
+  %t40 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t40, i32 %t39)
+  call void @string_builder_append_string(ptr %t40)
+  %t41 = add i64 %t35, 1
+  store i64 %t41, ptr %t34
   br label %slice.string.cond.0
 slice.string.end.4:
   call void @string_builder_append_byte(i8 93)
-  %t41 = call { ptr, i64 } @string_builder_finish(i64 %t29)
-  call void @$prn({ ptr, i64 } %t41)
-  %t42 = call i64 @string_builder_mark()
-  %t43 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 9 })
-  call void @string_builder_append_string({ ptr, i64 } %t43)
+  %t42 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t42, i64 %t29)
+  %t43 = load { ptr, i64 }, ptr %t42
+  call void @$prn({ ptr, i64 } %t43)
+  %t44 = call i64 @string_builder_mark()
+  %t45 = alloca { ptr, i64 }
+  %t46 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 9 }, ptr %t46
+  call void @to_string$string(ptr %t45, ptr %t46)
+  call void @string_builder_append_string(ptr %t45)
   call void @string_builder_append_byte(i8 91)
-  %t44 = extractvalue { ptr, i64 } %t10, 0
-  %t45 = extractvalue { ptr, i64 } %t10, 1
-  %t46 = alloca i64
-  store i64 0, ptr %t46
+  %t47 = extractvalue { ptr, i64 } %t10, 0
+  %t48 = extractvalue { ptr, i64 } %t10, 1
+  %t49 = alloca i64
+  store i64 0, ptr %t49
   br label %slice.string.cond.5
 slice.string.cond.5:
-  %t47 = load i64, ptr %t46
-  %t48 = icmp ult i64 %t47, %t45
-  br i1 %t48, label %slice.string.body.6, label %slice.string.end.9
+  %t50 = load i64, ptr %t49
+  %t51 = icmp ult i64 %t50, %t48
+  br i1 %t51, label %slice.string.body.6, label %slice.string.end.9
 slice.string.body.6:
-  %t49 = icmp ne i64 %t47, 0
-  br i1 %t49, label %slice.string.sep.7, label %slice.string.item.8
+  %t52 = icmp ne i64 %t50, 0
+  br i1 %t52, label %slice.string.sep.7, label %slice.string.item.8
 slice.string.sep.7:
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
   br label %slice.string.item.8
 slice.string.item.8:
-  %t50 = getelementptr inbounds i32, ptr %t44, i64 %t47
-  %t51 = load i32, ptr %t50
-  %t52 = call { ptr, i64 } @to_string$i32(i32 %t51)
-  call void @string_builder_append_string({ ptr, i64 } %t52)
-  %t53 = add i64 %t47, 1
-  store i64 %t53, ptr %t46
+  %t53 = getelementptr inbounds i32, ptr %t47, i64 %t50
+  %t54 = load i32, ptr %t53
+  %t55 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t55, i32 %t54)
+  call void @string_builder_append_string(ptr %t55)
+  %t56 = add i64 %t50, 1
+  store i64 %t56, ptr %t49
   br label %slice.string.cond.5
 slice.string.end.9:
   call void @string_builder_append_byte(i8 93)
-  %t54 = call { ptr, i64 } @string_builder_finish(i64 %t42)
-  call void @$prn({ ptr, i64 } %t54)
-  %t55 = call i64 @string_builder_mark()
-  %t56 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 13 })
-  call void @string_builder_append_string({ ptr, i64 } %t56)
+  %t57 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t57, i64 %t44)
+  %t58 = load { ptr, i64 }, ptr %t57
+  call void @$prn({ ptr, i64 } %t58)
+  %t59 = call i64 @string_builder_mark()
+  %t60 = alloca { ptr, i64 }
+  %t61 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 13 }, ptr %t61
+  call void @to_string$string(ptr %t60, ptr %t61)
+  call void @string_builder_append_string(ptr %t60)
   call void @string_builder_append_byte(i8 91)
-  %t57 = extractvalue { ptr, i64 } %t13, 0
-  %t58 = extractvalue { ptr, i64 } %t13, 1
-  %t59 = alloca i64
-  store i64 0, ptr %t59
+  %t62 = extractvalue { ptr, i64 } %t13, 0
+  %t63 = extractvalue { ptr, i64 } %t13, 1
+  %t64 = alloca i64
+  store i64 0, ptr %t64
   br label %slice.string.cond.10
 slice.string.cond.10:
-  %t60 = load i64, ptr %t59
-  %t61 = icmp ult i64 %t60, %t58
-  br i1 %t61, label %slice.string.body.11, label %slice.string.end.14
+  %t65 = load i64, ptr %t64
+  %t66 = icmp ult i64 %t65, %t63
+  br i1 %t66, label %slice.string.body.11, label %slice.string.end.14
 slice.string.body.11:
-  %t62 = icmp ne i64 %t60, 0
-  br i1 %t62, label %slice.string.sep.12, label %slice.string.item.13
+  %t67 = icmp ne i64 %t65, 0
+  br i1 %t67, label %slice.string.sep.12, label %slice.string.item.13
 slice.string.sep.12:
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
   br label %slice.string.item.13
 slice.string.item.13:
-  %t63 = getelementptr inbounds i32, ptr %t57, i64 %t60
-  %t64 = load i32, ptr %t63
-  %t65 = call { ptr, i64 } @to_string$i32(i32 %t64)
-  call void @string_builder_append_string({ ptr, i64 } %t65)
-  %t66 = add i64 %t60, 1
-  store i64 %t66, ptr %t59
+  %t68 = getelementptr inbounds i32, ptr %t62, i64 %t65
+  %t69 = load i32, ptr %t68
+  %t70 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t70, i32 %t69)
+  call void @string_builder_append_string(ptr %t70)
+  %t71 = add i64 %t65, 1
+  store i64 %t71, ptr %t64
   br label %slice.string.cond.10
 slice.string.end.14:
   call void @string_builder_append_byte(i8 93)
-  %t67 = call { ptr, i64 } @string_builder_finish(i64 %t55)
-  call void @$prn({ ptr, i64 } %t67)
-  %t68 = call i64 @string_builder_mark()
-  %t69 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 9 })
-  call void @string_builder_append_string({ ptr, i64 } %t69)
+  %t72 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t72, i64 %t59)
+  %t73 = load { ptr, i64 }, ptr %t72
+  call void @$prn({ ptr, i64 } %t73)
+  %t74 = call i64 @string_builder_mark()
+  %t75 = alloca { ptr, i64 }
+  %t76 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 9 }, ptr %t76
+  call void @to_string$string(ptr %t75, ptr %t76)
+  call void @string_builder_append_string(ptr %t75)
   call void @string_builder_append_byte(i8 91)
-  %t70 = extractvalue { ptr, i64 } %t16, 0
-  %t71 = extractvalue { ptr, i64 } %t16, 1
-  %t72 = alloca i64
-  store i64 0, ptr %t72
+  %t77 = extractvalue { ptr, i64 } %t16, 0
+  %t78 = extractvalue { ptr, i64 } %t16, 1
+  %t79 = alloca i64
+  store i64 0, ptr %t79
   br label %slice.string.cond.15
 slice.string.cond.15:
-  %t73 = load i64, ptr %t72
-  %t74 = icmp ult i64 %t73, %t71
-  br i1 %t74, label %slice.string.body.16, label %slice.string.end.19
+  %t80 = load i64, ptr %t79
+  %t81 = icmp ult i64 %t80, %t78
+  br i1 %t81, label %slice.string.body.16, label %slice.string.end.19
 slice.string.body.16:
-  %t75 = icmp ne i64 %t73, 0
-  br i1 %t75, label %slice.string.sep.17, label %slice.string.item.18
+  %t82 = icmp ne i64 %t80, 0
+  br i1 %t82, label %slice.string.sep.17, label %slice.string.item.18
 slice.string.sep.17:
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
   br label %slice.string.item.18
 slice.string.item.18:
-  %t76 = getelementptr inbounds i32, ptr %t70, i64 %t73
-  %t77 = load i32, ptr %t76
-  %t78 = call { ptr, i64 } @to_string$i32(i32 %t77)
-  call void @string_builder_append_string({ ptr, i64 } %t78)
-  %t79 = add i64 %t73, 1
-  store i64 %t79, ptr %t72
+  %t83 = getelementptr inbounds i32, ptr %t77, i64 %t80
+  %t84 = load i32, ptr %t83
+  %t85 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t85, i32 %t84)
+  call void @string_builder_append_string(ptr %t85)
+  %t86 = add i64 %t80, 1
+  store i64 %t86, ptr %t79
   br label %slice.string.cond.15
 slice.string.end.19:
   call void @string_builder_append_byte(i8 93)
-  %t80 = call { ptr, i64 } @string_builder_finish(i64 %t68)
-  call void @$prn({ ptr, i64 } %t80)
-  %t81 = call i64 @string_builder_mark()
-  %t82 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 10 })
-  call void @string_builder_append_string({ ptr, i64 } %t82)
+  %t87 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t87, i64 %t74)
+  %t88 = load { ptr, i64 }, ptr %t87
+  call void @$prn({ ptr, i64 } %t88)
+  %t89 = call i64 @string_builder_mark()
+  %t90 = alloca { ptr, i64 }
+  %t91 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.4, i64 10 }, ptr %t91
+  call void @to_string$string(ptr %t90, ptr %t91)
+  call void @string_builder_append_string(ptr %t90)
   call void @string_builder_append_byte(i8 91)
-  %t83 = extractvalue { ptr, i64 } %t23, 0
-  %t84 = extractvalue { ptr, i64 } %t23, 1
-  %t85 = alloca i64
-  store i64 0, ptr %t85
+  %t92 = extractvalue { ptr, i64 } %t23, 0
+  %t93 = extractvalue { ptr, i64 } %t23, 1
+  %t94 = alloca i64
+  store i64 0, ptr %t94
   br label %slice.string.cond.20
 slice.string.cond.20:
-  %t86 = load i64, ptr %t85
-  %t87 = icmp ult i64 %t86, %t84
-  br i1 %t87, label %slice.string.body.21, label %slice.string.end.24
+  %t95 = load i64, ptr %t94
+  %t96 = icmp ult i64 %t95, %t93
+  br i1 %t96, label %slice.string.body.21, label %slice.string.end.24
 slice.string.body.21:
-  %t88 = icmp ne i64 %t86, 0
-  br i1 %t88, label %slice.string.sep.22, label %slice.string.item.23
+  %t97 = icmp ne i64 %t95, 0
+  br i1 %t97, label %slice.string.sep.22, label %slice.string.item.23
 slice.string.sep.22:
   call void @string_builder_append_byte(i8 44)
   call void @string_builder_append_byte(i8 32)
   br label %slice.string.item.23
 slice.string.item.23:
-  %t89 = getelementptr inbounds i32, ptr %t83, i64 %t86
-  %t90 = load i32, ptr %t89
-  %t91 = call { ptr, i64 } @to_string$i32(i32 %t90)
-  call void @string_builder_append_string({ ptr, i64 } %t91)
-  %t92 = add i64 %t86, 1
-  store i64 %t92, ptr %t85
+  %t98 = getelementptr inbounds i32, ptr %t92, i64 %t95
+  %t99 = load i32, ptr %t98
+  %t100 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t100, i32 %t99)
+  call void @string_builder_append_string(ptr %t100)
+  %t101 = add i64 %t95, 1
+  store i64 %t101, ptr %t94
   br label %slice.string.cond.20
 slice.string.end.24:
   call void @string_builder_append_byte(i8 93)
-  %t93 = call { ptr, i64 } @string_builder_finish(i64 %t81)
-  call void @$prn({ ptr, i64 } %t93)
-  %t94 = call i64 @string_builder_mark()
-  %t95 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.5, i64 16 })
-  call void @string_builder_append_string({ ptr, i64 } %t95)
-  %t96 = extractvalue { ptr, i64 } %t28, 1
-  %t97 = call { ptr, i64 } @to_string$usize(i64 %t96)
-  call void @string_builder_append_string({ ptr, i64 } %t97)
-  %t98 = call { ptr, i64 } @string_builder_finish(i64 %t94)
-  call void @$prn({ ptr, i64 } %t98)
-  %t99 = call i64 @string_builder_mark()
-  %t100 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.6, i64 13 })
-  call void @string_builder_append_string({ ptr, i64 } %t100)
-  %t101 = extractvalue { ptr, i64 } %t10, 0
-  %t102 = getelementptr inbounds i32, ptr %t101, i32 0
-  %t103 = load i32, ptr %t102
-  %t104 = call { ptr, i64 } @to_string$i32(i32 %t103)
-  call void @string_builder_append_string({ ptr, i64 } %t104)
-  %t105 = call { ptr, i64 } @string_builder_finish(i64 %t99)
-  call void @$prn({ ptr, i64 } %t105)
-  %t106 = extractvalue { ptr, i64 } %t10, 0
-  %t107 = getelementptr inbounds i32, ptr %t106, i32 1
-  %t108 = load i32, ptr %t107
-  %t109 = extractvalue { ptr, i64 } %t13, 0
-  %t110 = getelementptr inbounds i32, ptr %t109, i32 2
-  %t111 = load i32, ptr %t110
-  %t112 = add i32 %t108, %t111
-  %t113 = extractvalue { ptr, i64 } %t16, 0
-  %t114 = getelementptr inbounds i32, ptr %t113, i32 0
-  %t115 = load i32, ptr %t114
-  %t116 = add i32 %t112, %t115
-  %t117 = extractvalue { ptr, i64 } %t23, 0
-  %t118 = getelementptr inbounds i32, ptr %t117, i32 2
-  %t119 = load i32, ptr %t118
-  %t120 = add i32 %t116, %t119
-  ret i32 %t120
+  %t102 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t102, i64 %t89)
+  %t103 = load { ptr, i64 }, ptr %t102
+  call void @$prn({ ptr, i64 } %t103)
+  %t104 = call i64 @string_builder_mark()
+  %t105 = alloca { ptr, i64 }
+  %t106 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.5, i64 16 }, ptr %t106
+  call void @to_string$string(ptr %t105, ptr %t106)
+  call void @string_builder_append_string(ptr %t105)
+  %t107 = extractvalue { ptr, i64 } %t28, 1
+  %t108 = alloca { ptr, i64 }
+  call void @to_string$usize(ptr %t108, i64 %t107)
+  call void @string_builder_append_string(ptr %t108)
+  %t109 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t109, i64 %t104)
+  %t110 = load { ptr, i64 }, ptr %t109
+  call void @$prn({ ptr, i64 } %t110)
+  %t111 = call i64 @string_builder_mark()
+  %t112 = alloca { ptr, i64 }
+  %t113 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.6, i64 13 }, ptr %t113
+  call void @to_string$string(ptr %t112, ptr %t113)
+  call void @string_builder_append_string(ptr %t112)
+  %t114 = extractvalue { ptr, i64 } %t10, 0
+  %t115 = getelementptr inbounds i32, ptr %t114, i32 0
+  %t116 = load i32, ptr %t115
+  %t117 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t117, i32 %t116)
+  call void @string_builder_append_string(ptr %t117)
+  %t118 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t118, i64 %t111)
+  %t119 = load { ptr, i64 }, ptr %t118
+  call void @$prn({ ptr, i64 } %t119)
+  %t120 = extractvalue { ptr, i64 } %t10, 0
+  %t121 = getelementptr inbounds i32, ptr %t120, i32 1
+  %t122 = load i32, ptr %t121
+  %t123 = extractvalue { ptr, i64 } %t13, 0
+  %t124 = getelementptr inbounds i32, ptr %t123, i32 2
+  %t125 = load i32, ptr %t124
+  %t126 = add i32 %t122, %t125
+  %t127 = extractvalue { ptr, i64 } %t16, 0
+  %t128 = getelementptr inbounds i32, ptr %t127, i32 0
+  %t129 = load i32, ptr %t128
+  %t130 = add i32 %t126, %t129
+  %t131 = extractvalue { ptr, i64 } %t23, 0
+  %t132 = getelementptr inbounds i32, ptr %t131, i32 2
+  %t133 = load i32, ptr %t132
+  %t134 = add i32 %t130, %t133
+  ret i32 %t134
 }
 
 @$main = alias i32 (), ptr @fn.0

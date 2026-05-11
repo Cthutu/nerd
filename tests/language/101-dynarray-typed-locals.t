@@ -122,26 +122,26 @@ func fn.1() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.3 = private unnamed_addr constant [7 x i8] c"around\00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
@@ -394,22 +394,30 @@ on.end.3:
   %t11 = load ptr, ptr %t10
   %t12 = getelementptr inbounds { ptr, i64 }, ptr %t11, i32 0
   %t13 = load { ptr, i64 }, ptr %t12
-  %t14 = call i1 @string_eq({ ptr, i64 } %t13, { ptr, i64 } { ptr @.str.m0.2, i64 4 })
-  %t15 = xor i1 %t14, 1
-  %t16 = icmp eq i1 %t15, 1
-  br i1 %t16, label %on.body.6, label %on.end.5
+  %t15 = alloca { ptr, i64 }
+  store { ptr, i64 } %t13, ptr %t15
+  %t16 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t16
+  %t14 = call i1 @string_eq(ptr %t15, ptr %t16)
+  %t17 = xor i1 %t14, 1
+  %t18 = icmp eq i1 %t17, 1
+  br i1 %t18, label %on.body.6, label %on.end.5
 on.body.6:
   ret i32 2
 on.end.5:
-  %t17 = load ptr, ptr %local.7
-  %t18 = getelementptr inbounds { ptr, i64, i64 }, ptr %t17, i64 0, i32 0
-  %t19 = load ptr, ptr %t18
-  %t20 = getelementptr inbounds { ptr, i64 }, ptr %t19, i32 1
-  %t21 = load { ptr, i64 }, ptr %t20
-  %t22 = call i1 @string_eq({ ptr, i64 } %t21, { ptr, i64 } { ptr @.str.m0.3, i64 6 })
-  %t23 = xor i1 %t22, 1
-  %t24 = icmp eq i1 %t23, 1
-  br i1 %t24, label %on.body.8, label %on.end.7
+  %t19 = load ptr, ptr %local.7
+  %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %t19, i64 0, i32 0
+  %t21 = load ptr, ptr %t20
+  %t22 = getelementptr inbounds { ptr, i64 }, ptr %t21, i32 1
+  %t23 = load { ptr, i64 }, ptr %t22
+  %t25 = alloca { ptr, i64 }
+  store { ptr, i64 } %t23, ptr %t25
+  %t26 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 6 }, ptr %t26
+  %t24 = call i1 @string_eq(ptr %t25, ptr %t26)
+  %t27 = xor i1 %t24, 1
+  %t28 = icmp eq i1 %t27, 1
+  br i1 %t28, label %on.body.8, label %on.end.7
 on.body.8:
   ret i32 3
 on.end.7:

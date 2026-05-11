@@ -3,11 +3,11 @@
 -- This module now loads through the normal module pipeline.
 
 ffi "c" {
-    printf (^u8, ...) -> i32
-    scanf (^u8, ...) -> i32
-    strlen (^u8) -> usize
-    getchar () -> i32
     write (i32, ^u8, usize) -> isize
+}
+
+ffi "nrt" {
+    nerd_read_line (^u8, usize) -> usize
 }
 
 STDOUT_FILENO :: 1
@@ -40,17 +40,6 @@ pub eprn :: fn (text: string) -> void {
 
 pub input :: fn (prompt: string) -> string {
     pr(prompt)
-    ch := getchar()
-    input_len = 0
-    for ch != 10 && ch != -1 && input_len < 255 {
-        input_buf[input_len] = ch.as(u8)
-        input_len += 1
-        ch = getchar()
-    }
-    input_buf[input_len] = 0
-
-    for ch != 10 && ch != -1 {
-        ch = getchar()
-    }
+    input_len = nerd_read_line(input_buf[..].data, input_buf[..].count)
     return input_buf[0..input_len].as(string)
 }

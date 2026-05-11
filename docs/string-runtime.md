@@ -11,7 +11,7 @@ The current implementation is intentionally simple:
 - interpolated strings with only compile-time parts lower to string literals
 - runtime interpolated strings are temporary values only
 - lowering is explicit in HIR and LLVM
-- the runtime prelude uses a global append-only arena-backed builder
+- the C runtime uses a global append-only arena-backed builder
 - conversion support is limited to built-in primitive types and `string`
 
 This is a first runtime model, not the final VM-oriented design.
@@ -34,9 +34,9 @@ inside backend string concatenation code.
 
 ## Runtime Helpers
 
-The current helpers live in [data/prelude.c](/home/matt/nerd/data/prelude.c).
+The current helpers live in [data/nrt.c](/home/matt/nerd/data/nrt.c).
 
-The prelude provides:
+The runtime provides:
 
 - the thread-local global string arena
 - `string_builder_reset()`
@@ -48,6 +48,13 @@ The prelude provides:
 The `to_string$<type>` helpers currently use straightforward C formatting and a
 shared scratch buffer, then `string_builder_append_string(...)` copies the
 result into the arena.
+
+The runtime is compiled to an object file by the build system and embedded in
+the compiler binary. During executable builds the backend writes that object
+beside the temporary `.link.ll` file and links both with clang. Runtime helpers
+use pointer/scalar parameters for Nerd strings rather than passing or returning
+string structs by value, so the same generated LLVM works with both MSVC-style
+and Unix-style C ABIs.
 
 ## Lifetime Model
 

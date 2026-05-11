@@ -11,7 +11,7 @@
 
 //------------------------------------------------------------------------------
 
-string back_end_llvm_runtime_prelude(void);
+bool   back_end_llvm_runtime_write_object(cstr path);
 bool   back_end_llvm_runtime_hir_has_globals(const Hir* hir);
 bool   back_end_llvm_runtime_root_main_returns_void(const FrontEndState* root);
 string back_end_llvm_runtime_epilogue(bool root_main_returns_void);

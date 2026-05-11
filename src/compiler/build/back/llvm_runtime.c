@@ -5,14 +5,29 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/back/llvm_runtime.h>
+#include <compiler/error/error.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
-static const char g_llvm_runtime_prelude[] = {
-#embed "../../../../_obj/llvm/prelude.ll"
-    , 0};
+static const unsigned char g_nrt_object[] = {
+#embed "../../../../_obj/runtime/nrt.o"
+};
 
-string back_end_llvm_runtime_prelude(void) { return s(g_llvm_runtime_prelude); }
+bool back_end_llvm_runtime_write_object(cstr path)
+{
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        return error_runtime("Failed to open file for writing: %s", path);
+    }
+
+    usize written      = fwrite(g_nrt_object, 1, sizeof(g_nrt_object), file);
+    bool  close_failed = fclose(file) != 0;
+    if (written != sizeof(g_nrt_object) || close_failed) {
+        return error_runtime("Failed to write file: %s", path);
+    }
+    return true;
+}
 
 bool back_end_llvm_runtime_hir_has_globals(const Hir* hir)
 {

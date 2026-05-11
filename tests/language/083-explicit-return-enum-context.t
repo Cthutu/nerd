@@ -47,11 +47,11 @@ north
 hir 0
 module module.0(083-explicit-return-enum-context.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2
@@ -135,26 +135,26 @@ func fn.3() -> i32 {
 @.str.m0.12 = private unnamed_addr constant [5 x i8] c"none\00"
 @.str.m0.13 = private unnamed_addr constant [2 x i8] c"n\00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 
 declare void @$pr({ ptr, i64 })
 declare void @$epr({ ptr, i64 })
@@ -163,60 +163,92 @@ declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal { i64, i64 } @fn.0({ ptr, i64 } %word) {
-  %t0 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.0, i64 5 })
-  %t1 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.1, i64 1 })
-  %t2 = or i1 %t0, %t1
-  br i1 %t2, label %on.body.1, label %on.next.2
+  %t0 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t0
+  %t1 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t1
+  %t2 = call i1 @string_eq(ptr %t0, ptr %t1)
+  %t3 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t3
+  %t4 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t4
+  %t5 = call i1 @string_eq(ptr %t3, ptr %t4)
+  %t6 = or i1 %t2, %t5
+  br i1 %t6, label %on.body.1, label %on.next.2
 on.body.1:
-  %t3 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t4 = insertvalue { i64, i64 } %t3, i64 0, 1
+  %t7 = insertvalue { i64, i64 } poison, i64 0, 0
+  %t8 = insertvalue { i64, i64 } %t7, i64 0, 1
   br label %on.value.3
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t5 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.2, i64 4 })
-  %t6 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.3, i64 1 })
-  %t7 = or i1 %t5, %t6
-  br i1 %t7, label %on.body.4, label %on.next.5
+  %t9 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t9
+  %t10 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t10
+  %t11 = call i1 @string_eq(ptr %t9, ptr %t10)
+  %t12 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t12
+  %t13 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t13
+  %t14 = call i1 @string_eq(ptr %t12, ptr %t13)
+  %t15 = or i1 %t11, %t14
+  br i1 %t15, label %on.body.4, label %on.next.5
 on.body.4:
-  %t8 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t9 = insertvalue { i64, i64 } %t8, i64 0, 1
+  %t16 = insertvalue { i64, i64 } poison, i64 1, 0
+  %t17 = insertvalue { i64, i64 } %t16, i64 0, 1
   br label %on.value.6
 on.value.6:
   br label %on.end.0
 on.next.5:
-  %t10 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.4, i64 5 })
-  %t11 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.5, i64 1 })
-  %t12 = or i1 %t10, %t11
-  br i1 %t12, label %on.body.7, label %on.next.8
+  %t18 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t18
+  %t19 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t19
+  %t20 = call i1 @string_eq(ptr %t18, ptr %t19)
+  %t21 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t21
+  %t22 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t22
+  %t23 = call i1 @string_eq(ptr %t21, ptr %t22)
+  %t24 = or i1 %t20, %t23
+  br i1 %t24, label %on.body.7, label %on.next.8
 on.body.7:
-  %t13 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t14 = insertvalue { i64, i64 } %t13, i64 0, 1
+  %t25 = insertvalue { i64, i64 } poison, i64 2, 0
+  %t26 = insertvalue { i64, i64 } %t25, i64 0, 1
   br label %on.value.9
 on.value.9:
   br label %on.end.0
 on.next.8:
-  %t15 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.6, i64 4 })
-  %t16 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.7, i64 1 })
-  %t17 = or i1 %t15, %t16
-  br i1 %t17, label %on.body.10, label %on.next.11
+  %t27 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t27
+  %t28 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.6, i64 4 }, ptr %t28
+  %t29 = call i1 @string_eq(ptr %t27, ptr %t28)
+  %t30 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t30
+  %t31 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.7, i64 1 }, ptr %t31
+  %t32 = call i1 @string_eq(ptr %t30, ptr %t31)
+  %t33 = or i1 %t29, %t32
+  br i1 %t33, label %on.body.10, label %on.next.11
 on.body.10:
-  %t18 = insertvalue { i64, i64 } poison, i64 3, 0
-  %t19 = insertvalue { i64, i64 } %t18, i64 0, 1
+  %t34 = insertvalue { i64, i64 } poison, i64 3, 0
+  %t35 = insertvalue { i64, i64 } %t34, i64 0, 1
   br label %on.value.12
 on.value.12:
   br label %on.end.0
 on.next.11:
   br label %on.body.13
 on.body.13:
-  %t20 = insertvalue { i64, i64 } poison, i64 4, 0
-  %t21 = insertvalue { i64, i64 } %t20, i64 0, 1
+  %t36 = insertvalue { i64, i64 } poison, i64 4, 0
+  %t37 = insertvalue { i64, i64 } %t36, i64 0, 1
   br label %on.value.15
 on.value.15:
   br label %on.end.0
 on.end.0:
-  %t22 = phi { i64, i64 } [%t4, %on.value.3], [%t9, %on.value.6], [%t14, %on.value.9], [%t19, %on.value.12], [%t21, %on.value.15]
-  ret { i64, i64 } %t22
+  %t38 = phi { i64, i64 } [%t8, %on.value.3], [%t17, %on.value.6], [%t26, %on.value.9], [%t35, %on.value.12], [%t37, %on.value.15]
+  ret { i64, i64 } %t38
 }
 
 define internal { i64, i64 } @fn.1() {

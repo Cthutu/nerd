@@ -179,13 +179,11 @@ internal void back_end_append_llvm_without_satisfied_declarations(
 }
 
 string back_end_llvm_text_build_combined(Arena* arena,
-                                         string runtime_prelude,
                                          Array(string) module_llvms,
                                          string runtime_epilogue,
                                          string init_ll)
 {
     Array(string) defined_symbols = NULL;
-    back_end_collect_llvm_defined_symbols(&defined_symbols, runtime_prelude);
     for (u32 i = 0; i < array_count(module_llvms); ++i) {
         back_end_collect_llvm_defined_symbols(&defined_symbols,
                                               module_llvms[i]);
@@ -196,11 +194,6 @@ string back_end_llvm_text_build_combined(Arena* arena,
     StringBuilder combined_llvm_builder = {0};
     Array(string) declared_symbols      = NULL;
     sb_init(&combined_llvm_builder, arena);
-    back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
-                                                        runtime_prelude,
-                                                        defined_symbols,
-                                                        &declared_symbols);
-    sb_append_cstr(&combined_llvm_builder, "\n\n");
     for (u32 i = 0; i < array_count(module_llvms); ++i) {
         back_end_append_llvm_without_satisfied_declarations(
             &combined_llvm_builder,
@@ -266,6 +259,10 @@ bool back_end_llvm_text_self_test(void)
     Array(string) module_llvms = NULL;
     array_push(module_llvms,
                s("declare i32 @puts(ptr)\n"
+                 "@.str.prelude = private unnamed_addr constant [1 x i8] "
+                 "zeroinitializer\n"));
+    array_push(module_llvms,
+               s("declare i32 @puts(ptr)\n"
                  "declare void @fn.defined()\n"
                  "declare void @\"$main\"()\n"
                  "define void @fn.defined() {\n"
@@ -288,10 +285,6 @@ bool back_end_llvm_text_self_test(void)
 
     string combined =
         back_end_llvm_text_build_combined(&arena,
-                                          s("declare i32 @puts(ptr)\n"
-                                            "@.str.prelude = private "
-                                            "unnamed_addr constant [1 x i8] "
-                                            "zeroinitializer\n"),
                                           module_llvms,
                                           s("declare void @init()\n"
                                             "declare void @\"$main\"()\n"

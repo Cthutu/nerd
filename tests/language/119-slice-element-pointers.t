@@ -33,11 +33,11 @@ main :: fn () -> i32 {
 hir 0
 module module.0(119-slice-element-pointers.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2
@@ -73,26 +73,26 @@ func fn.0() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
 
-declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })
+declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
 declare i64 @string_builder_mark()
-declare void @string_builder_append_string({ ptr, i64 })
+declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
-declare { ptr, i64 } @string_builder_finish(i64)
-declare { ptr, i64 } @to_string$string({ ptr, i64 })
-declare { ptr, i64 } @to_string$bool(i1)
-declare { ptr, i64 } @to_string$i8(i8)
-declare { ptr, i64 } @to_string$i16(i16)
-declare { ptr, i64 } @to_string$i32(i32)
-declare { ptr, i64 } @to_string$i64(i64)
-declare { ptr, i64 } @to_string$u8(i8)
-declare { ptr, i64 } @to_string$u16(i16)
-declare { ptr, i64 } @to_string$u32(i32)
-declare { ptr, i64 } @to_string$u64(i64)
-declare { ptr, i64 } @to_string$isize(i64)
-declare { ptr, i64 } @to_string$usize(i64)
-declare { ptr, i64 } @to_string$f32(float)
-declare { ptr, i64 } @to_string$f64(double)
+declare void @string_builder_finish(ptr, i64)
+declare void @to_string$string(ptr, ptr)
+declare void @to_string$bool(ptr, i1)
+declare void @to_string$i8(ptr, i8)
+declare void @to_string$i16(ptr, i16)
+declare void @to_string$i32(ptr, i32)
+declare void @to_string$i64(ptr, i64)
+declare void @to_string$u8(ptr, i8)
+declare void @to_string$u16(ptr, i16)
+declare void @to_string$u32(ptr, i32)
+declare void @to_string$u64(ptr, i64)
+declare void @to_string$isize(ptr, i64)
+declare void @to_string$usize(ptr, i64)
+declare void @to_string$f32(ptr, float)
+declare void @to_string$f64(ptr, double)
 declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
@@ -205,58 +205,73 @@ dynarray.store.7:
   %t59 = call i64 @string_builder_mark()
   %t60 = load [3 x i32], ptr %local.0
   %t61 = extractvalue [3 x i32] %t60, 1
-  %t62 = call { ptr, i64 } @to_string$i32(i32 %t61)
-  call void @string_builder_append_string({ ptr, i64 } %t62)
-  %t63 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t63)
-  %t64 = extractvalue { ptr, i64 } %t6, 0
-  %t65 = getelementptr inbounds i32, ptr %t64, i32 2
-  %t66 = load i32, ptr %t65
-  %t67 = call { ptr, i64 } @to_string$i32(i32 %t66)
-  call void @string_builder_append_string({ ptr, i64 } %t67)
-  %t68 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.2, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t68)
-  %t69 = load ptr, ptr %local.4
-  %t70 = getelementptr inbounds { ptr, i64, i64 }, ptr %t69, i64 0, i32 0
-  %t71 = load ptr, ptr %t70
-  %t72 = getelementptr inbounds i32, ptr %t71, i32 1
-  %t73 = load i32, ptr %t72
-  %t74 = call { ptr, i64 } @to_string$i32(i32 %t73)
-  call void @string_builder_append_string({ ptr, i64 } %t74)
-  %t75 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 1 })
-  call void @string_builder_append_string({ ptr, i64 } %t75)
-  %t76 = load i8, ptr %t58
-  %t77 = call { ptr, i64 } @to_string$u8(i8 %t76)
-  call void @string_builder_append_string({ ptr, i64 } %t77)
-  %t78 = call { ptr, i64 } @string_builder_finish(i64 %t59)
-  call void @$prn({ ptr, i64 } %t78)
-  %t79 = load [3 x i32], ptr %local.0
-  %t80 = extractvalue [3 x i32] %t79, 1
-  %t81 = extractvalue { ptr, i64 } %t6, 0
-  %t82 = getelementptr inbounds i32, ptr %t81, i32 2
-  %t83 = load i32, ptr %t82
-  %t84 = add i32 %t80, %t83
-  %t85 = load ptr, ptr %local.4
-  %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %t85, i64 0, i32 0
-  %t87 = load ptr, ptr %t86
-  %t88 = getelementptr inbounds i32, ptr %t87, i32 1
-  %t89 = load i32, ptr %t88
-  %t90 = add i32 %t84, %t89
-  %t91 = load i8, ptr %t58
-  %t92 = zext i8 %t91 to i32
-  %t93 = add i32 %t90, %t92
-  %t94 = load ptr, ptr %local.4
-  %t95 = icmp eq ptr %t94, null
-  br i1 %t95, label %dynarray.free.done.9, label %dynarray.free.8
+  %t62 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t62, i32 %t61)
+  call void @string_builder_append_string(ptr %t62)
+  %t63 = alloca { ptr, i64 }
+  %t64 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t64
+  call void @to_string$string(ptr %t63, ptr %t64)
+  call void @string_builder_append_string(ptr %t63)
+  %t65 = extractvalue { ptr, i64 } %t6, 0
+  %t66 = getelementptr inbounds i32, ptr %t65, i32 2
+  %t67 = load i32, ptr %t66
+  %t68 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t68, i32 %t67)
+  call void @string_builder_append_string(ptr %t68)
+  %t69 = alloca { ptr, i64 }
+  %t70 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t70
+  call void @to_string$string(ptr %t69, ptr %t70)
+  call void @string_builder_append_string(ptr %t69)
+  %t71 = load ptr, ptr %local.4
+  %t72 = getelementptr inbounds { ptr, i64, i64 }, ptr %t71, i64 0, i32 0
+  %t73 = load ptr, ptr %t72
+  %t74 = getelementptr inbounds i32, ptr %t73, i32 1
+  %t75 = load i32, ptr %t74
+  %t76 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t76, i32 %t75)
+  call void @string_builder_append_string(ptr %t76)
+  %t77 = alloca { ptr, i64 }
+  %t78 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t78
+  call void @to_string$string(ptr %t77, ptr %t78)
+  call void @string_builder_append_string(ptr %t77)
+  %t79 = load i8, ptr %t58
+  %t80 = alloca { ptr, i64 }
+  call void @to_string$u8(ptr %t80, i8 %t79)
+  call void @string_builder_append_string(ptr %t80)
+  %t81 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t81, i64 %t59)
+  %t82 = load { ptr, i64 }, ptr %t81
+  call void @$prn({ ptr, i64 } %t82)
+  %t83 = load [3 x i32], ptr %local.0
+  %t84 = extractvalue [3 x i32] %t83, 1
+  %t85 = extractvalue { ptr, i64 } %t6, 0
+  %t86 = getelementptr inbounds i32, ptr %t85, i32 2
+  %t87 = load i32, ptr %t86
+  %t88 = add i32 %t84, %t87
+  %t89 = load ptr, ptr %local.4
+  %t90 = getelementptr inbounds { ptr, i64, i64 }, ptr %t89, i64 0, i32 0
+  %t91 = load ptr, ptr %t90
+  %t92 = getelementptr inbounds i32, ptr %t91, i32 1
+  %t93 = load i32, ptr %t92
+  %t94 = add i32 %t88, %t93
+  %t95 = load i8, ptr %t58
+  %t96 = zext i8 %t95 to i32
+  %t97 = add i32 %t94, %t96
+  %t98 = load ptr, ptr %local.4
+  %t99 = icmp eq ptr %t98, null
+  br i1 %t99, label %dynarray.free.done.9, label %dynarray.free.8
 dynarray.free.8:
-  %t96 = getelementptr inbounds { ptr, i64, i64 }, ptr %t94, i64 0, i32 0
-  %t97 = load ptr, ptr %t96
-  call void @free(ptr %t97)
-  call void @free(ptr %t94)
+  %t100 = getelementptr inbounds { ptr, i64, i64 }, ptr %t98, i64 0, i32 0
+  %t101 = load ptr, ptr %t100
+  call void @free(ptr %t101)
+  call void @free(ptr %t98)
   store ptr null, ptr %local.4
   br label %dynarray.free.done.9
 dynarray.free.done.9:
-  ret i32 %t93
+  ret i32 %t97
 }
 
 @$main = alias i32 (), ptr @fn.0

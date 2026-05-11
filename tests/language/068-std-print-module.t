@@ -19,8 +19,8 @@ same line
 hir 0
 module module.0(068-std-print-module.input)
 import module.1(std.io)
-import import.0 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.1 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.0 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.1 pr from module.1(std.io).decl.6: fn (string) -> void
 bind prn = import.0
 bind pr = import.1
 bind print = module.1

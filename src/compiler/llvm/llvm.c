@@ -1407,6 +1407,18 @@ internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
     return sb_to_string(&sb);
 }
 
+internal string llvm_emit_string_value_pointer(LlvmFunctionContext* ctx,
+                                               string               value)
+{
+    string ptr = llvm_temp(ctx);
+    sb_format(ctx->sb, "  " STRINGP " = alloca { ptr, i64 }\n", STRINGV(ptr));
+    sb_format(ctx->sb,
+              "  store { ptr, i64 } " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(value),
+              STRINGV(ptr));
+    return ptr;
+}
+
 internal u32 llvm_local_type(LlvmFunctionContext* ctx, u32 local_index)
 {
     return ctx->sema != NULL && local_index < array_count(ctx->sema->locals)
@@ -2476,13 +2488,15 @@ internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
 
     if (llvm_type_kind(ctx->sema, scrutinee.type_index) == STK_String &&
         (string_eq_cstr(pred, "eq") || string_eq_cstr(pred, "ne"))) {
-        string equal = llvm_temp(ctx);
+        string lhs_ptr = llvm_emit_string_value_pointer(ctx, scrutinee.value);
+        string rhs_ptr = llvm_emit_string_value_pointer(ctx, rhs.value);
+        string equal   = llvm_temp(ctx);
         sb_format(ctx->sb,
-                  "  " STRINGP " = call i1 @string_eq({ ptr, i64 } " STRINGP
-                  ", { ptr, i64 } " STRINGP ")\n",
+                  "  " STRINGP " = call i1 @string_eq(ptr " STRINGP
+                  ", ptr " STRINGP ")\n",
                   STRINGV(equal),
-                  STRINGV(scrutinee.value),
-                  STRINGV(rhs.value));
+                  STRINGV(lhs_ptr),
+                  STRINGV(rhs_ptr));
         if (string_eq_cstr(pred, "eq")) {
             return (LlvmValue){
                 .ok         = true,
@@ -3551,19 +3565,30 @@ internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
         return false;
     }
 
-    string value_type = llvm_type_string(ctx, value.type_index);
-    string converted  = llvm_temp(ctx);
+    string value_type    = llvm_type_string(ctx, value.type_index);
+    string converted_ptr = llvm_temp(ctx);
     sb_format(ctx->sb,
-              "  " STRINGP " = call { ptr, i64 } @to_string$" STRINGP
-              "(" STRINGP " " STRINGP ")\n",
-              STRINGV(converted),
-              STRINGV(suffix),
-              STRINGV(value_type),
-              STRINGV(value.value));
+              "  " STRINGP " = alloca { ptr, i64 }\n",
+              STRINGV(converted_ptr));
+    if (string_eq_cstr(suffix, "string")) {
+        string value_ptr = llvm_emit_string_value_pointer(ctx, value.value);
+        sb_format(ctx->sb,
+                  "  call void @to_string$string(ptr " STRINGP ", ptr " STRINGP
+                  ")\n",
+                  STRINGV(converted_ptr),
+                  STRINGV(value_ptr));
+    } else {
+        sb_format(ctx->sb,
+                  "  call void @to_string$" STRINGP "(ptr " STRINGP ", " STRINGP
+                  " " STRINGP ")\n",
+                  STRINGV(suffix),
+                  STRINGV(converted_ptr),
+                  STRINGV(value_type),
+                  STRINGV(value.value));
+    }
     sb_format(ctx->sb,
-              "  call void @string_builder_append_string({ ptr, i64 } " STRINGP
-              ")\n",
-              STRINGV(converted));
+              "  call void @string_builder_append_string(ptr " STRINGP ")\n",
+              STRINGV(converted_ptr));
     return true;
 }
 
@@ -4079,13 +4104,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
             }
-            string result = llvm_temp(ctx);
+            string result_ptr = llvm_temp(ctx);
+            string result     = llvm_temp(ctx);
             sb_format(ctx->sb,
-                      "  " STRINGP
-                      " = call { ptr, i64 } @string_builder_finish(i64 " STRINGP
-                      ")\n",
-                      STRINGV(result),
+                      "  " STRINGP " = alloca { ptr, i64 }\n",
+                      STRINGV(result_ptr));
+            sb_format(ctx->sb,
+                      "  call void @string_builder_finish(ptr " STRINGP
+                      ", i64 " STRINGP ")\n",
+                      STRINGV(result_ptr),
                       STRINGV(mark));
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load { ptr, i64 }, ptr " STRINGP "\n",
+                      STRINGV(result),
+                      STRINGV(result_ptr));
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
@@ -4588,13 +4620,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 SemaTypeKind rhs_kind =
                     llvm_type_kind(ctx->sema, rhs.type_index);
                 if (lhs_kind == STK_String && rhs_kind == STK_String) {
+                    string lhs_ptr =
+                        llvm_emit_string_value_pointer(ctx, lhs.value);
+                    string rhs_ptr =
+                        llvm_emit_string_value_pointer(ctx, rhs.value);
                     sb_format(ctx->sb,
-                              "  " STRINGP
-                              " = call i1 @string_eq({ ptr, i64 } " STRINGP
-                              ", { ptr, i64 } " STRINGP ")\n",
+                              "  " STRINGP " = call i1 @string_eq(ptr " STRINGP
+                              ", ptr " STRINGP ")\n",
                               STRINGV(temp),
-                              STRINGV(lhs.value),
-                              STRINGV(rhs.value));
+                              STRINGV(lhs_ptr),
+                              STRINGV(rhs_ptr));
                     if (expr->binary_op == HIR_BINARY_NotEqual) {
                         string inverted = llvm_temp(ctx);
                         sb_format(ctx->sb,
@@ -7140,13 +7175,14 @@ internal bool llvm_emit_assert(LlvmFunctionContext* ctx,
     u32    stmt_index  = llvm_stmt_index(ctx->hir, stmt);
     string source_path = llvm_assert_source_path_global_name_string(
         ctx->hir, ctx->arena, stmt_index);
+    string message_ptr = llvm_emit_string_value_pointer(ctx, message_value);
     sb_format(ctx->sb,
               "  call void @nerd_assert(i1 " STRINGP ", ptr " STRINGP
-              ", i32 %u, { ptr, i64 } " STRINGP ")\n",
+              ", i32 %u, ptr " STRINGP ")\n",
               STRINGV(condition.value),
               STRINGV(source_path),
               llvm_stmt_source_line(ctx, stmt),
-              STRINGV(message_value));
+              STRINGV(message_ptr));
     return true;
 }
 
@@ -8983,32 +9019,31 @@ internal void llvm_render_concat_string_literals(StringBuilder* sb,
 internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
 {
     sb_append_cstr(sb,
-                   "declare i1 @string_eq({ ptr, i64 }, { ptr, i64 })\n"
+                   "declare i1 @string_eq(ptr, ptr)\n"
                    "declare void @string_builder_reset()\n"
                    "declare i64 @string_builder_mark()\n"
-                   "declare void @string_builder_append_string({ ptr, i64 })\n"
+                   "declare void @string_builder_append_string(ptr)\n"
                    "declare void @string_builder_append_byte(i8)\n"
-                   "declare { ptr, i64 } @string_builder_finish(i64)\n"
-                   "declare { ptr, i64 } @to_string$string({ ptr, i64 })\n"
-                   "declare { ptr, i64 } @to_string$bool(i1)\n"
-                   "declare { ptr, i64 } @to_string$i8(i8)\n"
-                   "declare { ptr, i64 } @to_string$i16(i16)\n"
-                   "declare { ptr, i64 } @to_string$i32(i32)\n"
-                   "declare { ptr, i64 } @to_string$i64(i64)\n"
-                   "declare { ptr, i64 } @to_string$u8(i8)\n"
-                   "declare { ptr, i64 } @to_string$u16(i16)\n"
-                   "declare { ptr, i64 } @to_string$u32(i32)\n"
-                   "declare { ptr, i64 } @to_string$u64(i64)\n"
-                   "declare { ptr, i64 } @to_string$isize(i64)\n"
-                   "declare { ptr, i64 } @to_string$usize(i64)\n"
-                   "declare { ptr, i64 } @to_string$f32(float)\n"
-                   "declare { ptr, i64 } @to_string$f64(double)\n");
+                   "declare void @string_builder_finish(ptr, i64)\n"
+                   "declare void @to_string$string(ptr, ptr)\n"
+                   "declare void @to_string$bool(ptr, i1)\n"
+                   "declare void @to_string$i8(ptr, i8)\n"
+                   "declare void @to_string$i16(ptr, i16)\n"
+                   "declare void @to_string$i32(ptr, i32)\n"
+                   "declare void @to_string$i64(ptr, i64)\n"
+                   "declare void @to_string$u8(ptr, i8)\n"
+                   "declare void @to_string$u16(ptr, i16)\n"
+                   "declare void @to_string$u32(ptr, i32)\n"
+                   "declare void @to_string$u64(ptr, i64)\n"
+                   "declare void @to_string$isize(ptr, i64)\n"
+                   "declare void @to_string$usize(ptr, i64)\n"
+                   "declare void @to_string$f32(ptr, float)\n"
+                   "declare void @to_string$f64(ptr, double)\n");
 }
 
 internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
 {
-    sb_append_cstr(sb,
-                   "declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })\n");
+    sb_append_cstr(sb, "declare void @nerd_assert(i1, ptr, i32, ptr)\n");
 }
 
 internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
