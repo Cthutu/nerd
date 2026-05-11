@@ -117,7 +117,7 @@ Working rules for this review:
   - Update `docs/compiler-pipeline.md` and review notes with the single
     combined LLVM input model, temp cleanup rules, and clang/tool assumptions.
 
-- [ ] Commit: run installed compiler smoke tests
+- [x] Commit: run installed compiler smoke tests
   - Verify `just install`.
   - Verify `nerd run` on small standalone programs outside the repo.
   - Add a regression fixture for any language failure found during smoke tests.
