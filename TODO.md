@@ -135,7 +135,7 @@ Working rules for this review:
   - Keep language tests focused on behavior rather than incidental backend
     spelling.
 
-- [ ] Commit: remove stale generated-file cleanup gaps
+- [x] Commit: remove stale generated-file cleanup gaps
   - Ensure passing tests remove temporary `.ll`, `.link.ll`, `.hir`, and input
     sidecars unless the test intentionally preserves them.
 

@@ -212,11 +212,21 @@ def lines_are_subsequence(expected: str, actual: str, *, strip_dollars: bool = F
 
 
 def cleanup_generated_outputs(path: pathlib.Path) -> None:
+    for sidecar in (
+        path.parent / path.stem,
+        path.parent / f"{path.stem}.input",
+        path.parent / f"{path.stem}.link.ll",
+        path.parent / f"{path.stem}.input.link.ll",
+    ):
+        if sidecar.is_file():
+            sidecar.unlink(missing_ok=True)
     for pattern in (
         f"_{path.stem}*",
         f"__{path.stem}*",
         f"{path.stem}.m*.ll",
         f"{path.stem}.input.m*.ll",
+        f"_{path.stem}.input*",
+        f"__{path.stem}.input*",
     ):
         for sidecar in path.parent.glob(pattern):
             if sidecar.is_file():
