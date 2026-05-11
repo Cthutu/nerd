@@ -124,12 +124,12 @@ Working rules for this review:
 
 ### Milestone 2: Finish Replacing Old IR/C Test Expectations
 
-- [ ] Commit: make HIR the old IR textual comparison target
+- [x] Commit: make HIR the old IR textual comparison target
   - Rename or redirect fixtures so compiler middle-layer tests compare HIR.
   - Remove assumptions that the old linear IR is the expected intermediate
     output.
 
-- [ ] Commit: make LLVM IR the old C output comparison target
+- [x] Commit: make LLVM IR the old C output comparison target
   - Replace C-generation expectations with LLVM-generation expectations where
     the test intent is backend text.
   - Keep language tests focused on behavior rather than incidental backend

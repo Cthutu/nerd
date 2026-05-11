@@ -23,6 +23,12 @@ source files. Repository regression tests are run by the Python harness via
 - `errors`
   Structured compiler diagnostic tests. `.e` files contain source and expected
   JSON diagnostic output, separated by `¬`.
+- `hir`
+  Focused HIR snapshot tests. `.hir` files contain source and expected HIR,
+  separated by `¬`.
+- `llvm`
+  Focused LLVM IR snapshot tests. `.ll` files contain source and expected LLVM
+  IR, separated by `¬`.
 - `format`
   Formatter snapshot tests. `.f` files contain input and expected formatted
   output.

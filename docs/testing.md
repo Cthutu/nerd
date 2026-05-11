@@ -10,13 +10,19 @@ Nerd source code. It is not the repository regression harness.
 
 ## Test Families
 
-The repository currently has five main test families:
+The repository currently has seven main test families:
 
 - `tests/language`
   End-to-end compiler tests with expected runtime result, stdout, HIR, and LLVM
   IR.
 - `tests/errors`
   Structured error-rendering tests in JSON form.
+- `tests/hir`
+  Focused HIR snapshot tests. These are the middle-layer textual comparison
+  target that replaced the historical custom IR expectations.
+- `tests/llvm`
+  Focused LLVM IR snapshot tests. These are the backend textual comparison
+  target that replaced historical generated C expectations.
 - `tests/format`
   Formatter snapshot tests.
 - `tests/lsp`
@@ -36,6 +42,31 @@ Language tests use `.t` files with five sections separated by `¬`:
 
 The first section is also valid source input by itself, which makes local
 debugging straightforward.
+
+Language tests should stay behavior-first. Include only enough HIR or LLVM text
+to assert the compiler fact that matters for the case; the runner treats those
+sections as ordered subsequences rather than requiring a full-file snapshot.
+
+## HIR Tests
+
+HIR tests use `.hir` files with two sections:
+
+1. source code
+2. expected generated HIR
+
+Use these when the intent is the semantically checked middle layer rather than
+runtime behavior. HIR is the current comparison target for middle-layer
+expectations; do not add new tests against the retired custom IR.
+
+## LLVM Tests
+
+LLVM tests use `.ll` files with two sections:
+
+1. source code
+2. expected generated LLVM IR
+
+Use these when the intent is backend text. LLVM IR is the current comparison
+target for backend expectations; do not add new generated-C snapshots.
 
 ## Error Tests
 
@@ -93,12 +124,10 @@ portable, such as POSIX-only FFI calls.
 
 ## Artefact Behaviour
 
-For language tests, generated `.ir`, `.c`, and `.out` artefacts are removed on
-success and retained on failure. That policy is deliberate: failures should be
-easy to inspect locally.
-
-Command tests also generate temporary `.input.n` files and command artefacts
-beside the test case; successful runs remove them.
+Language, HIR, LLVM, and command tests write temporary `.input.n`, `.hir`,
+`.ll`, `.link.ll`, executable, and related sidecar artefacts beside the test
+case. Successful runs remove them. Failed runs retain generated files where
+possible so the failure can be inspected locally.
 
 ## Source Tests
 
