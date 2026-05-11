@@ -89,10 +89,11 @@ The compiler build now supports `//> run: ...` directives on source files.
 `src/nerd.c` uses this to compile `data/prelude.c` into
 `_obj/llvm/prelude.ll` before compiling the compiler itself. That generated
 runtime `.ll` file is embedded into the compiler with `#embed`. During a Nerd
-program build, the backend writes a temporary prelude copy beside the generated
-program LLVM IR, emits the tiny LLVM `main` wrapper directly, and invokes clang
-on all LLVM inputs together. The backend removes those temporary runtime files
-after a successful link.
+program build, the backend renders module LLVM IR in memory, writes inspection
+sidecars only when `--llvm` is requested, concatenates the embedded prelude,
+generated modules, generated init wrapper, and tiny LLVM `main` wrapper into one
+temporary combined LLVM file, and invokes clang on that single input. The
+backend removes the combined temporary file after a successful link.
 
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
 flags without consulting the old IR tables. The legacy IR and C generator have

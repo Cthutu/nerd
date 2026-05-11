@@ -86,6 +86,164 @@ internal bool back_end_write_text_file(cstr path, string text)
     return true;
 }
 
+internal bool back_end_string_starts_with_cstr(string text, cstr prefix)
+{
+    usize prefix_count = strlen(prefix);
+    return text.count >= prefix_count &&
+           memcmp(text.data, prefix, prefix_count) == 0;
+}
+
+internal bool back_end_string_contains_cstr(string text, cstr needle)
+{
+    usize needle_count = strlen(needle);
+    if (needle_count == 0 || text.count < needle_count) {
+        return false;
+    }
+    for (usize i = 0; i + needle_count <= text.count; ++i) {
+        if (memcmp(text.data + i, needle, needle_count) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool back_end_llvm_line_symbol(string line, string* out)
+{
+    usize at = U32_MAX;
+    for (usize i = 0; i < line.count; ++i) {
+        if (line.data[i] == '@') {
+            at = i;
+            break;
+        }
+    }
+    if (at == U32_MAX) {
+        return false;
+    }
+
+    usize end = at + 1;
+    if (end < line.count && line.data[end] == '"') {
+        usize quoted_start = end + 1;
+        end++;
+        while (end < line.count) {
+            if (line.data[end++] == '"') {
+                break;
+            }
+        }
+        *out = (string){
+            .data  = line.data + quoted_start,
+            .count = end > quoted_start ? end - quoted_start - 1 : 0,
+        };
+        if (out->count == 0) {
+            return false;
+        }
+        return true;
+    } else {
+        while (end < line.count && line.data[end] != '(' &&
+               line.data[end] != ' ' && line.data[end] != '\t' &&
+               line.data[end] != ',') {
+            end++;
+        }
+    }
+    if (end <= at + 1) {
+        return false;
+    }
+    usize symbol_start = at;
+    if (at + 1 < end) {
+        symbol_start = at + 1;
+    }
+    *out = (string){
+        .data  = line.data + symbol_start,
+        .count = end - symbol_start,
+    };
+    return true;
+}
+
+internal bool back_end_llvm_line_defines_symbol(string line, string* out)
+{
+    if (back_end_string_starts_with_cstr(line, "define ")) {
+        return back_end_llvm_line_symbol(line, out);
+    }
+    if (line.count > 0 && line.data[0] == '@' &&
+        back_end_string_contains_cstr(line, " = ")) {
+        return back_end_llvm_line_symbol(line, out);
+    }
+    return false;
+}
+
+internal bool back_end_llvm_line_declares_symbol(string line, string* out)
+{
+    if (!back_end_string_starts_with_cstr(line, "declare ")) {
+        return false;
+    }
+    return back_end_llvm_line_symbol(line, out);
+}
+
+internal bool back_end_symbol_array_contains(Array(string) symbols,
+                                             string symbol)
+{
+    for (u32 i = 0; i < array_count(symbols); ++i) {
+        if (string_eq(symbols[i], symbol)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void back_end_collect_llvm_defined_symbols(Array(string) * symbols,
+                                                    string text)
+{
+    usize line_start = 0;
+    for (usize i = 0; i <= text.count; ++i) {
+        if (i < text.count && text.data[i] != '\n') {
+            continue;
+        }
+        string line = {
+            .data  = text.data + line_start,
+            .count = i - line_start,
+        };
+        string symbol = {0};
+        if (back_end_llvm_line_defines_symbol(line, &symbol) &&
+            !back_end_symbol_array_contains(*symbols, symbol)) {
+            array_push(*symbols, symbol);
+        }
+        line_start = i + 1;
+    }
+}
+
+internal void back_end_append_llvm_without_satisfied_declarations(
+    StringBuilder* sb,
+    string         text,
+    Array(string) defined_symbols,
+    Array(string) * declared_symbols)
+{
+    usize line_start = 0;
+    for (usize i = 0; i <= text.count; ++i) {
+        if (i < text.count && text.data[i] != '\n') {
+            continue;
+        }
+        string line = {
+            .data  = text.data + line_start,
+            .count = i - line_start,
+        };
+        string declared_symbol = {0};
+        if (back_end_llvm_line_declares_symbol(line, &declared_symbol)) {
+            if (back_end_symbol_array_contains(defined_symbols,
+                                               declared_symbol) ||
+                back_end_symbol_array_contains(*declared_symbols,
+                                               declared_symbol)) {
+                line_start = i + 1;
+                continue;
+            }
+            array_push(*declared_symbols, declared_symbol);
+        }
+        sb_append_string(sb, line);
+        if (i < text.count) {
+            sb_append_char(sb, '\n');
+        }
+        line_start = i + 1;
+    }
+}
+
 internal bool back_end_hir_has_globals(const Hir* hir)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
@@ -148,21 +306,12 @@ internal bool back_end_root_main_returns_void(const FrontEndState* root)
     return false;
 }
 
-internal void
-back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
-                                        bool remove_llvm_paths,
-                                        cstr runtime_prelude_path,
-                                        cstr runtime_epilogue_path,
-                                        cstr init_ll_path)
+internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
+                                                      bool remove_llvm_paths,
+                                                      cstr combined_llvm_path)
 {
-    if (runtime_prelude_path != NULL) {
-        path_remove(runtime_prelude_path);
-    }
-    if (runtime_epilogue_path != NULL) {
-        path_remove(runtime_epilogue_path);
-    }
-    if (init_ll_path != NULL) {
-        path_remove(init_ll_path);
+    if (combined_llvm_path != NULL) {
+        path_remove(combined_llvm_path);
     }
     if (remove_llvm_paths) {
         for (u32 i = 0; i < array_count(llvm_paths); ++i) {
@@ -185,40 +334,40 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     arena_init(&arena);
 
     Array(cstr) llvm_paths         = NULL;
+    Array(string) module_llvms     = NULL;
     Array(u32) init_module_indices = NULL;
     for (u32 i = 0; i < array_count(program->modules); ++i) {
-        const FrontEndState* front_end = &program->modules[i].front_end;
-        cstr llvm_path = back_end_module_llvm_path(&arena, artifacts, i);
-        if (!llvm_save_hir(&front_end->hir,
-                           &front_end->lexer,
-                           &front_end->sema,
-                           llvm_path)) {
-            back_end_cleanup_llvm_compile_artifacts(
-                llvm_paths, !artifacts->emit_llvm_file, NULL, NULL, NULL);
-            array_free(llvm_paths);
-            array_free(init_module_indices);
-            arena_done(&arena);
-            return false;
+        const FrontEndState* front_end   = &program->modules[i].front_end;
+        string               module_llvm = llvm_render_hir(
+            &front_end->hir, &front_end->lexer, &front_end->sema, &arena);
+        array_push(module_llvms, module_llvm);
+        if (artifacts->emit_llvm_file) {
+            cstr llvm_path = back_end_module_llvm_path(&arena, artifacts, i);
+            if (!back_end_write_text_file(llvm_path, module_llvm)) {
+                back_end_cleanup_llvm_compile_artifacts(
+                    llvm_paths, false, NULL);
+                array_free(llvm_paths);
+                array_free(module_llvms);
+                array_free(init_module_indices);
+                arena_done(&arena);
+                return false;
+            }
+            array_push(llvm_paths, llvm_path);
         }
-        array_push(llvm_paths, llvm_path);
         if (back_end_hir_has_globals(&front_end->hir)) {
             array_push(init_module_indices, i);
         }
     }
     if (!artifacts->compile_binary) {
         array_free(llvm_paths);
+        array_free(module_llvms);
         array_free(init_module_indices);
         arena_done(&arena);
         return true;
     }
 
-    cstr runtime_prelude_path = back_end_cstr(
-        &arena, string_format(&arena, "%s.prelude.ll", artifacts->binary_path));
-    cstr runtime_epilogue_path = back_end_cstr(
-        &arena,
-        string_format(&arena, "%s.epilogue.ll", artifacts->binary_path));
-    cstr init_ll_path = back_end_cstr(
-        &arena, string_format(&arena, "%s.init.ll", artifacts->binary_path));
+    cstr combined_llvm_path = back_end_cstr(
+        &arena, string_format(&arena, "%s.link.ll", artifacts->binary_path));
 
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
@@ -257,17 +406,50 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                   init_module_indices[i]);
     }
     sb_append_cstr(&init_ll_builder, "  ret void\n}\n");
-    string init_ll = sb_to_string(&init_ll_builder);
-    if (!back_end_write_text_file(runtime_prelude_path,
-                                  s(g_llvm_runtime_prelude)) ||
-        !back_end_write_text_file(runtime_epilogue_path, runtime_epilogue) ||
-        !back_end_write_text_file(init_ll_path, init_ll)) {
-        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                runtime_prelude_path,
-                                                runtime_epilogue_path,
-                                                init_ll_path);
+    string init_ll                = sb_to_string(&init_ll_builder);
+
+    Array(string) defined_symbols = NULL;
+    back_end_collect_llvm_defined_symbols(&defined_symbols,
+                                          s(g_llvm_runtime_prelude));
+    for (u32 i = 0; i < array_count(module_llvms); ++i) {
+        back_end_collect_llvm_defined_symbols(&defined_symbols,
+                                              module_llvms[i]);
+    }
+    back_end_collect_llvm_defined_symbols(&defined_symbols, runtime_epilogue);
+    back_end_collect_llvm_defined_symbols(&defined_symbols, init_ll);
+
+    StringBuilder combined_llvm_builder = {0};
+    Array(string) declared_symbols      = NULL;
+    sb_init(&combined_llvm_builder, &arena);
+    back_end_append_llvm_without_satisfied_declarations(
+        &combined_llvm_builder,
+        s(g_llvm_runtime_prelude),
+        defined_symbols,
+        &declared_symbols);
+    sb_append_cstr(&combined_llvm_builder, "\n\n");
+    for (u32 i = 0; i < array_count(module_llvms); ++i) {
+        back_end_append_llvm_without_satisfied_declarations(
+            &combined_llvm_builder,
+            module_llvms[i],
+            defined_symbols,
+            &declared_symbols);
+        sb_append_cstr(&combined_llvm_builder, "\n");
+    }
+    back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
+                                                        runtime_epilogue,
+                                                        defined_symbols,
+                                                        &declared_symbols);
+    sb_append_cstr(&combined_llvm_builder, "\n");
+    back_end_append_llvm_without_satisfied_declarations(
+        &combined_llvm_builder, init_ll, defined_symbols, &declared_symbols);
+    string combined_llvm = sb_to_string(&combined_llvm_builder);
+    if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
+        back_end_cleanup_llvm_compile_artifacts(
+            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
         array_free(llvm_paths);
+        array_free(module_llvms);
+        array_free(defined_symbols);
+        array_free(declared_symbols);
         array_free(init_module_indices);
         arena_done(&arena);
         return false;
@@ -283,22 +465,17 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
               "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\"",
               STRINGV(opt_flags),
               artifacts->binary_path,
-              runtime_prelude_path);
-    for (u32 i = 0; i < array_count(llvm_paths); ++i) {
-        sb_format(&command_builder, " \"%s\"", llvm_paths[i]);
-    }
-    sb_format(&command_builder, " \"%s\"", runtime_epilogue_path);
-    sb_format(&command_builder, " \"%s\"", init_ll_path);
+              combined_llvm_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
     string command        = sb_to_string(&command_builder);
     int    compile_result = shell(back_end_cstr(&arena, command));
     if (compile_result != 0) {
-        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                runtime_prelude_path,
-                                                runtime_epilogue_path,
-                                                init_ll_path);
+        back_end_cleanup_llvm_compile_artifacts(
+            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
         array_free(llvm_paths);
+        array_free(module_llvms);
+        array_free(defined_symbols);
+        array_free(declared_symbols);
         array_free(init_module_indices);
         arena_done(&arena);
         return error_runtime(
@@ -308,12 +485,12 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
 #if OS_POSIX
     if (chmod(artifacts->binary_path, 0755) != 0) {
-        back_end_cleanup_llvm_compile_artifacts(llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                runtime_prelude_path,
-                                                runtime_epilogue_path,
-                                                init_ll_path);
+        back_end_cleanup_llvm_compile_artifacts(
+            llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
         array_free(llvm_paths);
+        array_free(module_llvms);
+        array_free(defined_symbols);
+        array_free(declared_symbols);
         array_free(init_module_indices);
         arena_done(&arena);
         return error_runtime("Failed to make %s executable",
@@ -321,13 +498,13 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     }
 #endif
 
-    back_end_cleanup_llvm_compile_artifacts(llvm_paths,
-                                            !artifacts->emit_llvm_file,
-                                            runtime_prelude_path,
-                                            runtime_epilogue_path,
-                                            init_ll_path);
+    back_end_cleanup_llvm_compile_artifacts(
+        llvm_paths, !artifacts->emit_llvm_file, combined_llvm_path);
 
     array_free(llvm_paths);
+    array_free(module_llvms);
+    array_free(defined_symbols);
+    array_free(declared_symbols);
     array_free(init_module_indices);
     arena_done(&arena);
     return true;
@@ -349,16 +526,6 @@ bool back_end_program(const ProgramInfo*        program,
             &program->modules[program->root_module_index].front_end;
         if (!hir_save(
                 &root->hir, &root->lexer, &root->sema, artifacts->hir_path)) {
-            return false;
-        }
-    }
-
-    if (artifacts->emit_llvm_file &&
-        program->root_module_index < array_count(program->modules)) {
-        const FrontEndState* root =
-            &program->modules[program->root_module_index].front_end;
-        if (!llvm_save_hir(
-                &root->hir, &root->lexer, &root->sema, artifacts->llvm_path)) {
             return false;
         }
     }
