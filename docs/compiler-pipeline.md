@@ -36,12 +36,25 @@ It currently:
 1. optionally saves HIR
 2. renders LLVM IR from HIR
 3. optionally saves generated LLVM IR sidecars
-4. invokes clang on one combined LLVM IR input
+4. builds one combined LLVM IR link input
+5. invokes clang on that combined LLVM IR input
 
 The current executable back end is LLVM, so the user-facing compiler flow is
 effectively:
 
 `Nerd source -> lexer -> AST -> sema -> HIR -> LLVM IR -> native binary`
+
+The backend is intentionally split into small pieces:
+
+- `back.c`
+  owns artifact policy, module iteration, temporary paths, external link flags,
+  and process orchestration.
+- `llvm_runtime.c`
+  owns the embedded runtime prelude and generated runtime glue such as the
+  `init` wrapper and tiny C-compatible `main` wrapper.
+- `llvm_text.c`
+  owns textual LLVM concatenation and declaration filtering for the combined
+  input.
 
 ## Lexer
 
@@ -124,11 +137,39 @@ The naming rule to remember is:
   such as `@"$main"`
 - generated implementation names such as `@fn.N` are compiler internals
 
-The backend renders each module in memory, writes `.ll` sidecars only when
-requested with `--llvm`, concatenates the embedded LLVM prelude, generated
-modules, generated epilogue wrapper, and init wrapper into one temporary
-`.link.ll` file, then invokes clang on that single input. Temporary link inputs
-are removed after successful builds.
+The compiler build produces the runtime prelude before compiling `nerd` itself.
+`src/nerd.c` has a build directive that runs clang over `data/prelude.c` and
+writes `_obj/llvm/prelude.ll`; `llvm_runtime.c` embeds that generated text with
+`#embed`.
+
+For a normal program build, the backend renders each module's LLVM IR in memory.
+It writes module `.ll` sidecars only when requested with `--llvm`. Executable
+builds then concatenate:
+
+1. the embedded runtime prelude
+2. each generated module
+3. the generated runtime `main` wrapper
+4. the generated `init` wrapper for modules with global initialisation
+
+The concatenated text is written to one temporary `<output>.link.ll` file and
+compiled with clang. Using a single LLVM input avoids backend-specific C
+dependency ordering and lets LLVM resolve function/type ordering within the
+module.
+
+The combiner removes declarations that are satisfied by definitions or aliases
+inside the combined input, and keeps one declaration for unresolved external
+symbols such as libc calls. This matters because clang accepts separate `.ll`
+inputs that each declare the same symbol, but rejects one textual LLVM module
+that both declares and defines the same symbol.
+
+Temporary link inputs are removed after successful builds. Module sidecars are
+also removed unless `--llvm` requested them for inspection. Failed builds retain
+generated files where possible so the failing LLVM can be inspected locally.
+
+The current toolchain contract is textual LLVM IR plus clang. The compiler does
+not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
+surface small while still allowing a future measurement-backed switch to LLVM
+CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
 
 ## Renderers And Dumpers
 

@@ -113,7 +113,7 @@ Working rules for this review:
     `back.c`.
   - Keep `back.c` responsible for artifact policy and process orchestration.
 
-- [ ] Commit: document the executable backend contract
+- [x] Commit: document the executable backend contract
   - Update `docs/compiler-pipeline.md` and review notes with the single
     combined LLVM input model, temp cleanup rules, and clang/tool assumptions.
 

@@ -95,6 +95,23 @@ generated modules, generated init wrapper, and tiny LLVM `main` wrapper into one
 temporary combined LLVM file, and invokes clang on that single input. The
 backend removes the combined temporary file after a successful link.
 
+The executable backend contract is now:
+
+- generated module LLVM text stays in memory unless `--llvm` is requested
+- `_obj/llvm/prelude.ll` is generated while building the compiler and embedded
+  into `nerd`
+- generated runtime glue is emitted directly as LLVM text by the backend
+- all executable builds compile one temporary `<output>.link.ll` file with
+  clang
+- the combiner drops declarations satisfied by definitions or aliases in that
+  combined input, but preserves one declaration for unresolved external symbols
+- successful builds remove temporary link inputs and unrequested module sidecars
+- failed builds retain generated files where possible for inspection
+
+This contract deliberately uses clang as the only external executable backend
+tool for now. Direct `llvm-as`, `llc`, `opt`, or bitcode flows remain future
+performance experiments rather than current install requirements.
+
 HIR now owns enough FFI metadata for the LLVM backend to derive external link
 flags without consulting the old IR tables. The legacy IR and C generator have
 been removed from the build graph, and command tests now exercise the default
