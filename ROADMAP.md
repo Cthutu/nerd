@@ -6,7 +6,7 @@ continuing to grow this file.
 
 ## Current State
 
-- The compiler pipeline is `lexer -> CST/AST parser -> sema -> IR -> C -> clang`.
+- The compiler pipeline is `lexer -> CST/AST parser -> sema -> HIR -> LLVM IR -> clang`.
 - Semantic analysis is a distinct front-end phase and owns name resolution,
   declaration classification, typing, diagnostics, and dependency ordering.
 - The AST should remain compact and syntax-oriented. Semantic facts belong in

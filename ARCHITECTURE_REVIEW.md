@@ -10,7 +10,7 @@ agreement or decision record.
 The current documented pipeline is:
 
 ```text
-lexer -> AST parser -> sema -> IR -> C -> clang
+lexer -> AST parser -> sema -> HIR -> LLVM IR -> clang
 ```
 
 Important current constraints from the roadmap and developer docs:
@@ -35,13 +35,15 @@ Current implementation hotspots visible during the review:
   cases directly.
 - `src/lsp/completion.c` has extensive semantic, AST, repaired-source, and
   module-fallback logic to keep completion working while source is incomplete.
-- LSP document analysis sets `keep_partial_results = true`, skips IR
+- LSP document analysis sets `keep_partial_results = true`, skips HIR
   generation, and tries to retain partial compiler state for editor features.
 
 Active decision records:
 
-- `review/decisions/0001-hir-and-backend-boundary.md`: proposed HIR boundary,
-  current IR migration role, and C/LLVM backend direction.
+- `review/decisions/0001-hir-and-backend-boundary.md`: HIR boundary and
+  retired IR/C backend migration record.
+- `review/decisions/0005-llvm-sidecar-from-hir.md`: LLVM generation from HIR
+  and the current executable backend contract.
 
 ## Initial Agreements
 
@@ -60,21 +62,21 @@ Active decision records:
 
 ## Candidate Direction
 
-Introduce a checked structural intermediate representation between `sema` and
-`IR`. Possible names: `HIR`, `CoreAst`, or `CheckedAst`.
+HIR is now the checked structural intermediate representation between `sema`
+and LLVM lowering.
 
 The new layer would be:
 
 - semantically typed and name-resolved
 - explicit about scopes, declarations, locals, control flow, and lowered sugar
 - still structured enough for source-level tooling and diagnostics
-- lower-level than the source AST, but higher-level than the current linear IR
+- lower-level than the source AST, but higher-level than target LLVM IR
 - independent of parser trivia and formatting concerns
 
 The intended pipeline would become:
 
 ```text
-lexer -> tolerant CST/syntax parse -> AST -> sema -> checked core -> IR -> C
+lexer -> tolerant CST/syntax parse -> AST -> sema -> HIR -> LLVM IR -> clang
 ```
 
 Longer term, the editor-facing path could use:
@@ -102,9 +104,9 @@ The documented and implemented build path has these major products:
   tooling.
 - `Sema`: declarations, scopes, locals, types, dependencies, constants, generic
   instantiations, and AST-indexed side tables.
-- `Ir`: lowered linear compiler IR plus program structure tables used by C
-  generation.
-- `CGen`: generated C text and state.
+- `Hir`: semantically checked lowered program used by LLVM generation and HIR
+  snapshots.
+- `LLVM`: generated LLVM IR text and backend lowering state.
 - `ProgramInfo`: module graph containing each module's `FrontEndState`.
 
 The main aggregate interface is currently:
@@ -114,7 +116,7 @@ typedef struct FrontEndState {
     Lexer lexer;
     Ast   ast;
     Sema  sema;
-    Ir    ir;
+    Hir   hir;
 } FrontEndState;
 ```
 

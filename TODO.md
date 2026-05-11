@@ -141,7 +141,7 @@ Working rules for this review:
 
 ### Milestone 3: Remove The Old IR And C Backend
 
-- [ ] Commit: remove old IR generation from the build path
+- [x] Commit: remove old IR generation from the build path
   - Delete or isolate old IR code after tests no longer depend on it.
   - Keep any still-useful concepts only if they are explicitly moved into HIR
     or LLVM lowering.

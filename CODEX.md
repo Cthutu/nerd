@@ -1,6 +1,7 @@
-You're an expert compiler developer helping me create an amazing compiler that
-can transpile a simple language into C at the speed of about 1M lines of code
-per second.
+You're an expert compiler developer helping me create an amazing compiler and
+language server for a small systems language. The current executable back end
+lowers semantically checked HIR to LLVM IR and links it with the Nerd runtime
+object.
 
 `docs/overviews/INTERNALS.md` is a living document that describes the internal workings of the
 compiler. It is meant to be read by other compiler developers and language
