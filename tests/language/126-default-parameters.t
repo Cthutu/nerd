@@ -179,8 +179,8 @@ define void @fn.5() {
   ret void
 }
 
-@$add = alias i32 (i32, i32, i32), ptr @fn.0
-@$scale = alias i32 (i32), ptr @fn.1
-@$with_call_default = alias i32 (i32), ptr @fn.2
-@$local_call = alias void (i32), ptr @fn.3
+@$add = internal alias i32 (i32, i32, i32), ptr @fn.0
+@$scale = internal alias i32 (i32), ptr @fn.1
+@$with_call_default = internal alias i32 (i32), ptr @fn.2
+@$local_call = internal alias void (i32), ptr @fn.3
 @$main = alias void (), ptr @fn.5

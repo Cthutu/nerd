@@ -43,8 +43,8 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$direct = global [2 x { i32, ptr }] zeroinitializer
-@$aliased = global [2 x { i32, ptr }] zeroinitializer
+@$direct = internal global [2 x { i32, ptr }] zeroinitializer
+@$aliased = internal global [2 x { i32, ptr }] zeroinitializer
 
 define void @m0.init() {
   %t0 = getelementptr inbounds [2 x { i32, ptr }], ptr @$direct, i64 0, i32 1
@@ -55,6 +55,15 @@ define void @m0.init() {
   %t5 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t2, 0
   %t6 = insertvalue [2 x { i32, ptr }] %t5, { i32, ptr } %t4, 1
   store [2 x { i32, ptr }] %t6, ptr @$direct
+  %t7 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 1
+  %t8 = insertvalue { i32, ptr } poison, i32 3, 0
+  %t9 = insertvalue { i32, ptr } %t8, ptr %t7, 1
+  %t10 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 0
+  %t11 = insertvalue { i32, ptr } poison, i32 4, 0
+  %t12 = insertvalue { i32, ptr } %t11, ptr %t10, 1
+  %t13 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t9, 0
+  %t14 = insertvalue [2 x { i32, ptr }] %t13, { i32, ptr } %t12, 1
+  store [2 x { i32, ptr }] %t14, ptr @$aliased
   ret void
 }
 

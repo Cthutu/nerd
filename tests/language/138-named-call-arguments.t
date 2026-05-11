@@ -100,8 +100,8 @@ define i32 @fn.4() {
   ret i32 %t4
 }
 
-@$__impl_4_set = alias void (ptr, i32, i32), ptr @fn.0
-@$__impl_4_add = alias void (ptr, i32), ptr @fn.1
-@$__impl_4_get = alias i32 ({ i32 }), ptr @fn.2
-@$add = alias i32 (i32, i32, i32), ptr @fn.3
+@$__impl_4_set = internal alias void (ptr, i32, i32), ptr @fn.0
+@$__impl_4_add = internal alias void (ptr, i32), ptr @fn.1
+@$__impl_4_get = internal alias i32 ({ i32 }), ptr @fn.2
+@$add = internal alias i32 (i32, i32, i32), ptr @fn.3
 @$main = alias i32 (), ptr @fn.4

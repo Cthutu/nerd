@@ -29,10 +29,10 @@ func fn.0() -> i32 {
 
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"Hello\00"
 
-@$greeting = global { ptr, i64 } zeroinitializer
-@$enabled = global i1 0
-@$ratio = global float 0.000000e+00
-@$weight = global double 0.000000e+00
+@$greeting = internal global { ptr, i64 } zeroinitializer
+@$enabled = internal global i1 0
+@$ratio = internal global float 0.000000e+00
+@$weight = internal global double 0.000000e+00
 
 define void @m0.init() {
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr @$greeting

@@ -8,11 +8,15 @@ main :: fn() {
 }
 ¬
 ; nerd llvm-ir 0
-@$base = global i32 0
+; generated from HIR
+
+@$base = internal global i32 0
+
 define void @m0.init() {
   store i32 40, ptr @$base
   ret void
 }
+
 define i32 @fn.0() {
   %t0 = load i32, ptr @$base
   %t1 = add i32 %t0, 1
@@ -25,4 +29,6 @@ define i32 @fn.0() {
   %t4 = add i32 %t2, %t3
   ret i32 %t4
 }
+
 @$main = alias i32 (), ptr @fn.0
+

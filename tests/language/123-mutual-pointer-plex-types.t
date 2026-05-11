@@ -38,8 +38,8 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$left = global { i32, ptr } zeroinitializer
-@$right = global { i32, ptr } zeroinitializer
+@$left = internal global { i32, ptr } zeroinitializer
+@$right = internal global { i32, ptr } zeroinitializer
 
 define void @m0.init() {
   %t0 = insertvalue { i32, ptr } poison, i32 1, 0

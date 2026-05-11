@@ -87,5 +87,5 @@ on.end.0:
   ret i32 %t4
 }
 
-@$wrap = alias ptr (), ptr @fn.0
+@$wrap = internal alias ptr (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.3

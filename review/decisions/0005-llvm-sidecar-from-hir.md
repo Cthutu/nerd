@@ -37,12 +37,12 @@ The first emitter writes textual `.ll` from root-module HIR and covers:
 - Imported function declarations from HIR import bindings.
 - FFI extern records, including the source library name needed for backend link
   flags.
-- Export metadata comments from HIR export records.
+- LLVM linkage decisions from HIR export records.
 
 Function lowering must preserve the HIR entity/binding split. A function
 entity is always emitted with a generated name. A Nerd binding never changes
-the entity's symbol; it emits a target-level alias, export, or metadata record
-that points at the generated entity:
+the entity's symbol; it emits a target-level alias or linkage record that
+points at the generated entity:
 
 ```llvm
 define i32 @fn.0() {
@@ -99,10 +99,15 @@ flags without consulting the old IR tables. The legacy IR and C generator have
 been removed from the build graph, and command tests now exercise the default
 LLVM executable path directly.
 
+HIR export records now drive LLVM linkage instead of comments. Non-exported
+Nerd-visible function aliases and globals are emitted with internal linkage;
+exported aliases/globals keep external linkage. Exported FFI bindings whose
+Nerd binding differs from the foreign C symbol emit a small external Nerd
+wrapper that calls the C declaration.
+
 ## Follow-up
 
-1. Replace export comments with concrete LLVM linkage/alias decisions.
-2. Consider changing the embedded runtime bridge artifact from textual LLVM IR
+1. Consider changing the embedded runtime bridge artifact from textual LLVM IR
    to bitcode once we have timing data.
-3. Continue replacing historical IR/C wording in design notes when those notes
+2. Continue replacing historical IR/C wording in design notes when those notes
    are edited for current work.

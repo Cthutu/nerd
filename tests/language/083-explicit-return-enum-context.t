@@ -306,7 +306,7 @@ define i32 @fn.3() {
   ret i32 0
 }
 
-@$direction_from_word = alias { i64, i64 } ({ ptr, i64 }), ptr @fn.0
-@$default_direction = alias { i64, i64 } (), ptr @fn.1
-@$direction_name = alias { ptr, i64 } ({ i64, i64 }), ptr @fn.2
+@$direction_from_word = internal alias { i64, i64 } ({ ptr, i64 }), ptr @fn.0
+@$default_direction = internal alias { i64, i64 } (), ptr @fn.1
+@$direction_name = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3

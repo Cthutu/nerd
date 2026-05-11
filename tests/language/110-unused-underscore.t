@@ -58,6 +58,6 @@ define i32 @fn.2() {
   ret i32 %t2
 }
 
-@$helper = alias i32 (i32, i32, i32), ptr @fn.0
-@$value = alias i32 (), ptr @fn.1
+@$helper = internal alias i32 (i32, i32, i32), ptr @fn.0
+@$value = internal alias i32 (), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

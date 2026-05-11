@@ -149,5 +149,5 @@ define void @fn.2() {
   ret void
 }
 
-@$lowercase_first = alias i8 ({ ptr, i64 }), ptr @fn.0
+@$lowercase_first = internal alias i8 ({ ptr, i64 }), ptr @fn.0
 @$main = alias void (), ptr @fn.2

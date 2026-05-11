@@ -186,7 +186,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-@$labels = global [12 x { ptr, i64 }] zeroinitializer
+@$labels = internal global [12 x { ptr, i64 }] zeroinitializer
 
 define void @m0.init() {
   %t0 = insertvalue [12 x { ptr, i64 }] poison, { ptr, i64 } { ptr @.str.m0.0, i64 1 }, 0
@@ -387,6 +387,6 @@ on.end.14:
   ret i32 %t24
 }
 
-@$describe_direction = alias { ptr, i64 } ({ i64, i64 }), ptr @fn.0
-@$describe_token = alias { ptr, i64 } ({ i64, i64 }), ptr @fn.1
+@$describe_direction = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.0
+@$describe_token = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

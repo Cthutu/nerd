@@ -9131,6 +9131,36 @@ internal bool llvm_hir_has_globals(const Hir* hir)
     return false;
 }
 
+internal bool llvm_hir_binding_is_exported(const Hir* hir, u32 binding_index)
+{
+    for (u32 i = 0; i < array_count(hir->exports); ++i) {
+        if (hir->exports[i].binding_index == binding_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_symbol_is_main(const Lexer* lexer, u32 symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return false;
+    }
+    return string_eq(lex_symbol(lexer, symbol_handle), s("main"));
+}
+
+internal u32 llvm_hir_value_binding_index(const Hir* hir, u32 value_index)
+{
+    for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        const HirBinding* binding = &hir->bindings[i];
+        if (binding->kind == HIR_BINDING_Value &&
+            binding->target_index == value_index) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
 internal void llvm_render_global_values(StringBuilder* sb,
                                         const Hir*     hir,
                                         const Lexer*   lexer,
@@ -9148,8 +9178,11 @@ internal void llvm_render_global_values(StringBuilder* sb,
             continue;
         }
 
+        u32  binding_index = llvm_hir_value_binding_index(hir, i);
+        bool exported      = binding_index != U32_MAX &&
+                             llvm_hir_binding_is_exported(hir, binding_index);
         llvm_append_symbol_name(sb, lex_symbol(lexer, symbol_handle));
-        sb_append_cstr(sb, " = global ");
+        sb_append_cstr(sb, exported ? " = global " : " = internal global ");
         llvm_append_type(sb, sema, value->type_index);
         sb_append_cstr(sb, " ");
         llvm_append_zero_value(sb, sema, value->type_index);
@@ -9298,7 +9331,9 @@ internal void llvm_render_binding_alias(StringBuilder*    sb,
                                         const Hir*        hir,
                                         const Lexer*      lexer,
                                         const Sema*       sema,
-                                        const HirBinding* binding)
+                                        const HirBinding* binding,
+                                        bool              exported,
+                                        bool              entry_point)
 {
     if (binding->kind != HIR_BINDING_Function ||
         binding->target_index >= array_count(hir->functions)) {
@@ -9320,11 +9355,102 @@ internal void llvm_render_binding_alias(StringBuilder*    sb,
     }
 
     llvm_append_symbol_name(sb, lex_symbol(lexer, binding->symbol_handle));
-    sb_append_cstr(sb, " = alias ");
+    sb_append_cstr(
+        sb, exported || entry_point ? " = alias " : " = internal alias ");
     llvm_append_function_type(sb, sema, function->type_index);
     sb_append_cstr(sb, ", ptr ");
     llvm_append_function_name(sb, hir, lexer, binding->target_index);
     sb_append_char(sb, '\n');
+}
+
+internal void llvm_render_ffi_export_wrapper(StringBuilder* sb,
+                                             const Lexer*   lexer,
+                                             const Sema*    sema,
+                                             u32            nerd_symbol_handle,
+                                             u32            ffi_symbol_handle,
+                                             u32            type_index)
+{
+    if (nerd_symbol_handle == U32_MAX || ffi_symbol_handle == U32_MAX ||
+        type_index >= array_count(sema->types) ||
+        sema->types[type_index].kind != STK_Function) {
+        return;
+    }
+
+    u32 return_type = llvm_function_return_type(sema, type_index);
+    sb_append_cstr(sb, "define ");
+    llvm_append_type(sb, sema, return_type);
+    sb_append_char(sb, ' ');
+    llvm_append_symbol_name(sb, lex_symbol(lexer, nerd_symbol_handle));
+    sb_append_char(sb, '(');
+    u32 param_count = llvm_function_param_count(sema, type_index);
+    for (u32 i = 0; i < param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        llvm_append_type(
+            sb, sema, llvm_function_param_type(sema, type_index, i));
+        sb_format(sb, " %%p%u", i);
+    }
+    sb_append_cstr(sb, ") {\n  ");
+    if (!llvm_type_is_void(sema, return_type)) {
+        sb_append_cstr(sb, "%t0 = ");
+    }
+    sb_append_cstr(sb, "call ");
+    llvm_append_type(sb, sema, return_type);
+    sb_append_char(sb, ' ');
+    llvm_append_c_symbol_name(sb, lex_symbol(lexer, ffi_symbol_handle));
+    sb_append_char(sb, '(');
+    for (u32 i = 0; i < param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        llvm_append_type(
+            sb, sema, llvm_function_param_type(sema, type_index, i));
+        sb_format(sb, " %%p%u", i);
+    }
+    sb_append_cstr(sb, ")\n");
+    if (llvm_type_is_void(sema, return_type)) {
+        sb_append_cstr(sb, "  ret void\n}\n");
+        return;
+    }
+    sb_append_cstr(sb, "  ret ");
+    llvm_append_type(sb, sema, return_type);
+    sb_append_cstr(sb, " %t0\n}\n");
+}
+
+internal void llvm_render_export_wrapper(StringBuilder*    sb,
+                                         const Hir*        hir,
+                                         const Lexer*      lexer,
+                                         const Sema*       sema,
+                                         const HirBinding* binding,
+                                         bool              exported)
+{
+    if (!exported) {
+        return;
+    }
+    if (binding->kind == HIR_BINDING_Function &&
+        binding->target_index < array_count(hir->functions)) {
+        const HirFunction* function = &hir->functions[binding->target_index];
+        if (function->kind == HIR_FUNCTION_Ffi) {
+            llvm_render_ffi_export_wrapper(sb,
+                                           lexer,
+                                           sema,
+                                           binding->symbol_handle,
+                                           function->ffi_symbol_handle,
+                                           function->type_index);
+        }
+        return;
+    }
+    if (binding->kind == HIR_BINDING_Import &&
+        binding->target_index < array_count(hir->imports)) {
+        const HirImport* import = &hir->imports[binding->target_index];
+        llvm_render_ffi_export_wrapper(sb,
+                                       lexer,
+                                       sema,
+                                       binding->symbol_handle,
+                                       import->ffi_symbol_handle,
+                                       import->type_index);
+    }
 }
 
 string llvm_render_hir(const Hir*   hir,
@@ -9412,21 +9538,15 @@ string llvm_render_hir(const Hir*   hir,
     }
 
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        const HirBinding* binding  = &hir->bindings[i];
+        bool              exported = llvm_hir_binding_is_exported(hir, i);
+        bool entry_point = llvm_symbol_is_main(lexer, binding->symbol_handle);
         llvm_render_binding_alias(
-            &sb, hir, lexer, render_sema, &hir->bindings[i]);
+            &sb, hir, lexer, render_sema, binding, exported, entry_point);
+        llvm_render_export_wrapper(
+            &sb, hir, lexer, render_sema, binding, exported);
     }
     if (array_count(hir->bindings) > 0) {
-        sb_append_char(&sb, '\n');
-    }
-
-    for (u32 i = 0; i < array_count(hir->exports); ++i) {
-        const HirExport* export = &hir->exports[i];
-        if (export->binding_index >= array_count(hir->bindings)) {
-            continue;
-        }
-        const HirBinding* binding = &hir->bindings[export->binding_index];
-        sb_append_cstr(&sb, "; export ");
-        sb_append_string(&sb, lex_symbol(lexer, binding->symbol_handle));
         sb_append_char(&sb, '\n');
     }
 

@@ -84,5 +84,5 @@ define i32 @fn.1() {
   ret i32 %t21
 }
 
-@$take_cell = alias i32 ({ [4 x i32] }), ptr @fn.0
+@$take_cell = internal alias i32 ({ [4 x i32] }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

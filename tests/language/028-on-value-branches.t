@@ -151,5 +151,5 @@ define i32 @fn.1() {
   ret i32 %t15
 }
 
-@$test_branch = alias i32 (i32), ptr @fn.0
+@$test_branch = internal alias i32 (i32), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

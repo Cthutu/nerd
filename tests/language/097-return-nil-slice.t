@@ -97,5 +97,5 @@ on.end.2:
   ret i32 0
 }
 
-@$make = alias { ptr, i64 } (i1), ptr @fn.0
+@$make = internal alias { ptr, i64 } (i1), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

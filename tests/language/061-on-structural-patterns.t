@@ -366,7 +366,7 @@ define i32 @fn.3() {
   ret i32 0
 }
 
-@$score_pair = alias i32 ({ i32, i32 }), ptr @fn.0
-@$score_point = alias i32 ({ i32, i32, { ptr, i64 } }), ptr @fn.1
-@$name_of = alias { ptr, i64 } ({ i32, i32, { ptr, i64 } }), ptr @fn.2
+@$score_pair = internal alias i32 ({ i32, i32 }), ptr @fn.0
+@$score_point = internal alias i32 ({ i32, i32, { ptr, i64 } }), ptr @fn.1
+@$name_of = internal alias { ptr, i64 } ({ i32, i32, { ptr, i64 } }), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3

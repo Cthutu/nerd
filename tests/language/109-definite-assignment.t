@@ -103,6 +103,6 @@ define i32 @fn.2() {
   ret i32 %t4
 }
 
-@$choose_with_else = alias i32 (), ptr @fn.0
-@$choose_bool = alias i32 (i1), ptr @fn.1
+@$choose_with_else = internal alias i32 (), ptr @fn.0
+@$choose_bool = internal alias i32 (i1), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

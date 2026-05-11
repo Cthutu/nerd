@@ -41,7 +41,8 @@ define i32 @fn.3() {
   ret i32 %t2
 }
 
-@$addr = alias ptr (i32), ptr @fn.0
-@$read = alias i32 (ptr), ptr @fn.1
-@$first = alias i32 ([2 x i32]), ptr @fn.2
+@$addr = internal alias ptr (i32), ptr @fn.0
+@$read = internal alias i32 (ptr), ptr @fn.1
+@$first = internal alias i32 ([2 x i32]), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3
+

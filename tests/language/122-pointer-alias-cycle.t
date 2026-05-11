@@ -37,9 +37,22 @@ func fn.0() -> i32 {
 ; generated from HIR
 
 @.slice.literal.m0.0 = private global [2 x { i32, ptr }] zeroinitializer
-@$nodes = global { ptr, i64 } zeroinitializer
+@$nodes = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
+  %t0 = getelementptr inbounds { i32, ptr }, ptr @.slice.literal.m0.0, i32 1
+  %t1 = insertvalue { i32, ptr } poison, i32 1, 0
+  %t2 = insertvalue { i32, ptr } %t1, ptr %t0, 1
+  %t3 = getelementptr inbounds { i32, ptr }, ptr @.slice.literal.m0.0, i32 0
+  %t4 = insertvalue { i32, ptr } poison, i32 2, 0
+  %t5 = insertvalue { i32, ptr } %t4, ptr %t3, 1
+  %t6 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t2, 0
+  %t7 = insertvalue [2 x { i32, ptr }] %t6, { i32, ptr } %t5, 1
+  store [2 x { i32, ptr }] %t7, ptr @.slice.literal.m0.0
+  %t8 = getelementptr inbounds [2 x { i32, ptr }], ptr @.slice.literal.m0.0, i64 0, i64 0
+  %t9 = insertvalue { ptr, i64 } poison, ptr %t8, 0
+  %t10 = insertvalue { ptr, i64 } %t9, i64 2, 1
+  store { ptr, i64 } %t10, ptr @$nodes
   ret void
 }
 

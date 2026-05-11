@@ -20,7 +20,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$adder = global ptr null
+@$adder = internal global ptr null
 
 define void @m0.init() {
   store ptr @fn.0, ptr @$adder

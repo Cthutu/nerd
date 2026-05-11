@@ -1256,5 +1256,5 @@ on.end.133:
   ret i32 0
 }
 
-@$make_words = alias ptr (), ptr @fn.0
+@$make_words = internal alias ptr (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

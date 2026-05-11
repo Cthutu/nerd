@@ -262,6 +262,6 @@ define i32 @fn.2() {
   ret i32 %t32
 }
 
-@$classify = alias i32 ({ ptr, i64 }), ptr @fn.0
-@$label = alias { ptr, i64 } ({ ptr, i64 }), ptr @fn.1
+@$classify = internal alias i32 ({ ptr, i64 }), ptr @fn.0
+@$label = internal alias { ptr, i64 } ({ ptr, i64 }), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

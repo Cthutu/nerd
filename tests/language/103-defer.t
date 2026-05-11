@@ -255,5 +255,5 @@ for.end.3:
   ret i32 %t46
 }
 
-@$cleanup_return = alias i32 (), ptr @fn.0
+@$cleanup_return = internal alias i32 (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

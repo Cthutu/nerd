@@ -171,5 +171,5 @@ define i32 @fn.1() {
   ret i32 %t34
 }
 
-@$helper = alias i32 (), ptr @fn.0
+@$helper = internal alias i32 (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

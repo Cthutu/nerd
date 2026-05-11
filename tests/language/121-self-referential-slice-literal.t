@@ -30,7 +30,7 @@ func fn.0() -> i32 {
 ; generated from HIR
 
 @.slice.literal.m0.0 = private global [2 x { i32, ptr }] zeroinitializer
-@$nodes = global { ptr, i64 } zeroinitializer
+@$nodes = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
   %t0 = getelementptr inbounds { i32, ptr }, ptr @.slice.literal.m0.0, i32 1

@@ -318,7 +318,7 @@ define i32 @fn.3() {
   ret i32 %t41
 }
 
-@$score = alias i32 (i32), ptr @fn.0
-@$describe = alias { ptr, i64 } (i32), ptr @fn.1
-@$not_five = alias i32 (i32), ptr @fn.2
+@$score = internal alias i32 (i32), ptr @fn.0
+@$describe = internal alias { ptr, i64 } (i32), ptr @fn.1
+@$not_five = internal alias i32 (i32), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3

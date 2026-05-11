@@ -103,8 +103,8 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-@$half = global float 0.000000e+00
-@$limit = global double 0.000000e+00
+@$half = internal global float 0.000000e+00
+@$limit = internal global double 0.000000e+00
 
 define void @m0.init() {
   store float 0x3FE0000000000000, ptr @$half

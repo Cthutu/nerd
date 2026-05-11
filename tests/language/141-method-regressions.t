@@ -150,7 +150,7 @@ define i32 @fn.3() {
   ret i32 0
 }
 
-@$__impl_7_area = alias i32 ({ i32, i32 }), ptr @fn.0
-@$__impl_7_grow = alias void (ptr, i32), ptr @fn.1
-@$use_methods = alias i32 (ptr), ptr @fn.2
+@$__impl_7_area = internal alias i32 ({ i32, i32 }), ptr @fn.0
+@$__impl_7_grow = internal alias void (ptr, i32), ptr @fn.1
+@$use_methods = internal alias i32 (ptr), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3

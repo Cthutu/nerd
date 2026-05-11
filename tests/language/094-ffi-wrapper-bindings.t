@@ -40,5 +40,5 @@ define i32 @fn.2() {
   ret i32 0
 }
 
-@$realloc = alias ptr (ptr, i64), ptr @fn.1
+@$realloc = internal alias ptr (ptr, i64), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

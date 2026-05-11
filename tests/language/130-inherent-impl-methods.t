@@ -146,6 +146,6 @@ define void @fn.2() {
   ret void
 }
 
-@$__impl_8_inc = alias void (ptr, i32), ptr @fn.0
-@$__impl_8_get = alias i32 ({ i32 }), ptr @fn.1
+@$__impl_8_inc = internal alias void (ptr, i32), ptr @fn.0
+@$__impl_8_get = internal alias i32 ({ i32 }), ptr @fn.1
 @$main = alias void (), ptr @fn.2

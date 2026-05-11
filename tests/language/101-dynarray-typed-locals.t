@@ -416,5 +416,5 @@ on.end.7:
   ret i32 0
 }
 
-@$split = alias ptr ({ ptr, i64 }, { ptr, i64 }), ptr @fn.0
+@$split = internal alias ptr ({ ptr, i64 }, { ptr, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

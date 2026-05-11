@@ -178,5 +178,5 @@ define void @fn.1() {
   ret void
 }
 
-@$score = alias i32 (i32), ptr @fn.0
+@$score = internal alias i32 (i32), ptr @fn.0
 @$main = alias void (), ptr @fn.1

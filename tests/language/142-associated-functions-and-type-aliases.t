@@ -47,7 +47,7 @@ inst func fn.2(self: IntBox) -> usize {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$global_box = global { i32 } zeroinitializer
+@$global_box = internal global { i32 } zeroinitializer
 
 define void @m0.init() {
   %t0 = call { i32 } @fn.1(i32 40)

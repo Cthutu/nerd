@@ -25,7 +25,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$enabled = global i1 0
+@$enabled = internal global i1 0
 
 define void @m0.init() {
   store i1 1, ptr @$enabled

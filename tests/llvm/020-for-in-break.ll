@@ -11,6 +11,9 @@ main :: fn() -> i32 {
     return increment_first(values[..])
 }
 ¬
+; nerd llvm-ir 0
+; generated from HIR
+
 define i32 @fn.0({ ptr, i64 } %values) {
   %t0 = extractvalue { ptr, i64 } %values, 0
   %t1 = extractvalue { ptr, i64 } %values, 1
@@ -37,6 +40,7 @@ for.in.end.2:
   %t12 = load i32, ptr %t11
   ret i32 %t12
 }
+
 define i32 @fn.1() {
   %t0 = insertvalue [2 x i32] poison, i32 1, 0
   %t1 = insertvalue [2 x i32] %t0, i32 2, 1
@@ -48,5 +52,7 @@ define i32 @fn.1() {
   %t5 = call i32 @fn.0({ ptr, i64 } %t4)
   ret i32 %t5
 }
-@$increment_first = alias i32 ({ ptr, i64 }), ptr @fn.0
+
+@$increment_first = internal alias i32 ({ ptr, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
+

@@ -302,5 +302,5 @@ define i32 @fn.1() {
   ret i32 %t0
 }
 
-@$make = alias i32 (i64), ptr @fn.0
+@$make = internal alias i32 (i64), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

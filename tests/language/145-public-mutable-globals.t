@@ -39,5 +39,3 @@ define i32 @fn.0() {
 }
 
 @$main = alias i32 (), ptr @fn.0
-
-; export counter

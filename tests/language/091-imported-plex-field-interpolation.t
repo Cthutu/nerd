@@ -90,5 +90,5 @@ define void @fn.1() {
   ret void
 }
 
-@$consume = alias void ({ ptr, i64 }), ptr @fn.0
+@$consume = internal alias void ({ ptr, i64 }), ptr @fn.0
 @$main = alias void (), ptr @fn.1

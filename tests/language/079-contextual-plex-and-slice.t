@@ -203,5 +203,5 @@ define void @fn.1() {
   ret void
 }
 
-@$show_last = alias void ({ ptr, i64 }), ptr @fn.0
+@$show_last = internal alias void ({ ptr, i64 }), ptr @fn.0
 @$main = alias void (), ptr @fn.1

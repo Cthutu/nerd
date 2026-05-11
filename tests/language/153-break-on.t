@@ -302,5 +302,5 @@ on.end.17:
   ret i32 0
 }
 
-@$find = alias ptr (ptr, i64), ptr @fn.0
+@$find = internal alias ptr (ptr, i64), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

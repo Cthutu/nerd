@@ -219,5 +219,5 @@ define i32 @fn.1() {
   ret i32 %t59
 }
 
-@$make_pair = alias { i32, { ptr, i64 } } (i32, { ptr, i64 }), ptr @fn.0
+@$make_pair = internal alias { i32, { ptr, i64 } } (i32, { ptr, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

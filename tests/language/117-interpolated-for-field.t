@@ -83,7 +83,7 @@ declare { ptr, i64 } @to_string$f64(double)
 declare void @$prn({ ptr, i64 })
 
 @.slice.literal.m0.0 = private global [1 x { { ptr, i64 } }] zeroinitializer
-@$locs = global { ptr, i64 } zeroinitializer
+@$locs = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
   %t0 = insertvalue { { ptr, i64 } } poison, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 0

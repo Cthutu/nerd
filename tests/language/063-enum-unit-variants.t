@@ -226,6 +226,6 @@ define i32 @fn.2() {
   ret i32 0
 }
 
-@$score = alias i32 ({ i64, i64 }), ptr @fn.0
-@$pick_shadowed = alias { i64, i64 } (), ptr @fn.1
+@$score = internal alias i32 ({ i64, i64 }), ptr @fn.0
+@$pick_shadowed = internal alias { i64, i64 } (), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2

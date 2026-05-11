@@ -115,7 +115,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-@$count = global i32 0
+@$count = internal global i32 0
 
 define void @m0.init() {
   store i32 3, ptr @$count
@@ -201,5 +201,5 @@ on.end.0:
   ret void
 }
 
-@$check_escape = alias i1 ({ ptr, i64 }), ptr @fn.0
+@$check_escape = internal alias i1 ({ ptr, i64 }), ptr @fn.0
 @$main = alias void (), ptr @fn.1

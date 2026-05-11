@@ -90,7 +90,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-@$variable_value = global i32 0
+@$variable_value = internal global i32 0
 
 define void @m0.init() {
   %t0 = alloca i32, align 4
