@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //> use: core intern compiler timing table cli lsp object
 // clang-format off
-//> run: clang -S -emit-llvm -O0 -Xclang -disable-O0-optnone -std=gnu23 data/prelude.c -o _obj/llvm/prelude.ll
+//> run: python3 build/prelude.py -o _obj/llvm/prelude.ll
 // clang-format on
 
 #include <cli/cli.h>

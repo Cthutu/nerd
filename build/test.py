@@ -80,7 +80,21 @@ def normalize_repo_uris(text: str) -> str:
 
 
 def normalize_repo_paths(text: str) -> str:
-    return text.replace(ROOT.as_posix(), "__REPO__").replace(str(ROOT), "__REPO__")
+    return text.replace(ROOT.as_posix(), "__REPO__").replace(str(ROOT), "__REPO__").replace("\\", "/")
+
+
+def llvm_escaped_path(path: pathlib.Path) -> str:
+    return str(path).replace("\\", "\\5C")
+
+
+def normalize_assert_source_path_lengths(text: str) -> str:
+    pattern = r'(@\.assert\.source_path\.m\d+\.\d+ = .* constant )\[\d+ x i8\] c"([^"]*)\\00"'
+
+    def replace(match: re.Match[str]) -> str:
+        count = len(match.group(2)) + 1
+        return f'{match.group(1)}[{count} x i8] c"{match.group(2)}\\00"'
+
+    return re.sub(pattern, replace, text)
 
 
 def normalized_returncode(code: int) -> int:
@@ -269,6 +283,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
     input_variants = {
         str(input_path),
         str(input_path).replace("\\", "\\\\"),
+        llvm_escaped_path(input_path),
         input_path.as_posix(),
     }
 
@@ -284,9 +299,11 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     llvm_path = path.parent / f"_{path.stem}.ll"
     if expected_llvm.strip():
+        expected_llvm = normalize_assert_source_path_lengths(expected_llvm)
         actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
         for input_variant in input_variants:
             actual_llvm = actual_llvm.replace(input_variant, rel(path))
+        actual_llvm = normalize_assert_source_path_lengths(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:
@@ -315,9 +332,9 @@ def test_hir(path: pathlib.Path) -> list[Failure]:
         str(NERD),
         "build",
         "--hir",
+        str(input_path),
         "--output",
         str(output_root),
-        str(input_path),
     ])
 
     failures: list[Failure] = []
@@ -363,7 +380,19 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
     if proc.returncode != 0:
         failures.append(Failure(path, f"build failed with {proc.returncode}\n{proc.stderr}"))
     else:
+        input_variants = {
+            str(input_path),
+            str(input_path).replace("\\", "\\\\"),
+            llvm_escaped_path(input_path),
+            input_path.as_posix(),
+            f"/home/matt/nerd/{rel(input_path)}",
+        }
         actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
+        for input_variant in input_variants:
+            expected_llvm = expected_llvm.replace(input_variant, rel(input_path))
+            actual_llvm = actual_llvm.replace(input_variant, rel(input_path))
+        expected_llvm = normalize_assert_source_path_lengths(expected_llvm)
+        actual_llvm = normalize_assert_source_path_lengths(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:

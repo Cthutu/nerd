@@ -40,12 +40,17 @@ pub eprn :: fn (text: string) -> void {
 
 pub input :: fn (prompt: string) -> string {
     pr(prompt)
-    read_count := scanf(c"%255[^\n]", input_buf[..].data)
     ch := getchar()
+    input_len = 0
+    for ch != 10 && ch != -1 && input_len < 255 {
+        input_buf[input_len] = ch.as(u8)
+        input_len += 1
+        ch = getchar()
+    }
+    input_buf[input_len] = 0
+
     for ch != 10 && ch != -1 {
         ch = getchar()
     }
-
-    input_len := on read_count == 1 => strlen(input_buf[..].data) else 0
     return input_buf[0..input_len].as(string)
 }

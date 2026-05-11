@@ -71,10 +71,59 @@ internal bool lsp_string_starts_with(string value, cstr prefix)
     return memcmp(value.data, prefix_string.data, prefix_string.count) == 0;
 }
 
+internal string lsp_path_string_to_uri(Arena* arena, string path)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, "file://");
+
+#if OS_WINDOWS
+    if (path.count > 1 && path.data[0] == '/' && path.data[2] == ':') {
+        path.data += 1;
+        path.count -= 1;
+    }
+    if (path.count > 1 && path.data[1] == ':') {
+        sb_append_char(&sb, '/');
+    }
+#endif
+
+    for (usize i = 0; i < path.count; ++i) {
+        u8 ch = path.data[i];
+#if OS_WINDOWS
+        if (ch == '\\') {
+            sb_append_char(&sb, '/');
+            continue;
+        }
+#endif
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+            (ch >= '0' && ch <= '9') || ch == '/' || ch == '-' || ch == '_' ||
+            ch == '.' || ch == '~') {
+            sb_append_char(&sb, (char)ch);
+        } else {
+            sb_format(&sb, "%%%02X", ch);
+        }
+    }
+
+    return sb_to_string(&sb);
+}
+
 internal string lsp_normalise_diagnostic_uri(Arena* arena, string uri)
 {
-    if (lsp_string_starts_with(uri, "file://") ||
-        lsp_string_starts_with(uri, "<")) {
+    if (lsp_string_starts_with(uri, "<")) {
+        return uri;
+    }
+    if (lsp_string_starts_with(uri, "file://")) {
+#if OS_WINDOWS
+        for (usize i = 0; i < uri.count; ++i) {
+            if (uri.data[i] == '\\') {
+                string path = {
+                    .data  = uri.data + strlen("file://"),
+                    .count = uri.count - strlen("file://"),
+                };
+                return lsp_path_string_to_uri(arena, path);
+            }
+        }
+#endif
         return uri;
     }
 
@@ -87,16 +136,7 @@ internal string lsp_normalise_diagnostic_uri(Arena* arena, string uri)
         return uri;
     }
 
-    StringBuilder sb = {0};
-    sb_init(&sb, arena);
-    sb_append_cstr(&sb, "file://");
-#if OS_WINDOWS
-    if (uri.count > 1 && uri.data[1] == ':') {
-        sb_append_char(&sb, '/');
-    }
-#endif
-    sb_append_string(&sb, uri);
-    return sb_to_string(&sb);
+    return lsp_path_string_to_uri(arena, uri);
 }
 
 internal string lsp_diagnostic_uri(Arena*     arena,

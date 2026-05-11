@@ -27,11 +27,11 @@ format:
     python3 build/format.py
 
 test *args:
-    just build nerd
+    just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
 
 test-release *args:
-    just build-release nerd
+    just build-release nerd --skip-mod-sync
     python3 build/test.py {{args}}
 
 test-build:

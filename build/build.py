@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import filecmp
 import os
 import re
 import shlex
@@ -272,9 +273,16 @@ def sync_directory(source: Path, destination: Path) -> None:
             sync_directory(src_entry, dest_entry)
             continue
 
-        if (not dest_entry.exists() or
-                src_entry.stat().st_mtime > dest_entry.stat().st_mtime or
-                src_entry.stat().st_size != dest_entry.stat().st_size):
+        if (
+            not dest_entry.exists()
+            or (
+                (
+                    src_entry.stat().st_mtime > dest_entry.stat().st_mtime
+                    or src_entry.stat().st_size != dest_entry.stat().st_size
+                )
+                and not filecmp.cmp(src_entry, dest_entry, shallow=False)
+            )
+        ):
             shutil.copy2(src_entry, dest_entry)
 
 
@@ -290,6 +298,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("projects", nargs="*", help="Project names (omit to build all)")
     parser.add_argument(
         "-r", "--release", action="store_true", help="Build release profile"
+    )
+    parser.add_argument(
+        "--skip-mod-sync",
+        action="store_true",
+        help="Do not mirror mods/ into _bin/ after building",
     )
     return parser.parse_args(argv[1:])
 
@@ -715,7 +728,8 @@ def main(argv: list[str] | None = None) -> None:
         objects = [compiled[src] for src in sources]
         link_executable(objects, executable_path(project, profile))
 
-    sync_directory(MODS_DIR, BIN_DIR / "mods")
+    if not args.skip_mod_sync:
+        sync_directory(MODS_DIR, BIN_DIR / "mods")
 
     print(f"{prefix('skip', GREY)} {skipped_sources} source file(s) up to date")
     finish_bar = colour("=" * 48, GREEN)

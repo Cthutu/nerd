@@ -1194,6 +1194,13 @@ internal void llvm_append_function_signature(StringBuilder*     sb,
             }
         }
     }
+    if (sema != NULL && function->type_index < array_count(sema->types) &&
+        (sema->types[function->type_index].flags & STF_FunctionVarargs) != 0) {
+        if (function->param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
     sb_append_char(sb, ')');
 }
 
@@ -1210,6 +1217,13 @@ llvm_append_function_type(StringBuilder* sb, const Sema* sema, u32 type_index)
         }
         llvm_append_type(
             sb, sema, llvm_function_param_type(sema, type_index, i));
+    }
+    if (sema != NULL && type_index < array_count(sema->types) &&
+        (sema->types[type_index].flags & STF_FunctionVarargs) != 0) {
+        if (param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
 }
@@ -8760,6 +8774,7 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
         if (!default_value.ok) {
             return (LlvmValue){0};
         }
+        u32 store_label_index = ctx->next_label++;
         sb_format(ctx->sb,
                   "  " STRINGP " = load i64, ptr " STRINGP "\n"
                   "  " STRINGP " = icmp ult i64 " STRINGP ", " STRINGP "\n"
@@ -8779,9 +8794,9 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
                   STRINGV(cursor),
                   STRINGV(requested_i64),
                   STRINGV(more),
-                  ctx->next_label,
+                  store_label_index,
                   STRINGV(count_label),
-                  ctx->next_label++,
+                  store_label_index,
                   STRINGV(current_data),
                   STRINGV(data_ptr_ptr),
                   STRINGV(item_ptr),
