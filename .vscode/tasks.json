@@ -6,17 +6,7 @@
             "type": "process",
             "command": "just",
             "args": [
-                // "build"
-                // "test"
-                // "install"
-                "run",
-                "nerd",
-                "run",
-                // "build",
-                // "-v",
-                // "nerd-src/main.n"
-                // "examples/text-adventure/adv.n"
-                "examples/term/demo.n"
+                "test-install"
             ],
             "group": {
                 "kind": "build",

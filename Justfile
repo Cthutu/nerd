@@ -93,7 +93,12 @@ install:
     just package
     code --install-extension {{src_dir}}/{{vsix}} --force
 
+test-install:
+    just test
+    just install
+
 alias i := install
+alias ti := test-install
 
 do:
     just clean
