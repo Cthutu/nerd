@@ -167,7 +167,7 @@ Working rules for this review:
   - Walk manual chapters and ensure every source construct has either HIR
     lowering, an explicit unsupported diagnostic, or a tracked TODO.
 
-- [ ] Commit: strengthen anonymous entity and binding tests
+- [x] Commit: strengthen anonymous entity and binding tests
   - Functions, types, globals, imports, exports, and module-visible bindings
     should reflect the Nerd binding model:
     entities are nameless until explicitly bound.

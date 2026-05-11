@@ -1,0 +1,57 @@
+pub use test.folder_pub_use
+folder :: use test.folder_pub_use
+
+Answer :: 41
+Counter := 1
+Number :: i32
+Pair :: plex {
+    left i32
+    right i32
+}
+
+adder := fn(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+pub exported :: fn(pair: Pair) -> i32 {
+    return pair.left + pair.right + folder.local_answer()
+}
+
+main :: fn() -> i32 {
+    pair := Pair { left: 1, right: 2 }
+    return adder(Answer, Counter) + exported(pair) + child_answer()
+}
+¬
+hir 0
+module module.0(022-entity-bindings.input)
+import module.1(test.folder_pub_use)
+import import.0 local_answer from module.1(test.folder_pub_use).decl.0: fn () -> i32
+import import.1 child_answer from module.1(test.folder_pub_use).decl.1: fn () -> i32
+bind local_answer = import.0
+bind child_answer = import.1
+bind folder = module.1
+bind Answer = value.0
+bind Counter = value.1
+bind Number = type.0
+bind Pair = type.1
+bind adder = value.2
+bind exported = fn.1
+bind main = fn.2
+type type.0 = i32
+type type.1 = Pair
+const value.0: untyped integer = untyped integer 41
+global value.1: i32 = untyped integer 1
+global value.2: fn (i32, i32) -> i32 = fn (i32, i32) -> i32 fn.0
+func fn.0(a: i32, b: i32) -> i32 {
+  return i32 add(i32 local.0(a), i32 local.1(b))
+}
+func fn.1(pair: Pair) -> i32 {
+  return i32 add(i32 add(i32 field(Pair local.2(pair), left), i32 field(Pair local.2(pair), right)), i32 call fn () -> i32 field(module bind.2(folder), local_answer)())
+}
+func fn.2() -> i32 {
+  let pair: Pair = Pair plex(left: i32 1, right: i32 2)
+  return i32 add(i32 add(i32 call bind.7(adder)(i32 bind.3(Answer), i32 bind.4(Counter)), i32 call bind.8(exported)(Pair local.3(pair))), i32 call bind.1(child_answer)())
+}
+export bind.8(exported)
+export bind.0(local_answer)
+export bind.1(child_answer)
