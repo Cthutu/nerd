@@ -108,7 +108,7 @@ Working rules for this review:
   - Prefer focused command fixtures or a small internal test entry point that
     exercises `src/compiler/build/back/llvm_text.c`.
 
-- [ ] Commit: split runtime/init LLVM rendering out of backend orchestration
+- [x] Commit: split runtime/init LLVM rendering out of backend orchestration
   - Move generated epilogue wrapper and init wrapper helpers out of
     `back.c`.
   - Keep `back.c` responsible for artifact policy and process orchestration.
