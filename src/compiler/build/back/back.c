@@ -107,35 +107,40 @@ internal bool back_end_string_contains_cstr(string text, cstr needle)
     return false;
 }
 
+// The executable backend combines independently-rendered textual LLVM modules
+// into one clang input. Before concatenating, remove declarations already
+// satisfied by a definition or alias in another module. This is deliberately a
+// small top-level LLVM scanner, not a general LLVM parser.
 internal bool back_end_llvm_line_symbol(string line, string* out)
 {
-    usize at = U32_MAX;
+    usize at = line.count;
     for (usize i = 0; i < line.count; ++i) {
         if (line.data[i] == '@') {
             at = i;
             break;
         }
     }
-    if (at == U32_MAX) {
+    if (at == line.count) {
         return false;
     }
 
     usize end = at + 1;
     if (end < line.count && line.data[end] == '"') {
         usize quoted_start = end + 1;
-        end++;
-        while (end < line.count) {
-            if (line.data[end++] == '"') {
+        usize quoted_end   = line.count;
+        for (end = quoted_start; end < line.count; ++end) {
+            if (line.data[end] == '"') {
+                quoted_end = end;
                 break;
             }
         }
-        *out = (string){
-            .data  = line.data + quoted_start,
-            .count = end > quoted_start ? end - quoted_start - 1 : 0,
-        };
-        if (out->count == 0) {
+        if (quoted_end == line.count || quoted_end == quoted_start) {
             return false;
         }
+        *out = (string){
+            .data  = line.data + quoted_start,
+            .count = quoted_end - quoted_start,
+        };
         return true;
     } else {
         while (end < line.count && line.data[end] != '(' &&
@@ -163,6 +168,9 @@ internal bool back_end_llvm_line_defines_symbol(string line, string* out)
     if (back_end_string_starts_with_cstr(line, "define ")) {
         return back_end_llvm_line_symbol(line, out);
     }
+    // Covers top-level globals and aliases such as:
+    //   @"$main" = alias void (), ptr @fn.0
+    //   @.str.m0.0 = private unnamed_addr constant ...
     if (line.count > 0 && line.data[0] == '@' &&
         back_end_string_contains_cstr(line, " = ")) {
         return back_end_llvm_line_symbol(line, out);
@@ -216,6 +224,10 @@ internal void back_end_append_llvm_without_satisfied_declarations(
     Array(string) defined_symbols,
     Array(string) * declared_symbols)
 {
+    // Keep the first declaration for unresolved external symbols such as libc
+    // calls, but drop duplicate declarations and declarations for symbols this
+    // combined module defines. Clang rejects `declare @x` plus `define @x` in
+    // one textual module even though separate input files allowed that shape.
     usize line_start = 0;
     for (usize i = 0; i <= text.count; ++i) {
         if (i < text.count && text.data[i] != '\n') {
