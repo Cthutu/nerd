@@ -172,7 +172,7 @@ Working rules for this review:
     should reflect the Nerd binding model:
     entities are nameless until explicitly bound.
 
-- [ ] Commit: finish expression-valued control flow lowering
+- [x] Commit: finish expression-valued control flow lowering
   - Ensure `on`, `if`-like forms, loops, branches, early returns, and void
     expressions lower consistently.
   - LLVM should own phi construction where structured HIR branches produce a

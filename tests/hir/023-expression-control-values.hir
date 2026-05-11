@@ -1,0 +1,55 @@
+choose :: fn(value: i32) -> i32 {
+    fallback := $fallback {
+        break $fallback 30
+    }
+    return on value {
+        0 => 10
+        1 => 20
+        else => fallback
+    }
+}
+
+loop_value :: fn() -> i32 {
+    return for $loop {
+        break $loop on 1 == 1 => 7
+    }
+}
+
+main :: fn() -> i32 {
+    return choose(1) + loop_value()
+}
+¬
+hir 0
+bind choose = fn.0
+bind loop_value = fn.1
+bind main = fn.2
+func fn.0(value: i32) -> i32 {
+  let fallback: i32 = untyped integer block $fallback {
+    break $fallback untyped integer 30
+  }
+  return i32 on i32 local.0(value) {
+    value(i32 0) => {
+      expr i32 10
+    }
+    value(i32 1) => {
+      expr i32 20
+    }
+    else => {
+      expr i32 local.1(fallback)
+    }
+  }
+}
+func fn.1() -> i32 {
+  return i32 for condition $loop {
+    body {
+      expr void on bool equal(untyped integer 1, untyped integer 1) {
+    value(bool yes) => {
+      break $loop i32 7
+    }
+  }
+    }
+  }
+}
+func fn.2() -> i32 {
+  return i32 add(i32 call bind.0(choose)(i32 1), i32 call bind.1(loop_value)())
+}

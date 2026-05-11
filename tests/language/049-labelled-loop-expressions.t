@@ -187,64 +187,70 @@ for.cond.10:
 for.body.11:
   br label %for.end.13
 for.end.13:
+  %t16 = alloca i32, align 4
+  store i32 0, ptr %t16, align 4
   br label %for.cond.14
 for.cond.14:
   br label %for.body.15
 for.body.15:
-  br label %for.end.17
-for.end.17:
-  %t16 = phi i32 [7, %for.body.15]
-  br label %for.cond.18
-for.cond.18:
-  br label %for.body.19
-for.body.19:
-  br label %for.end.21
-for.end.21:
-  %t17 = phi i32 [11, %for.body.19]
-  %t18 = call i64 @string_builder_mark()
-  %t19 = alloca { ptr, i64 }
-  %t20 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t20
-  call void @to_string$string(ptr %t19, ptr %t20)
-  call void @string_builder_append_string(ptr %t19)
-  %t21 = load i32, ptr %local.2
+  store i32 7, ptr %t16, align 4
+  br label %for.end.18
+for.end.18:
+  %t17 = load i32, ptr %t16, align 4
+  %t18 = alloca i32, align 4
+  store i32 0, ptr %t18, align 4
+  br label %for.cond.19
+for.cond.19:
+  br label %for.body.20
+for.body.20:
+  store i32 11, ptr %t18, align 4
+  br label %for.end.23
+for.end.23:
+  %t19 = load i32, ptr %t18, align 4
+  %t20 = call i64 @string_builder_mark()
+  %t21 = alloca { ptr, i64 }
   %t22 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t22, i32 %t21)
-  call void @string_builder_append_string(ptr %t22)
-  %t23 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t23, i64 %t18)
-  %t24 = load { ptr, i64 }, ptr %t23
-  call void @$prn({ ptr, i64 } %t24)
-  %t25 = call i64 @string_builder_mark()
-  %t26 = alloca { ptr, i64 }
-  %t27 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.1, i64 8 }, ptr %t27
-  call void @to_string$string(ptr %t26, ptr %t27)
-  call void @string_builder_append_string(ptr %t26)
+  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t22
+  call void @to_string$string(ptr %t21, ptr %t22)
+  call void @string_builder_append_string(ptr %t21)
+  %t23 = load i32, ptr %local.2
+  %t24 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t24, i32 %t23)
+  call void @string_builder_append_string(ptr %t24)
+  %t25 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t25, i64 %t20)
+  %t26 = load { ptr, i64 }, ptr %t25
+  call void @$prn({ ptr, i64 } %t26)
+  %t27 = call i64 @string_builder_mark()
   %t28 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t28, i32 %t16)
-  call void @string_builder_append_string(ptr %t28)
   %t29 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t29, i64 %t25)
-  %t30 = load { ptr, i64 }, ptr %t29
-  call void @$prn({ ptr, i64 } %t30)
-  %t31 = call i64 @string_builder_mark()
-  %t32 = alloca { ptr, i64 }
-  %t33 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.2, i64 11 }, ptr %t33
-  call void @to_string$string(ptr %t32, ptr %t33)
-  call void @string_builder_append_string(ptr %t32)
+  store { ptr, i64 } { ptr @.str.m0.1, i64 8 }, ptr %t29
+  call void @to_string$string(ptr %t28, ptr %t29)
+  call void @string_builder_append_string(ptr %t28)
+  %t30 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t30, i32 %t17)
+  call void @string_builder_append_string(ptr %t30)
+  %t31 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t31, i64 %t27)
+  %t32 = load { ptr, i64 }, ptr %t31
+  call void @$prn({ ptr, i64 } %t32)
+  %t33 = call i64 @string_builder_mark()
   %t34 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t34, i32 %t17)
-  call void @string_builder_append_string(ptr %t34)
   %t35 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t35, i64 %t31)
-  %t36 = load { ptr, i64 }, ptr %t35
-  call void @$prn({ ptr, i64 } %t36)
-  %t37 = load i32, ptr %local.2
-  %t38 = add i32 %t37, %t16
-  %t39 = add i32 %t38, %t17
-  ret i32 %t39
+  store { ptr, i64 } { ptr @.str.m0.2, i64 11 }, ptr %t35
+  call void @to_string$string(ptr %t34, ptr %t35)
+  call void @string_builder_append_string(ptr %t34)
+  %t36 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t36, i32 %t19)
+  call void @string_builder_append_string(ptr %t36)
+  %t37 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t37, i64 %t33)
+  %t38 = load { ptr, i64 }, ptr %t37
+  call void @$prn({ ptr, i64 } %t38)
+  %t39 = load i32, ptr %local.2
+  %t40 = add i32 %t39, %t17
+  %t41 = add i32 %t40, %t19
+  ret i32 %t41
 }
 
 @$main = alias i32 (), ptr @fn.0
