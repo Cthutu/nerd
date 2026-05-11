@@ -79,7 +79,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = call i64 @string_builder_mark()

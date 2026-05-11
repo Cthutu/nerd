@@ -81,7 +81,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   %local.0 = alloca i32
   store i32 0, ptr %local.0
   br label %for.cond.0

@@ -68,7 +68,7 @@ declare { ptr, i64 } @$input({ ptr, i64 })
 
 declare i32 @abs(i32)
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = sub i32 0, 7
   %t1 = call i32 @abs(i32 %t0)
   %t2 = call i64 @string_builder_mark()

@@ -34,7 +34,7 @@ declare i32 @abs(i32)
 
 declare i64 @strlen(ptr)
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   %t0 = sub i32 0, 7
   %t1 = call i32 @abs(i32 %t0)
   %t2 = call i64 @strlen(ptr @.str.m0.1)

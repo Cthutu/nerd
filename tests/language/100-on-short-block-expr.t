@@ -68,7 +68,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-define ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
+define internal ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
   %local.2 = alloca ptr
   store ptr null, ptr %local.2
   %t0 = extractvalue { ptr, i64 } %sep, 1
@@ -121,7 +121,7 @@ on.end.0:
   ret ptr %t26
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 4 }, { ptr, i64 } { ptr @.str.m0.1, i64 0 })
   %local.3 = alloca ptr
   store ptr %t0, ptr %local.3

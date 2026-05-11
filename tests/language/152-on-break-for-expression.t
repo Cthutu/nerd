@@ -88,7 +88,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-define ptr @fn.0(ptr %system, i64 %handle) {
+define internal ptr @fn.0(ptr %system, i64 %handle) {
   %t0 = load { ptr }, ptr %system
   %t1 = extractvalue { ptr } %t0, 0
   %t4 = alloca ptr
@@ -146,7 +146,7 @@ for.in.end.6:
   ret ptr %t24
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call ptr @malloc(i64 24)
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1

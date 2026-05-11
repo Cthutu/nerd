@@ -30,7 +30,7 @@ func fn.0() -> i32 {
 declare i32 @m1.fn.0()
 declare i32 @m2.fn.0()
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = call i32 @m1.fn.0()
   %t1 = call i32 @m2.fn.0()
   %t2 = add i32 %t0, %t1

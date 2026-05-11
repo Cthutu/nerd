@@ -27,7 +27,7 @@ func fn.0() -> i32 {
 
 declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = icmp slt i32 2, 3
   call void @nerd_assert(i1 %t0, ptr @.assert.source_path.m0.0, i32 3, { ptr, i64 } { ptr @.assert.default.m0, i64 16 })
   %t1 = icmp eq i32 4, 4

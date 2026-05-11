@@ -51,7 +51,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = getelementptr inbounds { i32, ptr }, ptr @$left, i64 0, i32 1
   store ptr @$right, ptr %t0
   %t1 = load { i32, ptr }, ptr @$left

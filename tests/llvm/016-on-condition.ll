@@ -9,7 +9,7 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = icmp eq i32 2, 2
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:

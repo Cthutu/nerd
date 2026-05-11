@@ -4,8 +4,12 @@ main :: fn() -> i32 {
     return left + right
 }
 ¬
-define i32 @fn.0() {
+; nerd llvm-ir 0
+; generated from HIR
+
+define internal i32 @fn.0() {
   %t0 = add i32 20, 22
   ret i32 %t0
 }
+
 @$main = alias i32 (), ptr @fn.0

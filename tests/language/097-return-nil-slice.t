@@ -49,7 +49,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define { ptr, i64 } @fn.0(i1 %ok) {
+define internal { ptr, i64 } @fn.0(i1 %ok) {
   %t0 = icmp eq i1 %ok, 0
   %t1 = icmp eq i1 %t0, 1
   br i1 %t1, label %on.body.1, label %on.end.0
@@ -66,7 +66,7 @@ on.end.0:
   ret { ptr, i64 } %t6
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call { ptr, i64 } @fn.0(i1 0)
   %t1 = call { ptr, i64 } @fn.0(i1 1)
   %t3 = extractvalue { ptr, i64 } %t0, 0

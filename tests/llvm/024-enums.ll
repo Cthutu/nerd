@@ -21,7 +21,7 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0({ i64, i64 } %choice) {
+define internal i32 @fn.0({ i64, i64 } %choice) {
   %t0 = extractvalue { i64, i64 } %choice, 0
   %t1 = icmp eq i64 %t0, 0
   br i1 %t1, label %on.body.1, label %on.next.2
@@ -68,7 +68,7 @@ on.end.0:
   ret i32 %t17
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = insertvalue { i32, i32 } poison, i32 7, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 4, 1
   %t3 = alloca i64
@@ -88,4 +88,3 @@ define i32 @fn.1() {
 
 @$describe_choice = internal alias i32 ({ i64, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
-

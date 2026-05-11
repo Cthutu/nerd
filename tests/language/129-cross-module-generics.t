@@ -95,7 +95,7 @@ declare void @m2.fn.0(ptr %stack, i32 %elem)
 declare i32 @m2.fn.1(ptr %stack)
 declare { { ptr, i64 } } @m2.fn.2({ ptr, i64 } %value)
 
-define void @fn.0() {
+define internal void @fn.0() {
   %local.0 = alloca { ptr }
   store { ptr } zeroinitializer, ptr %local.0
   call void @m2.fn.0(ptr %local.0, i32 42)

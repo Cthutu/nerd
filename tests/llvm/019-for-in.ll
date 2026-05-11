@@ -14,7 +14,7 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0({ ptr, i64 } %values) {
+define internal i32 @fn.0({ ptr, i64 } %values) {
   %local.1 = alloca i32
   store i32 0, ptr %local.1
   %t0 = extractvalue { ptr, i64 } %values, 0
@@ -47,7 +47,7 @@ for.in.end.2:
   ret i32 %t14
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = insertvalue [2 x i32] poison, i32 1, 0
   %t1 = insertvalue [2 x i32] %t0, i32 2, 1
   %local.4 = alloca [2 x i32]
@@ -61,4 +61,3 @@ define i32 @fn.1() {
 
 @$sum_for_in = internal alias i32 ({ ptr, i64 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
-

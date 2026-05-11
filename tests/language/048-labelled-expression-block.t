@@ -109,7 +109,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = alloca i32, align 4
   store i32 0, ptr %t0, align 4
   %t1 = add i32 41, 1

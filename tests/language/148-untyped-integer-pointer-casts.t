@@ -42,7 +42,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = inttoptr i32 4096 to ptr
   %t1 = inttoptr i32 8192 to ptr
   %t2 = icmp ne ptr null, null

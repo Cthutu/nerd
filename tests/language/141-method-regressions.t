@@ -107,14 +107,14 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0({ i32, i32 } %self) {
+define internal i32 @fn.0({ i32, i32 } %self) {
   %t0 = extractvalue { i32, i32 } %self, 0
   %t1 = extractvalue { i32, i32 } %self, 1
   %t2 = mul i32 %t0, %t1
   ret i32 %t2
 }
 
-define void @fn.1(ptr %self, i32 %amount) {
+define internal void @fn.1(ptr %self, i32 %amount) {
   %t0 = load { i32, i32 }, ptr %self
   %t1 = extractvalue { i32, i32 } %t0, 0
   %t2 = add i32 %t1, %amount
@@ -128,14 +128,14 @@ define void @fn.1(ptr %self, i32 %amount) {
   ret void
 }
 
-define i32 @fn.2(ptr %rect) {
+define internal i32 @fn.2(ptr %rect) {
   call void @fn.1(ptr %rect, i32 2)
   %t0 = load { i32, i32 }, ptr %rect
   %t1 = call i32 @fn.0({ i32, i32 } %t0)
   ret i32 %t1
 }
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %local.4 = alloca { i32, i32 }
   store { i32, i32 } zeroinitializer, ptr %local.4
   call void @fn.1(ptr %local.4, i32 3)

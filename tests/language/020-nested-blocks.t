@@ -76,7 +76,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %local.1 = alloca i32
   store i32 32, ptr %local.1
   %t0 = load i32, ptr %local.1

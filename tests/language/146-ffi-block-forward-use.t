@@ -52,7 +52,7 @@ func fn.3() -> i32 {
 
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 
-define ptr @fn.0() {
+define internal ptr @fn.0() {
   %t0 = call ptr @malloc(i64 1)
   ret ptr %t0
 }
@@ -61,7 +61,7 @@ declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %t0 = call ptr @fn.0()
   %t1 = icmp eq ptr %t0, null
   br i1 %t1, label %on.body.1, label %on.next.2

@@ -24,7 +24,7 @@ func fn.0() -> i32 {
 
 declare i32 @abs(i32)
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = sub i32 0, 9
   %t1 = call i32 @abs(i32 %t0)
   ret i32 %t1

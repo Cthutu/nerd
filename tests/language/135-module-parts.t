@@ -30,7 +30,7 @@ func fn.0() -> i32 {
 declare { i32 } @$make_thing(i32)
 declare i32 @$part_answer()
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = call i32 @$part_answer()
   ret i32 %t0
 }

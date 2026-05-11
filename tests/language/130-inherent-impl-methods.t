@@ -101,7 +101,7 @@ declare void @$prn({ ptr, i64 })
 declare void @m2.fn.0(ptr %self, i32 %elem)
 declare i32 @m2.fn.1(ptr %self)
 
-define void @fn.0(ptr %self, i32 %amount) {
+define internal void @fn.0(ptr %self, i32 %amount) {
   %t0 = load { i32 }, ptr %self
   %t1 = extractvalue { i32 } %t0, 0
   %t2 = add i32 %t1, %amount
@@ -110,12 +110,12 @@ define void @fn.0(ptr %self, i32 %amount) {
   ret void
 }
 
-define i32 @fn.1({ i32 } %self) {
+define internal i32 @fn.1({ i32 } %self) {
   %t0 = extractvalue { i32 } %self, 0
   ret i32 %t0
 }
 
-define void @fn.2() {
+define internal void @fn.2() {
   %local.3 = alloca { i32 }
   store { i32 } zeroinitializer, ptr %local.3
   call void @fn.0(ptr %local.3, i32 7)

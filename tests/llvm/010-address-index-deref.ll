@@ -18,23 +18,23 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define ptr @fn.0(i32 %value) {
+define internal ptr @fn.0(i32 %value) {
   %local.0 = alloca i32
   store i32 %value, ptr %local.0
   ret ptr %local.0
 }
 
-define i32 @fn.1(ptr %ptr) {
+define internal i32 @fn.1(ptr %ptr) {
   %t0 = load i32, ptr %ptr
   ret i32 %t0
 }
 
-define i32 @fn.2([2 x i32] %values) {
+define internal i32 @fn.2([2 x i32] %values) {
   %t0 = extractvalue [2 x i32] %values, 0
   ret i32 %t0
 }
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %t0 = insertvalue [2 x i32] poison, i32 1, 0
   %t1 = insertvalue [2 x i32] %t0, i32 2, 1
   %t2 = call i32 @fn.2([2 x i32] %t1)
@@ -45,4 +45,3 @@ define i32 @fn.3() {
 @$read = internal alias i32 (ptr), ptr @fn.1
 @$first = internal alias i32 ([2 x i32]), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3
-

@@ -32,7 +32,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = load i1, ptr @$enabled
   %t1 = icmp eq i1 %t0, 1
   br i1 %t1, label %on.body.1, label %on.next.2

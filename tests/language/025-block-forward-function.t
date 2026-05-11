@@ -22,12 +22,12 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0(i32 %a, i32 %b) {
+define internal i32 @fn.0(i32 %a, i32 %b) {
   %t0 = add i32 %a, %b
   ret i32 %t0
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call i32 @fn.0(i32 20, i32 22)
   ret i32 %t0
 }

@@ -39,7 +39,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   call void @$prn({ ptr, i64 } { ptr @.str.m0.0, i64 20 })
   ret void
 }

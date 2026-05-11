@@ -60,14 +60,14 @@ func fn.4() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define void @fn.0(ptr %self, i32 %amount, i32 %scale) {
+define internal void @fn.0(ptr %self, i32 %amount, i32 %scale) {
   %t0 = mul i32 %amount, %scale
   %t1 = getelementptr inbounds { i32 }, ptr %self, i64 0, i32 0
   store i32 %t0, ptr %t1
   ret void
 }
 
-define void @fn.1(ptr %self, i32 %amount) {
+define internal void @fn.1(ptr %self, i32 %amount) {
   %t0 = load { i32 }, ptr %self
   %t1 = extractvalue { i32 } %t0, 0
   %t2 = add i32 %t1, %amount
@@ -76,18 +76,18 @@ define void @fn.1(ptr %self, i32 %amount) {
   ret void
 }
 
-define i32 @fn.2({ i32 } %self) {
+define internal i32 @fn.2({ i32 } %self) {
   %t0 = extractvalue { i32 } %self, 0
   ret i32 %t0
 }
 
-define i32 @fn.3(i32 %a, i32 %b, i32 %c) {
+define internal i32 @fn.3(i32 %a, i32 %b, i32 %c) {
   %t0 = add i32 %a, %b
   %t1 = add i32 %t0, %c
   ret i32 %t1
 }
 
-define i32 @fn.4() {
+define internal i32 @fn.4() {
   %local.9 = alloca { i32 }
   store { i32 } zeroinitializer, ptr %local.9
   call void @fn.0(ptr %local.9, i32 7, i32 3)

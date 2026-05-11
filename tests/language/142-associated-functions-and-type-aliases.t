@@ -55,7 +55,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = call { i32 } @fn.1(i32 2)
   %t1 = load { i32 }, ptr @$global_box
   %t2 = extractvalue { i32 } %t1, 0
@@ -69,12 +69,12 @@ define i32 @fn.0() {
   ret i32 %t9
 }
 
-define { i32 } @fn.1(i32 %value) {
+define internal { i32 } @fn.1(i32 %value) {
   %t0 = insertvalue { i32 } poison, i32 %value, 0
   ret { i32 } %t0
 }
 
-define i64 @fn.2({ i32 } %self) {
+define internal i64 @fn.2({ i32 } %self) {
   ret i64 4
 }
 

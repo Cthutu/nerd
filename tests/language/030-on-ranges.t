@@ -101,7 +101,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0(i32 %size) {
+define internal i32 @fn.0(i32 %size) {
   %t0 = icmp sge i32 %size, 0
   %t1 = icmp slt i32 %size, 2
   %t2 = and i1 %t0, %t1
@@ -130,7 +130,7 @@ on.end.0:
   ret i32 %t6
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 3 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

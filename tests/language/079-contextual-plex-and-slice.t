@@ -100,7 +100,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define void @fn.0({ ptr, i64 } %items) {
+define internal void @fn.0({ ptr, i64 } %items) {
   %t0 = extractvalue { ptr, i64 } %items, 1
   %t1 = sub i64 %t0, 1
   %t2 = extractvalue { ptr, i64 } %items, 0
@@ -120,7 +120,7 @@ define void @fn.0({ ptr, i64 } %items) {
   ret void
 }
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = insertvalue { i32, i32 } poison, i32 5, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 6, 1
   %t2 = call i64 @string_builder_mark()

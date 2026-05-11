@@ -122,7 +122,7 @@ define void @m0.init() {
   ret void
 }
 
-define i1 @fn.0({ ptr, i64 } %escape) {
+define internal i1 @fn.0({ ptr, i64 } %escape) {
   %t0 = extractvalue { ptr, i64 } %escape, 1
   %t1 = icmp ne i64 %t0, 4
   %t2 = icmp eq i1 %t1, 1
@@ -169,7 +169,7 @@ on.end.8:
   ret i1 1
 }
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 7 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

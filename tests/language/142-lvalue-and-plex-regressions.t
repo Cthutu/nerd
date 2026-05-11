@@ -45,7 +45,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0({ [4 x i32] } %cell) {
+define internal i32 @fn.0({ [4 x i32] } %cell) {
   %t0 = extractvalue { [4 x i32] } %cell, 0
   %t1 = extractvalue [4 x i32] %t0, 1
   %t2 = extractvalue { [4 x i32] } %cell, 0
@@ -54,7 +54,7 @@ define i32 @fn.0({ [4 x i32] } %cell) {
   ret i32 %t4
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %local.1 = alloca { { [4 x i32] } }
   store { { [4 x i32] } } zeroinitializer, ptr %local.1
   %t0 = getelementptr inbounds { { [4 x i32] } }, ptr %local.1, i64 0, i32 0

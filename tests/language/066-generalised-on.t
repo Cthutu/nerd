@@ -155,7 +155,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0(i32 %value) {
+define internal i32 @fn.0(i32 %value) {
   %t0 = icmp slt i32 %value, 0
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
@@ -197,7 +197,7 @@ on.end.0:
   ret i32 %t7
 }
 
-define { ptr, i64 } @fn.1(i32 %value) {
+define internal { ptr, i64 } @fn.1(i32 %value) {
   %t0 = icmp slt i32 %value, 0
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
@@ -229,7 +229,7 @@ on.end.0:
   ret { ptr, i64 } %t3
 }
 
-define i32 @fn.2(i32 %value) {
+define internal i32 @fn.2(i32 %value) {
   %t0 = icmp ne i32 %value, 5
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
@@ -247,7 +247,7 @@ on.end.0:
   ret i32 %t1
 }
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 7 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

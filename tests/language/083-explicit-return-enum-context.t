@@ -162,7 +162,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define { i64, i64 } @fn.0({ ptr, i64 } %word) {
+define internal { i64, i64 } @fn.0({ ptr, i64 } %word) {
   %t0 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.0, i64 5 })
   %t1 = call i1 @string_eq({ ptr, i64 } %word, { ptr, i64 } { ptr @.str.m0.1, i64 1 })
   %t2 = or i1 %t0, %t1
@@ -219,7 +219,7 @@ on.end.0:
   ret { i64, i64 } %t22
 }
 
-define { i64, i64 } @fn.1() {
+define internal { i64, i64 } @fn.1() {
   %t0 = icmp eq i1 1, 1
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
@@ -241,7 +241,7 @@ on.end.0:
   ret { i64, i64 } %t5
 }
 
-define { ptr, i64 } @fn.2({ i64, i64 } %direction) {
+define internal { ptr, i64 } @fn.2({ i64, i64 } %direction) {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = extractvalue { i64, i64 } %direction, 0
@@ -296,7 +296,7 @@ on.end.0:
   ret { ptr, i64 } %t20
 }
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %t0 = call { i64, i64 } @fn.0({ ptr, i64 } { ptr @.str.m0.13, i64 1 })
   %t1 = call { ptr, i64 } @fn.2({ i64, i64 } %t0)
   call void @$prn({ ptr, i64 } %t1)

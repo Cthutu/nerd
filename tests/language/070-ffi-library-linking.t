@@ -71,7 +71,7 @@ declare { ptr, i64 } @$input({ ptr, i64 })
 
 declare double @sqrt(double)
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = call double @sqrt(double 0x4022000000000000)
   %t1 = call i64 @string_builder_mark()
   %t2 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 7 })

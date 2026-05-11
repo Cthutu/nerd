@@ -107,11 +107,11 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   ret i32 0
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = insertvalue [3 x i32] poison, i32 1, 0
   %t1 = insertvalue [3 x i32] %t0, i32 2, 1
   %t2 = insertvalue [3 x i32] %t1, i32 3, 2

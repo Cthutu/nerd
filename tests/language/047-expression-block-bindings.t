@@ -110,7 +110,7 @@ block.end.0:
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 11 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

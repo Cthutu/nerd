@@ -32,7 +32,8 @@ extern func fn.1(i32) -> i32
 ¬
 ; nerd llvm-ir 0
 ; generated from HIR
-define i32 @fn.0() {
+
+define internal i32 @fn.0() {
   %t0 = sub i32 0, 7
   %t1 = call i32 @abs(i32 %t0)
   %t2 = add i32 %t1, 12

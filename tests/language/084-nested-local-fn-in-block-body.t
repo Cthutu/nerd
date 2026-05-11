@@ -96,7 +96,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i8 @fn.0({ ptr, i64 } %text, i8 %char) {
+define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {
   %t0 = extractvalue { ptr, i64 } %text, 0
   %t1 = extractvalue { ptr, i64 } %text, 1
   %t2 = alloca i64
@@ -118,7 +118,7 @@ for.in.end.2:
   ret i8 0
 }
 
-define i8 @fn.1(i8 %char) {
+define internal i8 @fn.1(i8 %char) {
   %t0 = icmp sge i8 %char, 65
   %t1 = icmp slt i8 %char, 90
   %t2 = and i1 %t0, %t1
@@ -139,7 +139,7 @@ on.end.0:
   ret i8 %t4
 }
 
-define void @fn.2() {
+define internal void @fn.2() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call i8 @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 3 })
   %t2 = call { ptr, i64 } @to_string$u8(i8 %t1)

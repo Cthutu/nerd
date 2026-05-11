@@ -66,7 +66,7 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0({ ptr, i64 } %bytes) {
+define internal i32 @fn.0({ ptr, i64 } %bytes) {
   %t1 = extractvalue { ptr, i64 } %bytes, 0
   %t2 = extractvalue { ptr, i64 } %bytes, 1
   %t3 = extractvalue { ptr, i64 } zeroinitializer, 0
@@ -82,11 +82,11 @@ on.end.0:
   ret i32 0
 }
 
-define ptr @fn.1() {
+define internal ptr @fn.1() {
   ret ptr null
 }
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   %local.2 = alloca ptr
   store ptr null, ptr %local.2
   %local.1 = alloca i32

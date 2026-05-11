@@ -67,7 +67,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = load [2 x { i32, ptr }], ptr @$direct
   %t1 = extractvalue [2 x { i32, ptr }] %t0, 0
   %t2 = extractvalue { i32, ptr } %t1, 1

@@ -66,7 +66,7 @@ declare { ptr, i64 } @to_string$f64(double)
 declare void @$__impl_4_bump(ptr, i64)
 declare { i64 } @$make_box(i64)
 
-define void @fn.0({ ptr, i64 } %text) {
+define internal void @fn.0({ ptr, i64 } %text) {
   %t0 = extractvalue { ptr, i64 } %text, 1
   %t1 = icmp eq i64 %t0, 0
   %t2 = icmp eq i1 %t1, 1
@@ -77,7 +77,7 @@ on.end.0:
   ret void
 }
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = call { i64 } @$make_box(i64 7)
   %t1 = call i64 @string_builder_mark()
   %t2 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 7 })

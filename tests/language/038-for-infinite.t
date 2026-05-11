@@ -21,7 +21,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   br label %for.cond.0
 for.cond.0:
   br label %for.body.1

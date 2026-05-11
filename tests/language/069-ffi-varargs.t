@@ -70,7 +70,7 @@ declare { ptr, i64 } @$input({ ptr, i64 })
 
 declare i32 @fcntl(i32, i32)
 
-define void @fn.1() {
+define internal void @fn.1() {
   %t0 = call i32 @fcntl(i32 0, i32 1, i32 0)
   %t1 = call i64 @string_builder_mark()
   %t2 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 8 })

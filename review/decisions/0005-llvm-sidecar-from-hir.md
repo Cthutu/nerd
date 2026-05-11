@@ -105,6 +105,13 @@ exported aliases/globals keep external linkage. Exported FFI bindings whose
 Nerd binding differs from the foreign C symbol emit a small external Nerd
 wrapper that calls the C declaration.
 
+Generated function entities default to internal LLVM linkage. The generated
+name is an implementation detail of the HIR entity, while the Nerd binding is
+represented by an alias or wrapper. A generated function body remains externally
+visible only when another module must reference that generated name directly,
+such as same-symbol module conflict resolution or imported generic
+instantiations.
+
 ## Follow-up
 
 1. Consider changing the embedded runtime bridge artifact from textual LLVM IR

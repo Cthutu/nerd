@@ -65,7 +65,7 @@ declare { ptr, i64 } @to_string$usize(i64)
 declare { ptr, i64 } @to_string$f32(float)
 declare { ptr, i64 } @to_string$f64(double)
 
-define { ptr, i64 } @fn.0() {
+define internal { ptr, i64 } @fn.0() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.4, i64 9 })
   call void @string_builder_append_string({ ptr, i64 } %t1)
@@ -80,7 +80,7 @@ define { ptr, i64 } @fn.0() {
   ret { ptr, i64 } %t6
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 7 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

@@ -47,7 +47,7 @@ func fn.0() -> i32 {
 declare void @$__impl_4_bump(ptr, i64)
 declare { i64 } @$make_box(i64)
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %local.0 = alloca { i64 }
   store { i64 } zeroinitializer, ptr %local.0
   %t0 = call { i64 } @$make_box(i64 7)

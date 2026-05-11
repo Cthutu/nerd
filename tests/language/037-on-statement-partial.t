@@ -52,7 +52,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   %t0 = icmp eq i32 2, 1
   br i1 %t0, label %on.body.1, label %on.end.0
 on.body.1:

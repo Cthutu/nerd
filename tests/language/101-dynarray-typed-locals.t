@@ -146,7 +146,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-define ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
+define internal ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
   %local.2 = alloca ptr
   store ptr null, ptr %local.2
   %t0 = extractvalue { ptr, i64 } %sep, 1
@@ -365,7 +365,7 @@ dynarray.store.30:
   ret ptr %t117
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 11 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 })
   %local.7 = alloca ptr
   store ptr %t0, ptr %local.7

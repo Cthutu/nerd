@@ -31,12 +31,12 @@ func fn.2() -> i32 {
 
 declare ptr @realloc(ptr, i64)
 
-define ptr @fn.1(ptr %ptr, i64 %size) {
+define internal ptr @fn.1(ptr %ptr, i64 %size) {
   %t0 = call ptr @realloc(ptr %ptr, i64 %size)
   ret ptr %t0
 }
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   ret i32 0
 }
 

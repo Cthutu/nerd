@@ -123,7 +123,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0({ i64, i64 } %colour) {
+define internal i32 @fn.0({ i64, i64 } %colour) {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = extractvalue { i64, i64 } %colour, 0
@@ -163,7 +163,7 @@ on.end.0:
   ret i32 %t15
 }
 
-define { i64, i64 } @fn.1() {
+define internal { i64, i64 } @fn.1() {
   %t0 = insertvalue { i64, i64 } poison, i64 1, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = insertvalue { i64, i64 } poison, i64 0, 0
@@ -171,7 +171,7 @@ define { i64, i64 } @fn.1() {
   ret { i64, i64 } %t3
 }
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = insertvalue { i64, i64 } poison, i64 1, 0

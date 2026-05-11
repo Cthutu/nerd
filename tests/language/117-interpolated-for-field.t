@@ -96,7 +96,7 @@ define void @m0.init() {
   ret void
 }
 
-define void @fn.0() {
+define internal void @fn.0() {
   %t0 = load { ptr, i64 }, ptr @$locs
   %t1 = extractvalue { ptr, i64 } %t0, 0
   %t2 = extractvalue { ptr, i64 } %t0, 1

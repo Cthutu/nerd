@@ -45,7 +45,7 @@ declare { ptr, i64 } @to_string$f32(float)
 declare { ptr, i64 } @to_string$f64(double)
 declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = icmp eq i32 3, 3
   %t1 = call i64 @string_builder_mark()
   %t2 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 9 })

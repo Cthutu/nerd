@@ -78,7 +78,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = bitcast float 0x400C000000000000 to i32
   %t1 = call i64 @string_builder_mark()
   %t2 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 2 })

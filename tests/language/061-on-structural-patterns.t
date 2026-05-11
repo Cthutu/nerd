@@ -178,7 +178,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0({ i32, i32 } %pair) {
+define internal i32 @fn.0({ i32, i32 } %pair) {
   %t0 = extractvalue { i32, i32 } %pair, 0
   %t1 = icmp eq i32 %t0, 0
   %t2 = extractvalue { i32, i32 } %pair, 1
@@ -220,7 +220,7 @@ on.end.0:
   ret i32 %t13
 }
 
-define i32 @fn.1({ i32, i32, { ptr, i64 } } %point) {
+define internal i32 @fn.1({ i32, i32, { ptr, i64 } } %point) {
   %t0 = extractvalue { i32, i32, { ptr, i64 } } %point, 2
   %t1 = call i1 @string_eq({ ptr, i64 } %t0, { ptr, i64 } { ptr @.str.m0.1, i64 6 })
   %t2 = extractvalue { i32, i32, { ptr, i64 } } %point, 0
@@ -260,7 +260,7 @@ on.end.0:
   ret i32 %t11
 }
 
-define { ptr, i64 } @fn.2({ i32, i32, { ptr, i64 } } %point) {
+define internal { ptr, i64 } @fn.2({ i32, i32, { ptr, i64 } } %point) {
   %t0 = extractvalue { i32, i32, { ptr, i64 } } %point, 2
   br i1 1, label %on.body.1, label %on.next.2
 on.body.1:
@@ -278,7 +278,7 @@ on.end.0:
   ret { ptr, i64 } %t1
 }
 
-define i32 @fn.3() {
+define internal i32 @fn.3() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.3, i64 10 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

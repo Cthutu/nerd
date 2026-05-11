@@ -82,7 +82,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = icmp eq i8 97, 97
   %t1 = icmp eq i16 24930, 24930
   %t2 = and i1 %t0, %t1

@@ -27,12 +27,12 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0(i32 %a, i32 %b) {
+define internal i32 @fn.0(i32 %a, i32 %b) {
   %t0 = add i32 %a, %b
   ret i32 %t0
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = load ptr, ptr @$adder
   %t1 = call i32 %t0(i32 20, i32 22)
   ret i32 %t1

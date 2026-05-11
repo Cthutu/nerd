@@ -112,7 +112,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = icmp slt i32 3, 4
   %t1 = icmp sle i32 4, 4
   %t2 = and i1 %t0, %t1

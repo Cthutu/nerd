@@ -43,15 +43,15 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0(i32 %_.0, i32 %_.1, i32 %_unused) {
+define internal i32 @fn.0(i32 %_.0, i32 %_.1, i32 %_unused) {
   ret i32 7
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   ret i32 5
 }
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   %t0 = call i32 @fn.1()
   %t1 = call i32 @fn.1()
   %t2 = call i32 @fn.0(i32 1, i32 2, i32 3)

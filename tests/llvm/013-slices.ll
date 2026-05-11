@@ -5,7 +5,10 @@ main :: fn() -> i32 {
     return all[0] + middle[0]
 }
 ¬
-define i32 @fn.0() {
+; nerd llvm-ir 0
+; generated from HIR
+
+define internal i32 @fn.0() {
   %t0 = insertvalue [4 x i32] poison, i32 1, 0
   %t1 = insertvalue [4 x i32] %t0, i32 2, 1
   %t2 = insertvalue [4 x i32] %t1, i32 3, 2
@@ -27,4 +30,5 @@ define i32 @fn.0() {
   %t16 = add i32 %t12, %t15
   ret i32 %t16
 }
+
 @$main = alias i32 (), ptr @fn.0

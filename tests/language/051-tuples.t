@@ -103,13 +103,13 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define { i32, { ptr, i64 } } @fn.0(i32 %a, { ptr, i64 } %b) {
+define internal { i32, { ptr, i64 } } @fn.0(i32 %a, { ptr, i64 } %b) {
   %t0 = insertvalue { i32, { ptr, i64 } } poison, i32 %a, 0
   %t1 = insertvalue { i32, { ptr, i64 } } %t0, { ptr, i64 } %b, 1
   ret { i32, { ptr, i64 } } %t1
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = insertvalue { i32, { ptr, i64 } } poison, i32 7, 0
   %t1 = insertvalue { i32, { ptr, i64 } } %t0, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 1
   %t2 = extractvalue { i32, { ptr, i64 } } %t1, 0

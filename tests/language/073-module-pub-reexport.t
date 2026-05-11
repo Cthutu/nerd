@@ -31,7 +31,7 @@ func fn.0() -> i32 {
 
 declare void @$prn({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   call void @$prn({ ptr, i64 } { ptr @.str.m0.0, i64 8 })
   ret i32 0
 }

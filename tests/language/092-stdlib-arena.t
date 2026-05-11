@@ -60,7 +60,7 @@ declare i64 @$arena_capacity(ptr)
 declare { ptr, i64 } @$arena_alloc(ptr, i64)
 declare void @$arena_free(ptr)
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = call { { ptr, i64 }, i64 } @$arena_new(i64 16)
   %local.0 = alloca { { ptr, i64 }, i64 }
   store { { ptr, i64 }, i64 } %t0, ptr %local.0

@@ -34,7 +34,7 @@ define void @m0.init() {
   ret void
 }
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = load i32, ptr @$base
   %t1 = add i32 %t0, 1
   store i32 %t1, ptr @$base

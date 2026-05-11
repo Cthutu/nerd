@@ -29,7 +29,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0(ptr %ptr) {
+define internal i32 @fn.0(ptr %ptr) {
   %t0 = insertvalue { ptr, i64 } poison, ptr %ptr, 0
   %t1 = insertvalue { ptr, i64 } %t0, i64 1, 1
   %t2 = extractvalue { ptr, i64 } %t1, 0
@@ -40,7 +40,7 @@ define i32 @fn.0(ptr %ptr) {
   ret i32 %t6
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %local.2 = alloca i8
   store i8 7, ptr %local.2
   %t0 = call i32 @fn.0(ptr %local.2)

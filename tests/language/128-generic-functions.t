@@ -111,7 +111,7 @@ declare { ptr, i64 } @to_string$f64(double)
 
 declare void @$prn({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   %t0 = call i32 @fn.1(i32 7)
   %t1 = call { ptr, i64 } @fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
   %t2 = add i32 %t0, 5
@@ -145,15 +145,15 @@ define void @fn.0() {
   ret void
 }
 
-define i32 @fn.1(i32 %value) {
+define internal i32 @fn.1(i32 %value) {
   ret i32 %value
 }
 
-define { ptr, i64 } @fn.2({ ptr, i64 } %value) {
+define internal { ptr, i64 } @fn.2({ ptr, i64 } %value) {
   ret { ptr, i64 } %value
 }
 
-define { { ptr, i64 } } @fn.3({ ptr, i64 } %value) {
+define internal { { ptr, i64 } } @fn.3({ ptr, i64 } %value) {
   %local.10 = alloca { { ptr, i64 } }
   store { { ptr, i64 } } zeroinitializer, ptr %local.10
   %t0 = getelementptr inbounds { { ptr, i64 } }, ptr %local.10, i64 0, i32 0
@@ -162,7 +162,7 @@ define { { ptr, i64 } } @fn.3({ ptr, i64 } %value) {
   ret { { ptr, i64 } } %t1
 }
 
-define { ptr, i64 } @fn.4({ ptr, i64 } %left, { ptr, i64 } %right, i1 %use_left) {
+define internal { ptr, i64 } @fn.4({ ptr, i64 } %left, { ptr, i64 } %right, i1 %use_left) {
   %t0 = icmp eq i1 %use_left, 1
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:

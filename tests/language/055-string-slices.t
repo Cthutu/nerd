@@ -108,7 +108,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 0
   %t1 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 1
   %t2 = getelementptr inbounds i8, ptr %t0, i64 0

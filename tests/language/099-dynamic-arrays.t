@@ -288,7 +288,7 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define ptr @fn.0() {
+define internal ptr @fn.0() {
   %local.0 = alloca ptr
   store ptr null, ptr %local.0
   %t0 = load ptr, ptr %local.0
@@ -371,7 +371,7 @@ dynarray.store.7:
   ret ptr %t44
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %local.2 = alloca ptr
   store ptr null, ptr %local.2
   %t0 = load ptr, ptr %local.2

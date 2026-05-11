@@ -1005,6 +1005,55 @@ internal bool llvm_program_function_symbol_conflicts(const Sema* sema,
     return matches > 1;
 }
 
+internal bool llvm_function_imported_from_other_module(
+    const Sema* sema, const Hir* hir, const HirFunction* function)
+{
+    if (sema == NULL || sema->program == NULL || hir == NULL ||
+        function == NULL || function->decl_index == U32_MAX) {
+        return false;
+    }
+
+    for (u32 module_index = 0;
+         module_index < array_count(sema->program->modules);
+         ++module_index) {
+        if (module_index == hir->current_module_index) {
+            continue;
+        }
+
+        const Hir* other_hir =
+            &sema->program->modules[module_index].front_end.hir;
+        for (u32 i = 0; i < array_count(other_hir->imports); ++i) {
+            const HirImport* import = &other_hir->imports[i];
+            if (import->module_index == hir->current_module_index &&
+                import->decl_index == function->decl_index) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal bool llvm_function_needs_external_definition(const Sema* sema,
+                                                      const Hir*  hir,
+                                                      u32 function_index)
+{
+    if (hir == NULL || function_index >= array_count(hir->functions)) {
+        return false;
+    }
+
+    const HirFunction* function = &hir->functions[function_index];
+    if (function->kind == HIR_FUNCTION_Ffi) {
+        return false;
+    }
+
+    if (llvm_program_function_symbol_conflicts(sema, hir, function_index)) {
+        return true;
+    }
+
+    return function->kind == HIR_FUNCTION_GenericInstantiation &&
+           llvm_function_imported_from_other_module(sema, hir, function);
+}
+
 internal string llvm_import_name_string(const Sema*      sema,
                                         const Lexer*     lexer,
                                         Arena*           arena,
@@ -9298,6 +9347,9 @@ internal void llvm_render_function(StringBuilder*     sb,
     }
 
     sb_append_cstr(sb, "define ");
+    if (!llvm_function_needs_external_definition(sema, hir, function_index)) {
+        sb_append_cstr(sb, "internal ");
+    }
     llvm_append_function_signature(
         sb, hir, lexer, sema, function, function_index);
     sb_append_cstr(sb, " {\n");

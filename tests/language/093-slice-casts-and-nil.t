@@ -24,7 +24,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0() {
+define internal i32 @fn.0() {
   %t0 = insertvalue [4 x i8] poison, i8 97, 0
   %t1 = insertvalue [4 x i8] %t0, i8 98, 1
   %t2 = insertvalue [4 x i8] %t1, i8 99, 2

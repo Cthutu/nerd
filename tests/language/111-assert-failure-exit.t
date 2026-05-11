@@ -21,7 +21,7 @@ func fn.0() -> void {
 
 declare void @nerd_assert(i1, ptr, i32, { ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   call void @nerd_assert(i1 0, ptr @.assert.source_path.m0.0, i32 3, { ptr, i64 } { ptr @.str.m0.0, i64 7 })
   ret void
 }

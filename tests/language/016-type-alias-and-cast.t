@@ -24,7 +24,7 @@ func fn.0() -> u8 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i8 @fn.0() {
+define internal i8 @fn.0() {
   %t0 = trunc i16 1000 to i8
   ret i8 %t0
 }

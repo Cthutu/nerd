@@ -94,7 +94,7 @@ declare void @accept_packed({ i8, i32 })
 
 declare i32 @flip_blob(i32)
 
-define void @fn.5() {
+define internal void @fn.5() {
   call void @srand(i32 1)
   %t0 = call i32 @puts(ptr @.str.m0.2)
   ret void

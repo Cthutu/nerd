@@ -90,7 +90,7 @@ declare { ptr, i64 } @to_string$f64(double)
 
 declare void @$prn({ ptr, i64 })
 
-define void @fn.0() {
+define internal void @fn.0() {
   %local.0 = alloca { i32 }
   store { i32 } zeroinitializer, ptr %local.0
   %t0 = getelementptr inbounds { i32 }, ptr %local.0, i64 0, i32 0
@@ -98,6 +98,40 @@ define void @fn.0() {
   %t1 = load { i32 }, ptr %local.0
   %t2 = extractvalue { i32 } %t1, 0
   %t3 = add i32 %t2, 1
+  %t4 = zext i32 %t3 to i128
+  %local.1 = alloca i128
+  store i128 %t4, ptr %local.1
+  %t5 = load i128, ptr %local.1
+  %t6 = trunc i128 %t5 to i32
+  %t7 = zext i32 %t6 to i64
+  %t8 = insertvalue { i64, i64 } poison, i64 1, 0
+  %t9 = insertvalue { i64, i64 } %t8, i64 %t7, 1
+  %t10 = extractvalue { i64, i64 } %t9, 0
+  %t11 = icmp eq i64 %t10, 1
+  %t12 = extractvalue { i64, i64 } %t9, 1
+  %t13 = trunc i64 %t12 to i32
+  %t14 = and i1 %t11, 1
+  br i1 %t14, label %on.body.1, label %on.next.2
+on.body.1:
+  %t15 = call i64 @string_builder_mark()
+  %t16 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 8 })
+  call void @string_builder_append_string({ ptr, i64 } %t16)
+  %t17 = call { ptr, i64 } @to_string$i32(i32 %t13)
+  call void @string_builder_append_string({ ptr, i64 } %t17)
+  %t18 = call { ptr, i64 } @string_builder_finish(i64 %t15)
+  call void @$prn({ ptr, i64 } %t18)
+  br label %on.end.0
+on.next.2:
+  %t19 = insertvalue { i64, i64 } poison, i64 0, 0
+  %t20 = insertvalue { i64, i64 } %t19, i64 0, 1
+  %t21 = extractvalue { i64, i64 } %t9, 0
+  %t22 = extractvalue { i64, i64 } %t20, 0
+  %t23 = icmp eq i64 %t21, %t22
+  br i1 %t23, label %on.body.3, label %on.end.0
+on.body.3:
+  call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
+  br label %on.end.0
+on.end.0:
   ret void
 }
 

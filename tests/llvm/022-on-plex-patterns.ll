@@ -19,7 +19,7 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define i32 @fn.0({ i32, i32 } %point) {
+define internal i32 @fn.0({ i32, i32 } %point) {
   %t0 = extractvalue { i32, i32 } %point, 0
   %t1 = icmp eq i32 %t0, 0
   %t2 = extractvalue { i32, i32 } %point, 1
@@ -51,7 +51,7 @@ on.end.0:
   ret i32 %t9
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = insertvalue { i32, i32 } poison, i32 4, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 9, 1
   %t2 = call i32 @fn.0({ i32, i32 } %t1)
@@ -60,4 +60,3 @@ define i32 @fn.1() {
 
 @$score = internal alias i32 ({ i32, i32 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
-

@@ -205,7 +205,7 @@ define void @m0.init() {
   ret void
 }
 
-define { ptr, i64 } @fn.0({ i64, i64 } %direction) {
+define internal { ptr, i64 } @fn.0({ i64, i64 } %direction) {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = extractvalue { i64, i64 } %direction, 0
@@ -267,7 +267,7 @@ on.end.0:
   ret { ptr, i64 } %t25
 }
 
-define { ptr, i64 } @fn.1({ i64, i64 } %token) {
+define internal { ptr, i64 } @fn.1({ i64, i64 } %token) {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = extractvalue { i64, i64 } %token, 0
@@ -318,7 +318,7 @@ on.end.0:
   ret { ptr, i64 } %t20
 }
 
-define i32 @fn.2() {
+define internal i32 @fn.2() {
   %t0 = insertvalue { i64, i64 } poison, i64 10, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = insertvalue { i64, i64 } poison, i64 11, 0

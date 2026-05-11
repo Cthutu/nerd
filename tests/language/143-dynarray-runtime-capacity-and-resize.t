@@ -77,7 +77,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-define i32 @fn.0(i64 %initial_size) {
+define internal i32 @fn.0(i64 %initial_size) {
   %t0 = call ptr @malloc(i64 24)
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1
@@ -297,7 +297,7 @@ dynarray.free.done.33:
   ret i32 %t111
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = call i32 @fn.0(i64 3)
   ret i32 %t0
 }

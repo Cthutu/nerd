@@ -104,23 +104,23 @@ declare void @$prn({ ptr, i64 })
 declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
-define i32 @fn.0(i32 %a, i32 %b, i32 %c) {
+define internal i32 @fn.0(i32 %a, i32 %b, i32 %c) {
   %t0 = add i32 %a, %b
   %t1 = add i32 %t0, %c
   ret i32 %t1
 }
 
-define i32 @fn.1(i32 %value) {
+define internal i32 @fn.1(i32 %value) {
   %t0 = mul i32 %value, 10
   ret i32 %t0
 }
 
-define i32 @fn.2(i32 %value) {
+define internal i32 @fn.2(i32 %value) {
   %t0 = add i32 %value, 1
   ret i32 %t0
 }
 
-define void @fn.3(i32 %a) {
+define internal void @fn.3(i32 %a) {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.0, i64 6 })
   call void @string_builder_append_string({ ptr, i64 } %t1)
@@ -133,12 +133,12 @@ define void @fn.3(i32 %a) {
   ret void
 }
 
-define i32 @fn.4(i32 %x, i32 %y) {
+define internal i32 @fn.4(i32 %x, i32 %y) {
   %t0 = mul i32 %x, %y
   ret i32 %t0
 }
 
-define void @fn.5() {
+define internal void @fn.5() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call { ptr, i64 } @to_string$string({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
   call void @string_builder_append_string({ ptr, i64 } %t1)

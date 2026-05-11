@@ -107,7 +107,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-define ptr @fn.0(ptr %system, i64 %handle) {
+define internal ptr @fn.0(ptr %system, i64 %handle) {
   %t0 = load { ptr }, ptr %system
   %t1 = extractvalue { ptr } %t0, 0
   %t4 = alloca ptr
@@ -165,7 +165,7 @@ for.in.end.6:
   ret ptr %t24
 }
 
-define i32 @fn.1() {
+define internal i32 @fn.1() {
   %t0 = alloca i32, align 4
   store i32 0, ptr %t0, align 4
   %t1 = icmp eq i32 1, 1
