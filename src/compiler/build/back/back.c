@@ -87,13 +87,13 @@ internal bool back_end_write_text_file(cstr path, string text)
 internal NerdArtifactConfig compiler_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path    = "a.out",
-        .hir_path       = "_a.hir",
-        .llvm_path      = "_a.ll",
-        .emit_hir_file  = false,
-        .emit_llvm_file = false,
-        .compile_binary = true,
-        .release        = false,
+        .binary_path     = "a.out",
+        .hir_path        = "_a.hir",
+        .llvm_path       = "_a.ll",
+        .emit_hir_file   = false,
+        .emit_llvm_file  = false,
+        .emit_executable = true,
+        .release         = false,
     };
 }
 
@@ -110,10 +110,10 @@ internal cstr back_end_module_llvm_path(Arena*                    arena,
             arena, "%s.m%u.ll", artifacts->binary_path, module_index));
 }
 
-internal void back_end_cleanup_llvm_compile_artifacts(Array(cstr) llvm_paths,
-                                                      bool remove_llvm_paths,
-                                                      cstr combined_llvm_path,
-                                                      cstr runtime_object_path)
+internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
+                                              bool remove_llvm_paths,
+                                              cstr combined_llvm_path,
+                                              cstr runtime_object_path)
 {
     if (combined_llvm_path != NULL) {
         path_remove(combined_llvm_path);
@@ -203,10 +203,10 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
     return true;
 }
 
-internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
-                                            const NerdArtifactConfig* artifacts)
+internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
+                                           const NerdArtifactConfig* artifacts)
 {
-    if (!artifacts->compile_binary && !artifacts->emit_llvm_file) {
+    if (!artifacts->emit_executable && !artifacts->emit_llvm_file) {
         return true;
     }
     if (program->root_module_index >= array_count(program->modules)) {
@@ -218,13 +218,12 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
 
     BackEndLlvmModules modules = {0};
     if (!back_end_render_llvm_modules(&arena, program, artifacts, &modules)) {
-        back_end_cleanup_llvm_compile_artifacts(
-            modules.llvm_paths, false, NULL, NULL);
+        back_end_cleanup_llvm_artifacts(modules.llvm_paths, false, NULL, NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
-    if (!artifacts->compile_binary) {
+    if (!artifacts->emit_executable) {
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return true;
@@ -246,19 +245,19 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
     string combined_llvm = back_end_llvm_text_build_combined(
         &arena, modules.module_llvms, runtime_epilogue, init_ll);
     if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
-        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                combined_llvm_path,
-                                                NULL);
+        back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                        !artifacts->emit_llvm_file,
+                                        combined_llvm_path,
+                                        NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
     if (!back_end_llvm_runtime_write_object(runtime_object_path)) {
-        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                combined_llvm_path,
-                                                runtime_object_path);
+        back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                        !artifacts->emit_llvm_file,
+                                        combined_llvm_path,
+                                        runtime_object_path);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
@@ -269,19 +268,19 @@ internal bool back_end_compile_llvm_program(const ProgramInfo*        program,
                                      artifacts,
                                      combined_llvm_path,
                                      runtime_object_path)) {
-        back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
-                                                !artifacts->emit_llvm_file,
-                                                combined_llvm_path,
-                                                runtime_object_path);
+        back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                        !artifacts->emit_llvm_file,
+                                        combined_llvm_path,
+                                        runtime_object_path);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
 
-    back_end_cleanup_llvm_compile_artifacts(modules.llvm_paths,
-                                            !artifacts->emit_llvm_file,
-                                            combined_llvm_path,
-                                            runtime_object_path);
+    back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                    !artifacts->emit_llvm_file,
+                                    combined_llvm_path,
+                                    runtime_object_path);
 
     back_end_llvm_modules_done(&modules);
     arena_done(&arena);
@@ -310,7 +309,7 @@ bool back_end_program(const ProgramInfo*        program,
 
     (void)verbose;
     (void)timing;
-    return back_end_compile_llvm_program(program, artifacts);
+    return back_end_emit_llvm_artifacts(program, artifacts);
 }
 
 //------------------------------------------------------------------------------

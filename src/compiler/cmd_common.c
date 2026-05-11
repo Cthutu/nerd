@@ -14,14 +14,14 @@
 NerdArtifactConfig compiler_cmd_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path    = "a.out",
-        .hir_path       = "_a.hir",
-        .llvm_path      = "_a.ll",
-        .emit_hir_file  = false,
-        .emit_llvm_file = false,
-        .compile_binary = true,
-        .release        = false,
-        .keywords       = NULL,
+        .binary_path     = "a.out",
+        .hir_path        = "_a.hir",
+        .llvm_path       = "_a.ll",
+        .emit_hir_file   = false,
+        .emit_llvm_file  = false,
+        .emit_executable = true,
+        .release         = false,
+        .keywords        = NULL,
     };
 }
 

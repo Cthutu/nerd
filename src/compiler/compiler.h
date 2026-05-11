@@ -80,7 +80,7 @@ typedef struct {
     cstr llvm_path;
     bool emit_hir_file;
     bool emit_llvm_file;
-    bool compile_binary;
+    bool emit_executable;
     bool release;
     Array(string) keywords;
 } NerdArtifactConfig;

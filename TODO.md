@@ -150,7 +150,7 @@ Working rules for this review:
   - Delete the C backend path once LLVM can compile all language fixtures.
   - Remove topological ordering logic that only existed to satisfy C emission.
 
-- [ ] Commit: simplify backend artifact configuration
+- [x] Commit: simplify backend artifact configuration
   - Make emitted artifacts match the LLVM pipeline:
     - HIR dump
     - module LLVM sidecars
