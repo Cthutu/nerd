@@ -18,7 +18,11 @@ typedef struct {
 
 internal bool front_end_lex(FrontEndContext* ctx)
 {
-    return lex(ctx->source, &ctx->results.lexer);
+    if (!lex(ctx->source, &ctx->results.lexer)) {
+        return false;
+    }
+    ctx->results.readiness.lexer = FRONT_END_PRODUCT_Complete;
+    return true;
 }
 
 internal bool front_end_parse(FrontEndContext* ctx)
@@ -27,8 +31,10 @@ internal bool front_end_parse(FrontEndContext* ctx)
 
     if (array_count(ctx->results.lexer.tokens) > 0 &&
         array_count(ctx->results.ast.nodes) == 0) {
+        ctx->results.readiness.ast = FRONT_END_PRODUCT_Missing;
         return false;
     }
+    ctx->results.readiness.ast = FRONT_END_PRODUCT_Complete;
     return true;
 }
 
@@ -37,10 +43,15 @@ internal bool front_end_parse(FrontEndContext* ctx)
 
 internal bool front_end_sema(FrontEndContext* ctx)
 {
-    return sema_analyse(&ctx->results.lexer,
-                        &ctx->results.ast,
-                        &ctx->options,
-                        &ctx->results.sema);
+    if (!sema_analyse(&ctx->results.lexer,
+                      &ctx->results.ast,
+                      &ctx->options,
+                      &ctx->results.sema)) {
+        ctx->results.readiness.sema = FRONT_END_PRODUCT_Missing;
+        return false;
+    }
+    ctx->results.readiness.sema = FRONT_END_PRODUCT_Complete;
+    return true;
 }
 
 //------------------------------------------------------------------------------
@@ -50,7 +61,32 @@ internal bool front_end_hir_gen(FrontEndContext* ctx)
 {
     ctx->results.hir = hir_generate(
         &ctx->results.lexer, &ctx->results.ast, &ctx->results.sema);
+    ctx->results.readiness.hir = FRONT_END_PRODUCT_Complete;
     return true;
+}
+
+bool front_end_product_is_available(FrontEndProductState state)
+{
+    return state == FRONT_END_PRODUCT_Partial ||
+           state == FRONT_END_PRODUCT_Complete;
+}
+
+bool front_end_product_is_complete(FrontEndProductState state)
+{
+    return state == FRONT_END_PRODUCT_Complete;
+}
+
+cstr front_end_product_state_name(FrontEndProductState state)
+{
+    switch (state) {
+    case FRONT_END_PRODUCT_Missing:
+        return "missing";
+    case FRONT_END_PRODUCT_Partial:
+        return "partial";
+    case FRONT_END_PRODUCT_Complete:
+        return "complete";
+    }
+    return "unknown";
 }
 
 bool front_end(NerdSource             source,

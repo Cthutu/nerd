@@ -260,6 +260,19 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->cst_ready     = false;
 }
 
+internal void lsp_document_set_readiness_from_front_end(LspDocument* doc)
+{
+    const FrontEndReadiness* readiness = &doc->front_end.readiness;
+    doc->tokens_ready =
+        front_end_product_is_available(readiness->lexer);
+    doc->syntax_ready =
+        front_end_product_is_available(readiness->ast);
+    doc->sema_partial =
+        front_end_product_is_available(readiness->sema);
+    doc->sema_complete =
+        front_end_product_is_complete(readiness->sema);
+}
+
 internal void lsp_document_set_source(LspDocument* doc, string content)
 {
     arena_reset(&doc->source_arena);
@@ -311,8 +324,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     error_system_set_mode(previous_mode);
     error_system_set_emit_output(previous_emit);
 
-    staged->tokens_ready = array_count(staged->front_end.lexer.tokens) > 0;
-    staged->syntax_ready = array_count(staged->front_end.ast.nodes) > 0;
+    lsp_document_set_readiness_from_front_end(staged);
     if (!staged->tokens_ready || !staged->syntax_ready) {
         if (!ok) {
             lsp_log("Front-end analysis failed for current document contents");
@@ -320,12 +332,26 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
         program_info_done(&staged->program);
         return false;
     }
+    if (!ok && staged->front_end.readiness.sema == FRONT_END_PRODUCT_Missing) {
+        staged->front_end.readiness.sema = FRONT_END_PRODUCT_Partial;
+        if (array_count(staged->program.modules) > 0 &&
+            staged->program.root_module_index <
+                array_count(staged->program.modules)) {
+            staged->program.modules[staged->program.root_module_index]
+                .front_end.readiness.sema = FRONT_END_PRODUCT_Partial;
+        }
+        lsp_document_set_readiness_from_front_end(staged);
+    }
 
-    staged->analysis_ok   = ok;
-    staged->sema_partial  = true;
-    staged->sema_complete = ok;
+    staged->analysis_ok = ok;
     if (!ok) {
-        lsp_log("Keeping partial front-end analysis for editor features");
+        lsp_log("Keeping front-end products for editor features: lexer=%s, "
+                "ast=%s, sema=%s, hir=%s",
+                front_end_product_state_name(
+                    staged->front_end.readiness.lexer),
+                front_end_product_state_name(staged->front_end.readiness.ast),
+                front_end_product_state_name(staged->front_end.readiness.sema),
+                front_end_product_state_name(staged->front_end.readiness.hir));
     }
     if (cst_parse(&staged->front_end.lexer, &staged->cst)) {
         staged->cst_ready = true;
@@ -355,10 +381,7 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     doc->cst           = staged.cst;
     doc->analysis_ok   = staged.analysis_ok;
     doc->source_ready  = staged.source_ready;
-    doc->tokens_ready  = staged.tokens_ready;
-    doc->syntax_ready  = staged.syntax_ready;
-    doc->sema_partial  = staged.sema_partial;
-    doc->sema_complete = staged.sema_complete;
+    lsp_document_set_readiness_from_front_end(doc);
     doc->cst_ready     = staged.cst_ready;
     return staged.analysis_ok;
 }

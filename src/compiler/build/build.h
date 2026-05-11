@@ -14,11 +14,25 @@
 
 //------------------------------------------------------------------------------
 
+typedef enum : u8 {
+    FRONT_END_PRODUCT_Missing,
+    FRONT_END_PRODUCT_Partial,
+    FRONT_END_PRODUCT_Complete,
+} FrontEndProductState;
+
+typedef struct FrontEndReadiness {
+    FrontEndProductState lexer;
+    FrontEndProductState ast;
+    FrontEndProductState sema;
+    FrontEndProductState hir;
+} FrontEndReadiness;
+
 typedef struct FrontEndState {
-    Lexer lexer;
-    Ast   ast;
-    Sema  sema;
-    Hir   hir;
+    Lexer             lexer;
+    Ast               ast;
+    Sema              sema;
+    Hir               hir;
+    FrontEndReadiness readiness;
 } FrontEndState;
 
 typedef enum : u8 {

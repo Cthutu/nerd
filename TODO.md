@@ -184,7 +184,7 @@ Working rules for this review:
 
 ### Milestone 5: Harden The LSP Boundary
 
-- [ ] Commit: define front-end product readiness states
+- [x] Commit: define front-end product readiness states
   - Make it explicit which of lexer, AST, CST, sema, and HIR are valid after
     partial or failed analysis.
 

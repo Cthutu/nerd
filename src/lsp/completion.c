@@ -765,7 +765,7 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
     };
 
     ProgramInfo program = {0};
-    bool        ok =
+    bool        analysis_ok =
         front_end_program((NerdSource){.source = repaired, .source_path = uri},
                           &options,
                           NULL,
@@ -779,11 +779,20 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             .source    = repaired,
             .front_end = program.modules[program.root_module_index].front_end,
             .program   = program,
+            .analysis_ok = analysis_ok,
             .source_ready  = true,
-            .tokens_ready  = true,
-            .syntax_ready  = true,
-            .sema_partial  = ok,
-            .sema_complete = ok,
+            .tokens_ready  = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.lexer),
+            .syntax_ready  = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.ast),
+            .sema_partial  = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.sema),
+            .sema_complete = front_end_product_is_complete(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.sema),
         };
         for (u32 i = 0; i < array_count(program.modules); ++i) {
             program.modules[i].front_end.sema.program = &program;

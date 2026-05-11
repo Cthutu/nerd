@@ -88,7 +88,11 @@ typedef struct {
 internal bool program_front_end_lex(void* data)
 {
     ProgramFrontEndContext* ctx = data;
-    return lex(ctx->source, &ctx->front_end->lexer);
+    if (!lex(ctx->source, &ctx->front_end->lexer)) {
+        return false;
+    }
+    ctx->front_end->readiness.lexer = FRONT_END_PRODUCT_Complete;
+    return true;
 }
 
 internal bool program_front_end_parse(void* data)
@@ -98,18 +102,25 @@ internal bool program_front_end_parse(void* data)
 
     if (array_count(ctx->front_end->lexer.tokens) > 0 &&
         array_count(ctx->front_end->ast.nodes) == 0) {
+        ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Missing;
         return false;
     }
+    ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Complete;
     return true;
 }
 
 internal bool program_front_end_sema(void* data)
 {
     ProgramFrontEndContext* ctx = data;
-    return sema_analyse(&ctx->front_end->lexer,
-                        &ctx->front_end->ast,
-                        &ctx->options,
-                        &ctx->front_end->sema);
+    if (!sema_analyse(&ctx->front_end->lexer,
+                      &ctx->front_end->ast,
+                      &ctx->options,
+                      &ctx->front_end->sema)) {
+        ctx->front_end->readiness.sema = FRONT_END_PRODUCT_Missing;
+        return false;
+    }
+    ctx->front_end->readiness.sema = FRONT_END_PRODUCT_Complete;
+    return true;
 }
 
 internal bool program_front_end_hir(void* data)
@@ -117,6 +128,7 @@ internal bool program_front_end_hir(void* data)
     ProgramFrontEndContext* ctx = data;
     ctx->front_end->hir         = hir_generate(
         &ctx->front_end->lexer, &ctx->front_end->ast, &ctx->front_end->sema);
+    ctx->front_end->readiness.hir = FRONT_END_PRODUCT_Complete;
     return true;
 }
 

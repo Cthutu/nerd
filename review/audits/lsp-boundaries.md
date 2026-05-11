@@ -114,6 +114,9 @@ Resolved during this review:
 - `semantic_ready` has been split into `tokens_ready`, `syntax_ready`,
   `sema_partial`, and `sema_complete`.
 - `has_cst` has been renamed to the product-oriented `cst_ready`.
+- The compiler-owned `FrontEndState` now carries explicit product readiness for
+  lexer, AST, sema, and HIR. The LSP document derives its feature-facing
+  booleans from those states instead of inferring validity from array counts.
 
 Remaining risks:
 
@@ -145,10 +148,37 @@ named product or accessor and receive either a valid view or no result.
 
 ## Recommended Interfaces
 
-### Readiness Flags
+### Readiness States
 
-The first implementation step replaced the current loose booleans with explicit
-product readiness fields on `LspDocument`:
+The compiler front end exposes product states on `FrontEndState`:
+
+```c
+typedef enum : u8 {
+    FRONT_END_PRODUCT_Missing,
+    FRONT_END_PRODUCT_Partial,
+    FRONT_END_PRODUCT_Complete,
+} FrontEndProductState;
+
+typedef struct FrontEndReadiness {
+    FrontEndProductState lexer;
+    FrontEndProductState ast;
+    FrontEndProductState sema;
+    FrontEndProductState hir;
+} FrontEndReadiness;
+```
+
+Current semantics:
+
+| Product | Complete | Partial | Missing |
+| --- | --- | --- | --- |
+| lexer | `lex` succeeded | reserved for future token recovery | no usable token stream |
+| AST | parser produced syntax nodes | reserved for tolerant AST recovery | no usable AST |
+| sema | semantic analysis fully succeeded | editor tooling may enter checked fallback paths, but callers must treat every sema side-table lookup as optional | no semantic view should be exposed |
+| HIR | HIR generation completed | not currently used | no usable HIR |
+
+The LSP document still carries product-oriented booleans for compact request
+guards, but those booleans are now derived from the compiler-owned readiness
+states:
 
 ```c
 bool source_ready;
@@ -159,9 +189,15 @@ bool sema_complete;
 bool cst_ready;
 ```
 
-These fields are set by document staging after each product is produced. A
-future bitset or view constructor may still be useful, but the first step is
-now in the codebase.
+`cst_ready` remains LSP-owned because CST parsing is currently an editor-tooling
+product rather than part of the compiler front-end pipeline.
+
+For now the LSP upgrades a failed post-parse analysis to partial sema
+readiness, preserving existing syntax-fallback behavior in hover, definition,
+rename, completion, and code actions. This is intentionally weaker than checked
+semantic analysis: any direct table lookup must go through checked accessors.
+Milestone 5's next slice should replace this broad partial state with narrower
+fact views.
 
 ### Checked Accessors
 
