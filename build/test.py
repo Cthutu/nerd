@@ -556,7 +556,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
         args.append("--keep")
-    if command != "explain":
+    if command not in {"explain", "internal-test"}:
         args.append(str(input_path.name))
     proc = run_cmd(args, cwd=cwd)
 

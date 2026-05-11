@@ -223,4 +223,124 @@ string back_end_llvm_text_build_combined(Arena* arena,
     return combined_llvm;
 }
 
+internal u32 back_end_llvm_text_count_line(string text, cstr expected)
+{
+    u32   count          = 0;
+    usize expected_count = strlen(expected);
+    usize line_start     = 0;
+    for (usize i = 0; i <= text.count; ++i) {
+        if (i < text.count && text.data[i] != '\n') {
+            continue;
+        }
+        string line = {
+            .data  = text.data + line_start,
+            .count = i - line_start,
+        };
+        if (line.count == expected_count &&
+            memcmp(line.data, expected, expected_count) == 0) {
+            count++;
+        }
+        line_start = i + 1;
+    }
+    return count;
+}
+
+internal bool
+back_end_llvm_text_expect_line_count(string text, cstr line, u32 expected)
+{
+    u32 actual = back_end_llvm_text_count_line(text, line);
+    if (actual != expected) {
+        eprn("LLVM text self-test failed for line:");
+        eprn("%s", line);
+        eprn("Expected %u occurrence(s), found %u", expected, actual);
+        return false;
+    }
+    return true;
+}
+
+bool back_end_llvm_text_self_test(void)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    Array(string) module_llvms = NULL;
+    array_push(module_llvms,
+               s("declare i32 @puts(ptr)\n"
+                 "declare void @fn.defined()\n"
+                 "declare void @\"$main\"()\n"
+                 "define void @fn.defined() {\n"
+                 "  ret void\n"
+                 "}\n"
+                 "@\"$main\" = alias void (), ptr @fn.0\n"
+                 "@.str.m0.0 = private unnamed_addr constant [1 x i8] "
+                 "zeroinitializer\n"
+                 "define void @fn.0() {\n"
+                 "  ret void\n"
+                 "}\n"));
+    array_push(module_llvms,
+               s("declare i32 @puts(ptr)\n"
+                 "declare ptr @missing(ptr)\n"
+                 "declare ptr @missing(ptr)\n"
+                 "declare void @init()\n"
+                 "define void @\"quoted.impl\"() {\n"
+                 "  ret void\n"
+                 "}\n"));
+
+    string combined =
+        back_end_llvm_text_build_combined(&arena,
+                                          s("declare i32 @puts(ptr)\n"
+                                            "@.str.prelude = private "
+                                            "unnamed_addr constant [1 x i8] "
+                                            "zeroinitializer\n"),
+                                          module_llvms,
+                                          s("declare void @init()\n"
+                                            "declare void @\"$main\"()\n"
+                                            "define i32 @main() {\n"
+                                            "  ret i32 0\n"
+                                            "}\n"),
+                                          s("define void @init() {\n"
+                                            "  ret void\n"
+                                            "}\n"));
+
+    bool ok = true;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "declare i32 @puts(ptr)", 1) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "declare ptr @missing(ptr)", 1) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "declare void @fn.defined()", 0) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "declare void @\"$main\"()", 0) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "declare void @init()", 0) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "@\"$main\" = alias void (), ptr @fn.0", 1) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined,
+                  "@.str.m0.0 = private unnamed_addr constant [1 x i8] "
+                  "zeroinitializer",
+                  1) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "define void @\"quoted.impl\"() {", 1) &&
+              ok;
+    ok      = back_end_llvm_text_expect_line_count(
+                  combined, "define void @init() {", 1) &&
+              ok;
+
+    array_free(module_llvms);
+    arena_done(&arena);
+    if (ok) {
+        prn("llvm-text ok");
+        return true;
+    }
+    return false;
+}
+
 //------------------------------------------------------------------------------

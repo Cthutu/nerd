@@ -15,3 +15,5 @@ string back_end_llvm_text_build_combined(Arena* arena,
                                          Array(string) module_llvms,
                                          string runtime_epilogue,
                                          string init_ll);
+
+bool back_end_llvm_text_self_test(void);

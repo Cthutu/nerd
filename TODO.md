@@ -101,7 +101,7 @@ Working rules for this review:
 
 ### Milestone 1: Stabilize The LLVM Backend As The Default Path
 
-- [ ] Commit: add direct tests for LLVM text combination
+- [x] Commit: add direct tests for LLVM text combination
   - Cover duplicate declarations, declarations satisfied by definitions,
     aliases, quoted `$` symbols, generated globals, and unresolved libc
     declarations.

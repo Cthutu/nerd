@@ -5,6 +5,7 @@
 // clang-format on
 
 #include <cli/cli.h>
+#include <compiler/build/back/llvm_text.h>
 #include <compiler/compiler.h>
 #include <compiler/error/error.h>
 #include <lsp/lsp.h>
@@ -222,6 +223,18 @@ internal int nerd_explain_code(const JsonValue* cli_result)
         "details. Notes explain the rule or context; help points at the most "
         "likely fix.");
     return 0;
+}
+
+internal int nerd_internal_test(const JsonValue* cli_result)
+{
+    string name =
+        nerd_cli_param_string(cli_result, "command.params.name", (string){0});
+    if (string_eq_cstr(name, "llvm-text")) {
+        return back_end_llvm_text_self_test() ? 0 : 1;
+    }
+
+    eprn("Unknown internal test: " STRINGP, STRINGV(name));
+    return 1;
 }
 
 internal JsonValue* nerd_cli_schema(Arena* arena)
@@ -457,6 +470,23 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                   "Explain one compiler diagnostic code",
                                   NULL,
                                   explain_params));
+    }
+    {
+        JsonValue* internal_test_params = json_new_array(arena);
+        json_array_push(internal_test_params,
+                        nerd_cli_make_param(arena,
+                                            "name",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Internal test name",
+                                            true));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "internal-test",
+                                              "Run one internal compiler test",
+                                              NULL,
+                                              internal_test_params));
     }
 
     return schema;
@@ -769,6 +799,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         result                  = compiler_cmd_format(&config);
     } else if (string_eq_cstr(name, "explain")) {
         result = nerd_explain_code(cli_result);
+    } else if (string_eq_cstr(name, "internal-test")) {
+        result = nerd_internal_test(cli_result);
     } else if (string_eq_cstr(name, "lsp")) {
         lsp_log("Launching nerd lsp");
         result = lsp_run();
