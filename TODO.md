@@ -146,7 +146,7 @@ Working rules for this review:
   - Keep any still-useful concepts only if they are explicitly moved into HIR
     or LLVM lowering.
 
-- [ ] Commit: remove C generation and C-specific dependency ordering
+- [x] Commit: remove C generation and C-specific dependency ordering
   - Delete the C backend path once LLVM can compile all language fixtures.
   - Remove topological ordering logic that only existed to satisfy C emission.
 

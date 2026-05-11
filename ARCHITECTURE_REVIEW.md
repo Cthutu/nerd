@@ -247,7 +247,7 @@ Possible ownership:
 
 - `sema`: validates source and produces semantic facts.
 - `core`: lowers checked source structure into a smaller structured language.
-- `ir`: lowers checked core into linear operations.
+- `llvm`: lowers checked HIR into target LLVM IR.
 
 Questions:
 
@@ -259,24 +259,27 @@ Questions:
 
 #### 5. Narrow The Back-End Interface
 
-The back end should ideally consume IR plus a small name/type rendering
-interface, rather than a broad `FrontEndState`.
+The back end should ideally consume HIR plus a small target/layout context,
+rather than a broad `FrontEndState`. The current LLVM path still needs lexer
+and sema context for stable text rendering and type/layout queries, but it no
+longer depends on the retired IR or C generation tables.
 
 Questions:
 
-- Can `back_end()` take `Ir` and a symbol/type context instead of
+- Can `back_end()` take HIR and a symbol/type/layout context instead of
   `FrontEndState`?
-- Can program merging happen before or during IR generation rather than in the
-  back end?
-- Which lexer dependencies in C generation are truly name-rendering needs?
+- Can program merging happen before or during HIR generation rather than in the
+  executable back end?
+- Which lexer and sema dependencies in LLVM generation are truly rendering or
+  layout needs?
 
-#### 5a. Consider HIR-To-C Without A Separate IR
+#### 5a. Historical: HIR-To-C Without A Separate IR
 
-An alternative is to make checked core/HIR the only lowered representation and
-generate C directly from it. This may be simpler than maintaining both a
-structured checked tree and the current linear IR.
+This was an intermediate option before LLVM became the executable backend. It
+is preserved as context for why HIR absorbed the services that had previously
+belonged to the custom IR.
 
-The current IR provides real services that HIR or C generation would still need
+The retired IR provided real services that HIR or target lowering still needed
 to own:
 
 - declaration/function/global tables
@@ -290,62 +293,50 @@ to own:
 - module merge and symbol remapping support
 - stable IR rendering/dumping for tests and debugging
 
-If HIR generates C directly, it should not become "IR with braces". The useful
-version is a structured, typed core language with:
+The outcome was HIR-to-LLVM rather than HIR-to-C. HIR still should not become
+"IR with braces"; the useful version remains a structured, typed core language
+with:
 
 - explicit declaration records
 - typed expression and statement nodes
 - explicit block/function ownership
 - lowered sugar where source syntax is too rich
 - a clear temporary introduction policy
-- a C emitter that walks structured functions and statements
-
-Possible outcomes:
-
-- Keep both HIR and IR if IR remains useful as a backend-neutral linear layer,
-  dump format, or future VM input.
-- Replace IR with HIR-to-C if C remains the only serious backend and HIR can
-  own temporaries, init ordering, module merging, and control flow cleanly.
-- Keep a much smaller "C lowering" layer after HIR that is C-specific, rather
-  than a general IR.
+- LLVM lowering that walks structured functions and statements
 
 Questions:
 
 - Do we still want a backend-neutral representation for a future VM or non-C
   backend?
-- Is current IR mainly simplifying C generation, or is it preserving semantics
-  that should be explicit in HIR?
+- Did the retired IR preserve semantics that should be explicit in HIR?
 - Can structured HIR represent `defer`, value-producing loops, `on`, and pattern
   matching without immediately lowering to labels and jumps?
-- Would direct HIR-to-C make generated C more readable and easier to debug?
-- Which existing IR tests/dumps would be replaced by HIR dumps?
 
-#### 5b. Consider Dropping The Current IR
+#### 5b. Completed: Dropping The Current IR
 
-The current IR may be removable if HIR becomes the checked, typed, lowered
-program product. The important observation from the code review is that the
-current IR is not primarily an optimizer IR. It is a linear C-generation input
-plus several side tables:
+The old IR was removed once HIR became the checked, typed, lowered program
+product. The important observation from the code review was that the old IR was
+not primarily an optimizer IR. It was a linear C-generation input plus several
+side tables:
 
 - program structure: globals, externs, functions, locals, params
 - typed values and temporaries
 - lowered calls, casts, aggregate construction, fields, indexes, and slices
 - dynamic-array and string-builder operation records
 - explicit labels, jumps, branches, init blocks, and returns
-- copied semantic type rows used by C generation
+- copied semantic type rows used by the old C generation path
 - module merge/remapping support for symbols, types, strings, functions, and
   init ordering
 
-That means dropping IR is plausible, but only if the replacement owns these
-services deliberately. The likely target is not "AST directly to C"; it is:
+Dropping IR was possible because HIR and LLVM lowering now own these services
+deliberately. The target is not "AST directly to a backend"; it is:
 
 ```text
-lexer -> tolerant syntax -> sema/name/type facts -> checked HIR -> C or LLVM IR
+lexer -> tolerant syntax -> sema/name/type facts -> checked HIR -> LLVM IR
 ```
 
-In that model HIR would be the durable lowering boundary. C generation can walk
-HIR directly, and an LLVM experiment can also lower from HIR. The current IR
-would disappear once HIR can represent:
+In that model HIR is the durable lowering boundary. The old IR disappeared once
+HIR could represent:
 
 - explicit function/global/extern records
 - explicit locals, params, and compiler temporaries
@@ -356,34 +347,16 @@ would disappear once HIR can represent:
 - module-level init sequencing
 - module merge or whole-program symbol/type identity
 
-Possible migration path:
+#### 5c. Completed: LLVM IR As The Backend Target
 
-1. Add HIR as a new product after sema while keeping current IR/C generation.
-2. Lower one narrow construct to HIR and dump it for tests.
-3. Teach C generation to emit that construct from HIR in an experimental path.
-4. Move module merge/symbol remapping responsibilities out of `Ir` and into
-   either whole-program HIR construction or a backend context.
-5. Remove the current IR only after C generation no longer needs its instruction
-   stream or side tables.
-
-Working assumption:
-
-- Do not invest further in the current IR as a long-term abstraction until HIR
-  is designed.
-- Keep it as the stable backend input during migration.
-- Treat LLVM IR as a backend target for HIR, not as a replacement for HIR.
-
-#### 5c. LLVM IR As A Backend Target
-
-LLVM IR would remove some C-specific pressure from the pipeline, especially
-around declaration order and generated C spelling. The current code has several
-ordering paths with different motivations:
+LLVM IR removed C-specific pressure from the pipeline, especially around
+declaration order and generated C spelling. The compiler still has ordering
+paths with different motivations:
 
 - semantic declaration dependency ordering in `sema` for inference, constant
   evaluation, and cycle diagnostics
-- type-declaration recursion and prototype emission in C generation
-- module postorder merge and init sequencing in the back end
-- function/type/symbol remapping during whole-program C generation
+- module load order and init sequencing in the back end
+- generated LLVM names and aliases during whole-program lowering
 
 LLVM IR would not remove semantic dependency analysis. The language still needs
 cycle diagnostics, type inference order, constant evaluation order, and module
@@ -396,7 +369,7 @@ import validation. But it could remove or simplify C-specific ordering work:
 - nominal runtime/type names can be generated from stable ids rather than from
   C-safe spelling and topological declaration order
 - mutually referential functions and many aggregate references are less awkward
-  than in generated C
+  than they were in generated C
 
 Candidate naming model:
 
@@ -405,12 +378,12 @@ Candidate naming model:
 @fn.42 = internal ...       ; compiler-generated helper or lowered function
 ```
 
-Nerd-visible bindings should keep the existing C backend convention: a `$`
-prefix followed by the Nerd binding name. For example, `main :: fn () { ... }`
-becomes `@$main` in LLVM IR. Opaque generated ids such as `@fn.N`, `@global.N`,
-and `%type.N` are still useful for compiler-created helpers, lowered lambdas,
-temporary globals, or internal runtime glue that has no direct Nerd binding.
-The original source name should also be available in debug metadata.
+Nerd-visible bindings keep the `$` prefix followed by the Nerd binding name.
+For example, `main :: fn () { ... }` becomes `@$main` in LLVM IR. Opaque
+generated ids such as `@fn.N`, `@global.N`, and `%type.N` are still useful for
+compiler-created helpers, lowered lambdas, temporary globals, or internal
+runtime glue that has no direct Nerd binding. The original source name should
+also be available in debug metadata.
 
 Tradeoff:
 
@@ -422,43 +395,19 @@ Tradeoff:
   aggregates and varargs, runtime helper declarations, platform library
   linkage, and the module entry/postlude shape.
 
-Working assumption:
-
-- LLVM IR is attractive as an experimental backend after HIR exists.
-- It should simplify backend symbol ordering and naming, not semantic
-  dependency analysis.
-- The first LLVM prototype should preserve `$`-prefixed names for Nerd-visible
-  bindings and use generated backend ids only for compiler-created internals.
-- A LLVM backend must include a deliberate prelude/postlude/runtime plan before
-  it can replace C generation.
-
-Build-step option:
-
-- Keep the runtime prelude/postlude in C initially.
-- Compile `data/prelude.c` to LLVM IR or bitcode with clang as part of the
-  compiler build step.
-- Generate Nerd program LLVM IR separately from HIR.
-- Generate the tiny LLVM `main` wrapper directly in the backend.
-- Link the generated Nerd IR with the generated runtime IR and wrapper using
-  clang/LLVM tools rather than concatenating complete LLVM modules.
-
-This is a useful bridge because the current runtime helpers are already
-isolated in `data/prelude.c` and the epilogue is small enough to generate as
-LLVM text. It lets the LLVM experiment avoid rewriting runtime helpers
-immediately while still testing generated LLVM IR for Nerd code.
-
-Open details for this bridge:
+Current runtime bridge:
 
 - The generated LLVM wrapper names `$main()`, which matches the intended LLVM
   symbol convention for a Nerd `main` binding.
-- The prelude uses C library functions and thread-local storage, so the LLVM
-  link step still needs the platform C runtime and correct target flags.
+- The runtime object comes from `data/nrt.c`, so the LLVM link step still needs
+  the platform C runtime and correct target flags.
 - Runtime helper names such as `string_eq`, `string_slice`,
   `string_builder_*`, and `to_string$*` need a stable LLVM naming/linkage
   contract.
-- The current build cache is based on `//> run` directive outputs and dependency
-  mtimes. If we add target-specific runtime artifacts, the cache key must also
-  include target triple, release/debug mode, and relevant compiler flags.
+- The current build cache is based on `//> run` directive outputs and
+  dependency mtimes. If runtime artifacts become target-specific, the cache key
+  must also include target triple, release/debug mode, and relevant compiler
+  flags.
 
 #### 6. Define LSP Feature Contracts
 
@@ -917,12 +866,11 @@ Guidance:
   - Prefer one arena-owned product with dense row arrays.
   - Store references as indices to declarations, locals, types, blocks, and
     expressions.
-  - Decide early whether HIR owns temporary locals and lowered expression
-    values, because that affects whether IR can be removed.
-- C generation
+  - HIR now owns the middle-layer facts that used to make the old IR necessary.
+- LLVM generation
   - Generated text should remain arena/string-builder based.
-  - C generation should avoid many small temporary arenas inside tight loops;
-    prefer one scratch arena with marks when possible.
+  - LLVM generation should avoid many small temporary arenas inside tight
+    loops; prefer one scratch arena with marks when possible.
 - Module/program state
   - Program-level arenas are a good fit for module graph strings and stable
     metadata.
