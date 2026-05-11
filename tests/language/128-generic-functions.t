@@ -62,8 +62,8 @@ inst func fn.2(value: string) -> string {
   return string local.8(value)
 }
 inst func fn.3(value: string) -> plex { string value } {
-  expr <unknown> <unsupported>
-  let box: plex { string value } = <unknown> <unsupported>
+  expr <unknown> default
+  let box: plex { string value } = <unknown> default
   assign string field(plex { string value } local.10(box), value) = string local.9(value)
   return plex { string value } local.10(box)
 }

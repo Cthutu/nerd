@@ -67,8 +67,8 @@ func fn.2(rect: ^Rect) -> i32 {
   return i32 call bind.6(__impl_7_area)(Rect deref(^Rect local.3(rect)))
 }
 func fn.3() -> i32 {
-  expr <unknown> <unsupported>
-  let rect: Rect = <unknown> <unsupported>
+  expr <unknown> default
+  let rect: Rect = <unknown> default
   expr void call bind.7(__impl_7_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
   let result: i32 = i32 call bind.8(use_methods)(^Rect address_of(Rect local.4(rect)))
   expr void call bind.2(prn)(string interpolate(<unknown> "area ", i32 local.5(result)))

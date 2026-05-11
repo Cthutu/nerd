@@ -22,11 +22,11 @@ main :: fn () -> i32 {
 hir 0
 bind main = fn.0
 func fn.0() -> i32 {
-  expr <unknown> <unsupported>
-  let item: i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let item: i32 = <unknown> default
   let ptr: ^i32 = ^i32 address_of(i32 local.0(item))
-  expr <unknown> <unsupported>
-  let nil_ptr: ^i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let nil_ptr: ^i32 = <unknown> default
   let void_ptr: ^void = ^i32 local.1(ptr)
   expr void on ^i32 local.2(nil_ptr) {
     value(^i32 nil) => {

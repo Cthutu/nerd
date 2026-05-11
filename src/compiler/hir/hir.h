@@ -58,6 +58,7 @@ typedef enum : u8 {
 
 typedef enum : u8 {
     HIR_EXPR_Unsupported,
+    HIR_EXPR_DefaultValue,
     HIR_EXPR_IntegerLiteral,
     HIR_EXPR_FloatLiteral,
     HIR_EXPR_StringLiteral,

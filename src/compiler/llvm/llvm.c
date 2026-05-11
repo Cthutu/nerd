@@ -3997,6 +3997,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
     switch (expr->kind) {
+    case HIR_EXPR_DefaultValue:
+        return llvm_default_value(ctx, expr->type_index);
     case HIR_EXPR_IntegerLiteral:
         SemaTypeKind integer_type_kind =
             llvm_type_kind(ctx->sema, expr->type_index);
@@ -6924,7 +6926,8 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
     const HirExpr* expr  = stmt->expr_index < array_count(ctx->hir->exprs)
                                ? &ctx->hir->exprs[stmt->expr_index]
                                : NULL;
-    if (expr != NULL && expr->kind == HIR_EXPR_Unsupported) {
+    if (expr != NULL && (expr->kind == HIR_EXPR_Unsupported ||
+                         expr->kind == HIR_EXPR_DefaultValue)) {
         value = llvm_default_value(ctx, stmt->type_index);
     } else {
         value = llvm_emit_expr(ctx, function, stmt->expr_index);

@@ -30,7 +30,7 @@ hir 0
 bind make = fn.0
 bind main = fn.1
 func fn.0(initial_size: usize) -> i32 {
-  expr <unknown> <unsupported>
+  expr <unknown> default
   let values: [..]i32 = [..]i32 array(; min_capacity usize local.0(initial_size))
   expr void on bool less(usize field([..]i32 local.1(values), capacity), usize local.0(initial_size)) {
     value(bool yes) => {

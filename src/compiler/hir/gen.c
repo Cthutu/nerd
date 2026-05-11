@@ -302,6 +302,23 @@ internal u32 hir_add_unsupported_expr(Hir*        hir,
                         });
 }
 
+internal u32 hir_add_default_value_expr(Hir*        hir,
+                                        const Sema* sema,
+                                        u32         node_index,
+                                        u32         type_index)
+{
+    if (type_index == sema_no_type()) {
+        type_index = hir_node_type(sema, node_index);
+    }
+    return hir_add_expr(hir,
+                        (HirExpr){
+                            .kind          = HIR_EXPR_DefaultValue,
+                            .type_index    = type_index,
+                            .symbol_handle = U32_MAX,
+                            .local_index   = sema_no_local(),
+                        });
+}
+
 internal bool hir_unary_op_from_ast_kind(AstKind kind, HirUnaryOp* out)
 {
     switch (kind) {
@@ -819,6 +836,11 @@ internal u32 hir_lower_expr(Hir*         hir,
 
     const AstNode* node = &ast->nodes[node_index];
     HirUnaryOp     unary_op;
+    if (node->kind == AK_ZeroInit || node->kind == AK_Undefined) {
+        return hir_add_default_value_expr(
+            hir, sema, node_index, sema_no_type());
+    }
+
     if (hir_unary_op_from_ast_kind(node->kind, &unary_op)) {
         return hir_add_expr(hir,
                             (HirExpr){
@@ -1763,6 +1785,10 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     : hir_no_index();
             u32 local_index = hir_node_local(sema, node_index);
             u32 local_type  = hir_local_type(sema, local_index);
+            if (expr_index == hir_no_index() && local_type != sema_no_type()) {
+                expr_index = hir_add_default_value_expr(
+                    hir, sema, node_index, local_type);
+            }
             if (local_type < array_count(sema->types) &&
                 sema->types[local_type].kind == STK_DynamicArray) {
                 u32 min_capacity_node =
@@ -1777,7 +1803,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     min_capacity_node != hir_no_index() &&
                     expr_index >= array_count(hir->exprs);
                 if (expr_index < array_count(hir->exprs) &&
-                    hir->exprs[expr_index].kind == HIR_EXPR_Unsupported) {
+                    (hir->exprs[expr_index].kind == HIR_EXPR_Unsupported ||
+                     hir->exprs[expr_index].kind == HIR_EXPR_DefaultValue)) {
                     u32 init_node = value_node_index;
                     while (init_node < array_count(ast->nodes) &&
                            ast->nodes[init_node].kind == AK_Expression) {

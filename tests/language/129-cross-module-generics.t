@@ -48,8 +48,8 @@ bind Box = type.1
 generic type type.0 = <unknown>
 generic type type.1 = <unknown>
 func fn.0() -> void {
-  expr <unknown> <unsupported>
-  let stack: plex { [..]i32[..]i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let stack: plex { [..]i32[..]i32 = <unknown> default
   expr void call bind.6(stack_push)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)), untyped integer 42)
   expr void call bind.6(stack_push)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)), untyped integer 13)
   let last: i32 = i32 call bind.7(stack_pop)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)))

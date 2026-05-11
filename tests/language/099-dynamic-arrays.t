@@ -90,15 +90,15 @@ bind input = import.4
 bind make_words = fn.0
 bind main = fn.1
 func fn.0() -> [..]string {
-  expr <unknown> <unsupported>
-  let words: [..]string = <unknown> <unsupported>
+  expr <unknown> default
+  let words: [..]string = <unknown> default
   expr void call fn (string) -> void field([..]string local.0(words), push)(string "look")
   expr void call fn (string) -> void field([..]string local.0(words), push)(string "north")
   return [..]string local.0(words)
 }
 func fn.1() -> i32 {
-  expr <unknown> <unsupported>
-  let empty: [..]string = <unknown> <unsupported>
+  expr <unknown> default
+  let empty: [..]string = <unknown> default
   expr void on bool not_equal([..]string local.2(empty), [..]string nil) {
     value(bool yes) => {
       return i32 1
@@ -171,8 +171,8 @@ func fn.1() -> i32 {
   }
   expr void call bind.2(prn)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
   expr void call fn () -> void field([..]string local.6(words), free)()
-  expr <unknown> <unsupported>
-  let nums: [..]i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let nums: [..]i32 = <unknown> default
   expr void call fn (i32) -> void field([..]i32 local.7(nums), push)(i32 1)
   expr void call fn (i32) -> void field([..]i32 local.7(nums), push)(i32 2)
   expr void call fn (i32) -> void field([..]i32 local.7(nums), push)(i32 3)

@@ -533,6 +533,9 @@ internal void hir_render_expr(StringBuilder* sb,
     hir_append_type_name(sb, lexer, sema, expr->type_index);
     sb_append_char(sb, ' ');
     switch (expr->kind) {
+    case HIR_EXPR_DefaultValue:
+        sb_append_cstr(sb, "default");
+        break;
     case HIR_EXPR_IntegerLiteral:
         sb_format(sb, "%lld", (long long)expr->integer);
         break;

@@ -17,8 +17,8 @@ bind Thing = type.0
 bind main = fn.0
 type type.0 = Thing
 func fn.0() -> i32 {
-  expr <unknown> <unsupported>
-  let thing: Thing = <unknown> <unsupported>
+  expr <unknown> default
+  let thing: Thing = <unknown> default
   assign (i32, i32) field(Thing local.0(thing), size) = (i32, i32) tuple(i32 7, i32 5)
   return i32 add(i32 tuple_field((i32, i32) field(Thing local.0(thing), size), 0), i32 tuple_field((i32, i32) field(Thing local.0(thing), size), 1))
 }

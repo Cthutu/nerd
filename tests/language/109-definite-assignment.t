@@ -26,8 +26,8 @@ bind choose_with_else = fn.0
 bind choose_bool = fn.1
 bind main = fn.2
 func fn.0() -> i32 {
-  expr <unknown> <unsupported>
-  let value: i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let value: i32 = <unknown> default
   expr void on bool yes {
     value(bool yes) => {
       assign i32 local.0(value) = i32 21
@@ -39,8 +39,8 @@ func fn.0() -> i32 {
   return i32 local.0(value)
 }
 func fn.1(flag: bool) -> i32 {
-  expr <unknown> <unsupported>
-  let value: i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let value: i32 = <unknown> default
   expr void on bool local.1(flag) {
     value(bool yes) => {
       assign i32 local.2(value) = i32 2

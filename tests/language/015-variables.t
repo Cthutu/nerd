@@ -18,8 +18,8 @@ bind main = fn.0
 global value.0: i32 = untyped integer 40
 func fn.0() -> i32 {
   assign i32 bind.0(base) = i32 add(i32 bind.0(base), i32 1)
-  expr <unknown> <unsupported>
-  let extra: i32 = <unknown> <unsupported>
+  expr <unknown> default
+  let extra: i32 = <unknown> default
   assign i32 local.0(extra) = i32 1
   return i32 add(i32 bind.0(base), i32 local.0(extra))
 }

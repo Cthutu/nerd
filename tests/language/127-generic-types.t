@@ -44,11 +44,11 @@ generic type type.0 = <unknown>
 generic type type.1 = <unknown>
 generic type type.2 = <unknown>
 func fn.0() -> void {
-  expr <unknown> <unsupported>
-  let b: plex { i32 value } = <unknown> <unsupported>
+  expr <unknown> default
+  let b: plex { i32 value } = <unknown> default
   assign i32 field(plex { i32 value } local.0(b), value) = i32 7
-  expr <unknown> <unsupported>
-  let c: union { i32 number, string text } = <unknown> <unsupported>
+  expr <unknown> default
+  let c: union { i32 number, string text } = <unknown> default
   assign i32 field(union { i32 number, string text } local.1(c), number) = i32 add(i32 field(plex { i32 value } local.0(b), value), i32 1)
   let m: enum { None, Some(i32) } = enum { None, Some(i32) } call Some(i32 field(union { i32 number, string text } local.1(c), number))
   expr void on enum { None, Some(i32) } local.2(m) {

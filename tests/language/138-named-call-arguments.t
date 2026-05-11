@@ -50,8 +50,8 @@ func fn.3(a: i32, b: i32, c: i32) -> i32 {
   return i32 add(i32 add(i32 local.6(a), i32 local.7(b)), i32 local.8(c))
 }
 func fn.4() -> i32 {
-  expr <unknown> <unsupported>
-  let counter: Counter = <unknown> <unsupported>
+  expr <unknown> default
+  let counter: Counter = <unknown> default
   expr void call bind.1(__impl_4_set)(^Counter address_of(Counter local.9(counter)), i32 7, i32 3)
   expr void call bind.2(__impl_4_add)(^Counter address_of(Counter local.9(counter)), i32 5)
   return i32 add(i32 call bind.4(add)(i32 1, i32 2, i32 3), i32 call bind.3(__impl_4_get)(Counter local.9(counter)))

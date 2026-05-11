@@ -26,8 +26,8 @@ hir 0
 bind split = fn.0
 bind main = fn.1
 func fn.0(s: string, sep: string) -> [..]string {
-  expr <unknown> <unsupported>
-  let parts: [..]string = <unknown> <unsupported>
+  expr <unknown> default
+  let parts: [..]string = <unknown> default
   expr <unknown> on <unknown> equal(<unknown> field(string local.1(sep), count), <unknown> 0) {
     value(<unknown> yes) => {
       expr <unknown> block {
