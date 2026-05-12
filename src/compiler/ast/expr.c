@@ -1368,19 +1368,16 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                     if (!ast_next_token(state)) {
                         return false;
                     }
-                } else if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                } else if (ast_expr_cursor_kind(state) == TK_Comma) {
                     is_tuple = true;
                     if (!ast_expect_token(state, TK_Comma)) {
                         return false;
                     }
-                    if (ast_peek_kind_at(state, 0) == TK_RParen) {
-                        if (!ast_expect_token(state, TK_RParen)) {
-                            return false;
-                        }
-                        break;
-                    }
                     if (!ast_next_token(state)) {
                         return false;
+                    }
+                    if (state->token.kind == TK_RParen) {
+                        break;
                     }
                 } else {
                     break;
@@ -1454,21 +1451,17 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                         }
                         continue;
                     }
-                    if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                    if (ast_expr_cursor_kind(state) == TK_Comma) {
                         if (!ast_expect_token(state, TK_Comma)) {
                             array_free(items);
                             return false;
                         }
-                        if (ast_peek_kind_at(state, 0) == TK_RBracket) {
-                            if (!ast_expect_token(state, TK_RBracket)) {
-                                array_free(items);
-                                return false;
-                            }
-                            goto emit_array_literal;
-                        }
                         if (!ast_next_token(state)) {
                             array_free(items);
                             return false;
+                        }
+                        if (state->token.kind == TK_RBracket) {
+                            break;
                         }
                         continue;
                     }
@@ -1489,7 +1482,6 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                 }
             }
 
-        emit_array_literal:
             u32 first_item = (u32)array_count(state->tuple_items);
             for (u32 i = 0; i < array_count(items); ++i) {
                 array_push(state->tuple_items, items[i]);
