@@ -132,7 +132,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 2: Make Syntax Tooling More Tolerant
 
-- [ ] Commit: audit AST/CST divergence
+- [x] Commit: audit AST/CST divergence
   - List duplicated grammar cases, missing CST recovery cases, and syntax
     families where formatter/LSP and compiler parsing can drift.
 
