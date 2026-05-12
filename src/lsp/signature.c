@@ -15,7 +15,7 @@ internal bool lsp_signature_is_ident_char(u8 c)
            (c >= '0' && c <= '9') || c == '_';
 }
 
-internal string lsp_signature_trim_source(const LspSemanticView* view,
+internal string lsp_signature_trim_source(const LspTypeFactView* view,
                                           usize                  start,
                                           usize                  end)
 {
@@ -33,7 +33,7 @@ internal string lsp_signature_trim_source(const LspSemanticView* view,
     return (string){.data = source.data + start, .count = end - start};
 }
 
-internal string lsp_signature_default_param_source(const LspSemanticView* view,
+internal string lsp_signature_default_param_source(const LspTypeFactView* view,
                                                    const AstParam*        param)
 {
     if (param->default_node_index == U32_MAX) {
@@ -94,7 +94,7 @@ internal string lsp_signature_default_param_source(const LspSemanticView* view,
     return lsp_signature_trim_source(view, start, end);
 }
 
-internal string lsp_signature_type_source(const LspSemanticView* view,
+internal string lsp_signature_type_source(const LspTypeFactView* view,
                                           const AstParam*        param)
 {
     const Lexer* lexer = view->lexer;
@@ -137,7 +137,7 @@ internal string lsp_signature_type_source(const LspSemanticView* view,
     return lsp_signature_trim_source(view, start, end);
 }
 
-internal string lsp_signature_return_type_source(const LspSemanticView* view,
+internal string lsp_signature_return_type_source(const LspTypeFactView* view,
                                                  u32 return_type_node_index)
 {
     if (return_type_node_index == U32_MAX ||
@@ -174,7 +174,7 @@ internal string lsp_signature_return_type_source(const LspSemanticView* view,
 }
 
 internal const AstFnSignature*
-lsp_signature_decl_ast_signature(const LspSemanticView* view,
+lsp_signature_decl_ast_signature(const LspTypeFactView* view,
                                  const SemaDecl*        decl)
 {
     if (decl->value_node_index == sema_no_decl() ||
@@ -207,7 +207,7 @@ lsp_signature_decl_ast_signature(const LspSemanticView* view,
     return NULL;
 }
 
-internal bool lsp_signature_decl_label(const LspSemanticView* view,
+internal bool lsp_signature_decl_label(const LspTypeFactView* view,
                                        Arena*                 arena,
                                        const SemaDecl*        decl,
                                        string*                out_label,
@@ -357,7 +357,7 @@ internal bool lsp_signature_decl_label(const LspSemanticView* view,
     return true;
 }
 
-internal const SemaDecl* lsp_signature_find_decl(const LspSemanticView* view,
+internal const SemaDecl* lsp_signature_find_decl(const LspTypeFactView* view,
                                                  string                 name)
 {
     const Lexer* lexer = view->lexer;
@@ -456,8 +456,8 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspSemanticView view = {0};
-    if (!lsp_semantic_view(state, uri, &view)) {
+    LspTypeFactView view = {0};
+    if (!lsp_type_fact_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);
         return;
     }

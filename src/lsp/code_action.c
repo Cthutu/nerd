@@ -930,8 +930,8 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspSemanticView view = {0};
-    if (!lsp_semantic_view(state, uri, &view)) {
+    LspTypeFactView view = {0};
+    if (!lsp_type_fact_view(state, uri, &view)) {
         json_object_set_array(response, "result", actions);
         lsp_send_response(message->arena, response);
         return;

@@ -127,7 +127,7 @@ internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
                                             string             symbol,
                                             usize              offset)
 {
-    if (!doc->sema_partial) {
+    if (!doc->type_facts_partial) {
         return sema_no_type();
     }
 
@@ -3031,7 +3031,7 @@ internal void lsp_completion_add_symbols(Arena*             arena,
                                          JsonValue*         items,
                                          const LspDocument* doc)
 {
-    if (!doc->sema_partial) {
+    if (!doc->bindings_ready) {
         const Lexer* lexer = &doc->front_end.lexer;
         const Ast*   ast   = &doc->front_end.ast;
         for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -3169,7 +3169,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     lsp_completion_add_symbols(message->arena, items, doc);
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
-    if (!doc->sema_partial || array_count(doc->front_end.sema.locals) == 0) {
+    if (!doc->bindings_ready || array_count(doc->front_end.sema.locals) == 0) {
         lsp_completion_add_source_params(
             message->arena, items, view.source, offset);
     }

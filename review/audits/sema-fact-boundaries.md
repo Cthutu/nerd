@@ -319,6 +319,11 @@ Update:
   `type_facts_partial`, and `type_facts_complete` from those sub-products.
 - `sema_partial` remains as a compatibility flag while feature handlers migrate
   to declaration, binding, and type-fact views.
+- Semantic tokens now request declaration facts, signature help and code actions
+  request type facts, document symbols request declaration facts, and hover /
+  definition request binding facts for their shared request context. Completion
+  now gates symbol completion on binding readiness and receiver type lookup on
+  type-fact readiness.
 
 ## Risks
 

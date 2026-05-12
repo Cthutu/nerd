@@ -121,7 +121,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Distinguish declaration/binding facts from checked type facts.
   - Update LSP readiness and front-end product states to expose those levels.
 
-- [ ] Commit: migrate LSP features to the fact views
+- [x] Commit: migrate LSP features to the fact views
   - Completion, hover, definition, rename, signature help, and code actions
     should request named views instead of reading broad sema internals.
   - Add regression tests for incomplete source and failed imports.

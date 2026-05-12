@@ -2038,9 +2038,9 @@ internal bool lsp_get_request_context(LspState*           state,
         return false;
     }
 
-    *out_uri             = json_string(uri_value);
-    LspSemanticView view = {0};
-    if (!lsp_semantic_view(state, *out_uri, &view)) {
+    *out_uri            = json_string(uri_value);
+    LspBindingView view = {0};
+    if (!lsp_binding_view(state, *out_uri, &view)) {
         return false;
     }
     *out_doc            = view.doc;
@@ -2370,9 +2370,9 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
         return;
     }
 
-    string          uri  = json_string(uri_value);
-    LspSemanticView view = {0};
-    if (!lsp_semantic_view(state, uri, &view)) {
+    string             uri  = json_string(uri_value);
+    LspDeclarationView view = {0};
+    if (!lsp_declaration_view(state, uri, &view)) {
         json_object_set_array(
             response, "result", json_new_array(message->arena));
         lsp_send_response(message->arena, response);
