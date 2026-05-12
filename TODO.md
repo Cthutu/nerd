@@ -183,7 +183,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     writing, clang startup, and clang link/compile time.
   - Record results under `review/measurements/`.
 
-- [ ] Commit: compare clang text input with LLVM CLI alternatives
+- [x] Commit: compare clang text input with LLVM CLI alternatives
   - Prototype `llvm-as`, `llc`, `opt`, bitcode, or direct object flows only as
     measurements.
   - Keep clang as the install contract unless data justifies a change.

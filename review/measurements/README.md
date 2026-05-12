@@ -9,3 +9,5 @@ Current backend timing notes:
 
 - `backend-phase-timing.md`: phase-level timings from the compiler `--timing`
   report.
+- `llvm-cli-tool-comparison.md`: coarse comparison of clang text input versus
+  `llvm-as`/`llc` object generation.
