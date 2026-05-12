@@ -268,6 +268,25 @@ internal bool format_trivia_comments_before_token(const FormatTrivia* trivia,
     return true;
 }
 
+internal bool format_trivia_has_blank_line_between_tokens(
+    const FormatTrivia* trivia, u32 previous_token_index, u32 current_token_index)
+{
+    if (trivia == NULL ||
+        current_token_index >= array_count(trivia->newlines_before_token) ||
+        previous_token_index >= current_token_index) {
+        return false;
+    }
+
+    u32 newline_count = 0;
+    for (u32 i = previous_token_index + 1; i <= current_token_index; ++i) {
+        newline_count += trivia->newlines_before_token[i];
+        if (newline_count > 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void format_trivia_validate(const Lexer*        lexer,
                                      const FormatTrivia* trivia)
 {
@@ -2171,10 +2190,20 @@ format_syntax_has_blank_line_between_nodes(const FormatSyntaxContext* context,
                                            u32 previous_node_index,
                                            u32 current_node_index)
 {
+    u32 previous_end_token =
+        format_syntax_node_end_token(context, previous_node_index);
+    u32 current_start_token =
+        format_syntax_node_start_token(context, current_node_index);
+    if (format_trivia_has_blank_line_between_tokens(
+            g_format_trivia, previous_end_token, current_start_token)) {
+        return true;
+    }
+
     return format_has_blank_line_between_offsets(
         context->lexer->source,
-        format_syntax_node_end_offset(context, previous_node_index),
-        format_syntax_node_start_offset(context, current_node_index));
+        lex_token_end_offset(context->lexer,
+                             &context->lexer->tokens[previous_end_token]),
+        context->lexer->tokens[current_start_token].offset);
 }
 
 internal bool format_has_comment_between_offsets(const Lexer* lexer,
@@ -3983,6 +4012,11 @@ internal bool format_ffi_infos_have_blank_line_between(const Cst*   cst,
     u32 previous_end_token_index = current->token_index - 1;
     if (previous_end_token_index >= array_count(lexer->tokens)) {
         return false;
+    }
+
+    if (format_trivia_has_blank_line_between_tokens(
+            g_format_trivia, previous_end_token_index, current->token_index)) {
+        return true;
     }
 
     usize previous_end =

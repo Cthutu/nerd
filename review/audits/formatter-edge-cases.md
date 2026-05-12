@@ -129,6 +129,8 @@ Current migration status:
 - Comment-only line emission is now shared by the CST formatter path and the
   token/trivia fallback, reducing one duplicated layout case while preserving
   the public formatter API.
+- Blank-line checks between syntax nodes and FFI entries now consult
+  token-indexed trivia first, with the older offset scan retained as a fallback.
 
 Follow-up:
 

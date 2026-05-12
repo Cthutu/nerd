@@ -104,6 +104,15 @@ Next extraction target:
 - add a token-range blank-line query to `FormatSyntaxContext` and migrate one
   block/top-level grouping decision to it
 
+Migration note:
+
+- `format_trivia_has_blank_line_between_tokens` now answers token-range
+  blank-line questions from `FormatTrivia`.
+- `format_syntax_has_blank_line_between_nodes` uses that token/trivia query
+  before falling back to offset line counting.
+- FFI block grouping also checks the token/trivia query before using the older
+  offset path.
+
 ### Indentation
 
 Main code:
@@ -212,4 +221,3 @@ Next extraction target:
 
 This order keeps the formatter contract syntax/trivia-based and avoids
 stabilising a region planner around the old offset-driven comment model.
-

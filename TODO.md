@@ -160,7 +160,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Separate token spacing, comment attachment, blank-line policy, indentation,
     alignment regions, and construct-specific rendering.
 
-- [ ] Commit: move blank-line decisions onto trivia/syntax helpers
+- [x] Commit: move blank-line decisions onto trivia/syntax helpers
   - Prefer token newline counts and syntax ranges over ad hoc source scans.
   - Keep snapshots idempotent.
 
