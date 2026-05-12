@@ -126,7 +126,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     should request named views instead of reading broad sema internals.
   - Add regression tests for incomplete source and failed imports.
 
-- [ ] Commit: document the new sema boundary
+- [x] Commit: document the new sema boundary
   - Update `docs/compiler-pipeline.md`, `ARCHITECTURE_REVIEW.md`, and decision
     records if the boundary becomes a settled architecture rule.
 

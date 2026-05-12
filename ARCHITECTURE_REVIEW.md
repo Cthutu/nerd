@@ -68,6 +68,8 @@ The chosen boundary is:
 - CST and formatter trivia own source-preserving tooling structure
 - sema owns declaration collection, name resolution, type checking,
   diagnostics, and semantic side tables
+- semantic readiness is split into declaration facts, binding facts, and type
+  facts so editor features can use partial semantic products deliberately
 - HIR owns lowered checked program structure: nameless entities, explicit
   bindings, modules, imports, exports, globals, init work, functions, locals,
   control flow, aggregates, strings, dynamic arrays, and runtime operations
@@ -102,8 +104,8 @@ Remaining known risks:
 - Runtime and ABI choices are deliberately narrow. Aggregate ABI, varargs,
   debug metadata, target triples, and platform-specific runtime details need
   careful expansion as the language grows.
-- LSP partial semantic facts are safer than before, but declaration facts,
-  binding facts, and checked type facts are still not fully separated products.
+- LSP semantic readiness is split into declaration, binding, and type-fact
+  products, but `sema.c` still builds those facts inside one large pass.
 - The formatter has a token/trivia fallback and shared syntax context, but the
   recursive CST path still contains many construct-specific layout rules.
 

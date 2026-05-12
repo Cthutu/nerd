@@ -44,6 +44,9 @@ Date: YYYY-MM-DD
 - [0006: Memory Ownership Strategy](0006-memory-ownership-strategy.md)
   - Status: accepted.
   - Closeout: active policy for future performance work.
+- [0007: Semantic Fact Readiness](0007-semantic-fact-readiness.md)
+  - Status: accepted.
+  - Closeout: active policy for LSP/front-end boundary work.
 
 ## Closeout Notes
 

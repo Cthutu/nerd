@@ -104,6 +104,20 @@ Local variable scopes are also semantic side tables. Each function body creates
 a root local scope, and nested block statements create child scopes. Lookup is
 lexical and declaration-order aware.
 
+The front end now distinguishes semantic sub-products:
+
+- declaration facts: top-level declarations, imports, exports, and declaration
+  source anchors
+- binding facts: source bindings, references, lexical scopes, locals, and
+  source navigation facts
+- type facts: best-effort or checked type rows, method facts, and type-derived
+  completion/hover/signature information
+
+These are currently backed by the same `Sema` tables, but they are separate
+readiness contracts. Batch compilation requires checked semantic success before
+HIR generation. Editor tooling may use declaration and binding facts from a
+partial analysis and request type facts only when the feature needs them.
+
 ## HIR Generation
 
 HIR lowering in [src/compiler/hir/gen.c](/home/matt/nerd/src/compiler/hir/gen.c)
