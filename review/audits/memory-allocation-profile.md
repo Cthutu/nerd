@@ -111,7 +111,9 @@ Initial read:
 
 ## Follow-Up Targets
 
-- Reuse scratch arenas in formatter block formatting and token fallback.
+- Formatter block formatting now avoids a temporary arena/copy for each code
+  chunk by passing source slices directly. Continue looking for scratch arenas
+  in token fallback and alignment paths.
 - Pre-size common sema/HIR dynamic arrays where source counts are already known.
 - Keep backend LLVM rendering arena based, but avoid unnecessary helper arrays
   in small modules.

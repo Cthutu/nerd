@@ -6300,28 +6300,22 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     &lexer, &token_index, block_end, &delimiter_depth);
             }
 
-            Arena block_arena = {0};
-            arena_init(&block_arena);
-            u8* block_copy =
-                (u8*)arena_alloc(&block_arena, block_end - block_start);
-            memcpy(
-                block_copy, text.data + block_start, block_end - block_start);
+            string block_text =
+                string_from(text.data + block_start, block_end - block_start);
             bool ok = format_emit_code_block(
                 &sb,
                 (NerdSource){
-                    .source = string_from(block_copy, block_end - block_start),
+                    .source      = block_text,
                     .source_path = source.source_path,
                 });
             if (!ok) {
                 ok = format_emit_token_stream_block(
                     &sb,
                     (NerdSource){
-                        .source = string_from(block_copy,
-                                              block_end - block_start),
+                        .source      = block_text,
                         .source_path = source.source_path,
                     });
             }
-            arena_done(&block_arena);
             if (!ok) {
                 format_trivia_done(&trivia);
                 lex_done(&lexer);

@@ -235,7 +235,7 @@ Working rules for this review:
   - Heap allocations only where ownership escapes or lifetime is not phase
     bound.
 
-- [ ] Commit: reduce hot-path allocation churn
+- [x] Commit: reduce hot-path allocation churn
   - Focus on LSP reanalysis, formatter passes, HIR generation, and LLVM text
     construction.
 

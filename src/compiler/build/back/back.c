@@ -147,7 +147,13 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                            const NerdArtifactConfig* artifacts,
                                            BackEndLlvmModules*       out)
 {
-    for (u32 i = 0; i < array_count(program->modules); ++i) {
+    u32 module_count = (u32)array_count(program->modules);
+    array_requires_capacity(out->module_llvms, module_count);
+    if (artifacts->emit_llvm_file) {
+        array_requires_capacity(out->llvm_paths, module_count);
+    }
+
+    for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState* front_end   = &program->modules[i].front_end;
         string               module_llvm = llvm_render_hir(
             &front_end->hir, &front_end->lexer, &front_end->sema, arena);

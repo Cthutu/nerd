@@ -53,3 +53,22 @@ Notes:
   command construction.
 - The formatter and LSP paths create multiple short-lived arenas even for small
   inputs.
+
+## After Initial Churn Reduction
+
+Changes:
+
+- Formatter block formatting now passes source slices directly instead of
+  allocating a temporary arena and copied block text for each code chunk.
+- Backend LLVM module arrays are pre-sized from the known module count.
+
+Formatter result on the same partial edge fixture:
+
+| scenario | stage | phase | arena inits | arena allocs | arena bytes | arena commits | arena commit bytes |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| before | formatter | format source | 10 | 143 | 992 | 10 | 655,360 |
+| after | formatter | format source | 9 | 142 | 872 | 9 | 589,824 |
+
+The formatter change removes one short-lived arena and one copied block slice
+for this small fixture. Larger files with more code chunks should save one arena
+init/commit per chunk that previously needed the copy.
