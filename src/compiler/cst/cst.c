@@ -293,6 +293,12 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
             cst_peek_kind_at(state, 1));
     }
 
+    if (token.kind == TK_String || token.kind == TK_CString ||
+        token.kind == TK_InterpolatedStringStart) {
+        return cst_token_can_continue_on_branch_head(
+            cst_peek_kind_at(state, 1));
+    }
+
     return false;
 }
 

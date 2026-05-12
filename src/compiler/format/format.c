@@ -6215,6 +6215,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     u32       comment_index           = 0;
     u32       multiline_bracket_depth = 0;
     u32       paren_depth             = 0;
+    bool      in_interpolated_string  = false;
+    u32       interp_multiline_depth  = 0;
     TokenKind previous_kind           = TK_EOF;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind      = lexer.tokens[i].kind;
@@ -6257,8 +6259,15 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         format_emit_token_comments_before(&state, &trivia, &comment_index, i);
 
-        if (kind == TK_RBrace ||
-            (kind == TK_RBracket && multiline_bracket_depth > 0)) {
+        if (in_interpolated_string && kind == TK_RBrace &&
+            interp_multiline_depth > 0 && newlines_before > 0) {
+            if (state.indent_level > 0) {
+                state.indent_level--;
+            }
+            interp_multiline_depth--;
+        } else if (!in_interpolated_string &&
+                   (kind == TK_RBrace ||
+                    (kind == TK_RBracket && multiline_bracket_depth > 0))) {
             if (!state.at_line_start) {
                 format_token_state_newline(&state);
             }
@@ -6284,6 +6293,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         bool needs_space =
             format_token_needs_space_between(previous_kind, kind, next_kind);
+        if (in_interpolated_string ||
+            previous_kind == TK_InterpolatedStringStart ||
+            kind == TK_InterpolatedStringEnd) {
+            needs_space = false;
+        }
         if (!needs_space && kind == TK_LBracket && previous_kind != TK_EOF &&
             format_token_had_space_between(&lexer, i - 1, i)) {
             needs_space = true;
@@ -6294,7 +6308,15 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             sb_append_char(sb, ' ');
         }
 
-        if (kind == TK_String || kind == TK_CString) {
+        if (kind == TK_InterpolatedStringStart) {
+            sb_append_string(sb, format_token_text(&lexer, i));
+            in_interpolated_string = true;
+        } else if (kind == TK_InterpolatedStringEnd) {
+            sb_append_string(sb, format_token_text(&lexer, i));
+            in_interpolated_string = false;
+        } else if (in_interpolated_string && kind == TK_String) {
+            sb_append_string(sb, format_token_text(&lexer, i));
+        } else if (kind == TK_String || kind == TK_CString) {
             u32 string_index = format_token_string_index(&lexer, i);
             if (string_index < array_count(lexer.strings)) {
                 u32 saved_indent           = g_format_expr_indent_level;
@@ -6309,9 +6331,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             sb_append_string(sb, format_token_text(&lexer, i));
         }
 
-        if (kind == TK_LBrace) {
+        if (!in_interpolated_string && kind == TK_LBrace) {
             state.indent_level++;
             format_token_state_newline(&state);
+        } else if (in_interpolated_string && kind == TK_LBrace &&
+                   next_newlines > 0) {
+            state.indent_level++;
+            interp_multiline_depth++;
         } else if (kind == TK_LParen) {
             paren_depth++;
         } else if (kind == TK_RParen) {
@@ -6323,7 +6349,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             state.indent_level++;
             multiline_bracket_depth++;
             format_token_state_newline(&state);
-        } else if (kind == TK_RBrace || kind == TK_Semicolon) {
+        } else if (!in_interpolated_string &&
+                   (kind == TK_RBrace || kind == TK_Semicolon)) {
             u32 trailing_comment = U32_MAX;
             if (format_trivia_trailing_comment_after_token(
                     &trivia, i, &trailing_comment)) {
