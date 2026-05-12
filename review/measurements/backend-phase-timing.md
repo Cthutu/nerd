@@ -95,3 +95,9 @@ growth. The next useful measurement is a direct comparison against LLVM CLI
 alternatives (`llvm-as`, `llc`, `opt`, bitcode/object flows) using the same
 fixtures.
 
+Follow-up change:
+
+- The backend now reserves module/init arrays and declaration-filter symbol
+  arrays before rendering/link-input construction. This removes avoidable
+  dynamic-array growth in the measured LLVM render/combine path without
+  changing generated text.

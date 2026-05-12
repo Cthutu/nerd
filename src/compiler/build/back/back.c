@@ -167,6 +167,7 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
 {
     u32 module_count = (u32)array_count(program->modules);
     array_requires_capacity(out->module_llvms, module_count);
+    array_requires_capacity(out->init_module_indices, module_count);
     if (artifacts->emit_llvm_file) {
         array_requires_capacity(out->llvm_paths, module_count);
     }

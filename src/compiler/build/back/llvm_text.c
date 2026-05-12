@@ -184,6 +184,8 @@ string back_end_llvm_text_build_combined(Arena* arena,
                                          string init_ll)
 {
     Array(string) defined_symbols = NULL;
+    array_requires_capacity(defined_symbols,
+                            array_count(module_llvms) * 32 + 16);
     for (u32 i = 0; i < array_count(module_llvms); ++i) {
         back_end_collect_llvm_defined_symbols(&defined_symbols,
                                               module_llvms[i]);
@@ -193,6 +195,8 @@ string back_end_llvm_text_build_combined(Arena* arena,
 
     StringBuilder combined_llvm_builder = {0};
     Array(string) declared_symbols      = NULL;
+    array_requires_capacity(declared_symbols,
+                            array_count(defined_symbols) + 16);
     sb_init(&combined_llvm_builder, arena);
     for (u32 i = 0; i < array_count(module_llvms); ++i) {
         back_end_append_llvm_without_satisfied_declarations(

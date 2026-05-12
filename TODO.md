@@ -188,7 +188,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     measurements.
   - Keep clang as the install contract unless data justifies a change.
 
-- [ ] Commit: reduce unnecessary LLVM text churn
+- [x] Commit: reduce unnecessary LLVM text churn
   - Focus on string builder growth, temporary path construction, duplicate
     declaration filtering, and module sidecar policy.
 
