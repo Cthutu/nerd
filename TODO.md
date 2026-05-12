@@ -231,7 +231,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Ensure successful external builds remove temporary `.ll`, `.link.ll`,
     runtime object copies, and executables unless requested.
 
-- [ ] Commit: verify editor integrations after compiler changes
+- [x] Commit: verify editor integrations after compiler changes
   - VS Code extension packaging/install.
   - Neovim syntax/LSP install paths.
   - LSP startup from the installed `nerd` binary.
