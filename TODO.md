@@ -97,162 +97,149 @@ Working rules for this review:
 - After each task, state the commit hash, verification run, and recommended
   next step.
 
-## 2. Architecture Review Roadmap
+## 2. Next Engineering Roadmap
 
-### Milestone 1: Stabilize The LLVM Backend As The Default Path
+The initial architecture review is complete. This section now tracks the next
+implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
-- [x] Commit: add direct tests for LLVM text combination
-  - Cover duplicate declarations, declarations satisfied by definitions,
-    aliases, quoted `$` symbols, generated globals, and unresolved libc
-    declarations.
-  - Prefer focused command fixtures or a small internal test entry point that
-    exercises `src/compiler/build/back/llvm_text.c`.
+### Milestone 1: Split Semantic Facts From Semantic Success
 
-- [x] Commit: split runtime/init LLVM rendering out of backend orchestration
-  - Move generated epilogue wrapper and init wrapper helpers out of
-    `back.c`.
-  - Keep `back.c` responsible for artifact policy and process orchestration.
+- [ ] Commit: audit `Sema` products and consumers
+  - Classify declaration collection, scope construction, binding/reference
+    resolution, type facts, dependency ordering, diagnostics, and lowering-only
+    facts.
+  - Record the audit under `review/audits/`.
 
-- [x] Commit: document the executable backend contract
-  - Update `docs/compiler-pipeline.md` and review notes with the single
-    combined LLVM input model, temp cleanup rules, and clang/tool assumptions.
+- [ ] Commit: introduce explicit declaration and binding fact views
+  - Add narrow APIs for declarations, lexical scopes, source spans, imports,
+    exports, locals, and references.
+  - Keep the initial implementation backed by existing `Sema` tables.
 
-- [x] Commit: run installed compiler smoke tests
-  - Verify `just install`.
-  - Verify `nerd run` on small standalone programs outside the repo.
-  - Add a regression fixture for any language failure found during smoke tests.
+- [ ] Commit: define partial semantic readiness levels
+  - Distinguish declaration/binding facts from checked type facts.
+  - Update LSP readiness and front-end product states to expose those levels.
 
-### Milestone 2: Finish Replacing Old IR/C Test Expectations
+- [ ] Commit: migrate LSP features to the fact views
+  - Completion, hover, definition, rename, signature help, and code actions
+    should request named views instead of reading broad sema internals.
+  - Add regression tests for incomplete source and failed imports.
 
-- [x] Commit: make HIR the old IR textual comparison target
-  - Rename or redirect fixtures so compiler middle-layer tests compare HIR.
-  - Remove assumptions that the old linear IR is the expected intermediate
-    output.
+- [ ] Commit: document the new sema boundary
+  - Update `docs/compiler-pipeline.md`, `ARCHITECTURE_REVIEW.md`, and decision
+    records if the boundary becomes a settled architecture rule.
 
-- [x] Commit: make LLVM IR the old C output comparison target
-  - Replace C-generation expectations with LLVM-generation expectations where
-    the test intent is backend text.
-  - Keep language tests focused on behavior rather than incidental backend
-    spelling.
+### Milestone 2: Make Syntax Tooling More Tolerant
 
-- [x] Commit: remove stale generated-file cleanup gaps
-  - Ensure passing tests remove temporary `.ll`, `.link.ll`, `.hir`, and input
-    sidecars unless the test intentionally preserves them.
+- [ ] Commit: audit AST/CST divergence
+  - List duplicated grammar cases, missing CST recovery cases, and syntax
+    families where formatter/LSP and compiler parsing can drift.
 
-### Milestone 3: Remove The Old IR And C Backend
+- [ ] Commit: add syntax recovery fixtures
+  - Cover partially typed blocks, calls, aggregates, `on` branches, module uses,
+    and unterminated delimiters.
+  - Include formatter and LSP cases where the expected behaviour is useful
+    partial output rather than full success.
 
-- [x] Commit: remove old IR generation from the build path
-  - Delete or isolate old IR code after tests no longer depend on it.
-  - Keep any still-useful concepts only if they are explicitly moved into HIR
-    or LLVM lowering.
+- [ ] Commit: derive shared syntax classification helpers
+  - Centralize token-to-construct and node-range queries currently duplicated
+    between formatter, LSP, AST, and CST utilities.
 
-- [x] Commit: remove C generation and C-specific dependency ordering
-  - Delete the C backend path once LLVM can compile all language fixtures.
-  - Remove topological ordering logic that only existed to satisfy C emission.
+- [ ] Commit: move one formatter or LSP path to tolerant syntax first
+  - Prefer a narrow path with clear value, such as document symbols or
+    newline/comment decisions around incomplete blocks.
 
-- [x] Commit: simplify backend artifact configuration
-  - Make emitted artifacts match the LLVM pipeline:
-    - HIR dump
-    - module LLVM sidecars
-    - combined link LLVM only when requested or debugging
-    - executable output
+- [ ] Commit: decide the long-term AST/CST relationship
+  - Record whether AST should be derived from CST, whether both should come
+    from one parser core, or whether the current split remains intentional.
 
-- [x] Commit: update docs after removal
-  - Remove C backend references from current docs.
-  - Preserve historical notes only where useful for context.
+### Milestone 3: Continue Formatter Simplification
 
-### Milestone 4: Complete HIR Coverage For Language Lowering
+- [ ] Commit: classify remaining layout cases in `format.c`
+  - Separate token spacing, comment attachment, blank-line policy, indentation,
+    alignment regions, and construct-specific rendering.
 
-- [x] Commit: audit HIR coverage against the manual
-  - Walk manual chapters and ensure every source construct has either HIR
-    lowering, an explicit unsupported diagnostic, or a tracked TODO.
+- [ ] Commit: move blank-line decisions onto trivia/syntax helpers
+  - Prefer token newline counts and syntax ranges over ad hoc source scans.
+  - Keep snapshots idempotent.
 
-- [x] Commit: strengthen anonymous entity and binding tests
-  - Functions, types, globals, imports, exports, and module-visible bindings
-    should reflect the Nerd binding model:
-    entities are nameless until explicitly bound.
+- [ ] Commit: move another comment consumer onto `FormatTrivia`
+  - Pick one remaining offset-driven path and replace it with token-attached
+    leading or trailing trivia.
 
-- [x] Commit: finish expression-valued control flow lowering
-  - Ensure `on`, `if`-like forms, loops, branches, early returns, and void
-    expressions lower consistently.
-  - LLVM should own phi construction where structured HIR branches produce a
-    value.
+- [ ] Commit: extract alignment region planning
+  - Make local declarations, assignments, plex fields, enum variants, and
+    trailing comments use an explicit region planner where practical.
 
-- [x] Commit: cover aggregate, enum, slice, dynamic-array, and pointer cases
-  - Include member auto-deref behavior.
-  - Include `for item in collection` where `item` is always a pointer.
+- [ ] Commit: grow token/trivia fallback coverage
+  - Add partial-source snapshots before changing behaviour.
+  - Keep sema out of the formatter contract.
 
-### Milestone 5: Harden The LSP Boundary
+### Milestone 4: Measure And Tune The LLVM Backend
 
-- [x] Commit: define front-end product readiness states
-  - Make it explicit which of lexer, AST, CST, sema, and HIR are valid after
-    partial or failed analysis.
-
-- [x] Commit: centralize LSP access to compiler facts
-  - Reduce direct feature-level poking into `doc->front_end`.
-  - Add helper APIs for symbol lookup, scope lookup, type lookup, and source
-    spans that are safe under partial analysis.
-
-- [x] Commit: add crash regression fixtures
-  - Convert known LSP crash cases from `review/audits/lsp-crashes.md` into
-    automated tests.
-
-- [x] Commit: improve completion on incomplete code
-  - Use tolerant syntax and partial semantic facts where available.
-  - Avoid requiring a successful full build for basic completions.
-
-- [x] Commit: improve hover, rename, and jump-to-definition
-  - Base each feature on the shared partial-facts interface.
-  - Add tests for incomplete source and cross-module references.
-
-### Milestone 6: Rework Formatter Architecture
-
-- [x] Commit: prototype token/trivia-driven formatting on a narrow construct set
-  - Use lexer token stream with comments and newlines preserved.
-  - Track indentation and scope with an explicit formatter state machine.
-
-- [x] Commit: connect formatter decisions to syntax nodes without requiring sema
-  - Formatting should remain source/syntax based.
-  - Sema tables can inform optional future tooling, but should not be required
-    for stable formatting.
-
-- [x] Commit: migrate edge-case fixtures to the new formatter path
-  - Prioritize comments, blank lines, nested blocks, `on` forms, aggregate
-    literals, and partially typed code.
-
-- [x] Commit: remove duplicated layout cases from the old formatter path
-  - Keep the public formatter API stable while replacing internals.
-
-### Milestone 7: Review Memory Strategy
-
-- [x] Commit: measure allocations by phase
-  - Lexer/parser/sema/HIR/LLVM/backend/LSP/formatter.
+- [ ] Commit: measure build/link timings by backend phase
+  - Track LLVM text rendering, combined input construction, runtime object
+    writing, clang startup, and clang link/compile time.
   - Record results under `review/measurements/`.
 
-- [x] Commit: classify allocation ownership
-  - Arenas for phase-lifetime products.
-  - Dynamic arrays for growing compiler tables.
-  - Heap allocations only where ownership escapes or lifetime is not phase
-    bound.
+- [ ] Commit: compare clang text input with LLVM CLI alternatives
+  - Prototype `llvm-as`, `llc`, `opt`, bitcode, or direct object flows only as
+    measurements.
+  - Keep clang as the install contract unless data justifies a change.
 
-- [x] Commit: reduce hot-path allocation churn
-  - Focus on LSP reanalysis, formatter passes, HIR generation, and LLVM text
-    construction.
+- [ ] Commit: reduce unnecessary LLVM text churn
+  - Focus on string builder growth, temporary path construction, duplicate
+    declaration filtering, and module sidecar policy.
 
-### Milestone 8: Final Architecture Review Closeout
+- [ ] Commit: improve backend diagnostics on LLVM/tool failures
+  - Preserve failing `.ll` inputs.
+  - Report the exact command, generated file paths, and first useful tool error.
 
-- [x] Commit: update decision records
-  - Mark settled choices as accepted, rejected, or superseded.
+- [ ] Commit: document the measured backend toolchain decision
+  - Add or update a decision record if the external tool contract changes.
 
-- [x] Commit: update `ARCHITECTURE_REVIEW.md`
-  - Summarize final pipeline, boundaries, and remaining known risks.
+### Milestone 5: Strengthen Target Layout And Runtime ABI
 
-- [x] Commit: remove obsolete review scaffolding
-  - Keep useful audits and measurements.
-  - Delete prototypes or notes that no longer describe the chosen direction.
+- [ ] Commit: audit current LLVM type and ABI assumptions
+  - Strings, slices, dynamic arrays, tuples, plexes, enums, varargs, pointers,
+    integer widths, alignment, and aggregate passing/returning.
 
-- [x] Commit: final full verification
+- [ ] Commit: introduce a backend layout context
+  - Centralize target type spelling, sizes, alignments, and ABI lowering
+    choices used by LLVM generation.
+
+- [ ] Commit: add focused ABI regression tests
+  - Include FFI calls, varargs, string helpers, aggregate fields, enum payloads,
+    pointer casts, and dynamic-array runtime calls.
+
+- [ ] Commit: make runtime helper declarations generated from one source
+  - Avoid duplicated handwritten signatures between runtime C, HIR lowering,
+    LLVM emission, and tests.
+
+- [ ] Commit: document target support limits
+  - Be explicit about the current host assumptions and what must change for
+    cross-target builds.
+
+### Milestone 6: Release And Installation Hardening
+
+- [ ] Commit: add installed compiler smoke fixtures
+  - Exercise `nerd build`, `nerd run`, `nerd test`, `nerd format`, `--hir`, and
+    `--llvm` outside the repository tree.
+
+- [ ] Commit: check generated artefact cleanup from installed builds
+  - Ensure successful external builds remove temporary `.ll`, `.link.ll`,
+    runtime object copies, and executables unless requested.
+
+- [ ] Commit: verify editor integrations after compiler changes
+  - VS Code extension packaging/install.
+  - Neovim syntax/LSP install paths.
+  - LSP startup from the installed `nerd` binary.
+
+- [ ] Commit: update public docs for the current compiler shape
+  - README, roadmap, manual references, compiler pipeline, testing docs, and
+    editor-support docs should agree.
+
+- [ ] Commit: final release gate
   - `just test`
   - `just install`
   - installed compiler smoke tests
-  - LSP smoke test if the local editor/server workflow is available
+  - focused LSP transcript smoke
