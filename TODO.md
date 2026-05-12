@@ -197,7 +197,7 @@ Working rules for this review:
   - Convert known LSP crash cases from `review/audits/lsp-crashes.md` into
     automated tests.
 
-- [ ] Commit: improve completion on incomplete code
+- [x] Commit: improve completion on incomplete code
   - Use tolerant syntax and partial semantic facts where available.
   - Avoid requiring a successful full build for basic completions.
 

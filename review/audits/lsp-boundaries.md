@@ -280,6 +280,11 @@ map:
 - signature help: `LspSemanticView`
 - code actions: `LspSemanticView`
 
+Completion now has a small source-only parameter fallback for invalid function
+syntax. This keeps basic symbol completion useful when sema has no local table
+for the current edit, for example while a user has typed `name : fn(...)` before
+fixing the binding operator.
+
 Direct document-map lookup is now isolated to document/view construction and
 document lifecycle operations.
 

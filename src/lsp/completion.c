@@ -2011,6 +2011,81 @@ internal void lsp_completion_add_source_symbols(Arena*     arena,
     }
 }
 
+internal void lsp_completion_add_source_params_from_line(Arena*     arena,
+                                                         JsonValue* items,
+                                                         string     line)
+{
+    line    = lsp_completion_trim(lsp_completion_strip_comment(line));
+    usize i = 0;
+    while (i < line.count) {
+        if (lsp_completion_match_ident_at(line, &i, s("fn"))) {
+            break;
+        }
+        i++;
+    }
+    if (i >= line.count) {
+        return;
+    }
+    while (i < line.count && (line.data[i] == ' ' || line.data[i] == '\t')) {
+        i++;
+    }
+    if (i >= line.count || line.data[i] != '(') {
+        return;
+    }
+    i++;
+
+    while (i < line.count) {
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t' ||
+                line.data[i] == ',')) {
+            i++;
+        }
+        if (i >= line.count || line.data[i] == ')') {
+            return;
+        }
+
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i == start) {
+            i++;
+            continue;
+        }
+
+        string label = {.data = line.data + start, .count = i - start};
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        if (i < line.count && line.data[i] == ':') {
+            lsp_completion_add(arena, items, label, 6);
+        }
+
+        while (i < line.count && line.data[i] != ',' && line.data[i] != ')') {
+            i++;
+        }
+    }
+}
+
+internal void lsp_completion_add_source_params(Arena*     arena,
+                                               JsonValue* items,
+                                               string     source,
+                                               usize      offset)
+{
+    usize line_start = 0;
+    while (line_start < source.count && line_start < offset) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = MIN(line_end, offset) - line_start};
+        lsp_completion_add_source_params_from_line(arena, items, line);
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+}
+
 internal bool lsp_completion_add_payload_fields_from_text(Arena*     arena,
                                                           JsonValue* items,
                                                           string     source,
@@ -3083,6 +3158,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     lsp_completion_add_symbols(message->arena, items, doc);
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
+    if (!doc->sema_partial || array_count(doc->front_end.sema.locals) == 0) {
+        lsp_completion_add_source_params(
+            message->arena, items, view.source, offset);
+    }
     lsp_completion_filter_items(items, prefix);
     json_object_set_array(response, "result", items);
     lsp_send_response(message->arena, response);
