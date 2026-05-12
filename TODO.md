@@ -209,7 +209,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Centralise target type spelling, sizes, alignments, and ABI lowering
     choices used by LLVM generation.
 
-- [ ] Commit: add focussed ABI regression tests
+- [x] Commit: add focussed ABI regression tests
   - Include FFI calls, varargs, string helpers, aggregate fields, enum payloads,
     pointer casts, and dynamic-array runtime calls.
 

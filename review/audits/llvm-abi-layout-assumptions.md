@@ -171,3 +171,18 @@ and threaded it into function emission. It currently preserves the existing
 
 The remaining layout work is to move memory-operation alignment and any
 runtime-helper declaration spelling through the same source of truth.
+
+## Follow-Up: ABI Regression Coverage
+
+`tests/llvm/029-abi-layout-runtime.ll` now pins a focussed cross-section of the
+current ABI contract:
+
+- string/slice spelling as `{ ptr, i64 }`
+- C FFI declarations for scalar and vararg calls
+- runtime string-builder and `to_string$...` declarations
+- `string_eq` pointer ABI
+- dynamic-array header allocation as `{ ptr, i64, i64 }` and 24 bytes
+- dynamic-array element allocation sizing for aggregate elements
+- enum tags as `i64` with a widened integer payload cell
+- aggregate fields in plex values and enum payloads
+- pointer-to-slice casts and C string pointers
