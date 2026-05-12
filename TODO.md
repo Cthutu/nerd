@@ -229,7 +229,7 @@ Working rules for this review:
   - Lexer/parser/sema/HIR/LLVM/backend/LSP/formatter.
   - Record results under `review/measurements/`.
 
-- [ ] Commit: classify allocation ownership
+- [x] Commit: classify allocation ownership
   - Arenas for phase-lifetime products.
   - Dynamic arrays for growing compiler tables.
   - Heap allocations only where ownership escapes or lifetime is not phase

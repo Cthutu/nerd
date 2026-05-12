@@ -117,3 +117,19 @@ Initial read:
   in small modules.
 - Keep LSP document lifetime arenas, but reduce temporary per-request arenas
   during incremental reanalysis.
+
+## Ownership Classification
+
+Accepted decision: `review/decisions/0006-memory-ownership-strategy.md`.
+
+Summary:
+
+- Arenas own phase-lifetime products, request-lifetime response data, and
+  scratch text.
+- Dynamic arrays own growing compiler tables.
+- Direct heap allocations should be either dynamic-array backing stores,
+  explicit map/interner storage, or ownership that genuinely escapes a phase.
+
+The current measurements match that model overall. The main pressure points are
+not unexpected direct heap ownership; they are dynamic-array growth in sema/HIR
+tables and short-lived arena creation in formatter/LSP paths.
