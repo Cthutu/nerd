@@ -657,6 +657,12 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
                                                  u32            node_index);
+internal bool format_node_is_string_continuation_operand(const Cst*   cst,
+                                                         const Lexer* lexer,
+                                                         u32 node_index);
+internal bool format_node_is_plain_string_continuation_rhs(const Cst*   cst,
+                                                           const Lexer* lexer,
+                                                           u32 node_index);
 internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
@@ -1107,6 +1113,14 @@ internal void format_emit_expr(StringBuilder* sb,
         }
         break;
     case CK_IntegerPlus:
+        if (lexer->tokens[node->token_index].kind == TK_Plus &&
+            format_node_is_string_continuation_operand(cst, lexer, node->a) &&
+            format_node_is_plain_string_continuation_rhs(cst, lexer, node->b)) {
+            format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+            sb_append_cstr(sb, " +");
+            format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+            break;
+        }
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " + ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
@@ -1778,6 +1792,39 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
     }
     return format_collect_plain_string_concat(sb, cst, lexer, node->a) &&
            format_collect_plain_string_concat(sb, cst, lexer, node->b);
+}
+
+internal bool format_node_is_string_continuation_operand(const Cst*   cst,
+                                                         const Lexer* lexer,
+                                                         u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    switch (node->kind) {
+    case CK_StringLiteral:
+        return lexer->tokens[node->token_index].kind != TK_CString;
+    case CK_StringConcat:
+        return format_node_is_string_continuation_operand(
+                   cst, lexer, node->a) &&
+               format_node_is_string_continuation_operand(cst, lexer, node->b);
+    case CK_InterpolatedString:
+        return lexer->tokens[node->token_index].kind !=
+               TK_StringContinuationStart;
+    default:
+        return false;
+    }
+}
+
+internal bool format_node_is_plain_string_continuation_rhs(const Cst*   cst,
+                                                           const Lexer* lexer,
+                                                           u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_StringLiteral) {
+        return lexer->tokens[node->token_index].kind != TK_CString;
+    }
+    return node->kind == CK_StringConcat &&
+           format_node_is_plain_string_continuation_rhs(cst, lexer, node->a) &&
+           format_node_is_plain_string_continuation_rhs(cst, lexer, node->b);
 }
 
 internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
@@ -6229,12 +6276,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         .at_line_start = true,
     };
 
-    u32       comment_index           = 0;
-    u32       multiline_bracket_depth = 0;
-    u32       paren_depth             = 0;
-    bool      in_interpolated_string  = false;
-    u32       interp_multiline_depth  = 0;
-    TokenKind previous_kind           = TK_EOF;
+    u32       comment_index                  = 0;
+    u32       multiline_bracket_depth        = 0;
+    u32       paren_depth                    = 0;
+    bool      in_interpolated_string         = false;
+    u32       interp_multiline_depth         = 0;
+    TokenKind previous_kind                  = TK_EOF;
+    bool      previous_plus_continues_string = false;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind      = lexer.tokens[i].kind;
         TokenKind next_kind = i + 1 < array_count(lexer.tokens)
@@ -6313,11 +6361,21 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         bool needs_space =
             format_token_needs_space_between(previous_kind, kind, next_kind);
+        bool current_plus_continues_string =
+            kind == TK_Plus && next_kind == TK_String &&
+            (previous_kind == TK_String ||
+             previous_kind == TK_InterpolatedStringEnd);
         if (in_interpolated_string ||
             previous_kind == TK_InterpolatedStringStart ||
             previous_kind == TK_StringContinuationStart ||
-            kind == TK_InterpolatedStringEnd) {
+            kind == TK_InterpolatedStringEnd ||
+            (previous_plus_continues_string && kind == TK_String)) {
             needs_space = false;
+        }
+        if (kind == TK_StringContinuationStart &&
+            (previous_kind == TK_String ||
+             previous_kind == TK_InterpolatedStringEnd)) {
+            needs_space = true;
         }
         if (!needs_space && kind == TK_LBracket && previous_kind != TK_EOF &&
             format_token_had_space_between(&lexer, i - 1, i)) {
@@ -6404,7 +6462,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             }
         }
 
-        previous_kind = kind;
+        previous_kind                  = kind;
+        previous_plus_continues_string = current_plus_continues_string;
     }
 
     while (comment_index < array_count(lexer.comments)) {
