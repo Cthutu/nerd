@@ -125,6 +125,10 @@ internal bool program_front_end_sema(void* data)
         return false;
     }
     ctx->front_end->readiness.sema = FRONT_END_PRODUCT_Complete;
+    ctx->front_end->readiness.semantic.declarations =
+        FRONT_END_PRODUCT_Complete;
+    ctx->front_end->readiness.semantic.bindings   = FRONT_END_PRODUCT_Complete;
+    ctx->front_end->readiness.semantic.type_facts = FRONT_END_PRODUCT_Complete;
     return true;
 }
 

@@ -311,6 +311,15 @@ that feature handlers request the weakest product they need:
    - `type_facts_complete`
 5. Update `FrontEndReadiness` after the first compiler-side split is possible.
 
+Update:
+
+- `FrontEndReadiness` now carries semantic sub-product states for declarations,
+  bindings, and type facts.
+- `LspDocument` now derives `decls_ready`, `bindings_ready`,
+  `type_facts_partial`, and `type_facts_complete` from those sub-products.
+- `sema_partial` remains as a compatibility flag while feature handlers migrate
+  to declaration, binding, and type-fact views.
+
 ## Risks
 
 - A view rename alone does not make partial sema safer. Accessors must keep

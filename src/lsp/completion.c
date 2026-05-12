@@ -788,6 +788,18 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             .syntax_ready = front_end_product_is_available(
                 program.modules[program.root_module_index]
                     .front_end.readiness.ast),
+            .decls_ready = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.semantic.declarations),
+            .bindings_ready = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.semantic.bindings),
+            .type_facts_partial = front_end_product_is_available(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.semantic.type_facts),
+            .type_facts_complete = front_end_product_is_complete(
+                program.modules[program.root_module_index]
+                    .front_end.readiness.semantic.type_facts),
             .sema_partial = front_end_product_is_available(
                 program.modules[program.root_module_index]
                     .front_end.readiness.sema),

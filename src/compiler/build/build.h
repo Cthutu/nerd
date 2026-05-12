@@ -20,11 +20,18 @@ typedef enum : u8 {
     FRONT_END_PRODUCT_Complete,
 } FrontEndProductState;
 
+typedef struct FrontEndSemanticReadiness {
+    FrontEndProductState declarations;
+    FrontEndProductState bindings;
+    FrontEndProductState type_facts;
+} FrontEndSemanticReadiness;
+
 typedef struct FrontEndReadiness {
-    FrontEndProductState lexer;
-    FrontEndProductState ast;
-    FrontEndProductState sema;
-    FrontEndProductState hir;
+    FrontEndProductState     lexer;
+    FrontEndProductState     ast;
+    FrontEndProductState     sema;
+    FrontEndSemanticReadiness semantic;
+    FrontEndProductState     hir;
 } FrontEndReadiness;
 
 typedef struct FrontEndState {

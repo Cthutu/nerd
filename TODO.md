@@ -117,7 +117,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     exports, locals, and references.
   - Keep the initial implementation backed by existing `Sema` tables.
 
-- [ ] Commit: define partial semantic readiness levels
+- [x] Commit: define partial semantic readiness levels
   - Distinguish declaration/binding facts from checked type facts.
   - Update LSP readiness and front-end product states to expose those levels.
 

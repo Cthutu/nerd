@@ -50,7 +50,10 @@ internal bool front_end_sema(FrontEndContext* ctx)
         ctx->results.readiness.sema = FRONT_END_PRODUCT_Missing;
         return false;
     }
-    ctx->results.readiness.sema = FRONT_END_PRODUCT_Complete;
+    ctx->results.readiness.sema                  = FRONT_END_PRODUCT_Complete;
+    ctx->results.readiness.semantic.declarations = FRONT_END_PRODUCT_Complete;
+    ctx->results.readiness.semantic.bindings     = FRONT_END_PRODUCT_Complete;
+    ctx->results.readiness.semantic.type_facts   = FRONT_END_PRODUCT_Complete;
     return true;
 }
 

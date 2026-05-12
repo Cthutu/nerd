@@ -256,6 +256,10 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->analysis_ok   = false;
     doc->tokens_ready  = false;
     doc->syntax_ready  = false;
+    doc->decls_ready   = false;
+    doc->bindings_ready = false;
+    doc->type_facts_partial  = false;
+    doc->type_facts_complete = false;
     doc->sema_partial  = false;
     doc->sema_complete = false;
     doc->cst_ready     = false;
@@ -264,9 +268,19 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
 internal void lsp_document_set_readiness_from_front_end(LspDocument* doc)
 {
     const FrontEndReadiness* readiness = &doc->front_end.readiness;
-    doc->tokens_ready  = front_end_product_is_available(readiness->lexer);
-    doc->syntax_ready  = front_end_product_is_available(readiness->ast);
-    doc->sema_partial  = front_end_product_is_available(readiness->sema);
+    doc->tokens_ready       = front_end_product_is_available(readiness->lexer);
+    doc->syntax_ready       = front_end_product_is_available(readiness->ast);
+    doc->decls_ready        = front_end_product_is_available(
+        readiness->semantic.declarations);
+    doc->bindings_ready =
+        front_end_product_is_available(readiness->semantic.bindings);
+    doc->type_facts_partial =
+        front_end_product_is_available(readiness->semantic.type_facts);
+    doc->type_facts_complete =
+        front_end_product_is_complete(readiness->semantic.type_facts);
+    doc->sema_partial =
+        doc->decls_ready || doc->bindings_ready || doc->type_facts_partial ||
+        front_end_product_is_available(readiness->sema);
     doc->sema_complete = front_end_product_is_complete(readiness->sema);
 }
 
@@ -288,6 +302,10 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     staged->source_ready  = true;
     staged->tokens_ready  = false;
     staged->syntax_ready  = false;
+    staged->decls_ready   = false;
+    staged->bindings_ready = false;
+    staged->type_facts_partial  = false;
+    staged->type_facts_complete = false;
     staged->sema_partial  = false;
     staged->sema_complete = false;
     staged->cst_ready     = false;
@@ -331,11 +349,21 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     }
     if (!ok && staged->front_end.readiness.sema == FRONT_END_PRODUCT_Missing) {
         staged->front_end.readiness.sema = FRONT_END_PRODUCT_Partial;
+        staged->front_end.readiness.semantic.declarations =
+            FRONT_END_PRODUCT_Partial;
+        staged->front_end.readiness.semantic.bindings = FRONT_END_PRODUCT_Partial;
+        staged->front_end.readiness.semantic.type_facts =
+            FRONT_END_PRODUCT_Partial;
         if (array_count(staged->program.modules) > 0 &&
             staged->program.root_module_index <
                 array_count(staged->program.modules)) {
-            staged->program.modules[staged->program.root_module_index]
-                .front_end.readiness.sema = FRONT_END_PRODUCT_Partial;
+            FrontEndReadiness* root_readiness =
+                &staged->program.modules[staged->program.root_module_index]
+                     .front_end.readiness;
+            root_readiness->sema = FRONT_END_PRODUCT_Partial;
+            root_readiness->semantic.declarations = FRONT_END_PRODUCT_Partial;
+            root_readiness->semantic.bindings     = FRONT_END_PRODUCT_Partial;
+            root_readiness->semantic.type_facts   = FRONT_END_PRODUCT_Partial;
         }
         lsp_document_set_readiness_from_front_end(staged);
     }
@@ -454,7 +482,7 @@ bool lsp_declaration_view(LspState*          state,
                           LspDeclarationView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->sema_partial) {
+    if (!doc || !doc->decls_ready) {
         return false;
     }
 
@@ -471,7 +499,7 @@ bool lsp_declaration_view(LspState*          state,
 bool lsp_binding_view(LspState* state, string uri, LspBindingView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->sema_partial) {
+    if (!doc || !doc->bindings_ready) {
         return false;
     }
 
@@ -490,7 +518,7 @@ bool lsp_type_fact_view(LspState*       state,
                         LspTypeFactView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
-    if (!doc || !doc->sema_partial) {
+    if (!doc || !doc->type_facts_partial) {
         return false;
     }
 

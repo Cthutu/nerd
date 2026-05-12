@@ -30,6 +30,10 @@ typedef struct {
     bool          source_ready;  // Whether editor source is stored
     bool          tokens_ready;  // Derived lexer product availability
     bool          syntax_ready;  // Derived AST product availability
+    bool          decls_ready;   // Declaration facts are available
+    bool          bindings_ready; // Binding/reference facts are available
+    bool          type_facts_partial; // Best-effort type facts are available
+    bool          type_facts_complete; // Checked type facts are available
     bool          sema_partial;  // Derived semantic product availability
     bool          sema_complete; // Derived complete semantic analysis state
     bool          cst_ready;     // Whether CST parsing succeeded
