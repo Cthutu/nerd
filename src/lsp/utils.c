@@ -102,6 +102,48 @@ void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...)
 // Checked semantic accessors used by editor features. These keep partial sema
 // products from leaking unchecked side-table indices into feature handlers.
 
+bool lsp_ast_node(const Ast* ast, u32 node_index, const AstNode** out)
+{
+    if (!ast || node_index == U32_MAX ||
+        node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    if (out) {
+        *out = &ast->nodes[node_index];
+    }
+    return true;
+}
+
+bool lsp_lexer_token(const Lexer* lexer, u32 token_index, const Token** out)
+{
+    if (!lexer || token_index == U32_MAX ||
+        token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+    if (out) {
+        *out = &lexer->tokens[token_index];
+    }
+    return true;
+}
+
+bool lsp_token_range(const Lexer* lexer,
+                     u32          token_index,
+                     usize*       out_start,
+                     usize*       out_end)
+{
+    const Token* token = NULL;
+    if (!lsp_lexer_token(lexer, token_index, &token)) {
+        return false;
+    }
+    if (out_start) {
+        *out_start = token->offset;
+    }
+    if (out_end) {
+        *out_end = lex_token_end_offset(lexer, token);
+    }
+    return true;
+}
+
 bool lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out)
 {
     if (!sema || decl_index == U32_MAX ||
@@ -126,6 +168,18 @@ bool lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out)
     return true;
 }
 
+bool lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out)
+{
+    if (!sema || scope_index == U32_MAX ||
+        scope_index >= array_count(sema->scopes)) {
+        return false;
+    }
+    if (out) {
+        *out = &sema->scopes[scope_index];
+    }
+    return true;
+}
+
 bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out)
 {
     if (!sema || type_index == sema_no_type() ||
@@ -136,6 +190,29 @@ bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out)
         *out = &sema->types[type_index];
     }
     return true;
+}
+
+bool lsp_sema_decl_by_symbol(const Sema*     sema,
+                             u32             symbol_handle,
+                             const SemaDecl** out_decl,
+                             u32*            out_decl_index)
+{
+    if (!sema || symbol_handle == U32_MAX) {
+        return false;
+    }
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->symbol_handle == symbol_handle) {
+            if (out_decl) {
+                *out_decl = decl;
+            }
+            if (out_decl_index) {
+                *out_decl_index = i;
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 bool lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index)
@@ -172,6 +249,23 @@ bool lsp_sema_node_local(const Sema* sema, u32 node_index, u32* out_local_index)
     return true;
 }
 
+bool lsp_sema_node_scope(const Sema* sema, u32 node_index, u32* out_scope_index)
+{
+    if (!sema || node_index == U32_MAX ||
+        node_index >= array_count(sema->node_scope_indices)) {
+        return false;
+    }
+
+    u32 scope_index = sema->node_scope_indices[node_index];
+    if (!lsp_sema_scope(sema, scope_index, NULL)) {
+        return false;
+    }
+    if (out_scope_index) {
+        *out_scope_index = scope_index;
+    }
+    return true;
+}
+
 bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index)
 {
     if (!sema || node_index == U32_MAX ||
@@ -182,6 +276,28 @@ bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index)
     u32 type_index = sema->node_type_indices[node_index];
     if (!lsp_sema_type(sema, type_index, NULL)) {
         return false;
+    }
+    if (out_type_index) {
+        *out_type_index = type_index;
+    }
+    return true;
+}
+
+bool lsp_sema_type_param(const Sema* sema,
+                         u32         param_index,
+                         u32*        out_symbol,
+                         u32*        out_type_index)
+{
+    if (!sema || param_index == U32_MAX ||
+        param_index >= array_count(sema->type_param_symbols) ||
+        param_index >= array_count(sema->type_param_types)) {
+        return false;
+    }
+
+    u32 symbol     = sema->type_param_symbols[param_index];
+    u32 type_index = sema->type_param_types[param_index];
+    if (out_symbol) {
+        *out_symbol = symbol;
     }
     if (out_type_index) {
         *out_type_index = type_index;

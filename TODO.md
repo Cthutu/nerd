@@ -188,7 +188,7 @@ Working rules for this review:
   - Make it explicit which of lexer, AST, CST, sema, and HIR are valid after
     partial or failed analysis.
 
-- [ ] Commit: centralize LSP access to compiler facts
+- [x] Commit: centralize LSP access to compiler facts
   - Reduce direct feature-level poking into `doc->front_end`.
   - Add helper APIs for symbol lookup, scope lookup, type lookup, and source
     spans that are safe under partial analysis.

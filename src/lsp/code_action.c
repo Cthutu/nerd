@@ -122,12 +122,11 @@ internal bool lsp_code_action_matching_close(const Lexer* lexer,
 
 internal u32 lsp_code_action_find_decl(const Sema* sema, u32 symbol)
 {
-    for (u32 i = 0; i < array_count(sema->decls); ++i) {
-        if (sema->decls[i].symbol_handle == symbol) {
-            return i;
-        }
+    u32 decl_index = sema_no_decl();
+    if (!lsp_sema_decl_by_symbol(sema, symbol, NULL, &decl_index)) {
+        return sema_no_decl();
     }
-    return sema_no_decl();
+    return decl_index;
 }
 
 internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
@@ -176,10 +175,16 @@ internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
                 return false;
             }
             for (u32 i = 0; i < module->param_count; ++i) {
-                if (sema->type_param_symbols[module->first_param_type + i] ==
-                    node->b) {
-                    *out_type =
-                        sema->type_param_types[module->first_param_type + i];
+                u32 symbol           = U32_MAX;
+                u32 param_type_index = sema_no_type();
+                if (!lsp_sema_type_param(sema,
+                                         module->first_param_type + i,
+                                         &symbol,
+                                         &param_type_index)) {
+                    continue;
+                }
+                if (symbol == node->b) {
+                    *out_type = param_type_index;
                     return *out_type != sema_no_type();
                 }
             }

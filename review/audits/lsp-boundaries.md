@@ -204,16 +204,28 @@ fact views.
 Accessors around semantic side tables are now available:
 
 ```c
+bool lsp_ast_node(const Ast* ast, u32 node_index, const AstNode** out);
+bool lsp_lexer_token(const Lexer* lexer, u32 token_index, const Token** out);
+bool lsp_token_range(const Lexer* lexer, u32 token_index, usize* start, usize* end);
 bool lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
 bool lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
 bool lsp_sema_node_local(const Sema* sema, u32 node_index, u32* out_local_index);
+bool lsp_sema_node_scope(const Sema* sema, u32 node_index, u32* out_scope_index);
 bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
 bool lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
+bool lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out);
 bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
+bool lsp_sema_decl_by_symbol(const Sema* sema, u32 symbol, const SemaDecl** out, u32* out_index);
+bool lsp_sema_type_param(const Sema* sema, u32 param_index, u32* out_symbol, u32* out_type_index);
 ```
 
 Semantic tokens, rename, signature help, code actions, and some hover helpers
 have started using these accessors.
+
+Semantic token classification now receives an `LspSemanticView` and reaches AST
+nodes, tokens, declarations, and token ranges through the checked helpers. The
+next LSP slices should keep moving hover, definition, rename, completion, and
+code actions from raw `doc->front_end` access to these view/accessor APIs.
 
 ### Analysis Snapshot Views
 

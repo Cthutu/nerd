@@ -67,7 +67,7 @@ lsp_semantic_string_find(string haystack, string needle, usize* out_offset)
 // source; LSP semantic token positions still have to be reported relative to
 // the file the editor opened.
 
-internal bool lsp_semantic_visible_range(const LspTokenView*      view,
+internal bool lsp_semantic_visible_range(const LspSemanticView*   view,
                                          LspSemanticVisibleRange* out_range)
 {
     const NerdSource analysed = view->lexer->source;
@@ -140,19 +140,6 @@ internal u32 lsp_semantic_find_field_node(const Ast* ast, u32 token_index)
 //------------------------------------------------------------------------------
 // Return the declaration index associated with one binding symbol handle.
 
-internal u32 lsp_semantic_find_decl_index_by_symbol_handle(const Sema* sema,
-                                                           u32 symbol_handle)
-{
-    for (u32 i = 0; i < array_count(sema->decls); ++i) {
-        if (sema->decls[i].symbol_handle == symbol_handle) {
-            return i;
-        }
-    }
-
-    return U32_MAX;
-}
-
-//------------------------------------------------------------------------------
 // Return whether one declaration index names a function-like symbol.
 
 internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
@@ -169,33 +156,36 @@ internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
 //------------------------------------------------------------------------------
 // Classify one symbol token by semantic role.
 
-internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
+internal u32 lsp_semantic_symbol_type(const LspSemanticView* view,
+                                      u32                    token_index)
 {
     u32 bind_node_index =
-        lsp_semantic_find_bind_node(&doc->front_end.ast, token_index);
+        lsp_semantic_find_bind_node(view->ast, token_index);
     if (bind_node_index != U32_MAX) {
-        u32 decl_index = lsp_semantic_find_decl_index_by_symbol_handle(
-            &doc->front_end.sema, doc->front_end.ast.nodes[bind_node_index].a);
-        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
+        const AstNode* bind = NULL;
+        u32            decl_index = U32_MAX;
+        if (lsp_ast_node(view->ast, bind_node_index, &bind) &&
+            lsp_sema_decl_by_symbol(
+                view->sema, bind->a, NULL, &decl_index) &&
+            lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
         return LSP_SEMANTIC_VARIABLE;
     }
 
     u32 ref_node_index =
-        lsp_semantic_find_symbol_ref_node(&doc->front_end.ast, token_index);
+        lsp_semantic_find_symbol_ref_node(view->ast, token_index);
     u32 decl_index = U32_MAX;
-    if (lsp_sema_node_decl(&doc->front_end.sema, ref_node_index, &decl_index)) {
-        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
+    if (lsp_sema_node_decl(view->sema, ref_node_index, &decl_index)) {
+        if (lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
     }
 
     u32 field_node_index =
-        lsp_semantic_find_field_node(&doc->front_end.ast, token_index);
-    if (lsp_sema_node_decl(
-            &doc->front_end.sema, field_node_index, &decl_index)) {
-        if (lsp_semantic_decl_is_function(&doc->front_end.sema, decl_index)) {
+        lsp_semantic_find_field_node(view->ast, token_index);
+    if (lsp_sema_node_decl(view->sema, field_node_index, &decl_index)) {
+        if (lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
     }
@@ -206,15 +196,16 @@ internal u32 lsp_semantic_symbol_type(const LspDocument* doc, u32 token_index)
 //------------------------------------------------------------------------------
 // Return whether one symbol token is the contextual source-test keyword.
 
-internal bool lsp_semantic_is_test_keyword(const LspDocument* doc,
+internal bool lsp_semantic_is_test_keyword(const LspSemanticView* view,
                                            u32                token_index)
 {
-    const Lexer* lexer = &doc->front_end.lexer;
-    if (token_index + 1 >= array_count(lexer->tokens)) {
+    const Lexer* lexer = view->lexer;
+    const Token* token = NULL;
+    const Token* next  = NULL;
+    if (!lsp_lexer_token(lexer, token_index, &token) ||
+        !lsp_lexer_token(lexer, token_index + 1, &next)) {
         return false;
     }
-
-    const Token* token = &lexer->tokens[token_index];
     if (token->kind != TK_Symbol) {
         return false;
     }
@@ -226,24 +217,29 @@ internal bool lsp_semantic_is_test_keyword(const LspDocument* doc,
         return false;
     }
 
-    return lexer->tokens[token_index + 1].kind == TK_String;
+    return next->kind == TK_String;
 }
 
 //------------------------------------------------------------------------------
 // Return whether a token kind should emit a semantic token.
 
 internal bool
-lsp_semantic_token_type(const LspDocument* doc, u32 token_index, u32* out_type)
+lsp_semantic_token_type(const LspSemanticView* view,
+                        u32                    token_index,
+                        u32*                   out_type)
 {
-    const Token* token = &doc->front_end.lexer.tokens[token_index];
+    const Token* token = NULL;
+    if (!lsp_lexer_token(view->lexer, token_index, &token)) {
+        return false;
+    }
 
     switch (token->kind) {
     case TK_Symbol:
-        if (lsp_semantic_is_test_keyword(doc, token_index)) {
+        if (lsp_semantic_is_test_keyword(view, token_index)) {
             *out_type = LSP_SEMANTIC_KEYWORD;
             return true;
         }
-        *out_type = lsp_semantic_symbol_type(doc, token_index);
+        *out_type = lsp_semantic_symbol_type(view, token_index);
         return true;
 
     case TK_fn:
@@ -349,13 +345,12 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         return;
     }
 
-    string       uri  = json_string(uri_value);
-    LspTokenView view = {0};
-    if (!lsp_token_view(state, uri, &view)) {
+    string          uri  = json_string(uri_value);
+    LspSemanticView view = {0};
+    if (!lsp_semantic_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);
         return;
     }
-    const LspDocument* doc                 = view.doc;
 
     JsonValue*              result         = json_new_object(message->arena);
     JsonValue*              data           = json_new_array(message->arena);
@@ -370,12 +365,16 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
 
     for (u32 i = 0; i < array_count(view.lexer->tokens); ++i) {
         u32 type = 0;
-        if (!lsp_semantic_token_type(doc, i, &type)) {
+        if (!lsp_semantic_token_type(&view, i, &type)) {
             continue;
         }
 
-        const Token* token = &view.lexer->tokens[i];
-        u32          end   = (u32)lex_token_end_offset(view.lexer, token);
+        const Token* token = NULL;
+        usize        end   = 0;
+        if (!lsp_lexer_token(view.lexer, i, &token) ||
+            !lsp_token_range(view.lexer, i, NULL, &end)) {
+            continue;
+        }
         if (token->offset < visible.start_offset || end > visible.end_offset) {
             continue;
         }
@@ -387,7 +386,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         ASSERT(ok, "Expected valid token offset");
         UNUSED(ok);
 
-        u32 length = end - token->offset;
+        u32 length = (u32)(end - token->offset);
         if (line == visible.start_line) {
             start -= visible.start_col;
         }

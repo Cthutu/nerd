@@ -206,13 +206,14 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
 
     for (u32 i = 0; i < type->param_count; ++i) {
         u32 param_index = type->first_param_type + i;
-        if (param_index >= array_count(sema->type_param_symbols) ||
-            param_index >= array_count(sema->type_param_types)) {
-            break;
+        u32 symbol           = U32_MAX;
+        u32 param_type_index = sema_no_type();
+        if (!lsp_sema_type_param(
+                sema, param_index, &symbol, &param_type_index)) {
+            continue;
         }
-        u32 symbol = sema->type_param_symbols[param_index];
         if (symbol != U32_MAX && string_eq(lex_symbol(lexer, symbol), field)) {
-            return sema->type_param_types[param_index];
+            return param_type_index;
         }
     }
 
@@ -635,10 +636,10 @@ internal void lsp_completion_add_members(Arena*             arena,
     const Lexer* lexer = &doc->front_end.lexer;
     for (u32 i = 0; i < type->param_count; ++i) {
         u32 param_index = type->first_param_type + i;
-        if (param_index >= array_count(sema->type_param_symbols)) {
-            break;
+        u32 symbol      = U32_MAX;
+        if (!lsp_sema_type_param(sema, param_index, &symbol, NULL)) {
+            continue;
         }
-        u32 symbol = sema->type_param_symbols[param_index];
         if (symbol != U32_MAX) {
             lsp_completion_add(arena, items, lex_symbol(lexer, symbol), 5);
         }
