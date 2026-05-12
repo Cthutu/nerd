@@ -57,10 +57,12 @@ MemoryStats mem_stats_snapshot(void) { return g_memory_stats; }
 MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after)
 {
     return (MemoryStats){
-        .heap_alloc_count      = after.heap_alloc_count - before.heap_alloc_count,
-        .heap_realloc_count    = after.heap_realloc_count - before.heap_realloc_count,
-        .heap_free_count       = after.heap_free_count - before.heap_free_count,
-        .heap_bytes_allocated  = after.heap_bytes_allocated - before.heap_bytes_allocated,
+        .heap_alloc_count = after.heap_alloc_count - before.heap_alloc_count,
+        .heap_realloc_count =
+            after.heap_realloc_count - before.heap_realloc_count,
+        .heap_free_count = after.heap_free_count - before.heap_free_count,
+        .heap_bytes_allocated =
+            after.heap_bytes_allocated - before.heap_bytes_allocated,
         .heap_bytes_reallocated =
             after.heap_bytes_reallocated - before.heap_bytes_reallocated,
         .heap_bytes_freed = after.heap_bytes_freed - before.heap_bytes_freed,
@@ -68,10 +70,10 @@ MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after)
             after.heap_current_bytes >= before.heap_current_bytes
                 ? after.heap_current_bytes - before.heap_current_bytes
                 : 0,
-        .heap_peak_bytes = after.heap_peak_bytes,
-        .arena_init_count      = after.arena_init_count - before.arena_init_count,
-        .arena_done_count      = after.arena_done_count - before.arena_done_count,
-        .arena_alloc_count     = after.arena_alloc_count - before.arena_alloc_count,
+        .heap_peak_bytes   = after.heap_peak_bytes,
+        .arena_init_count  = after.arena_init_count - before.arena_init_count,
+        .arena_done_count  = after.arena_done_count - before.arena_done_count,
+        .arena_alloc_count = after.arena_alloc_count - before.arena_alloc_count,
         .arena_bytes_allocated =
             after.arena_bytes_allocated - before.arena_bytes_allocated,
         .arena_commit_count =

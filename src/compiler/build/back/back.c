@@ -222,7 +222,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     Arena arena = {0};
     arena_init(&arena);
 
-    BackEndLlvmModules modules = {0};
+    BackEndLlvmModules modules       = {0};
     MemoryStats        memory_before = compiler_memory_profile_begin();
     if (!back_end_render_llvm_modules(&arena, program, artifacts, &modules)) {
         compiler_memory_profile_end(
@@ -253,7 +253,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         back_end_llvm_runtime_epilogue(root_main_returns_void);
     string init_ll =
         back_end_llvm_runtime_render_init(&arena, modules.init_module_indices);
-    memory_before = compiler_memory_profile_begin();
+    memory_before        = compiler_memory_profile_begin();
     string combined_llvm = back_end_llvm_text_build_combined(
         &arena, modules.module_llvms, runtime_epilogue, init_ll);
     compiler_memory_profile_end(

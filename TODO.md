@@ -251,7 +251,7 @@ Working rules for this review:
   - Keep useful audits and measurements.
   - Delete prototypes or notes that no longer describe the chosen direction.
 
-- [ ] Commit: final full verification
+- [x] Commit: final full verification
   - `just test`
   - `just install`
   - installed compiler smoke tests

@@ -2145,9 +2145,10 @@ internal u32 format_syntax_node_start_token(const FormatSyntaxContext* context,
 }
 
 internal u32 format_syntax_node_end_token(const FormatSyntaxContext* context,
-                                          u32 node_index)
+                                          u32                        node_index)
 {
-    return format_node_end_token_index(context->cst, context->lexer, node_index);
+    return format_node_end_token_index(
+        context->cst, context->lexer, node_index);
 }
 
 internal usize format_syntax_node_start_offset(
@@ -2165,10 +2166,10 @@ internal usize format_syntax_node_end_offset(const FormatSyntaxContext* context,
                                 &context->lexer->tokens[token_index]);
 }
 
-internal bool format_syntax_has_blank_line_between_nodes(
-    const FormatSyntaxContext* context,
-    u32                        previous_node_index,
-    u32                        current_node_index)
+internal bool
+format_syntax_has_blank_line_between_nodes(const FormatSyntaxContext* context,
+                                           u32 previous_node_index,
+                                           u32 current_node_index)
 {
     return format_has_blank_line_between_offsets(
         context->lexer->source,
@@ -2216,10 +2217,10 @@ internal usize format_first_comment_or_offset_between(const Lexer* lexer,
     return current_start;
 }
 
-internal bool format_syntax_has_comment_between_nodes(
-    const FormatSyntaxContext* context,
-    u32                        previous_node_index,
-    u32                        current_node_index)
+internal bool
+format_syntax_has_comment_between_nodes(const FormatSyntaxContext* context,
+                                        u32 previous_node_index,
+                                        u32 current_node_index)
 {
     return format_has_comment_between_offsets(
         context->lexer,
@@ -4645,8 +4646,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
     const CstNode* block = &cst->nodes[block_node_index];
     ASSERT(block->kind == CK_Block, "Expected block node");
     FormatSyntaxContext syntax = format_syntax_context(cst, lexer);
-    u32   previous_statement_index = U32_MAX;
-    Arena align_arena              = {0};
+    u32                 previous_statement_index = U32_MAX;
+    Arena               align_arena              = {0};
     arena_init(&align_arena);
 
     u32   comment_index = 0;
@@ -4897,7 +4898,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 }
             }
         }
-        previous_statement_index  = i;
+        previous_statement_index   = i;
         usize statement_end_offset = format_syntax_node_end_offset(&syntax, i);
         format_skip_block_comments_before_offset(
             lexer, &comment_index, statement_end_offset);
@@ -4907,8 +4908,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
     if (comment_index < array_count(lexer->comments) &&
         lexer->comments[comment_index].offset < block_close_offset &&
         previous_statement_index != U32_MAX) {
-        usize previous_end_offset = format_syntax_node_end_offset(
-            &syntax, previous_statement_index);
+        usize previous_end_offset =
+            format_syntax_node_end_offset(&syntax, previous_statement_index);
         if (format_has_blank_line_between_offsets(
                 lexer->source,
                 previous_end_offset,
@@ -5576,10 +5577,10 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     Arena align_arena = {0};
     arena_init(&align_arena);
 
-    FormatSyntaxContext syntax = format_syntax_context(&cst, &lexer);
-    bool first_binding          = true;
-    u32  previous_binding_index = U32_MAX;
-    u32  comment_index          = 0;
+    FormatSyntaxContext syntax        = format_syntax_context(&cst, &lexer);
+    bool                first_binding = true;
+    u32                 previous_binding_index = U32_MAX;
+    u32                 comment_index          = 0;
     for (u32 i = 0; i < array_count(cst.bindings); ++i) {
         u32            node_index = cst.bindings[i];
         const CstNode* node       = &cst.nodes[node_index];
@@ -5713,7 +5714,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             u32 last_aligned_binding = i;
             for (u32 cursor = i + 1; cursor < array_count(cst.bindings);
                  ++cursor) {
-                u32  next_index     = cst.bindings[cursor];
+                u32  next_index = cst.bindings[cursor];
                 bool has_blank_line =
                     format_syntax_has_blank_line_between_nodes(
                         &syntax,
@@ -6062,7 +6063,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     return false;
 }
 
-internal bool format_emit_token_comments_before(FormatTokenState* state,
+internal bool format_emit_token_comments_before(FormatTokenState*   state,
                                                 const FormatTrivia* trivia,
                                                 u32* io_comment_index,
                                                 u32  token_index)
@@ -6111,25 +6112,25 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         .at_line_start = true,
     };
 
-    u32       comment_index = 0;
+    u32       comment_index           = 0;
     u32       multiline_bracket_depth = 0;
-    TokenKind previous_kind = TK_EOF;
+    TokenKind previous_kind           = TK_EOF;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
-        TokenKind kind = lexer.tokens[i].kind;
-        TokenKind next_kind =
-            i + 1 < array_count(lexer.tokens) ? lexer.tokens[i + 1].kind
-                                              : TK_EOF;
-        u16 next_newlines =
+        TokenKind kind      = lexer.tokens[i].kind;
+        TokenKind next_kind = i + 1 < array_count(lexer.tokens)
+                                  ? lexer.tokens[i + 1].kind
+                                  : TK_EOF;
+        u16       next_newlines =
             i + 1 < array_count(lexer.tokens)
                 ? trivia.newlines_before_token[i + 1]
                 : trivia.newlines_before_token[array_count(lexer.tokens)];
-        bool next_has_comments = i + 1 < array_count(lexer.tokens) &&
-                                 format_trivia_comments_before_token(
-                                     &trivia, i + 1, NULL, NULL);
+        bool next_has_comments =
+            i + 1 < array_count(lexer.tokens) &&
+            format_trivia_comments_before_token(&trivia, i + 1, NULL, NULL);
 
-        u16 newlines_before = trivia.newlines_before_token[i];
-        bool has_comments_before = format_trivia_comments_before_token(
-            &trivia, i, NULL, NULL);
+        u16  newlines_before = trivia.newlines_before_token[i];
+        bool has_comments_before =
+            format_trivia_comments_before_token(&trivia, i, NULL, NULL);
         if (newlines_before > 1 && sb->size > 0 && !has_comments_before) {
             format_token_state_blank_line(&state);
         } else if (newlines_before > 0 && !state.at_line_start) {
@@ -6221,7 +6222,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 bool format_source(NerdSource source, Arena* arena, string* out_text)
 {
     MemoryStats memory_before = compiler_memory_profile_begin();
-    Lexer lexer = {0};
+    Lexer       lexer         = {0};
     if (!lex_with_config(
             source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
         compiler_memory_profile_end(COMPILER_STAGE_FORMATTER,
@@ -6302,12 +6303,12 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
 
             string block_text =
                 string_from(text.data + block_start, block_end - block_start);
-            bool ok = format_emit_code_block(
-                &sb,
-                (NerdSource){
-                    .source      = block_text,
-                    .source_path = source.source_path,
-                });
+            bool ok =
+                format_emit_code_block(&sb,
+                                       (NerdSource){
+                                           .source      = block_text,
+                                           .source_path = source.source_path,
+                                       });
             if (!ok) {
                 ok = format_emit_token_stream_block(
                     &sb,

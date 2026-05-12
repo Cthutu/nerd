@@ -32,9 +32,8 @@ static inline MemoryStats compiler_memory_profile_begin(void)
     return mem_stats_snapshot();
 }
 
-static inline void compiler_memory_profile_end(cstr        stage,
-                                               cstr        phase,
-                                               MemoryStats before)
+static inline void
+compiler_memory_profile_end(cstr stage, cstr phase, MemoryStats before)
 {
     if (!mem_stats_profile_enabled()) {
         return;

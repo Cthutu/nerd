@@ -103,8 +103,8 @@ bool front_end(NerdSource             source,
 
     if (timing != NULL) {
         MemoryStats     memory_before = compiler_memory_profile_begin();
-        ThreadTimePoint start = thread_time_now();
-        result                = front_end_lex(&ctx);
+        ThreadTimePoint start         = thread_time_now();
+        result                        = front_end_lex(&ctx);
         timing_add(timing,
                    COMPILER_STAGE_FRONT_END,
                    COMPILER_PHASE_LEX,
@@ -113,7 +113,7 @@ bool front_end(NerdSource             source,
             COMPILER_STAGE_FRONT_END, COMPILER_PHASE_LEX, memory_before);
     } else {
         MemoryStats memory_before = compiler_memory_profile_begin();
-        result = front_end_lex(&ctx);
+        result                    = front_end_lex(&ctx);
         compiler_memory_profile_end(
             COMPILER_STAGE_FRONT_END, COMPILER_PHASE_LEX, memory_before);
     }
@@ -124,8 +124,8 @@ bool front_end(NerdSource             source,
     if (result) {
         if (timing != NULL) {
             MemoryStats     memory_before = compiler_memory_profile_begin();
-            ThreadTimePoint start = thread_time_now();
-            result                = front_end_parse(&ctx);
+            ThreadTimePoint start         = thread_time_now();
+            result                        = front_end_parse(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_PARSE,
@@ -134,7 +134,7 @@ bool front_end(NerdSource             source,
                 COMPILER_STAGE_FRONT_END, COMPILER_PHASE_PARSE, memory_before);
         } else {
             MemoryStats memory_before = compiler_memory_profile_begin();
-            result = front_end_parse(&ctx);
+            result                    = front_end_parse(&ctx);
             compiler_memory_profile_end(
                 COMPILER_STAGE_FRONT_END, COMPILER_PHASE_PARSE, memory_before);
         }
@@ -146,8 +146,8 @@ bool front_end(NerdSource             source,
     if (result) {
         if (timing != NULL) {
             MemoryStats     memory_before = compiler_memory_profile_begin();
-            ThreadTimePoint start = thread_time_now();
-            result                = front_end_sema(&ctx);
+            ThreadTimePoint start         = thread_time_now();
+            result                        = front_end_sema(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_SEMA,
@@ -156,7 +156,7 @@ bool front_end(NerdSource             source,
                 COMPILER_STAGE_FRONT_END, COMPILER_PHASE_SEMA, memory_before);
         } else {
             MemoryStats memory_before = compiler_memory_profile_begin();
-            result = front_end_sema(&ctx);
+            result                    = front_end_sema(&ctx);
             compiler_memory_profile_end(
                 COMPILER_STAGE_FRONT_END, COMPILER_PHASE_SEMA, memory_before);
         }
@@ -165,8 +165,8 @@ bool front_end(NerdSource             source,
     if (result && !ctx.options.skip_hir_generation) {
         if (timing != NULL) {
             MemoryStats     memory_before = compiler_memory_profile_begin();
-            ThreadTimePoint start = thread_time_now();
-            result                = front_end_hir_gen(&ctx);
+            ThreadTimePoint start         = thread_time_now();
+            result                        = front_end_hir_gen(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_HIR_GEN,
@@ -176,7 +176,7 @@ bool front_end(NerdSource             source,
                                         memory_before);
         } else {
             MemoryStats memory_before = compiler_memory_profile_begin();
-            result = front_end_hir_gen(&ctx);
+            result                    = front_end_hir_gen(&ctx);
             compiler_memory_profile_end(COMPILER_STAGE_FRONT_END,
                                         COMPILER_PHASE_HIR_GEN,
                                         memory_before);

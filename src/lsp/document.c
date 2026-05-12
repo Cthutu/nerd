@@ -361,7 +361,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
 internal bool lsp_analyse_document(LspDocument* doc, string uri)
 {
     MemoryStats memory_before = compiler_memory_profile_begin();
-    LspDocument staged = {0};
+    LspDocument staged        = {0};
     if (!lsp_stage_document(&staged, uri, doc->source)) {
         lsp_document_reset_runtime(&staged);
         compiler_memory_profile_end(
