@@ -220,7 +220,7 @@ Working rules for this review:
   - Prioritize comments, blank lines, nested blocks, `on` forms, aggregate
     literals, and partially typed code.
 
-- [ ] Commit: remove duplicated layout cases from the old formatter path
+- [x] Commit: remove duplicated layout cases from the old formatter path
   - Keep the public formatter API stable while replacing internals.
 
 ### Milestone 7: Review Memory Strategy

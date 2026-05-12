@@ -1606,6 +1606,16 @@ internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
     }
 }
 
+internal void format_emit_line_comment(StringBuilder* sb,
+                                       u32            indent_level,
+                                       string         comment_text)
+{
+    format_emit_indent(sb, indent_level);
+    sb_append_cstr(sb, "--");
+    sb_append_string(sb, comment_text);
+    sb_append_char(sb, '\n');
+}
+
 internal void format_emit_spaces(StringBuilder* sb, usize count)
 {
     for (usize i = 0; i < count; ++i) {
@@ -4147,10 +4157,7 @@ internal bool format_emit_block_comments_before_offset(StringBuilder* sb,
             break;
         }
 
-        format_emit_indent(sb, indent_level);
-        sb_append_cstr(sb, "--");
-        sb_append_string(sb, comment.text);
-        sb_append_char(sb, '\n');
+        format_emit_line_comment(sb, indent_level, comment.text);
         emitted = true;
         if (out_last_end) {
             *out_last_end = comment.end_offset;
@@ -4212,10 +4219,7 @@ internal bool format_emit_block_comments_before_token(StringBuilder* sb,
     while (*io_comment_index < end_comment_index &&
            *io_comment_index < array_count(lexer->comments)) {
         LexerComment comment = lexer->comments[*io_comment_index];
-        format_emit_indent(sb, indent_level);
-        sb_append_cstr(sb, "--");
-        sb_append_string(sb, comment.text);
-        sb_append_char(sb, '\n');
+        format_emit_line_comment(sb, indent_level, comment.text);
         emitted = true;
         if (out_last_end) {
             *out_last_end = comment.end_offset;
@@ -6076,11 +6080,11 @@ internal bool format_emit_token_comments_before(FormatTokenState* state,
     u32 end_comment_index = first_comment_index + comment_count;
     while (*io_comment_index < end_comment_index &&
            *io_comment_index < array_count(state->lexer->comments)) {
-        format_token_state_indent(state);
-        sb_append_cstr(state->sb, "--");
-        sb_append_string(state->sb,
-                         state->lexer->comments[*io_comment_index].text);
-        format_token_state_newline(state);
+        format_emit_line_comment(
+            state->sb,
+            state->indent_level,
+            state->lexer->comments[*io_comment_index].text);
+        state->at_line_start = true;
         (*io_comment_index)++;
     }
     return true;
@@ -6195,10 +6199,9 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     }
 
     while (comment_index < array_count(lexer.comments)) {
-        format_token_state_indent(&state);
-        sb_append_cstr(sb, "--");
-        sb_append_string(sb, lexer.comments[comment_index].text);
-        format_token_state_newline(&state);
+        format_emit_line_comment(
+            sb, state.indent_level, lexer.comments[comment_index].text);
+        state.at_line_start = true;
         comment_index++;
     }
 

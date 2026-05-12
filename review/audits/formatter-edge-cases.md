@@ -126,6 +126,9 @@ Current migration status:
   bracket scopes, comments inside partial literals, `on` branches, and partial
   aggregate literals through
   `tests/format/107-token-trivia-partial-edge-cases.f`.
+- Comment-only line emission is now shared by the CST formatter path and the
+  token/trivia fallback, reducing one duplicated layout case while preserving
+  the public formatter API.
 
 Follow-up:
 
