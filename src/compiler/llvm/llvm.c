@@ -9232,34 +9232,61 @@ internal void llvm_render_concat_string_literals(StringBuilder* sb,
     (void)arena;
 }
 
+typedef struct {
+    cstr return_type;
+    cstr name;
+    cstr params;
+} LlvmRuntimeDecl;
+
+internal void llvm_render_runtime_declarations(StringBuilder*        sb,
+                                               const LlvmRuntimeDecl* decls,
+                                               u32 decl_count)
+{
+    for (u32 i = 0; i < decl_count; ++i) {
+        const LlvmRuntimeDecl* decl = &decls[i];
+        sb_format(sb,
+                  "declare %s @%s(%s)\n",
+                  decl->return_type,
+                  decl->name,
+                  decl->params);
+    }
+}
+
 internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
 {
-    sb_append_cstr(sb,
-                   "declare i1 @string_eq(ptr, ptr)\n"
-                   "declare void @string_builder_reset()\n"
-                   "declare i64 @string_builder_mark()\n"
-                   "declare void @string_builder_append_string(ptr)\n"
-                   "declare void @string_builder_append_byte(i8)\n"
-                   "declare void @string_builder_finish(ptr, i64)\n"
-                   "declare void @to_string$string(ptr, ptr)\n"
-                   "declare void @to_string$bool(ptr, i1)\n"
-                   "declare void @to_string$i8(ptr, i8)\n"
-                   "declare void @to_string$i16(ptr, i16)\n"
-                   "declare void @to_string$i32(ptr, i32)\n"
-                   "declare void @to_string$i64(ptr, i64)\n"
-                   "declare void @to_string$u8(ptr, i8)\n"
-                   "declare void @to_string$u16(ptr, i16)\n"
-                   "declare void @to_string$u32(ptr, i32)\n"
-                   "declare void @to_string$u64(ptr, i64)\n"
-                   "declare void @to_string$isize(ptr, i64)\n"
-                   "declare void @to_string$usize(ptr, i64)\n"
-                   "declare void @to_string$f32(ptr, float)\n"
-                   "declare void @to_string$f64(ptr, double)\n");
+    static const LlvmRuntimeDecl decls[] = {
+        {"i1", "string_eq", "ptr, ptr"},
+        {"void", "string_builder_reset", ""},
+        {"i64", "string_builder_mark", ""},
+        {"void", "string_builder_append_string", "ptr"},
+        {"void", "string_builder_append_byte", "i8"},
+        {"void", "string_builder_finish", "ptr, i64"},
+        {"void", "to_string$string", "ptr, ptr"},
+        {"void", "to_string$bool", "ptr, i1"},
+        {"void", "to_string$i8", "ptr, i8"},
+        {"void", "to_string$i16", "ptr, i16"},
+        {"void", "to_string$i32", "ptr, i32"},
+        {"void", "to_string$i64", "ptr, i64"},
+        {"void", "to_string$u8", "ptr, i8"},
+        {"void", "to_string$u16", "ptr, i16"},
+        {"void", "to_string$u32", "ptr, i32"},
+        {"void", "to_string$u64", "ptr, i64"},
+        {"void", "to_string$isize", "ptr, i64"},
+        {"void", "to_string$usize", "ptr, i64"},
+        {"void", "to_string$f32", "ptr, float"},
+        {"void", "to_string$f64", "ptr, double"},
+    };
+    llvm_render_runtime_declarations(
+        sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
 internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
 {
-    sb_append_cstr(sb, "declare void @nerd_assert(i1, ptr, i32, ptr)\n");
+    static const LlvmRuntimeDecl decls[] = {
+        {"void", "nerd_assert", "i1, ptr, i32, ptr"},
+    };
+    llvm_render_runtime_declarations(
+        sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
 internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
@@ -9282,10 +9309,13 @@ internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
 
 internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 {
-    sb_append_cstr(sb,
-                   "declare ptr @malloc(i64)\n"
-                   "declare ptr @realloc(ptr, i64)\n"
-                   "declare void @free(ptr)\n");
+    static const LlvmRuntimeDecl decls[] = {
+        {"ptr", "malloc", "i64"},
+        {"ptr", "realloc", "ptr, i64"},
+        {"void", "free", "ptr"},
+    };
+    llvm_render_runtime_declarations(
+        sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
 internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)

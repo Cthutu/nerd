@@ -220,6 +220,11 @@ values into stack slots and passes pointers to runtime helpers such as
 `nerd_assert`. This keeps the generated LLVM independent of platform-specific C
 aggregate calling conventions.
 
+Runtime helper declarations are emitted from declaration tables in
+`src/compiler/llvm/llvm.c`, rather than from ad hoc text blocks. The tables are
+the current backend source of truth for helper return types and LLVM parameter
+spelling.
+
 ## Renderers And Dumpers
 
 The codebase distinguishes between:

@@ -213,7 +213,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Include FFI calls, varargs, string helpers, aggregate fields, enum payloads,
     pointer casts, and dynamic-array runtime calls.
 
-- [ ] Commit: make runtime helper declarations generated from one source
+- [x] Commit: make runtime helper declarations generated from one source
   - Avoid duplicated handwritten signatures between runtime C, HIR lowering,
     LLVM emission, and tests.
 

@@ -186,3 +186,14 @@ current ABI contract:
 - enum tags as `i64` with a widened integer payload cell
 - aggregate fields in plex values and enum payloads
 - pointer-to-slice casts and C string pointers
+
+## Follow-Up: Runtime Declaration Tables
+
+Runtime helper declarations are now emitted from `LlvmRuntimeDecl` tables
+instead of handwritten declaration text blocks. This keeps helper name, return
+type, and LLVM parameter spelling in one backend representation for string
+helpers, assertion support, and dynamic-array allocation helpers.
+
+The runtime C definitions in `data/nrt.c` still need to stay manually aligned
+with those tables. A later change can move the table to a shared generated
+source if the runtime surface grows.
