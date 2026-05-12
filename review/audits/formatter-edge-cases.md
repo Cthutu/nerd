@@ -114,6 +114,10 @@ Current migration status:
 - Structured multiline field and variant leading comments in plex literals,
   enum declarations, and plex declarations now emit from token-attached trivia,
   with scan fallback.
+- A token/trivia state-machine fallback now formats code chunks that lex but do
+  not parse as CST. The prototype tracks brace indentation explicitly, emits
+  comments from `FormatTrivia`, preserves token newlines coarsely, and is
+  covered by `tests/format/106-token-trivia-partial-block.f`.
 
 Follow-up:
 
@@ -137,9 +141,18 @@ The current formatter relies on CST parsing for code blocks. A token/trivia
 formatter could preserve or lightly normalise more source even when parsing is
 incomplete.
 
+Initial scope:
+
+- The token/trivia path is only a fallback after CST block formatting fails.
+- It is intentionally narrow and layout-focused: brace indentation, token
+  spacing, leading comments, trailing comments, and blank lines.
+- Parsed source still uses the CST formatter, so existing construct-specific
+  formatting remains stable while the state machine grows.
+
 Follow-up:
 
-- Define which formatter features should work with tokens only.
+- Expand token-only formatting one syntax family at a time, starting with
+  incomplete blocks and comments.
 - Add failing/incomplete syntax cases only after deciding intended behaviour.
 
 ### Sema Coupling

@@ -207,7 +207,7 @@ Working rules for this review:
 
 ### Milestone 6: Rework Formatter Architecture
 
-- [ ] Commit: prototype token/trivia-driven formatting on a narrow construct set
+- [x] Commit: prototype token/trivia-driven formatting on a narrow construct set
   - Use lexer token stream with comments and newlines preserved.
   - Track indentation and scope with an explicit formatter state machine.
 

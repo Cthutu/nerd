@@ -5838,6 +5838,325 @@ internal void format_advance_delimiter_depth(const Lexer* lexer,
     }
 }
 
+typedef struct {
+    StringBuilder* sb;
+    const Lexer*   lexer;
+    u32            indent_level;
+    bool           at_line_start;
+} FormatTokenState;
+
+internal string format_token_text(const Lexer* lexer, u32 token_index)
+{
+    if (token_index >= array_count(lexer->tokens)) {
+        return (string){0};
+    }
+
+    const Token* token = &lexer->tokens[token_index];
+    usize        start = token->offset;
+    usize        end   = lex_token_end_offset(lexer, token);
+    if (start > lexer->source.source.count) {
+        start = lexer->source.source.count;
+    }
+    if (end > lexer->source.source.count) {
+        end = lexer->source.source.count;
+    }
+    if (end < start) {
+        end = start;
+    }
+    return string_from(lexer->source.source.data + start, end - start);
+}
+
+internal void format_token_state_indent(FormatTokenState* state)
+{
+    if (!state->at_line_start) {
+        return;
+    }
+
+    format_emit_indent(state->sb, state->indent_level);
+    state->at_line_start = false;
+}
+
+internal void format_token_state_newline(FormatTokenState* state)
+{
+    if (state->sb->size > 0 && state->sb->data[state->sb->size - 1] != '\n') {
+        sb_append_char(state->sb, '\n');
+    }
+    state->at_line_start = true;
+}
+
+internal void format_token_state_blank_line(FormatTokenState* state)
+{
+    format_token_state_newline(state);
+    if (state->sb->size > 0 && state->sb->data[state->sb->size - 1] == '\n') {
+        sb_append_char(state->sb, '\n');
+    }
+    state->at_line_start = true;
+}
+
+internal bool format_token_kind_is_binary_operator(TokenKind kind)
+{
+    switch (kind) {
+    case TK_Plus:
+    case TK_PlusEqual:
+    case TK_Minus:
+    case TK_MinusEqual:
+    case TK_Star:
+    case TK_StarEqual:
+    case TK_Slash:
+    case TK_SlashEqual:
+    case TK_Percent:
+    case TK_PercentEqual:
+    case TK_Equal:
+    case TK_EqualEqual:
+    case TK_BangEqual:
+    case TK_Amp:
+    case TK_AmpEqual:
+    case TK_AmpAmp:
+    case TK_AmpAmpEqual:
+    case TK_Pipe:
+    case TK_PipeEqual:
+    case TK_PipePipe:
+    case TK_PipePipeEqual:
+    case TK_CaretEqual:
+    case TK_Less:
+    case TK_LessEqual:
+    case TK_ShiftLeft:
+    case TK_ShiftLeftEqual:
+    case TK_Greater:
+    case TK_GreaterEqual:
+    case TK_ShiftRight:
+    case TK_ShiftRightEqual:
+    case TK_FatArrow:
+    case TK_ThinArrow:
+    case TK_Range:
+    case TK_RangeInclusive:
+    case TK_as:
+    case TK_in:
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool format_token_needs_space_between(TokenKind previous,
+                                               TokenKind current)
+{
+    if (previous == TK_EOF) {
+        return false;
+    }
+
+    if (current == TK_RParen || current == TK_RBracket || current == TK_Comma ||
+        current == TK_Dot || current == TK_Caret) {
+        return false;
+    }
+
+    if (previous == TK_Colon && (current == TK_Colon || current == TK_Equal)) {
+        return false;
+    }
+
+    if (previous == TK_LParen || previous == TK_LBracket ||
+        previous == TK_Dot || previous == TK_Dollar || previous == TK_At ||
+        previous == TK_Hash || previous == TK_Caret) {
+        return false;
+    }
+
+    if (previous == TK_fn && current == TK_LParen) {
+        return true;
+    }
+
+    if (current == TK_LParen || current == TK_LBracket) {
+        return false;
+    }
+
+    if (current == TK_LBrace) {
+        return previous != TK_EOF;
+    }
+
+    if (format_token_kind_is_binary_operator(previous) ||
+        format_token_kind_is_binary_operator(current)) {
+        return true;
+    }
+
+    switch (previous) {
+    case TK_Comma:
+    case TK_Colon:
+    case TK_fn:
+    case TK_for:
+    case TK_on:
+    case TK_else:
+    case TK_defer:
+    case TK_assert:
+    case TK_break:
+    case TK_continue:
+    case TK_return:
+    case TK_plex:
+    case TK_union:
+    case TK_enum:
+    case TK_ffi:
+    case TK_use:
+    case TK_pub:
+    case TK_impl:
+    case TK_with:
+        return true;
+    default:
+        break;
+    }
+
+    switch (current) {
+    case TK_fn:
+    case TK_for:
+    case TK_on:
+    case TK_else:
+    case TK_defer:
+    case TK_assert:
+    case TK_break:
+    case TK_continue:
+    case TK_return:
+    case TK_plex:
+    case TK_union:
+    case TK_enum:
+    case TK_ffi:
+    case TK_use:
+    case TK_pub:
+    case TK_impl:
+    case TK_with:
+        return true;
+    default:
+        break;
+    }
+
+    return false;
+}
+
+internal bool format_emit_token_comments_before(FormatTokenState* state,
+                                                const FormatTrivia* trivia,
+                                                u32* io_comment_index,
+                                                u32  token_index)
+{
+    u32 first_comment_index = U32_MAX;
+    u32 comment_count       = 0;
+    if (!format_trivia_comments_before_token(
+            trivia, token_index, &first_comment_index, &comment_count)) {
+        return false;
+    }
+
+    if (*io_comment_index < first_comment_index) {
+        *io_comment_index = first_comment_index;
+    }
+
+    u32 end_comment_index = first_comment_index + comment_count;
+    while (*io_comment_index < end_comment_index &&
+           *io_comment_index < array_count(state->lexer->comments)) {
+        format_token_state_indent(state);
+        sb_append_cstr(state->sb, "--");
+        sb_append_string(state->sb,
+                         state->lexer->comments[*io_comment_index].text);
+        format_token_state_newline(state);
+        (*io_comment_index)++;
+    }
+    return true;
+}
+
+internal bool format_emit_token_stream_block(StringBuilder* sb,
+                                             NerdSource     source)
+{
+    Lexer lexer = {0};
+    if (!lex_with_config(
+            source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
+        return false;
+    }
+
+    FormatTrivia trivia = {0};
+    format_trivia_build(&lexer, &trivia);
+    format_trivia_validate(&lexer, &trivia);
+
+    FormatTokenState state = {
+        .sb            = sb,
+        .lexer         = &lexer,
+        .indent_level  = 0,
+        .at_line_start = true,
+    };
+
+    u32       comment_index = 0;
+    TokenKind previous_kind = TK_EOF;
+    for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
+        TokenKind kind = lexer.tokens[i].kind;
+
+        u16 newlines_before = trivia.newlines_before_token[i];
+        bool has_comments_before = format_trivia_comments_before_token(
+            &trivia, i, NULL, NULL);
+        if (newlines_before > 1 && sb->size > 0 && !has_comments_before) {
+            format_token_state_blank_line(&state);
+        } else if (newlines_before > 0 && !state.at_line_start) {
+            format_token_state_newline(&state);
+        }
+
+        format_emit_token_comments_before(&state, &trivia, &comment_index, i);
+
+        if (kind == TK_RBrace) {
+            if (!state.at_line_start) {
+                format_token_state_newline(&state);
+            }
+            if (state.indent_level > 0) {
+                state.indent_level--;
+            }
+        }
+
+        format_token_state_indent(&state);
+
+        if (format_token_needs_space_between(previous_kind, kind) &&
+            sb->size > 0 && sb->data[sb->size - 1] != ' ' &&
+            sb->data[sb->size - 1] != '\n') {
+            sb_append_char(sb, ' ');
+        }
+
+        sb_append_string(sb, format_token_text(&lexer, i));
+
+        if (kind == TK_LBrace) {
+            state.indent_level++;
+            format_token_state_newline(&state);
+        } else if (kind == TK_RBrace || kind == TK_Semicolon) {
+            u32 trailing_comment = U32_MAX;
+            if (format_trivia_trailing_comment_after_token(
+                    &trivia, i, &trailing_comment)) {
+                format_emit_trailing_comment_by_index(
+                    sb, &lexer, &comment_index, trailing_comment);
+                state.at_line_start = true;
+            } else {
+                format_token_state_newline(&state);
+            }
+        } else if (kind == TK_Comma) {
+            sb_append_char(sb, ' ');
+        } else {
+            u32 trailing_comment = U32_MAX;
+            if (format_trivia_trailing_comment_after_token(
+                    &trivia, i, &trailing_comment)) {
+                format_emit_trailing_comment_by_index(
+                    sb, &lexer, &comment_index, trailing_comment);
+                state.at_line_start = true;
+            }
+        }
+
+        previous_kind = kind;
+    }
+
+    while (comment_index < array_count(lexer.comments)) {
+        format_token_state_indent(&state);
+        sb_append_cstr(sb, "--");
+        sb_append_string(sb, lexer.comments[comment_index].text);
+        format_token_state_newline(&state);
+        comment_index++;
+    }
+
+    if (sb->size > 0 && sb->data[sb->size - 1] != '\n') {
+        sb_append_char(sb, '\n');
+    }
+
+    format_trivia_done(&trivia);
+    lex_done(&lexer);
+    return true;
+}
+
 //------------------------------------------------------------------------------
 // Format source text, reflowing comments and normalising code blocks.
 
@@ -5931,6 +6250,15 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     .source = string_from(block_copy, block_end - block_start),
                     .source_path = source.source_path,
                 });
+            if (!ok) {
+                ok = format_emit_token_stream_block(
+                    &sb,
+                    (NerdSource){
+                        .source = string_from(block_copy,
+                                              block_end - block_start),
+                        .source_path = source.source_path,
+                    });
+            }
             arena_done(&block_arena);
             if (!ok) {
                 format_trivia_done(&trivia);
