@@ -6004,6 +6004,25 @@ internal bool format_token_kind_is_binary_operator(TokenKind kind)
     }
 }
 
+internal bool format_token_kind_is_atom(TokenKind kind)
+{
+    switch (kind) {
+    case TK_Integer:
+    case TK_Float:
+    case TK_String:
+    case TK_CString:
+    case TK_InterpolatedStringEnd:
+    case TK_Symbol:
+    case TK_yes:
+    case TK_no:
+    case TK_nil:
+    case TK_undefined:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool format_token_needs_space_between(TokenKind previous,
                                                TokenKind current,
                                                TokenKind next)
@@ -6049,6 +6068,11 @@ internal bool format_token_needs_space_between(TokenKind previous,
 
     if (current == TK_LBrace) {
         return previous != TK_EOF;
+    }
+
+    if (format_token_kind_is_atom(previous) &&
+        format_token_kind_is_atom(current)) {
+        return true;
     }
 
     if (format_token_kind_is_binary_operator(previous) ||
