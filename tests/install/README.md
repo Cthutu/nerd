@@ -10,3 +10,5 @@ The smoke runner covers:
 - `nerd run`
 - `nerd test`
 - `nerd format --stdout`
+- cleanup of temporary link inputs, runtime object copies, run executables, and
+  unrequested LLVM sidecars after successful commands

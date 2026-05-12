@@ -227,7 +227,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Exercise `nerd build`, `nerd run`, `nerd test`, `nerd format`, `--hir`, and
     `--llvm` outside the repository tree.
 
-- [ ] Commit: check generated artefact cleanup from installed builds
+- [x] Commit: check generated artefact cleanup from installed builds
   - Ensure successful external builds remove temporary `.ll`, `.link.ll`,
     runtime object copies, and executables unless requested.
 

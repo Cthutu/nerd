@@ -37,6 +37,44 @@ def check(proc: subprocess.CompletedProcess[str], label: str, expected_stdout: s
         )
 
 
+def assert_absent(path: pathlib.Path, label: str) -> None:
+    if path.exists():
+        raise AssertionError(f"{label} left generated artefact: {path.name}")
+
+
+def assert_no_link_temps(directory: pathlib.Path, stem: str, label: str) -> None:
+    patterns = [
+        f"{stem}.link.ll",
+        f"{stem}.nrt.o",
+        f"_{stem}.link.ll",
+        f"_{stem}.nrt.o",
+        f"__{stem}*",
+    ]
+    leftovers: list[pathlib.Path] = []
+    for pattern in patterns:
+        leftovers.extend(item for item in directory.glob(pattern) if item.exists())
+    if leftovers:
+        names = ", ".join(sorted(item.name for item in leftovers))
+        raise AssertionError(f"{label} left temporary artefacts: {names}")
+
+
+def assert_no_run_outputs(directory: pathlib.Path, stem: str, label: str) -> None:
+    assert_absent(directory / stem, label)
+    assert_no_link_temps(directory, stem, label)
+    patterns = [
+        f"{stem}*.ll",
+        f"_{stem}*.ll",
+        f"{stem}.m*.ll",
+        f"{stem}.input.m*.ll",
+    ]
+    leftovers: list[pathlib.Path] = []
+    for pattern in patterns:
+        leftovers.extend(item for item in directory.glob(pattern) if item.exists())
+    if leftovers:
+        names = ", ".join(sorted(item.name for item in leftovers))
+        raise AssertionError(f"{label} left LLVM artefacts: {names}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run installed nerd smoke tests")
     parser.add_argument(
@@ -85,12 +123,15 @@ def main() -> int:
             raise AssertionError("build --hir did not produce a HIR sidecar")
         if not any(temp.glob("_build_smoke*.ll")):
             raise AssertionError("build --llvm did not produce an LLVM sidecar")
+        assert_no_link_temps(temp, "build_smoke", "build --hir --llvm")
 
         run_proc = run([nerd_cmd, "run", "run_smoke.n"], temp, env)
         check(run_proc, "run", "installed smoke\n")
+        assert_no_run_outputs(temp, "run_smoke", "run")
 
         test_proc = run([nerd_cmd, "test", "source_tests.n"], temp, env)
         check(test_proc, "test", "2 tests passed\n")
+        assert_no_run_outputs(temp, "source_tests", "test")
 
         format_proc = run(
             [nerd_cmd, "format", "--stdout", "format_smoke.n"], temp, env
