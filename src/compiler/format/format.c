@@ -2395,8 +2395,12 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
         usize value_end_offset =
             lex_token_end_offset(lexer, &lexer->tokens[value_end_token]);
         u32  comment_index = U32_MAX;
-        bool has_comment   = format_find_trailing_comment_index_after_offset(
-            lexer->source, lexer, value_end_offset, &comment_index);
+        bool has_comment   = format_trivia_trailing_comment_after_token(
+            g_format_trivia, value_end_token, &comment_index);
+        if (g_format_trivia == NULL) {
+            has_comment = format_find_trailing_comment_index_after_offset(
+                lexer->source, lexer, value_end_offset, &comment_index);
+        }
         array_push(field_code_widths, code_width);
         array_push(field_end_offsets, value_end_offset);
         array_push(field_has_comments, has_comment);
@@ -3115,8 +3119,12 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         usize type_end_offset =
             lex_token_end_offset(lexer, &lexer->tokens[type_end_token]);
         u32  comment_index = U32_MAX;
-        bool has_comment   = format_find_trailing_comment_index_after_offset(
-            lexer->source, lexer, type_end_offset, &comment_index);
+        bool has_comment   = format_trivia_trailing_comment_after_token(
+            g_format_trivia, type_end_token, &comment_index);
+        if (g_format_trivia == NULL) {
+            has_comment = format_find_trailing_comment_index_after_offset(
+                lexer->source, lexer, type_end_offset, &comment_index);
+        }
         array_push(field_code_widths, code_width);
         array_push(field_end_offsets, type_end_offset);
         array_push(field_has_comments, has_comment);

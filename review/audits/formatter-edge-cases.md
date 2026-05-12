@@ -131,6 +131,8 @@ Current migration status:
   the public formatter API.
 - Blank-line checks between syntax nodes and FFI entries now consult
   token-indexed trivia first, with the older offset scan retained as a fallback.
+- Multiline plex literal/type field alignment now uses token-attached trailing
+  comments when planning comment columns.
 
 Follow-up:
 

@@ -74,6 +74,13 @@ Next extraction target:
 - convert one remaining offset-driven trailing-comment consumer to an explicit
   token/index query and leave the scan path as a validation fallback only
 
+Migration note:
+
+- Multiline plex literal field alignment and multiline plex type field
+  alignment now ask `FormatTrivia` directly for trailing comments after the
+  computed value/type end token. The older offset scan remains only for callers
+  that run without trivia.
+
 ### Blank-Line Policy
 
 Main code:

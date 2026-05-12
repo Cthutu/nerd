@@ -164,7 +164,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Prefer token newline counts and syntax ranges over ad hoc source scans.
   - Keep snapshots idempotent.
 
-- [ ] Commit: move another comment consumer onto `FormatTrivia`
+- [x] Commit: move another comment consumer onto `FormatTrivia`
   - Pick one remaining offset-driven path and replace it with token-attached
     leading or trailing trivia.
 
