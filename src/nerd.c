@@ -602,8 +602,7 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
-        .timing =
-            nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
+        .timing = nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
         .keywords = keywords,
     };
 }
@@ -658,8 +657,7 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
-        .timing =
-            nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
+        .timing = nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
         .keywords = keywords,
     };
 }

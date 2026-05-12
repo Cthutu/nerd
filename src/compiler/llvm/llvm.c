@@ -47,14 +47,12 @@ internal string llvm_layout_dynamic_array_header_type(const LlvmLayout* layout)
     return s("{ ptr, i64, i64 }");
 }
 
-internal u64
-llvm_layout_dynamic_array_header_bytes(const LlvmLayout* layout)
+internal u64 llvm_layout_dynamic_array_header_bytes(const LlvmLayout* layout)
 {
     return (u64)((layout->pointer_bits + layout->size_bits * 2) / 8);
 }
 
-internal const LlvmLayout*
-llvm_layout_or_default(const LlvmLayout* layout)
+internal const LlvmLayout* llvm_layout_or_default(const LlvmLayout* layout)
 {
     return layout != NULL ? layout : llvm_default_layout();
 }
@@ -291,8 +289,8 @@ internal u32 llvm_align_bits(u32 bits, u32 align_bits)
 
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
-    const LlvmLayout* layout = llvm_default_layout();
-    u32 int_bits = llvm_integer_bits(sema, type_index);
+    const LlvmLayout* layout   = llvm_default_layout();
+    u32               int_bits = llvm_integer_bits(sema, type_index);
     if (int_bits > 0) {
         return int_bits;
     }
@@ -1379,11 +1377,11 @@ typedef struct {
 } LlvmControlTarget;
 
 typedef struct {
-    StringBuilder* sb;
-    const Hir*     hir;
-    const Lexer*   lexer;
-    const Sema*    sema;
-    Arena*         arena;
+    StringBuilder*    sb;
+    const Hir*        hir;
+    const Lexer*      lexer;
+    const Sema*       sema;
+    Arena*            arena;
     const LlvmLayout* layout;
     u32               next_temp;
     u32               next_label;
@@ -1478,7 +1476,7 @@ internal string llvm_emit_string_value_pointer(LlvmFunctionContext* ctx,
                                                string               value)
 {
     string string_type = llvm_string_type(ctx->layout);
-    string ptr = llvm_temp(ctx);
+    string ptr         = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = alloca " STRINGP "\n",
               STRINGV(ptr),
@@ -4391,9 +4389,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     capacity_value = string_format(ctx->arena, "%u", capacity);
                 }
 
-                string header = llvm_temp(ctx);
-                u64 header_bytes =
-                    llvm_dynamic_array_header_bytes(ctx->layout);
+                string header    = llvm_temp(ctx);
+                u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
                 sb_format(ctx->sb,
                           "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
                           STRINGV(header),
@@ -7995,8 +7992,8 @@ internal bool llvm_dynamic_array_ensure_header(LlvmFunctionContext* ctx,
               STRINGV(done_label));
 
     sb_format(ctx->sb, STRINGP ":\n", STRINGV(alloc_label));
-    string allocated = llvm_temp(ctx);
-    u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
+    string allocated    = llvm_temp(ctx);
+    u64    header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
     sb_format(ctx->sb,
               "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
               STRINGV(allocated),
@@ -9238,7 +9235,7 @@ typedef struct {
     cstr params;
 } LlvmRuntimeDecl;
 
-internal void llvm_render_runtime_declarations(StringBuilder*        sb,
+internal void llvm_render_runtime_declarations(StringBuilder*         sb,
                                                const LlvmRuntimeDecl* decls,
                                                u32 decl_count)
 {

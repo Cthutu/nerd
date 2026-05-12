@@ -268,8 +268,10 @@ internal bool format_trivia_comments_before_token(const FormatTrivia* trivia,
     return true;
 }
 
-internal bool format_trivia_has_blank_line_between_tokens(
-    const FormatTrivia* trivia, u32 previous_token_index, u32 current_token_index)
+internal bool
+format_trivia_has_blank_line_between_tokens(const FormatTrivia* trivia,
+                                            u32 previous_token_index,
+                                            u32 current_token_index)
 {
     if (trivia == NULL ||
         current_token_index >= array_count(trivia->newlines_before_token) ||
@@ -2354,15 +2356,15 @@ internal bool format_plex_field_is_shorthand(const Cst*                 cst,
     return value->kind == CK_SymbolRef && value->a == field->symbol_handle;
 }
 
-internal void format_plan_trailing_comment_columns(
-    const Lexer* lexer,
-    u32          item_count,
-    Array(usize) item_start_offsets,
-    Array(usize) item_end_offsets,
-    Array(usize) item_code_widths,
-    Array(bool)  item_has_comments,
-    Array(u32)   item_comment_indices,
-    Array(usize) item_comment_columns)
+internal void
+format_plan_trailing_comment_columns(const Lexer* lexer,
+                                     u32          item_count,
+                                     Array(usize) item_start_offsets,
+                                     Array(usize) item_end_offsets,
+                                     Array(usize) item_code_widths,
+                                     Array(bool) item_has_comments,
+                                     Array(u32) item_comment_indices,
+                                     Array(usize) item_comment_columns)
 {
     for (u32 i = 0; i < item_count;) {
         u32   start          = i;
@@ -2370,7 +2372,7 @@ internal void format_plan_trailing_comment_columns(
         usize previous_end   = 0;
         bool  have_previous  = false;
         while (i < item_count) {
-            usize item_start = item_start_offsets[i];
+            usize item_start  = item_start_offsets[i];
             usize group_start = format_first_comment_or_offset_between(
                 lexer, previous_end, item_start);
             if (have_previous &&

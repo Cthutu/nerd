@@ -240,7 +240,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - README, roadmap, manual references, compiler pipeline, testing docs, and
     editor-support docs should agree.
 
-- [ ] Commit: final release gate
+- [x] Commit: final release gate
   - `just test`
   - `just install`
   - installed compiler smoke tests

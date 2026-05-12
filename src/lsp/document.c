@@ -251,36 +251,36 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
     doc->cst = (Cst){0};
     program_info_done(&doc->program);
     arena_done(&doc->arena);
-    doc->program       = (ProgramInfo){0};
-    doc->front_end     = (FrontEndState){0};
-    doc->analysis_ok   = false;
-    doc->tokens_ready  = false;
-    doc->syntax_ready  = false;
-    doc->decls_ready   = false;
-    doc->bindings_ready = false;
+    doc->program             = (ProgramInfo){0};
+    doc->front_end           = (FrontEndState){0};
+    doc->analysis_ok         = false;
+    doc->tokens_ready        = false;
+    doc->syntax_ready        = false;
+    doc->decls_ready         = false;
+    doc->bindings_ready      = false;
     doc->type_facts_partial  = false;
     doc->type_facts_complete = false;
-    doc->sema_partial  = false;
-    doc->sema_complete = false;
-    doc->cst_ready     = false;
+    doc->sema_partial        = false;
+    doc->sema_complete       = false;
+    doc->cst_ready           = false;
 }
 
 internal void lsp_document_set_readiness_from_front_end(LspDocument* doc)
 {
     const FrontEndReadiness* readiness = &doc->front_end.readiness;
-    doc->tokens_ready       = front_end_product_is_available(readiness->lexer);
-    doc->syntax_ready       = front_end_product_is_available(readiness->ast);
-    doc->decls_ready        = front_end_product_is_available(
-        readiness->semantic.declarations);
+    doc->tokens_ready = front_end_product_is_available(readiness->lexer);
+    doc->syntax_ready = front_end_product_is_available(readiness->ast);
+    doc->decls_ready =
+        front_end_product_is_available(readiness->semantic.declarations);
     doc->bindings_ready =
         front_end_product_is_available(readiness->semantic.bindings);
     doc->type_facts_partial =
         front_end_product_is_available(readiness->semantic.type_facts);
     doc->type_facts_complete =
         front_end_product_is_complete(readiness->semantic.type_facts);
-    doc->sema_partial =
-        doc->decls_ready || doc->bindings_ready || doc->type_facts_partial ||
-        front_end_product_is_available(readiness->sema);
+    doc->sema_partial  = doc->decls_ready || doc->bindings_ready ||
+                         doc->type_facts_partial ||
+                         front_end_product_is_available(readiness->sema);
     doc->sema_complete = front_end_product_is_complete(readiness->sema);
 }
 
@@ -298,20 +298,20 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
 {
     *staged = (LspDocument){0};
     arena_init(&staged->arena);
-    staged->analysis_ok   = false;
-    staged->source_ready  = true;
-    staged->tokens_ready  = false;
-    staged->syntax_ready  = false;
-    staged->decls_ready   = false;
-    staged->bindings_ready = false;
+    staged->analysis_ok         = false;
+    staged->source_ready        = true;
+    staged->tokens_ready        = false;
+    staged->syntax_ready        = false;
+    staged->decls_ready         = false;
+    staged->bindings_ready      = false;
     staged->type_facts_partial  = false;
     staged->type_facts_complete = false;
-    staged->sema_partial  = false;
-    staged->sema_complete = false;
-    staged->cst_ready     = false;
-    staged->source        = content;
+    staged->sema_partial        = false;
+    staged->sema_complete       = false;
+    staged->cst_ready           = false;
+    staged->source              = content;
 
-    u8* uri_copy          = arena_alloc(&staged->arena, uri.count);
+    u8* uri_copy                = arena_alloc(&staged->arena, uri.count);
     memcpy(uri_copy, uri.data, uri.count);
     string stable_uri = {.data = uri_copy, .count = uri.count};
 
@@ -351,7 +351,8 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
         staged->front_end.readiness.sema = FRONT_END_PRODUCT_Partial;
         staged->front_end.readiness.semantic.declarations =
             FRONT_END_PRODUCT_Partial;
-        staged->front_end.readiness.semantic.bindings = FRONT_END_PRODUCT_Partial;
+        staged->front_end.readiness.semantic.bindings =
+            FRONT_END_PRODUCT_Partial;
         staged->front_end.readiness.semantic.type_facts =
             FRONT_END_PRODUCT_Partial;
         if (array_count(staged->program.modules) > 0 &&
@@ -360,7 +361,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
             FrontEndReadiness* root_readiness =
                 &staged->program.modules[staged->program.root_module_index]
                      .front_end.readiness;
-            root_readiness->sema = FRONT_END_PRODUCT_Partial;
+            root_readiness->sema                  = FRONT_END_PRODUCT_Partial;
             root_readiness->semantic.declarations = FRONT_END_PRODUCT_Partial;
             root_readiness->semantic.bindings     = FRONT_END_PRODUCT_Partial;
             root_readiness->semantic.type_facts   = FRONT_END_PRODUCT_Partial;
@@ -477,8 +478,8 @@ bool lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view)
     return true;
 }
 
-bool lsp_declaration_view(LspState*          state,
-                          string             uri,
+bool lsp_declaration_view(LspState*           state,
+                          string              uri,
                           LspDeclarationView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
@@ -513,9 +514,7 @@ bool lsp_binding_view(LspState* state, string uri, LspBindingView* out_view)
     return true;
 }
 
-bool lsp_type_fact_view(LspState*       state,
-                        string          uri,
-                        LspTypeFactView* out_view)
+bool lsp_type_fact_view(LspState* state, string uri, LspTypeFactView* out_view)
 {
     LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
     if (!doc || !doc->type_facts_partial) {

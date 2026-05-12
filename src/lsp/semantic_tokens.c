@@ -67,8 +67,8 @@ lsp_semantic_string_find(string haystack, string needle, usize* out_offset)
 // source; LSP semantic token positions still have to be reported relative to
 // the file the editor opened.
 
-internal bool lsp_semantic_visible_range(const LspDeclarationView*   view,
-                                         LspSemanticVisibleRange* out_range)
+internal bool lsp_semantic_visible_range(const LspDeclarationView* view,
+                                         LspSemanticVisibleRange*  out_range)
 {
     const NerdSource analysed = view->lexer->source;
     string           source   = analysed.source;
@@ -158,7 +158,7 @@ internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
 // Classify one symbol token by semantic role.
 
 internal u32 lsp_semantic_symbol_type(const LspDeclarationView* view,
-                                      u32                    token_index)
+                                      u32                       token_index)
 {
     u32 bind_node_index = lsp_semantic_find_bind_node(view->ast, token_index);
     if (bind_node_index != U32_MAX) {
@@ -195,7 +195,7 @@ internal u32 lsp_semantic_symbol_type(const LspDeclarationView* view,
 // Return whether one symbol token is the contextual source-test keyword.
 
 internal bool lsp_semantic_is_test_keyword(const LspDeclarationView* view,
-                                           u32                    token_index)
+                                           u32 token_index)
 {
     const Lexer* lexer = view->lexer;
     const Token* token = NULL;
@@ -222,8 +222,8 @@ internal bool lsp_semantic_is_test_keyword(const LspDeclarationView* view,
 // Return whether a token kind should emit a semantic token.
 
 internal bool lsp_semantic_token_type(const LspDeclarationView* view,
-                                      u32                    token_index,
-                                      u32*                   out_type)
+                                      u32                       token_index,
+                                      u32*                      out_type)
 {
     const Token* token = NULL;
     if (!lsp_lexer_token(view->lexer, token_index, &token)) {
@@ -342,7 +342,7 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
         return;
     }
 
-    string          uri  = json_string(uri_value);
+    string             uri  = json_string(uri_value);
     LspDeclarationView view = {0};
     if (!lsp_declaration_view(state, uri, &view)) {
         lsp_cancel(response, message->arena);

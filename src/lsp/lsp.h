@@ -20,21 +20,21 @@ typedef struct LspMessage {
 } LspMessage;
 
 typedef struct {
-    Arena         source_arena;  // Arena for the current editor buffer
-    Arena         arena;         // Arena for analysis data
-    string        source;        // Current editor document source
-    ProgramInfo   program;       // Program analysis for the current document
-    FrontEndState front_end;     // Compiler front-end results for the document
-    Cst           cst;           // Concrete syntax tree for editor tooling
-    bool          analysis_ok;   // Whether front-end analysis succeeded
-    bool          source_ready;  // Whether editor source is stored
-    bool          tokens_ready;  // Derived lexer product availability
-    bool          syntax_ready;  // Derived AST product availability
-    bool          decls_ready;   // Declaration facts are available
+    Arena         source_arena;   // Arena for the current editor buffer
+    Arena         arena;          // Arena for analysis data
+    string        source;         // Current editor document source
+    ProgramInfo   program;        // Program analysis for the current document
+    FrontEndState front_end;      // Compiler front-end results for the document
+    Cst           cst;            // Concrete syntax tree for editor tooling
+    bool          analysis_ok;    // Whether front-end analysis succeeded
+    bool          source_ready;   // Whether editor source is stored
+    bool          tokens_ready;   // Derived lexer product availability
+    bool          syntax_ready;   // Derived AST product availability
+    bool          decls_ready;    // Declaration facts are available
     bool          bindings_ready; // Binding/reference facts are available
-    bool          type_facts_partial; // Best-effort type facts are available
+    bool          type_facts_partial;  // Best-effort type facts are available
     bool          type_facts_complete; // Checked type facts are available
-    bool          sema_partial;  // Derived semantic product availability
+    bool          sema_partial;        // Derived semantic product availability
     bool          sema_complete; // Derived complete semantic analysis state
     bool          cst_ready;     // Whether CST parsing succeeded
 } LspDocument;
@@ -127,33 +127,31 @@ void lsp_done(LspState* state);
 //------------------------------------------------------------------------------
 // LSP document utilities
 
-void  lsp_document_done(LspDocument* doc);
-bool  lsp_source_view(LspState* state, string uri, LspSourceView* out_view);
-bool  lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
-bool  lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
-bool  lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
-bool  lsp_declaration_view(LspState*          state,
-                           string             uri,
-                           LspDeclarationView* out_view);
-bool  lsp_binding_view(LspState* state, string uri, LspBindingView* out_view);
-bool  lsp_type_fact_view(LspState*       state,
-                         string          uri,
-                         LspTypeFactView* out_view);
-bool  lsp_program_module_view(const ProgramInfo* program,
-                              u32                module_index,
-                              LspModuleView*     out_view);
-bool  lsp_program_module_view_by_path(const ProgramInfo* program,
-                                      cstr               resolved_path,
-                                      LspModuleView*     out_view);
-bool  lsp_program_module_view_by_type(const ProgramInfo* program,
-                                      const SemaType*    type,
-                                      LspModuleView*     out_view);
-bool  lsp_get_string_param(const LspMessage* message,
-                           cstr              param_path,
-                           string*           out_str);
-bool  lsp_get_u64_param(const LspMessage* message,
-                        cstr              param_path,
-                        u64*              out_value);
+void lsp_document_done(LspDocument* doc);
+bool lsp_source_view(LspState* state, string uri, LspSourceView* out_view);
+bool lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
+bool lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
+bool lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
+bool lsp_declaration_view(LspState*           state,
+                          string              uri,
+                          LspDeclarationView* out_view);
+bool lsp_binding_view(LspState* state, string uri, LspBindingView* out_view);
+bool lsp_type_fact_view(LspState* state, string uri, LspTypeFactView* out_view);
+bool lsp_program_module_view(const ProgramInfo* program,
+                             u32                module_index,
+                             LspModuleView*     out_view);
+bool lsp_program_module_view_by_path(const ProgramInfo* program,
+                                     cstr               resolved_path,
+                                     LspModuleView*     out_view);
+bool lsp_program_module_view_by_type(const ProgramInfo* program,
+                                     const SemaType*    type,
+                                     LspModuleView*     out_view);
+bool lsp_get_string_param(const LspMessage* message,
+                          cstr              param_path,
+                          string*           out_str);
+bool lsp_get_u64_param(const LspMessage* message,
+                       cstr              param_path,
+                       u64*              out_value);
 usize lsp_offset_from_position(string source, u64 line, u64 character);
 bool  lsp_ast_node(const Ast* ast, u32 node_index, const AstNode** out);
 bool  lsp_lexer_token(const Lexer* lexer, u32 token_index, const Token** out);
@@ -175,7 +173,7 @@ bool  lsp_decl_view_decl(const LspDeclarationView* view,
 bool  lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
                                    u32                       symbol_handle,
                                    const SemaDecl**          out_decl,
-                                   u32* out_decl_index);
+                                   u32*                      out_decl_index);
 bool  lsp_binding_view_local(const LspBindingView* view,
                              u32                   local_index,
                              const SemaLocal**     out);
@@ -200,7 +198,7 @@ bool  lsp_type_fact_view_node_type(const LspTypeFactView* view,
 bool  lsp_type_fact_view_type_param(const LspTypeFactView* view,
                                     u32                    param_index,
                                     u32*                   out_symbol,
-                                    u32* out_type_index);
+                                    u32*                   out_type_index);
 bool  lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
 bool  lsp_sema_node_local(const Sema* sema,
                           u32         node_index,

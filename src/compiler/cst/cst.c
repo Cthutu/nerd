@@ -5259,8 +5259,7 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         u32 end = cst_block_statement_end_exclusive(cst, node->a);
         return end > node_index + 1 ? end : node_index + 1;
     }
-    if (cst_node_is_binding_like(node) ||
-        node->kind == CK_DestructureBind ||
+    if (cst_node_is_binding_like(node) || node->kind == CK_DestructureBind ||
         node->kind == CK_DestructureVariable ||
         node->kind == CK_DestructureAssign || node->kind == CK_Statement ||
         node->kind == CK_Use) {

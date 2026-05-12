@@ -228,7 +228,7 @@ bool lsp_decl_view_decl(const LspDeclarationView* view,
 bool lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
                                   u32                       symbol_handle,
                                   const SemaDecl**          out_decl,
-                                  u32* out_decl_index)
+                                  u32*                      out_decl_index)
 {
     if (!view) {
         return false;
@@ -310,7 +310,7 @@ bool lsp_type_fact_view_node_type(const LspTypeFactView* view,
 bool lsp_type_fact_view_type_param(const LspTypeFactView* view,
                                    u32                    param_index,
                                    u32*                   out_symbol,
-                                   u32* out_type_index)
+                                   u32*                   out_type_index)
 {
     if (!view) {
         return false;

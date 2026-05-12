@@ -86,8 +86,8 @@ internal bool back_end_write_text_file(cstr path, string text)
 
 internal string back_end_tool_output_excerpt(ShellResult result)
 {
-    string output = result.stderr_text.count > 0 ? result.stderr_text
-                                                 : result.stdout_text;
+    string output =
+        result.stderr_text.count > 0 ? result.stderr_text : result.stdout_text;
     if (output.count > 2048) {
         output.count = 2048;
     }
@@ -99,9 +99,7 @@ internal TimePoint back_end_timing_begin(Timing* timing)
     return timing != NULL ? time_now() : 0;
 }
 
-internal void back_end_timing_end(Timing*         timing,
-                                  cstr            phase,
-                                  TimePoint       start)
+internal void back_end_timing_end(Timing* timing, cstr phase, TimePoint start)
 {
     if (timing == NULL) {
         return;
@@ -263,11 +261,9 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
 
     BackEndLlvmModules modules       = {0};
     MemoryStats        memory_before = compiler_memory_profile_begin();
-    TimePoint          timing_start = back_end_timing_begin(timing);
+    TimePoint          timing_start  = back_end_timing_begin(timing);
     if (!back_end_render_llvm_modules(&arena, program, artifacts, &modules)) {
-        back_end_timing_end(timing,
-                            COMPILER_PHASE_LLVM_RENDER,
-                            timing_start);
+        back_end_timing_end(timing, COMPILER_PHASE_LLVM_RENDER, timing_start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_RENDER, memory_before);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths, false, NULL, NULL);
@@ -306,9 +302,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_COMBINE, memory_before);
     timing_start = back_end_timing_begin(timing);
     if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
-        back_end_timing_end(timing,
-                            COMPILER_PHASE_LLVM_WRITE,
-                            timing_start);
+        back_end_timing_end(timing, COMPILER_PHASE_LLVM_WRITE, timing_start);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                         !artifacts->emit_llvm_file,
                                         combined_llvm_path,
@@ -321,9 +315,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     memory_before = compiler_memory_profile_begin();
     timing_start  = back_end_timing_begin(timing);
     if (!back_end_llvm_runtime_write_object(runtime_object_path)) {
-        back_end_timing_end(timing,
-                            COMPILER_PHASE_RUNTIME_OBJECT,
-                            timing_start);
+        back_end_timing_end(
+            timing, COMPILER_PHASE_RUNTIME_OBJECT, timing_start);
         compiler_memory_profile_end(COMPILER_STAGE_BACK_END,
                                     COMPILER_PHASE_RUNTIME_OBJECT,
                                     memory_before);
@@ -349,10 +342,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         back_end_timing_end(timing, COMPILER_PHASE_LINK, timing_start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
-        back_end_cleanup_llvm_artifacts(modules.llvm_paths,
-                                        !artifacts->emit_llvm_file,
-                                        NULL,
-                                        NULL);
+        back_end_cleanup_llvm_artifacts(
+            modules.llvm_paths, !artifacts->emit_llvm_file, NULL, NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;

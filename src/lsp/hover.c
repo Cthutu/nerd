@@ -2439,7 +2439,7 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
         bool has_decls = lsp_declaration_view(state, uri, &decl_view);
 
         for (u32 i = 0; i < array_count(doc->cst.bindings); ++i) {
-            const CstNode* bind = &doc->cst.nodes[doc->cst.bindings[i]];
+            const CstNode* bind        = &doc->cst.nodes[doc->cst.bindings[i]];
 
             u32             decl_index = LSP_NO_DECL;
             const SemaDecl* decl       = NULL;
@@ -2465,12 +2465,12 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                                    message->arena,
                                    "name",
                                    lex_symbol(&doc->front_end.lexer, bind->a));
-            json_object_set_number(symbol,
-                                   message->arena,
-                                   "kind",
-                                   decl ? lsp_decl_symbol_kind(decl)
-                                        : lsp_cst_binding_symbol_kind(
-                                              &doc->cst, bind));
+            json_object_set_number(
+                symbol,
+                message->arena,
+                "kind",
+                decl ? lsp_decl_symbol_kind(decl)
+                     : lsp_cst_binding_symbol_kind(&doc->cst, bind));
             json_object_set_object(
                 symbol,
                 "range",

@@ -27,11 +27,11 @@ typedef struct FrontEndSemanticReadiness {
 } FrontEndSemanticReadiness;
 
 typedef struct FrontEndReadiness {
-    FrontEndProductState     lexer;
-    FrontEndProductState     ast;
-    FrontEndProductState     sema;
+    FrontEndProductState      lexer;
+    FrontEndProductState      ast;
+    FrontEndProductState      sema;
     FrontEndSemanticReadiness semantic;
-    FrontEndProductState     hir;
+    FrontEndProductState      hir;
 } FrontEndReadiness;
 
 typedef struct FrontEndState {

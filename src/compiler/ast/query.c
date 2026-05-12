@@ -80,8 +80,7 @@ bool ast_node_is_block_statement(const AstNode* node)
            node->kind == AK_Break || node->kind == AK_Continue ||
            node->kind == AK_Return || node->kind == AK_Defer ||
            node->kind == AK_Assert || node->kind == AK_Statement ||
-           ast_node_is_binding_like(node) ||
-           node->kind == AK_DestructureBind ||
+           ast_node_is_binding_like(node) || node->kind == AK_DestructureBind ||
            node->kind == AK_DestructureVariable ||
            node->kind == AK_DestructureAssign || node->kind == AK_Use ||
            node->kind == AK_FfiDef || node->kind == AK_TopOn;
@@ -106,8 +105,7 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
         u32 end = ast_block_statement_end_exclusive(ast, node->a);
         return end > node_index + 1 ? end : node_index + 1;
     }
-    if (ast_node_is_binding_like(node) ||
-        node->kind == AK_DestructureBind ||
+    if (ast_node_is_binding_like(node) || node->kind == AK_DestructureBind ||
         node->kind == AK_DestructureVariable ||
         node->kind == AK_DestructureAssign || node->kind == AK_Statement ||
         node->kind == AK_Use) {
