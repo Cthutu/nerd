@@ -168,7 +168,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Pick one remaining offset-driven path and replace it with token-attached
     leading or trailing trivia.
 
-- [ ] Commit: extract alignment region planning
+- [x] Commit: extract alignment region planning
   - Make local declarations, assignments, plex fields, enum variants, and
     trailing comments use an explicit region planner where practical.
 

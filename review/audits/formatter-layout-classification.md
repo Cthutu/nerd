@@ -185,6 +185,14 @@ Next extraction target:
 - introduce a region planner abstraction only after one more comment/trivia
   migration; otherwise the planner will inherit the current offset decisions
 
+Migration note:
+
+- `format_plan_trailing_comment_columns` now plans trailing-comment alignment
+  columns for a syntax region from item starts, ends, code widths, and
+  token-attached comment indices.
+- Multiline plex literals and multiline plex type fields use that shared
+  planner instead of each carrying a local copy of the grouping loop.
+
 ### Construct-Specific Rendering
 
 Main code:

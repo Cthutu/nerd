@@ -133,6 +133,8 @@ Current migration status:
   token-indexed trivia first, with the older offset scan retained as a fallback.
 - Multiline plex literal/type field alignment now uses token-attached trailing
   comments when planning comment columns.
+- Multiline plex literal/type field trailing-comment columns now share an
+  explicit region planner.
 
 Follow-up:
 
