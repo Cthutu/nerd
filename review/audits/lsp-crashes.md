@@ -135,6 +135,96 @@ Follow-up:
   crash.
 - Continue with semantic tokens, rename, and module completion after edits.
 
+### Case 3: Document symbols after incremental edit to incomplete member access
+
+Source state:
+
+- Document opens valid.
+- Incremental edit removes the field name from `frame.handle`, leaving
+  `frame.`.
+
+Request:
+
+- `textDocument/documentSymbol` immediately after the edit.
+
+Reproduction:
+
+```sh
+python3 build/test.py --filter 098-incremental-document-symbols-after-partial-edit
+```
+
+Expected:
+
+- LSP does not crash.
+- Diagnostics publish the parse error for incomplete field access.
+- Document symbols still reports top-level declarations from the partial AST.
+
+Actual:
+
+- Covered by `tests/lsp/098-incremental-document-symbols-after-partial-edit.lsp`.
+
+Classification:
+
+- `source_ready`
+- `tokens_ready`
+- `syntax_ready`
+- partial semantic fallback
+
+Likely owner:
+
+- `src/lsp/document.c`
+- `src/lsp/hover.c`
+
+Regression test:
+
+- `tests/lsp/098-incremental-document-symbols-after-partial-edit.lsp`
+
+### Case 4: Rename after incremental edit to incomplete member access
+
+Source state:
+
+- Document opens valid.
+- Incremental edit removes the field name from `frame.handle`, leaving
+  `frame.`.
+
+Request:
+
+- `textDocument/prepareRename` and `textDocument/rename` on the still-valid
+  `frame` reference after the edit.
+
+Reproduction:
+
+```sh
+python3 build/test.py --filter 099-incremental-rename-after-partial-edit
+```
+
+Expected:
+
+- LSP does not crash.
+- Diagnostics publish the parse error for incomplete field access.
+- Rename still returns a workspace edit for visible local references.
+
+Actual:
+
+- Covered by `tests/lsp/099-incremental-rename-after-partial-edit.lsp`.
+
+Classification:
+
+- `source_ready`
+- `tokens_ready`
+- `syntax_ready`
+- partial semantic fallback
+- scratch syntax fallback
+
+Likely owner:
+
+- `src/lsp/document.c`
+- `src/lsp/rename.c`
+
+Regression test:
+
+- `tests/lsp/099-incremental-rename-after-partial-edit.lsp`
+
 ## Structured Stress Baseline
 
 Date: 2026-05-07

@@ -193,7 +193,7 @@ Working rules for this review:
   - Add helper APIs for symbol lookup, scope lookup, type lookup, and source
     spans that are safe under partial analysis.
 
-- [ ] Commit: add crash regression fixtures
+- [x] Commit: add crash regression fixtures
   - Convert known LSP crash cases from `review/audits/lsp-crashes.md` into
     automated tests.
 
