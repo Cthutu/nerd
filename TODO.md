@@ -150,7 +150,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Prefer a narrow path with clear value, such as document symbols or
     newline/comment decisions around incomplete blocks.
 
-- [ ] Commit: decide the long-term AST/CST relationship
+- [x] Commit: decide the long-term AST/CST relationship
   - Record whether AST should be derived from CST, whether both should come
     from one parser core, or whether the current split remains intentional.
 

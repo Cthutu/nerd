@@ -47,6 +47,9 @@ Date: YYYY-MM-DD
 - [0007: Semantic Fact Readiness](0007-semantic-fact-readiness.md)
   - Status: accepted.
   - Closeout: active policy for LSP/front-end boundary work.
+- [0008: Syntax Product Relationship](0008-syntax-product-relationship.md)
+  - Status: accepted.
+  - Closeout: active policy for AST/CST boundary work.
 
 ## Closeout Notes
 

@@ -84,6 +84,21 @@ Function bodies and nested block statements are represented structurally in the
 AST, but scope ownership is still semantic data. A block node describes its
 statement range; semantic analysis decides which declarations are visible.
 
+## CST
+
+The CST is the source-preserving syntax product for formatter and editor
+tooling. It is intentionally separate from the compact compiler AST for now.
+The accepted boundary is:
+
+- AST is compiler-facing and compact.
+- CST is tooling-facing and source-oriented.
+- Shared syntax classification, token ranges, and construct predicates belong
+  in common helpers instead of feature-specific formatter/LSP code.
+
+This keeps trivia and tolerant tooling concerns out of the compiler AST while
+still requiring both parsers to share vocabulary for binding-like constructs,
+statement-like constructs, ranges, and cursor contexts.
+
 ## Semantic Analysis
 
 The semantic pass in [src/compiler/sema/sema.c](/home/matt/nerd/src/compiler/sema/sema.c)

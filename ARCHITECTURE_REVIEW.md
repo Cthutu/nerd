@@ -70,6 +70,8 @@ The chosen boundary is:
   diagnostics, and semantic side tables
 - semantic readiness is split into declaration facts, binding facts, and type
   facts so editor features can use partial semantic products deliberately
+- AST and CST remain separate products for now; shared syntax helpers and
+  recovery fixtures are the mitigation against parser/tooling drift
 - HIR owns lowered checked program structure: nameless entities, explicit
   bindings, modules, imports, exports, globals, init work, functions, locals,
   control flow, aggregates, strings, dynamic arrays, and runtime operations
@@ -96,8 +98,8 @@ Remaining known risks:
 
 - `sema.c` remains a large phase with declaration collection, type checking,
   dependency analysis, and many side-table responsibilities in one unit.
-- AST and CST remain separate syntax products, so syntax changes still need
-  discipline to avoid parser/tooling drift.
+- AST and CST remain separate syntax products by decision, so syntax changes
+  still need discipline to avoid parser/tooling drift.
 - LLVM lowering is textual and clang-driven. This is the current install
   contract, but bitcode or direct LLVM CLI tools remain possible future
   performance experiments.
@@ -112,7 +114,8 @@ Remaining known risks:
 Recommended next review work:
 
 - split guaranteed declaration/binding indexing from full semantic success
-- derive or unify AST/CST parsing behind one tolerant syntax source of truth
+- keep centralising AST/CST syntax helpers and revisit unification only when
+  duplicated grammar work outweighs the current split
 - keep reducing formatter layout cases into trivia/syntax-region rules
 - measure clang/textual LLVM startup cost before changing the backend toolchain
 - add target/layout records if aggregate ABI or cross-target support becomes a
