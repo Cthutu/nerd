@@ -9,6 +9,7 @@
 
 #define LSP_NO_DECL UINT32_MAX
 #define LSP_SYMBOL_KIND_FUNCTION 12
+#define LSP_SYMBOL_KIND_VARIABLE 13
 #define LSP_SYMBOL_KIND_CONSTANT 14
 
 //------------------------------------------------------------------------------
@@ -2089,6 +2090,57 @@ internal int lsp_decl_symbol_kind(const SemaDecl* decl)
 }
 
 //------------------------------------------------------------------------------
+// Return a syntax-only symbol kind for CST bindings when declaration facts are
+// not available.
+
+internal bool lsp_cst_binding_value(const Cst*      cst,
+                                    const CstNode*  bind,
+                                    const CstNode** out_value)
+{
+    if (!cst || !bind || bind->b >= array_count(cst->nodes)) {
+        return false;
+    }
+
+    const CstNode* value = &cst->nodes[bind->b];
+    if (value->kind == CK_AnnotatedValue &&
+        value->b < array_count(cst->nodes)) {
+        value = &cst->nodes[value->b];
+    }
+
+    *out_value = value;
+    return true;
+}
+
+internal int lsp_cst_binding_symbol_kind(const Cst* cst, const CstNode* bind)
+{
+    const CstNode* value = NULL;
+    if (lsp_cst_binding_value(cst, bind, &value) &&
+        (value->kind == CK_FnExpr || value->kind == CK_FnBlock ||
+         value->kind == CK_FfiDef)) {
+        return LSP_SYMBOL_KIND_FUNCTION;
+    }
+
+    return bind->kind == CK_Variable ? LSP_SYMBOL_KIND_VARIABLE
+                                     : LSP_SYMBOL_KIND_CONSTANT;
+}
+
+internal string lsp_cst_binding_detail(Arena*         arena,
+                                       const Cst*     cst,
+                                       const CstNode* bind)
+{
+    UNUSED(arena);
+
+    const CstNode* value = NULL;
+    if (lsp_cst_binding_value(cst, bind, &value) &&
+        (value->kind == CK_FnExpr || value->kind == CK_FnBlock ||
+         value->kind == CK_FfiDef)) {
+        return s("function");
+    }
+
+    return bind->kind == CK_Variable ? s("variable") : s("binding");
+}
+
+//------------------------------------------------------------------------------
 // Respond to hover requests with semantic information about the token under the
 // cursor.
 
@@ -2370,25 +2422,35 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
         return;
     }
 
-    string             uri  = json_string(uri_value);
-    LspDeclarationView view = {0};
-    if (!lsp_declaration_view(state, uri, &view)) {
+    string        uri         = json_string(uri_value);
+    LspSourceView source_view = {0};
+    if (!lsp_source_view(state, uri, &source_view)) {
         json_object_set_array(
             response, "result", json_new_array(message->arena));
         lsp_send_response(message->arena, response);
         return;
     }
-    const LspDocument* doc = view.doc;
+    const LspDocument* doc = source_view.doc;
 
     JsonValue* result      = json_new_array(message->arena);
 
     if (doc->cst_ready) {
+        LspDeclarationView decl_view = {0};
+        bool has_decls = lsp_declaration_view(state, uri, &decl_view);
+
         for (u32 i = 0; i < array_count(doc->cst.bindings); ++i) {
-            const CstNode* bind       = &doc->cst.nodes[doc->cst.bindings[i]];
-            u32            decl_index = lsp_find_decl_index_by_symbol_handle(
-                &doc->front_end.sema, bind->a);
-            if (decl_index == LSP_NO_DECL) {
-                continue;
+            const CstNode* bind = &doc->cst.nodes[doc->cst.bindings[i]];
+
+            u32             decl_index = LSP_NO_DECL;
+            const SemaDecl* decl       = NULL;
+            if (has_decls) {
+                decl_index = lsp_find_decl_index_by_symbol_handle(
+                    decl_view.sema, bind->a);
+                if (decl_index != LSP_NO_DECL &&
+                    !lsp_sema_decl(decl_view.sema, decl_index, &decl)) {
+                    decl_index = LSP_NO_DECL;
+                    decl       = NULL;
+                }
             }
 
             usize start_offset;
@@ -2398,18 +2460,17 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                               &start_offset,
                               &end_offset);
 
-            const SemaDecl* decl = NULL;
-            if (!lsp_sema_decl(view.sema, decl_index, &decl)) {
-                continue;
-            }
-
             JsonValue* symbol = json_new_object(message->arena);
             json_object_set_string(symbol,
                                    message->arena,
                                    "name",
                                    lex_symbol(&doc->front_end.lexer, bind->a));
-            json_object_set_number(
-                symbol, message->arena, "kind", lsp_decl_symbol_kind(decl));
+            json_object_set_number(symbol,
+                                   message->arena,
+                                   "kind",
+                                   decl ? lsp_decl_symbol_kind(decl)
+                                        : lsp_cst_binding_symbol_kind(
+                                              &doc->cst, bind));
             json_object_set_object(
                 symbol,
                 "range",
@@ -2421,7 +2482,13 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
                 lsp_make_document_range(
                     doc, message->arena, start_offset, end_offset));
 
-            if (decl->kind == SK_TypeAlias) {
+            if (!decl) {
+                json_object_set_string(
+                    symbol,
+                    message->arena,
+                    "detail",
+                    lsp_cst_binding_detail(message->arena, &doc->cst, bind));
+            } else if (decl->kind == SK_TypeAlias) {
                 json_object_set_string(
                     symbol, message->arena, "detail", s("type alias"));
             } else if (decl->kind == SK_Constant) {

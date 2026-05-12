@@ -146,7 +146,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Centralise token-to-construct and node-range queries currently duplicated
     between formatter, LSP, AST, and CST utilities.
 
-- [ ] Commit: move one formatter or LSP path to tolerant syntax first
+- [x] Commit: move one formatter or LSP path to tolerant syntax first
   - Prefer a narrow path with clear value, such as document symbols or
     newline/comment decisions around incomplete blocks.
 

@@ -155,6 +155,16 @@ Added fixtures:
 
 - `tests/format/108-token-trivia-unterminated-forms.f`
 - `tests/lsp/102-completion-in-unterminated-call.lsp`
+- `tests/lsp/103-document-symbols-syntax-bindings.lsp`
+
+## Tolerant Syntax Migration
+
+The first LSP path moved onto tolerant syntax is document symbols. The handler
+now starts from the source/CST product and treats declaration facts as optional:
+when declarations are available it preserves semantic kind/detail information,
+and when a CST binding has no semantic declaration it still emits a syntax-only
+symbol. This keeps the outline useful for syntax-shaped source while sema facts
+are incomplete or absent.
 
 ## Open Design Question
 
