@@ -136,7 +136,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - List duplicated grammar cases, missing CST recovery cases, and syntax
     families where formatter/LSP and compiler parsing can drift.
 
-- [ ] Commit: add syntax recovery fixtures
+- [x] Commit: add syntax recovery fixtures
   - Cover partially typed blocks, calls, aggregates, `on` branches, module uses,
     and unterminated delimiters.
   - Include formatter and LSP cases where the expected behaviour is useful

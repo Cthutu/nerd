@@ -142,6 +142,11 @@ Add regression fixtures before changing parser internals:
 - LSP module completion after an incomplete module path
 - LSP hover/definition surviving CST failure when AST and sema facts exist
 
+Added fixtures:
+
+- `tests/format/108-token-trivia-unterminated-forms.f`
+- `tests/lsp/102-completion-in-unterminated-call.lsp`
+
 ## Open Design Question
 
 The long-term syntax relationship is still open:
