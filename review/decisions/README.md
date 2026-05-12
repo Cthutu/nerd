@@ -50,6 +50,10 @@ Date: YYYY-MM-DD
 - [0008: Syntax Product Relationship](0008-syntax-product-relationship.md)
   - Status: accepted.
   - Closeout: active policy for AST/CST boundary work.
+- [0009: Backend Toolchain Contract](0009-backend-toolchain-contract.md)
+  - Status: accepted.
+  - Closeout: keep textual LLVM plus clang until measurements justify another
+    executable toolchain.
 
 ## Closeout Notes
 

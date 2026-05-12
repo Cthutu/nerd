@@ -101,8 +101,8 @@ Remaining known risks:
 - AST and CST remain separate syntax products by decision, so syntax changes
   still need discipline to avoid parser/tooling drift.
 - LLVM lowering is textual and clang-driven. This is the current install
-  contract, but bitcode or direct LLVM CLI tools remain possible future
-  performance experiments.
+  contract by measurement-backed decision, but bitcode or direct LLVM CLI tools
+  remain possible future performance experiments.
 - Runtime and ABI choices are deliberately narrow. Aggregate ABI, varargs,
   debug metadata, target triples, and platform-specific runtime details need
   careful expansion as the language grows.

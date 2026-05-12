@@ -196,7 +196,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Preserve failing `.ll` inputs.
   - Report the exact command, generated file paths, and first useful tool error.
 
-- [ ] Commit: document the measured backend toolchain decision
+- [x] Commit: document the measured backend toolchain decision
   - Add or update a decision record if the external tool contract changes.
 
 ### Milestone 5: Strengthen Target Layout And Runtime ABI
