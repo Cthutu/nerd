@@ -122,6 +122,10 @@ Current migration status:
   formatter, including node start/end token offsets and blank-line/comment
   checks between CST nodes. This keeps these decisions explicitly syntax-based
   and independent of sema tables.
+- Token/trivia fallback coverage now includes partial nested blocks, multiline
+  bracket scopes, comments inside partial literals, `on` branches, and partial
+  aggregate literals through
+  `tests/format/107-token-trivia-partial-edge-cases.f`.
 
 Follow-up:
 

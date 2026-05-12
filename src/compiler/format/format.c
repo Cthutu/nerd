@@ -5955,7 +5955,8 @@ internal bool format_token_kind_is_binary_operator(TokenKind kind)
 }
 
 internal bool format_token_needs_space_between(TokenKind previous,
-                                               TokenKind current)
+                                               TokenKind current,
+                                               TokenKind next)
 {
     if (previous == TK_EOF) {
         return false;
@@ -5970,6 +5971,14 @@ internal bool format_token_needs_space_between(TokenKind previous,
         return false;
     }
 
+    if (current == TK_Colon && (next == TK_Colon || next == TK_Equal)) {
+        return true;
+    }
+
+    if (current == TK_Colon) {
+        return false;
+    }
+
     if (previous == TK_LParen || previous == TK_LBracket ||
         previous == TK_Dot || previous == TK_Dollar || previous == TK_At ||
         previous == TK_Hash || previous == TK_Caret) {
@@ -5977,6 +5986,10 @@ internal bool format_token_needs_space_between(TokenKind previous,
     }
 
     if (previous == TK_fn && current == TK_LParen) {
+        return true;
+    }
+
+    if (previous == TK_Equal && current == TK_LBracket) {
         return true;
     }
 
@@ -6094,9 +6107,20 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     };
 
     u32       comment_index = 0;
+    u32       multiline_bracket_depth = 0;
     TokenKind previous_kind = TK_EOF;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind = lexer.tokens[i].kind;
+        TokenKind next_kind =
+            i + 1 < array_count(lexer.tokens) ? lexer.tokens[i + 1].kind
+                                              : TK_EOF;
+        u16 next_newlines =
+            i + 1 < array_count(lexer.tokens)
+                ? trivia.newlines_before_token[i + 1]
+                : trivia.newlines_before_token[array_count(lexer.tokens)];
+        bool next_has_comments = i + 1 < array_count(lexer.tokens) &&
+                                 format_trivia_comments_before_token(
+                                     &trivia, i + 1, NULL, NULL);
 
         u16 newlines_before = trivia.newlines_before_token[i];
         bool has_comments_before = format_trivia_comments_before_token(
@@ -6109,18 +6133,22 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         format_emit_token_comments_before(&state, &trivia, &comment_index, i);
 
-        if (kind == TK_RBrace) {
+        if (kind == TK_RBrace ||
+            (kind == TK_RBracket && multiline_bracket_depth > 0)) {
             if (!state.at_line_start) {
                 format_token_state_newline(&state);
             }
             if (state.indent_level > 0) {
                 state.indent_level--;
             }
+            if (kind == TK_RBracket) {
+                multiline_bracket_depth--;
+            }
         }
 
         format_token_state_indent(&state);
 
-        if (format_token_needs_space_between(previous_kind, kind) &&
+        if (format_token_needs_space_between(previous_kind, kind, next_kind) &&
             sb->size > 0 && sb->data[sb->size - 1] != ' ' &&
             sb->data[sb->size - 1] != '\n') {
             sb_append_char(sb, ' ');
@@ -6130,6 +6158,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         if (kind == TK_LBrace) {
             state.indent_level++;
+            format_token_state_newline(&state);
+        } else if (kind == TK_LBracket &&
+                   (next_newlines > 0 || next_has_comments)) {
+            state.indent_level++;
+            multiline_bracket_depth++;
             format_token_state_newline(&state);
         } else if (kind == TK_RBrace || kind == TK_Semicolon) {
             u32 trailing_comment = U32_MAX;
@@ -6141,8 +6174,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             } else {
                 format_token_state_newline(&state);
             }
+        } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&
+                   next_newlines > 0) {
+            format_token_state_newline(&state);
         } else if (kind == TK_Comma) {
-            sb_append_char(sb, ' ');
+            if (next_newlines == 0 && !next_has_comments) {
+                sb_append_char(sb, ' ');
+            }
         } else {
             u32 trailing_comment = U32_MAX;
             if (format_trivia_trailing_comment_after_token(

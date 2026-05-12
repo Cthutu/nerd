@@ -216,7 +216,7 @@ Working rules for this review:
   - Sema tables can inform optional future tooling, but should not be required
     for stable formatting.
 
-- [ ] Commit: migrate edge-case fixtures to the new formatter path
+- [x] Commit: migrate edge-case fixtures to the new formatter path
   - Prioritize comments, blank lines, nested blocks, `on` forms, aggregate
     literals, and partially typed code.
 

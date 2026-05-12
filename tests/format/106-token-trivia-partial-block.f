@@ -3,7 +3,7 @@ value:=
 -- keep this near partial code
 }
 ¬
-main:: fn () {
-    value:=
+main :: fn () {
+    value :=
     -- keep this near partial code
 }
