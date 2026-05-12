@@ -54,7 +54,7 @@ Start by reading these files in order:
 
 10. `docs/testing.md` and `tests/README.md`
     - Test harness expectations, fixture conventions, and cleanup rules.
-    - Run `just test` before finalizing meaningful compiler changes.
+    - Run `just test` before finalising meaningful compiler changes.
 
 After reading, inspect the current implementation in this order:
 
@@ -83,14 +83,16 @@ After reading, inspect the current implementation in this order:
 
 7. `src/lsp/*.c`
    - LSP document state, partial front-end analysis, completion, hover, and
-     rename/jump-to-definition behavior.
+     rename/jump-to-definition behaviour.
 
 Working rules for this review:
 
 - Keep commits small and describe the migration slice in the commit message.
-- Add regression tests when fixing discovered behavior.
+- Use British spelling in this file and in architecture review notes unless
+  quoting code, command output, filenames, or external text.
+- Add regression tests when fixing discovered behaviour.
 - Do not commit unrelated local changes such as editor task changes.
-- Prefer `just test` as the full gate; use focused `python3 build/test.py
+- Prefer `just test` as the full gate; use focussed `python3 build/test.py
   --filter ...` runs while iterating.
 - Update review docs or decision records when an architectural agreement
   changes.
@@ -141,7 +143,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     partial output rather than full success.
 
 - [ ] Commit: derive shared syntax classification helpers
-  - Centralize token-to-construct and node-range queries currently duplicated
+  - Centralise token-to-construct and node-range queries currently duplicated
     between formatter, LSP, AST, and CST utilities.
 
 - [ ] Commit: move one formatter or LSP path to tolerant syntax first
@@ -204,10 +206,10 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     integer widths, alignment, and aggregate passing/returning.
 
 - [ ] Commit: introduce a backend layout context
-  - Centralize target type spelling, sizes, alignments, and ABI lowering
+  - Centralise target type spelling, sizes, alignments, and ABI lowering
     choices used by LLVM generation.
 
-- [ ] Commit: add focused ABI regression tests
+- [ ] Commit: add focussed ABI regression tests
   - Include FFI calls, varargs, string helpers, aggregate fields, enum payloads,
     pointer casts, and dynamic-array runtime calls.
 
@@ -242,4 +244,4 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - `just test`
   - `just install`
   - installed compiler smoke tests
-  - focused LSP transcript smoke
+  - focussed LSP transcript smoke
