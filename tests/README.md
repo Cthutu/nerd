@@ -36,6 +36,9 @@ source files. Repository regression tests are run by the Python harness via
   Language-server transcript tests.
 - `commands`
   Public command regressions that exercise the real command path.
+- `install`
+  Source fixtures used by `build/test_install.py` for installed-compiler smoke
+  checks outside the repository tree.
 - `mods`
   Source modules used by module-related tests.
 

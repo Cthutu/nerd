@@ -7,6 +7,11 @@ continuing to grow this file.
 ## Current State
 
 - The compiler pipeline is `lexer -> CST/AST parser -> sema -> HIR -> LLVM IR -> clang`.
+- HIR is the stable checked middle layer and LLVM IR is the executable backend
+  output. The legacy custom IR/C backend is gone.
+- The executable backend currently supports the host 64-bit clang target. Do
+  not claim cross-target or aggregate FFI ABI support without explicit layout
+  work and tests.
 - Semantic analysis is a distinct front-end phase and owns name resolution,
   declaration classification, typing, diagnostics, and dependency ordering.
 - The AST should remain compact and syntax-oriented. Semantic facts belong in
@@ -14,7 +19,9 @@ continuing to grow this file.
 - The CST owns source-preserving tooling such as formatting and editor-facing
   token structure.
 - `just test` is the full-project regression gate. It runs language, error,
-  formatter, LSP, and command tests.
+  HIR, LLVM, formatter, LSP, and command tests.
+- Installed-compiler release smoke is covered by `build/test_install.py`.
+- Editor wiring smoke is covered by `build/check_editor_integrations.py`.
 - Modules load through the program-level front end. Standard modules live under
   `mods/` and should be treated like normal source modules.
 - Module paths resolve to `path.n` first, then `path/mod.n` for folder modules.

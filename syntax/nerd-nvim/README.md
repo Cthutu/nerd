@@ -17,3 +17,6 @@ The LazyVim plugin config:
   file
 
 Tree-sitter support is intentionally deferred until a later editor milestone.
+
+`build/check_editor_integrations.py` verifies these paths and checks that the
+configured LSP command remains `nerd lsp`.

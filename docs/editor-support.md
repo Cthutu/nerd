@@ -29,12 +29,33 @@ The current LazyVim integration:
 Tree-sitter highlighting and indentation support are intentionally deferred
 until a later editor milestone.
 
+## VS Code Extension
+
+The VS Code extension is repo-owned and lives in `syntax/nerd-vscode`. It
+registers `.n` files, contributes the TextMate grammar, and starts the language
+server with `nerd lsp`.
+
+The server lookup order is:
+
+1. workspace `_bin/nerd-debug` or `_bin/nerd`
+2. user install under `~/.local/bin/nerd`
+3. `nerd` from `PATH`
+
+The install recipe packages and installs the extension after installing the
+compiler.
+
 ## Verification
 
 For language or LSP behaviour changes, run:
 
 ```sh
 just test
+```
+
+For editor wiring and LSP startup changes, run:
+
+```sh
+python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
 ```
 
 For install recipe changes, also check:

@@ -4,6 +4,10 @@ This manual teaches the Nerd language from first principles. It focuses on
 source-level behaviour: how to write programs, how values and types work, and
 how the main language constructs fit together.
 
+Compiler internals such as HIR, LLVM lowering, installed smoke tests, and editor
+integration checks are documented outside the manual in the developer
+documentation. Start at `../README.md` for those implementation notes.
+
 The examples are intentionally small and executable. Standard library functions
 are used where they keep examples readable, but the standard library itself is
 documented separately because it is still evolving.

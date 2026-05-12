@@ -8,6 +8,16 @@ The repository regression test runner lives in
 The `nerd test <root-filename>` command is reserved for unit tests declared in
 Nerd source code. It is not the repository regression harness.
 
+Release smoke checks live beside the main harness:
+
+```sh
+python3 build/test_install.py --nerd _bin/nerd-debug
+python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
+```
+
+After `just install`, run the same scripts with the installed `nerd` binary by
+omitting `--nerd` or by setting `NERD_BIN`.
+
 ## Test Families
 
 The repository currently has seven main test families:
@@ -29,6 +39,9 @@ The repository currently has seven main test families:
   LSP transcript-style tests.
 - `tests/commands`
   Command-level regressions for public compiler subcommands.
+- `tests/install`
+  Source fixtures copied outside the repository by `build/test_install.py` for
+  installed-compiler smoke checks.
 
 ## Language Tests
 
@@ -128,6 +141,10 @@ Language, HIR, LLVM, and command tests write temporary `.input.n`, `.hir`,
 `.ll`, `.link.ll`, executable, and related sidecar artefacts beside the test
 case. Successful runs remove them. Failed runs retain generated files where
 possible so the failure can be inspected locally.
+
+`build/test_install.py` also checks successful external `run` and `test`
+commands for leftover executables, link inputs, runtime object copies, and
+unrequested LLVM sidecars.
 
 ## Source Tests
 

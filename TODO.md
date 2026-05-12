@@ -236,7 +236,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Neovim syntax/LSP install paths.
   - LSP startup from the installed `nerd` binary.
 
-- [ ] Commit: update public docs for the current compiler shape
+- [x] Commit: update public docs for the current compiler shape
   - README, roadmap, manual references, compiler pipeline, testing docs, and
     editor-support docs should agree.
 

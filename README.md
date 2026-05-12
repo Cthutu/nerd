@@ -7,6 +7,8 @@ The codebase is split into a few major areas:
 - `src/compiler` contains the compiler pipeline
 - `src/lsp` contains the language server
 - `build/test.py` contains the repository regression test runner
+- `build/test_install.py` contains installed-compiler smoke checks
+- `build/check_editor_integrations.py` checks VS Code/Neovim/LSP wiring
 - `tests` contains language, error, formatter, and LSP tests
 - `docs` contains developer-facing documentation
 
@@ -21,6 +23,8 @@ Useful commands:
 
 ```sh
 just test
+python3 build/test_install.py --nerd _bin/nerd-debug
+python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
 python3 build/build.py
 ./_bin/nerd --help
 ```
@@ -32,3 +36,5 @@ LLVM backend status:
   LLVM backend.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
+- The executable backend targets the host 64-bit clang toolchain. Cross-target
+  and aggregate FFI ABI support are future layout-context work.
