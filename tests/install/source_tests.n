@@ -1,0 +1,7 @@
+test "addition" {
+    assert 1 + 1 == 2
+}
+
+test "comparison" {
+    assert 3 > 2
+}

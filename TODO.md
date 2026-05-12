@@ -223,7 +223,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 6: Release And Installation Hardening
 
-- [ ] Commit: add installed compiler smoke fixtures
+- [x] Commit: add installed compiler smoke fixtures
   - Exercise `nerd build`, `nerd run`, `nerd test`, `nerd format`, `--hir`, and
     `--llvm` outside the repository tree.
 
