@@ -24,3 +24,33 @@ Bad :: plex {
         "Use one of the built-in primitive types supported by the current milestone."
     ]
 }
+¬
+Bad :: plex {
+    field: i32
+}
+main :: fn () {}
+¬
+{
+    "code": "0208",
+    "message": "Expected type but found Colon `:`",
+    "source_file": "tests/errors/066-plex-field-types.e",
+    "primary_location": {
+        "line": 2,
+        "column": 10
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 10,
+            "length": 1,
+            "message": "A type is expected here"
+        }
+    ],
+    "notes": [
+        "Plex field definitions are written as `field Type`."
+    ],
+    "help": [
+        "Remove the colon. Colons are used in plex literals such as `State { loc_index: 0 }`, not in plex definitions."
+    ]
+}

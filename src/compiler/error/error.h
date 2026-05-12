@@ -164,6 +164,13 @@ bool error_0207_unexpected_operator(NerdSource source,
                                     cstr       note,
                                     cstr       help);
 
+// Used when a type grammar position contains another token.
+bool error_0208_expected_type(NerdSource source,
+                              ErrorSpan  span,
+                              TokenKind  actual_kind,
+                              cstr       note,
+                              cstr       help);
+
 //------------------------------------------------------------------------------
 // Semantic analysis errors
 

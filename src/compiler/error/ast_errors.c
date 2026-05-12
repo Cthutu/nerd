@@ -278,5 +278,26 @@ bool error_0207_unexpected_operator(NerdSource source,
     return false;
 }
 
+bool error_0208_expected_type(NerdSource source,
+                              ErrorSpan  span,
+                              TokenKind  actual_kind,
+                              cstr       note,
+                              cstr       help)
+{
+    string    actual = token_kind_to_string(actual_kind);
+    ErrorInfo error  = error_init(
+        208, source, span, "Expected type but found %.*s", STRINGV(actual));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "A type is expected here");
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

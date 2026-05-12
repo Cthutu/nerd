@@ -1274,6 +1274,15 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             if (!ast_next_token(state)) {
                 return false;
             }
+            if (state->token.kind == TK_Colon) {
+                return error_0208_expected_type(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind,
+                    "Plex field definitions are written as `field Type`.",
+                    "Remove the colon. Colons are used in plex literals such "
+                    "as `State { loc_index: 0 }`, not in plex definitions.");
+            }
             u32 type_node = 0;
             if (!ast_parse_type(state, &type_node)) {
                 return false;
@@ -3568,8 +3577,7 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         return ast_parse_declaration(
             state, NULL, true, is_public ? ANF_Public : ANF_None);
     case TK_use:
-        return ast_parse_use(
-            state, NULL, is_public ? ANF_Public : 0, true);
+        return ast_parse_use(state, NULL, is_public ? ANF_Public : 0, true);
     case TK_on:
         if (is_public) {
             return error_0204_unexpected_token(
@@ -4174,7 +4182,10 @@ bool ast_parse_bind(AstParseState* state, u32* out_node)
         return ast_error_missing_fn_in_binding_value(state, true);
     }
 
-    bool         starts_type = ast_remaining_bind_value_is_type_syntax(state);
+    bool         starts_type = state->token.kind == TK_plex ||
+                               state->token.kind == TK_union ||
+                               state->token.kind == TK_enum ||
+                               ast_remaining_bind_value_is_type_syntax(state);
     ParsingQuery query = starts_type
                              ? PQ_Invalid
                              : ast_parsing_query_for_token(state->token.kind);

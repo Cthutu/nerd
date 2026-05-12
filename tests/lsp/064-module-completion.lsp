@@ -110,6 +110,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "local_bare_module",
+                "kind": 9
+            },
+            {
                 "label": "lsp_payloads",
                 "kind": 9
             },

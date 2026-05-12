@@ -93,34 +93,34 @@ impl FrameSystem {
                 {
                     "range": {
                         "start": {
-                            "line": 0,
-                            "character": 13
+                            "line": 3,
+                            "character": 0
                         },
                         "end": {
-                            "line": 0,
-                            "character": 17
+                            "line": 3,
+                            "character": 1
                         }
                     },
                     "severity": 1,
                     "code": "0205",
                     "source": "nerd",
-                    "message": "Expected declaration or expression but found Keyword `plex`",
+                    "message": "Expected declaration or expression but found RightBrace `}`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 0,
-                                        "character": 13
+                                        "line": 3,
+                                        "character": 0
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "character": 17
+                                        "line": 3,
+                                        "character": 1
                                     }
                                 }
                             },
-                            "message": "help: Expected a declaration or expression after '::', but found Keyword `plex`"
+                            "message": "help: Expected a type annotation after ':', but found RightBrace `}`"
                         }
                     ]
                 }
