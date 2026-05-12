@@ -1,0 +1,3 @@
+pub local_bare_module_answer :: fn () -> i32 {
+    return 17
+}

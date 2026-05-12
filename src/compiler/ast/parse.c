@@ -552,6 +552,11 @@ ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
 
     TokenKind next_kind = ast_kind_at_stream_index(state, token_index);
     if (next_kind == TK_RBrace) {
+        for (u32 i = state->token.token_index; i < token_index; ++i) {
+            if (ast_kind_at_stream_index(state, i) == TK_LBrace) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -1485,7 +1490,10 @@ internal bool ast_parse_block_statement(AstParseState* state);
 internal bool ast_parse_destructure(AstParseState* state, u32* out_node);
 internal bool ast_parse_destructure_pattern(AstParseState* state,
                                             u32*           out_pattern);
-internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags);
+internal bool ast_parse_use(AstParseState* state,
+                            u32*           out_node,
+                            u8             flags,
+                            bool           bare_symbol_is_module_path);
 internal bool ast_parse_module_path_symbols(AstParseState* state,
                                             Array(u32) * out_symbols);
 internal bool ast_emit_use_from_symbols(AstParseState* state,
@@ -2749,7 +2757,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
     }
 
     if (state->token.kind == TK_use) {
-        return ast_parse_use(state, NULL, 0);
+        return ast_parse_use(state, NULL, 0, false);
     }
 
     if (state->token.kind == TK_defer) {
@@ -3038,7 +3046,10 @@ internal bool ast_parse_module_ref_after_use(AstParseState* state,
                          out_node);
 }
 
-internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags)
+internal bool ast_parse_use(AstParseState* state,
+                            u32*           out_node,
+                            u8             flags,
+                            bool           bare_symbol_is_module_path)
 {
     ASSERT(state->token.kind == TK_use, "Expected 'use' token");
     AstToken use_token = state->token;
@@ -3052,7 +3063,8 @@ internal bool ast_parse_use(AstParseState* state, u32* out_node, u8 flags)
     }
 
     if (state->token.kind == TK_Symbol &&
-        ((flags & ANF_Public) || ast_peek_kind_at(state, 0) == TK_Dot ||
+        (bare_symbol_is_module_path || (flags & ANF_Public) ||
+         ast_peek_kind_at(state, 0) == TK_Dot ||
          ast_peek_kind_at(state, 0) == TK_LBrace)) {
         AstToken path_token = state->token;
         Array(u32) symbols  = NULL;
@@ -3556,7 +3568,8 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         return ast_parse_declaration(
             state, NULL, true, is_public ? ANF_Public : ANF_None);
     case TK_use:
-        return ast_parse_use(state, NULL, is_public ? ANF_Public : 0);
+        return ast_parse_use(
+            state, NULL, is_public ? ANF_Public : 0, true);
     case TK_on:
         if (is_public) {
             return error_0204_unexpected_token(

@@ -5,19 +5,19 @@ main :: fn() {}
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `module`, found `untyped integer`",
+    "message": "Type mismatch: expected `known module`, found `module path`",
     "source_file": "tests/errors/039-use-modules.e",
     "primary_location": {
         "line": 2,
-        "column": 1
+        "column": 5
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 1,
-            "length": 3,
-            "message": "This expression has type `untyped integer`"
+            "column": 5,
+            "length": 5,
+            "message": "This expression has type `module path`"
         }
     ],
     "notes": [],

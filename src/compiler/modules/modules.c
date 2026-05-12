@@ -252,7 +252,12 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_Found;
     }
 
-    cstr exe_dir  = path_executable_dir(arena);
+    cstr exe_dir = path_executable_dir(arena);
+    if (module_path_exists_in_root(
+            arena, lexer, ast, path, exe_dir, out_result)) {
+        return MRS_Found;
+    }
+
     cstr mods_dir = path_join(arena, exe_dir, "mods");
     if (module_path_exists_in_root(
             arena, lexer, ast, path, mods_dir, out_result)) {
