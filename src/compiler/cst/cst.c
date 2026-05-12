@@ -1610,6 +1610,59 @@ internal bool cst_node_is_stringish(const Cst* cst, u32 node_index)
     }
 }
 
+internal bool cst_emit_interpolated_string_continuation(CstParseState* state,
+                                                        u32  token_index,
+                                                        u32  left_index,
+                                                        u32  right_index,
+                                                        u32* out_node)
+{
+    CstKind left_kind        = state->cst.nodes[left_index].kind;
+    u32     left_token_index = state->cst.nodes[left_index].token_index;
+    u32     left_a           = state->cst.nodes[left_index].a;
+    u32     left_b           = state->cst.nodes[left_index].b;
+    CstNode right_copy       = state->cst.nodes[right_index];
+    ASSERT(left_kind == CK_InterpolatedString,
+           "Expected interpolated string on lhs");
+    UNUSED(left_kind);
+
+    u32 part_start = (u32)array_count(state->cst.nodes);
+    for (u32 i = left_a; i < left_b; ++i) {
+        if (!cst_emit_node(state, state->cst.nodes[i], NULL)) {
+            return false;
+        }
+    }
+
+    if (right_copy.kind == CK_StringLiteral) {
+        if (!cst_emit_node(state, right_copy, NULL)) {
+            return false;
+        }
+    } else if (right_copy.kind == CK_InterpolatedString) {
+        for (u32 i = right_copy.a; i < right_copy.b; ++i) {
+            if (!cst_emit_node(state, state->cst.nodes[i], NULL)) {
+                return false;
+            }
+        }
+    } else {
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_StringConcat,
+                                 .token_index = token_index,
+                                 .a           = left_index,
+                                 .b           = right_index,
+                             },
+                             out_node);
+    }
+
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_InterpolatedString,
+                             .token_index = left_token_index,
+                             .a           = part_start,
+                             .b           = (u32)array_count(state->cst.nodes),
+                         },
+                         out_node);
+}
+
 //------------------------------------------------------------------------------
 // Parse one interpolated string expression into a contiguous part range.
 
@@ -1630,6 +1683,7 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
 
         if (token.kind == TK_InterpolatedStringEnd) {
             cst_advance(state);
+
             u32 part_start = (u32)array_count(state->cst.nodes);
             for (u32 i = 0; i < array_count(parts); ++i) {
                 if (!cst_emit_node(state,
@@ -3092,12 +3146,23 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             (!cst_postfix_token_can_cross_statement_boundary(token.kind) &&
              left_bp >= CST_BP_PREFIX + 10 &&
              cst_token_has_newline_before(state, state->token_index))) {
-            if ((token.kind == TK_String ||
-                 token.kind == TK_InterpolatedStringStart) &&
+            if (token.kind == TK_StringContinuationStart &&
                 cst_node_is_stringish(&state->cst, left)) {
-                u32 right = 0;
-                if (!cst_parse_prefix(state, &right)) {
+                u32 right                    = 0;
+                u32 continuation_token_index = state->token_index;
+                if (!cst_parse_interpolated_string(state, &right)) {
                     return false;
+                }
+                if (state->cst.nodes[left].kind == CK_InterpolatedString) {
+                    if (!cst_emit_interpolated_string_continuation(
+                            state,
+                            continuation_token_index,
+                            left,
+                            right,
+                            &left)) {
+                        return false;
+                    }
+                    continue;
                 }
                 if (!cst_emit_node(
                         state,
@@ -5093,6 +5158,13 @@ internal void cst_build_token_value_tables(CstParseState* state)
             array_push(state->token_integer_indices, CST_NO_VALUE);
             array_push(state->token_float_indices, CST_NO_VALUE);
             array_push(state->token_string_indices, string_index++);
+            array_push(state->token_symbol_handles, CST_NO_VALUE);
+            break;
+
+        case TK_StringContinuationStart:
+            array_push(state->token_integer_indices, CST_NO_VALUE);
+            array_push(state->token_float_indices, CST_NO_VALUE);
+            array_push(state->token_string_indices, CST_NO_VALUE);
             array_push(state->token_symbol_handles, CST_NO_VALUE);
             break;
 

@@ -1,7 +1,7 @@
 use std.io
 
 main :: fn () {
-    prn("Hello, " "world!")
+    prn("Hello, " +"world!")
 }
 ¬
 0

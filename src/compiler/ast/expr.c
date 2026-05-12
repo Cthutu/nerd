@@ -239,6 +239,12 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
             ast_peek_kind_at(state, 0));
     }
 
+    if (next.kind == TK_String || next.kind == TK_CString ||
+        next.kind == TK_InterpolatedStringStart) {
+        return ast_token_can_continue_on_branch_head(
+            ast_peek_kind_at(state, 0));
+    }
+
     return false;
 }
 
@@ -357,6 +363,57 @@ internal bool ast_node_is_stringish(const AstParseState* state, u32 node_index)
     }
 }
 
+internal bool ast_emit_interpolated_string_continuation(AstParseState* state,
+                                                        AstToken       token,
+                                                        u32  left_node,
+                                                        u32  right_node,
+                                                        u32* out_node)
+{
+    AstKind left_kind        = state->nodes[left_node].kind;
+    u32     left_token_index = state->nodes[left_node].token_index;
+    u32     left_a           = state->nodes[left_node].a;
+    u32     left_b           = state->nodes[left_node].b;
+    AstNode right_copy       = state->nodes[right_node];
+    ASSERT(left_kind == AK_InterpolatedString,
+           "Expected interpolated string on lhs");
+    UNUSED(left_kind);
+
+    u32 part_start = (u32)array_count(state->nodes);
+    for (u32 i = left_a; i < left_b; ++i) {
+        if (!ast_emit_node(state, state->nodes[i], NULL)) {
+            return false;
+        }
+    }
+
+    if (right_copy.kind == AK_StringLiteral) {
+        if (!ast_emit_node(state, right_copy, NULL)) {
+            return false;
+        }
+    } else if (right_copy.kind == AK_InterpolatedString) {
+        for (u32 i = right_copy.a; i < right_copy.b; ++i) {
+            if (!ast_emit_node(state, state->nodes[i], NULL)) {
+                return false;
+            }
+        }
+    } else {
+        AstNode node = {
+            .kind        = AK_StringConcat,
+            .token_index = token.token_index,
+            .a           = left_node,
+            .b           = right_node,
+        };
+        return ast_emit_node(state, node, out_node);
+    }
+
+    AstNode node = {
+        .kind        = AK_InterpolatedString,
+        .token_index = left_token_index,
+        .a           = part_start,
+        .b           = (u32)array_count(state->nodes),
+    };
+    return ast_emit_node(state, node, out_node);
+}
+
 internal bool ast_parse_interpolated_string(AstParseState* state,
                                             AstToken       start_token,
                                             u32*           out_node)
@@ -382,6 +439,17 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
             if (!ast_next_token(state)) {
                 array_free(parts);
                 return false;
+            }
+
+            if (start_token.kind == TK_StringContinuationStart &&
+                array_count(parts) == 1 && !parts[0].is_expr) {
+                AstNode node = {
+                    .kind        = AK_StringLiteral,
+                    .token_index = parts[0].token_index,
+                    .a           = parts[0].payload,
+                };
+                array_free(parts);
+                return ast_emit_node(state, node, out_node);
             }
 
             u32 part_start = (u32)array_count(state->nodes);
@@ -2271,16 +2339,24 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             if (ast_next_tokens_start_binding(state)) {
                 break;
             }
-            if ((next.kind == TK_String ||
-                 next.kind == TK_InterpolatedStringStart) &&
+            if (next.kind == TK_StringContinuationStart &&
                 ast_node_is_stringish(state, left_node)) {
                 u32 right_node = 0;
                 if (!ast_next_token(state)) {
                     return error_0201_missing_value(
                         next.source, ast_token_span(state, &next), next.kind);
                 }
-                if (!ast_parse_nud(state, state->token, &right_node)) {
+                if (!ast_parse_interpolated_string(
+                        state, state->token, &right_node)) {
                     return false;
+                }
+
+                if (state->nodes[left_node].kind == AK_InterpolatedString) {
+                    if (!ast_emit_interpolated_string_continuation(
+                            state, next, left_node, right_node, &left_node)) {
+                        return false;
+                    }
+                    continue;
                 }
 
                 AstNode node = {

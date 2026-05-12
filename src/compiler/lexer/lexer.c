@@ -548,6 +548,17 @@ internal bool lexer_lex_one_token(NerdSource source,
             source, source_code, i - 2, io_index, lexer);
     }
 
+    if (c == '+' && i + 1 < source_code.count &&
+        source_code.data[i + 1] == '"') {
+        array_push(
+            lexer->tokens,
+            (Token){.kind = TK_StringContinuationStart, .offset = (u32)i});
+        i += 2;
+        *io_index = i;
+        return lexer_lex_interpolated_text(
+            source, source_code, i - 2, io_index, lexer);
+    }
+
     if (lexer_is_decimal_digit(c)) {
         usize start         = i;
         u64   total         = 0;
@@ -1133,6 +1144,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
             return index;
         }
     case TK_InterpolatedStringStart:
+    case TK_StringContinuationStart:
         return token->offset + 2;
     case TK_InterpolatedStringEnd:
         return token->offset + 1;

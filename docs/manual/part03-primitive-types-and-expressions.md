@@ -224,11 +224,13 @@ distinct type, not just `[]u8`.
 message := "hello"  -- string literal produces a string value
 ```
 
-Adjacent string literals are joined into one string value:
+Long string literals can be split with continuation string literals. A
+continuation starts with `+"` and is joined to the previous string value at
+compile time:
 
 ```nerd
 message := "hello, "
-           "world"  -- adjacent literal is joined to the previous one
+           +"world"  -- continuation literal is joined to the previous one
 ```
 
 This is equivalent to:
@@ -236,6 +238,9 @@ This is equivalent to:
 ```nerd
 message := "hello, world"
 ```
+
+Bare adjacent string literals are not joined. Use `+"..."` for an intentional
+continuation so adjacent string syntax stays unambiguous in other contexts.
 
 An interpolated string is a string built from literal text and embedded
 expressions. Interpolated strings start with `$`:
@@ -252,6 +257,14 @@ main :: fn () {
 Each expression inside `{...}` is evaluated, converted to text, and inserted at
 that position in the produced string. In the example, the result is the string
 `"value=42"`.
+
+Continuation literals after an interpolated string are part of the same
+interpolated string:
+
+```nerd
+message := $"hello {name}, "
+           +"again {name}"
+```
 
 When every expression inside the interpolation is a compile-time value, the
 compiler can produce the string at compile time:

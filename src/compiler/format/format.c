@@ -850,7 +850,11 @@ internal void format_emit_expr(StringBuilder* sb,
         }
         break;
     case CK_InterpolatedString:
-        sb_append_cstr(sb, "$\"");
+        sb_append_cstr(sb,
+                       lexer->tokens[node->token_index].kind ==
+                               TK_StringContinuationStart
+                           ? "+\""
+                           : "$\"");
         for (u32 i = node->a; i < node->b; ++i) {
             const CstNode* part = &cst->nodes[i];
             if (part->kind == CK_StringLiteral) {
@@ -1730,6 +1734,9 @@ format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
             end = format_find_string_split(text, start, end);
         }
 
+        if (start > 0) {
+            sb_append_char(sb, '+');
+        }
         sb_append_char(sb, '"');
         format_emit_string_text(sb,
                                 string_from(text.data + start, end - start));
@@ -1754,6 +1761,16 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
             return false;
         }
         sb_append_string(sb, lexer->strings[node->a]);
+        return true;
+    }
+    if (node->kind == CK_InterpolatedString) {
+        for (u32 i = node->a; i < node->b; ++i) {
+            const CstNode* part = &cst->nodes[i];
+            if (part->kind != CK_StringLiteral) {
+                return false;
+            }
+            sb_append_string(sb, lexer->strings[part->a]);
+        }
         return true;
     }
     if (node->kind != CK_StringConcat) {
@@ -6281,11 +6298,14 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         if (state.at_line_start) {
             format_emit_indent(state.sb, state.indent_level);
-            if (paren_depth > 0 && (kind == TK_String || kind == TK_CString)) {
+            if (paren_depth > 0 && (kind == TK_String || kind == TK_CString ||
+                                    kind == TK_StringContinuationStart)) {
                 format_emit_indent(state.sb, 1);
-            } else if ((kind == TK_String || kind == TK_CString) &&
+            } else if ((kind == TK_String || kind == TK_CString ||
+                        kind == TK_StringContinuationStart) &&
                        (previous_kind == TK_String ||
-                        previous_kind == TK_CString)) {
+                        previous_kind == TK_CString ||
+                        previous_kind == TK_InterpolatedStringEnd)) {
                 format_emit_indent(state.sb, 1);
             }
             state.at_line_start = false;
@@ -6295,6 +6315,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_needs_space_between(previous_kind, kind, next_kind);
         if (in_interpolated_string ||
             previous_kind == TK_InterpolatedStringStart ||
+            previous_kind == TK_StringContinuationStart ||
             kind == TK_InterpolatedStringEnd) {
             needs_space = false;
         }
@@ -6308,14 +6329,20 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             sb_append_char(sb, ' ');
         }
 
-        if (kind == TK_InterpolatedStringStart) {
+        if (kind == TK_InterpolatedStringStart ||
+            kind == TK_StringContinuationStart) {
             sb_append_string(sb, format_token_text(&lexer, i));
             in_interpolated_string = true;
         } else if (kind == TK_InterpolatedStringEnd) {
             sb_append_string(sb, format_token_text(&lexer, i));
             in_interpolated_string = false;
         } else if (in_interpolated_string && kind == TK_String) {
-            sb_append_string(sb, format_token_text(&lexer, i));
+            u32 string_index = format_token_string_index(&lexer, i);
+            if (string_index < array_count(lexer.strings)) {
+                sb_append_string(sb, lexer.strings[string_index]);
+            } else {
+                sb_append_string(sb, format_token_text(&lexer, i));
+            }
         } else if (kind == TK_String || kind == TK_CString) {
             u32 string_index = format_token_string_index(&lexer, i);
             if (string_index < array_count(lexer.strings)) {

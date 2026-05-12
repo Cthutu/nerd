@@ -113,6 +113,7 @@ bool ast_peek_token(AstParseState* state)
     case TK_String:
     case TK_CString:
     case TK_InterpolatedStringStart:
+    case TK_StringContinuationStart:
     case TK_InterpolatedStringEnd:
         state->token = (AstToken){
             .kind        = token.kind,

@@ -12,5 +12,5 @@ main :: fn () {
         $"Arena reserve size must be at least {initial_alloc_size} bytes"
     assert yes,
         "This formatter test contains a deliberately long assert message that "
-        "should move onto the next line and split into multiple strings."
+        +"should move onto the next line and split into multiple strings."
 }

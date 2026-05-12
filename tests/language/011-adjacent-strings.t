@@ -1,8 +1,8 @@
 use std.io
 
--- Concatenates adjacent string literals at compile time.
+-- Concatenates continuation string literals at compile time.
 main :: fn () {
-    prn("Hello, " "world!")
+    prn("Hello, " +"world!")
 }
 ¬
 0

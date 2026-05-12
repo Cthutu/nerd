@@ -20,6 +20,6 @@
     "notes": [],
     "help": [
         "Add a closing double quote to terminate the string literal.",
-        "Consecutive string literals are concatenated, like in C."
+        "Use `+\"...\"` for an intentional string continuation."
     ]
 }

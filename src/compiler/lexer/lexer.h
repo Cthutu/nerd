@@ -26,6 +26,7 @@ typedef enum {
     TK_String,
     TK_CString,
     TK_InterpolatedStringStart,
+    TK_StringContinuationStart,
     TK_InterpolatedStringEnd,
     TK_Symbol,
 

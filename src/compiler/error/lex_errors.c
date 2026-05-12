@@ -103,7 +103,7 @@ bool error_0106_unterminated_string_literal(NerdSource source, ErrorSpan span)
                    "Add a closing double quote to terminate the string "
                    "literal.");
     error_add_help(&error_info,
-                   "Consecutive string literals are concatenated, like in C.");
+                   "Use `+\"...\"` for an intentional string continuation.");
     error_render(&error_info);
     return false;
 }

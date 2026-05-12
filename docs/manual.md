@@ -155,7 +155,7 @@ Concepts:
 - packed integer literals
 - digit separators in integer and float literals
 - string interpolation with `$"..."`
-- adjacent string literals
+- continuation string literals with `+"..."`
 
 Rules to teach:
 
