@@ -5933,14 +5933,45 @@ internal string format_token_text(const Lexer* lexer, u32 token_index)
     return string_from(lexer->source.source.data + start, end - start);
 }
 
-internal void format_token_state_indent(FormatTokenState* state)
+internal u32 format_token_string_index(const Lexer* lexer, u32 token_index)
 {
-    if (!state->at_line_start) {
-        return;
+    u32 string_index = 0;
+    for (u32 i = 0; i < token_index && i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == TK_String || kind == TK_CString) {
+            string_index++;
+        }
+    }
+    return string_index;
+}
+
+internal bool format_token_had_space_between(const Lexer* lexer,
+                                             u32          previous_token_index,
+                                             u32          current_token_index)
+{
+    if (previous_token_index >= array_count(lexer->tokens) ||
+        current_token_index >= array_count(lexer->tokens) ||
+        previous_token_index >= current_token_index) {
+        return false;
     }
 
-    format_emit_indent(state->sb, state->indent_level);
-    state->at_line_start = false;
+    usize previous_end =
+        lex_token_end_offset(lexer, &lexer->tokens[previous_token_index]);
+    usize current_start = lexer->tokens[current_token_index].offset;
+    if (previous_end >= current_start) {
+        return false;
+    }
+
+    string source = lexer->source.source;
+    for (usize i = previous_end; i < current_start && i < source.count; ++i) {
+        if (source.data[i] == '\n' || source.data[i] == '\r') {
+            return false;
+        }
+        if (source.data[i] == ' ' || source.data[i] == '\t') {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal void format_token_state_newline(FormatTokenState* state)
@@ -6183,6 +6214,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
     u32       comment_index           = 0;
     u32       multiline_bracket_depth = 0;
+    u32       paren_depth             = 0;
     TokenKind previous_kind           = TK_EOF;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind      = lexer.tokens[i].kind;
@@ -6197,10 +6229,27 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             i + 1 < array_count(lexer.tokens) &&
             format_trivia_comments_before_token(&trivia, i + 1, NULL, NULL);
 
-        u16  newlines_before = trivia.newlines_before_token[i];
-        bool has_comments_before =
-            format_trivia_comments_before_token(&trivia, i, NULL, NULL);
-        if (newlines_before > 1 && sb->size > 0 && !has_comments_before) {
+        u16  newlines_before      = trivia.newlines_before_token[i];
+        u32  first_comment_before = U32_MAX;
+        u32  comment_count_before = 0;
+        bool has_comments_before  = format_trivia_comments_before_token(
+            &trivia, i, &first_comment_before, &comment_count_before);
+        if (has_comments_before) {
+            if (i > 0 && first_comment_before < array_count(lexer.comments)) {
+                usize previous_end =
+                    lex_token_end_offset(&lexer, &lexer.tokens[i - 1]);
+                usize comment_start =
+                    lexer.comments[first_comment_before].offset;
+                if (format_has_blank_line_between_offsets(
+                        lexer.source, previous_end, comment_start)) {
+                    format_token_state_blank_line(&state);
+                } else if (!state.at_line_start) {
+                    format_token_state_newline(&state);
+                }
+            } else if (newlines_before > 0 && !state.at_line_start) {
+                format_token_state_newline(&state);
+            }
+        } else if (newlines_before > 1 && sb->size > 0) {
             format_token_state_blank_line(&state);
         } else if (newlines_before > 0 && !state.at_line_start) {
             format_token_state_newline(&state);
@@ -6221,19 +6270,54 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             }
         }
 
-        format_token_state_indent(&state);
+        if (state.at_line_start) {
+            format_emit_indent(state.sb, state.indent_level);
+            if (paren_depth > 0 && (kind == TK_String || kind == TK_CString)) {
+                format_emit_indent(state.sb, 1);
+            } else if ((kind == TK_String || kind == TK_CString) &&
+                       (previous_kind == TK_String ||
+                        previous_kind == TK_CString)) {
+                format_emit_indent(state.sb, 1);
+            }
+            state.at_line_start = false;
+        }
 
-        if (format_token_needs_space_between(previous_kind, kind, next_kind) &&
-            sb->size > 0 && sb->data[sb->size - 1] != ' ' &&
+        bool needs_space =
+            format_token_needs_space_between(previous_kind, kind, next_kind);
+        if (!needs_space && kind == TK_LBracket && previous_kind != TK_EOF &&
+            format_token_had_space_between(&lexer, i - 1, i)) {
+            needs_space = true;
+        }
+
+        if (needs_space && sb->size > 0 && sb->data[sb->size - 1] != ' ' &&
             sb->data[sb->size - 1] != '\n') {
             sb_append_char(sb, ' ');
         }
 
-        sb_append_string(sb, format_token_text(&lexer, i));
+        if (kind == TK_String || kind == TK_CString) {
+            u32 string_index = format_token_string_index(&lexer, i);
+            if (string_index < array_count(lexer.strings)) {
+                u32 saved_indent           = g_format_expr_indent_level;
+                g_format_expr_indent_level = state.indent_level;
+                format_emit_string_literal(
+                    sb, lexer.strings[string_index], kind == TK_CString);
+                g_format_expr_indent_level = saved_indent;
+            } else {
+                sb_append_string(sb, format_token_text(&lexer, i));
+            }
+        } else {
+            sb_append_string(sb, format_token_text(&lexer, i));
+        }
 
         if (kind == TK_LBrace) {
             state.indent_level++;
             format_token_state_newline(&state);
+        } else if (kind == TK_LParen) {
+            paren_depth++;
+        } else if (kind == TK_RParen) {
+            if (paren_depth > 0) {
+                paren_depth--;
+            }
         } else if (kind == TK_LBracket &&
                    (next_newlines > 0 || next_has_comments)) {
             state.indent_level++;
