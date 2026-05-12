@@ -193,7 +193,9 @@ that both declares and defines the same symbol.
 Temporary link inputs and runtime object copies are removed after successful
 builds. Module sidecars are also removed unless `--llvm` requested them for
 inspection. Failed builds retain generated files where possible so the failing
-LLVM can be inspected locally.
+LLVM can be inspected locally. Backend tool failures report the exact command,
+the generated LLVM path, the runtime object path, and the first captured tool
+output.
 
 The current toolchain contract is textual LLVM IR plus clang. The compiler does
 not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install

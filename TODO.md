@@ -192,7 +192,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Focus on string builder growth, temporary path construction, duplicate
     declaration filtering, and module sidecar policy.
 
-- [ ] Commit: improve backend diagnostics on LLVM/tool failures
+- [x] Commit: improve backend diagnostics on LLVM/tool failures
   - Preserve failing `.ll` inputs.
   - Report the exact command, generated file paths, and first useful tool error.
 

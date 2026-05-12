@@ -84,6 +84,16 @@ internal bool back_end_write_text_file(cstr path, string text)
     return true;
 }
 
+internal string back_end_tool_output_excerpt(ShellResult result)
+{
+    string output = result.stderr_text.count > 0 ? result.stderr_text
+                                                 : result.stdout_text;
+    if (output.count > 2048) {
+        output.count = 2048;
+    }
+    return output;
+}
+
 internal TimePoint back_end_timing_begin(Timing* timing)
 {
     return timing != NULL ? time_now() : 0;
@@ -210,12 +220,21 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
               combined_llvm_path,
               runtime_object_path);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
-    string command        = sb_to_string(&command_builder);
-    int    compile_result = shell(back_end_cstr(arena, command));
-    if (compile_result != 0) {
+    string      command = sb_to_string(&command_builder);
+    ShellResult result  = shell_capture(back_end_cstr(arena, command), arena);
+    if (result.exit_code != 0) {
+        string tool_output = back_end_tool_output_excerpt(result);
         return error_runtime(
-            "Failed to compile generated LLVM file (exit code %d)",
-            compile_result);
+            "Failed to compile generated LLVM file (exit code %d)\n"
+            "Command: " STRINGP "\n"
+            "Generated LLVM: %s\n"
+            "Runtime object: %s\n"
+            "Tool output:\n" STRINGP,
+            result.exit_code,
+            STRINGV(command),
+            combined_llvm_path,
+            runtime_object_path,
+            STRINGV(tool_output));
     }
 
 #if OS_POSIX
@@ -332,8 +351,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                         !artifacts->emit_llvm_file,
-                                        combined_llvm_path,
-                                        runtime_object_path);
+                                        NULL,
+                                        NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
