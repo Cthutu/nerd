@@ -236,3 +236,9 @@ Next extraction target:
 
 This order keeps the formatter contract syntax/trivia-based and avoids
 stabilising a region planner around the old offset-driven comment model.
+
+## Added MS3 Coverage
+
+- `tests/format/109-token-trivia-partial-signature-and-for.f` covers partial
+  function signatures and partial indexed `for in` loops in the token/trivia
+  fallback.

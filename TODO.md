@@ -172,7 +172,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Make local declarations, assignments, plex fields, enum variants, and
     trailing comments use an explicit region planner where practical.
 
-- [ ] Commit: grow token/trivia fallback coverage
+- [x] Commit: grow token/trivia fallback coverage
   - Add partial-source snapshots before changing behaviour.
   - Keep sema out of the formatter contract.
 

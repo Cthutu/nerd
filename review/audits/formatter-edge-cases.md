@@ -126,6 +126,10 @@ Current migration status:
   bracket scopes, comments inside partial literals, `on` branches, and partial
   aggregate literals through
   `tests/format/107-token-trivia-partial-edge-cases.f`.
+- Token/trivia fallback coverage now also includes unterminated calls, grouped
+  uses, partial function signatures, and partial indexed `for in` loops through
+  `tests/format/108-token-trivia-unterminated-forms.f` and
+  `tests/format/109-token-trivia-partial-signature-and-for.f`.
 - Comment-only line emission is now shared by the CST formatter path and the
   token/trivia fallback, reducing one duplicated layout case while preserving
   the public formatter API.
