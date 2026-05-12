@@ -211,7 +211,7 @@ Working rules for this review:
   - Use lexer token stream with comments and newlines preserved.
   - Track indentation and scope with an explicit formatter state machine.
 
-- [ ] Commit: connect formatter decisions to syntax nodes without requiring sema
+- [x] Commit: connect formatter decisions to syntax nodes without requiring sema
   - Formatting should remain source/syntax based.
   - Sema tables can inform optional future tooling, but should not be required
     for stable formatting.

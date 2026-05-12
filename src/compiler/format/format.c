@@ -1590,13 +1590,14 @@ internal void format_emit_block_statement(StringBuilder* sb,
 internal u32  format_node_end_token_index(const Cst*   cst,
                                           const Lexer* lexer,
                                           u32          node_index);
-internal bool format_has_blank_line_between_statements(const Cst*   cst,
-                                                       const Lexer* lexer,
-                                                       u32 previous_node_index,
-                                                       u32 current_node_index);
 internal bool format_has_blank_line_between_offsets(NerdSource source,
                                                     usize      previous_end,
                                                     usize      current_start);
+
+typedef struct {
+    const Cst*   cst;
+    const Lexer* lexer;
+} FormatSyntaxContext;
 
 internal void format_emit_indent(StringBuilder* sb, u32 indent_level)
 {
@@ -2117,20 +2118,51 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     }
 }
 
-internal bool format_has_blank_line_between_statements(const Cst*   cst,
-                                                       const Lexer* lexer,
-                                                       u32 previous_node_index,
-                                                       u32 current_node_index)
+internal FormatSyntaxContext format_syntax_context(const Cst*   cst,
+                                                   const Lexer* lexer)
 {
-    const CstNode* current = &cst->nodes[current_node_index];
-    u32            previous_end_token_index =
-        format_node_end_token_index(cst, lexer, previous_node_index);
-    usize previous_end_offset =
-        lex_token_end_offset(lexer, &lexer->tokens[previous_end_token_index]);
+    return (FormatSyntaxContext){
+        .cst   = cst,
+        .lexer = lexer,
+    };
+}
+
+internal u32 format_syntax_node_start_token(const FormatSyntaxContext* context,
+                                            u32 node_index)
+{
+    return context->cst->nodes[node_index].token_index;
+}
+
+internal u32 format_syntax_node_end_token(const FormatSyntaxContext* context,
+                                          u32 node_index)
+{
+    return format_node_end_token_index(context->cst, context->lexer, node_index);
+}
+
+internal usize format_syntax_node_start_offset(
+    const FormatSyntaxContext* context, u32 node_index)
+{
+    u32 token_index = format_syntax_node_start_token(context, node_index);
+    return context->lexer->tokens[token_index].offset;
+}
+
+internal usize format_syntax_node_end_offset(const FormatSyntaxContext* context,
+                                             u32 node_index)
+{
+    u32 token_index = format_syntax_node_end_token(context, node_index);
+    return lex_token_end_offset(context->lexer,
+                                &context->lexer->tokens[token_index]);
+}
+
+internal bool format_syntax_has_blank_line_between_nodes(
+    const FormatSyntaxContext* context,
+    u32                        previous_node_index,
+    u32                        current_node_index)
+{
     return format_has_blank_line_between_offsets(
-        lexer->source,
-        previous_end_offset,
-        lexer->tokens[current->token_index].offset);
+        context->lexer->source,
+        format_syntax_node_end_offset(context, previous_node_index),
+        format_syntax_node_start_offset(context, current_node_index));
 }
 
 internal bool format_has_comment_between_offsets(const Lexer* lexer,
@@ -2173,18 +2205,15 @@ internal usize format_first_comment_or_offset_between(const Lexer* lexer,
     return current_start;
 }
 
-internal bool format_has_comment_between_statements(const Cst*   cst,
-                                                    const Lexer* lexer,
-                                                    u32 previous_node_index,
-                                                    u32 current_node_index)
+internal bool format_syntax_has_comment_between_nodes(
+    const FormatSyntaxContext* context,
+    u32                        previous_node_index,
+    u32                        current_node_index)
 {
-    const CstNode* current = &cst->nodes[current_node_index];
-    u32            previous_end_token_index =
-        format_node_end_token_index(cst, lexer, previous_node_index);
-    usize previous_end_offset =
-        lex_token_end_offset(lexer, &lexer->tokens[previous_end_token_index]);
     return format_has_comment_between_offsets(
-        lexer, previous_end_offset, lexer->tokens[current->token_index].offset);
+        context->lexer,
+        format_syntax_node_end_offset(context, previous_node_index),
+        format_syntax_node_start_offset(context, current_node_index));
 }
 
 internal bool format_has_blank_line_between_offsets(NerdSource source,
@@ -4610,6 +4639,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
 {
     const CstNode* block = &cst->nodes[block_node_index];
     ASSERT(block->kind == CK_Block, "Expected block node");
+    FormatSyntaxContext syntax = format_syntax_context(cst, lexer);
     u32   previous_statement_index = U32_MAX;
     Arena align_arena              = {0};
     arena_init(&align_arena);
@@ -4631,15 +4661,13 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
 
         usize statement_start_offset =
-            lexer->tokens[cst->nodes[i].token_index].offset;
+            format_syntax_node_start_offset(&syntax, i);
         bool emitted_comments = false;
         if (comment_index < array_count(lexer->comments) &&
             lexer->comments[comment_index].offset < statement_start_offset) {
             if (previous_statement_index != U32_MAX) {
-                u32 previous_end_token = format_node_end_token_index(
-                    cst, lexer, previous_statement_index);
-                usize previous_end_offset = lex_token_end_offset(
-                    lexer, &lexer->tokens[previous_end_token]);
+                usize previous_end_offset = format_syntax_node_end_offset(
+                    &syntax, previous_statement_index);
                 if (format_has_blank_line_between_offsets(
                         lexer->source,
                         previous_end_offset,
@@ -4663,16 +4691,16 @@ internal void format_emit_block_contents(StringBuilder* sb,
         }
 
         if (!emitted_comments && previous_statement_index != U32_MAX &&
-            format_has_blank_line_between_statements(
-                cst, lexer, previous_statement_index, i)) {
+            format_syntax_has_blank_line_between_nodes(
+                &syntax, previous_statement_index, i)) {
             sb_append_char(sb, '\n');
         }
         if (!emitted_comments && previous_statement_index != U32_MAX &&
             format_statement_is_function_binding(cst, i) &&
             !format_statement_is_function_binding(cst,
                                                   previous_statement_index) &&
-            !format_has_blank_line_between_statements(
-                cst, lexer, previous_statement_index, i)) {
+            !format_syntax_has_blank_line_between_nodes(
+                &syntax, previous_statement_index, i)) {
             sb_append_char(sb, '\n');
         }
 
@@ -4688,8 +4716,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
                     cst->nodes[next_statement].kind != CK_Use) {
                     break;
                 }
-                if (format_has_comment_between_statements(
-                        cst, lexer, last_use_index, next_statement)) {
+                if (format_syntax_has_comment_between_nodes(
+                        &syntax, last_use_index, next_statement)) {
                     break;
                 }
                 array_push(use_nodes, next_statement);
@@ -4728,10 +4756,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
 
             previous_statement_index = last_use_index;
             i = cst_block_statement_end_exclusive(cst, last_use_index) - 1;
-            u32 use_end_token =
-                format_node_end_token_index(cst, lexer, last_use_index);
             usize use_end_offset =
-                lex_token_end_offset(lexer, &lexer->tokens[use_end_token]);
+                format_syntax_node_end_offset(&syntax, last_use_index);
             format_skip_block_comments_before_offset(
                 lexer, &comment_index, use_end_offset);
             array_free(use_nodes);
@@ -4753,10 +4779,11 @@ internal void format_emit_block_contents(StringBuilder* sb,
                     break;
                 }
 
-                bool has_blank_line = format_has_blank_line_between_statements(
-                    cst, lexer, last_aligned_index, next_statement);
-                bool has_comment = format_has_comment_between_statements(
-                    cst, lexer, last_aligned_index, next_statement);
+                bool has_blank_line =
+                    format_syntax_has_blank_line_between_nodes(
+                        &syntax, last_aligned_index, next_statement);
+                bool has_comment = format_syntax_has_comment_between_nodes(
+                    &syntax, last_aligned_index, next_statement);
                 FormatAlignedStatement next_aligned = {0};
                 if (!format_collect_aligned_statement(&align_arena,
                                                       cst,
@@ -4799,10 +4826,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
                     sb, aligned, (u32)array_count(aligned), indent_level);
                 previous_statement_index = last_aligned_index;
                 i                        = last_aligned_index;
-                u32 aligned_end_token =
-                    format_node_end_token_index(cst, lexer, last_aligned_index);
-                usize aligned_end_offset = lex_token_end_offset(
-                    lexer, &lexer->tokens[aligned_end_token]);
+                usize aligned_end_offset =
+                    format_syntax_node_end_offset(&syntax, last_aligned_index);
                 format_skip_block_comments_before_offset(
                     lexer, &comment_index, aligned_end_offset);
 
@@ -4810,8 +4835,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
                     cst, i + 1, block->b, block_node_index);
                 if (!first_aligned.is_assignment && array_count(aligned) > 1 &&
                     next_statement != U32_MAX &&
-                    !format_has_blank_line_between_statements(
-                        cst, lexer, last_aligned_index, next_statement)) {
+                    !format_syntax_has_blank_line_between_nodes(
+                        &syntax, last_aligned_index, next_statement)) {
                     FormatAlignedStatement ignored = {0};
                     if (!format_collect_aligned_statement(&align_arena,
                                                           cst,
@@ -4840,8 +4865,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
             u32 next_statement = format_next_block_statement(
                 cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
-                !format_has_blank_line_between_statements(
-                    cst, lexer, i, next_statement)) {
+                !format_syntax_has_blank_line_between_nodes(
+                    &syntax, i, next_statement)) {
                 sb_append_char(sb, '\n');
             }
         }
@@ -4852,8 +4877,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
             u32 next_statement = format_next_block_statement(
                 cst, i + 1, block->b, block_node_index);
             if (next_statement != U32_MAX &&
-                !format_has_blank_line_between_statements(
-                    cst, lexer, i, next_statement)) {
+                !format_syntax_has_blank_line_between_nodes(
+                    &syntax, i, next_statement)) {
                 FormatAlignedStatement next_aligned = {0};
                 if (format_collect_aligned_statement(&align_arena,
                                                      cst,
@@ -4868,9 +4893,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
             }
         }
         previous_statement_index  = i;
-        u32   statement_end_token = format_node_end_token_index(cst, lexer, i);
-        usize statement_end_offset =
-            lex_token_end_offset(lexer, &lexer->tokens[statement_end_token]);
+        usize statement_end_offset = format_syntax_node_end_offset(&syntax, i);
         format_skip_block_comments_before_offset(
             lexer, &comment_index, statement_end_offset);
         i = cst_block_statement_end_exclusive(cst, i) - 1;
@@ -4879,10 +4902,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
     if (comment_index < array_count(lexer->comments) &&
         lexer->comments[comment_index].offset < block_close_offset &&
         previous_statement_index != U32_MAX) {
-        u32 previous_end_token =
-            format_node_end_token_index(cst, lexer, previous_statement_index);
-        usize previous_end_offset =
-            lex_token_end_offset(lexer, &lexer->tokens[previous_end_token]);
+        usize previous_end_offset = format_syntax_node_end_offset(
+            &syntax, previous_statement_index);
         if (format_has_blank_line_between_offsets(
                 lexer->source,
                 previous_end_offset,
@@ -5550,6 +5571,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     Arena align_arena = {0};
     arena_init(&align_arena);
 
+    FormatSyntaxContext syntax = format_syntax_context(&cst, &lexer);
     bool first_binding          = true;
     u32  previous_binding_index = U32_MAX;
     u32  comment_index          = 0;
@@ -5575,11 +5597,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 if (cst.nodes[next_index].kind != CK_Use) {
                     break;
                 }
-                if (format_has_comment_between_statements(
-                        &cst,
-                        &lexer,
-                        cst.bindings[last_use_binding],
-                        next_index)) {
+                if (format_syntax_has_comment_between_nodes(
+                        &syntax, cst.bindings[last_use_binding], next_index)) {
                     break;
                 }
                 array_push(use_nodes, next_index);
@@ -5690,16 +5709,13 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             for (u32 cursor = i + 1; cursor < array_count(cst.bindings);
                  ++cursor) {
                 u32  next_index     = cst.bindings[cursor];
-                bool has_blank_line = format_has_blank_line_between_statements(
-                    &cst,
-                    &lexer,
-                    cst.bindings[last_aligned_binding],
-                    next_index);
-                bool has_comment = format_has_comment_between_statements(
-                    &cst,
-                    &lexer,
-                    cst.bindings[last_aligned_binding],
-                    next_index);
+                bool has_blank_line =
+                    format_syntax_has_blank_line_between_nodes(
+                        &syntax,
+                        cst.bindings[last_aligned_binding],
+                        next_index);
+                bool has_comment = format_syntax_has_comment_between_nodes(
+                    &syntax, cst.bindings[last_aligned_binding], next_index);
                 FormatAlignedStatement next_aligned = {0};
                 if (!format_collect_aligned_statement(&align_arena,
                                                       &cst,

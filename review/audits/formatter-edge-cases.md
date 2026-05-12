@@ -118,6 +118,10 @@ Current migration status:
   not parse as CST. The prototype tracks brace indentation explicitly, emits
   comments from `FormatTrivia`, preserves token newlines coarsely, and is
   covered by `tests/format/106-token-trivia-partial-block.f`.
+- `FormatSyntaxContext` now centralizes source/syntax layout facts used by the
+  formatter, including node start/end token offsets and blank-line/comment
+  checks between CST nodes. This keeps these decisions explicitly syntax-based
+  and independent of sema tables.
 
 Follow-up:
 
@@ -159,6 +163,12 @@ Follow-up:
 
 Formatting should not require semantic success. Some syntax ambiguity may be
 helped by semantic facts, but sema should remain optional.
+
+Current boundary:
+
+- Parsed formatting consumes lexer trivia plus CST node/token ranges.
+- Partial formatting consumes lexer trivia directly.
+- No formatter path requires sema products.
 
 Follow-up:
 
