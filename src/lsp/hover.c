@@ -2050,11 +2050,10 @@ internal bool lsp_get_request_context(LspState*           state,
 
     usize visible_start = 0;
     if (lsp_document_visible_start(*out_doc, &visible_start) &&
-        !string_eq((*out_doc)->front_end.lexer.source.source,
-                   (*out_doc)->source)) {
+        !string_eq(view.lexer->source.source, (*out_doc)->source)) {
         NerdSource visible_source = {
             .source      = (*out_doc)->source,
-            .source_path = (*out_doc)->front_end.lexer.source.source_path,
+            .source_path = view.lexer->source.source_path,
         };
         usize visible_offset = 0;
         if (!lex_line_col_to_offset(
@@ -2062,20 +2061,21 @@ internal bool lsp_get_request_context(LspState*           state,
             return false;
         }
         *out_offset = visible_start + visible_offset;
-    } else if (!lex_line_col_to_offset(
-                   (*out_doc)->front_end.lexer.source, line, col, out_offset)) {
+    } else if (!lex_line_col_to_offset(view.lexer->source,
+                                       line,
+                                       col,
+                                       out_offset)) {
         return false;
     }
 
     u32    token_end = 0;
-    Token* token =
-        lex_find(&(*out_doc)->front_end.lexer, *out_offset, &token_end);
+    Token* token = lex_find(view.lexer, *out_offset, &token_end);
     if (!token) {
         return false;
     }
 
     *out_token_index =
-        lsp_token_index_from_pointer(&(*out_doc)->front_end.lexer, token);
+        lsp_token_index_from_pointer(view.lexer, token);
     *out_token = token;
     return true;
 }

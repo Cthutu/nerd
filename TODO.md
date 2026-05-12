@@ -201,7 +201,7 @@ Working rules for this review:
   - Use tolerant syntax and partial semantic facts where available.
   - Avoid requiring a successful full build for basic completions.
 
-- [ ] Commit: improve hover, rename, and jump-to-definition
+- [x] Commit: improve hover, rename, and jump-to-definition
   - Base each feature on the shared partial-facts interface.
   - Add tests for incomplete source and cross-module references.
 

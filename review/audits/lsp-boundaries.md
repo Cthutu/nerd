@@ -285,6 +285,11 @@ syntax. This keeps basic symbol completion useful when sema has no local table
 for the current edit, for example while a user has typed `name : fn(...)` before
 fixing the binding operator.
 
+Hover and definition request setup now routes through the semantic view before
+mapping positions and tokens. The partial-edit regression set covers completion,
+hover, document symbols, rename, and definition after an incomplete member
+access edit.
+
 Direct document-map lookup is now isolated to document/view construction and
 document lifecycle operations.
 
