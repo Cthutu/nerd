@@ -201,7 +201,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 5: Strengthen Target Layout And Runtime ABI
 
-- [ ] Commit: audit current LLVM type and ABI assumptions
+- [x] Commit: audit current LLVM type and ABI assumptions
   - Strings, slices, dynamic arrays, tuples, plexes, enums, varargs, pointers,
     integer widths, alignment, and aggregate passing/returning.
 

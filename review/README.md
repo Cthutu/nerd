@@ -13,6 +13,8 @@ This folder holds detailed architecture review material.
     the formatter token/trivia prototype.
   - `audits/formatter-layout-classification.md`: current formatter layout
     policy groups and recommended MS3 extraction order.
+  - `audits/llvm-abi-layout-assumptions.md`: current LLVM target-layout and
+    runtime ABI assumptions for MS5.
 - `measurements/`: profiling, benchmark, and allocation results.
 
 Keep `../ARCHITECTURE_REVIEW.md` as the top-level synthesis.
