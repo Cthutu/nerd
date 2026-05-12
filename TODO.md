@@ -156,7 +156,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 3: Continue Formatter Simplification
 
-- [ ] Commit: classify remaining layout cases in `format.c`
+- [x] Commit: classify remaining layout cases in `format.c`
   - Separate token spacing, comment attachment, blank-line policy, indentation,
     alignment regions, and construct-specific rendering.
 

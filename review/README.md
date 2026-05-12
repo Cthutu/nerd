@@ -11,6 +11,8 @@ This folder holds detailed architecture review material.
     remaining accepted `<unsupported>` HIR cases.
   - `audits/formatter-token-trivia-prototype.md`: historical audit trail for
     the formatter token/trivia prototype.
+  - `audits/formatter-layout-classification.md`: current formatter layout
+    policy groups and recommended MS3 extraction order.
 - `measurements/`: profiling, benchmark, and allocation results.
 
 Keep `../ARCHITECTURE_REVIEW.md` as the top-level synthesis.
