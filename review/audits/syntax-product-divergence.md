@@ -130,6 +130,15 @@ that are currently reimplemented in formatter and LSP code:
 These helpers should not require semantic success. They may take semantic facts
 optionally when a feature wants a richer answer.
 
+Initial shared helpers:
+
+- `ast_node_is_binding_like`
+- `cst_node_is_binding_like`
+
+These are deliberately small. They replace repeated `Bind || Variable` checks
+in AST/CST query code and give formatter/LSP paths a shared vocabulary for the
+first syntax classification.
+
 ## Fixture Targets
 
 Add regression fixtures before changing parser internals:

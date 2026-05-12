@@ -3496,7 +3496,7 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             node->a == node_index) {
             return true;
         }
-        if (node->kind == CK_Bind || node->kind == CK_Variable) {
+        if (cst_node_is_binding_like(node)) {
             const CstNode* payload = &cst->nodes[node->b];
             if (node->b == node_index) {
                 return true;

@@ -63,10 +63,15 @@ string ast_get_string(const Lexer* lexer, const AstNode* node)
 
 u32 ast_get_symbol(const AstNode* node)
 {
-    if (node->kind != AK_Bind && node->kind != AK_Variable) {
+    if (!ast_node_is_binding_like(node)) {
         error_ice("Node is not a binding");
     }
     return node->a;
+}
+
+bool ast_node_is_binding_like(const AstNode* node)
+{
+    return node->kind == AK_Bind || node->kind == AK_Variable;
 }
 
 bool ast_node_is_block_statement(const AstNode* node)
@@ -75,7 +80,7 @@ bool ast_node_is_block_statement(const AstNode* node)
            node->kind == AK_Break || node->kind == AK_Continue ||
            node->kind == AK_Return || node->kind == AK_Defer ||
            node->kind == AK_Assert || node->kind == AK_Statement ||
-           node->kind == AK_Bind || node->kind == AK_Variable ||
+           ast_node_is_binding_like(node) ||
            node->kind == AK_DestructureBind ||
            node->kind == AK_DestructureVariable ||
            node->kind == AK_DestructureAssign || node->kind == AK_Use ||
@@ -101,7 +106,7 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
         u32 end = ast_block_statement_end_exclusive(ast, node->a);
         return end > node_index + 1 ? end : node_index + 1;
     }
-    if (node->kind == AK_Bind || node->kind == AK_Variable ||
+    if (ast_node_is_binding_like(node) ||
         node->kind == AK_DestructureBind ||
         node->kind == AK_DestructureVariable ||
         node->kind == AK_DestructureAssign || node->kind == AK_Statement ||

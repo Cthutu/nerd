@@ -142,7 +142,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Include formatter and LSP cases where the expected behaviour is useful
     partial output rather than full success.
 
-- [ ] Commit: derive shared syntax classification helpers
+- [x] Commit: derive shared syntax classification helpers
   - Centralise token-to-construct and node-range queries currently duplicated
     between formatter, LSP, AST, and CST utilities.
 

@@ -5217,14 +5217,19 @@ u32 cst_get_symbol(const CstNode* node)
     return node->a;
 }
 
+bool cst_node_is_binding_like(const CstNode* node)
+{
+    return node->kind == CK_Bind || node->kind == CK_Variable;
+}
+
 bool cst_node_is_block_statement(const CstNode* node)
 {
     return node->kind == CK_Block || node->kind == CK_Statement ||
-           node->kind == CK_Return || node->kind == CK_Bind ||
+           node->kind == CK_Return || cst_node_is_binding_like(node) ||
            node->kind == CK_For || node->kind == CK_Defer ||
            node->kind == CK_Assert || node->kind == CK_Break ||
            node->kind == CK_BreakOn || node->kind == CK_Continue ||
-           node->kind == CK_Variable || node->kind == CK_DestructureBind ||
+           node->kind == CK_DestructureBind ||
            node->kind == CK_DestructureVariable ||
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
@@ -5254,7 +5259,7 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         u32 end = cst_block_statement_end_exclusive(cst, node->a);
         return end > node_index + 1 ? end : node_index + 1;
     }
-    if (node->kind == CK_Bind || node->kind == CK_Variable ||
+    if (cst_node_is_binding_like(node) ||
         node->kind == CK_DestructureBind ||
         node->kind == CK_DestructureVariable ||
         node->kind == CK_DestructureAssign || node->kind == CK_Statement ||

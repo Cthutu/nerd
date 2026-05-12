@@ -99,7 +99,8 @@ internal u32 lsp_semantic_find_bind_node(const Ast* ast, u32 token_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind == AK_Bind && node->token_index == token_index) {
+        if (ast_node_is_binding_like(node) &&
+            node->token_index == token_index) {
             return i;
         }
     }
