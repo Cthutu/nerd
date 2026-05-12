@@ -93,6 +93,7 @@ void _arena_init(Arena* arena, ArenaDefaultParams params)
     arena->reserved_size     = params.reserved_size;
     arena->alloc_granularity = mem_info.alloc_granularity;
     arena->grow_rate         = params.grow_rate;
+    mem_stats_record_arena_init(initial_alloc_size);
 }
 
 void arena_done(Arena* arena)
@@ -105,6 +106,7 @@ void arena_done(Arena* arena)
 #    error "Arena destruction not implemented for this OS."
 #endif // OS_WINDOWS
 
+    mem_stats_record_arena_done();
     memset(arena, 0, sizeof(Arena));
 }
 
@@ -142,6 +144,7 @@ internal void _arena_ensure_room(Arena* arena, usize size)
 #endif // OS_WINDOWS
 
         arena->committed_size += commit_size;
+        mem_stats_record_arena_commit(commit_size);
     }
 }
 
@@ -151,6 +154,7 @@ void* arena_alloc(Arena* arena, usize size)
 
     void* ptr = arena->data + arena->cursor;
     arena->cursor += size;
+    mem_stats_record_arena_alloc(size);
     return ptr;
 }
 

@@ -279,6 +279,35 @@ void  mem_leak(void* ptr);
 
 void mem_check(void* ptr);
 
+typedef struct {
+    usize heap_alloc_count;
+    usize heap_realloc_count;
+    usize heap_free_count;
+    usize heap_bytes_allocated;
+    usize heap_bytes_reallocated;
+    usize heap_bytes_freed;
+    usize heap_current_bytes;
+    usize heap_peak_bytes;
+    usize arena_init_count;
+    usize arena_done_count;
+    usize arena_alloc_count;
+    usize arena_bytes_allocated;
+    usize arena_commit_count;
+    usize arena_bytes_committed;
+    usize array_growth_count;
+    usize array_bytes_allocated;
+} MemoryStats;
+
+MemoryStats mem_stats_snapshot(void);
+MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after);
+bool        mem_stats_profile_enabled(void);
+void        mem_stats_print_delta(cstr stage, cstr phase, MemoryStats stats);
+void        mem_stats_record_arena_init(usize bytes_committed);
+void        mem_stats_record_arena_done(void);
+void        mem_stats_record_arena_commit(usize bytes_committed);
+void        mem_stats_record_arena_alloc(usize bytes_allocated);
+void        mem_stats_record_array_growth(usize bytes_allocated);
+
 // Memory debugging utilities
 #if CONFIG_DEBUG
 void  mem_print_leaks(void);

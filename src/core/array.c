@@ -24,6 +24,7 @@ void* array_maybe_grow(void* array,
         ArrayHeader* header = (ArrayHeader*)mem_alloc(
             sizeof(ArrayHeader) + initial_capacity * element_size, file, line);
         header->count = 0; // No elements yet
+        mem_stats_record_array_growth(initial_capacity * element_size);
 
         return (void*)(header + 1);
     }
@@ -47,6 +48,7 @@ void* array_maybe_grow(void* array,
     ArrayHeader* old_header         = header;
     ArrayHeader* new_header         = (ArrayHeader*)mem_realloc(
         old_header, sizeof(ArrayHeader) + new_capacity_bytes, file, line);
+    mem_stats_record_array_growth(new_capacity_bytes);
 
     // count is preserved by realloc
 

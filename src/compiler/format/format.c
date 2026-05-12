@@ -7,6 +7,7 @@
 #include <compiler/cst/cst.h>
 #include <compiler/error/error.h>
 #include <compiler/format/format.h>
+#include <compiler/internal.h>
 #include <compiler/lexer/lexer.h>
 
 #include <stdio.h>
@@ -6219,9 +6220,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
 bool format_source(NerdSource source, Arena* arena, string* out_text)
 {
+    MemoryStats memory_before = compiler_memory_profile_begin();
     Lexer lexer = {0};
     if (!lex_with_config(
             source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
+        compiler_memory_profile_end(COMPILER_STAGE_FORMATTER,
+                                    COMPILER_PHASE_FORMAT_SOURCE,
+                                    memory_before);
         return false;
     }
 
@@ -6320,6 +6325,9 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
             if (!ok) {
                 format_trivia_done(&trivia);
                 lex_done(&lexer);
+                compiler_memory_profile_end(COMPILER_STAGE_FORMATTER,
+                                            COMPILER_PHASE_FORMAT_SOURCE,
+                                            memory_before);
                 return false;
             }
             offset                  = block_end;
@@ -6394,6 +6402,8 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
     *out_text = sb_to_string(&sb);
     format_trivia_done(&trivia);
     lex_done(&lexer);
+    compiler_memory_profile_end(
+        COMPILER_STAGE_FORMATTER, COMPILER_PHASE_FORMAT_SOURCE, memory_before);
     return true;
 }
 

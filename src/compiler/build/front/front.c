@@ -102,14 +102,20 @@ bool front_end(NerdSource             source,
     bool result = true;
 
     if (timing != NULL) {
+        MemoryStats     memory_before = compiler_memory_profile_begin();
         ThreadTimePoint start = thread_time_now();
         result                = front_end_lex(&ctx);
         timing_add(timing,
                    COMPILER_STAGE_FRONT_END,
                    COMPILER_PHASE_LEX,
                    thread_time_elapsed(start, thread_time_now()));
+        compiler_memory_profile_end(
+            COMPILER_STAGE_FRONT_END, COMPILER_PHASE_LEX, memory_before);
     } else {
+        MemoryStats memory_before = compiler_memory_profile_begin();
         result = front_end_lex(&ctx);
+        compiler_memory_profile_end(
+            COMPILER_STAGE_FRONT_END, COMPILER_PHASE_LEX, memory_before);
     }
     if (result && ctx.options.verbose) {
         lex_dump(&ctx.results.lexer);
@@ -117,14 +123,20 @@ bool front_end(NerdSource             source,
 
     if (result) {
         if (timing != NULL) {
+            MemoryStats     memory_before = compiler_memory_profile_begin();
             ThreadTimePoint start = thread_time_now();
             result                = front_end_parse(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_PARSE,
                        thread_time_elapsed(start, thread_time_now()));
+            compiler_memory_profile_end(
+                COMPILER_STAGE_FRONT_END, COMPILER_PHASE_PARSE, memory_before);
         } else {
+            MemoryStats memory_before = compiler_memory_profile_begin();
             result = front_end_parse(&ctx);
+            compiler_memory_profile_end(
+                COMPILER_STAGE_FRONT_END, COMPILER_PHASE_PARSE, memory_before);
         }
         if (result && ctx.options.verbose) {
             ast_dump(&ctx.results.ast, &ctx.results.lexer);
@@ -133,27 +145,41 @@ bool front_end(NerdSource             source,
 
     if (result) {
         if (timing != NULL) {
+            MemoryStats     memory_before = compiler_memory_profile_begin();
             ThreadTimePoint start = thread_time_now();
             result                = front_end_sema(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_SEMA,
                        thread_time_elapsed(start, thread_time_now()));
+            compiler_memory_profile_end(
+                COMPILER_STAGE_FRONT_END, COMPILER_PHASE_SEMA, memory_before);
         } else {
+            MemoryStats memory_before = compiler_memory_profile_begin();
             result = front_end_sema(&ctx);
+            compiler_memory_profile_end(
+                COMPILER_STAGE_FRONT_END, COMPILER_PHASE_SEMA, memory_before);
         }
     }
 
     if (result && !ctx.options.skip_hir_generation) {
         if (timing != NULL) {
+            MemoryStats     memory_before = compiler_memory_profile_begin();
             ThreadTimePoint start = thread_time_now();
             result                = front_end_hir_gen(&ctx);
             timing_add(timing,
                        COMPILER_STAGE_FRONT_END,
                        COMPILER_PHASE_HIR_GEN,
                        thread_time_elapsed(start, thread_time_now()));
+            compiler_memory_profile_end(COMPILER_STAGE_FRONT_END,
+                                        COMPILER_PHASE_HIR_GEN,
+                                        memory_before);
         } else {
+            MemoryStats memory_before = compiler_memory_profile_begin();
             result = front_end_hir_gen(&ctx);
+            compiler_memory_profile_end(COMPILER_STAGE_FRONT_END,
+                                        COMPILER_PHASE_HIR_GEN,
+                                        memory_before);
         }
         if (result && ctx.options.verbose) {
             hir_dump(&ctx.results.hir, &ctx.results.lexer, &ctx.results.sema);

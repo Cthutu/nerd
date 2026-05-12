@@ -65,8 +65,12 @@ internal void program_rebind_sema_programs(ProgramInfo* program)
 internal bool
 program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
 {
+    MemoryStats memory_before = compiler_memory_profile_begin();
     if (timing == NULL) {
-        return run(data);
+        bool result = run(data);
+        compiler_memory_profile_end(
+            COMPILER_STAGE_FRONT_END, phase, memory_before);
+        return result;
     }
 
     ThreadTimePoint start  = thread_time_now();
@@ -76,6 +80,7 @@ program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
                COMPILER_STAGE_FRONT_END,
                phase,
                thread_time_elapsed(start, end));
+    compiler_memory_profile_end(COMPILER_STAGE_FRONT_END, phase, memory_before);
     return result;
 }
 

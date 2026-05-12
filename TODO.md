@@ -225,7 +225,7 @@ Working rules for this review:
 
 ### Milestone 7: Review Memory Strategy
 
-- [ ] Commit: measure allocations by phase
+- [x] Commit: measure allocations by phase
   - Lexer/parser/sema/HIR/LLVM/backend/LSP/formatter.
   - Record results under `review/measurements/`.
 
