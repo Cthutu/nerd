@@ -112,7 +112,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
     facts.
   - Record the audit under `review/audits/`.
 
-- [ ] Commit: introduce explicit declaration and binding fact views
+- [x] Commit: introduce explicit declaration and binding fact views
   - Add narrow APIs for declarations, lexical scopes, source spans, imports,
     exports, locals, and references.
   - Keep the initial implementation backed by existing `Sema` tables.

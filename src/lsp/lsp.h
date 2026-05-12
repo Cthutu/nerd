@@ -69,6 +69,30 @@ typedef struct {
 } LspSemanticView;
 
 typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+    const Ast*         ast;
+    const Sema*        sema;
+} LspDeclarationView;
+
+typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+    const Ast*         ast;
+    const Sema*        sema;
+} LspBindingView;
+
+typedef struct {
+    const LspDocument* doc;
+    string             source;
+    const Lexer*       lexer;
+    const Ast*         ast;
+    const Sema*        sema;
+} LspTypeFactView;
+
+typedef struct {
     const ModuleInfo* info;
     u32               module_index;
     const Lexer*      lexer;
@@ -104,6 +128,13 @@ bool  lsp_source_view(LspState* state, string uri, LspSourceView* out_view);
 bool  lsp_token_view(LspState* state, string uri, LspTokenView* out_view);
 bool  lsp_syntax_view(LspState* state, string uri, LspSyntaxView* out_view);
 bool  lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view);
+bool  lsp_declaration_view(LspState*          state,
+                           string             uri,
+                           LspDeclarationView* out_view);
+bool  lsp_binding_view(LspState* state, string uri, LspBindingView* out_view);
+bool  lsp_type_fact_view(LspState*       state,
+                         string          uri,
+                         LspTypeFactView* out_view);
 bool  lsp_program_module_view(const ProgramInfo* program,
                               u32                module_index,
                               LspModuleView*     out_view);
@@ -134,6 +165,38 @@ bool  lsp_sema_decl_by_symbol(const Sema*      sema,
                               u32              symbol_handle,
                               const SemaDecl** out_decl,
                               u32*             out_decl_index);
+bool  lsp_decl_view_decl(const LspDeclarationView* view,
+                         u32                       decl_index,
+                         const SemaDecl**          out);
+bool  lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
+                                   u32                       symbol_handle,
+                                   const SemaDecl**          out_decl,
+                                   u32* out_decl_index);
+bool  lsp_binding_view_local(const LspBindingView* view,
+                             u32                   local_index,
+                             const SemaLocal**     out);
+bool  lsp_binding_view_scope(const LspBindingView* view,
+                             u32                   scope_index,
+                             const SemaScope**     out);
+bool  lsp_binding_view_node_decl(const LspBindingView* view,
+                                 u32                   node_index,
+                                 u32*                  out_decl_index);
+bool  lsp_binding_view_node_local(const LspBindingView* view,
+                                  u32                   node_index,
+                                  u32*                  out_local_index);
+bool  lsp_binding_view_node_scope(const LspBindingView* view,
+                                  u32                   node_index,
+                                  u32*                  out_scope_index);
+bool  lsp_type_fact_view_type(const LspTypeFactView* view,
+                              u32                    type_index,
+                              const SemaType**       out);
+bool  lsp_type_fact_view_node_type(const LspTypeFactView* view,
+                                   u32                    node_index,
+                                   u32*                   out_type_index);
+bool  lsp_type_fact_view_type_param(const LspTypeFactView* view,
+                                    u32                    param_index,
+                                    u32*                   out_symbol,
+                                    u32* out_type_index);
 bool  lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
 bool  lsp_sema_node_local(const Sema* sema,
                           u32         node_index,

@@ -215,6 +215,110 @@ bool lsp_sema_decl_by_symbol(const Sema*      sema,
     return false;
 }
 
+bool lsp_decl_view_decl(const LspDeclarationView* view,
+                        u32                       decl_index,
+                        const SemaDecl**          out)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_decl(view->sema, decl_index, out);
+}
+
+bool lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
+                                  u32                       symbol_handle,
+                                  const SemaDecl**          out_decl,
+                                  u32* out_decl_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_decl_by_symbol(
+        view->sema, symbol_handle, out_decl, out_decl_index);
+}
+
+bool lsp_binding_view_local(const LspBindingView* view,
+                            u32                   local_index,
+                            const SemaLocal**     out)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_local(view->sema, local_index, out);
+}
+
+bool lsp_binding_view_scope(const LspBindingView* view,
+                            u32                   scope_index,
+                            const SemaScope**     out)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_scope(view->sema, scope_index, out);
+}
+
+bool lsp_binding_view_node_decl(const LspBindingView* view,
+                                u32                   node_index,
+                                u32*                  out_decl_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_node_decl(view->sema, node_index, out_decl_index);
+}
+
+bool lsp_binding_view_node_local(const LspBindingView* view,
+                                 u32                   node_index,
+                                 u32*                  out_local_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_node_local(view->sema, node_index, out_local_index);
+}
+
+bool lsp_binding_view_node_scope(const LspBindingView* view,
+                                 u32                   node_index,
+                                 u32*                  out_scope_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_node_scope(view->sema, node_index, out_scope_index);
+}
+
+bool lsp_type_fact_view_type(const LspTypeFactView* view,
+                             u32                    type_index,
+                             const SemaType**       out)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_type(view->sema, type_index, out);
+}
+
+bool lsp_type_fact_view_node_type(const LspTypeFactView* view,
+                                  u32                    node_index,
+                                  u32*                   out_type_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_node_type(view->sema, node_index, out_type_index);
+}
+
+bool lsp_type_fact_view_type_param(const LspTypeFactView* view,
+                                   u32                    param_index,
+                                   u32*                   out_symbol,
+                                   u32* out_type_index)
+{
+    if (!view) {
+        return false;
+    }
+    return lsp_sema_type_param(
+        view->sema, param_index, out_symbol, out_type_index);
+}
+
 bool lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index)
 {
     if (!sema || node_index == U32_MAX ||

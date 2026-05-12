@@ -449,6 +449,61 @@ bool lsp_semantic_view(LspState* state, string uri, LspSemanticView* out_view)
     return true;
 }
 
+bool lsp_declaration_view(LspState*          state,
+                          string             uri,
+                          LspDeclarationView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->sema_partial) {
+        return false;
+    }
+
+    *out_view = (LspDeclarationView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+        .ast    = &doc->front_end.ast,
+        .sema   = &doc->front_end.sema,
+    };
+    return true;
+}
+
+bool lsp_binding_view(LspState* state, string uri, LspBindingView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->sema_partial) {
+        return false;
+    }
+
+    *out_view = (LspBindingView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+        .ast    = &doc->front_end.ast,
+        .sema   = &doc->front_end.sema,
+    };
+    return true;
+}
+
+bool lsp_type_fact_view(LspState*       state,
+                        string          uri,
+                        LspTypeFactView* out_view)
+{
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (!doc || !doc->sema_partial) {
+        return false;
+    }
+
+    *out_view = (LspTypeFactView){
+        .doc    = doc,
+        .source = doc->source,
+        .lexer  = &doc->front_end.lexer,
+        .ast    = &doc->front_end.ast,
+        .sema   = &doc->front_end.sema,
+    };
+    return true;
+}
+
 usize lsp_offset_from_position(string source, u64 line, u64 character)
 {
     u64   current_line      = 0;
