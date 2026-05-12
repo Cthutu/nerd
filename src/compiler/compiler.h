@@ -45,6 +45,7 @@ typedef struct {
     bool       emit_llvm;
     bool       release;
     bool       verbose;
+    bool       timing;
     Array(string) keywords;
 } NerdBuildConfig;
 
@@ -71,6 +72,7 @@ typedef struct {
     bool       keep_binary;
     bool       release;
     bool       verbose;
+    bool       timing;
     Array(string) keywords;
 } NerdRunConfig;
 

@@ -288,6 +288,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         flags,
         nerd_cli_make_flag(
             arena, "verbose", "v", "Enable verbose debug dump output"));
+    json_array_push(
+        flags,
+        nerd_cli_make_flag(
+            arena, "timing", NULL, "Print compiler timing information"));
 
     {
         JsonValue* build_params = json_new_array(arena);
@@ -598,6 +602,8 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .timing =
+            nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
         .keywords = keywords,
     };
 }
@@ -652,6 +658,8 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
         .verbose =
             nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .timing =
+            nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
         .keywords = keywords,
     };
 }

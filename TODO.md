@@ -178,7 +178,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 4: Measure And Tune The LLVM Backend
 
-- [ ] Commit: measure build/link timings by backend phase
+- [x] Commit: measure build/link timings by backend phase
   - Track LLVM text rendering, combined input construction, runtime object
     writing, clang startup, and clang link/compile time.
   - Record results under `review/measurements/`.

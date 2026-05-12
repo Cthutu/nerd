@@ -97,6 +97,9 @@ int compiler_cmd_run(const NerdRunConfig* config)
 
     bool ok = compile(config->source, &artifacts, config->verbose, &timing);
 
+    if (config->timing) {
+        timing_dump(&timing);
+    }
     timing_done(&timing);
     if (!ok) {
         arena_done(&arena);

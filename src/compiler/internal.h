@@ -22,6 +22,7 @@
 #define COMPILER_PHASE_HIR_GEN "generate HIR from sema"
 #define COMPILER_PHASE_LLVM_RENDER "render module LLVM"
 #define COMPILER_PHASE_LLVM_COMBINE "combine LLVM text"
+#define COMPILER_PHASE_LLVM_WRITE "write combined LLVM"
 #define COMPILER_PHASE_RUNTIME_OBJECT "write runtime object"
 #define COMPILER_PHASE_LINK "link executable"
 #define COMPILER_PHASE_FORMAT_SOURCE "format source"

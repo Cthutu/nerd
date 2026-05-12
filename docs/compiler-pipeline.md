@@ -200,6 +200,10 @@ not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
 surface small while still allowing a future measurement-backed switch to LLVM
 CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
 
+Use `--timing` with `nerd build` or `nerd run` to print phase timings. Back-end
+timings use wall-clock time so the external clang invocation is included in the
+`link executable` phase.
+
 Runtime helpers that exchange Nerd strings use a stable pointer/scalar ABI
 rather than C by-value structs. Generated LLVM stores `{ ptr, i64 }` string
 values into stack slots and passes pointers to runtime helpers such as
