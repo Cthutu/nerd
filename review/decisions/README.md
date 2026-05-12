@@ -54,6 +54,10 @@ Date: YYYY-MM-DD
   - Status: accepted.
   - Closeout: keep textual LLVM plus clang until measurements justify another
     executable toolchain.
+- [0010: Target Layout Support](0010-target-layout-support.md)
+  - Status: accepted.
+  - Closeout: current support is the host 64-bit clang target; cross-target and
+    aggregate FFI ABI support require explicit future layout work.
 
 ## Closeout Notes
 

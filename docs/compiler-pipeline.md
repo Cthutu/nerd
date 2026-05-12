@@ -209,6 +209,11 @@ opaque `ptr`, pointer-sized integers as `i64`, string and slice values as
 `i64`. The context is intentionally conservative: it centralises the choices
 the backend already made before broadening target support.
 
+The supported target is currently the host 64-bit clang target. The compiler
+does not yet claim cross-target reproducibility, 32-bit support, or C-compatible
+aggregate FFI passing/returning. Those require explicit target datalayout/triple
+emission, layout-context expansion, ABI diagnostics, and regression tests.
+
 Use `--timing` with `nerd build` or `nerd run` to print phase timings. Back-end
 timings use wall-clock time so the external clang invocation is included in the
 `link executable` phase.

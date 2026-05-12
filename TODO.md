@@ -217,7 +217,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Avoid duplicated handwritten signatures between runtime C, HIR lowering,
     LLVM emission, and tests.
 
-- [ ] Commit: document target support limits
+- [x] Commit: document target support limits
   - Be explicit about the current host assumptions and what must change for
     cross-target builds.
 

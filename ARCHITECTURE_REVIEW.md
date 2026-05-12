@@ -46,6 +46,8 @@ Active decision records:
   and the current executable backend contract.
 - `review/decisions/0006-memory-ownership-strategy.md`: current allocation
   ownership policy.
+- `review/decisions/0010-target-layout-support.md`: current 64-bit host target
+  contract and unsupported cross-target/aggregate FFI limits.
 
 ## Final Closeout
 
@@ -103,7 +105,8 @@ Remaining known risks:
 - LLVM lowering is textual and clang-driven. This is the current install
   contract by measurement-backed decision, but bitcode or direct LLVM CLI tools
   remain possible future performance experiments.
-- Runtime and ABI choices are deliberately narrow. Aggregate ABI, varargs,
+- Runtime and ABI choices are deliberately narrow. The accepted target contract
+  is the host 64-bit clang target; aggregate FFI, varargs policy expansion,
   debug metadata, target triples, and platform-specific runtime details need
   careful expansion as the language grows.
 - LSP semantic readiness is split into declaration, binding, and type-fact
@@ -118,8 +121,8 @@ Recommended next review work:
   duplicated grammar work outweighs the current split
 - keep reducing formatter layout cases into trivia/syntax-region rules
 - measure clang/textual LLVM startup cost before changing the backend toolchain
-- add target/layout records if aggregate ABI or cross-target support becomes a
-  priority
+- expand the layout context, target datalayout/triple emission, and ABI
+  diagnostics before claiming aggregate FFI or cross-target support
 
 ## Initial Agreements
 
