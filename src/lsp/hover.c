@@ -2061,22 +2061,19 @@ internal bool lsp_get_request_context(LspState*           state,
             return false;
         }
         *out_offset = visible_start + visible_offset;
-    } else if (!lex_line_col_to_offset(view.lexer->source,
-                                       line,
-                                       col,
-                                       out_offset)) {
+    } else if (!lex_line_col_to_offset(
+                   view.lexer->source, line, col, out_offset)) {
         return false;
     }
 
     u32    token_end = 0;
-    Token* token = lex_find(view.lexer, *out_offset, &token_end);
+    Token* token     = lex_find(view.lexer, *out_offset, &token_end);
     if (!token) {
         return false;
     }
 
-    *out_token_index =
-        lsp_token_index_from_pointer(view.lexer, token);
-    *out_token = token;
+    *out_token_index = lsp_token_index_from_pointer(view.lexer, token);
+    *out_token       = token;
     return true;
 }
 

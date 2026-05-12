@@ -2559,7 +2559,7 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                 u32 field_index = llvm_record_field_index(
                     ctx->sema, scrutinee.type_index, pattern->symbol_handle);
                 if (field_index != U32_MAX) {
-                    string temp        = llvm_temp(ctx);
+                    string temp = llvm_temp(ctx);
                     string record_type =
                         llvm_type_string(ctx, scrutinee.type_index);
                     sb_format(ctx->sb,
@@ -6494,14 +6494,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
-                string cond_label = llvm_label(ctx, "for.cond");
-                string body_label = llvm_label(ctx, "for.body");
+                string cond_label   = llvm_label(ctx, "for.cond");
+                string body_label   = llvm_label(ctx, "for.body");
                 string update_label = llvm_label(ctx, "for.update");
-                string else_label = llvm_label(ctx, "for.else");
-                string end_label  = llvm_label(ctx, "for.end");
+                string else_label   = llvm_label(ctx, "for.else");
+                string end_label    = llvm_label(ctx, "for.end");
 
-                string result_type = llvm_type_string(ctx, expr->type_index);
-                string result_ptr  = llvm_temp(ctx);
+                string result_type  = llvm_type_string(ctx, expr->type_index);
+                string result_ptr   = llvm_temp(ctx);
                 sb_format(ctx->sb,
                           "  " STRINGP " = alloca " STRINGP ", align 4\n",
                           STRINGV(result_ptr),
@@ -6586,8 +6586,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
 
                 if (!ctx->block_terminated) {
-                    string next_label =
-                        loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
+                    string next_label = loop->kind == HIR_FOR_CStyle
+                                            ? update_label
+                                            : cond_label;
                     sb_format(ctx->sb,
                               "  br label %%" STRINGP "\n",
                               STRINGV(next_label));
@@ -6595,11 +6596,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 if (loop->kind == HIR_FOR_CStyle) {
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(update_label));
-                    if (!llvm_emit_effect_stmt_indices(ctx,
-                                                       function,
-                                                       ctx->hir->for_update_stmts,
-                                                       loop->first_update_stmt,
-                                                       loop->update_stmt_count)) {
+                    if (!llvm_emit_effect_stmt_indices(
+                            ctx,
+                            function,
+                            ctx->hir->for_update_stmts,
+                            loop->first_update_stmt,
+                            loop->update_stmt_count)) {
                         llvm_pop_control_target(ctx, loop->label_symbol);
                         ctx->break_label          = old_break;
                         ctx->continue_label       = old_continue;
@@ -6631,7 +6633,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         ctx->emitted_break        = old_break_emitted;
                         return (LlvmValue){0};
                     }
-                    loop_emitted_break = loop_emitted_break || ctx->emitted_break;
+                    loop_emitted_break =
+                        loop_emitted_break || ctx->emitted_break;
                     if (!ctx->block_terminated) {
                         sb_format(ctx->sb,
                                   "  br label %%" STRINGP "\n",
@@ -6648,9 +6651,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->continue_defer_count = old_continue_defer_count;
                 ctx->emitted_break        = old_break_emitted;
 
-                bool can_reach_end =
-                    loop_emitted_break || loop->condition_expr_index != U32_MAX ||
-                    loop->else_block_index != U32_MAX;
+                bool can_reach_end = loop_emitted_break ||
+                                     loop->condition_expr_index != U32_MAX ||
+                                     loop->else_block_index != U32_MAX;
                 if (!can_reach_end) {
                     ctx->block_terminated = true;
                     return (LlvmValue){
@@ -6662,7 +6665,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 ctx->block_terminated = false;
-                string loaded = llvm_temp(ctx);
+                string loaded         = llvm_temp(ctx);
                 sb_format(ctx->sb,
                           "  " STRINGP " = load " STRINGP ", ptr " STRINGP
                           ", align 4\n",

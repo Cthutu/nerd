@@ -205,7 +205,7 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
     }
 
     for (u32 i = 0; i < type->param_count; ++i) {
-        u32 param_index = type->first_param_type + i;
+        u32 param_index      = type->first_param_type + i;
         u32 symbol           = U32_MAX;
         u32 param_type_index = sema_no_type();
         if (!lsp_sema_type_param(
@@ -777,18 +777,18 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
     if (array_count(program.modules) > 0 &&
         program.root_module_index < array_count(program.modules)) {
         LspDocument repaired_doc = {
-            .source    = repaired,
-            .front_end = program.modules[program.root_module_index].front_end,
-            .program   = program,
+            .source      = repaired,
+            .front_end   = program.modules[program.root_module_index].front_end,
+            .program     = program,
             .analysis_ok = analysis_ok,
-            .source_ready  = true,
-            .tokens_ready  = front_end_product_is_available(
+            .source_ready = true,
+            .tokens_ready = front_end_product_is_available(
                 program.modules[program.root_module_index]
                     .front_end.readiness.lexer),
-            .syntax_ready  = front_end_product_is_available(
+            .syntax_ready = front_end_product_is_available(
                 program.modules[program.root_module_index]
                     .front_end.readiness.ast),
-            .sema_partial  = front_end_product_is_available(
+            .sema_partial = front_end_product_is_available(
                 program.modules[program.root_module_index]
                     .front_end.readiness.sema),
             .sema_complete = front_end_product_is_complete(
@@ -2035,9 +2035,8 @@ internal void lsp_completion_add_source_params_from_line(Arena*     arena,
     i++;
 
     while (i < line.count) {
-        while (i < line.count &&
-               (line.data[i] == ' ' || line.data[i] == '\t' ||
-                line.data[i] == ',')) {
+        while (i < line.count && (line.data[i] == ' ' || line.data[i] == '\t' ||
+                                  line.data[i] == ',')) {
             i++;
         }
         if (i >= line.count || line.data[i] == ')') {

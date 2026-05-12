@@ -192,10 +192,10 @@ bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out)
     return true;
 }
 
-bool lsp_sema_decl_by_symbol(const Sema*     sema,
-                             u32             symbol_handle,
+bool lsp_sema_decl_by_symbol(const Sema*      sema,
+                             u32              symbol_handle,
                              const SemaDecl** out_decl,
-                             u32*            out_decl_index)
+                             u32*             out_decl_index)
 {
     if (!sema || symbol_handle == U32_MAX) {
         return false;

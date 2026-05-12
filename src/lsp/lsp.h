@@ -130,10 +130,10 @@ bool  lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
 bool  lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
 bool  lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out);
 bool  lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
-bool  lsp_sema_decl_by_symbol(const Sema*     sema,
-                              u32             symbol_handle,
+bool  lsp_sema_decl_by_symbol(const Sema*      sema,
+                              u32              symbol_handle,
                               const SemaDecl** out_decl,
-                              u32*            out_decl_index);
+                              u32*             out_decl_index);
 bool  lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
 bool  lsp_sema_node_local(const Sema* sema,
                           u32         node_index,

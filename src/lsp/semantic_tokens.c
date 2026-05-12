@@ -159,14 +159,12 @@ internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
 internal u32 lsp_semantic_symbol_type(const LspSemanticView* view,
                                       u32                    token_index)
 {
-    u32 bind_node_index =
-        lsp_semantic_find_bind_node(view->ast, token_index);
+    u32 bind_node_index = lsp_semantic_find_bind_node(view->ast, token_index);
     if (bind_node_index != U32_MAX) {
-        const AstNode* bind = NULL;
+        const AstNode* bind       = NULL;
         u32            decl_index = U32_MAX;
         if (lsp_ast_node(view->ast, bind_node_index, &bind) &&
-            lsp_sema_decl_by_symbol(
-                view->sema, bind->a, NULL, &decl_index) &&
+            lsp_sema_decl_by_symbol(view->sema, bind->a, NULL, &decl_index) &&
             lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
         }
@@ -182,8 +180,7 @@ internal u32 lsp_semantic_symbol_type(const LspSemanticView* view,
         }
     }
 
-    u32 field_node_index =
-        lsp_semantic_find_field_node(view->ast, token_index);
+    u32 field_node_index = lsp_semantic_find_field_node(view->ast, token_index);
     if (lsp_sema_node_decl(view->sema, field_node_index, &decl_index)) {
         if (lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;
@@ -197,7 +194,7 @@ internal u32 lsp_semantic_symbol_type(const LspSemanticView* view,
 // Return whether one symbol token is the contextual source-test keyword.
 
 internal bool lsp_semantic_is_test_keyword(const LspSemanticView* view,
-                                           u32                token_index)
+                                           u32                    token_index)
 {
     const Lexer* lexer = view->lexer;
     const Token* token = NULL;
@@ -223,10 +220,9 @@ internal bool lsp_semantic_is_test_keyword(const LspSemanticView* view,
 //------------------------------------------------------------------------------
 // Return whether a token kind should emit a semantic token.
 
-internal bool
-lsp_semantic_token_type(const LspSemanticView* view,
-                        u32                    token_index,
-                        u32*                   out_type)
+internal bool lsp_semantic_token_type(const LspSemanticView* view,
+                                      u32                    token_index,
+                                      u32*                   out_type)
 {
     const Token* token = NULL;
     if (!lsp_lexer_token(view->lexer, token_index, &token)) {

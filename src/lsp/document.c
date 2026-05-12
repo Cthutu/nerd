@@ -263,14 +263,10 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
 internal void lsp_document_set_readiness_from_front_end(LspDocument* doc)
 {
     const FrontEndReadiness* readiness = &doc->front_end.readiness;
-    doc->tokens_ready =
-        front_end_product_is_available(readiness->lexer);
-    doc->syntax_ready =
-        front_end_product_is_available(readiness->ast);
-    doc->sema_partial =
-        front_end_product_is_available(readiness->sema);
-    doc->sema_complete =
-        front_end_product_is_complete(readiness->sema);
+    doc->tokens_ready  = front_end_product_is_available(readiness->lexer);
+    doc->syntax_ready  = front_end_product_is_available(readiness->ast);
+    doc->sema_partial  = front_end_product_is_available(readiness->sema);
+    doc->sema_complete = front_end_product_is_complete(readiness->sema);
 }
 
 internal void lsp_document_set_source(LspDocument* doc, string content)
@@ -347,8 +343,7 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     if (!ok) {
         lsp_log("Keeping front-end products for editor features: lexer=%s, "
                 "ast=%s, sema=%s, hir=%s",
-                front_end_product_state_name(
-                    staged->front_end.readiness.lexer),
+                front_end_product_state_name(staged->front_end.readiness.lexer),
                 front_end_product_state_name(staged->front_end.readiness.ast),
                 front_end_product_state_name(staged->front_end.readiness.sema),
                 front_end_product_state_name(staged->front_end.readiness.hir));
@@ -378,11 +373,11 @@ internal bool lsp_analyse_document(LspDocument* doc, string uri)
     }
     doc->front_end =
         doc->program.modules[doc->program.root_module_index].front_end;
-    doc->cst           = staged.cst;
-    doc->analysis_ok   = staged.analysis_ok;
-    doc->source_ready  = staged.source_ready;
+    doc->cst          = staged.cst;
+    doc->analysis_ok  = staged.analysis_ok;
+    doc->source_ready = staged.source_ready;
     lsp_document_set_readiness_from_front_end(doc);
-    doc->cst_ready     = staged.cst_ready;
+    doc->cst_ready = staged.cst_ready;
     return staged.analysis_ok;
 }
 
