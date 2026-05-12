@@ -9,7 +9,12 @@ This folder holds detailed architecture review material.
     blockers.
   - `audits/hir-manual-coverage.md`: manual-to-HIR coverage matrix and
     remaining accepted `<unsupported>` HIR cases.
-- `prototypes/`: prototype notes and design sketches.
+  - `audits/formatter-token-trivia-prototype.md`: historical audit trail for
+    the formatter token/trivia prototype.
 - `measurements/`: profiling, benchmark, and allocation results.
 
 Keep `../ARCHITECTURE_REVIEW.md` as the top-level synthesis.
+
+The initial architecture review is closed. Keep useful audits and measurements
+in place as evidence, but add new architectural agreements as numbered decision
+records instead of creating a fresh prototype workspace.

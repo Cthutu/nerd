@@ -1,11 +1,23 @@
-# Token Trivia Formatter Prototype
+# Formatter Token/Trivia Prototype Audit
 
-Status: first slice implemented
+Status: historical, retained as implementation audit
 
 ## Goal
 
 Prototype a formatter path driven by lexer tokens, explicit trivia tables, and
 syntax context, with sema as optional context only.
+
+## Closeout
+
+The prototype direction was accepted and partially implemented during the
+architecture review. The active formatter now has explicit trivia tables,
+syntax-context helpers, a token/trivia fallback for partially typed code, and
+regression coverage for incomplete blocks, nested delimiters, comments, `on`
+branches, and aggregate literals.
+
+This note is retained as an audit trail rather than an active prototype. Future
+formatter work should update `review/audits/formatter-edge-cases.md` and add
+new regression fixtures instead of adding new files under `review/prototypes/`.
 
 ## Non-Goals
 

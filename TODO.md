@@ -247,7 +247,7 @@ Working rules for this review:
 - [x] Commit: update `ARCHITECTURE_REVIEW.md`
   - Summarize final pipeline, boundaries, and remaining known risks.
 
-- [ ] Commit: remove obsolete review scaffolding
+- [x] Commit: remove obsolete review scaffolding
   - Keep useful audits and measurements.
   - Delete prototypes or notes that no longer describe the chosen direction.
 
