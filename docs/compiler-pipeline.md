@@ -202,6 +202,13 @@ not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
 surface small while still allowing a future measurement-backed switch to LLVM
 CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
 
+LLVM generation now has an explicit layout context for the current target
+contract. The initial context still describes the existing 64-bit assumptions:
+opaque `ptr`, pointer-sized integers as `i64`, string and slice values as
+`{ ptr, i64 }`, dynamic-array headers as `{ ptr, i64, i64 }`, and enum tags as
+`i64`. The context is intentionally conservative: it centralises the choices
+the backend already made before broadening target support.
+
 Use `--timing` with `nerd build` or `nerd run` to print phase timings. Back-end
 timings use wall-clock time so the external clang invocation is included in the
 `link executable` phase.

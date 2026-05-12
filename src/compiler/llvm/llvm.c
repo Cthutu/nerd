@@ -11,6 +11,65 @@
 
 //------------------------------------------------------------------------------
 
+typedef struct {
+    u32  pointer_bits;
+    u32  size_bits;
+    u32  enum_tag_bits;
+    u32  aggregate_payload_align_bits;
+    cstr pointer_type;
+    cstr size_type;
+    cstr enum_tag_type;
+} LlvmLayout;
+
+internal const LlvmLayout* llvm_default_layout(void)
+{
+    static const LlvmLayout layout = {
+        .pointer_bits                 = 64,
+        .size_bits                    = 64,
+        .enum_tag_bits                = 64,
+        .aggregate_payload_align_bits = 64,
+        .pointer_type                 = "ptr",
+        .size_type                    = "i64",
+        .enum_tag_type                = "i64",
+    };
+    return &layout;
+}
+
+internal string llvm_layout_string_type(const LlvmLayout* layout)
+{
+    (void)layout;
+    return s("{ ptr, i64 }");
+}
+
+internal string llvm_layout_dynamic_array_header_type(const LlvmLayout* layout)
+{
+    (void)layout;
+    return s("{ ptr, i64, i64 }");
+}
+
+internal u64
+llvm_layout_dynamic_array_header_bytes(const LlvmLayout* layout)
+{
+    return (u64)((layout->pointer_bits + layout->size_bits * 2) / 8);
+}
+
+internal const LlvmLayout*
+llvm_layout_or_default(const LlvmLayout* layout)
+{
+    return layout != NULL ? layout : llvm_default_layout();
+}
+
+internal u64 llvm_dynamic_array_header_bytes(const LlvmLayout* layout)
+{
+    return llvm_layout_dynamic_array_header_bytes(
+        llvm_layout_or_default(layout));
+}
+
+internal string llvm_string_type(const LlvmLayout* layout)
+{
+    return llvm_layout_string_type(llvm_layout_or_default(layout));
+}
+
 internal bool llvm_type_is_void(const Sema* sema, u32 type_index)
 {
     return sema != NULL && type_index < array_count(sema->types) &&
@@ -196,9 +255,10 @@ internal u32 llvm_integer_bits(const Sema* sema, u32 type_index)
         return 32;
     case STK_I64:
     case STK_U64:
+        return 64;
     case STK_Isize:
     case STK_Usize:
-        return 64;
+        return llvm_default_layout()->size_bits;
     default:
         return 0;
     }
@@ -231,6 +291,7 @@ internal u32 llvm_align_bits(u32 bits, u32 align_bits)
 
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
+    const LlvmLayout* layout = llvm_default_layout();
     u32 int_bits = llvm_integer_bits(sema, type_index);
     if (int_bits > 0) {
         return int_bits;
@@ -242,11 +303,11 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     if (llvm_type_kind(sema, type_index) == STK_Pointer ||
         llvm_type_kind(sema, type_index) == STK_Function ||
         llvm_type_kind(sema, type_index) == STK_DynamicArray) {
-        return 64;
+        return layout->pointer_bits;
     }
     if (llvm_type_kind(sema, type_index) == STK_String ||
         llvm_type_kind(sema, type_index) == STK_Slice) {
-        return 128;
+        return layout->pointer_bits + layout->size_bits;
     }
     if (llvm_type_kind(sema, type_index) == STK_Tuple ||
         llvm_type_kind(sema, type_index) == STK_Plex) {
@@ -267,7 +328,8 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
         return llvm_union_storage_bits(sema, type_index);
     }
     if (llvm_type_kind(sema, type_index) == STK_Enum) {
-        return 64 + llvm_enum_storage_payload_bits(sema, type_index);
+        return layout->enum_tag_bits +
+               llvm_enum_storage_payload_bits(sema, type_index);
     }
     return 0;
 }
@@ -365,7 +427,7 @@ internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
 
 internal string llvm_dynamic_array_header_type(void)
 {
-    return s("{ ptr, i64, i64 }");
+    return llvm_layout_dynamic_array_header_type(llvm_default_layout());
 }
 
 internal bool llvm_type_is_record(const Sema* sema, u32 type_index)
@@ -498,15 +560,17 @@ internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type)
             bits = payload_bits;
         }
     }
-    return llvm_align_bits(bits, 64);
+    return llvm_align_bits(bits,
+                           llvm_default_layout()->aggregate_payload_align_bits);
 }
 
 internal void
 llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
 {
+    const LlvmLayout* layout = llvm_default_layout();
     if (sema == NULL || type_index == sema_no_type() ||
         type_index >= array_count(sema->types)) {
-        sb_append_cstr(sb, "ptr");
+        sb_append_cstr(sb, layout->pointer_type);
         return;
     }
 
@@ -537,7 +601,7 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
         break;
     case STK_Isize:
     case STK_Usize:
-        sb_append_cstr(sb, "i64");
+        sb_append_cstr(sb, layout->size_type);
         break;
     case STK_F32:
         sb_append_cstr(sb, "float");
@@ -564,19 +628,21 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
         sb_append_cstr(sb, " }");
         break;
     case STK_String:
-        sb_append_cstr(sb, "{ ptr, i64 }");
+        sb_append_string(sb, llvm_layout_string_type(layout));
         break;
     case STK_Function:
     case STK_Pointer:
-        sb_append_cstr(sb, "ptr");
+        sb_append_cstr(sb, layout->pointer_type);
         break;
     case STK_Slice:
-        sb_append_cstr(sb, "{ ptr, i64 }");
+        sb_append_string(sb, llvm_layout_string_type(layout));
         break;
     case STK_Enum:
         {
             u32 payload_bits = llvm_enum_storage_payload_bits(sema, type_index);
-            sb_append_cstr(sb, "{ i64, ");
+            sb_append_cstr(sb, "{ ");
+            sb_append_cstr(sb, layout->enum_tag_type);
+            sb_append_cstr(sb, ", ");
             sb_format(sb, "i%u", payload_bits);
             sb_append_cstr(sb, " }");
             break;
@@ -587,7 +653,7 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
     case STK_DynamicArray:
     case STK_Module:
     default:
-        sb_append_cstr(sb, "ptr");
+        sb_append_cstr(sb, layout->pointer_type);
         break;
     }
 }
@@ -1318,18 +1384,19 @@ typedef struct {
     const Lexer*   lexer;
     const Sema*    sema;
     Arena*         arena;
-    u32            next_temp;
-    u32            next_label;
-    bool           block_terminated;
-    bool           emitted_break;
-    string         break_label;
-    string         continue_label;
-    string         break_value_ptr;
-    u32            break_value_type;
-    u32            break_defer_count;
-    u32            continue_defer_count;
-    u32            global_init_value_index;
-    bool           discard_expr_value;
+    const LlvmLayout* layout;
+    u32               next_temp;
+    u32               next_label;
+    bool              block_terminated;
+    bool              emitted_break;
+    string            break_label;
+    string            continue_label;
+    string            break_value_ptr;
+    u32               break_value_type;
+    u32               break_defer_count;
+    u32               continue_defer_count;
+    u32               global_init_value_index;
+    bool              discard_expr_value;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot) slots;
     Array(u32) assigned_locals;
@@ -1410,10 +1477,15 @@ internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
 internal string llvm_emit_string_value_pointer(LlvmFunctionContext* ctx,
                                                string               value)
 {
+    string string_type = llvm_string_type(ctx->layout);
     string ptr = llvm_temp(ctx);
-    sb_format(ctx->sb, "  " STRINGP " = alloca { ptr, i64 }\n", STRINGV(ptr));
     sb_format(ctx->sb,
-              "  store { ptr, i64 } " STRINGP ", ptr " STRINGP "\n",
+              "  " STRINGP " = alloca " STRINGP "\n",
+              STRINGV(ptr),
+              STRINGV(string_type));
+    sb_format(ctx->sb,
+              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(string_type),
               STRINGV(value),
               STRINGV(ptr));
     return ptr;
@@ -4320,9 +4392,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
 
                 string header = llvm_temp(ctx);
+                u64 header_bytes =
+                    llvm_dynamic_array_header_bytes(ctx->layout);
                 sb_format(ctx->sb,
-                          "  " STRINGP " = call ptr @malloc(i64 24)\n",
-                          STRINGV(header));
+                          "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+                          STRINGV(header),
+                          (unsigned long long)header_bytes);
                 string data_ptr_ptr =
                     llvm_dynamic_array_header_field_ptr(ctx, header, 0);
                 string count_ptr =
@@ -7921,9 +7996,11 @@ internal bool llvm_dynamic_array_ensure_header(LlvmFunctionContext* ctx,
 
     sb_format(ctx->sb, STRINGP ":\n", STRINGV(alloc_label));
     string allocated = llvm_temp(ctx);
+    u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
     sb_format(ctx->sb,
-              "  " STRINGP " = call ptr @malloc(i64 24)\n",
-              STRINGV(allocated));
+              "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+              STRINGV(allocated),
+              (unsigned long long)header_bytes);
     string data_ptr  = llvm_dynamic_array_header_field_ptr(ctx, allocated, 0);
     string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, allocated, 1);
     string capacity_ptr =
@@ -9477,6 +9554,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
         .lexer                   = lexer,
         .sema                    = sema,
         .arena                   = &temp,
+        .layout                  = llvm_default_layout(),
         .next_temp               = 0,
         .global_init_value_index = U32_MAX,
     };
@@ -9550,6 +9628,7 @@ internal void llvm_render_function(StringBuilder*     sb,
         .lexer                   = lexer,
         .sema                    = sema,
         .arena                   = &temp,
+        .layout                  = llvm_default_layout(),
         .next_temp               = 0,
         .global_init_value_index = U32_MAX,
     };

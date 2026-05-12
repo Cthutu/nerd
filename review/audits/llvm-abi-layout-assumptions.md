@@ -156,3 +156,18 @@ answer yet.
 3. Add ABI snapshot and run tests before changing behaviour.
 4. Generate runtime helper declarations from a single table.
 5. Document the supported target contract and unsupported FFI aggregate cases.
+
+## Follow-Up: Layout Context
+
+The first implementation slice introduced `LlvmLayout` in the LLVM generator
+and threaded it into function emission. It currently preserves the existing
+64-bit target contract while centralising:
+
+- pointer and pointer-sized integer bit widths
+- pointer, size, and enum-tag type spelling
+- string/slice aggregate spelling
+- dynamic-array header spelling and byte size
+- enum payload alignment width
+
+The remaining layout work is to move memory-operation alignment and any
+runtime-helper declaration spelling through the same source of truth.

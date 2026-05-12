@@ -205,7 +205,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
   - Strings, slices, dynamic arrays, tuples, plexes, enums, varargs, pointers,
     integer widths, alignment, and aggregate passing/returning.
 
-- [ ] Commit: introduce a backend layout context
+- [x] Commit: introduce a backend layout context
   - Centralise target type spelling, sizes, alignments, and ABI lowering
     choices used by LLVM generation.
 
