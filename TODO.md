@@ -106,7 +106,7 @@ implementation milestones that build on the HIR/LLVM/LSP/formatter work.
 
 ### Milestone 1: Split Semantic Facts From Semantic Success
 
-- [ ] Commit: audit `Sema` products and consumers
+- [x] Commit: audit `Sema` products and consumers
   - Classify declaration collection, scope construction, binding/reference
     resolution, type facts, dependency ordering, diagnostics, and lowering-only
     facts.
