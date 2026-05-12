@@ -44,6 +44,77 @@ Active decision records:
   retired IR/C backend migration record.
 - `review/decisions/0005-llvm-sidecar-from-hir.md`: LLVM generation from HIR
   and the current executable backend contract.
+- `review/decisions/0006-memory-ownership-strategy.md`: current allocation
+  ownership policy.
+
+## Final Closeout
+
+The architecture review has converged on this current build pipeline:
+
+```text
+source -> lexer -> AST parser -> sema -> HIR -> LLVM IR -> clang + nrt.o
+```
+
+HIR is the durable checked middle layer. It is semantically typed,
+name-resolved, target-agnostic, and rendered as stable text for tests. LLVM IR
+is now the executable backend input and the backend comparison target; the
+legacy custom IR and C generator are no longer part of the build path.
+
+The chosen boundary is:
+
+- lexer owns tokens, comments in format mode, source mapping, and interned
+  symbols
+- AST owns compact syntax for the compiler
+- CST and formatter trivia own source-preserving tooling structure
+- sema owns declaration collection, name resolution, type checking,
+  diagnostics, and semantic side tables
+- HIR owns lowered checked program structure: nameless entities, explicit
+  bindings, modules, imports, exports, globals, init work, functions, locals,
+  control flow, aggregates, strings, dynamic arrays, and runtime operations
+- LLVM lowering owns target text, generated implementation names, Nerd-visible
+  `$` aliases/wrappers, local CFG construction, phis, runtime glue, and link
+  input assembly
+- LSP consumes named source/token/syntax/semantic views and must tolerate
+  partial products instead of assuming a successful full build
+
+Settled choices:
+
+- Nerd source bindings do not define entity identity. HIR entities use stable
+  generated ids, and bindings point at them.
+- LLVM keeps Nerd-visible names as `$` aliases or wrappers while generated
+  implementation symbols use internal names such as `@fn.N`.
+- `for item in collection` binds `item` as a pointer to the element. The old
+  `for ^item in collection` spelling is gone.
+- Formatter architecture is syntax/trivia based and does not require sema.
+- Memory ownership uses arenas for phase/request lifetime, dynamic arrays for
+  growing tables, and direct heap allocation only for escaped ownership or
+  dynamic-array/map backing storage.
+
+Remaining known risks:
+
+- `sema.c` remains a large phase with declaration collection, type checking,
+  dependency analysis, and many side-table responsibilities in one unit.
+- AST and CST remain separate syntax products, so syntax changes still need
+  discipline to avoid parser/tooling drift.
+- LLVM lowering is textual and clang-driven. This is the current install
+  contract, but bitcode or direct LLVM CLI tools remain possible future
+  performance experiments.
+- Runtime and ABI choices are deliberately narrow. Aggregate ABI, varargs,
+  debug metadata, target triples, and platform-specific runtime details need
+  careful expansion as the language grows.
+- LSP partial semantic facts are safer than before, but declaration facts,
+  binding facts, and checked type facts are still not fully separated products.
+- The formatter has a token/trivia fallback and shared syntax context, but the
+  recursive CST path still contains many construct-specific layout rules.
+
+Recommended next review work:
+
+- split guaranteed declaration/binding indexing from full semantic success
+- derive or unify AST/CST parsing behind one tolerant syntax source of truth
+- keep reducing formatter layout cases into trivia/syntax-region rules
+- measure clang/textual LLVM startup cost before changing the backend toolchain
+- add target/layout records if aggregate ABI or cross-target support becomes a
+  priority
 
 ## Initial Agreements
 

@@ -241,10 +241,10 @@ Working rules for this review:
 
 ### Milestone 8: Final Architecture Review Closeout
 
-- [ ] Commit: update decision records
+- [x] Commit: update decision records
   - Mark settled choices as accepted, rejected, or superseded.
 
-- [ ] Commit: update `ARCHITECTURE_REVIEW.md`
+- [x] Commit: update `ARCHITECTURE_REVIEW.md`
   - Summarize final pipeline, boundaries, and remaining known risks.
 
 - [ ] Commit: remove obsolete review scaffolding
