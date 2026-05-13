@@ -47,7 +47,7 @@ main :: fn () {
 ¬
 {
     "code": "0304",
-    "message": "Type mismatch: expected `all plex fields`, found `different field count`",
+    "message": "Plex literal is missing required field",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
         "line": 9,
@@ -59,14 +59,14 @@ main :: fn () {
             "line": 9,
             "column": 16,
             "length": 1,
-            "message": "This expression has type `different field count`"
+            "message": "This literal does not initialise every required field"
         }
     ],
     "notes": [
         "Missing field: `y`"
     ],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Add all fields required by the plex type, or write `...` in the literal to zero-initialise omitted fields."
     ]
 }
 ¬

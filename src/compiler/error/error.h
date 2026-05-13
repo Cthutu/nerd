@@ -199,6 +199,10 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
                                         string     actual_type,
                                         cstr       note_format,
                                         ...);
+bool error_0304_missing_plex_fields(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     missing_fields,
+                                    u32        missing_field_count);
 bool error_0305_invalid_assignment_target(NerdSource source,
                                           ErrorSpan  span,
                                           string     symbol);

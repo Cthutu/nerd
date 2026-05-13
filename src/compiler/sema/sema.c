@@ -11680,14 +11680,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
 
                 if (missing_count > 0) {
-                    return error_0304_type_mismatch_with_note(
+                    return error_0304_missing_plex_fields(
                         lexer->source,
                         sema_node_span(lexer, node),
-                        s("all plex fields"),
-                        s("different field count"),
-                        "Missing field%s: " STRINGP,
-                        missing_count == 1 ? "" : "s",
-                        STRINGV(sb_to_string(&missing)));
+                        sb_to_string(&missing),
+                        missing_count);
                 }
 
                 return error_0304_type_mismatch(lexer->source,

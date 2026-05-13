@@ -99,7 +99,7 @@ main :: fn () -> i32 {
                     "severity": 1,
                     "code": "0304",
                     "source": "nerd",
-                    "message": "Type mismatch: expected `all plex fields`, found `different field count`",
+                    "message": "Plex literal is missing required field",
                     "relatedInformation": [
                         {
                             "location": {
@@ -131,7 +131,7 @@ main :: fn () -> i32 {
                                     }
                                 }
                             },
-                            "message": "help: Change the expression or annotation so both sides use the same type."
+                            "message": "help: Add all fields required by the plex type, or write `...` in the literal to zero-initialise omitted fields."
                         }
                     ]
                 }

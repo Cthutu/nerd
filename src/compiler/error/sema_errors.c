@@ -157,6 +157,32 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
     return false;
 }
 
+bool error_0304_missing_plex_fields(NerdSource source,
+                                    ErrorSpan  span,
+                                    string     missing_fields,
+                                    u32        missing_field_count)
+{
+    ErrorInfo error = error_init(304,
+                                 source,
+                                 span,
+                                 "Plex literal is missing required field%s",
+                                 missing_field_count == 1 ? "" : "s");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This literal does not initialise every required "
+                        "field");
+    error_add_note(&error,
+                   "Missing field%s: " STRINGP,
+                   missing_field_count == 1 ? "" : "s",
+                   STRINGV(missing_fields));
+    error_add_help(&error,
+                   "Add all fields required by the plex type, or write `...` "
+                   "in the literal to zero-initialise omitted fields.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Report assignment to a non-variable symbol.
 
