@@ -1943,6 +1943,31 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                         array_free(items);
                         return false;
                     }
+                    if (array_count(items) == 0 &&
+                        (cst_current_token(state).kind == TK_Range ||
+                         cst_current_token(state).kind == TK_RangeInclusive)) {
+                        TokenKind range_kind  = cst_current_token(state).kind;
+                        u32       range_token = state->token_index;
+                        cst_advance(state);
+                        u32 end = 0;
+                        if (!cst_parse_expr_bp(state, 0, &end)) {
+                            array_free(items);
+                            return false;
+                        }
+                        if (!cst_emit_node(state,
+                                           (CstNode){
+                                               .kind = range_kind == TK_Range
+                                                           ? CK_RangeExclusive
+                                                           : CK_RangeInclusive,
+                                               .token_index = range_token,
+                                               .a           = item,
+                                               .b           = end,
+                                           },
+                                           &item)) {
+                            array_free(items);
+                            return false;
+                        }
+                    }
                     array_push(items, item);
                     if (cst_current_token(state).kind == TK_Comma) {
                         cst_advance(state);

@@ -651,6 +651,17 @@ internal bool   format_emit_sorted_use_run(StringBuilder* sb,
                                            u32 indent_level);
 internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index);
+internal bool format_node_has_inner_comment(const Cst*   cst,
+                                            const Lexer* lexer,
+                                            u32          node_index);
+internal bool format_plex_literal_fits_single_line(const Cst*   cst,
+                                                   const Lexer* lexer,
+                                                   u32          node_index,
+                                                   u32          indent_level);
+internal void format_emit_plex_literal_single_line(StringBuilder* sb,
+                                                   const Cst*     cst,
+                                                   const Lexer*   lexer,
+                                                   u32            node_index);
 internal void
 format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string);
 internal bool format_collect_plain_string_concat(StringBuilder* sb,
@@ -1276,7 +1287,7 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_RangeExclusive:
     case CK_RangeInclusive:
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(sb, node->kind == CK_RangeExclusive ? ".." : "..=");
+        sb_append_cstr(sb, node->kind == CK_RangeExclusive ? " .. " : " ..= ");
         format_emit_expr(sb, cst, lexer, node->b, 0);
         break;
     case CK_On:
@@ -1611,7 +1622,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
 internal void format_emit_variable_payload(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
-                                           u32            node_index);
+                                           u32            node_index,
+                                           u32            indent_level);
 internal void format_emit_fn_signature(StringBuilder* sb,
                                        const Cst*     cst,
                                        const Lexer*   lexer,
@@ -2389,6 +2401,98 @@ internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index)
 {
     return format_statement_is_single_line(cst, lexer, node_index);
+}
+
+internal bool format_node_has_inner_comment(const Cst*   cst,
+                                            const Lexer* lexer,
+                                            u32          node_index)
+{
+    const CstNode* node   = &cst->nodes[node_index];
+    u32   end_token_index = format_node_end_token_index(cst, lexer, node_index);
+    usize start_offset    = lexer->tokens[node->token_index].offset;
+    usize end_offset =
+        lex_token_end_offset(lexer, &lexer->tokens[end_token_index]);
+    return format_has_comment_between_offsets(lexer, start_offset, end_offset);
+}
+
+internal bool format_plex_literal_fits_single_line(const Cst*   cst,
+                                                   const Lexer* lexer,
+                                                   u32          node_index,
+                                                   u32          indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if ((node->kind != CK_Plex && node->kind != CK_PlexUpdate) ||
+        format_node_has_inner_comment(cst, lexer, node_index)) {
+        return false;
+    }
+
+    const CstPlexLiteralInfo* plex  = &cst->plex_literals[node->a];
+    usize                     width = (usize)indent_level * 4;
+    if (plex->target_node_index != U32_MAX) {
+        width += format_rendered_expr_width(
+            cst, lexer, plex->target_node_index, indent_level);
+    }
+    if (node->kind == CK_PlexUpdate) {
+        width += 5;
+    }
+    width += (plex->target_node_index != U32_MAX || node->kind == CK_PlexUpdate)
+                 ? 3
+                 : 2;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const CstPlexLiteralField* field =
+            &cst->plex_literal_fields[plex->first_field + i];
+        if (i > 0) {
+            width += 2;
+        }
+        width += lex_symbol(lexer, field->symbol_handle).count;
+        if (!format_plex_field_is_shorthand(cst, field)) {
+            width += 2 + format_rendered_expr_width(
+                             cst, lexer, field->value_node_index, indent_level);
+        }
+    }
+    width += 2;
+
+    return width <= 80;
+}
+
+internal void format_emit_plex_literal_single_line(StringBuilder* sb,
+                                                   const Cst*     cst,
+                                                   const Lexer*   lexer,
+                                                   u32            node_index)
+{
+    const CstNode*            node = &cst->nodes[node_index];
+    const CstPlexLiteralInfo* plex = &cst->plex_literals[node->a];
+
+    if (plex->target_node_index != U32_MAX) {
+        format_emit_expr(sb, cst, lexer, plex->target_node_index, 0);
+    }
+    if (node->kind == CK_PlexUpdate) {
+        sb_append_cstr(sb, " with");
+    }
+    sb_append_cstr(
+        sb,
+        (plex->target_node_index != U32_MAX || node->kind == CK_PlexUpdate)
+            ? " { "
+            : "{ ");
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const CstPlexLiteralField* field =
+            &cst->plex_literal_fields[plex->first_field + i];
+        sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
+        if (!format_plex_field_is_shorthand(cst, field)) {
+            sb_append_cstr(sb, ": ");
+            format_emit_expr(sb, cst, lexer, field->value_node_index, 0);
+        }
+    }
+    if (plex->flags & CPLF_DefaultMissing) {
+        if (plex->field_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_cstr(sb, " }");
 }
 
 internal string format_render_expr_to_string(Arena*       arena,
@@ -3357,6 +3461,10 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         string         value   = {0};
 
         if (payload->kind == CK_AnnotatedValue) {
+            if (cst->nodes[payload->a].kind == CK_TypePlex ||
+                cst->nodes[payload->a].kind == CK_TypeEnum) {
+                return false;
+            }
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
@@ -3397,6 +3505,10 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         const CstNode* value_payload = payload;
 
         if (payload->kind == CK_AnnotatedValue) {
+            if (cst->nodes[payload->a].kind == CK_TypePlex ||
+                cst->nodes[payload->a].kind == CK_TypeEnum) {
+                return false;
+            }
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
@@ -5073,7 +5185,7 @@ internal void format_emit_for_header_item(StringBuilder* sb,
             cst->nodes[item->b].kind == CK_ZeroInit ||
             cst->nodes[item->b].kind == CK_Undefined) {
             sb_append_cstr(sb, ": ");
-            format_emit_variable_payload(sb, cst, lexer, item->b);
+            format_emit_variable_payload(sb, cst, lexer, item->b, 0);
         } else {
             sb_append_cstr(sb, " := ");
             format_emit_expr(sb, cst, lexer, item->b, 0);
@@ -5329,7 +5441,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             cst->nodes[stmt->b].kind == CK_ZeroInit ||
             cst->nodes[stmt->b].kind == CK_Undefined) {
             sb_append_cstr(sb, ": ");
-            format_emit_variable_payload(sb, cst, lexer, stmt->b);
+            format_emit_variable_payload(sb, cst, lexer, stmt->b, indent_level);
         } else {
             sb_append_cstr(sb, " := ");
             format_emit_expr_with_indent(
@@ -5373,7 +5485,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
         format_emit_pattern(sb, cst, lexer, stmt->a, false);
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue) {
             sb_append_cstr(sb, ": ");
-            format_emit_variable_payload(sb, cst, lexer, stmt->b);
+            format_emit_variable_payload(sb, cst, lexer, stmt->b, indent_level);
         } else {
             sb_append_cstr(sb, " := ");
             format_emit_expr_with_indent(
@@ -5632,14 +5744,40 @@ internal void format_emit_value(StringBuilder* sb,
 internal void format_emit_variable_payload(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
-                                           u32            node_index)
+                                           u32            node_index,
+                                           u32            indent_level)
 {
     const CstNode* node = &cst->nodes[node_index];
 
     if (node->kind == CK_AnnotatedValue) {
+        if (cst->nodes[node->a].kind == CK_TypePlex) {
+            format_emit_type_plex_multiline(
+                sb, cst, lexer, node->a, indent_level);
+            sb_append_char(sb, '\n');
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "= ");
+            if (format_plex_literal_fits_single_line(
+                    cst, lexer, node->b, indent_level)) {
+                format_emit_plex_literal_single_line(sb, cst, lexer, node->b);
+            } else {
+                format_emit_value_with_indent(
+                    sb, cst, lexer, node->b, indent_level);
+            }
+            return;
+        }
+        if (cst->nodes[node->a].kind == CK_TypeEnum) {
+            format_emit_type_enum_multiline(
+                sb, cst, lexer, node->a, indent_level);
+            sb_append_char(sb, '\n');
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "= ");
+            format_emit_value_with_indent(
+                sb, cst, lexer, node->b, indent_level);
+            return;
+        }
         format_emit_expr(sb, cst, lexer, node->a, 0);
         sb_append_cstr(sb, " = ");
-        format_emit_value(sb, cst, lexer, node->b);
+        format_emit_value_with_indent(sb, cst, lexer, node->b, indent_level);
         return;
     }
 
@@ -5900,7 +6038,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 cst.nodes[node->b].kind == CK_ZeroInit ||
                 cst.nodes[node->b].kind == CK_Undefined) {
                 sb_append_cstr(sb, ": ");
-                format_emit_variable_payload(sb, &cst, &lexer, node->b);
+                format_emit_variable_payload(sb, &cst, &lexer, node->b, 0);
             } else {
                 sb_append_cstr(sb, " := ");
                 format_emit_expr(sb, &cst, &lexer, node->b, 0);
