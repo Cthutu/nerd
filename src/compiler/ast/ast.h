@@ -99,6 +99,7 @@
 // | AK_Use             | Ast index of module expression | 0                  |
 // | AK_Impl            | Ast impl-info index | 0                             |
 // | AK_TopOn           | Ast top-on info index | 0                           |
+// | AK_Pragma          | Ast pragma-info index | 0                          |
 //
 // clang-format on
 
@@ -187,6 +188,7 @@ typedef enum {
     AK_Use,
     AK_Impl,
     AK_TopOn,
+    AK_Pragma,
 } AstKind;
 
 typedef enum : u32 {
@@ -386,6 +388,26 @@ typedef struct {
     bool is_negated;
 } AstTopOnInfo;
 
+typedef enum : u32 {
+    APPK_Integer,
+    APPK_Float,
+    APPK_String,
+    APPK_Bool,
+} AstPragmaParamKind;
+
+typedef struct {
+    AstPragmaParamKind kind;
+    u32                token_index;
+    u32                value_index;
+    bool               bool_value;
+} AstPragmaParam;
+
+typedef struct {
+    u32 symbol_handle;
+    u32 first_param;
+    u32 param_count;
+} AstPragmaInfo;
+
 typedef struct {
     u32 target_type_node_index;
     u32 body_node_index;
@@ -442,6 +464,8 @@ typedef struct {
     Array(AstOnBranch) on_branches;
     Array(AstOnInfo) ons;
     Array(AstTopOnInfo) top_ons;
+    Array(AstPragmaParam) pragma_params;
+    Array(AstPragmaInfo) pragmas;
     Array(AstImplInfo) impls;
     Array(u32) for_items;
     Array(AstForInfo) fors;

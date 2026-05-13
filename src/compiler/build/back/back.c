@@ -205,7 +205,17 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
                                           cstr combined_llvm_path,
                                           cstr runtime_object_path)
 {
-    string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
+    string opt_flags        = artifacts->release ? s("-O2") : s("-g -O0");
+    bool   windows_windowed = false;
+#if OS_WINDOWS
+    windows_windowed = program->windowed;
+#endif
+    string subsystem_flags = s("");
+#if OS_WINDOWS
+    if (windows_windowed) {
+        subsystem_flags = s(" -Wl,/SUBSYSTEM:WINDOWS");
+    }
+#endif
     StringBuilder link_flags = {0};
     sb_init(&link_flags, arena);
     back_end_append_hir_extern_link_flags(&link_flags, program);
@@ -217,6 +227,7 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
               artifacts->binary_path,
               combined_llvm_path,
               runtime_object_path);
+    sb_append_string(&command_builder, subsystem_flags);
     sb_append_string(&command_builder, sb_to_string(&link_flags));
     string      command = sb_to_string(&command_builder);
     ShellResult result  = shell_capture(back_end_cstr(arena, command), arena);
@@ -289,8 +300,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         &program->modules[program->root_module_index].front_end;
     bool root_main_returns_void =
         back_end_llvm_runtime_root_main_returns_void(root);
-    string runtime_epilogue =
-        back_end_llvm_runtime_epilogue(root_main_returns_void);
+    string runtime_epilogue = back_end_llvm_runtime_epilogue(
+        root_main_returns_void, program->windowed && OS_WINDOWS);
     string init_ll =
         back_end_llvm_runtime_render_init(&arena, modules.init_module_indices);
     memory_before        = compiler_memory_profile_begin();

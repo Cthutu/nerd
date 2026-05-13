@@ -77,6 +77,7 @@
 // | CK_Use             | Module node index     | 0                     |
 // | CK_Impl            | Impl-info index       | 0                     |
 // | CK_TopOn           | Top-on info index     | 0                     |
+// | CK_Pragma          | Pragma-info index     | 0                     |
 // | CK_Test            | Name string node      | Body block node       |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
@@ -165,6 +166,7 @@ typedef enum {
     CK_Use,
     CK_Impl,
     CK_TopOn,
+    CK_Pragma,
     CK_Test,
     CK_Statement,
     CK_Return,
@@ -385,6 +387,26 @@ typedef struct {
     bool is_negated;
 } CstTopOnInfo;
 
+typedef enum : u32 {
+    CPPK_Integer,
+    CPPK_Float,
+    CPPK_String,
+    CPPK_Bool,
+} CstPragmaParamKind;
+
+typedef struct {
+    CstPragmaParamKind kind;
+    u32                token_index;
+    u32                value_index;
+    bool               bool_value;
+} CstPragmaParam;
+
+typedef struct {
+    u32 symbol_handle;
+    u32 first_param;
+    u32 param_count;
+} CstPragmaInfo;
+
 typedef struct {
     u32 target_type_node_index;
     u32 body_node_index;
@@ -445,6 +467,8 @@ typedef struct {
     Array(CstOnBranch) on_branches;
     Array(CstOnInfo) ons;
     Array(CstTopOnInfo) top_ons;
+    Array(CstPragmaParam) pragma_params;
+    Array(CstPragmaInfo) pragmas;
     Array(CstImplInfo) impls;
     Array(u32) for_items;
     Array(CstForInfo) fors;

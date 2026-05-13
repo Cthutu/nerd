@@ -65,8 +65,31 @@ bool back_end_llvm_runtime_root_main_returns_void(const FrontEndState* root)
     return false;
 }
 
-string back_end_llvm_runtime_epilogue(bool root_main_returns_void)
+string back_end_llvm_runtime_epilogue(bool root_main_returns_void,
+                                      bool windowed)
 {
+    if (windowed) {
+        return root_main_returns_void
+                   ? s("declare void @init()\n"
+                       "declare void @$main()\n"
+                       "\n"
+                       "define i32 @WinMain(ptr %hInstance, ptr "
+                       "%hPrevInstance, ptr %lpCmdLine, i32 %nCmdShow) {\n"
+                       "  call void @init()\n"
+                       "  call void @$main()\n"
+                       "  ret i32 0\n"
+                       "}\n")
+                   : s("declare void @init()\n"
+                       "declare i32 @$main()\n"
+                       "\n"
+                       "define i32 @WinMain(ptr %hInstance, ptr "
+                       "%hPrevInstance, ptr %lpCmdLine, i32 %nCmdShow) {\n"
+                       "  call void @init()\n"
+                       "  %result = call i32 @$main()\n"
+                       "  ret i32 %result\n"
+                       "}\n");
+    }
+
     return root_main_returns_void ? s("declare void @init()\n"
                                       "declare void @$main()\n"
                                       "\n"

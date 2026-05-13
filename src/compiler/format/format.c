@@ -34,6 +34,10 @@ internal void  format_emit_top_on(StringBuilder* sb,
                                   const Lexer*   lexer,
                                   u32            top_on_index,
                                   u32            indent_level);
+internal void  format_emit_pragma(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            pragma_index);
 internal void  format_emit_impl(StringBuilder* sb,
                                 const Cst*     cst,
                                 const Lexer*   lexer,
@@ -609,6 +613,10 @@ internal void   format_emit_ffi_block(StringBuilder* sb,
                                       const Lexer*   lexer,
                                       u32            ffi_block_info_index,
                                       u32            indent_level);
+internal void   format_emit_pragma(StringBuilder* sb,
+                                   const Cst*     cst,
+                                   const Lexer*   lexer,
+                                   u32            pragma_index);
 internal void   format_emit_mod_ref(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
@@ -4337,6 +4345,44 @@ internal void format_emit_top_on(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal void format_emit_pragma(StringBuilder* sb,
+                                 const Cst*     cst,
+                                 const Lexer*   lexer,
+                                 u32            pragma_index)
+{
+    const CstPragmaInfo* pragma = &cst->pragmas[pragma_index];
+    sb_append_cstr(sb, "pragma ");
+    sb_append_string(sb, lex_symbol(lexer, pragma->symbol_handle));
+    if (pragma->param_count == 0) {
+        return;
+    }
+
+    sb_append_char(sb, '(');
+    for (u32 i = 0; i < pragma->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const CstPragmaParam* param =
+            &cst->pragma_params[pragma->first_param + i];
+        switch (param->kind) {
+        case CPPK_Integer:
+            format_emit_integer_literal(sb, lexer, param->token_index);
+            break;
+        case CPPK_Float:
+            format_emit_float_literal(sb, lexer, param->token_index);
+            break;
+        case CPPK_String:
+            format_emit_string_literal(
+                sb, lexer->strings[param->value_index], false);
+            break;
+        case CPPK_Bool:
+            sb_append_cstr(sb, param->bool_value ? "yes" : "no");
+            break;
+        }
+    }
+    sb_append_char(sb, ')');
+}
+
 internal void format_emit_impl(StringBuilder* sb,
                                const Cst*     cst,
                                const Lexer*   lexer,
@@ -5583,6 +5629,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_Pragma) {
+        format_emit_pragma(sb, cst, lexer, stmt->a);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_Impl) {
         format_emit_impl(sb, cst, lexer, stmt->a, indent_level);
         sb_append_char(sb, '\n');
@@ -5956,6 +6008,16 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
+            first_binding          = false;
+            previous_binding_index = node_index;
+            continue;
+        }
+
+        if (node->kind == CK_Pragma) {
+            format_emit_pragma(sb, &cst, &lexer, node->a);
             sb_append_char(sb, '\n');
             format_emit_trailing_comment_for_node(
                 sb, &cst, &lexer, node_index, &comment_index);

@@ -10251,6 +10251,11 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
+        if (stmt->kind == AK_Pragma) {
+            sema->node_type_indices[i] = sema_builtin_type(sema, STK_Void);
+            continue;
+        }
+
         if (stmt->kind == AK_Defer) {
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
@@ -14997,6 +15002,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_ModRef:
     case AK_Use:
     case AK_Impl:
+    case AK_Pragma:
         return true;
 
     case AK_SymbolRef:

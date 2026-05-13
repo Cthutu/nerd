@@ -52,11 +52,16 @@ local_name :: ffi "lib" foreign_name (...) -> Type
 name :: use module.path
 use module.path
 pub use module.path
+pragma symbol
+pragma symbol(123, 1.5, "text", yes, no)
 test "name" { statements }
 ```
 
 The same `Name :: plex`, `Name :: union`, and `Name :: enum` declaration forms
 may also appear inside block scopes.
+
+Unknown pragmas are accepted and ignored. Recognised pragmas may adjust compiler
+behaviour for the current program.
 
 ## Mutable Bindings
 

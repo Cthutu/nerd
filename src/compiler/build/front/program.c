@@ -283,6 +283,39 @@ internal bool program_top_on_is_enabled(const FrontEndOptions* options,
     return info->is_negated ? !enabled : enabled;
 }
 
+internal void program_apply_pragmas(ProgramInfo*           program,
+                                    const FrontEndOptions* options,
+                                    const Lexer*           lexer,
+                                    const Ast*             ast,
+                                    u32                    first_node,
+                                    u32                    end_node)
+{
+    for (u32 i = first_node; i < end_node; ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_TopOn) {
+            const AstTopOnInfo* info = &ast->top_ons[node->a];
+            const AstNode*      body = &ast->nodes[info->body_node_index];
+            ASSERT(body->kind == AK_Block, "Expected top-level on body block");
+            if (program_top_on_is_enabled(options, lexer, ast, node)) {
+                program_apply_pragmas(
+                    program, options, lexer, ast, body->a, body->b);
+            }
+            i = body->b - 1;
+            continue;
+        }
+
+        if (node->kind != AK_Pragma || node->a >= array_count(ast->pragmas)) {
+            continue;
+        }
+        const AstPragmaInfo* pragma = &ast->pragmas[node->a];
+        if (pragma->param_count == 0 &&
+            string_eq_cstr(lex_symbol(lexer, pragma->symbol_handle),
+                           "windowed")) {
+            program->windowed = true;
+        }
+    }
+}
+
 internal u32 program_find_module_by_path(const ProgramInfo* program,
                                          cstr               resolved_path)
 {
@@ -902,6 +935,12 @@ bool front_end_program(NerdSource             source,
     Lexer root_lexer =
         program.modules[program.root_module_index].front_end.lexer;
     Ast root_ast = program.modules[program.root_module_index].front_end.ast;
+    program_apply_pragmas(&program,
+                          &effective_options,
+                          &root_lexer,
+                          &root_ast,
+                          0,
+                          (u32)array_count(root_ast.nodes));
 
     if (!program_collect_module_dependencies(
             &program,

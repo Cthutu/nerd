@@ -2930,6 +2930,7 @@ internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
         "for",
         "impl",
         "on",
+        "pragma",
         "pub",
         "return",
         "test",

@@ -62,5 +62,6 @@ typedef struct ProgramInfo {
     NerdSource root_source;
     Arena      arena;
     Array(ModuleInfo) modules;
-    u32 root_module_index;
+    u32  root_module_index;
+    bool windowed;
 } ProgramInfo;

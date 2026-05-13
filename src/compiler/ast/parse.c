@@ -2757,10 +2757,118 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
+// Parse `pragma name` or `pragma name(...)`.
+
+internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_pragma, "Expected pragma token");
+    AstToken pragma_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &pragma_token),
+                                         TK_Symbol,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_Symbol) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+
+    u32 symbol_handle = state->token.value.symbol_handle;
+    u32 first_param   = (u32)array_count(state->pragma_params);
+    u32 param_count   = 0;
+
+    if (ast_peek_kind_at(state, 0) == TK_LParen) {
+        if (!ast_expect_token(state, TK_LParen)) {
+            return false;
+        }
+        if (ast_peek_kind_at(state, 0) == TK_RParen) {
+            if (!ast_expect_token(state, TK_RParen)) {
+                return false;
+            }
+        } else {
+            for (;;) {
+                if (!ast_next_token(state)) {
+                    return error_0203_expected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen,
+                        TK_EOF);
+                }
+
+                AstPragmaParam param = {.token_index =
+                                            state->token.token_index};
+                switch (state->token.kind) {
+                case TK_Integer:
+                    param.kind        = APPK_Integer;
+                    param.value_index = state->token.value.integer_index;
+                    break;
+                case TK_Float:
+                    param.kind        = APPK_Float;
+                    param.value_index = state->token.value.float_index;
+                    break;
+                case TK_String:
+                    param.kind        = APPK_String;
+                    param.value_index = state->token.value.string_index;
+                    break;
+                case TK_yes:
+                case TK_no:
+                    param.kind       = APPK_Bool;
+                    param.bool_value = state->token.kind == TK_yes;
+                    break;
+                default:
+                    return error_0204_unexpected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        state->token.kind,
+                        "Expected an integer, float, string, yes, or no pragma "
+                        "parameter");
+                }
+                array_push(state->pragma_params, param);
+                ++param_count;
+
+                if (ast_peek_kind_at(state, 0) == TK_Comma) {
+                    if (!ast_expect_token(state, TK_Comma)) {
+                        return false;
+                    }
+                    continue;
+                }
+                if (!ast_expect_token(state, TK_RParen)) {
+                    return false;
+                }
+                break;
+            }
+        }
+    }
+
+    u32 pragma_index = (u32)array_count(state->pragmas);
+    array_push(state->pragmas,
+               (AstPragmaInfo){
+                   .symbol_handle = symbol_handle,
+                   .first_param   = first_param,
+                   .param_count   = param_count,
+               });
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_Pragma,
+                             .token_index = pragma_token.token_index,
+                             .a           = pragma_index,
+                         },
+                         out_node);
+}
+
+//------------------------------------------------------------------------------
 // Parse one statement inside a function or nested block.
 
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    if (state->token.kind == TK_pragma) {
+        return ast_parse_pragma(state, NULL);
+    }
+
     if (state->token.kind == TK_ffi) {
         return ast_parse_declaration(state, NULL, true, ANF_None);
     }
@@ -3588,6 +3696,15 @@ internal bool ast_parse_top_level_item(AstParseState* state)
                 "public binding");
         }
         return ast_parse_top_level_on(state, NULL);
+    case TK_pragma:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Pragma statements cannot be public");
+        }
+        return ast_parse_pragma(state, NULL);
     case TK_impl:
         if (is_public) {
             return error_0204_unexpected_token(
@@ -4628,6 +4745,8 @@ Ast ast_parse(Lexer* lexer)
         .on_branches           = state.on_branches,
         .ons                   = state.ons,
         .top_ons               = state.top_ons,
+        .pragma_params         = state.pragma_params,
+        .pragmas               = state.pragmas,
         .impls                 = state.impls,
         .for_items             = state.for_items,
         .fors                  = state.fors,
@@ -4661,6 +4780,8 @@ error:
                     .on_branches           = state.on_branches,
                     .ons                   = state.ons,
                     .top_ons               = state.top_ons,
+                    .pragma_params         = state.pragma_params,
+                    .pragmas               = state.pragmas,
                     .impls                 = state.impls,
                     .for_items             = state.for_items,
                     .fors                  = state.fors});
@@ -4699,6 +4820,8 @@ void ast_done(Ast* ast)
     array_free(ast->on_branches);
     array_free(ast->ons);
     array_free(ast->top_ons);
+    array_free(ast->pragma_params);
+    array_free(ast->pragmas);
     array_free(ast->impls);
     array_free(ast->for_items);
     array_free(ast->fors);

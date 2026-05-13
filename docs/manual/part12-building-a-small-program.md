@@ -9,6 +9,18 @@ fit together.
 The examples use `input` from `std.io` and `split` from `std.string`. Those are
 standard library helpers, not new language constructs.
 
+## Build Pragmas
+
+Pragmas are optional compiler controls:
+
+```nerd
+pragma windowed
+```
+
+Unknown pragmas are ignored. `pragma windowed` changes Windows executable builds
+to use a windowed subsystem and a generated `WinMain` wrapper instead of the
+normal console `main` wrapper. It has no effect on non-Windows builds.
+
 ## Start With A Loop
 
 ```nerd

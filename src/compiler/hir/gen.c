@@ -1756,6 +1756,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
 
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
+    case AK_Pragma:
+        return hir_no_index();
     case AK_Return:
     case AK_ReturnExpr:
         return hir_add_stmt(
