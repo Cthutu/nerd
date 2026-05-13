@@ -21,7 +21,7 @@ State :: plex {
 }
 
 show_exits :: fn (state: State) {
-    prn("Exits: ")
+    pr("Exits: ")
     for i, exit in state.exits[state.player_loc] {
         pr($"{exit_strings(exit.0)}")
         on i < state.exits[state.player_loc].count - 1 => pr(", ") else pr(".")
