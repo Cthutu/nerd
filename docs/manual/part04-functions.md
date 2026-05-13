@@ -53,13 +53,17 @@ grow :: fn (base: i32, amount: i32 = base + 1) => base + amount
 ```
 
 Defaults are evaluated at the call site. They belong to the function
-declaration, not to the function type, so a function value must still receive
-all arguments:
+declaration, not to the function type. A direct function-value alias keeps the
+definition's defaults when the compiler can still trace it back to that
+definition:
 
 ```nerd
 add_one := add
-return add_one(20, 1)  -- function values use the full function type
+return add_one(20)  -- same as add(20)
 ```
+
+Arbitrary function-typed values still use the full function type when no
+specific defaulted definition is known.
 
 FFI declarations cannot have default parameters. Wrap an FFI function in a
 normal Nerd function when a default is useful.

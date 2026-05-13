@@ -50,8 +50,9 @@ intended exit code.
 - Default expressions are evaluated at the call site.
 - A default expression can reference earlier parameters, but not itself or later
   parameters.
-- Function types do not include defaults. Calling through a function value
-  requires every argument.
+- Function types do not include defaults. A direct function-value alias can use
+  defaults when it still resolves to a known defaulted function definition;
+  otherwise, calling through a function value requires every argument.
 - FFI declarations cannot have default parameters.
 - Generic functions are written as `fn [T] (...) -> R`.
 - Generic calls can infer all type arguments, as in `id(1)`.

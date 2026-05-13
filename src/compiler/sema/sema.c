@@ -2342,12 +2342,18 @@ internal bool sema_imported_decl_source(Sema*           sema,
     return true;
 }
 
-internal bool sema_known_call_signature(const Lexer* lexer,
-                                        const Ast*   ast,
-                                        Sema*        sema,
-                                        u32          callee_node_index,
-                                        SemaKnownCallSignature* out_signature)
+internal bool
+sema_known_call_signature_ex(const Lexer*            lexer,
+                             const Ast*              ast,
+                             Sema*                   sema,
+                             u32                     callee_node_index,
+                             u32                     depth,
+                             SemaKnownCallSignature* out_signature)
 {
+    if (depth > 16) {
+        return false;
+    }
+
     callee_node_index     = sema_unwrap_expr_node(ast, callee_node_index);
     const AstNode* callee = &ast->nodes[callee_node_index];
 
@@ -2376,6 +2382,18 @@ internal bool sema_known_call_signature(const Lexer* lexer,
             return true;
         }
 
+        if ((local->kind == SLK_Variable || local->kind == SLK_Constant ||
+             local->kind == SLK_Function) &&
+            local->value_node_index != sema_no_decl() &&
+            sema_known_call_signature_ex(lexer,
+                                         ast,
+                                         sema,
+                                         local->value_node_index,
+                                         depth + 1,
+                                         out_signature)) {
+            return true;
+        }
+
         u32 decl_index = sema_find_decl(sema, local->symbol_handle);
         if (decl_index != sema_no_decl()) {
             const SemaDecl* decl              = &sema->decls[decl_index];
@@ -2383,12 +2401,12 @@ internal bool sema_known_call_signature(const Lexer* lexer,
             const Ast*      source_ast        = NULL;
             Sema*           source_sema       = NULL;
             u32             source_decl_index = sema_no_decl();
-            if (sema_imported_decl_source(sema,
-                                          decl,
-                                          &source_lexer,
-                                          &source_ast,
-                                          &source_sema,
-                                          &source_decl_index)) {
+            if (depth == 0 && sema_imported_decl_source(sema,
+                                                        decl,
+                                                        &source_lexer,
+                                                        &source_ast,
+                                                        &source_sema,
+                                                        &source_decl_index)) {
                 const SemaDecl* source_decl =
                     &source_sema->decls[source_decl_index];
                 if (source_decl->value_node_index != sema_no_decl() &&
@@ -2431,16 +2449,27 @@ internal bool sema_known_call_signature(const Lexer* lexer,
                 return true;
             }
 
+            if ((decl->kind == SK_Constant || decl->kind == SK_Function) &&
+                decl->value_node_index != sema_no_decl() &&
+                sema_known_call_signature_ex(lexer,
+                                             ast,
+                                             sema,
+                                             decl->value_node_index,
+                                             depth + 1,
+                                             out_signature)) {
+                return true;
+            }
+
             const Lexer* source_lexer      = NULL;
             const Ast*   source_ast        = NULL;
             Sema*        source_sema       = NULL;
             u32          source_decl_index = sema_no_decl();
-            if (sema_imported_decl_source(sema,
-                                          decl,
-                                          &source_lexer,
-                                          &source_ast,
-                                          &source_sema,
-                                          &source_decl_index)) {
+            if (depth == 0 && sema_imported_decl_source(sema,
+                                                        decl,
+                                                        &source_lexer,
+                                                        &source_ast,
+                                                        &source_sema,
+                                                        &source_decl_index)) {
                 const SemaDecl* source_decl =
                     &source_sema->decls[source_decl_index];
                 if (source_decl->value_node_index != sema_no_decl() &&
@@ -2465,6 +2494,16 @@ internal bool sema_known_call_signature(const Lexer* lexer,
     }
 
     return false;
+}
+
+internal bool sema_known_call_signature(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        Sema*        sema,
+                                        u32          callee_node_index,
+                                        SemaKnownCallSignature* out_signature)
+{
+    return sema_known_call_signature_ex(
+        lexer, ast, sema, callee_node_index, 0, out_signature);
 }
 
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,

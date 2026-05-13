@@ -108,31 +108,3 @@ main :: fn () => 0
     ]
 }
 ¬
-add :: fn (a: i32, b: i32 = 1) => a + b
-main :: fn () {
-    f := add
-    return f(1)
-}
-¬
-{
-    "code": "0313",
-    "message": "Argument count mismatch: expected 2, found 1",
-    "source_file": "tests/errors/056-default-parameters.e",
-    "primary_location": {
-        "line": 4,
-        "column": 13
-    },
-    "references": [
-        {
-            "kind": "primary",
-            "line": 4,
-            "column": 13,
-            "length": 1,
-            "message": "This call uses the wrong arity"
-        }
-    ],
-    "notes": [],
-    "help": [
-        "Pass exactly 2 arguments to match the function signature."
-    ]
-}

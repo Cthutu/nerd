@@ -9,12 +9,18 @@ local_call :: fn (a: i32) {
     prn($"inner {inner(a)}")
 }
 
+function_value_call :: fn (a: i32) {
+    f := add
+    prn($"value {f(a)}")
+}
+
 main :: fn () {
     prn($"one {add(2)}")
     prn($"two {add(2, 3)}")
     prn($"three {add(2, 3, 4)}")
     prn($"call {with_call_default()}")
     local_call(4)
+    function_value_call(2)
 }
 ¬
 0
@@ -24,6 +30,7 @@ two 27
 three 9
 call 31
 inner 28
+value 44
 
 ¬
 delete
