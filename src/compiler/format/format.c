@@ -78,6 +78,9 @@ internal void  format_skip_block_comments_before_offset(const Lexer* lexer,
 internal bool  format_comment_is_trailing_after_offset(NerdSource   source,
                                                        usize        end_offset,
                                                        LexerComment comment);
+internal bool  format_comments_have_blank_line_between(NerdSource   source,
+                                                       LexerComment previous,
+                                                       LexerComment current);
 internal bool  format_node_has_trailing_comment(const Cst*   cst,
                                                 const Lexer* lexer,
                                                 u32          node_index);
@@ -4377,15 +4380,21 @@ internal bool format_emit_block_comments_before_offset(StringBuilder* sb,
                                                        u32    indent_level,
                                                        usize* out_last_end)
 {
-    bool emitted = false;
+    bool         emitted          = false;
+    LexerComment previous_comment = {0};
     while (*io_comment_index < array_count(lexer->comments)) {
         LexerComment comment = lexer->comments[*io_comment_index];
         if (comment.offset >= end_offset) {
             break;
         }
 
+        if (emitted && format_comments_have_blank_line_between(
+                           lexer->source, previous_comment, comment)) {
+            sb_append_char(sb, '\n');
+        }
         format_emit_line_comment(sb, indent_level, comment.text);
-        emitted = true;
+        emitted          = true;
+        previous_comment = comment;
         if (out_last_end) {
             *out_last_end = comment.end_offset;
         }
@@ -4442,12 +4451,18 @@ internal bool format_emit_block_comments_before_token(StringBuilder* sb,
         return false;
     }
 
-    bool emitted = false;
+    bool         emitted          = false;
+    LexerComment previous_comment = {0};
     while (*io_comment_index < end_comment_index &&
            *io_comment_index < array_count(lexer->comments)) {
         LexerComment comment = lexer->comments[*io_comment_index];
+        if (emitted && format_comments_have_blank_line_between(
+                           lexer->source, previous_comment, comment)) {
+            sb_append_char(sb, '\n');
+        }
         format_emit_line_comment(sb, indent_level, comment.text);
-        emitted = true;
+        emitted          = true;
+        previous_comment = comment;
         if (out_last_end) {
             *out_last_end = comment.end_offset;
         }
@@ -4498,6 +4513,19 @@ internal bool format_comment_is_trailing_after_offset(NerdSource   source,
         }
     }
     return true;
+}
+
+internal bool format_comments_have_blank_line_between(NerdSource   source,
+                                                      LexerComment previous,
+                                                      LexerComment current)
+{
+    if (previous.end_offset > current.offset ||
+        current.offset > source.source.count) {
+        return false;
+    }
+
+    return format_count_newlines_between(
+               source.source, previous.end_offset, current.offset) > 1;
 }
 
 internal bool format_node_has_trailing_comment(const Cst*   cst,
@@ -6385,14 +6413,20 @@ internal bool format_emit_token_comments_before(FormatTokenState*   state,
         *io_comment_index = first_comment_index;
     }
 
-    u32 end_comment_index = first_comment_index + comment_count;
+    u32          end_comment_index = first_comment_index + comment_count;
+    LexerComment previous_comment  = {0};
+    bool         emitted           = false;
     while (*io_comment_index < end_comment_index &&
            *io_comment_index < array_count(state->lexer->comments)) {
-        format_emit_line_comment(
-            state->sb,
-            state->indent_level,
-            state->lexer->comments[*io_comment_index].text);
+        LexerComment comment = state->lexer->comments[*io_comment_index];
+        if (emitted && format_comments_have_blank_line_between(
+                           state->lexer->source, previous_comment, comment)) {
+            format_token_state_blank_line(state);
+        }
+        format_emit_line_comment(state->sb, state->indent_level, comment.text);
         state->at_line_start = true;
+        previous_comment     = comment;
+        emitted              = true;
         (*io_comment_index)++;
     }
     return true;
