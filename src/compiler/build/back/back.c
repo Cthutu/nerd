@@ -205,14 +205,10 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
                                           cstr combined_llvm_path,
                                           cstr runtime_object_path)
 {
-    string opt_flags        = artifacts->release ? s("-O2") : s("-g -O0");
-    bool   windows_windowed = false;
-#if OS_WINDOWS
-    windows_windowed = program->windowed;
-#endif
+    string opt_flags       = artifacts->release ? s("-O2") : s("-g -O0");
     string subsystem_flags = s("");
 #if OS_WINDOWS
-    if (windows_windowed) {
+    if (program->windowed) {
         subsystem_flags = s(" -Wl,/SUBSYSTEM:WINDOWS");
     }
 #endif
