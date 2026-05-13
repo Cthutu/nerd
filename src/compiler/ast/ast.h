@@ -303,8 +303,8 @@ typedef struct {
 } AstPlexLiteralField;
 
 typedef enum : u32 {
-    APLF_None        = 0,
-    APLF_ZeroMissing = 1 << 0,
+    APLF_None           = 0,
+    APLF_DefaultMissing = 1 << 0,
 } AstPlexLiteralFlag;
 
 typedef struct {

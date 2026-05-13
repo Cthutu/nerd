@@ -178,7 +178,8 @@ bool error_0304_missing_plex_fields(NerdSource source,
                    STRINGV(missing_fields));
     error_add_help(&error,
                    "Add all fields required by the plex type, or write `...` "
-                   "in the literal to zero-initialise omitted fields.");
+                   "in the literal to initialise omitted fields with their "
+                   "default values.");
     error_render(&error);
     return false;
 }

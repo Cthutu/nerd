@@ -1353,9 +1353,10 @@ internal u32 hir_lower_expr(Hir*         hir,
                                              sema,
                                              literal->target_node_index)
                             : hir_no_index(),
-                    .first_arg    = first_arg,
-                    .arg_count    = literal->field_count,
-                    .zero_missing = (literal->flags & APLF_ZeroMissing) != 0,
+                    .first_arg = first_arg,
+                    .arg_count = literal->field_count,
+                    .default_missing =
+                        (literal->flags & APLF_DefaultMissing) != 0,
                 });
         }
     case AK_Slice:

@@ -301,8 +301,8 @@ typedef struct {
 } CstPlexLiteralField;
 
 typedef enum : u32 {
-    CPLF_None        = 0,
-    CPLF_ZeroMissing = 1 << 0,
+    CPLF_None           = 0,
+    CPLF_DefaultMissing = 1 << 0,
 } CstPlexLiteralFlag;
 
 typedef struct {

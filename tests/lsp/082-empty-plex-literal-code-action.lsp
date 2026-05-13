@@ -132,7 +132,7 @@ main :: fn () {
                                     }
                                 }
                             },
-                            "message": "help: Add all fields required by the plex type, or write `...` in the literal to zero-initialise omitted fields."
+                            "message": "help: Add all fields required by the plex type, or write `...` in the literal to initialise omitted fields with their default values."
                         }
                     ]
                 }

@@ -1982,7 +1982,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
             u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
-                    flags |= CPLF_ZeroMissing;
+                    flags |= CPLF_DefaultMissing;
                     cst_advance(state);
                     if (cst_current_token(state).kind == TK_Comma) {
                         cst_advance(state);
@@ -3326,7 +3326,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
-                    flags |= CPLF_ZeroMissing;
+                    flags |= CPLF_DefaultMissing;
                     cst_advance(state);
                     if (cst_current_token(state).kind == TK_Comma) {
                         cst_advance(state);
@@ -3389,7 +3389,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             u32 flags       = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
-                    flags |= CPLF_ZeroMissing;
+                    flags |= CPLF_DefaultMissing;
                     cst_advance(state);
                     if (cst_current_token(state).kind == TK_Comma) {
                         cst_advance(state);

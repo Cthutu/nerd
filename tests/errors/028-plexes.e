@@ -66,7 +66,7 @@ main :: fn () {
         "Missing field: `y`"
     ],
     "help": [
-        "Add all fields required by the plex type, or write `...` in the literal to zero-initialise omitted fields."
+        "Add all fields required by the plex type, or write `...` in the literal to initialise omitted fields with their default values."
     ]
 }
 ¬

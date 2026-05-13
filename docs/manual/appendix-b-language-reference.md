@@ -125,6 +125,8 @@ intended exit code.
 - Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.
 - Plexes may refer to themselves through pointer fields, such as `next ^Node`;
   direct by-value self-recursion is invalid.
+- `...` at the end of a plex literal initialises omitted fields with their
+  default values.
 - Top-level pointer aliases into a top-level collection may be used by that
   collection's initializer.
 - Raw unions overlap storage and are low-level.

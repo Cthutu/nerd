@@ -306,7 +306,7 @@ internal void hir_render_expr_arg_list(StringBuilder* sb,
                                        Arena*         arena,
                                        const HirExpr* expr,
                                        bool           named,
-                                       bool           zero_missing)
+                                       bool           default_missing)
 {
     for (u32 i = 0; i < expr->arg_count; ++i) {
         if (i > 0) {
@@ -324,7 +324,7 @@ internal void hir_render_expr_arg_list(StringBuilder* sb,
         }
         hir_render_expr(sb, hir, lexer, sema, arena, arg->expr_index);
     }
-    if (zero_missing) {
+    if (default_missing) {
         if (expr->arg_count > 0) {
             sb_append_cstr(sb, ", ");
         }
@@ -672,17 +672,17 @@ internal void hir_render_expr(StringBuilder* sb,
     case HIR_EXPR_Plex:
         sb_append_cstr(sb, "plex(");
         hir_render_expr_arg_list(
-            sb, hir, lexer, sema, arena, expr, true, expr->zero_missing);
+            sb, hir, lexer, sema, arena, expr, true, expr->default_missing);
         sb_append_char(sb, ')');
         break;
     case HIR_EXPR_PlexUpdate:
         sb_append_cstr(sb, "plex_update(");
         hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
-        if (expr->arg_count > 0 || expr->zero_missing) {
+        if (expr->arg_count > 0 || expr->default_missing) {
             sb_append_cstr(sb, ", ");
         }
         hir_render_expr_arg_list(
-            sb, hir, lexer, sema, arena, expr, true, expr->zero_missing);
+            sb, hir, lexer, sema, arena, expr, true, expr->default_missing);
         sb_append_char(sb, ')');
         break;
     case HIR_EXPR_Slice:

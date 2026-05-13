@@ -1577,7 +1577,7 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             }
             while (state->token.kind != TK_RBrace) {
                 if (state->token.kind == TK_Ellipsis) {
-                    flags |= APLF_ZeroMissing;
+                    flags |= APLF_DefaultMissing;
                     if (!ast_next_token(state)) {
                         return false;
                     }
@@ -1965,7 +1965,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         u32 flags       = APLF_None;
         while (state->token.kind != TK_RBrace) {
             if (state->token.kind == TK_Ellipsis) {
-                flags |= APLF_ZeroMissing;
+                flags |= APLF_DefaultMissing;
                 if (!ast_next_token(state)) {
                     return false;
                 }
@@ -2067,7 +2067,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         u32 flags       = APLF_None;
         while (state->token.kind != TK_RBrace) {
             if (state->token.kind == TK_Ellipsis) {
-                flags |= APLF_ZeroMissing;
+                flags |= APLF_DefaultMissing;
                 if (!ast_next_token(state)) {
                     return false;
                 }

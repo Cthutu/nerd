@@ -256,7 +256,7 @@ typedef struct {
     HirOnKind   on_kind;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
-    bool        zero_missing;
+    bool        default_missing;
 } HirExpr;
 
 typedef struct {

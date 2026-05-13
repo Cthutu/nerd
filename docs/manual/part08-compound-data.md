@@ -164,6 +164,13 @@ main :: fn () -> i32 {
 }
 ```
 
+Plex literals normally include every field. Write `...` at the end of a
+literal to initialise omitted fields with their default values:
+
+```nerd
+p := Point { x: 20, ... }  -- y uses its default value
+```
+
 Fields are read with dot syntax and can be assigned when the value is mutable.
 Dot access automatically dereferences pointers to plexes and unions. These are
 partial snippets, not complete programs:
