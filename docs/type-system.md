@@ -397,6 +397,12 @@ a struct with:
 - `.data`, a pointer to the first element in the slice
 - `.count`, the number of elements in the slice
 
+Slices do not own storage and do not imply allocation. Slice literals containing
+only constant data use compiler-emitted constant backing data; other slices
+borrow storage from arrays, dynamic arrays, strings, pointer-to-slice casts, or
+other existing storage. Lowering must not allocate hidden heap storage to make a
+slice work.
+
 Those fields are available from source when lower-level interop is needed:
 
 - `slice.count`

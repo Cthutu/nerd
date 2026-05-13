@@ -95,6 +95,11 @@ Settled choices:
 - Memory ownership uses arenas for phase/request lifetime, dynamic arrays for
   growing tables, and direct heap allocation only for escaped ownership or
   dynamic-array/map backing storage.
+- Lowering must not introduce silent allocation. A generated allocation must
+  correspond to an owning source/runtime construct such as a dynamic array,
+  string builder, explicit allocator call, or runtime object. Borrowed views
+  such as slices must point at existing storage or compiler-emitted constant
+  backing data, never hidden heap storage.
 
 Remaining known risks:
 
@@ -996,6 +1001,8 @@ Questions:
 - Use dynamic arrays for mutable contiguous collections.
 - Use heap allocations for independent ownership and OS/resource boundaries.
 - Use slices for borrowed views.
+- Do not add silent allocation in lowering. If source syntax produces a view,
+  generated code must not allocate owned storage behind the user's back.
 - Use indices, not pointers, across growable compiler products.
 - Reserve capacity when a phase has a cheap size estimate.
 - Make allocation ownership part of public API documentation.

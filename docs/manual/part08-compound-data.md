@@ -77,8 +77,12 @@ main :: fn () {
 }
 ```
 
-Slices have `.data` and `.count`. They do not own storage. Dot access
-automatically dereferences pointers to collection headers.
+Slices have `.data` and `.count`. They do not own storage and do not imply
+allocation. A slice is always a view over existing storage, or over
+compiler-emitted constant backing data for constant slice literals. The
+compiler must not allocate hidden heap storage to make a slice work.
+
+Dot access automatically dereferences pointers to collection headers.
 
 ## Pointer-To-Slice Casts
 

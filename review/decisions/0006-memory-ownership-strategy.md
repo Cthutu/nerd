@@ -53,6 +53,14 @@ Good heap owners:
 Avoid direct heap allocation for temporary strings, per-node scratch state, and
 layout work.
 
+Lowering must not introduce silent allocation. Generated allocations must map
+to source-visible or runtime-visible ownership, such as dynamic-array backing
+stores, string builder output, explicit allocation APIs, or process/document
+lifetime runtime objects. Borrowed constructs such as slices are views and must
+not allocate hidden heap storage. Constant slice literals should use immutable
+compiler-emitted backing data; non-constant slice views must borrow storage that
+already exists through another construct.
+
 ## Consequences
 
 The default compiler shape remains simple:
@@ -71,6 +79,9 @@ Measurement interpretation follows this ownership model:
 - High arena allocation count with small byte totals means scratch arena churn
   should be reviewed.
 - High heap allocation count outside array growth needs an ownership audit.
+- Any new lowering path that emits `malloc`, `realloc`, or equivalent runtime
+  allocation without an owning source/runtime construct is a correctness bug,
+  not just a performance concern.
 
 ## Follow-Up
 
