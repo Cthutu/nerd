@@ -140,8 +140,8 @@ normally.
 
 Block-form `on` currently supports:
 
-- constant value patterns
-- comma-separated constant alternatives
+- value patterns, including literals, constants, and in-scope variables
+- comma-separated alternatives
 - integer ranges through `..` and `..=`
 - explicit comparison patterns through `==`, `!=`, `<`, `<=`, `>`, and `>=`
 - unit enum variants through expected enum context, such as `Red` in
@@ -151,9 +151,9 @@ Block-form `on` currently supports:
   `Point { x: 3 }`
 
 Range endpoints and explicit comparison values are checked semantically against
-the scrutinee type and must be compile-time constants. Empty integer ranges are
-rejected with a dedicated semantic error. Relational comparison patterns require
-numeric scrutinees.
+the scrutinee type. Empty integer ranges are rejected with a dedicated semantic
+error when both endpoints are compile-time constants. Relational comparison
+patterns require numeric scrutinees.
 
 Scrutinee-less condition-chain `on` is written `on { condition => expr ... }`.
 Each non-`else` branch condition must have type `bool`. Value-producing

@@ -90,6 +90,18 @@ bucket :: fn (value: i32) -> string {
 
 `..` excludes the end. `..=` includes the end.
 
+Pattern values may come from variables that are already in scope:
+
+```nerd
+name := "matt"
+details := (42, "matt")
+
+on details {
+    (42, name) => prn($"Hello {name}!")  -- compares with the outer name value
+    (42, as matched) => prn(matched)     -- binds the tuple field
+}
+```
+
 ## Pattern Binders
 
 Patterns can bind values for use in a branch:

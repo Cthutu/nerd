@@ -597,20 +597,17 @@ bool error_0321_invalid_on_match_type(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report a value-form `on` branch pattern that is not compile-time constant.
+// Report a top-level wildcard in a value-form `on` branch.
 
-bool error_0322_non_constant_on_pattern(NerdSource source, ErrorSpan span)
+bool error_0322_invalid_on_wildcard_pattern(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error =
-        error_init(322,
-                   source,
-                   span,
-                   "Block-form `on` patterns must be compile-time constants");
+    ErrorInfo error = error_init(
+        322, source, span, "Block-form `on` wildcard pattern must use `else`");
     error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "This pattern is not constant");
+        &error, ERROR_REF_PRIMARY, span, "This wildcard matches every value");
     error_add_help(&error,
-                   "Use a literal or folded constant binding for this pattern "
-                   "until richer pattern forms land.");
+                   "Use an `else` branch instead of `_` as a top-level "
+                   "value pattern.");
     error_render(&error);
     return false;
 }

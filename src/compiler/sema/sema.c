@@ -9419,11 +9419,6 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer, ast, sema, pattern->a, value_type, &pattern_type)) {
                 return false;
             }
-            if (!sema_expr_is_constantish(ast, sema, pattern->a)) {
-                return error_0322_non_constant_on_pattern(
-                    lexer->source,
-                    sema_node_span(lexer, &ast->nodes[pattern->a]));
-            }
             if (pattern->kind != APK_Value && pattern_type != value_type) {
                 return error_0304_type_mismatch(
                     lexer->source,
@@ -9474,12 +9469,6 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     lexer, ast, sema, pattern->b, value_type, &end_type)) {
                 return false;
             }
-            if (!(sema_expr_is_constantish(ast, sema, pattern->a) &&
-                  sema_expr_is_constantish(ast, sema, pattern->b))) {
-                return error_0322_non_constant_on_pattern(
-                    lexer->source, sema_pattern_span(lexer, pattern));
-            }
-
             i64 start_value = 0;
             i64 end_value   = 0;
             if (sema_try_eval_integer_constant(
@@ -9671,7 +9660,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
         }
     case APK_Ignore:
         if (top_level) {
-            return error_0322_non_constant_on_pattern(
+            return error_0322_invalid_on_wildcard_pattern(
                 lexer->source, sema_pattern_span(lexer, pattern));
         }
         return true;

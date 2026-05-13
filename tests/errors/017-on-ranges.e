@@ -27,32 +27,3 @@ main :: fn () => on value {
     ]
 }
 ¬
-value: i32 = 2
-limit: i32 = 2
-main :: fn () => on value {
-    0..limit => 10
-    else => 20
-}
-¬
-{
-    "code": "0322",
-    "message": "Block-form `on` patterns must be compile-time constants",
-    "source_file": "tests/errors/017-on-ranges.e",
-    "primary_location": {
-        "line": 4,
-        "column": 6
-    },
-    "references": [
-        {
-            "kind": "primary",
-            "line": 4,
-            "column": 6,
-            "length": 2,
-            "message": "This pattern is not constant"
-        }
-    ],
-    "notes": [],
-    "help": [
-        "Use a literal or folded constant binding for this pattern until richer pattern forms land."
-    ]
-}

@@ -26,32 +26,31 @@ main :: fn () => on message {
     ]
 }
 ¬
-pattern: i32 = 1
 value: i32 = 2
 main :: fn () => on value {
-    pattern => 10
-    else => 20
+    _ => 10
 }
 ¬
 {
     "code": "0322",
-    "message": "Block-form `on` patterns must be compile-time constants",
+    "message": "Block-form `on` wildcard pattern must use `else`",
     "source_file": "tests/errors/016-on-value-branches.e",
     "primary_location": {
-        "line": 4,
+        "line": 3,
         "column": 5
     },
     "references": [
         {
             "kind": "primary",
-            "line": 4,
+            "line": 3,
             "column": 5,
-            "length": 7,
-            "message": "This pattern is not constant"
+            "length": 1,
+            "message": "This wildcard matches every value"
         }
     ],
     "notes": [],
     "help": [
-        "Use a literal or folded constant binding for this pattern until richer pattern forms land."
+        "Use an `else` branch instead of `_` as a top-level value pattern."
     ]
 }
+¬
