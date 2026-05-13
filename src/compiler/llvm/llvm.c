@@ -8239,6 +8239,35 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
     }
 }
 
+internal bool llvm_initialise_assigned_param_slots(LlvmFunctionContext* ctx,
+                                                   const HirFunction* function)
+{
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &ctx->hir->params[function->first_param + i];
+        if (param->local_index == U32_MAX ||
+            !llvm_local_is_assigned(ctx, param->local_index)) {
+            continue;
+        }
+
+        string value = llvm_param_value(
+            function, ctx->hir, ctx->lexer, ctx->arena, param->local_index);
+        if (value.count == 0) {
+            return false;
+        }
+
+        LlvmLocalSlot* slot =
+            llvm_ensure_local_slot(ctx, param->local_index, param->type_index);
+        llvm_store_local_slot(ctx,
+                              slot,
+                              (LlvmValue){
+                                  .ok         = true,
+                                  .type_index = param->type_index,
+                                  .value      = value,
+                              });
+    }
+    return true;
+}
+
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
                               u32                  block_index)
@@ -10128,7 +10157,8 @@ internal void llvm_render_function(StringBuilder*     sb,
         .global_init_value_index = U32_MAX,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
-    bool emitted = llvm_emit_block(&ctx, function, function->body_block_index);
+    bool emitted = llvm_initialise_assigned_param_slots(&ctx, function) &&
+                   llvm_emit_block(&ctx, function, function->body_block_index);
     if (!emitted || !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         llvm_append_default_return(sb, sema, return_type);

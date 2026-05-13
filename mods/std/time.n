@@ -70,7 +70,7 @@ on linux {
 
     _time_now_raw :: fn () -> Instant {
         ts: timespec
-        clock_gettime(CLOCK_MONOTONIC, ^ts)
+        _ := clock_gettime(CLOCK_MONOTONIC, ^ts)
         return (ts.tv_sec.as(u64) * 1_000_000_000) + ts.tv_nsec.as(u64)
     }
 
@@ -82,7 +82,7 @@ on linux {
         ts: timespec
         ts.tv_sec = (ms / 1000).as(i64)
         ts.tv_nsec = ((ms % 1000) * 1_000_000).as(i64)
-        nanosleep(^ts, nil)
+        _ := nanosleep(^ts, nil)
     }
 } -- on linux
 
@@ -98,7 +98,7 @@ on windows {
     _time_frequency :: fn () -> u64 {
         on g_time_frequency == 0 => {
             value: i64
-            QueryPerformanceFrequency(^value)
+            _ := QueryPerformanceFrequency(^value)
             g_time_frequency = value.as(u64)
         }
         return g_time_frequency
@@ -110,7 +110,7 @@ on windows {
 
     pub now :: fn () -> Instant {
         counter: i64
-        QueryPerformanceCounter(^counter)
+        _ := QueryPerformanceCounter(^counter)
         return _time_qpc_to_ns(counter.as(u64)).as(Instant)
     }
 

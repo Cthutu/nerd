@@ -94,6 +94,8 @@ Working rules for this review:
 - Do not commit unrelated local changes such as editor task changes.
 - Prefer `just test` as the full gate; use focussed `python3 build/test.py
   --filter ...` runs while iterating.
+- After each fix, commit the reviewed change and run `just install` so the
+  installed `nerd` and standard modules match the verified source tree.
 - Update review docs or decision records when an architectural agreement
   changes.
 - After each task, state the commit hash, verification run, and recommended
