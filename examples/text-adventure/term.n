@@ -29,6 +29,51 @@ on linux {
 
 }
 
+on windows {
+
+    COORD :: plex #c {
+        X i16
+        Y i16
+    }
+
+    SMALL_RECT :: plex #c {
+        Left   i16
+        Top    i16
+        Right  i16
+        Bottom i16
+    }
+
+    CONSOLE_SCREEN_BUFFER_INFO :: plex #c {
+        dwSize              COORD
+        dwCursorPosition    COORD
+        wAttributes         u16
+        srWindow            SMALL_RECT
+        dwMaximumWindowSize COORD
+    }
+
+    STD_INPUT_HANDLE  : u32 : -10
+    STD_OUTPUT_HANDLE : u32 : -11
+    STD_ERROR_HANDLE  : u32 : -12
+
+    HANDLE :: ^void
+
+    ffi "kernel32" {
+        GetStdHandle               (nStdHandle: u32) -> HANDLE
+        GetConsoleScreenBufferInfo (hConsoleOutput            : HANDLE,
+                                    lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> i32
+    }
+
+    pub term_get_size :: fn () -> (i32, i32) {
+        hConsole := GetStdHandle(STD_OUTPUT_HANDLE)
+        csbi : CONSOLE_SCREEN_BUFFER_INFO
+        _ := GetConsoleScreenBufferInfo(hConsole, ^csbi)
+        width := csbi.srWindow.Right - csbi.srWindow.Left + 1
+        height := csbi.srWindow.Bottom - csbi.srWindow.Top + 1
+        return (height.as(i32), width.as(i32))
+    }
+
+}
+
 pub prn_wrap :: fn (s: string) {
     lines := wrap(s, term_get_size().1)
     for line in lines {
