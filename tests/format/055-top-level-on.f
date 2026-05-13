@@ -1,17 +1,17 @@
-on   debug{
+on   "debug"{
 answer::7
 
-on !feature{
+on !"feature"{
 use  std.io
 fallback::9
 }
 }
 ¬
-on debug {
+on "debug" {
 
     answer :: 7
 
-    on !feature {
+    on !"feature" {
 
         use std.io
         fallback :: 9

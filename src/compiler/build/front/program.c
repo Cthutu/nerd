@@ -277,9 +277,9 @@ internal bool program_top_on_is_enabled(const FrontEndOptions* options,
                                         const AstNode*         node)
 {
     ASSERT(node->kind == AK_TopOn, "Expected top-level on node");
-    const AstTopOnInfo* info    = &ast->top_ons[node->a];
-    bool                enabled = program_keyword_is_defined(
-        options, lex_symbol(lexer, info->symbol_handle));
+    const AstTopOnInfo* info = &ast->top_ons[node->a];
+    bool                enabled =
+        program_keyword_is_defined(options, lexer->strings[info->string_index]);
     return info->is_negated ? !enabled : enabled;
 }
 

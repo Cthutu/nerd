@@ -55,7 +55,7 @@ pub from_ns :: fn (ns: u64) -> Duration {
     return ns
 }
 
-on linux {
+on "linux" {
     timespec :: plex {
         tv_sec  i64
         tv_nsec i64
@@ -84,9 +84,9 @@ on linux {
         ts.tv_nsec = ((ms % 1000) * 1_000_000).as(i64)
         _ := nanosleep(^ts, nil)
     }
-} -- on linux
+} -- on "linux"
 
-on windows {
+on "windows" {
     ffi "kernel32" {
         QueryPerformanceFrequency (value: ^i64) -> i32
         QueryPerformanceCounter (value: ^i64) -> i32
@@ -117,4 +117,4 @@ on windows {
     pub sleep_ms :: fn (ms: u64) {
         Sleep(ms.as(u32))
     }
-} -- on windows
+} -- on "windows"

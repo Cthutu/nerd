@@ -4901,11 +4901,11 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
         cst_advance(state);
     }
 
-    if (cst_current_token(state).kind != TK_Symbol) {
+    if (cst_current_token(state).kind != TK_String) {
         return false;
     }
-    u32 symbol_handle = cst_current_symbol_handle(state);
-    if (symbol_handle == CST_NO_VALUE) {
+    u32 string_index = cst_current_string_index(state);
+    if (string_index == CST_NO_VALUE) {
         return false;
     }
     cst_advance(state);
@@ -4950,7 +4950,7 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
     u32 top_on_info_index = (u32)array_count(state->cst.top_ons);
     array_push(state->cst.top_ons,
                (CstTopOnInfo){
-                   .symbol_handle   = symbol_handle,
+                   .string_index    = string_index,
                    .body_node_index = block_node,
                    .is_negated      = is_negated,
                });

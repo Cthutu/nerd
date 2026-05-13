@@ -2,7 +2,7 @@ on 1 {}
 ¬
 {
     "code": "0203",
-    "message": "Expected Symbol but found Integer",
+    "message": "Expected String but found Integer",
     "source_file": "tests/errors/040-top-level-on.e",
     "primary_location": {
         "line": 1,
@@ -23,7 +23,7 @@ on 1 {}
     ]
 }
 ¬
-on !debug {
+on !"debug" {
     answer :: 7
 }
 

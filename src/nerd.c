@@ -682,6 +682,14 @@ internal bool nerd_cli_extract_keywords(Arena*  arena,
             array_push(*out_keywords, string_format(arena, "%s", argv[i] + 3));
             continue;
         }
+        if (i > 0 && strncmp(argv[i], "-D", 2) == 0) {
+            if (argv[i][2] == '\0') {
+                eprn("Expected a keyword after -D");
+                return false;
+            }
+            array_push(*out_keywords, string_format(arena, "%s", argv[i] + 2));
+            continue;
+        }
         filtered[filtered_count++] = argv[i];
     }
 

@@ -3657,11 +3657,8 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
 }
 
 internal bool sema_keyword_is_defined(const FrontEndOptions* options,
-                                      const Lexer*           lexer,
-                                      u32                    symbol_handle)
+                                      string                 name)
 {
-    string name = lex_symbol(lexer, symbol_handle);
-
     if (!options->release && string_eq_cstr(name, "debug")) {
         return true;
     }
@@ -3707,7 +3704,8 @@ internal bool sema_top_on_is_enabled(const FrontEndOptions* options,
 {
     ASSERT(node->kind == AK_TopOn, "Expected top-level on node");
     const AstTopOnInfo* info = &ast->top_ons[node->a];
-    bool enabled = sema_keyword_is_defined(options, lexer, info->symbol_handle);
+    bool                enabled =
+        sema_keyword_is_defined(options, lexer->strings[info->string_index]);
     return info->is_negated ? !enabled : enabled;
 }
 

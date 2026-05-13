@@ -1,4 +1,4 @@
-on feature {
+on "feature" {
     answer :: 7
 }
 
@@ -10,4 +10,4 @@ main :: fn () => answer
 ¬
 delete
 ¬
--k:feature
+-Dfeature

@@ -4322,7 +4322,7 @@ internal void format_emit_top_on(StringBuilder* sb,
     if (top_on->is_negated) {
         sb_append_char(sb, '!');
     }
-    sb_append_string(sb, lex_symbol(lexer, top_on->symbol_handle));
+    format_emit_string_literal(sb, lexer->strings[top_on->string_index], false);
     sb_append_cstr(sb, " {\n\n");
     format_emit_block_contents(
         sb, cst, lexer, top_on->body_node_index, indent_level + 1);

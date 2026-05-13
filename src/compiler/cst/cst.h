@@ -379,7 +379,7 @@ typedef struct {
 } CstOnInfo;
 
 typedef struct {
-    u32  symbol_handle;
+    u32  string_index;
     u32  body_node_index;
     bool is_negated;
 } CstTopOnInfo;

@@ -1,8 +1,8 @@
-on linux {
+on "linux" {
     use test.platform_ffi
 }
 
-on windows {
+on "windows" {
     use test.platform_ffi
 }
 

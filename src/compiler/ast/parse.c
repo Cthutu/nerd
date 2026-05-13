@@ -3290,18 +3290,18 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
         if (!ast_next_token(state)) {
             return error_0203_expected_token(state->lexer->source,
                                              ast_token_span(state, &on_token),
-                                             TK_Symbol,
+                                             TK_String,
                                              TK_EOF);
         }
     }
 
-    if (state->token.kind != TK_Symbol) {
+    if (state->token.kind != TK_String) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
-                                         TK_Symbol,
+                                         TK_String,
                                          state->token.kind);
     }
-    u32 symbol_handle = state->token.value.symbol_handle;
+    u32 string_index = state->token.value.string_index;
 
     if (!ast_next_token(state)) {
         return error_0203_expected_token(state->lexer->source,
@@ -3366,7 +3366,7 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
     u32 top_on_index = (u32)array_count(state->top_ons);
     array_push(state->top_ons,
                (AstTopOnInfo){
-                   .symbol_handle   = symbol_handle,
+                   .string_index    = string_index,
                    .body_node_index = block_index,
                    .is_negated      = is_negated,
                });

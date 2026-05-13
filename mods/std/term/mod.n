@@ -6,7 +6,7 @@
 
 use std.io
 
-on linux {
+on "linux" {
     use std.linux
 }
 

@@ -1,4 +1,4 @@
-on !debug {
+on !"debug" {
     answer :: 7
 }
 

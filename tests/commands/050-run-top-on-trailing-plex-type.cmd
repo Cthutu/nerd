@@ -1,5 +1,5 @@
 -- test-platform: windows
-on windows {
+on "windows" {
     pub Last :: plex #c {
         X i16
     }
@@ -11,4 +11,3 @@ main :: fn () -> i32 {
 ¬
 0
 ¬
-
