@@ -71,8 +71,8 @@ main :: fn () -> i32 {
 
 ## `for in`
 
-Use `for item in collection` to iterate arrays, slices, strings, and dynamic
-arrays.
+Use `for item in collection` to iterate arrays, slices, strings, dynamic
+arrays, and integer ranges.
 
 Arrays and slices are introduced in Part 8, and dynamic arrays in Part 9. For
 now, read `words` as a fixed list of strings.
@@ -125,6 +125,30 @@ index:
 ```nerd
 for i, ^value in values {
     value^ += i.as(i32)
+}
+```
+
+Integer ranges use bracketed `start..end` or `start..=end` forms:
+
+```nerd
+main :: fn () -> i32 {
+    total := 0
+    for i in [0..10] {  -- 0 up to, but not including, 10
+        total += i
+    }
+    for i in [10..=12] {  -- 10 through 12
+        total += i
+    }
+    return total
+}
+```
+
+Range loop items are integer values, not pointers. As with collection
+iteration, an optional leading index binding has type `usize`:
+
+```nerd
+for index, value in [3..6] {
+    prn($"{index}: {value}")
 }
 ```
 

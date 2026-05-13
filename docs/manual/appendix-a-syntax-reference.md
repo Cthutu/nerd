@@ -139,6 +139,9 @@ for item in collection { ... }
 for ^item in collection { ... }
 for index, item in collection { ... }
 for index, ^item in collection { ... }
+for item in [start..end] { ... }
+for item in [start..=end] { ... }
+for index, item in [start..end] { ... }
 ```
 
 ## Types
@@ -194,6 +197,7 @@ Type.size
 | `c"c string"` | `^u8` to null-terminated bytes |
 | `$"interpolated {value}"` | `string` |
 | `[1, 2, 3]` | `[3]i32` |
+| `[start..end]`, `[start..=end]` | integer range usable by `for in` |
 | `(1, "two")` | `(i32, string)` |
 | `Point { x: 1, y: 2 }` | `Point` |
 | `geometry.Point { x: 1, y: 2 }` | `geometry.Point` |

@@ -1499,6 +1499,49 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                         array_free(items);
                         return false;
                     }
+                    if (state->token.kind == TK_Range ||
+                        state->token.kind == TK_RangeInclusive) {
+                        if (array_count(items) > 0) {
+                            break;
+                        }
+                        AstToken range_token = state->token;
+                        if (!ast_next_token(state) || !ast_next_token(state)) {
+                            array_free(items);
+                            return error_0201_missing_value(
+                                state->token.source,
+                                ast_token_span(state, &range_token),
+                                TK_Integer);
+                        }
+                        u32 end_node = 0;
+                        if (!ast_parse_expr_bp(state, 0, &end_node)) {
+                            array_free(items);
+                            return false;
+                        }
+                        if (state->token.kind == TK_RBracket &&
+                            state->token_index == state->token.token_index) {
+                            if (!ast_next_token(state)) {
+                                array_free(items);
+                                return false;
+                            }
+                        } else if (state->token.kind != TK_RBracket) {
+                            if (!ast_expect_token(state, TK_RBracket)) {
+                                array_free(items);
+                                return false;
+                            }
+                        }
+                        array_free(items);
+                        return ast_emit_node(
+                            state,
+                            (AstNode){
+                                .kind        = range_token.kind == TK_Range
+                                                   ? AK_RangeExclusive
+                                                   : AK_RangeInclusive,
+                                .token_index = range_token.token_index,
+                                .a           = item,
+                                .b           = end_node,
+                            },
+                            out_node);
+                    }
                     array_push(items, item);
 
                     if (state->token.kind == TK_Comma) {
