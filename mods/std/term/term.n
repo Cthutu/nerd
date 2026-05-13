@@ -10,7 +10,7 @@ use std.linux
 use std.mem
 
 ffi "c" {
-    printf (^u8, ...) -> i32
+    printf (^void, ...) -> i32
 }
 
 g_term_initialised   :         = no

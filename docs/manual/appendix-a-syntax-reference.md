@@ -194,7 +194,7 @@ Type.size
 | `ptr: ^i32 = nil` | `^i32` |
 | `value: i32 = undefined` | `i32` |
 | `"string"` | `string` |
-| `c"c string"` | `^u8` to null-terminated bytes |
+| `c"c string"` | `^i8` to null-terminated bytes |
 | `$"interpolated {value}"` | `string` |
 | `[1, 2, 3]` | `[3]i32` |
 | `[start..end]`, `[start..=end]` | integer range usable by `for in` |

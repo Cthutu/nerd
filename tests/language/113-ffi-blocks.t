@@ -1,7 +1,7 @@
 -- Declares multiple foreign functions in one FFI block.
 ffi "c" {
     absolute :: abs (i32) -> i32
-    pub c_strlen :: strlen (^u8) -> usize
+    pub c_strlen :: strlen (^i8) -> usize
 }
 
 main :: fn () -> i32 {
@@ -18,9 +18,9 @@ bind absolute = fn.0
 bind c_strlen = fn.1
 bind main = fn.2
 extern func fn.0(i32) -> i32
-extern func fn.1(^u8) -> usize
+extern func fn.1(^i8) -> usize
 func fn.2() -> i32 {
-  return i32 add(i32 call bind.0(absolute)(i32 negate(i32 7)), i32 cast(usize call bind.1(c_strlen)(^u8 c"nerd") as i32))
+  return i32 add(i32 call bind.0(absolute)(i32 negate(i32 7)), i32 cast(usize call bind.1(c_strlen)(^i8 c"nerd") as i32))
 }
 export bind.1(c_strlen)
 ¬

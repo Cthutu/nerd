@@ -1,5 +1,5 @@
-ffi "c" strlen (^u8) -> usize
-ffi "c" snprintf (^u8, usize, ^u8, ...) -> i32
+ffi "c" strlen (^i8) -> usize
+ffi "c" snprintf (^void, usize, ^i8, ...) -> i32
 
 Pair :: plex {
     left i32

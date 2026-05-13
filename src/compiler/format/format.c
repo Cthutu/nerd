@@ -599,7 +599,8 @@ internal void   format_emit_fn_signature(StringBuilder* sb,
 internal void   format_emit_ffi_def(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
-                                    u32            ffi_info_index);
+                                    u32            ffi_info_index,
+                                    u32            flags);
 internal void   format_emit_ffi_block(StringBuilder* sb,
                                       const Cst*     cst,
                                       const Lexer*   lexer,
@@ -1465,7 +1466,7 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "}");
         break;
     case CK_FfiDef:
-        format_emit_ffi_def(sb, cst, lexer, node->a);
+        format_emit_ffi_def(sb, cst, lexer, node->a, node->flags);
         break;
     case CK_FfiBlock:
         format_emit_ffi_block(sb, cst, lexer, node->a, 0);
@@ -4167,10 +4168,12 @@ internal void format_emit_ffi_entry(StringBuilder*       sb,
 internal void format_emit_ffi_def(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
-                                  u32            ffi_info_index)
+                                  u32            ffi_info_index,
+                                  u32            flags)
 {
     const CstFfiInfo* ffi = &cst->ffi_infos[ffi_info_index];
 
+    UNUSED(flags);
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
     sb_append_char(sb, ' ');
@@ -5532,7 +5535,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
         if (stmt->flags & CNF_Public) {
             sb_append_cstr(sb, "pub ");
         }
-        format_emit_ffi_def(sb, cst, lexer, stmt->a);
+        format_emit_ffi_def(sb, cst, lexer, stmt->a, stmt->flags);
         sb_append_char(sb, '\n');
         return;
     }
@@ -5725,7 +5728,7 @@ internal void format_emit_value(StringBuilder* sb,
         sb_append_cstr(sb, "}");
         break;
     case CK_FfiDef:
-        format_emit_ffi_def(sb, cst, lexer, node->a);
+        format_emit_ffi_def(sb, cst, lexer, node->a, node->flags);
         break;
     case CK_FfiBlock:
         format_emit_ffi_block(
@@ -5901,7 +5904,7 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
             if (node->flags & CNF_Public) {
                 sb_append_cstr(sb, "pub ");
             }
-            format_emit_ffi_def(sb, &cst, &lexer, node->a);
+            format_emit_ffi_def(sb, &cst, &lexer, node->a, node->flags);
             sb_append_char(sb, '\n');
             format_emit_trailing_comment_for_node(
                 sb, &cst, &lexer, node_index, &comment_index);

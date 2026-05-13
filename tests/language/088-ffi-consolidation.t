@@ -3,7 +3,7 @@ use std.io
 libc :: "c"
 
 seed_rng :: ffi libc srand (u32)
-write_line :: ffi ("c") puts (^u8) -> i32
+write_line :: ffi ("c") puts (^i8) -> i32
 
 Point :: plex #c {
     x i32
@@ -43,7 +43,7 @@ import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
 import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
 import import.4 input from module.1(std.io).decl.10: fn (string) -> string
 extern extern.0 srand from "c": fn (u32) -> void
-extern extern.1 puts from "c": fn (^u8^u8) ->
+extern extern.1 puts from "c": fn (^i8^i8) ->
 extern extern.2 accept_point from "c": fn (Point) -> void
 extern extern.3 accept_packed from "c": fn (Packed) -> void
 extern extern.4 flip_blob from "c": fn (Blob) -> Blob
@@ -67,13 +67,13 @@ type type.1 = Packed
 type type.2 = Blob
 const value.0: string = string "c"
 extern func fn.0(u32) -> void
-extern func fn.1(^u8) -> i32
+extern func fn.1(^i8) -> i32
 extern func fn.2(Point) -> void
 extern func fn.3(Packed) -> void
 extern func fn.4(Blob) -> Blob
 func fn.5() -> void {
   expr void call bind.6(seed_rng)(u32 1)
-  let _: i32 = i32 call bind.7(write_line)(^u8 c"ffi ok")
+  let _: i32 = i32 call bind.7(write_line)(^i8 c"ffi ok")
 }
 ¬
 ; nerd llvm-ir 0

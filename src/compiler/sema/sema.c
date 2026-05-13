@@ -11525,7 +11525,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         if (node->kind == AK_StringLiteral &&
             lexer->tokens[node->token_index].kind == TK_CString) {
             type_index =
-                sema_add_pointer_type(sema, sema_builtin_type(sema, STK_U8));
+                sema_add_pointer_type(sema, sema_builtin_type(sema, STK_I8));
         } else {
             type_index = sema_builtin_type(sema, STK_String);
         }

@@ -232,6 +232,7 @@ typedef struct {
     u32 library_node_index;
     u32 first_ffi_info;
     u32 ffi_info_count;
+    u8  flags;
 } CstFfiBlockInfo;
 
 typedef struct {

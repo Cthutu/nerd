@@ -74,7 +74,7 @@ impl TermWindow {
         }
     }
 
-    pub nine_slice :: fn (window: ^Self, rect: TermRect, slices: ^u8, fill_centre: bool) {
+    pub nine_slice :: fn (window: ^Self, rect: TermRect, slices: string, fill_centre: bool) {
         top_left := TermRect { x: rect.x, y: rect.y, width: 1, height: 1 }
         top_right := TermRect { x: (rect.x + rect.width - 1).as(u16), y: rect.y, width: 1, height: 1 }
         bottom_left := TermRect { x: rect.x, y: (rect.y + rect.height - 1).as(u16), width: 1, height: 1 }
@@ -258,7 +258,7 @@ pub term_window_paint :: fn (window: ^TermWindow, rect: TermRect, ink: u32, pape
     window.paint(rect, ink, paper)
 }
 
-pub term_window_9slice :: fn (window: ^TermWindow, rect: TermRect, slices: ^u8, fill_centre: bool) {
+pub term_window_9slice :: fn (window: ^TermWindow, rect: TermRect, slices: string, fill_centre: bool) {
     window.nine_slice(rect, slices, fill_centre)
 }
 
@@ -344,7 +344,7 @@ test "window box draws expected border characters" {
     ink := term_rgb(1, 1, 1)
     paper := term_rgb(2, 2, 2)
     window.paint_rect(TermRect { x: 0, y: 0, width: 4, height: 3 }, ' '.as(u32), ink, paper)
-    window.nine_slice(TermRect { x: 0, y: 0, width: 4, height: 3 }, c"/-\\| |\\-/", no)
+    window.nine_slice(TermRect { x: 0, y: 0, width: 4, height: 3 }, "/-\\| |\\-/", no)
 
     assert window.cells[0].ch == '/'.as(u32)
     assert window.cells[1].ch == '-'.as(u32)
@@ -481,7 +481,7 @@ test "window box leaves interior blank rows filled with spaces" {
     full := TermRect { x: 0, y: 0, width: window.rect.width, height: window.rect.height }
 
     window.paint_rect(full, ' '.as(u32), ink, paper)
-    window.nine_slice(full, c"/-\\| |\\-/", no)
+    window.nine_slice(full, "/-\\| |\\-/", no)
     window.paint(full, edge, paper)
 
     for x: usize = 1; x + 1 < window.rect.width.as(usize); x += 1 {

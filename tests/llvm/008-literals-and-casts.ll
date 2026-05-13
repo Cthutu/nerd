@@ -5,7 +5,7 @@ to_i32 :: fn(value: f64) -> i32 {
 main :: fn() -> i32 {
     number: f64 = 1.5
     _text: string = "hello"
-    _c_text: ^u8 = c"hello"
+    _c_text: ^i8 = c"hello"
     _ptr: ^i32 = nil
     return to_i32(number)
 }

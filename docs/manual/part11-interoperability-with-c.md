@@ -26,8 +26,8 @@ When several functions come from the same library, group them in an FFI block:
 ```nerd
 ffi "c" {
     abs (i32) -> i32      -- declares the C function abs
-    strlen (^u8) -> usize -- declares the C function strlen
-    length :: strlen (^u8) -> usize -- Nerd name differs from C symbol
+    strlen (^i8) -> usize -- declares the C function strlen
+    length :: strlen (^i8) -> usize -- Nerd name differs from C symbol
 }
 ```
 
@@ -77,14 +77,14 @@ The library operand is a compile-time string. A compile-time string is a string
 value the compiler can know while building the program:
 
 ```nerd
-ffi "c" puts (^u8) -> i32  -- "c" names the C library
+ffi "c" puts (^i8) -> i32  -- "c" names the C library
 ```
 
 It can also come from a compile-time binding:
 
 ```nerd
 libc :: "c"
-write_line :: ffi libc puts (^u8) -> i32  -- use a compile-time binding
+write_line :: ffi libc puts (^i8) -> i32  -- use a compile-time binding
 ```
 
 Parenthesised compile-time expressions are allowed:
@@ -108,7 +108,7 @@ Write `-> Type` when the function returns a value.
 Use `...` for C variadic functions:
 
 ```nerd
-ffi "c" printf (^u8, ...) -> i32  -- ... accepts C variadic arguments
+ffi "c" printf (^i8, ...) -> i32  -- ... accepts C variadic arguments
 ```
 
 Variadic syntax is only for FFI signatures.
@@ -118,7 +118,7 @@ Variadic syntax is only for FFI signatures.
 C string literals use `c"..."`:
 
 ```nerd
-ffi "c" puts (^u8) -> i32
+ffi "c" puts (^i8) -> i32
 
 main :: fn () {
     puts(c"hello")  -- pass a null-terminated C string
@@ -126,7 +126,7 @@ main :: fn () {
 ```
 
 C strings are not Nerd `string` values. Convert deliberately at the boundary.
-They are null-terminated so C functions can read them through `^u8`.
+They are null-terminated so C functions can read them through `^i8`.
 
 ## Pointer-To-Slice At Boundaries
 

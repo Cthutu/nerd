@@ -21,8 +21,8 @@ Several declarations that use the same library can be grouped in an FFI block:
 ```nerd
 ffi "c" {
     abs (i32) -> i32
-    strlen (^u8) -> usize
-    length :: strlen (^u8) -> usize
+    strlen (^i8) -> usize
+    length :: strlen (^i8) -> usize
     pub seed_rng :: srand (u32)
 }
 ```
@@ -57,7 +57,7 @@ These are valid:
 ffi "c" abs (i32) -> i32
 
 libc :: "c"
-puts_line :: ffi libc puts (^u8) -> i32
+puts_line :: ffi libc puts (^i8) -> i32
 
 sqrt_fn :: ffi ("m") sqrt (f64) -> f64
 ```

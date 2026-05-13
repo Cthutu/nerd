@@ -3,7 +3,7 @@
 -- This module now loads through the normal module pipeline.
 
 ffi "c" {
-    write (i32, ^u8, usize) -> isize
+    write (i32, ^void, usize) -> isize
 }
 
 ffi "nrt" {

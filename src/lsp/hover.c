@@ -2141,6 +2141,217 @@ internal string lsp_cst_binding_detail(Arena*         arena,
 }
 
 //------------------------------------------------------------------------------
+// Add one document symbol from a CST declaration-like node.
+
+internal bool lsp_cst_symbol_node_info(const Cst*     cst,
+                                       const CstNode* node,
+                                       u32*           out_symbol_handle,
+                                       u32*           out_token_index,
+                                       int*           out_fallback_kind,
+                                       string*        out_fallback_detail)
+{
+    if (!cst || !node) {
+        return false;
+    }
+
+    if (node->kind == CK_FfiDef) {
+        if (node->a >= array_count(cst->ffi_infos)) {
+            return false;
+        }
+        const CstFfiInfo* ffi = &cst->ffi_infos[node->a];
+        *out_symbol_handle    = ffi->symbol_handle;
+        *out_token_index      = ffi->token_index;
+        *out_fallback_kind    = LSP_SYMBOL_KIND_FUNCTION;
+        *out_fallback_detail  = s("function");
+        return true;
+    }
+
+    if (node->kind != CK_Bind && node->kind != CK_Variable &&
+        node->kind != CK_Use) {
+        return false;
+    }
+
+    *out_symbol_handle   = node->a;
+    *out_token_index     = node->token_index;
+    *out_fallback_kind   = lsp_cst_binding_symbol_kind(cst, node);
+    *out_fallback_detail = lsp_cst_binding_detail(&temp_arena, cst, node);
+    return true;
+}
+
+internal void lsp_append_document_symbol(Arena*             arena,
+                                         JsonValue*         result,
+                                         const LspDocument* doc,
+                                         const CstNode*     node,
+                                         u32                symbol_handle,
+                                         u32                token_index,
+                                         int                fallback_kind,
+                                         string             fallback_detail,
+                                         const Sema*        sema)
+{
+    u32             decl_index = LSP_NO_DECL;
+    const SemaDecl* decl       = NULL;
+    if (sema != NULL) {
+        decl_index = lsp_find_decl_index_by_symbol_handle(sema, symbol_handle);
+        if (decl_index != LSP_NO_DECL &&
+            !lsp_sema_decl(sema, decl_index, &decl)) {
+            decl_index = LSP_NO_DECL;
+            decl       = NULL;
+        }
+    }
+
+    usize start_offset;
+    usize end_offset;
+    lsp_token_offsets(
+        &doc->front_end.lexer, token_index, &start_offset, &end_offset);
+
+    JsonValue* symbol = json_new_object(arena);
+    json_object_set_string(symbol,
+                           arena,
+                           "name",
+                           lex_symbol(&doc->front_end.lexer, symbol_handle));
+    json_object_set_number(symbol,
+                           arena,
+                           "kind",
+                           decl ? lsp_decl_symbol_kind(decl) : fallback_kind);
+    json_object_set_object(
+        symbol,
+        "range",
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
+    json_object_set_object(
+        symbol,
+        "selectionRange",
+        lsp_make_document_range(doc, arena, start_offset, end_offset));
+
+    if (!decl) {
+        json_object_set_string(symbol, arena, "detail", fallback_detail);
+    } else if (decl->kind == SK_TypeAlias) {
+        json_object_set_string(symbol, arena, "detail", s("type alias"));
+    } else if (decl->kind == SK_Constant) {
+        i64 value = 0;
+        if (lsp_eval_decl_value(doc, decl_index, &value)) {
+            json_object_set_string(
+                symbol,
+                arena,
+                "detail",
+                string_format(arena, "constant = %lld", value));
+        } else {
+            json_object_set_string(symbol, arena, "detail", s("constant"));
+        }
+    } else {
+        json_object_set_string(symbol, arena, "detail", s("function"));
+    }
+
+    json_array_push(result, symbol);
+    UNUSED(node);
+}
+
+internal void lsp_append_ffi_block_document_symbols(Arena*             arena,
+                                                    JsonValue*         result,
+                                                    const LspDocument* doc,
+                                                    const CstNode*     node,
+                                                    const Sema*        sema)
+{
+    if (node->a >= array_count(doc->cst.ffi_block_infos)) {
+        return;
+    }
+    const CstFfiBlockInfo* block = &doc->cst.ffi_block_infos[node->a];
+    u32 block_end = block->first_ffi_info + block->ffi_info_count;
+    for (u32 i = block->first_ffi_info; i < block_end; ++i) {
+        if (i >= array_count(doc->cst.ffi_infos)) {
+            break;
+        }
+        const CstFfiInfo* ffi = &doc->cst.ffi_infos[i];
+        lsp_append_document_symbol(arena,
+                                   result,
+                                   doc,
+                                   node,
+                                   ffi->symbol_handle,
+                                   ffi->token_index,
+                                   LSP_SYMBOL_KIND_FUNCTION,
+                                   s("function"),
+                                   sema);
+    }
+}
+
+internal void lsp_append_document_symbol_node(Arena*             arena,
+                                              JsonValue*         result,
+                                              const LspDocument* doc,
+                                              u32                node_index,
+                                              const Sema*        sema);
+
+internal void lsp_append_top_on_document_symbols(Arena*             arena,
+                                                 JsonValue*         result,
+                                                 const LspDocument* doc,
+                                                 const CstNode*     node,
+                                                 const Sema*        sema)
+{
+    if (node->a >= array_count(doc->cst.top_ons)) {
+        return;
+    }
+    const CstTopOnInfo* info = &doc->cst.top_ons[node->a];
+    if (info->body_node_index >= array_count(doc->cst.nodes)) {
+        return;
+    }
+    const CstNode* body = &doc->cst.nodes[info->body_node_index];
+    if (body->kind != CK_Block) {
+        return;
+    }
+    for (u32 i = body->a; i < body->b; ++i) {
+        lsp_append_document_symbol_node(arena, result, doc, i, sema);
+        const CstNode* child = &doc->cst.nodes[i];
+        if (child->kind == CK_TopOn &&
+            child->a < array_count(doc->cst.top_ons)) {
+            const CstTopOnInfo* child_info = &doc->cst.top_ons[child->a];
+            if (child_info->body_node_index < array_count(doc->cst.nodes)) {
+                const CstNode* child_body =
+                    &doc->cst.nodes[child_info->body_node_index];
+                if (child_body->kind == CK_Block && child_body->b > 0) {
+                    i = child_body->b - 1;
+                }
+            }
+        }
+    }
+}
+
+internal void lsp_append_document_symbol_node(Arena*             arena,
+                                              JsonValue*         result,
+                                              const LspDocument* doc,
+                                              u32                node_index,
+                                              const Sema*        sema)
+{
+    if (node_index >= array_count(doc->cst.nodes)) {
+        return;
+    }
+    const CstNode* node = &doc->cst.nodes[node_index];
+    if (node->kind == CK_TopOn) {
+        lsp_append_top_on_document_symbols(arena, result, doc, node, sema);
+        return;
+    }
+    if (node->kind == CK_FfiBlock) {
+        lsp_append_ffi_block_document_symbols(arena, result, doc, node, sema);
+        return;
+    }
+
+    u32    symbol_handle = U32_MAX;
+    u32    token_index   = U32_MAX;
+    int    kind          = LSP_SYMBOL_KIND_CONSTANT;
+    string detail        = {0};
+    if (!lsp_cst_symbol_node_info(
+            &doc->cst, node, &symbol_handle, &token_index, &kind, &detail)) {
+        return;
+    }
+    lsp_append_document_symbol(arena,
+                               result,
+                               doc,
+                               node,
+                               symbol_handle,
+                               token_index,
+                               kind,
+                               detail,
+                               sema);
+}
+
+//------------------------------------------------------------------------------
 // Respond to hover requests with semantic information about the token under the
 // cursor.
 
@@ -2436,80 +2647,12 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
 
     if (doc->cst_ready) {
         LspDeclarationView decl_view = {0};
-        bool has_decls = lsp_declaration_view(state, uri, &decl_view);
+        bool        has_decls = lsp_declaration_view(state, uri, &decl_view);
+        const Sema* sema      = has_decls ? decl_view.sema : NULL;
 
         for (u32 i = 0; i < array_count(doc->cst.bindings); ++i) {
-            const CstNode* bind        = &doc->cst.nodes[doc->cst.bindings[i]];
-
-            u32             decl_index = LSP_NO_DECL;
-            const SemaDecl* decl       = NULL;
-            if (has_decls) {
-                decl_index = lsp_find_decl_index_by_symbol_handle(
-                    decl_view.sema, bind->a);
-                if (decl_index != LSP_NO_DECL &&
-                    !lsp_sema_decl(decl_view.sema, decl_index, &decl)) {
-                    decl_index = LSP_NO_DECL;
-                    decl       = NULL;
-                }
-            }
-
-            usize start_offset;
-            usize end_offset;
-            lsp_token_offsets(&doc->front_end.lexer,
-                              bind->token_index,
-                              &start_offset,
-                              &end_offset);
-
-            JsonValue* symbol = json_new_object(message->arena);
-            json_object_set_string(symbol,
-                                   message->arena,
-                                   "name",
-                                   lex_symbol(&doc->front_end.lexer, bind->a));
-            json_object_set_number(
-                symbol,
-                message->arena,
-                "kind",
-                decl ? lsp_decl_symbol_kind(decl)
-                     : lsp_cst_binding_symbol_kind(&doc->cst, bind));
-            json_object_set_object(
-                symbol,
-                "range",
-                lsp_make_document_range(
-                    doc, message->arena, start_offset, end_offset));
-            json_object_set_object(
-                symbol,
-                "selectionRange",
-                lsp_make_document_range(
-                    doc, message->arena, start_offset, end_offset));
-
-            if (!decl) {
-                json_object_set_string(
-                    symbol,
-                    message->arena,
-                    "detail",
-                    lsp_cst_binding_detail(message->arena, &doc->cst, bind));
-            } else if (decl->kind == SK_TypeAlias) {
-                json_object_set_string(
-                    symbol, message->arena, "detail", s("type alias"));
-            } else if (decl->kind == SK_Constant) {
-                i64 value = 0;
-                if (lsp_eval_decl_value(doc, decl_index, &value)) {
-                    json_object_set_string(symbol,
-                                           message->arena,
-                                           "detail",
-                                           string_format(message->arena,
-                                                         "constant = %lld",
-                                                         value));
-                } else {
-                    json_object_set_string(
-                        symbol, message->arena, "detail", s("constant"));
-                }
-            } else {
-                json_object_set_string(
-                    symbol, message->arena, "detail", s("function"));
-            }
-
-            json_array_push(result, symbol);
+            lsp_append_document_symbol_node(
+                message->arena, result, doc, doc->cst.bindings[i], sema);
         }
     }
 

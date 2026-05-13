@@ -4455,6 +4455,7 @@ internal bool cst_parse_ffi_def(CstParseState* state,
                        .library_node_index = library_node_index,
                        .first_ffi_info     = first_ffi_info,
                        .ffi_info_count     = ffi_info_count,
+                       .flags              = flags,
                    });
 
         return cst_emit_node(state,

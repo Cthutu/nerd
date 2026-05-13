@@ -5,7 +5,7 @@ to_i32 :: fn(value: f64) -> i32 {
 main :: fn() -> i32 {
     number: f64 = 1.5
     _text: string = "hello"
-    _c_text: ^u8 = c"hello"
+    _c_text: ^i8 = c"hello"
     _ptr: ^i32 = nil
     return to_i32(number)
 }
@@ -19,7 +19,7 @@ func fn.0(value: f64) -> i32 {
 func fn.1() -> i32 {
   let number: f64 = f64 1.5
   let _text: string = string "hello"
-  let _c_text: ^u8 = ^u8 c"hello"
+  let _c_text: ^i8 = ^i8 c"hello"
   let _ptr: ^i32 = ^i32 nil
   return i32 call bind.0(to_i32)(f64 local.1(number))
 }
