@@ -16,29 +16,29 @@ STDERR_FILENO :: 2
 input_buf : [256]u8
 input_len : usize
 
-pub pr :: fn (text: string) -> void {
+pub pr :: fn (text: string = "") -> void {
     _ := write(STDOUT_FILENO, text.data, text.count)
     return
 }
 
-pub epr :: fn (text: string) -> void {
+pub epr :: fn (text: string = "") -> void {
     _ := write(STDERR_FILENO, text.data, text.count)
     return
 }
 
-pub prn :: fn (text: string) -> void {
+pub prn :: fn (text: string = "") -> void {
     pr(text)
     _ := write(STDOUT_FILENO, c"\n", 1)
     return
 }
 
-pub eprn :: fn (text: string) -> void {
+pub eprn :: fn (text: string = "") -> void {
     epr(text)
     _ := write(STDERR_FILENO, c"\n", 1)
     return
 }
 
-pub input :: fn (prompt: string) -> string {
+pub input :: fn (prompt: string = "> ") -> string {
     pr(prompt)
     input_len = nerd_read_line(input_buf[..].data, input_buf[..].count)
     return input_buf[0..input_len].as(string)

@@ -32,6 +32,14 @@ typedef struct {
     u32        count;
 } SemaTypeSubstitution;
 
+typedef struct {
+    const Lexer*          lexer;
+    const Ast*            ast;
+    Sema*                 sema;
+    const AstFnSignature* signature;
+    bool                  imported;
+} SemaKnownCallSignature;
+
 internal SemaTypeSubstitution g_sema_type_subst = {0};
 
 internal u32  sema_builtin_type(Sema* sema, SemaTypeKind kind);
@@ -1202,47 +1210,6 @@ internal bool sema_node_is_named_call_arg(const Ast* ast, u32 node_index)
     return false;
 }
 
-internal bool sema_known_call_fn_node(const Ast*  ast,
-                                      const Sema* sema,
-                                      u32         callee_node_index,
-                                      u32*        out_fn_node_index)
-{
-    callee_node_index     = sema_unwrap_expr_node(ast, callee_node_index);
-    const AstNode* callee = &ast->nodes[callee_node_index];
-
-    if (callee->kind != AK_SymbolRef) {
-        return false;
-    }
-
-    if (callee_node_index < array_count(sema->node_local_indices)) {
-        u32 local_index = sema->node_local_indices[callee_node_index];
-        if (local_index != sema_no_local()) {
-            const SemaLocal* local = &sema->locals[local_index];
-            if (local->kind == SLK_Function &&
-                local->value_node_index != sema_no_decl() &&
-                ast->nodes[local->value_node_index].kind == AK_FnDef) {
-                *out_fn_node_index = local->value_node_index;
-                return true;
-            }
-        }
-    }
-
-    if (callee_node_index < array_count(sema->node_decl_indices)) {
-        u32 decl_index = sema->node_decl_indices[callee_node_index];
-        if (decl_index != sema_no_decl()) {
-            const SemaDecl* decl = &sema->decls[decl_index];
-            if (decl->kind == SK_Function &&
-                decl->value_node_index != sema_no_decl() &&
-                ast->nodes[decl->value_node_index].kind == AK_FnDef) {
-                *out_fn_node_index = decl->value_node_index;
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node);
 internal ErrorSpan sema_local_span(const Lexer*     lexer,
                                    const Ast*       ast,
@@ -2373,6 +2340,131 @@ internal bool sema_imported_decl_source(Sema*           sema,
     *out_sema       = &module->front_end.sema;
     *out_decl_index = decl->import_decl_index;
     return true;
+}
+
+internal bool sema_known_call_signature(const Lexer* lexer,
+                                        const Ast*   ast,
+                                        Sema*        sema,
+                                        u32          callee_node_index,
+                                        SemaKnownCallSignature* out_signature)
+{
+    callee_node_index     = sema_unwrap_expr_node(ast, callee_node_index);
+    const AstNode* callee = &ast->nodes[callee_node_index];
+
+    if (callee->kind != AK_SymbolRef) {
+        return false;
+    }
+
+    u32 local_index = sema_no_local();
+    if (callee_node_index < array_count(sema->node_local_indices)) {
+        local_index = sema->node_local_indices[callee_node_index];
+    }
+    if (local_index != sema_no_local()) {
+        const SemaLocal* local = &sema->locals[local_index];
+        if (local->kind == SLK_Function &&
+            local->value_node_index != sema_no_decl() &&
+            ast->nodes[local->value_node_index].kind == AK_FnDef) {
+            const AstNode* fn_start =
+                &ast->nodes[ast->nodes[local->value_node_index].a];
+            *out_signature = (SemaKnownCallSignature){
+                .lexer     = lexer,
+                .ast       = ast,
+                .sema      = sema,
+                .signature = &ast->fn_signatures[fn_start->a],
+                .imported  = false,
+            };
+            return true;
+        }
+
+        u32 decl_index = sema_find_decl(sema, local->symbol_handle);
+        if (decl_index != sema_no_decl()) {
+            const SemaDecl* decl              = &sema->decls[decl_index];
+            const Lexer*    source_lexer      = NULL;
+            const Ast*      source_ast        = NULL;
+            Sema*           source_sema       = NULL;
+            u32             source_decl_index = sema_no_decl();
+            if (sema_imported_decl_source(sema,
+                                          decl,
+                                          &source_lexer,
+                                          &source_ast,
+                                          &source_sema,
+                                          &source_decl_index)) {
+                const SemaDecl* source_decl =
+                    &source_sema->decls[source_decl_index];
+                if (source_decl->value_node_index != sema_no_decl() &&
+                    source_ast->nodes[source_decl->value_node_index].kind ==
+                        AK_FnDef) {
+                    const AstNode* fn_start =
+                        &source_ast
+                             ->nodes[source_ast
+                                         ->nodes[source_decl->value_node_index]
+                                         .a];
+                    *out_signature = (SemaKnownCallSignature){
+                        .lexer     = source_lexer,
+                        .ast       = source_ast,
+                        .sema      = source_sema,
+                        .signature = &source_ast->fn_signatures[fn_start->a],
+                        .imported  = true,
+                    };
+                    return true;
+                }
+            }
+        }
+    }
+
+    if (callee_node_index < array_count(sema->node_decl_indices)) {
+        u32 decl_index = sema->node_decl_indices[callee_node_index];
+        if (decl_index != sema_no_decl()) {
+            const SemaDecl* decl = &sema->decls[decl_index];
+            if (decl->kind == SK_Function &&
+                decl->value_node_index != sema_no_decl() &&
+                ast->nodes[decl->value_node_index].kind == AK_FnDef) {
+                const AstNode* fn_start =
+                    &ast->nodes[ast->nodes[decl->value_node_index].a];
+                *out_signature = (SemaKnownCallSignature){
+                    .lexer     = lexer,
+                    .ast       = ast,
+                    .sema      = sema,
+                    .signature = &ast->fn_signatures[fn_start->a],
+                    .imported  = false,
+                };
+                return true;
+            }
+
+            const Lexer* source_lexer      = NULL;
+            const Ast*   source_ast        = NULL;
+            Sema*        source_sema       = NULL;
+            u32          source_decl_index = sema_no_decl();
+            if (sema_imported_decl_source(sema,
+                                          decl,
+                                          &source_lexer,
+                                          &source_ast,
+                                          &source_sema,
+                                          &source_decl_index)) {
+                const SemaDecl* source_decl =
+                    &source_sema->decls[source_decl_index];
+                if (source_decl->value_node_index != sema_no_decl() &&
+                    source_ast->nodes[source_decl->value_node_index].kind ==
+                        AK_FnDef) {
+                    const AstNode* fn_start =
+                        &source_ast
+                             ->nodes[source_ast
+                                         ->nodes[source_decl->value_node_index]
+                                         .a];
+                    *out_signature = (SemaKnownCallSignature){
+                        .lexer     = source_lexer,
+                        .ast       = source_ast,
+                        .sema      = source_sema,
+                        .signature = &source_ast->fn_signatures[fn_start->a],
+                        .imported  = true,
+                    };
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
@@ -13424,17 +13516,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             const SemaType* fn_type = &sema->types[callee_type];
-            bool is_varargs    = (fn_type->flags & STF_FunctionVarargs) != 0;
-            u32  known_fn_node = U32_MAX;
-            const AstFnSignature* known_signature = NULL;
-            u32                   required_count  = fn_type->param_count;
+            bool is_varargs = (fn_type->flags & STF_FunctionVarargs) != 0;
+            SemaKnownCallSignature known_signature = {0};
+            u32                    required_count  = fn_type->param_count;
             if (!is_varargs &&
-                sema_known_call_fn_node(ast, sema, node->a, &known_fn_node)) {
-                const AstNode* fn_start =
-                    &ast->nodes[ast->nodes[known_fn_node].a];
-                known_signature = &ast->fn_signatures[fn_start->a];
-                required_count =
-                    sema_signature_required_param_count(ast, known_signature);
+                sema_known_call_signature(
+                    lexer, ast, sema, node->a, &known_signature)) {
+                required_count = sema_signature_required_param_count(
+                    known_signature.ast, known_signature.signature);
             }
 
             bool wrong_arity = is_varargs
@@ -13459,12 +13548,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         ? sema->type_param_types[fn_type->first_param_type + i]
                         : sema_no_type();
                 const AstParam* expected_param =
-                    known_signature != NULL && i < known_signature->param_count
-                        ? &ast->params[known_signature->first_param + i]
+                    known_signature.signature != NULL &&
+                            i < known_signature.signature->param_count
+                        ? &known_signature.ast
+                               ->params[known_signature.signature->first_param +
+                                        i]
                         : NULL;
                 if (!sema_call_arg_value_node(lexer,
                                               ast,
-                                              lexer,
+                                              known_signature.signature != NULL
+                                                  ? known_signature.lexer
+                                                  : lexer,
                                               expected_param,
                                               arg_node,
                                               &arg_node)) {
@@ -13495,31 +13589,70 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            if (known_signature != NULL) {
+            if (known_signature.signature != NULL) {
                 for (u32 i = call->arg_count; i < fn_type->param_count; ++i) {
                     const AstParam* param =
-                        &ast->params[known_signature->first_param + i];
+                        &known_signature.ast
+                             ->params[known_signature.signature->first_param +
+                                      i];
                     ASSERT(param->default_node_index != U32_MAX,
                            "Expected omitted parameter to have a default");
                     u32 expected_arg =
                         sema->type_param_types[fn_type->first_param_type + i];
                     u32 arg_type = sema_no_type();
-                    if (!sema_infer_node_type(lexer,
-                                              ast,
-                                              sema,
-                                              param->default_node_index,
-                                              expected_arg,
-                                              &arg_type)) {
-                        return false;
-                    }
-                    if (!sema_type_matches(sema, expected_arg, arg_type)) {
-                        return error_0304_type_mismatch(
-                            lexer->source,
-                            sema_node_span(
-                                lexer, &ast->nodes[param->default_node_index]),
-                            sema_type_name(
-                                lexer, sema, &temp_arena, expected_arg),
-                            sema_type_name(lexer, sema, &temp_arena, arg_type));
+                    if (known_signature.imported) {
+                        u32 expected_source =
+                            sema_import_type((Lexer*)known_signature.lexer,
+                                             known_signature.sema,
+                                             lexer,
+                                             sema,
+                                             expected_arg);
+                        if (!sema_infer_node_type(known_signature.lexer,
+                                                  known_signature.ast,
+                                                  known_signature.sema,
+                                                  param->default_node_index,
+                                                  expected_source,
+                                                  &arg_type)) {
+                            return false;
+                        }
+                        if (!sema_type_matches(known_signature.sema,
+                                               expected_source,
+                                               arg_type)) {
+                            return error_0304_type_mismatch(
+                                known_signature.lexer->source,
+                                sema_node_span(
+                                    known_signature.lexer,
+                                    &known_signature.ast
+                                         ->nodes[param->default_node_index]),
+                                sema_type_name(known_signature.lexer,
+                                               known_signature.sema,
+                                               &temp_arena,
+                                               expected_source),
+                                sema_type_name(known_signature.lexer,
+                                               known_signature.sema,
+                                               &temp_arena,
+                                               arg_type));
+                        }
+                    } else {
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  param->default_node_index,
+                                                  expected_arg,
+                                                  &arg_type)) {
+                            return false;
+                        }
+                        if (!sema_type_matches(sema, expected_arg, arg_type)) {
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(
+                                    lexer,
+                                    &ast->nodes[param->default_node_index]),
+                                sema_type_name(
+                                    lexer, sema, &temp_arena, expected_arg),
+                                sema_type_name(
+                                    lexer, sema, &temp_arena, arg_type));
+                        }
                     }
                 }
             }
