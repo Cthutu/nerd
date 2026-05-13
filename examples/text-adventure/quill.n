@@ -1,0 +1,98 @@
+use std.io
+use term
+
+main :: fn () {
+    state := init()
+
+    prn_wrap($"{state.locations[state.player_loc]}")
+    prn()
+
+    show_exits(state)
+}
+
+State :: plex {
+    -- Database
+    locations  []string            -- location descriptions
+    exits      [][](string, usize) -- exits per location
+    verbs      [][]string          -- verbs and their synonyms
+
+    -- Game state
+    player_loc usize
+}
+
+show_exits :: fn (state: State) {
+    prn("Exits: ")
+    for i, exit in state.exits[state.player_loc] {
+        pr($"{exit_strings(exit.0)}")
+        on i < state.exits[state.player_loc].count - 1 => pr(", ") else pr(".")
+    }
+    prn()
+    prn()
+}
+
+init :: fn () -> State {
+    return {
+        locations  : [
+            "I am in a Hall.  The Kitchen is to the East, the Bedroom to the "
+                +"West and the Lounge to the South.  Steps lead Down to the "
+                +"Cellar.",
+            "I am in the Kitchen.  The Hall is to the West and the Dining room "
+                +"is to the South.",
+            "I am in the Dining room.  The Kitchen is to the North and the "
+                +"Lounge is to the West.",
+            "I am in the Lounge.  To the North is the Hall while the Dining "
+                +"room is to the East.",
+            "I am in the Bedroom.  The Hall is to the East and a bed is "
+                +"against the North wall.",
+            "I am in the Cellar.  Steps lead Up to the Hall.",
+        ]
+        exits      : [
+            [
+                ("E", 1),
+                ("W", 4),
+                ("S", 3),
+                ("D", 5),
+            ],
+            [
+                ("W", 0),
+                ("S", 2),
+            ],
+            [
+                ("N", 1),
+                ("W", 3),
+            ],
+            [
+                ("N", 0),
+                ("E", 2),
+            ],
+            [("E", 0)],
+            [("U", 0)],
+        ]
+        verbs      : [
+            ["n", "north"],
+            ["s", "south"],
+            ["e", "east"],
+            ["w", "west"],
+            ["u", "up"],
+            ["d", "down"],
+            ["look", "l"],
+            ["quit", "q"],
+            ["i", "inv", "inventory"],
+            ["get", "take"],
+            ["drop"],
+        ]
+        player_loc : 0
+    }
+}
+
+exit_strings :: fn (exit: string) -> string {
+    return on exit {
+        "N" => "North"
+        "S" => "South"
+        "E" => "East"
+        "W" => "West"
+        "U" => "Up"
+        "D" => "Down"
+        else => exit
+    }
+}

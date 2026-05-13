@@ -1,0 +1,96 @@
+--
+-- Terminal control
+--
+
+use std.io
+
+on linux {
+
+    winsize :: plex #c {
+        ws_row    i16
+        ws_col    i16
+        ws_xpixel i16
+        ws_ypixel i16
+    }
+
+    STDIN_FILENO  :: 0
+    STDOUT_FILENO :: 1
+    STDERR_FILENO :: 2
+
+    TIOCGWINSZ :: 0x5413
+
+    ffi "c" ioctl (fd: i32, request: i32, ...) -> i32
+
+    pub term_get_size :: fn () -> (i32, i32) {
+        ws : winsize
+        _ := ioctl(STDOUT_FILENO, TIOCGWINSZ, ^ws)
+        return (ws.ws_row.as(i32), ws.ws_col.as(i32))
+    }
+
+}
+
+pub prn_wrap :: fn (s: string) {
+    lines := wrap(s, term_get_size().1)
+    for line in lines {
+        prn(line^)
+    }
+}
+
+pub wrap :: fn (s: string, width: i32) -> [..]string {
+    start  : usize      = 0
+    end    : usize      = 0
+    result : [..]string
+
+    on width <= 0 || s.count == 0 => {
+        result.push(s)
+        return result
+    }
+
+    limit := width.as(usize)
+
+    for start < s.count {
+        end = start
+        last_space := start
+        found_space := no
+        found_newline := no
+
+        for end < s.count && end - start < limit {
+            ch := s.data[end]
+            on ch {
+                '\n' => {
+                    found_newline = yes
+                    break
+                }
+                ' ', '\t' => {
+                    last_space  = end
+                    found_space = yes
+                }
+            }
+
+            end += 1
+        }
+
+        on found_newline => {
+            result.push(s[start..end])
+            start = end + 1
+        } else {
+            on end == s.count => {
+                result.push(s[start..])
+                start = s.count
+            } else {
+                on found_space => {
+                    result.push(s[start..last_space])
+                    start = last_space + 1
+                    for start < s.count && (s.data[start] == ' ' || s.data[start] == '\t') {
+                        start += 1
+                    }
+                } else {
+                    result.push(s[start..end])
+                    start = end
+                }
+            }
+        }
+    }
+
+    return result
+}
