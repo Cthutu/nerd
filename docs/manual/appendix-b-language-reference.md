@@ -68,8 +68,11 @@ intended exit code.
   destination pointer type is explicit.
 - Casts do not imply ownership transfer.
 - Use `.size` for the runtime byte size of a type or value. It returns `usize`.
-- Strings, slices, and dynamic arrays report the size of their value header;
-  use `.count` for element counts.
+- Strings, slices, and dynamic arrays report the size of their value header.
+  Fixed arrays, strings, slices, and dynamic arrays expose `.count` for element
+  counts.
+- Dot access automatically dereferences pointers when the pointee provides the
+  requested tuple, collection, plex, or union member.
 
 ## Control Flow
 

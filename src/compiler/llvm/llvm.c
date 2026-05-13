@@ -405,6 +405,38 @@ internal u32 llvm_array_count(const Sema* sema, u32 type_index)
     return sema->types[type_index].return_type;
 }
 
+internal bool llvm_type_has_dot_members(const Sema* sema, u32 type_index)
+{
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_Tuple:
+    case STK_Array:
+    case STK_Slice:
+    case STK_String:
+    case STK_DynamicArray:
+    case STK_Plex:
+    case STK_Union:
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal u32 llvm_member_target_type(const Sema* sema, u32 type_index)
+{
+    u32 result = sema_materialise_type(sema, type_index);
+    while (llvm_type_kind(sema, result) == STK_Pointer) {
+        u32 pointee_type =
+            sema_materialise_type(sema, llvm_pointee_type(sema, result));
+        SemaTypeKind pointee_kind = llvm_type_kind(sema, pointee_type);
+        if (pointee_kind != STK_Pointer &&
+            !llvm_type_has_dot_members(sema, pointee_type)) {
+            break;
+        }
+        result = pointee_type;
+    }
+    return result;
+}
+
 internal u32 llvm_collection_item_type(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
@@ -5628,6 +5660,27 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
             }
 
+            if (expr->kind == HIR_EXPR_Field &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "count")) {
+                u32 source_type =
+                    ctx->hir->exprs[expr->operand_expr_index].type_index;
+                u32 member_type =
+                    llvm_member_target_type(ctx->sema, source_type);
+                if (llvm_type_kind(ctx->sema, member_type) == STK_Array) {
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
+                        .value      = string_format(
+                            ctx->arena,
+                            "%llu",
+                            (unsigned long long)ctx->sema->types[member_type]
+                                .return_type),
+                    };
+                }
+            }
+
             LlvmValue target =
                 llvm_emit_expr(ctx, function, expr->operand_expr_index);
             if (!target.ok) {
@@ -5645,8 +5698,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_pointee_type(ctx->sema, target.type_index);
                 SemaTypeKind pointee_kind =
                     llvm_type_kind(ctx->sema, pointee_type);
-                if (pointee_kind != STK_Tuple && pointee_kind != STK_Plex &&
-                    pointee_kind != STK_Union && pointee_kind != STK_String) {
+                if (pointee_kind != STK_Pointer && pointee_kind != STK_Tuple &&
+                    pointee_kind != STK_Plex && pointee_kind != STK_Union &&
+                    pointee_kind != STK_String && pointee_kind != STK_Slice &&
+                    pointee_kind != STK_DynamicArray) {
                     break;
                 }
 

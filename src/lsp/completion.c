@@ -43,6 +43,52 @@ internal bool lsp_completion_label_matches_prefix(string label, string prefix)
     return memcmp(label.data, prefix.data, prefix.count) == 0;
 }
 
+internal bool lsp_completion_parse_u32(string value, u32* out)
+{
+    if (value.count == 0) {
+        return false;
+    }
+
+    u64 result = 0;
+    for (usize i = 0; i < value.count; ++i) {
+        u8 ch = value.data[i];
+        if (ch < '0' || ch > '9') {
+            return false;
+        }
+        result = result * 10 + (u64)(ch - '0');
+        if (result > UINT32_MAX) {
+            return false;
+        }
+    }
+    *out = (u32)result;
+    return true;
+}
+
+internal u32 lsp_completion_builtin_type(const Sema* sema, SemaTypeKind kind)
+{
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == kind) {
+            return i;
+        }
+    }
+    return sema_no_type();
+}
+
+internal u32 lsp_completion_pointer_type(const Sema* sema, u32 pointee_type)
+{
+    if (pointee_type == sema_no_type()) {
+        return sema_no_type();
+    }
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        const SemaType* type = &sema->types[i];
+        if (type->kind == STK_Pointer &&
+            type->first_param_type == pointee_type) {
+            return i;
+        }
+    }
+    return sema_no_type();
+}
+
 internal void lsp_completion_filter_items(JsonValue* items, string prefix)
 {
     if (prefix.count == 0 || items->kind != JSON_ARRAY) {
@@ -180,23 +226,60 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
     const SemaType* type = &sema->types[receiver_type];
     if (type->kind == STK_Pointer &&
         type->first_param_type < array_count(sema->types)) {
-        u32 pointee_type = sema_materialise_type(sema, type->first_param_type);
-        if (pointee_type < array_count(sema->types) &&
-            (sema->types[pointee_type].kind == STK_Plex ||
-             sema->types[pointee_type].kind == STK_Union ||
-             sema->types[pointee_type].kind == STK_DynamicArray)) {
+        while (type->kind == STK_Pointer &&
+               type->first_param_type < array_count(sema->types)) {
+            u32 pointee_type =
+                sema_materialise_type(sema, type->first_param_type);
+            if (pointee_type >= array_count(sema->types)) {
+                break;
+            }
+            SemaTypeKind pointee_kind = sema->types[pointee_type].kind;
+            if (pointee_kind != STK_Pointer && pointee_kind != STK_Tuple &&
+                pointee_kind != STK_Array && pointee_kind != STK_Slice &&
+                pointee_kind != STK_String &&
+                pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
+                pointee_kind != STK_Union) {
+                break;
+            }
             receiver_type = pointee_type;
             type          = &sema->types[receiver_type];
         }
     }
 
+    if (type->kind == STK_Tuple) {
+        u32 index = 0;
+        if (!lsp_completion_parse_u32(field, &index) ||
+            index >= type->param_count) {
+            return sema_no_type();
+        }
+        return sema->type_param_types[type->first_param_type + index];
+    }
+
+    if (type->kind == STK_Array) {
+        return string_eq(field, s("count"))
+                   ? lsp_completion_builtin_type(sema, STK_Usize)
+                   : sema_no_type();
+    }
+
     if (type->kind == STK_String || type->kind == STK_Slice) {
-        (void)field;
-        return sema_no_type();
+        if (string_eq(field, s("data"))) {
+            u32 item_type = type->kind == STK_String
+                                ? lsp_completion_builtin_type(sema, STK_U8)
+                                : type->first_param_type;
+            return lsp_completion_pointer_type(sema, item_type);
+        }
+        return string_eq(field, s("count"))
+                   ? lsp_completion_builtin_type(sema, STK_Usize)
+                   : sema_no_type();
     }
 
     if (type->kind == STK_DynamicArray) {
-        (void)field;
+        if (string_eq(field, s("data"))) {
+            return lsp_completion_pointer_type(sema, type->first_param_type);
+        }
+        if (string_eq(field, s("count")) || string_eq(field, s("capacity"))) {
+            return lsp_completion_builtin_type(sema, STK_Usize);
+        }
         return sema_no_type();
     }
 
@@ -602,11 +685,21 @@ internal void lsp_completion_add_members(Arena*             arena,
     const SemaType* type          = &sema->types[type_index];
     if (type->kind == STK_Pointer &&
         type->first_param_type < array_count(sema->types)) {
-        u32 pointee_type = sema_materialise_type(sema, type->first_param_type);
-        if (pointee_type < array_count(sema->types) &&
-            (sema->types[pointee_type].kind == STK_Plex ||
-             sema->types[pointee_type].kind == STK_Union ||
-             sema->types[pointee_type].kind == STK_DynamicArray)) {
+        while (type->kind == STK_Pointer &&
+               type->first_param_type < array_count(sema->types)) {
+            u32 pointee_type =
+                sema_materialise_type(sema, type->first_param_type);
+            if (pointee_type >= array_count(sema->types)) {
+                break;
+            }
+            SemaTypeKind pointee_kind = sema->types[pointee_type].kind;
+            if (pointee_kind != STK_Pointer && pointee_kind != STK_Tuple &&
+                pointee_kind != STK_Array && pointee_kind != STK_Slice &&
+                pointee_kind != STK_String &&
+                pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
+                pointee_kind != STK_Union) {
+                break;
+            }
             type_index = pointee_type;
             type       = &sema->types[type_index];
         }
@@ -624,8 +717,20 @@ internal void lsp_completion_add_members(Arena*             arena,
         return;
     }
 
+    if (type->kind == STK_Array) {
+        lsp_completion_add(arena, items, s("count"), 5); // Field
+        return;
+    }
+
     if (type->kind == STK_DynamicArray) {
         lsp_completion_add_dynamic_array_members(arena, items);
+        return;
+    }
+
+    if (type->kind == STK_Tuple) {
+        for (u32 i = 0; i < type->param_count; ++i) {
+            lsp_completion_add(arena, items, string_format(arena, "%u", i), 5);
+        }
         return;
     }
 

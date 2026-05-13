@@ -134,9 +134,10 @@ ptr_bytes := nil.size    -- nil itself has size 0
 text_bytes := "hi".size  -- size of a string value, not its character count
 ```
 
-For fixed arrays, `.size` is the size of the whole array value. For strings,
-slices, and dynamic arrays, `.size` is the size of the value header. Use
-`.count` when you want the number of live elements.
+For fixed arrays, `.size` is the size of the whole array value and `.count` is
+the fixed element count. For strings, slices, and dynamic arrays, `.size` is the
+size of the value header. Use `.count` when you want the number of live
+elements.
 
 Untyped integer literals use the default materialised integer type for `.size`,
 so `128.size` is the same as `i32.size` unless context gives the literal a

@@ -40,6 +40,8 @@ main :: fn () -> i32 {
 ```
 
 Use tuples for small, positional groupings. Use plexes when field names matter.
+Dot access automatically dereferences pointers to tuples, so `pair_ptr.0` is
+the same field access as `pair_ptr^.0`.
 
 ## Fixed Arrays
 
@@ -58,6 +60,8 @@ An explicit fixed array type is written `[N]T`:
 values: [3]i32 = [1, 2, 3]  -- array length is part of the type
 ```
 
+Fixed arrays expose `.count` as their element count.
+
 ## Slices
 
 A slice is a view into contiguous storage. Slice types are written `[]T`.
@@ -73,7 +77,8 @@ main :: fn () {
 }
 ```
 
-Slices have `.data` and `.count`. They do not own storage.
+Slices have `.data` and `.count`. They do not own storage. Dot access
+automatically dereferences pointers to collection headers.
 
 ## Pointer-To-Slice Casts
 
@@ -156,7 +161,8 @@ main :: fn () -> i32 {
 ```
 
 Fields are read with dot syntax and can be assigned when the value is mutable.
-These are partial snippets, not complete programs:
+Dot access automatically dereferences pointers to plexes and unions. These are
+partial snippets, not complete programs:
 
 ```nerd
 p.x = 10  -- assign a field
