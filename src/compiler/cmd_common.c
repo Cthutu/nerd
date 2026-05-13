@@ -49,6 +49,32 @@ cstr compiler_cmd_output_root(Arena*     arena,
     return compiler_cmd_default_artifacts().binary_path;
 }
 
+cstr compiler_cmd_build_binary_path(Arena* arena, cstr output_root)
+{
+#if OS_WINDOWS
+    string path = s(output_root);
+    if (path.count >= 4 && (path.data[path.count - 4] == '.') &&
+        (path.data[path.count - 3] == 'e' ||
+         path.data[path.count - 3] == 'E') &&
+        (path.data[path.count - 2] == 'x' ||
+         path.data[path.count - 2] == 'X') &&
+        (path.data[path.count - 1] == 'e' ||
+         path.data[path.count - 1] == 'E')) {
+        return output_root;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, output_root);
+    sb_append_cstr(&sb, ".exe");
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+#else
+    UNUSED(arena);
+    return output_root;
+#endif
+}
+
 cstr compiler_cmd_sidecar_path(Arena* arena, cstr output_root, cstr extension)
 {
     cstr          dir_path = path_dirname(arena, output_root);

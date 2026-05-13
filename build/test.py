@@ -228,9 +228,14 @@ def lines_are_subsequence(expected: str, actual: str, *, strip_dollars: bool = F
 def cleanup_generated_outputs(path: pathlib.Path) -> None:
     for sidecar in (
         path.parent / path.stem,
+        path.parent / f"{path.stem}.exe",
         path.parent / f"{path.stem}.input",
+        path.parent / f"{path.stem}.input.exe",
+        path.parent / f"{path.stem}.input.pdb",
         path.parent / f"{path.stem}.link.ll",
+        path.parent / f"{path.stem}.exe.link.ll",
         path.parent / f"{path.stem}.input.link.ll",
+        path.parent / f"{path.stem}.input.exe.link.ll",
     ):
         if sidecar.is_file():
             sidecar.unlink(missing_ok=True)
@@ -238,7 +243,9 @@ def cleanup_generated_outputs(path: pathlib.Path) -> None:
         f"_{path.stem}*",
         f"__{path.stem}*",
         f"{path.stem}.m*.ll",
+        f"{path.stem}.exe.m*.ll",
         f"{path.stem}.input.m*.ll",
+        f"{path.stem}.input.exe.m*.ll",
         f"_{path.stem}.input*",
         f"__{path.stem}.input*",
     ):
@@ -618,6 +625,9 @@ def test_command(path: pathlib.Path) -> list[Failure]:
                 failures.append(stderr_failure)
 
     executable = input_path.with_suffix("")
+    if command in {"build", "b"} and current_platform() == "windows":
+        executable = pathlib.Path(f"{executable}.exe")
+    debug_symbols = executable.with_suffix(".pdb")
     if run_mode == "keep" and not executable.exists():
         failures.append(Failure(path, "expected command to keep generated executable"))
     if run_mode in {"delete", "clean-llvm"} and executable.exists():
@@ -638,6 +648,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     if not failures:
         input_path.unlink(missing_ok=True)
         executable.unlink(missing_ok=True)
+        debug_symbols.unlink(missing_ok=True)
     return failures
 
 
