@@ -46,6 +46,7 @@ func fn.0() -> i32 {
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"d\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"a\00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c"a\00"
+@.slice.const.m0.3 = private unnamed_addr constant [1 x { { ptr, i64 }, { ptr, i64 } }] [{ { ptr, i64 }, { ptr, i64 } } { { ptr, i64 } { ptr @.str.m0.0, i64 1 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 } }]
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -68,18 +69,12 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-@.slice.literal.m0.0 = private global [1 x { { ptr, i64 }, { ptr, i64 } }] zeroinitializer
 @$locs = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
   %t0 = insertvalue { { ptr, i64 }, { ptr, i64 } } poison, { ptr, i64 } { ptr @.str.m0.0, i64 1 }, 0
   %t1 = insertvalue { { ptr, i64 }, { ptr, i64 } } %t0, { ptr, i64 } { ptr @.str.m0.1, i64 1 }, 1
-  %t2 = insertvalue [1 x { { ptr, i64 }, { ptr, i64 } }] poison, { { ptr, i64 }, { ptr, i64 } } %t1, 0
-  store [1 x { { ptr, i64 }, { ptr, i64 } }] %t2, ptr @.slice.literal.m0.0
-  %t3 = getelementptr inbounds [1 x { { ptr, i64 }, { ptr, i64 } }], ptr @.slice.literal.m0.0, i64 0, i64 0
-  %t4 = insertvalue { ptr, i64 } poison, ptr %t3, 0
-  %t5 = insertvalue { ptr, i64 } %t4, i64 1, 1
-  store { ptr, i64 } %t5, ptr @$locs
+  store { ptr, i64 } { ptr @.slice.const.m0.3, i64 1 }, ptr @$locs
   ret void
 }
 

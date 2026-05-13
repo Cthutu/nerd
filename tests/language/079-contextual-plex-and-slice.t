@@ -72,6 +72,8 @@ func fn.1() -> void {
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
+@.slice.const.m0.9 = private unnamed_addr constant [2 x { i32, i32 }] [{ i32, i32 } { i32 1, i32 2 }, { i32, i32 } { i32 3, i32 4 }]
+@.slice.const.m0.62 = private unnamed_addr constant [2 x { i32, i32 }] [{ i32, i32 } { i32 13, i32 14 }, { i32, i32 } { i32 15, i32 16 }]
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -157,77 +159,56 @@ define internal void @fn.1() {
   %t17 = insertvalue { i32, i32 } %t16, i32 2, 1
   %t18 = insertvalue { i32, i32 } poison, i32 3, 0
   %t19 = insertvalue { i32, i32 } %t18, i32 4, 1
-  %t20 = insertvalue [2 x { i32, i32 }] poison, { i32, i32 } %t17, 0
-  %t21 = insertvalue [2 x { i32, i32 }] %t20, { i32, i32 } %t19, 1
-  %t22 = alloca [2 x { i32, i32 }]
-  store [2 x { i32, i32 }] %t21, ptr %t22
-  %t23 = getelementptr inbounds [2 x { i32, i32 }], ptr %t22, i64 0, i64 0
-  %t24 = insertvalue { ptr, i64 } poison, ptr %t23, 0
-  %t25 = insertvalue { ptr, i64 } %t24, i64 2, 1
-  %t26 = extractvalue { ptr, i64 } %t25, 0
-  %t27 = getelementptr inbounds { i32, i32 }, ptr %t26, i32 0
-  %t28 = load { i32, i32 }, ptr %t27
-  %t29 = extractvalue { i32, i32 } %t28, 0
-  %t30 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t30, i32 %t29)
-  call void @string_builder_append_string(ptr %t30)
-  %t31 = alloca { ptr, i64 }
-  %t32 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t32
-  call void @to_string$string(ptr %t31, ptr %t32)
-  call void @string_builder_append_string(ptr %t31)
-  %t33 = insertvalue { i32, i32 } poison, i32 1, 0
-  %t34 = insertvalue { i32, i32 } %t33, i32 2, 1
-  %t35 = insertvalue { i32, i32 } poison, i32 3, 0
-  %t36 = insertvalue { i32, i32 } %t35, i32 4, 1
-  %t37 = insertvalue [2 x { i32, i32 }] poison, { i32, i32 } %t34, 0
-  %t38 = insertvalue [2 x { i32, i32 }] %t37, { i32, i32 } %t36, 1
-  %t39 = alloca [2 x { i32, i32 }]
-  store [2 x { i32, i32 }] %t38, ptr %t39
-  %t40 = getelementptr inbounds [2 x { i32, i32 }], ptr %t39, i64 0, i64 0
-  %t41 = insertvalue { ptr, i64 } poison, ptr %t40, 0
-  %t42 = insertvalue { ptr, i64 } %t41, i64 2, 1
-  %t43 = extractvalue { ptr, i64 } %t42, 0
-  %t44 = getelementptr inbounds { i32, i32 }, ptr %t43, i32 1
-  %t45 = load { i32, i32 }, ptr %t44
-  %t46 = extractvalue { i32, i32 } %t45, 1
-  %t47 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t47, i32 %t46)
-  call void @string_builder_append_string(ptr %t47)
-  %t48 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t48, i64 %t15)
-  %t49 = load { ptr, i64 }, ptr %t48
-  call void @$prn({ ptr, i64 } %t49)
-  %t50 = call i64 @string_builder_mark()
-  %t51 = extractvalue { i32, i32 } %t1, 0
-  %t52 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t52, i32 %t51)
-  call void @string_builder_append_string(ptr %t52)
-  %t53 = alloca { ptr, i64 }
-  %t54 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t54
-  call void @to_string$string(ptr %t53, ptr %t54)
-  call void @string_builder_append_string(ptr %t53)
-  %t55 = extractvalue { i32, i32 } %t1, 1
-  %t56 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t56, i32 %t55)
-  call void @string_builder_append_string(ptr %t56)
-  %t57 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t57, i64 %t50)
-  %t58 = load { ptr, i64 }, ptr %t57
-  call void @$prn({ ptr, i64 } %t58)
-  %t59 = insertvalue { i32, i32 } poison, i32 13, 0
-  %t60 = insertvalue { i32, i32 } %t59, i32 14, 1
-  %t61 = insertvalue { i32, i32 } poison, i32 15, 0
-  %t62 = insertvalue { i32, i32 } %t61, i32 16, 1
-  %t63 = insertvalue [2 x { i32, i32 }] poison, { i32, i32 } %t60, 0
-  %t64 = insertvalue [2 x { i32, i32 }] %t63, { i32, i32 } %t62, 1
-  %t65 = alloca [2 x { i32, i32 }]
-  store [2 x { i32, i32 }] %t64, ptr %t65
-  %t66 = getelementptr inbounds [2 x { i32, i32 }], ptr %t65, i64 0, i64 0
-  %t67 = insertvalue { ptr, i64 } poison, ptr %t66, 0
-  %t68 = insertvalue { ptr, i64 } %t67, i64 2, 1
-  call void @fn.0({ ptr, i64 } %t68)
+  %t20 = extractvalue { ptr, i64 } { ptr @.slice.const.m0.9, i64 2 }, 0
+  %t21 = getelementptr inbounds { i32, i32 }, ptr %t20, i32 0
+  %t22 = load { i32, i32 }, ptr %t21
+  %t23 = extractvalue { i32, i32 } %t22, 0
+  %t24 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t24, i32 %t23)
+  call void @string_builder_append_string(ptr %t24)
+  %t25 = alloca { ptr, i64 }
+  %t26 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t26
+  call void @to_string$string(ptr %t25, ptr %t26)
+  call void @string_builder_append_string(ptr %t25)
+  %t27 = insertvalue { i32, i32 } poison, i32 1, 0
+  %t28 = insertvalue { i32, i32 } %t27, i32 2, 1
+  %t29 = insertvalue { i32, i32 } poison, i32 3, 0
+  %t30 = insertvalue { i32, i32 } %t29, i32 4, 1
+  %t31 = extractvalue { ptr, i64 } { ptr @.slice.const.m0.9, i64 2 }, 0
+  %t32 = getelementptr inbounds { i32, i32 }, ptr %t31, i32 1
+  %t33 = load { i32, i32 }, ptr %t32
+  %t34 = extractvalue { i32, i32 } %t33, 1
+  %t35 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t35, i32 %t34)
+  call void @string_builder_append_string(ptr %t35)
+  %t36 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t36, i64 %t15)
+  %t37 = load { ptr, i64 }, ptr %t36
+  call void @$prn({ ptr, i64 } %t37)
+  %t38 = call i64 @string_builder_mark()
+  %t39 = extractvalue { i32, i32 } %t1, 0
+  %t40 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t40, i32 %t39)
+  call void @string_builder_append_string(ptr %t40)
+  %t41 = alloca { ptr, i64 }
+  %t42 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t42
+  call void @to_string$string(ptr %t41, ptr %t42)
+  call void @string_builder_append_string(ptr %t41)
+  %t43 = extractvalue { i32, i32 } %t1, 1
+  %t44 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t44, i32 %t43)
+  call void @string_builder_append_string(ptr %t44)
+  %t45 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t45, i64 %t38)
+  %t46 = load { ptr, i64 }, ptr %t45
+  call void @$prn({ ptr, i64 } %t46)
+  %t47 = insertvalue { i32, i32 } poison, i32 13, 0
+  %t48 = insertvalue { i32, i32 } %t47, i32 14, 1
+  %t49 = insertvalue { i32, i32 } poison, i32 15, 0
+  %t50 = insertvalue { i32, i32 } %t49, i32 16, 1
+  call void @fn.0({ ptr, i64 } { ptr @.slice.const.m0.62, i64 2 })
   ret void
 }
 

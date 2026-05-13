@@ -58,6 +58,7 @@ func fn.0() -> void {
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"same\00"
 @.str.m0.2 = private unnamed_addr constant [11 x i8] c"You go to \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c".\00"
+@.slice.const.m0.2 = private unnamed_addr constant [1 x { { ptr, i64 } }] [{ { ptr, i64 } } { { ptr, i64 } { ptr @.str.m0.0, i64 5 } }]
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -82,17 +83,11 @@ declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 
-@.slice.literal.m0.0 = private global [1 x { { ptr, i64 } }] zeroinitializer
 @$locs = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
   %t0 = insertvalue { { ptr, i64 } } poison, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 0
-  %t1 = insertvalue [1 x { { ptr, i64 } }] poison, { { ptr, i64 } } %t0, 0
-  store [1 x { { ptr, i64 } }] %t1, ptr @.slice.literal.m0.0
-  %t2 = getelementptr inbounds [1 x { { ptr, i64 } }], ptr @.slice.literal.m0.0, i64 0, i64 0
-  %t3 = insertvalue { ptr, i64 } poison, ptr %t2, 0
-  %t4 = insertvalue { ptr, i64 } %t3, i64 1, 1
-  store { ptr, i64 } %t4, ptr @$locs
+  store { ptr, i64 } { ptr @.slice.const.m0.2, i64 1 }, ptr @$locs
   ret void
 }
 

@@ -861,6 +861,17 @@ internal void llvm_append_concat_string_global_name(StringBuilder* sb,
     sb_format(sb, "@.str.m%u.concat.%u", module_index, expr_index);
 }
 
+internal void llvm_append_const_slice_backing_name(StringBuilder* sb,
+                                                   const Hir*     hir,
+                                                   u32            expr_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.slice.const.m%u.%u", module_index, expr_index);
+}
+
 internal void llvm_append_assert_source_path_global_name(StringBuilder* sb,
                                                          const Hir*     hir,
                                                          u32 stmt_index)
@@ -910,6 +921,16 @@ internal string llvm_concat_string_global_name_string(const Hir* hir,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     llvm_append_concat_string_global_name(&sb, hir, expr_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_const_slice_backing_name_string(const Hir* hir,
+                                                     Arena*     arena,
+                                                     u32        expr_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_const_slice_backing_name(&sb, hir, expr_index);
     return sb_to_string(&sb);
 }
 
@@ -1359,6 +1380,264 @@ llvm_append_zero_value(StringBuilder* sb, const Sema* sema, u32 type_index)
         sb_append_cstr(sb, "0");
         break;
     }
+}
+
+internal string llvm_float_literal_string(const Sema* sema,
+                                          Arena*      arena,
+                                          u32         type_index,
+                                          f64         value);
+internal bool   llvm_eval_hir_string_constant(const Hir*   hir,
+                                              const Lexer* lexer,
+                                              Arena*       arena,
+                                              u32          expr_index,
+                                              string*      out);
+
+internal bool llvm_expr_is_constant_value(const Hir*   hir,
+                                          const Lexer* lexer,
+                                          const Sema*  sema,
+                                          u32          expr_index);
+
+internal bool llvm_append_constant_expr_value(StringBuilder* sb,
+                                              const Hir*     hir,
+                                              const Lexer*   lexer,
+                                              const Sema*    sema,
+                                              Arena*         arena,
+                                              u32            expr_index,
+                                              u32            expected_type);
+
+internal bool llvm_append_constant_aggregate_items(StringBuilder* sb,
+                                                   const Hir*     hir,
+                                                   const Lexer*   lexer,
+                                                   const Sema*    sema,
+                                                   Arena*         arena,
+                                                   u32            expr_index,
+                                                   u32 aggregate_type,
+                                                   u32 item_type)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    for (u32 i = 0; i < expr->arg_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
+        llvm_append_type(sb, sema, item_type);
+        sb_append_char(sb, ' ');
+        if (!llvm_append_constant_expr_value(
+                sb, hir, lexer, sema, arena, arg->expr_index, item_type)) {
+            return false;
+        }
+    }
+    (void)aggregate_type;
+    return true;
+}
+
+internal bool llvm_append_constant_record_value(StringBuilder* sb,
+                                                const Hir*     hir,
+                                                const Lexer*   lexer,
+                                                const Sema*    sema,
+                                                Arena*         arena,
+                                                u32            expr_index,
+                                                u32            record_type)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr        = &hir->exprs[expr_index];
+    u32            field_count = llvm_record_field_count(sema, record_type);
+    sb_append_cstr(sb, "{ ");
+    for (u32 i = 0; i < field_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        u32 field_type = llvm_record_field_type(sema, record_type, i);
+        llvm_append_type(sb, sema, field_type);
+        sb_append_char(sb, ' ');
+
+        u32 field_expr_index = U32_MAX;
+        if (expr->kind == HIR_EXPR_Tuple) {
+            if (i < expr->arg_count) {
+                field_expr_index =
+                    hir->call_args[expr->first_arg + i].expr_index;
+            }
+        } else if (expr->kind == HIR_EXPR_Plex) {
+            for (u32 j = 0; j < expr->arg_count; ++j) {
+                const HirCallArg* arg = &hir->call_args[expr->first_arg + j];
+                if (llvm_record_field_index(
+                        sema, record_type, arg->symbol_handle) == i) {
+                    field_expr_index = arg->expr_index;
+                    break;
+                }
+            }
+        }
+
+        if (field_expr_index == U32_MAX) {
+            llvm_append_zero_value(sb, sema, field_type);
+        } else if (!llvm_append_constant_expr_value(sb,
+                                                    hir,
+                                                    lexer,
+                                                    sema,
+                                                    arena,
+                                                    field_expr_index,
+                                                    field_type)) {
+            return false;
+        }
+    }
+    sb_append_cstr(sb, " }");
+    return true;
+}
+
+internal bool llvm_append_constant_expr_value(StringBuilder* sb,
+                                              const Hir*     hir,
+                                              const Lexer*   lexer,
+                                              const Sema*    sema,
+                                              Arena*         arena,
+                                              u32            expr_index,
+                                              u32            expected_type)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* expr = &hir->exprs[expr_index];
+    u32            type_index =
+        expected_type != sema_no_type() ? expected_type : expr->type_index;
+
+    switch (expr->kind) {
+    case HIR_EXPR_DefaultValue:
+    case HIR_EXPR_NilLiteral:
+        llvm_append_zero_value(sb, sema, type_index);
+        return true;
+    case HIR_EXPR_IntegerLiteral:
+        sb_format(sb, "%lld", (long long)expr->integer);
+        return true;
+    case HIR_EXPR_FloatLiteral:
+        sb_append_string(
+            sb,
+            llvm_float_literal_string(sema, arena, type_index, expr->floating));
+        return true;
+    case HIR_EXPR_BoolLiteral:
+        sb_append_cstr(sb, expr->boolean ? "1" : "0");
+        return true;
+    case HIR_EXPR_StringLiteral:
+        if (expr->string_is_cstring &&
+            llvm_type_kind(sema, type_index) == STK_Pointer) {
+            string global =
+                llvm_string_global_name_string(hir, arena, expr->string_index);
+            sb_append_string(sb, global);
+            return true;
+        }
+        {
+            string global =
+                llvm_string_global_name_string(hir, arena, expr->string_index);
+            sb_format(sb,
+                      "{ ptr " STRINGP ", i64 %zu }",
+                      STRINGV(global),
+                      lexer->strings[expr->string_index].count);
+        }
+        return true;
+    case HIR_EXPR_StringConcat:
+        {
+            Arena temp = {0};
+            arena_init(&temp);
+            string value = {0};
+            if (!llvm_eval_hir_string_constant(
+                    hir, lexer, &temp, expr_index, &value)) {
+                arena_done(&temp);
+                return false;
+            }
+            string global =
+                llvm_concat_string_global_name_string(hir, arena, expr_index);
+            sb_format(sb,
+                      "{ ptr " STRINGP ", i64 %zu }",
+                      STRINGV(global),
+                      value.count);
+            arena_done(&temp);
+            return true;
+        }
+    case HIR_EXPR_Array:
+        {
+            SemaTypeKind type_kind = llvm_type_kind(sema, type_index);
+            if (type_kind == STK_Slice) {
+                string backing = llvm_const_slice_backing_name_string(
+                    hir, arena, expr_index);
+                sb_format(sb,
+                          "{ ptr " STRINGP ", i64 %u }",
+                          STRINGV(backing),
+                          expr->arg_count);
+                return true;
+            }
+            if (type_kind != STK_Array) {
+                return false;
+            }
+            u32 item_type = llvm_collection_item_type(sema, type_index);
+            sb_append_char(sb, '[');
+            bool ok = llvm_append_constant_aggregate_items(
+                sb, hir, lexer, sema, arena, expr_index, type_index, item_type);
+            sb_append_char(sb, ']');
+            return ok;
+        }
+    case HIR_EXPR_Tuple:
+    case HIR_EXPR_Plex:
+        return llvm_append_constant_record_value(
+            sb, hir, lexer, sema, arena, expr_index, type_index);
+    default:
+        return false;
+    }
+}
+
+internal bool llvm_expr_is_constant_value(const Hir*   hir,
+                                          const Lexer* lexer,
+                                          const Sema*  sema,
+                                          u32          expr_index)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_DefaultValue:
+    case HIR_EXPR_IntegerLiteral:
+    case HIR_EXPR_FloatLiteral:
+    case HIR_EXPR_StringLiteral:
+    case HIR_EXPR_BoolLiteral:
+    case HIR_EXPR_NilLiteral:
+        return true;
+    case HIR_EXPR_StringConcat:
+        {
+            Arena temp = {0};
+            arena_init(&temp);
+            string value = {0};
+            bool   ok    = llvm_eval_hir_string_constant(
+                hir, lexer, &temp, expr_index, &value);
+            arena_done(&temp);
+            return ok;
+        }
+    case HIR_EXPR_Array:
+    case HIR_EXPR_Tuple:
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
+            if (!llvm_expr_is_constant_value(
+                    hir, lexer, sema, arg->expr_index)) {
+                return false;
+            }
+        }
+        return true;
+    case HIR_EXPR_Plex:
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
+            if (!llvm_expr_is_constant_value(
+                    hir, lexer, sema, arg->expr_index)) {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
+    (void)sema;
 }
 
 internal void
@@ -4292,6 +4571,22 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (item_type == sema_no_type()) {
                     array_free(values);
                     return (LlvmValue){0};
+                }
+
+                if (llvm_expr_is_constant_value(
+                        ctx->hir, ctx->lexer, ctx->sema, expr_index)) {
+                    string slice = string_format(
+                        ctx->arena,
+                        "{ ptr " STRINGP ", i64 %u }",
+                        STRINGV(llvm_const_slice_backing_name_string(
+                            ctx->hir, ctx->arena, expr_index)),
+                        expr->arg_count);
+                    array_free(values);
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = slice,
+                    };
                 }
 
                 string item_type_string = llvm_type_string(ctx, item_type);
@@ -9360,6 +9655,43 @@ internal void llvm_render_concat_string_literals(StringBuilder* sb,
     (void)arena;
 }
 
+internal bool llvm_render_const_slice_backing_values(StringBuilder* sb,
+                                                     const Hir*     hir,
+                                                     const Lexer*   lexer,
+                                                     const Sema*    sema,
+                                                     Arena*         arena)
+{
+    bool rendered = false;
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind != HIR_EXPR_Array ||
+            llvm_type_kind(sema, expr->type_index) != STK_Slice ||
+            !llvm_expr_is_constant_value(hir, lexer, sema, i)) {
+            continue;
+        }
+
+        u32 item_type = llvm_collection_item_type(sema, expr->type_index);
+        if (item_type == sema_no_type()) {
+            continue;
+        }
+
+        llvm_append_const_slice_backing_name(sb, hir, i);
+        sb_format(
+            sb, " = private unnamed_addr constant [%u x ", expr->arg_count);
+        llvm_append_type(sb, sema, item_type);
+        sb_append_cstr(sb, "] [");
+        Arena temp = {0};
+        arena_init(&temp);
+        llvm_append_constant_aggregate_items(
+            sb, hir, lexer, sema, &temp, i, expr->type_index, item_type);
+        arena_done(&temp);
+        sb_append_cstr(sb, "]\n");
+        rendered = true;
+    }
+    (void)arena;
+    return rendered;
+}
+
 typedef struct {
     cstr return_type;
     cstr name;
@@ -9666,6 +9998,7 @@ internal void llvm_render_global_values(StringBuilder* sb,
 
 internal void llvm_render_global_slice_backing_values(StringBuilder* sb,
                                                       const Hir*     hir,
+                                                      const Lexer*   lexer,
                                                       const Sema*    sema)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
@@ -9677,6 +10010,10 @@ internal void llvm_render_global_slice_backing_values(StringBuilder* sb,
         const HirExpr* expr = &hir->exprs[value->value_expr_index];
         if (expr->kind != HIR_EXPR_Array ||
             llvm_type_kind(sema, expr->type_index) != STK_Slice) {
+            continue;
+        }
+        if (llvm_expr_is_constant_value(
+                hir, lexer, sema, value->value_expr_index)) {
             continue;
         }
 
@@ -9948,10 +10285,13 @@ string llvm_render_hir(const Hir*   hir,
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
     }
+    bool rendered_const_slice_backing = llvm_render_const_slice_backing_values(
+        &sb, hir, lexer, render_sema, arena);
     if (llvm_hir_uses_assert(hir)) {
         llvm_render_assert_globals(&sb, hir, lexer);
     }
-    if (array_count(lexer->strings) > 0 || llvm_hir_uses_assert(hir)) {
+    if (array_count(lexer->strings) > 0 || rendered_const_slice_backing ||
+        llvm_hir_uses_assert(hir)) {
         sb_append_char(&sb, '\n');
     }
 
@@ -10002,7 +10342,7 @@ string llvm_render_hir(const Hir*   hir,
     }
 
     if (llvm_hir_has_globals(hir)) {
-        llvm_render_global_slice_backing_values(&sb, hir, render_sema);
+        llvm_render_global_slice_backing_values(&sb, hir, lexer, render_sema);
         llvm_render_global_values(&sb, hir, lexer, render_sema, arena);
         sb_append_char(&sb, '\n');
         llvm_render_global_init(&sb, hir, lexer, render_sema, arena);
