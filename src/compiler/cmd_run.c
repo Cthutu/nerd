@@ -40,23 +40,12 @@ internal bool compiler_cmd_string_starts_with(string text, string prefix)
            memcmp(text.data, prefix.data, prefix.count) == 0;
 }
 
-internal void compiler_cmd_run_cleanup_generated(
-    Arena* arena, const NerdArtifactConfig* artifacts, bool keep_binary)
+internal void compiler_cmd_run_cleanup_matching(Arena* arena,
+                                                cstr   dir_path,
+                                                string file_prefix)
 {
-    if (keep_binary) {
-        return;
-    }
-
-    path_remove(artifacts->binary_path);
-#if OS_WINDOWS
-    path_remove(path_replace_extension(arena, artifacts->binary_path, ".pdb"));
-#endif
-
-    cstr   dir_path      = path_dirname(arena, artifacts->binary_path);
-    string binary_prefix = path_filename(s(artifacts->binary_path));
-
-    void*   mark         = arena_store(arena);
-    DirIter iter         = {0};
+    void*   mark = arena_store(arena);
+    DirIter iter = {0};
     if (!dir_iter_init(&iter, dir_path)) {
         return;
     }
@@ -70,12 +59,48 @@ internal void compiler_cmd_run_cleanup_generated(
         }
 
         string filename = path_filename(s(path));
-        if (compiler_cmd_string_starts_with(filename, binary_prefix)) {
+        if (compiler_cmd_string_starts_with(filename, file_prefix)) {
             path_remove(path);
         }
         arena_restore(arena, mark);
     }
     dir_iter_done(&iter);
+}
+
+internal void compiler_cmd_run_cleanup_generated(
+    Arena* arena, const NerdArtifactConfig* artifacts, bool keep_binary)
+{
+    if (keep_binary) {
+        return;
+    }
+
+    path_remove(artifacts->binary_path);
+#if OS_WINDOWS
+    path_remove(path_replace_extension(arena, artifacts->binary_path, ".pdb"));
+#endif
+
+    cstr dir_path = path_dirname(arena, artifacts->binary_path);
+    compiler_cmd_run_cleanup_matching(
+        arena, dir_path, path_filename(s(artifacts->binary_path)));
+}
+
+internal void compiler_cmd_run_cleanup_failed_compile(
+    Arena* arena, const NerdArtifactConfig* artifacts, cstr output_root)
+{
+    compiler_cmd_run_cleanup_generated(arena, artifacts, false);
+
+    path_remove(artifacts->hir_path);
+    path_remove(artifacts->llvm_path);
+
+    cstr build_binary = compiler_cmd_build_binary_path(arena, output_root);
+    path_remove(build_binary);
+#if OS_WINDOWS
+    path_remove(path_replace_extension(arena, build_binary, ".pdb"));
+#endif
+
+    compiler_cmd_run_cleanup_matching(arena,
+                                      path_dirname(arena, build_binary),
+                                      path_filename(s(build_binary)));
 }
 
 //------------------------------------------------------------------------------
@@ -139,7 +164,9 @@ int compiler_cmd_run(const NerdRunConfig* config)
     arena_init(&arena);
 
     NerdArtifactConfig artifacts = compiler_cmd_run_artifacts(&arena, config);
-    Timing             timing    = {0};
+    cstr               output_root =
+        compiler_cmd_output_root(&arena, config->output_path, config->source);
+    Timing timing = {0};
     timing_init(&timing);
 
     bool ok = compile(config->source, &artifacts, config->verbose, &timing);
@@ -149,8 +176,10 @@ int compiler_cmd_run(const NerdRunConfig* config)
     }
     timing_done(&timing);
     if (!ok) {
-        compiler_cmd_run_cleanup_generated(
-            &arena, &artifacts, config->keep_binary);
+        if (!config->keep_binary) {
+            compiler_cmd_run_cleanup_failed_compile(
+                &arena, &artifacts, output_root);
+        }
         arena_done(&arena);
         return 1;
     }

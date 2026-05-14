@@ -609,6 +609,17 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             cwd / f"_{path.stem}.out.m1.ll",
         ):
             stale.write_text("stale generated artifact\n", encoding="utf-8")
+        if expected_exit != 0:
+            binary_suffix = ".exe" if current_platform() == "windows" else ""
+            build_stem = input_path.with_suffix("").name
+            for stale in (
+                cwd / f"{build_stem}{binary_suffix}.link.ll",
+                cwd / f"{build_stem}{binary_suffix}.nrt.o",
+                cwd / f"{build_stem}{binary_suffix}.m1.ll",
+                cwd / f"_{path.stem}.hir",
+                cwd / f"_{path.stem}.ll",
+            ):
+                stale.write_text("stale generated artifact\n", encoding="utf-8")
 
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
@@ -648,11 +659,22 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             f"{executable.name}*.nrt.o",
             f"_{path.stem}.out*.ll",
             f"_{path.stem}.out*.nrt.o",
+            f"{path.stem}.exe*.ll",
+            f"{path.stem}.exe*.nrt.o",
+            f"{path.stem}*.link.ll",
+            f"{path.stem}*.nrt.o",
+            f"{path.stem}.m*.ll",
             f"_{input_path.stem}*.ll",
             f"_{input_path.stem}*.nrt.o",
             f"{input_path.stem}.m*.ll",
         ):
             leftovers.extend(sorted(cwd.glob(pattern)))
+        if expected_exit != 0:
+            build_stem = input_path.with_suffix("").name
+            leftovers.extend([
+                cwd / f"_{path.stem}.hir",
+                cwd / f"_{path.stem}.ll",
+            ])
         leftovers = [item for item in leftovers if item.is_file()]
         if leftovers:
             names = ", ".join(item.name for item in leftovers)
