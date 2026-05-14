@@ -349,8 +349,10 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         back_end_timing_end(timing, COMPILER_PHASE_LINK, timing_start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
-        back_end_cleanup_llvm_artifacts(
-            modules.llvm_paths, !artifacts->emit_llvm_file, NULL, NULL);
+        back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                        !artifacts->emit_llvm_file,
+                                        combined_llvm_path,
+                                        runtime_object_path);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;

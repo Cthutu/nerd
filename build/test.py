@@ -637,14 +637,16 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         leftovers: list[pathlib.Path] = []
         for pattern in (
             f"{executable.name}*.ll",
+            f"{executable.name}*.nrt.o",
             f"_{input_path.stem}*.ll",
+            f"_{input_path.stem}*.nrt.o",
             f"{input_path.stem}.m*.ll",
         ):
             leftovers.extend(sorted(cwd.glob(pattern)))
         leftovers = [item for item in leftovers if item.is_file()]
         if leftovers:
             names = ", ".join(item.name for item in leftovers)
-            failures.append(Failure(path, f"expected LLVM run to clean generated .ll files, found: {names}"))
+            failures.append(Failure(path, f"expected LLVM run to clean generated files, found: {names}"))
     if not failures:
         input_path.unlink(missing_ok=True)
         executable.unlink(missing_ok=True)
