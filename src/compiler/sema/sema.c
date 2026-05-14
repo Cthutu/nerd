@@ -1272,6 +1272,12 @@ internal bool      sema_infer_local_binding_type(const Lexer* lexer,
                                                  Sema*        sema,
                                                  u32          local_index,
                                                  u32*         out_type_index);
+internal bool      sema_imported_decl_source(Sema*           sema,
+                                             const SemaDecl* decl,
+                                             const Lexer**   out_lexer,
+                                             const Ast**     out_ast,
+                                             Sema**          out_sema,
+                                             u32*            out_decl_index);
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
                                                      u32         decl_index);
 internal void sema_import_method_for_decl(Lexer*       dst_lexer,
@@ -2021,7 +2027,8 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
         if (node_index < array_count(sema->node_local_indices)) {
             u32 local_index = sema->node_local_indices[node_index];
             if (local_index != sema_no_local() &&
-                sema->locals[local_index].kind == SLK_Constant) {
+                sema->locals[local_index].kind == SLK_Constant &&
+                sema->locals[local_index].value_node_index != sema_no_decl()) {
                 return sema_try_eval_integer_constant(
                     lexer,
                     ast,
@@ -2034,24 +2041,66 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
             u32 decl_index = sema->node_decl_indices[node_index];
             if (decl_index != sema_no_decl() &&
                 sema->decls[decl_index].kind == SK_Constant) {
-                return sema_try_eval_integer_constant(
-                    lexer,
-                    ast,
-                    sema,
-                    sema->decls[decl_index].value_node_index,
-                    out_value);
+                const SemaDecl* decl = &sema->decls[decl_index];
+                if (decl->value_node_index != sema_no_decl()) {
+                    return sema_try_eval_integer_constant(
+                        lexer, ast, sema, decl->value_node_index, out_value);
+                }
+
+                const Lexer* source_lexer      = NULL;
+                const Ast*   source_ast        = NULL;
+                Sema*        source_sema       = NULL;
+                u32          source_decl_index = sema_no_decl();
+                if (sema_imported_decl_source((Sema*)sema,
+                                              decl,
+                                              &source_lexer,
+                                              &source_ast,
+                                              &source_sema,
+                                              &source_decl_index)) {
+                    const SemaDecl* source_decl =
+                        &source_sema->decls[source_decl_index];
+                    if (source_decl->value_node_index != sema_no_decl()) {
+                        return sema_try_eval_integer_constant(
+                            source_lexer,
+                            source_ast,
+                            source_sema,
+                            source_decl->value_node_index,
+                            out_value);
+                    }
+                }
             }
         }
         {
             u32 decl_index = sema_find_decl((Sema*)sema, node->a);
             if (decl_index != sema_no_decl() &&
                 sema->decls[decl_index].kind == SK_Constant) {
-                return sema_try_eval_integer_constant(
-                    lexer,
-                    ast,
-                    sema,
-                    sema->decls[decl_index].value_node_index,
-                    out_value);
+                const SemaDecl* decl = &sema->decls[decl_index];
+                if (decl->value_node_index != sema_no_decl()) {
+                    return sema_try_eval_integer_constant(
+                        lexer, ast, sema, decl->value_node_index, out_value);
+                }
+
+                const Lexer* source_lexer      = NULL;
+                const Ast*   source_ast        = NULL;
+                Sema*        source_sema       = NULL;
+                u32          source_decl_index = sema_no_decl();
+                if (sema_imported_decl_source((Sema*)sema,
+                                              decl,
+                                              &source_lexer,
+                                              &source_ast,
+                                              &source_sema,
+                                              &source_decl_index)) {
+                    const SemaDecl* source_decl =
+                        &source_sema->decls[source_decl_index];
+                    if (source_decl->value_node_index != sema_no_decl()) {
+                        return sema_try_eval_integer_constant(
+                            source_lexer,
+                            source_ast,
+                            source_sema,
+                            source_decl->value_node_index,
+                            out_value);
+                    }
+                }
             }
         }
         return false;

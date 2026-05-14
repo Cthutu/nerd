@@ -1,0 +1,6 @@
+pub A :: 1
+pub B :: 2
+
+pub Flags :: plex #c {
+    value u32
+}

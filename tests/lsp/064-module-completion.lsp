@@ -110,6 +110,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "imported_const_plex",
+                "kind": 9
+            },
+            {
                 "label": "imported_plex",
                 "kind": 9
             },
