@@ -1,0 +1,10 @@
+on "windows" {
+    pub HWND :: ^void
+
+    pub WNDCLASSA :: plex #c {
+        style u32
+        hwnd HWND
+    }
+
+    pub WM_SIZE : u32 : 0x0005
+}

@@ -3341,7 +3341,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     lsp_completion_add_symbols(message->arena, items, doc);
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
-    if (!doc->bindings_ready) {
+    if (!doc->bindings_ready || !doc->sema_complete) {
         lsp_completion_add_source_use_exports(message->arena, items, doc, uri);
     }
     if (!doc->bindings_ready || array_count(doc->front_end.sema.locals) == 0) {

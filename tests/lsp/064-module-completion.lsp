@@ -130,6 +130,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "lsp_windows_exports",
+                "kind": 9
+            },
+            {
                 "label": "namespaced_a",
                 "kind": 9
             },

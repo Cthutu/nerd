@@ -12,6 +12,7 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "install"
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+EXE_SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
 def run(cmd: list[str], cwd: pathlib.Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -60,6 +61,8 @@ def assert_no_link_temps(directory: pathlib.Path, stem: str, label: str) -> None
 
 def assert_no_run_outputs(directory: pathlib.Path, stem: str, label: str) -> None:
     assert_absent(directory / stem, label)
+    if EXE_SUFFIX:
+        assert_absent(directory / f"{stem}{EXE_SUFFIX}", label)
     assert_no_link_temps(directory, stem, label)
     patterns = [
         f"{stem}*.ll",
@@ -117,7 +120,7 @@ def main() -> int:
             env,
         )
         check(build_proc, "build --hir --llvm")
-        if not (temp / "build_smoke").exists():
+        if not (temp / f"build_smoke{EXE_SUFFIX}").exists():
             raise AssertionError("build did not produce executable")
         if not any(temp.glob("_build_smoke*.hir")):
             raise AssertionError("build --hir did not produce a HIR sidecar")
