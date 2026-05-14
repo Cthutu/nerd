@@ -4,7 +4,7 @@
 
 use std.io
 
-on linux {
+on "linux" {
 
     winsize :: plex #c {
         ws_row    i16
@@ -29,7 +29,7 @@ on linux {
 
 }
 
-on windows {
+on "windows" {
 
     COORD :: plex #c {
         X i16
