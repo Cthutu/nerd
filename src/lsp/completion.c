@@ -828,6 +828,10 @@ internal bool lsp_completion_resolve_text_module(Arena*             arena,
                                                  string             module_path,
                                                  string current_source_path,
                                                  cstr*  out_path);
+internal void lsp_completion_add_resolved_module_exports(Arena*     arena,
+                                                         JsonValue* items,
+                                                         const LspDocument* doc,
+                                                         cstr resolved_path);
 internal bool
 lsp_completion_match_ident_at(string source, usize* cursor, string ident);
 internal string lsp_completion_trim(string value);
@@ -2128,6 +2132,68 @@ internal void lsp_completion_add_source_symbols(Arena*     arena,
     }
 }
 
+internal void lsp_completion_add_source_use_exports(Arena*             arena,
+                                                    JsonValue*         items,
+                                                    const LspDocument* doc,
+                                                    string document_uri)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    usize line_start = 0;
+    while (line_start < doc->source.count) {
+        usize line_end = line_start;
+        while (line_end < doc->source.count &&
+               doc->source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line = {.data  = doc->source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        if (!lsp_completion_match_ident_at(line, &i, s("use"))) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+
+        usize path_start = i;
+        while (i < line.count && (lsp_completion_is_ident_char(line.data[i]) ||
+                                  line.data[i] == '.')) {
+            i++;
+        }
+        if (i == path_start) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        string module_path   = {.data  = line.data + path_start,
+                                .count = i - path_start};
+        cstr   resolved_path = NULL;
+        if (lsp_completion_resolve_text_module(
+                &temp, doc, module_path, document_uri, &resolved_path)) {
+            lsp_completion_add_resolved_module_exports(
+                arena, items, doc, resolved_path);
+        }
+
+        line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+    }
+
+    arena_done(&temp);
+}
+
 internal void lsp_completion_add_source_params_from_line(Arena*     arena,
                                                          JsonValue* items,
                                                          string     line)
@@ -3275,6 +3341,9 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     lsp_completion_add_symbols(message->arena, items, doc);
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
+    if (!doc->bindings_ready) {
+        lsp_completion_add_source_use_exports(message->arena, items, doc, uri);
+    }
     if (!doc->bindings_ready || array_count(doc->front_end.sema.locals) == 0) {
         lsp_completion_add_source_params(
             message->arena, items, view.source, offset);
