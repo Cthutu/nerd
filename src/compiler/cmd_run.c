@@ -32,6 +32,53 @@ compiler_cmd_run_artifacts(Arena* arena, const NerdRunConfig* config)
 }
 
 //------------------------------------------------------------------------------
+// Remove every temporary file shape that `run` can create.
+
+internal bool compiler_cmd_string_starts_with(string text, string prefix)
+{
+    return text.count >= prefix.count &&
+           memcmp(text.data, prefix.data, prefix.count) == 0;
+}
+
+internal void compiler_cmd_run_cleanup_generated(
+    Arena* arena, const NerdArtifactConfig* artifacts, bool keep_binary)
+{
+    if (keep_binary) {
+        return;
+    }
+
+    path_remove(artifacts->binary_path);
+#if OS_WINDOWS
+    path_remove(path_replace_extension(arena, artifacts->binary_path, ".pdb"));
+#endif
+
+    cstr   dir_path      = path_dirname(arena, artifacts->binary_path);
+    string binary_prefix = path_filename(s(artifacts->binary_path));
+
+    void*   mark         = arena_store(arena);
+    DirIter iter         = {0};
+    if (!dir_iter_init(&iter, dir_path)) {
+        return;
+    }
+
+    cstr path         = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, arena, &path, &is_directory)) {
+        if (is_directory) {
+            arena_restore(arena, mark);
+            continue;
+        }
+
+        string filename = path_filename(s(path));
+        if (compiler_cmd_string_starts_with(filename, binary_prefix)) {
+            path_remove(path);
+        }
+        arena_restore(arena, mark);
+    }
+    dir_iter_done(&iter);
+}
+
+//------------------------------------------------------------------------------
 // Build and then execute one Nerd program.
 
 internal bool compiler_cmd_path_is_absolute(cstr path)
@@ -102,6 +149,8 @@ int compiler_cmd_run(const NerdRunConfig* config)
     }
     timing_done(&timing);
     if (!ok) {
+        compiler_cmd_run_cleanup_generated(
+            &arena, &artifacts, config->keep_binary);
         arena_done(&arena);
         return 1;
     }
@@ -126,25 +175,9 @@ int compiler_cmd_run(const NerdRunConfig* config)
 
     int result = shell((cstr)command.data);
 
-    if (!config->keep_binary && !path_remove(artifacts.binary_path)) {
-        error_runtime("Failed to remove generated executable: %s",
-                      artifacts.binary_path);
-        arena_done(&arena);
-        return 1;
-    }
-
-#if OS_WINDOWS
     if (!config->keep_binary) {
-        cstr pdb_path =
-            path_replace_extension(&arena, artifacts.binary_path, ".pdb");
-        if (!path_remove(pdb_path)) {
-            error_runtime("Failed to remove generated debug symbols: %s",
-                          pdb_path);
-            arena_done(&arena);
-            return 1;
-        }
+        compiler_cmd_run_cleanup_generated(&arena, &artifacts, false);
     }
-#endif
 
     arena_done(&arena);
     return result;

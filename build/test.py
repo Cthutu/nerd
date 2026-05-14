@@ -598,6 +598,17 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     cwd = path.parent
     input_path = cwd / f"{path.stem}.input.n"
     input_path.write_text(source, encoding="utf-8", newline="\n")
+    executable = input_path.with_suffix("")
+    if command in {"build", "b"} and current_platform() == "windows":
+        executable = pathlib.Path(f"{executable}.exe")
+
+    if run_mode == "clean-llvm" and command in {"run", "r"}:
+        for stale in (
+            cwd / f"_{path.stem}.out.link.ll",
+            cwd / f"_{path.stem}.out.nrt.o",
+            cwd / f"_{path.stem}.out.m1.ll",
+        ):
+            stale.write_text("stale generated artifact\n", encoding="utf-8")
 
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
@@ -624,9 +635,6 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             if stderr_failure:
                 failures.append(stderr_failure)
 
-    executable = input_path.with_suffix("")
-    if command in {"build", "b"} and current_platform() == "windows":
-        executable = pathlib.Path(f"{executable}.exe")
     debug_symbols = executable.with_suffix(".pdb")
     if run_mode == "keep" and not executable.exists():
         failures.append(Failure(path, "expected command to keep generated executable"))
@@ -638,6 +646,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         for pattern in (
             f"{executable.name}*.ll",
             f"{executable.name}*.nrt.o",
+            f"_{path.stem}.out*.ll",
+            f"_{path.stem}.out*.nrt.o",
             f"_{input_path.stem}*.ll",
             f"_{input_path.stem}*.nrt.o",
             f"{input_path.stem}.m*.ll",
