@@ -50,7 +50,7 @@ main :: fn () -> i32 {
     ],
     "notes": [],
     "help": [
-        "For this milestone, block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
+        "Block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
     ]
 }
 ¬Value :: union { i i32 f f32 }

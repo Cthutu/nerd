@@ -94,8 +94,8 @@ bool error_0303_unknown_type(NerdSource source,
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This type name is not defined");
     error_add_help(&error,
-                   "Use one of the built-in primitive types supported by the "
-                   "current milestone.");
+                   "Use a defined type name, or one of the built-in primitive "
+                   "types.");
     error_render(&error);
     return false;
 }
@@ -224,8 +224,8 @@ bool error_0306_invalid_variable_type(NerdSource source,
                         span,
                         "This variable type is not supported yet");
     error_add_help(&error,
-                   "For this milestone, variables may use concrete integer, "
-                   "`bool`, `string`, `f32`, or `f64` types.");
+                   "Variables may use concrete integer, `bool`, `string`, "
+                   "`f32`, or `f64` types.");
     error_render(&error);
     return false;
 }
@@ -248,7 +248,7 @@ bool error_0307_invalid_cast(NerdSource source,
         &error, ERROR_REF_PRIMARY, span, "This cast is not supported");
     error_add_help(&error,
                    "Use explicit casts only between compatible primitive "
-                   "types in the current milestone.");
+                   "types.");
     error_render(&error);
     return false;
 }
@@ -540,8 +540,8 @@ bool error_0319_invalid_on_condition(NerdSource source,
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This condition is not boolean");
     error_add_help(&error,
-                   "Use a `bool` expression here. Comparisons and richer "
-                   "patterns can be added in later milestones.");
+                   "Use a `bool` expression here, or use block-form `on` for "
+                   "value matching.");
     error_render(&error);
     return false;
 }
@@ -590,8 +590,8 @@ bool error_0321_invalid_on_match_type(NerdSource source,
                         span,
                         "This matched value type is unsupported");
     error_add_help(&error,
-                   "For this milestone, block-form `on` supports `bool` and "
-                   "`string` scrutinees, plus concrete integer scrutinees.");
+                   "Block-form `on` supports `bool` and `string` scrutinees, "
+                   "plus concrete integer scrutinees.");
     error_render(&error);
     return false;
 }
@@ -1080,9 +1080,7 @@ bool error_0339_generics_not_implemented(NerdSource source,
                    "The parser and formatter understand the square-bracket "
                    "generic syntax, but semantic instantiation is still in "
                    "progress.");
-    error_add_help(&error,
-                   "Use a concrete non-generic declaration for now, or keep "
-                   "this source until the generics milestone is completed.");
+    error_add_help(&error, "Use a concrete non-generic declaration for now.");
     error_render(&error);
     return false;
 }

@@ -22,7 +22,7 @@ main :: fn () => on message {
     ],
     "notes": [],
     "help": [
-        "For this milestone, block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
+        "Block-form `on` supports `bool` and `string` scrutinees, plus concrete integer scrutinees."
     ]
 }
 ¬

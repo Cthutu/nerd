@@ -105,7 +105,7 @@ main :: fn () => 0
                                     }
                                 }
                             },
-                            "message": "help: Use one of the built-in primitive types supported by the current milestone."
+                            "message": "help: Use a defined type name, or one of the built-in primitive types."
                         }
                     ]
                 }

@@ -22,6 +22,6 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Use explicit casts only between compatible primitive types in the current milestone."
+        "Use explicit casts only between compatible primitive types."
     ]
 }

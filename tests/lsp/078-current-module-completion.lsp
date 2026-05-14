@@ -181,7 +181,7 @@ main :: fn () {}
                                     }
                                 }
                             },
-                            "message": "help: For this milestone, variables may use concrete integer, `bool`, `string`, `f32`, or `f64` types."
+                            "message": "help: Variables may use concrete integer, `bool`, `string`, `f32`, or `f64` types."
                         }
                     ]
                 }

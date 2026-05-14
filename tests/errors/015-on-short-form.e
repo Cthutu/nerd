@@ -19,7 +19,7 @@ main :: fn () => on 1.as(i32) => 42 else 7
     ],
     "notes": [],
     "help": [
-        "Use a `bool` expression here. Comparisons and richer patterns can be added in later milestones."
+        "Use a `bool` expression here, or use block-form `on` for value matching."
     ]
 }
 ¬

@@ -77,7 +77,7 @@ value: mystery: 1
     ],
     "notes": [],
     "help": [
-        "Use one of the built-in primitive types supported by the current milestone."
+        "Use a defined type name, or one of the built-in primitive types."
     ]
 }
 ¬
@@ -212,6 +212,6 @@ main :: fn () => "hi".as(u8)
     ],
     "notes": [],
     "help": [
-        "Use explicit casts only between compatible primitive types in the current milestone."
+        "Use explicit casts only between compatible primitive types."
     ]
 }

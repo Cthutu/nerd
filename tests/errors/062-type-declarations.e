@@ -22,6 +22,6 @@ main :: fn () {}
     ],
     "notes": [],
     "help": [
-        "Use one of the built-in primitive types supported by the current milestone."
+        "Use a defined type name, or one of the built-in primitive types."
     ]
 }
