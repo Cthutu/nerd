@@ -684,12 +684,32 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
 internal bool
 cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
 {
+    if (cst_current_token(state).kind == TK_Symbol) {
+        u32 cursor = state->token_index + 1;
+        if (cst_kind_at_stream_index(state, cursor) == TK_LBracket) {
+            cursor++;
+            if (cst_kind_at_stream_index(state, cursor) != TK_RBracket &&
+                !cst_skip_until_matching_rbracket(state, &cursor)) {
+                return true;
+            }
+            if (cst_kind_at_stream_index(state, cursor) == TK_RBracket) {
+                cursor++;
+            }
+        }
+        if (cst_kind_at_stream_index(state, cursor) == TK_LBrace) {
+            return false;
+        }
+    }
+
     u32 token_index = state->token_index;
     if (!cst_skip_type_tokens(state, &token_index)) {
         return false;
     }
 
     TokenKind next_kind = cst_kind_at_stream_index(state, token_index);
+    if (next_kind == TK_LBrace) {
+        return false;
+    }
     return next_kind == TK_EOF ||
            (cst_token_has_newline_before(state, token_index) &&
             (next_kind == TK_impl || next_kind == TK_pub ||
@@ -3149,16 +3169,18 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        bool starts_plex = false;
         if (token.kind == TK_LBrace) {
-            bool starts_plex = (state->cst.nodes[left].kind == CK_SymbolRef ||
-                                state->cst.nodes[left].kind == CK_Field) &&
-                               (cst_peek_kind_at(state, 1) == TK_RBrace ||
-                                (cst_peek_kind_at(state, 1) == TK_Symbol &&
-                                 ((cst_peek_kind_at(state, 2) == TK_Colon &&
-                                   cst_peek_kind_at(state, 3) != TK_Equal) ||
-                                  cst_peek_kind_at(state, 2) == TK_Comma ||
-                                  cst_peek_kind_at(state, 2) == TK_RBrace ||
-                                  cst_peek_kind_at(state, 2) == TK_Symbol)));
+            starts_plex = (state->cst.nodes[left].kind == CK_SymbolRef ||
+                           state->cst.nodes[left].kind == CK_Field) &&
+                          (cst_peek_kind_at(state, 1) == TK_RBrace ||
+                           cst_peek_kind_at(state, 1) == TK_Ellipsis ||
+                           (cst_peek_kind_at(state, 1) == TK_Symbol &&
+                            ((cst_peek_kind_at(state, 2) == TK_Colon &&
+                              cst_peek_kind_at(state, 3) != TK_Equal) ||
+                             cst_peek_kind_at(state, 2) == TK_Comma ||
+                             cst_peek_kind_at(state, 2) == TK_RBrace ||
+                             cst_peek_kind_at(state, 2) == TK_Symbol)));
             if (!starts_plex) {
                 break;
             }
@@ -3206,7 +3228,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             if (cst_starts_binding(state)) {
                 break;
             }
-            if (state->allow_statement_boundary &&
+            if (state->allow_statement_boundary && !starts_plex &&
                 cst_token_starts_expression(token.kind)) {
                 break;
             }

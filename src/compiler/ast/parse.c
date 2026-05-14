@@ -545,12 +545,32 @@ internal bool ast_tokens_cross_line_break(const AstParseState* state,
 internal bool
 ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
 {
+    if (state->token.kind == TK_Symbol) {
+        u32 cursor = state->token.token_index + 1;
+        if (ast_kind_at_stream_index(state, cursor) == TK_LBracket) {
+            cursor++;
+            if (ast_kind_at_stream_index(state, cursor) != TK_RBracket &&
+                !ast_skip_until_matching_rbracket(state, &cursor)) {
+                return true;
+            }
+            if (ast_kind_at_stream_index(state, cursor) == TK_RBracket) {
+                cursor++;
+            }
+        }
+        if (ast_kind_at_stream_index(state, cursor) == TK_LBrace) {
+            return false;
+        }
+    }
+
     u32 token_index = state->token.token_index;
     if (!ast_skip_type_tokens(state, &token_index)) {
         return false;
     }
 
     TokenKind next_kind = ast_kind_at_stream_index(state, token_index);
+    if (next_kind == TK_LBrace) {
+        return false;
+    }
     if (next_kind == TK_RBrace) {
         for (u32 i = state->token.token_index; i < token_index; ++i) {
             if (ast_kind_at_stream_index(state, i) == TK_LBrace) {
