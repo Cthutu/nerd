@@ -6424,6 +6424,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_union:
     case TK_enum:
     case TK_ffi:
+    case TK_pragma:
     case TK_use:
     case TK_pub:
     case TK_impl:
@@ -6447,6 +6448,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_union:
     case TK_enum:
     case TK_ffi:
+    case TK_pragma:
     case TK_use:
     case TK_pub:
     case TK_impl:
