@@ -3922,6 +3922,7 @@ bool ast_parse_declaration(AstParseState* state,
 
                 u32 symbol_handle         = state->token.value.symbol_handle;
                 u32 foreign_symbol_handle = symbol_handle;
+                u32 foreign_symbol_token_index = state->token.token_index;
                 if (state->token_index == state->token.token_index &&
                     !ast_next_token(state)) {
                     return error_0203_expected_token(
@@ -3953,6 +3954,7 @@ bool ast_parse_declaration(AstParseState* state,
                             state, &state->token);
                     }
                     foreign_symbol_handle = state->token.value.symbol_handle;
+                    foreign_symbol_token_index = state->token.token_index;
                     if (state->token_index == state->token.token_index &&
                         !ast_next_token(state)) {
                         return error_0203_expected_token(
@@ -3998,7 +4000,9 @@ bool ast_parse_declaration(AstParseState* state,
                     (AstFfiInfo){.library_node_index    = library_node_index,
                                  .symbol_handle         = symbol_handle,
                                  .foreign_symbol_handle = foreign_symbol_handle,
-                                 .signature_index       = signature_index});
+                                 .foreign_symbol_token_index =
+                                     foreign_symbol_token_index,
+                                 .signature_index = signature_index});
 
                 if (!ast_emit_node(
                         state,
@@ -4029,7 +4033,8 @@ bool ast_parse_declaration(AstParseState* state,
                 TK_Symbol,
                 state->token.kind);
         }
-        u32 symbol_handle = state->token.value.symbol_handle;
+        u32 symbol_handle      = state->token.value.symbol_handle;
+        u32 symbol_token_index = state->token.token_index;
         if (state->token_index == state->token.token_index &&
             !ast_next_token(state)) {
             return error_0203_expected_token(
@@ -4064,11 +4069,13 @@ bool ast_parse_declaration(AstParseState* state,
         }
 
         u32 ffi_index = (u32)array_count(state->ffi_infos);
-        array_push(state->ffi_infos,
-                   (AstFfiInfo){.library_node_index    = library_node_index,
-                                .symbol_handle         = symbol_handle,
-                                .foreign_symbol_handle = symbol_handle,
-                                .signature_index       = signature_index});
+        array_push(
+            state->ffi_infos,
+            (AstFfiInfo){.library_node_index         = library_node_index,
+                         .symbol_handle              = symbol_handle,
+                         .foreign_symbol_handle      = symbol_handle,
+                         .foreign_symbol_token_index = symbol_token_index,
+                         .signature_index            = signature_index});
 
         return ast_emit_node(state,
                              (AstNode){.kind        = AK_FfiDef,

@@ -1267,4 +1267,32 @@ bool error_0345_discarded_value(NerdSource source,
     return false;
 }
 
+bool error_0346_unknown_ffi_symbol(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     symbol,
+                                   string     library)
+{
+    ErrorInfo error = error_init(346,
+                                 source,
+                                 span,
+                                 "Foreign symbol `" STRINGP
+                                 "` was not found in `" STRINGP "`",
+                                 STRINGV(symbol),
+                                 STRINGV(library));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This FFI declaration links to `" STRINGP "`",
+                        STRINGV(symbol));
+    error_add_note(&error,
+                   "Windows API names that are macros in C headers often need "
+                   "an explicit `A` or `W` foreign symbol name in Nerd.");
+    error_add_help(&error,
+                   "Use `local_name :: foreign_name (...)` with the real "
+                   "exported symbol, or move the declaration to the library "
+                   "that exports it.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

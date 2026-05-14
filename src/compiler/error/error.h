@@ -330,6 +330,10 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
 bool error_0345_discarded_value(NerdSource source,
                                 ErrorSpan  span,
                                 string     type_name);
+bool error_0346_unknown_ffi_symbol(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     symbol,
+                                   string     library);
 
 //------------------------------------------------------------------------------
 // Low-level error system

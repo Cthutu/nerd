@@ -2269,6 +2269,108 @@ internal bool sema_node_is_inside_function_body(const Ast* ast, u32 node_index)
     return false;
 }
 
+internal bool sema_ascii_eq_ci(string a, cstr b)
+{
+    usize i = 0;
+    for (; i < a.count && b[i] != '\0'; ++i) {
+        char ac = a.data[i];
+        char bc = b[i];
+        if (ac >= 'A' && ac <= 'Z') {
+            ac = (char)(ac - 'A' + 'a');
+        }
+        if (bc >= 'A' && bc <= 'Z') {
+            bc = (char)(bc - 'A' + 'a');
+        }
+        if (ac != bc) {
+            return false;
+        }
+    }
+    return i == a.count && b[i] == '\0';
+}
+
+internal bool sema_windows_library_should_validate(string library)
+{
+#if OS_WINDOWS
+    return sema_ascii_eq_ci(library, "user32") ||
+           sema_ascii_eq_ci(library, "user32.dll") ||
+           sema_ascii_eq_ci(library, "kernel32") ||
+           sema_ascii_eq_ci(library, "kernel32.dll") ||
+           sema_ascii_eq_ci(library, "gdi32") ||
+           sema_ascii_eq_ci(library, "gdi32.dll") ||
+           sema_ascii_eq_ci(library, "shell32") ||
+           sema_ascii_eq_ci(library, "shell32.dll") ||
+           sema_ascii_eq_ci(library, "advapi32") ||
+           sema_ascii_eq_ci(library, "advapi32.dll") ||
+           sema_ascii_eq_ci(library, "comdlg32") ||
+           sema_ascii_eq_ci(library, "comdlg32.dll") ||
+           sema_ascii_eq_ci(library, "ole32") ||
+           sema_ascii_eq_ci(library, "ole32.dll");
+#else
+    UNUSED(library);
+    return false;
+#endif
+}
+
+internal cstr sema_string_to_cstr(Arena* arena, string value)
+{
+    char* result = arena_alloc(arena, value.count + 1);
+    memcpy(result, value.data, value.count);
+    result[value.count] = '\0';
+    return result;
+}
+
+internal bool
+sema_windows_ffi_symbol_exists(Arena* arena, string library, string symbol)
+{
+#if OS_WINDOWS
+    bool has_extension = false;
+    for (usize i = 0; i < library.count; ++i) {
+        if (library.data[i] == '.') {
+            has_extension = true;
+            break;
+        }
+    }
+    string dll_name =
+        has_extension ? library
+                      : string_format(arena, STRINGP ".dll", STRINGV(library));
+    void* module = LoadLibraryA(sema_string_to_cstr(arena, dll_name));
+    if (module == NULL) {
+        return true;
+    }
+    void* proc = GetProcAddress(module, sema_string_to_cstr(arena, symbol));
+    FreeLibrary(module);
+    return proc != NULL;
+#else
+    UNUSED(arena);
+    UNUSED(library);
+    UNUSED(symbol);
+    return true;
+#endif
+}
+
+internal bool sema_ffi_library_literal(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       u32          node_index,
+                                       string*      out)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_StringLiteral) {
+        *out = ast_get_string(lexer, node);
+        return true;
+    }
+    if ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+        node->a < array_count(ast->nodes)) {
+        return sema_ffi_library_literal(lexer, ast, node->a, out);
+    }
+    if (node->kind == AK_AnnotatedValue && node->b < array_count(ast->nodes)) {
+        return sema_ffi_library_literal(lexer, ast, node->b, out);
+    }
+    return false;
+}
+
 internal u32 sema_enclosing_impl_node_index(const Ast* ast, u32 node_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -14108,6 +14210,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                    &ast->nodes[ffi_info->library_node_index]),
                     s("compile-time string"),
                     sema_type_name(lexer, sema, &temp_arena, library_type));
+            }
+            {
+                string library = {0};
+                if (sema_ffi_library_literal(
+                        lexer, ast, ffi_info->library_node_index, &library) &&
+                    sema_windows_library_should_validate(library)) {
+                    string foreign_symbol =
+                        lex_symbol(lexer, ffi_info->foreign_symbol_handle);
+                    if (!sema_windows_ffi_symbol_exists(
+                            &temp_arena, library, foreign_symbol)) {
+                        return error_0346_unknown_ffi_symbol(
+                            lexer->source,
+                            sema_token_span(
+                                lexer, ffi_info->foreign_symbol_token_index),
+                            foreign_symbol,
+                            library);
+                    }
+                }
             }
 
             u32 return_type = sema_builtin_type(sema, STK_Void);
