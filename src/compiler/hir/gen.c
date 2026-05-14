@@ -471,12 +471,12 @@ internal u32 hir_function_param_type(const Sema* sema,
                                   param_index];
 }
 
-internal bool hir_imported_ffi_decl_source(const Sema*      sema,
-                                           const SemaDecl*  decl,
-                                           const Lexer**    out_lexer,
-                                           const Ast**      out_ast,
-                                           const Sema**     out_sema,
-                                           const SemaDecl** out_decl)
+internal bool hir_imported_decl_source(const Sema*      sema,
+                                       const SemaDecl*  decl,
+                                       const Lexer**    out_lexer,
+                                       const Ast**      out_ast,
+                                       const Sema**     out_sema,
+                                       const SemaDecl** out_decl)
 {
     if (decl->import_module_index == sema_no_decl() ||
         decl->import_decl_index == sema_no_decl() || sema->program == NULL ||
@@ -492,11 +492,6 @@ internal bool hir_imported_ffi_decl_source(const Sema*      sema,
 
     const SemaDecl* source_decl =
         &module->front_end.sema.decls[decl->import_decl_index];
-    if (source_decl->kind != SK_FfiFunction ||
-        source_decl->value_node_index == sema_no_decl()) {
-        return false;
-    }
-
     *out_lexer = &module->front_end.lexer;
     *out_ast   = &module->front_end.ast;
     *out_sema  = &module->front_end.sema;
@@ -504,44 +499,152 @@ internal bool hir_imported_ffi_decl_source(const Sema*      sema,
     return true;
 }
 
-internal u32 hir_ffi_foreign_symbol_handle(const Lexer*    lexer,
-                                           const Ast*      ast,
-                                           const Sema*     sema,
-                                           const SemaDecl* decl)
+internal u32 hir_unwrap_expr_node(const Ast* ast, u32 node_index)
 {
-    if (decl == NULL || decl->kind != SK_FfiFunction) {
+    while (node_index < array_count(ast->nodes)) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind == AK_Expression || node->kind == AK_Statement ||
+            node->kind == AK_InterpPartExpr) {
+            node_index = node->a;
+            continue;
+        }
+        if (node->kind == AK_AnnotatedValue) {
+            node_index = node->b;
+            continue;
+        }
+        break;
+    }
+    return node_index;
+}
+
+internal u32 hir_ffi_foreign_symbol_handle_from(const Lexer*    root_lexer,
+                                                const Lexer*    lexer,
+                                                const Ast*      ast,
+                                                const Sema*     sema,
+                                                const SemaDecl* decl,
+                                                u32             depth);
+
+internal bool hir_decl_alias_target(const Lexer*     root_lexer,
+                                    const Lexer*     lexer,
+                                    const Ast*       ast,
+                                    const Sema*      sema,
+                                    const SemaDecl*  decl,
+                                    const Lexer**    out_lexer,
+                                    const Ast**      out_ast,
+                                    const Sema**     out_sema,
+                                    const SemaDecl** out_decl,
+                                    u32              depth)
+{
+    if (decl == NULL || decl->value_node_index == sema_no_decl()) {
+        return false;
+    }
+
+    u32 value_node_index = hir_unwrap_expr_node(ast, decl->value_node_index);
+    if (value_node_index >= array_count(ast->nodes) ||
+        ast->nodes[value_node_index].kind != AK_SymbolRef ||
+        value_node_index >= array_count(sema->node_decl_indices)) {
+        return false;
+    }
+
+    u32 target_decl_index = sema->node_decl_indices[value_node_index];
+    if (target_decl_index == sema_no_decl() ||
+        target_decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+
+    const SemaDecl* target_decl = &sema->decls[target_decl_index];
+    if (hir_ffi_foreign_symbol_handle_from(
+            root_lexer, lexer, ast, sema, target_decl, depth + 1) == U32_MAX) {
+        return false;
+    }
+
+    *out_lexer = lexer;
+    *out_ast   = ast;
+    *out_sema  = sema;
+    *out_decl  = target_decl;
+    return true;
+}
+
+internal u32 hir_ffi_foreign_symbol_handle_from(const Lexer*    root_lexer,
+                                                const Lexer*    lexer,
+                                                const Ast*      ast,
+                                                const Sema*     sema,
+                                                const SemaDecl* decl,
+                                                u32             depth)
+{
+    if (decl == NULL || depth > 32) {
         return U32_MAX;
     }
 
-    const Lexer*    source_lexer = lexer;
-    const Ast*      source_ast   = ast;
-    const Sema*     source_sema  = sema;
-    const SemaDecl* source_decl  = decl;
-    if (decl->value_node_index == sema_no_decl() &&
-        !hir_imported_ffi_decl_source(sema,
+    if (decl->import_module_index != sema_no_decl()) {
+        const Lexer*    source_lexer = NULL;
+        const Ast*      source_ast   = NULL;
+        const Sema*     source_sema  = NULL;
+        const SemaDecl* source_decl  = NULL;
+        if (!hir_imported_decl_source(sema,
                                       decl,
                                       &source_lexer,
                                       &source_ast,
                                       &source_sema,
                                       &source_decl)) {
+            return U32_MAX;
+        }
+        return hir_ffi_foreign_symbol_handle_from(root_lexer,
+                                                  source_lexer,
+                                                  source_ast,
+                                                  source_sema,
+                                                  source_decl,
+                                                  depth + 1);
+    }
+
+    if (decl->kind == SK_Constant || decl->kind == SK_Variable) {
+        const Lexer*    target_lexer = NULL;
+        const Ast*      target_ast   = NULL;
+        const Sema*     target_sema  = NULL;
+        const SemaDecl* target_decl  = NULL;
+        if (!hir_decl_alias_target(root_lexer,
+                                   lexer,
+                                   ast,
+                                   sema,
+                                   decl,
+                                   &target_lexer,
+                                   &target_ast,
+                                   &target_sema,
+                                   &target_decl,
+                                   depth)) {
+            return U32_MAX;
+        }
+        return hir_ffi_foreign_symbol_handle_from(root_lexer,
+                                                  target_lexer,
+                                                  target_ast,
+                                                  target_sema,
+                                                  target_decl,
+                                                  depth + 1);
+    }
+
+    if (decl->kind != SK_FfiFunction ||
+        decl->value_node_index == sema_no_decl() ||
+        decl->value_node_index >= array_count(ast->nodes)) {
         return U32_MAX;
     }
-    UNUSED(source_sema);
 
-    if (source_decl->value_node_index == sema_no_decl() ||
-        source_decl->value_node_index >= array_count(source_ast->nodes)) {
-        return U32_MAX;
-    }
-
-    const AstNode* ffi_node = &source_ast->nodes[source_decl->value_node_index];
+    const AstNode* ffi_node = &ast->nodes[decl->value_node_index];
     if (ffi_node->kind != AK_FfiDef ||
-        ffi_node->a >= array_count(source_ast->ffi_infos)) {
+        ffi_node->a >= array_count(ast->ffi_infos)) {
         return U32_MAX;
     }
 
-    const AstFfiInfo* ffi_info = &source_ast->ffi_infos[ffi_node->a];
+    const AstFfiInfo* ffi_info = &ast->ffi_infos[ffi_node->a];
     return sema_import_symbol_handle(
-        (Lexer*)lexer, source_lexer, ffi_info->foreign_symbol_handle);
+        (Lexer*)root_lexer, lexer, ffi_info->foreign_symbol_handle);
+}
+
+internal u32 hir_ffi_foreign_symbol_handle(const Lexer*    lexer,
+                                           const Ast*      ast,
+                                           const Sema*     sema,
+                                           const SemaDecl* decl)
+{
+    return hir_ffi_foreign_symbol_handle_from(lexer, lexer, ast, sema, decl, 0);
 }
 
 internal bool hir_decl_ffi_info(const Lexer*       lexer,
@@ -558,17 +661,52 @@ internal bool hir_decl_ffi_info(const Lexer*       lexer,
     const Sema*     source_sema  = sema;
     const SemaDecl* source_decl  = decl;
 
-    if (decl->value_node_index == sema_no_decl() &&
-        !hir_imported_ffi_decl_source(sema,
-                                      decl,
-                                      &source_lexer,
-                                      &source_ast,
-                                      &source_sema,
-                                      &source_decl)) {
-        return false;
+    for (u32 depth = 0; depth < 32; ++depth) {
+        if (source_decl == NULL) {
+            return false;
+        }
+        if (source_decl->import_module_index != sema_no_decl()) {
+            if (!hir_imported_decl_source(source_sema,
+                                          source_decl,
+                                          &source_lexer,
+                                          &source_ast,
+                                          &source_sema,
+                                          &source_decl)) {
+                return false;
+            }
+            continue;
+        }
+        if (source_decl->kind == SK_FfiFunction) {
+            break;
+        }
+        if (source_decl->kind != SK_Constant &&
+            source_decl->kind != SK_Variable) {
+            return false;
+        }
+        const Lexer*    target_lexer = NULL;
+        const Ast*      target_ast   = NULL;
+        const Sema*     target_sema  = NULL;
+        const SemaDecl* target_decl  = NULL;
+        if (!hir_decl_alias_target(lexer,
+                                   source_lexer,
+                                   source_ast,
+                                   source_sema,
+                                   source_decl,
+                                   &target_lexer,
+                                   &target_ast,
+                                   &target_sema,
+                                   &target_decl,
+                                   depth)) {
+            return false;
+        }
+        source_lexer = target_lexer;
+        source_ast   = target_ast;
+        source_sema  = target_sema;
+        source_decl  = target_decl;
     }
 
-    if (source_decl->value_node_index == sema_no_decl() ||
+    if (source_decl == NULL || source_decl->kind != SK_FfiFunction ||
+        source_decl->value_node_index == sema_no_decl() ||
         source_decl->value_node_index >= array_count(source_ast->nodes)) {
         return false;
     }
@@ -663,7 +801,7 @@ internal void hir_add_extern(Hir*            hir,
                              const Sema*     sema,
                              const SemaDecl* decl)
 {
-    if (decl == NULL || decl->kind != SK_FfiFunction) {
+    if (decl == NULL) {
         return;
     }
 
@@ -2865,6 +3003,9 @@ internal u32 hir_add_import(Hir*         hir,
     u32 binding_index = hir_add_binding(
         hir, HIR_BINDING_Import, decl->symbol_handle, import_index);
     hir_set_decl_binding(hir, decl_index, binding_index);
+    if (ffi_symbol_handle != U32_MAX) {
+        hir_add_extern(hir, lexer, ast, sema, decl);
+    }
     return binding_index;
 }
 

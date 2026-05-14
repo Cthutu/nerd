@@ -86,6 +86,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "ffi_alias",
+                "kind": 9
+            },
+            {
                 "label": "ffi_import",
                 "kind": 9
             },
