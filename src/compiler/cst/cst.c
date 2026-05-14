@@ -2059,6 +2059,9 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                     }
                     continue;
                 }
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    continue;
+                }
                 if (cst_current_token(state).kind == TK_Symbol) {
                     continue;
                 }
@@ -3401,6 +3404,9 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     cst_advance(state);
                     continue;
                 }
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    continue;
+                }
                 if (cst_current_token(state).kind == TK_Symbol) {
                     continue;
                 }
@@ -3462,6 +3468,9 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 field_count++;
                 if (cst_current_token(state).kind == TK_Comma) {
                     cst_advance(state);
+                    continue;
+                }
+                if (cst_current_token(state).kind == TK_Ellipsis) {
                     continue;
                 }
                 if (cst_current_token(state).kind == TK_Symbol) {

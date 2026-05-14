@@ -5,7 +5,7 @@ Point :: plex {
 }
 
 main :: fn () -> i32 {
-    p := Point { x: 7, ... }
+    p := Point { x: 7 ... }
     return p.x + p.y + p.z
 }
 ¬
@@ -39,4 +39,3 @@ define internal i32 @fn.0() {
 
 @$main = alias i32 (), ptr @fn.0
 ¬
-

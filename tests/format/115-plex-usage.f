@@ -44,7 +44,7 @@ test :: fn () {
         age  i32
         name string
     }
-    = { age: 42, name: "Alice" }
+    = { age: 42 name: "Alice" }
 
     prn(on details {
         { age: 42, name: _ } => $"Hello {details.name}!"

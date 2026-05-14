@@ -6,7 +6,7 @@ State :: plex {
 }
 
 main :: fn () -> i32 {
-    state := State { count: 7, ... }
+    state := State { count: 7 ... }
 
     on state.visible => return 1
     on state.name != "" => return 2

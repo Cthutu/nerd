@@ -972,7 +972,7 @@ internal void format_emit_expr(StringBuilder* sb,
                                : "{ ");
             for (u32 i = 0; i < plex->field_count; ++i) {
                 if (i > 0) {
-                    sb_append_cstr(sb, ", ");
+                    sb_append_char(sb, ' ');
                 }
                 const CstPlexLiteralField* field =
                     &cst->plex_literal_fields[plex->first_field + i];
@@ -986,7 +986,7 @@ internal void format_emit_expr(StringBuilder* sb,
             }
             if (plex->flags & CPLF_DefaultMissing) {
                 if (plex->field_count > 0) {
-                    sb_append_cstr(sb, ", ");
+                    sb_append_char(sb, ' ');
                 }
                 sb_append_cstr(sb, "...");
             }
@@ -2454,7 +2454,7 @@ internal bool format_plex_literal_fits_single_line(const Cst*   cst,
         const CstPlexLiteralField* field =
             &cst->plex_literal_fields[plex->first_field + i];
         if (i > 0) {
-            width += 2;
+            width += 1;
         }
         width += lex_symbol(lexer, field->symbol_handle).count;
         if (!format_plex_field_is_shorthand(cst, field)) {
@@ -2488,7 +2488,7 @@ internal void format_emit_plex_literal_single_line(StringBuilder* sb,
             : "{ ");
     for (u32 i = 0; i < plex->field_count; ++i) {
         if (i > 0) {
-            sb_append_cstr(sb, ", ");
+            sb_append_char(sb, ' ');
         }
         const CstPlexLiteralField* field =
             &cst->plex_literal_fields[plex->first_field + i];
@@ -2500,7 +2500,7 @@ internal void format_emit_plex_literal_single_line(StringBuilder* sb,
     }
     if (plex->flags & CPLF_DefaultMissing) {
         if (plex->field_count > 0) {
-            sb_append_cstr(sb, ", ");
+            sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, "...");
     }
@@ -2812,7 +2812,7 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
         if (format_plex_field_is_shorthand(cst, field)) {
             if (i + 1 < plex->field_count ||
                 (plex->flags & CPLF_DefaultMissing)) {
-                sb_append_cstr(sb, ", ");
+                sb_append_char(sb, ' ');
             } else {
                 sb_append_char(sb, ' ');
             }
@@ -2827,7 +2827,6 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
         if (i + 1 < plex->field_count || (plex->flags & CPLF_DefaultMissing)) {
             usize value_width = format_rendered_expr_width(
                 cst, lexer, field->value_node_index, 0);
-            sb_append_char(sb, ',');
             for (usize pad = value_width; pad <= field_value_widths[i]; ++pad) {
                 sb_append_char(sb, ' ');
             }

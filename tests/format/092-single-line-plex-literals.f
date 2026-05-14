@@ -6,7 +6,7 @@ TermRect :: plex {
 }
 
 main :: fn () {
-    rect := TermRect { x: 10, y: 5, width: 20, height: 10 }
+    rect := TermRect { x: 10 y: 5 width: 20 height: 10 }
 }
 ¬
 TermRect :: plex {
@@ -17,5 +17,5 @@ TermRect :: plex {
 }
 
 main :: fn () {
-    rect := TermRect { x: 10, y: 5, width: 20, height: 10 }
+    rect := TermRect { x: 10 y: 5 width: 20 height: 10 }
 }

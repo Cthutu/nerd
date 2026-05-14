@@ -1671,6 +1671,9 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                     }
                     continue;
                 }
+                if (state->token.kind == TK_Ellipsis) {
+                    continue;
+                }
                 if (state->token.kind == TK_Symbol) {
                     if (!ast_next_token(state)) {
                         return false;
@@ -2059,6 +2062,9 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 }
                 continue;
             }
+            if (state->token.kind == TK_Ellipsis) {
+                continue;
+            }
             if (state->token.kind == TK_Symbol) {
                 if (!ast_next_token(state)) {
                     return false;
@@ -2157,6 +2163,9 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                 if (state->token.kind == TK_RBrace) {
                     break;
                 }
+                continue;
+            }
+            if (state->token.kind == TK_Ellipsis) {
                 continue;
             }
             if (state->token.kind == TK_Symbol) {

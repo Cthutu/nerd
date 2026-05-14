@@ -23,7 +23,7 @@ local declaration is scoped like other local bindings:
 ```nerd
 main :: fn () -> i32 {
     Point :: plex { x i32 y i32 }
-    point: Point = Point { x: 20, y: 22 }
+    point: Point = Point { x: 20 y: 22 }
     return point.x + point.y
 }
 ```
@@ -159,7 +159,7 @@ Point :: plex {
 }
 
 main :: fn () -> i32 {
-    p := Point { x: 20, y: 22 }  -- construct by field name
+    p := Point { x: 20 y: 22 }  -- construct by field name
     return p.x + p.y             -- read fields with dot syntax
 }
 ```
@@ -168,7 +168,7 @@ Plex literals normally include every field. Write `...` at the end of a
 literal to initialise omitted fields with their default values:
 
 ```nerd
-p := Point { x: 20, ... }  -- y uses its default value
+p := Point { x: 20 ... }  -- y uses its default value
 ```
 
 Fields are read with dot syntax and can be assigned when the value is mutable.
@@ -196,8 +196,8 @@ as an ordinary value dependency:
 
 ```nerd
 nodes: []Node = [
-    { value: 1, next: second },
-    { value: 2, next: first },
+    { value: 1 next: second },
+    { value: 2 next: first },
 ]
 
 first  :: ^nodes[0]

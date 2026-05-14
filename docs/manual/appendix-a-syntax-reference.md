@@ -204,8 +204,8 @@ Type.size
 | `[1, 2, 3]` | `[3]i32` |
 | `[start..end]`, `[start..=end]` | integer range usable by `for in` |
 | `(1, "two")` | `(i32, string)` |
-| `Point { x: 1, y: 2 }` | `Point` |
-| `geometry.Point { x: 1, y: 2 }` | `geometry.Point` |
+| `Point { x: 1 y: 2 }` | `Point` |
+| `geometry.Point { x: 1 y: 2 }` | `geometry.Point` |
 | `Colour.Red` | `Colour` |
 | `Maybe.Some(42)` | `Maybe` |
 

@@ -18,9 +18,9 @@ rooms : []Room : [
 ]
 
 items : []Room : [
-    { name : "key",     description : "A small brass key.",      exits : [1, 2, 3, 4] },
-    { name : "lantern", description : "A battered oil lantern.", exits : [5, 6, 7, 8] },
-    { name : "coin",    description : "An old silver coin.",     exits : [9, 10, 11, 12] },
+    { name : "key"     description : "A small brass key."      exits : [1, 2, 3, 4] },
+    { name : "lantern" description : "A battered oil lantern." exits : [5, 6, 7, 8] },
+    { name : "coin"    description : "An old silver coin."     exits : [9, 10, 11, 12] },
 ]
 ¬
 Room :: plex {
@@ -43,7 +43,7 @@ rooms : []Room : [
 ]
 
 items : []Room : [
-    { name : "key",     description : "A small brass key.",      exits : [1, 2, 3, 4] },
-    { name : "lantern", description : "A battered oil lantern.", exits : [5, 6, 7, 8] },
-    { name : "coin",    description : "An old silver coin.",     exits : [9, 10, 11, 12] },
+    { name : "key"     description : "A small brass key."      exits : [1, 2, 3, 4] },
+    { name : "lantern" description : "A battered oil lantern." exits : [5, 6, 7, 8] },
+    { name : "coin"    description : "An old silver coin."     exits : [9, 10, 11, 12] },
 ]

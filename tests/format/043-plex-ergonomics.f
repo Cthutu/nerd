@@ -29,13 +29,13 @@ Packed :: plex #packed {
 }
 
 main :: fn () {
-    p := Point { x, y, name }
-    short := Point { x, y, name }
+    p := Point { x y name }
+    short := Point { x y name }
     q := p with {
         y
         name : "second"
     }
     pp := ^q
     prn($"{pp.name} {pp.x} {pp.y}")
-    packed := Packed { a: 1, b: 2 }
+    packed := Packed { a: 1 b: 2 }
 }
