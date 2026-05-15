@@ -9855,6 +9855,23 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
     }
 }
 
+internal const SemaLocal*
+sema_address_of_constant_local(const Ast* ast, Sema* sema, u32 node_index)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_SymbolRef) {
+        return NULL;
+    }
+
+    u32 local_index = sema->node_local_indices[node_index];
+    if (local_index == sema_no_local()) {
+        return NULL;
+    }
+
+    const SemaLocal* local = &sema->locals[local_index];
+    return local->kind == SLK_Constant ? local : NULL;
+}
+
 internal bool sema_merge_control_break_type(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -11910,6 +11927,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
             if (!sema_node_is_addressable(ast, sema, node->a)) {
+                const SemaLocal* constant =
+                    sema_address_of_constant_local(ast, sema, node->a);
+                if (constant) {
+                    return error_0304_address_of_constant_binding(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[node->a]),
+                        sema_type_name(lexer, sema, &temp_arena, pointee_type),
+                        lex_symbol(lexer, constant->symbol_handle));
+                }
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[node->a]),

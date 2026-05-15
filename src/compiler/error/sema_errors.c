@@ -157,6 +157,34 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
     return false;
 }
 
+bool error_0304_address_of_constant_binding(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     actual_type,
+                                            string     symbol)
+{
+    ErrorInfo error = error_init(
+        304,
+        source,
+        span,
+        "Type mismatch: expected `addressable value`, found `" STRINGP "`",
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    error_add_note(&error,
+                   "The binding `" STRINGP "` is a constant declared with "
+                   "`::`; constant bindings do not provide addressable "
+                   "storage.",
+                   STRINGV(symbol));
+    error_add_help(&error,
+                   "Use `:=` or `name: Type = ...` to create a variable before "
+                   "taking its address.");
+    error_render(&error);
+    return false;
+}
+
 bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,

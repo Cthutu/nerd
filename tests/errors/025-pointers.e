@@ -20,9 +20,11 @@ main :: fn () {
             "message": "This expression has type `untyped integer`"
         }
     ],
-    "notes": [],
+    "notes": [
+        "The binding `value` is a constant declared with `::`; constant bindings do not provide addressable storage."
+    ],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Use `:=` or `name: Type = ...` to create a variable before taking its address."
     ]
 }
 ¬
