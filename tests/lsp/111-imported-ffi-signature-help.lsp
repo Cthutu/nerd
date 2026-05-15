@@ -171,20 +171,20 @@ main :: fn () {
         "result": {
             "signatures": [
                 {
-                    "label": "DefWindowProcA(hWnd   : HWND,\n                    Msg    : UINT,\n                    wParam : WPARAM,\n                    lParam : LPARAM) -> LRESULT",
+                    "label": "DefWindowProcA(hWnd: HWND, Msg: UINT, wParam: WPARAM, lParam: LPARAM) -> LRESULT",
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {
-                            "label": "hWnd   : HWND"
+                            "label": "hWnd: HWND"
                         },
                         {
-                            "label": "Msg    : UINT"
+                            "label": "Msg: UINT"
                         },
                         {
-                            "label": "wParam : WPARAM"
+                            "label": "wParam: WPARAM"
                         },
                         {
-                            "label": "lParam : LPARAM"
+                            "label": "lParam: LPARAM"
                         }
                     ]
                 }

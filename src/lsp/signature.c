@@ -639,6 +639,97 @@ internal string lsp_signature_source_slice_trim(string source,
     return (string){.data = source.data + start, .count = end - start};
 }
 
+internal string lsp_signature_normalize_source_param_label(Arena* arena,
+                                                           string label)
+{
+    label     = lsp_signature_source_slice_trim(label, 0, label.count);
+
+    u32 depth = 0;
+    for (usize i = 0; i < label.count; ++i) {
+        u8 c = label.data[i];
+        if (c == '(' || c == '[' || c == '{') {
+            depth++;
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (c == ':' && depth == 0) {
+            string name = lsp_signature_source_slice_trim(label, 0, i);
+            string type =
+                lsp_signature_source_slice_trim(label, i + 1, label.count);
+            if (name.count == 0 || type.count == 0) {
+                return label;
+            }
+            return string_format(
+                arena, STRINGP ": " STRINGP, STRINGV(name), STRINGV(type));
+        }
+    }
+
+    return label;
+}
+
+internal void
+lsp_signature_append_normalized_source_param_label(StringBuilder* sb,
+                                                   string         label)
+{
+    label     = lsp_signature_source_slice_trim(label, 0, label.count);
+
+    u32 depth = 0;
+    for (usize i = 0; i < label.count; ++i) {
+        u8 c = label.data[i];
+        if (c == '(' || c == '[' || c == '{') {
+            depth++;
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (c == ':' && depth == 0) {
+            string name = lsp_signature_source_slice_trim(label, 0, i);
+            string type =
+                lsp_signature_source_slice_trim(label, i + 1, label.count);
+            if (name.count > 0 && type.count > 0) {
+                sb_append_string(sb, name);
+                sb_append_cstr(sb, ": ");
+                sb_append_string(sb, type);
+                return;
+            }
+        }
+    }
+
+    sb_append_string(sb, label);
+}
+
+internal void lsp_signature_append_source_params_label(StringBuilder* sb,
+                                                       string         source,
+                                                       usize params_start,
+                                                       usize params_end)
+{
+    usize item_start = params_start;
+    u32   depth      = 0;
+    u32   count      = 0;
+    for (usize i = params_start; i <= params_end; ++i) {
+        u8 c = i < params_end ? source.data[i] : ',';
+        if (c == '(' || c == '[' || c == '{') {
+            depth++;
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (c == ',' && depth == 0) {
+            string label =
+                lsp_signature_source_slice_trim(source, item_start, i);
+            if (label.count > 0) {
+                if (count > 0) {
+                    sb_append_cstr(sb, ", ");
+                }
+                lsp_signature_append_normalized_source_param_label(sb, label);
+                count++;
+            }
+            item_start = i + 1;
+        }
+    }
+}
+
 internal void lsp_signature_add_source_params(Arena*     arena,
                                               JsonValue* params,
                                               string     source,
@@ -660,7 +751,11 @@ internal void lsp_signature_add_source_params(Arena*     arena,
                 lsp_signature_source_slice_trim(source, item_start, i);
             if (label.count > 0) {
                 JsonValue* param = json_new_object(arena);
-                json_object_set_string(param, arena, "label", label);
+                json_object_set_string(
+                    param,
+                    arena,
+                    "label",
+                    lsp_signature_normalize_source_param_label(arena, label));
                 json_array_push(params, param);
             }
             item_start = i + 1;
@@ -742,9 +837,8 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
         sb_init(&sb, arena);
         sb_append_string(&sb, name);
         sb_append_cstr(&sb, "(");
-        sb_append_string(
-            &sb,
-            lsp_signature_source_slice_trim(source, params_start, params_end));
+        lsp_signature_append_source_params_label(
+            &sb, source, params_start, params_end);
         sb_append_cstr(&sb, ")");
 
         lsp_signature_skip_space(source, &cursor);
