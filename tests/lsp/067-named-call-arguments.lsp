@@ -106,13 +106,22 @@ main :: fn () => add(a = 20, b = 2)
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {
-                            "label": "a: i32"
+                            "label": [
+                                4,
+                                10
+                            ]
                         },
                         {
-                            "label": "b: i32 = 1"
+                            "label": [
+                                12,
+                                22
+                            ]
                         },
                         {
-                            "label": "c: i32 = a + b"
+                            "label": [
+                                24,
+                                38
+                            ]
                         }
                     ]
                 }

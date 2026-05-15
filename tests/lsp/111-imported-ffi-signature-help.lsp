@@ -175,16 +175,28 @@ main :: fn () {
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {
-                            "label": "hWnd: HWND"
+                            "label": [
+                                15,
+                                25
+                            ]
                         },
                         {
-                            "label": "Msg: UINT"
+                            "label": [
+                                27,
+                                36
+                            ]
                         },
                         {
-                            "label": "wParam: WPARAM"
+                            "label": [
+                                38,
+                                52
+                            ]
                         },
                         {
-                            "label": "lParam: LPARAM"
+                            "label": [
+                                54,
+                                68
+                            ]
                         }
                     ]
                 }
