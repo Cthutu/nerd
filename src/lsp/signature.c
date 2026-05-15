@@ -4,6 +4,8 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/front/front.h>
+#include <compiler/error/error.h>
 #include <compiler/sema/sema.h>
 #include <lsp/lsp.h>
 
@@ -207,16 +209,61 @@ lsp_signature_decl_ast_signature(const LspTypeFactView* view,
     return NULL;
 }
 
+internal bool lsp_signature_decl_is_callable(const LspTypeFactView* view,
+                                             const SemaDecl*        decl)
+{
+    if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
+        decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
+        return true;
+    }
+
+    const SemaType* type = NULL;
+    return lsp_sema_type(view->sema, decl->type_index, &type) &&
+           type->kind == STK_Function;
+}
+
+internal const SemaDecl*
+lsp_signature_resolve_callable_alias(const LspTypeFactView* view,
+                                     const SemaDecl*        decl)
+{
+    const SemaDecl* current = decl;
+    for (u32 depth = 0; depth < 8; ++depth) {
+        if (current->value_node_index == sema_no_decl() ||
+            current->value_node_index >= array_count(view->ast->nodes) ||
+            view->ast->nodes[current->value_node_index].kind != AK_SymbolRef) {
+            break;
+        }
+
+        u32 target_index = U32_MAX;
+        if (!lsp_sema_node_decl(
+                view->sema, current->value_node_index, &target_index)) {
+            break;
+        }
+
+        const SemaDecl* target = NULL;
+        if (!lsp_sema_decl(view->sema, target_index, &target) ||
+            target == current ||
+            !lsp_signature_decl_is_callable(view, target)) {
+            break;
+        }
+
+        current = target;
+    }
+
+    return current;
+}
+
 internal bool lsp_signature_decl_label(const LspTypeFactView* view,
                                        Arena*                 arena,
                                        const SemaDecl*        decl,
                                        string*                out_label,
                                        JsonValue**            out_params)
 {
-    if (decl->kind != SK_Function && decl->kind != SK_GenericFunction &&
-        decl->kind != SK_FfiFunction && decl->kind != SK_BuiltinFunction) {
+    if (!lsp_signature_decl_is_callable(view, decl)) {
         return false;
     }
+
+    decl = lsp_signature_resolve_callable_alias(view, decl);
 
     const AstFnSignature* signature =
         lsp_signature_decl_ast_signature(view, decl);
@@ -233,13 +280,9 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
     const Ast*      ast         = view->ast;
     const SemaType* type        = NULL;
     bool            has_generic = signature->generic_params_index != U32_MAX;
-    if (!has_generic) {
-        if (!lsp_sema_type(view->sema, decl->type_index, &type)) {
-            return false;
-        }
-        if (type->kind != STK_Function) {
-            return false;
-        }
+    if (!has_generic && lsp_sema_type(view->sema, decl->type_index, &type) &&
+        type->kind != STK_Function) {
+        type = NULL;
     }
 
     Arena build_arena = {0};
@@ -301,7 +344,7 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
             sb_append_string(&param_label, param_name);
             sb_append_cstr(&param_label, ": ");
         }
-        if (has_generic) {
+        if (has_generic || type == NULL) {
             sb_append_string(&param_label,
                              lsp_signature_type_source(view, param));
         } else {
@@ -337,12 +380,13 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         sb_append_cstr(&sb, "...");
     }
     sb_append_cstr(&sb, ")");
-    if (has_generic && signature->return_type_node_index != U32_MAX) {
+    if ((has_generic || type == NULL) &&
+        signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
                          lsp_signature_return_type_source(
                              view, signature->return_type_node_index));
-    } else if (!has_generic && type->return_type != sema_no_type()) {
+    } else if (type != NULL && type->return_type != sema_no_type()) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(
             &sb,
@@ -369,9 +413,7 @@ internal const SemaDecl* lsp_signature_find_decl(const LspTypeFactView* view,
         }
         if (decl->symbol_handle != U32_MAX &&
             string_eq(lex_symbol(lexer, decl->symbol_handle), name) &&
-            (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
-             decl->kind == SK_FfiFunction ||
-             decl->kind == SK_BuiltinFunction)) {
+            lsp_signature_decl_is_callable(view, decl)) {
             return decl;
         }
     }
@@ -387,6 +429,91 @@ internal const SemaDecl* lsp_signature_find_decl(const LspTypeFactView* view,
     }
 
     return NULL;
+}
+
+internal string lsp_signature_repair_source(Arena* arena,
+                                            string source,
+                                            usize  offset)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_string(&sb, string_from(source.data, offset));
+
+    usize cursor = offset;
+    while (cursor > 0 &&
+           (source.data[cursor - 1] == ' ' || source.data[cursor - 1] == '\t' ||
+            source.data[cursor - 1] == '\n' ||
+            source.data[cursor - 1] == '\r')) {
+        cursor--;
+    }
+    if (cursor > 0 && source.data[cursor - 1] == ',') {
+        sb_append_cstr(&sb, "__nerd_signature_probe");
+    }
+    sb_append_cstr(&sb, ")");
+
+    if (offset < source.count) {
+        sb_append_string(
+            &sb, string_from(source.data + offset, source.count - offset));
+    }
+    return sb_to_string(&sb);
+}
+
+internal bool lsp_signature_repaired_type_fact_view(Arena*       arena,
+                                                    string       uri,
+                                                    string       source,
+                                                    usize        offset,
+                                                    ProgramInfo* out_program,
+                                                    LspDocument* out_doc,
+                                                    LspTypeFactView* out_view)
+{
+    string repaired = lsp_signature_repair_source(arena, source, offset);
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_clear_last_rendered();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+    bool ok =
+        front_end_program((NerdSource){.source = repaired, .source_path = uri},
+                          &options,
+                          NULL,
+                          out_program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    if (array_count(out_program->modules) == 0 ||
+        out_program->root_module_index >= array_count(out_program->modules)) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(out_program->modules); ++i) {
+        out_program->modules[i].front_end.sema.program = out_program;
+    }
+
+    ModuleInfo* root = &out_program->modules[out_program->root_module_index];
+    UNUSED(ok);
+    *out_doc = (LspDocument){
+        .source       = repaired,
+        .program      = *out_program,
+        .front_end    = root->front_end,
+        .source_ready = true,
+    };
+    *out_view = (LspTypeFactView){
+        .doc    = out_doc,
+        .source = repaired,
+        .lexer  = &root->front_end.lexer,
+        .ast    = &root->front_end.ast,
+        .sema   = &root->front_end.sema,
+    };
+    return true;
 }
 
 internal bool lsp_signature_call_context(string  source,
@@ -446,6 +573,186 @@ internal bool lsp_signature_call_context(string  source,
     return true;
 }
 
+internal bool
+lsp_signature_match_ident_at(string source, usize* cursor, string ident)
+{
+    usize i = *cursor;
+    if (i + ident.count > source.count ||
+        memcmp(source.data + i, ident.data, ident.count) != 0) {
+        return false;
+    }
+    if (i + ident.count < source.count &&
+        lsp_signature_is_ident_char(source.data[i + ident.count])) {
+        return false;
+    }
+    *cursor = i + ident.count;
+    return true;
+}
+
+internal void lsp_signature_skip_space(string source, usize* cursor)
+{
+    while (*cursor < source.count &&
+           (source.data[*cursor] == ' ' || source.data[*cursor] == '\t')) {
+        (*cursor)++;
+    }
+}
+
+internal string lsp_signature_source_slice_trim(string source,
+                                                usize  start,
+                                                usize  end)
+{
+    while (start < end &&
+           (source.data[start] == ' ' || source.data[start] == '\t' ||
+            source.data[start] == '\n' || source.data[start] == '\r')) {
+        start++;
+    }
+    while (end > start &&
+           (source.data[end - 1] == ' ' || source.data[end - 1] == '\t' ||
+            source.data[end - 1] == '\n' || source.data[end - 1] == '\r')) {
+        end--;
+    }
+    return (string){.data = source.data + start, .count = end - start};
+}
+
+internal void lsp_signature_add_source_params(Arena*     arena,
+                                              JsonValue* params,
+                                              string     source,
+                                              usize      params_start,
+                                              usize      params_end)
+{
+    usize item_start = params_start;
+    u32   depth      = 0;
+    for (usize i = params_start; i <= params_end; ++i) {
+        u8 c = i < params_end ? source.data[i] : ',';
+        if (c == '(' || c == '[' || c == '{') {
+            depth++;
+        } else if (c == ')' || c == ']' || c == '}') {
+            if (depth > 0) {
+                depth--;
+            }
+        } else if (c == ',' && depth == 0) {
+            string label =
+                lsp_signature_source_slice_trim(source, item_start, i);
+            if (label.count > 0) {
+                JsonValue* param = json_new_object(arena);
+                json_object_set_string(param, arena, "label", label);
+                json_array_push(params, param);
+            }
+            item_start = i + 1;
+        }
+    }
+}
+
+internal bool lsp_signature_source_decl_label(Arena*      arena,
+                                              string      source,
+                                              string      name,
+                                              string*     out_label,
+                                              JsonValue** out_params)
+{
+    for (usize line_start = 0; line_start < source.count;) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        usize cursor = line_start;
+        lsp_signature_skip_space(source, &cursor);
+        if (lsp_signature_match_ident_at(source, &cursor, s("pub"))) {
+            lsp_signature_skip_space(source, &cursor);
+        }
+
+        usize ident_start = cursor;
+        while (cursor < line_end &&
+               lsp_signature_is_ident_char(source.data[cursor])) {
+            cursor++;
+        }
+        string ident = {.data  = source.data + ident_start,
+                        .count = cursor - ident_start};
+        if (!string_eq(ident, name)) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        lsp_signature_skip_space(source, &cursor);
+        if (cursor + 1 >= line_end || source.data[cursor] != ':' ||
+            source.data[cursor + 1] != ':') {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        cursor += 2;
+        lsp_signature_skip_space(source, &cursor);
+        if (!lsp_signature_match_ident_at(source, &cursor, s("fn"))) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        lsp_signature_skip_space(source, &cursor);
+        if (cursor >= source.count || source.data[cursor] != '(') {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        usize params_start = cursor + 1;
+        usize params_end   = U32_MAX;
+        u32   depth        = 0;
+        for (usize i = cursor; i < source.count; ++i) {
+            u8 c = source.data[i];
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                if (depth == 0) {
+                    break;
+                }
+                depth--;
+                if (depth == 0) {
+                    params_end = i;
+                    cursor     = i + 1;
+                    break;
+                }
+            }
+        }
+        if (params_end == U32_MAX) {
+            return false;
+        }
+
+        StringBuilder sb = {0};
+        sb_init(&sb, arena);
+        sb_append_string(&sb, name);
+        sb_append_cstr(&sb, "(");
+        sb_append_string(
+            &sb,
+            lsp_signature_source_slice_trim(source, params_start, params_end));
+        sb_append_cstr(&sb, ")");
+
+        lsp_signature_skip_space(source, &cursor);
+        if (cursor + 1 < source.count && source.data[cursor] == '-' &&
+            source.data[cursor + 1] == '>') {
+            cursor += 2;
+            usize return_start = cursor;
+            while (cursor < source.count && source.data[cursor] != '{' &&
+                   source.data[cursor] != '\n' &&
+                   !(cursor + 1 < source.count && source.data[cursor] == '=' &&
+                     source.data[cursor + 1] == '>')) {
+                cursor++;
+            }
+            string return_type =
+                lsp_signature_source_slice_trim(source, return_start, cursor);
+            if (return_type.count > 0) {
+                sb_append_cstr(&sb, " -> ");
+                sb_append_string(&sb, return_type);
+            }
+        }
+
+        JsonValue* params = json_new_array(arena);
+        lsp_signature_add_source_params(
+            arena, params, source, params_start, params_end);
+        *out_label  = sb_to_string(&sb);
+        *out_params = params;
+        return true;
+    }
+
+    return false;
+}
+
 void lsp_handle_signature_help(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -456,8 +763,8 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         return;
     }
 
-    LspTypeFactView view = {0};
-    if (!lsp_type_fact_view(state, uri, &view)) {
+    LspSourceView source_view = {0};
+    if (!lsp_source_view(state, uri, &source_view)) {
         lsp_cancel(response, message->arena);
         return;
     }
@@ -465,31 +772,158 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
     u64 character = 0;
     (void)lsp_get_u64_param(message, "params.position.line", &line);
     (void)lsp_get_u64_param(message, "params.position.character", &character);
-    usize offset = lsp_offset_from_position(view.source, line, character);
+    usize offset =
+        lsp_offset_from_position(source_view.source, line, character);
 
-    string name  = {0};
+    string name         = {0};
     u32    active_param = 0;
     if (!lsp_signature_call_context(
-            view.source, offset, &name, &active_param)) {
+            source_view.source, offset, &name, &active_param)) {
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
         return;
     }
 
-    const SemaDecl* decl = lsp_signature_find_decl(&view, name);
-    if (decl == NULL) {
+    LspTypeFactView view             = {0};
+    ProgramInfo     repaired_program = {0};
+    LspDocument     repaired_doc     = {0};
+    bool            using_repaired   = false;
+    if (!lsp_type_fact_view(state, uri, &view)) {
+        using_repaired =
+            lsp_signature_repaired_type_fact_view(message->arena,
+                                                  uri,
+                                                  source_view.source,
+                                                  offset,
+                                                  &repaired_program,
+                                                  &repaired_doc,
+                                                  &view);
+    }
+    if (!view.sema) {
+        string     source_label      = {0};
+        JsonValue* source_parameters = NULL;
+        if (lsp_signature_source_decl_label(message->arena,
+                                            source_view.source,
+                                            name,
+                                            &source_label,
+                                            &source_parameters)) {
+            JsonValue* signature = json_new_object(message->arena);
+            json_object_set_string(
+                signature, message->arena, "label", source_label);
+            json_object_set_array(signature, "parameters", source_parameters);
+
+            JsonValue* signatures = json_new_array(message->arena);
+            json_array_push(signatures, signature);
+
+            JsonValue* result = json_new_object(message->arena);
+            json_object_set_array(result, "signatures", signatures);
+            json_object_set_number(
+                result, message->arena, "activeSignature", 0);
+            json_object_set_number(
+                result, message->arena, "activeParameter", active_param);
+            json_object_set_object(response, "result", result);
+            lsp_send_response(message->arena, response);
+            if (using_repaired) {
+                program_info_done(&repaired_program);
+            }
+            return;
+        }
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
+        if (using_repaired) {
+            program_info_done(&repaired_program);
+        }
+        return;
+    }
+
+    const SemaDecl* decl = lsp_signature_find_decl(&view, name);
+    if (decl == NULL && !using_repaired) {
+        using_repaired =
+            lsp_signature_repaired_type_fact_view(message->arena,
+                                                  uri,
+                                                  source_view.source,
+                                                  offset,
+                                                  &repaired_program,
+                                                  &repaired_doc,
+                                                  &view);
+        if (using_repaired) {
+            decl = lsp_signature_find_decl(&view, name);
+        }
+    }
+    if (decl == NULL) {
+        string     source_label      = {0};
+        JsonValue* source_parameters = NULL;
+        if (lsp_signature_source_decl_label(message->arena,
+                                            source_view.source,
+                                            name,
+                                            &source_label,
+                                            &source_parameters)) {
+        } else {
+            json_object_set_null(response, message->arena, "result");
+            lsp_send_response(message->arena, response);
+            if (using_repaired) {
+                program_info_done(&repaired_program);
+            }
+            return;
+        }
+
+        JsonValue* signature = json_new_object(message->arena);
+        json_object_set_string(
+            signature, message->arena, "label", source_label);
+        json_object_set_string(
+            signature,
+            message->arena,
+            "documentation",
+            s("Named arguments use `name = value`; omitted "
+              "parameters use declared defaults when available."));
+        json_object_set_array(signature, "parameters", source_parameters);
+
+        JsonValue* signatures = json_new_array(message->arena);
+        json_array_push(signatures, signature);
+
+        JsonValue* result = json_new_object(message->arena);
+        json_object_set_array(result, "signatures", signatures);
+        json_object_set_number(result, message->arena, "activeSignature", 0);
+        json_object_set_number(
+            result, message->arena, "activeParameter", active_param);
+        json_object_set_object(response, "result", result);
+        lsp_send_response(message->arena, response);
+        if (using_repaired) {
+            program_info_done(&repaired_program);
+        }
         return;
     }
 
     string     label      = {0};
     JsonValue* parameters = NULL;
-    if (!lsp_signature_decl_label(
-            &view, message->arena, decl, &label, &parameters)) {
-        json_object_set_null(response, message->arena, "result");
-        lsp_send_response(message->arena, response);
-        return;
+    bool       labelled   = lsp_signature_decl_label(
+        &view, message->arena, decl, &label, &parameters);
+    if (!labelled && !using_repaired) {
+        using_repaired =
+            lsp_signature_repaired_type_fact_view(message->arena,
+                                                  uri,
+                                                  source_view.source,
+                                                  offset,
+                                                  &repaired_program,
+                                                  &repaired_doc,
+                                                  &view);
+        if (using_repaired) {
+            decl     = lsp_signature_find_decl(&view, name);
+            labelled = decl != NULL &&
+                       lsp_signature_decl_label(
+                           &view, message->arena, decl, &label, &parameters);
+        }
+    }
+    if (!labelled) {
+        labelled = lsp_signature_source_decl_label(
+            message->arena, source_view.source, name, &label, &parameters);
+        if (!labelled) {
+            json_object_set_null(response, message->arena, "result");
+            lsp_send_response(message->arena, response);
+            if (using_repaired) {
+                program_info_done(&repaired_program);
+            }
+            return;
+        }
     }
 
     JsonValue* signature = json_new_object(message->arena);
@@ -512,6 +946,9 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         result, message->arena, "activeParameter", active_param);
     json_object_set_object(response, "result", result);
     lsp_send_response(message->arena, response);
+    if (using_repaired) {
+        program_info_done(&repaired_program);
+    }
 }
 
 //------------------------------------------------------------------------------
