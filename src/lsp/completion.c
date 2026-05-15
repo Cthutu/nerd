@@ -94,6 +94,9 @@ internal void lsp_completion_filter_items(JsonValue* items, string prefix)
     if (prefix.count == 0 || items->kind != JSON_ARRAY) {
         return;
     }
+    if (array_count(items->array.values) == 0) {
+        return;
+    }
 
     usize write_index = 0;
     for (usize read_index = 0; read_index < array_count(items->array.values);
@@ -3299,6 +3302,89 @@ internal bool lsp_completion_add_plex_literal_fields_from_file(Arena*     arena,
     return added;
 }
 
+internal bool lsp_completion_add_unqualified_import_plex_literal_fields(
+    Arena*             arena,
+    JsonValue*         items,
+    const LspDocument* doc,
+    string             uri,
+    string             type_name,
+    Array(string) seen)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    usize before     = array_count(items->array.values);
+    usize line_start = 0;
+    while (line_start < doc->source.count) {
+        usize line_end = line_start;
+        while (line_end < doc->source.count &&
+               doc->source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line = {.data  = doc->source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        if (!lsp_completion_match_ident_at(line, &i, s("use"))) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        usize path_start = i;
+        while (i < line.count && (lsp_completion_is_ident_char(line.data[i]) ||
+                                  line.data[i] == '.')) {
+            i++;
+        }
+        if (i == path_start) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        string module_path = {.data  = line.data + path_start,
+                              .count = i - path_start};
+        cstr   resolved    = NULL;
+        if (lsp_completion_resolve_text_module(
+                &temp, doc, module_path, uri, &resolved)) {
+            if (!lsp_completion_add_plex_literal_fields_from_file(
+                    arena, items, resolved, type_name, seen) &&
+                string_eq(path_filename(s(resolved)), s("mod.n"))) {
+                cstr    module_dir = path_dirname(&temp, resolved);
+                DirIter iter       = {0};
+                if (dir_iter_init(&iter, module_dir)) {
+                    cstr path         = NULL;
+                    bool is_directory = false;
+                    while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+                        if (!is_directory &&
+                            lsp_completion_path_is_module_part_file(path) &&
+                            lsp_completion_add_plex_literal_fields_from_file(
+                                arena, items, path, type_name, seen)) {
+                            break;
+                        }
+                    }
+                    dir_iter_done(&iter);
+                }
+            }
+        }
+
+        line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+    }
+
+    arena_done(&temp);
+    return array_count(items->array.values) > before;
+}
+
 internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
                                                      JsonValue*         items,
                                                      const LspDocument* doc,
@@ -3332,8 +3418,11 @@ internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
     if (module_name.count == 0) {
         if (!lsp_completion_add_ast_plex_literal_fields_for_name(
                 arena, items, lexer, &doc->front_end.ast, type_name, seen)) {
-            (void)lsp_completion_add_text_plex_literal_fields(
-                arena, items, doc->source, type_name, seen);
+            if (!lsp_completion_add_text_plex_literal_fields(
+                    arena, items, doc->source, type_name, seen)) {
+                (void)lsp_completion_add_unqualified_import_plex_literal_fields(
+                    arena, items, doc, uri, type_name, seen);
+            }
         }
         array_free(seen);
         return true;

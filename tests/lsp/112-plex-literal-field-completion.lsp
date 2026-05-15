@@ -1,3 +1,5 @@
+use win
+
 Point :: plex {
     x i32
     y i32
@@ -10,6 +12,10 @@ main :: fn () {
         v
         q
     }
+    class := WNDCLASSA {
+        style: 0
+        l
+    }
 }
 ¬
 [
@@ -21,7 +27,7 @@ main :: fn () {
                 "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n",
                 "languageId": "nerd",
                 "version": 1,
-                "text": "win :: use win\n\nPoint :: plex {\n    x i32\n    y i32\n    visible bool\n}\n\nmain :: fn () {\n    point := Point {\n        x: 1\n        v\n        q\n    }\n    class := win.WNDCLASSA {\n        style: 0\n        lp\n    }\n}\n"
+                "text": "win :: use win\nuse win\n\nPoint :: plex {\n    x i32\n    y i32\n    visible bool\n}\n\nmain :: fn () {\n    point := Point {\n        x: 1\n        v\n        q\n    }\n    class := win.WNDCLASSA {\n        style: 0\n        lp\n    }\n    unqualified := WNDCLASSA {\n        style: 0\n        l\n    }\n}\n"
             }
         }
     },
@@ -63,6 +69,20 @@ main :: fn () {
             },
             "position": {
                 "line": 12,
+                "character": 9
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n"
+            },
+            "position": {
+                "line": 20,
                 "character": 9
             }
         }
@@ -125,30 +145,30 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 9,
-                            "character": 8
+                            "line": 0,
+                            "character": 4
                         },
                         "end": {
-                            "line": 9,
-                            "character": 9
+                            "line": 0,
+                            "character": 7
                         }
                     },
                     "severity": 1,
                     "code": "0304",
                     "source": "nerd",
-                    "message": "Type mismatch: expected `known plex field`, found `v`",
+                    "message": "Type mismatch: expected `known module`, found `module path`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 9,
-                                        "character": 8
+                                        "line": 0,
+                                        "character": 4
                                     },
                                     "end": {
-                                        "line": 9,
-                                        "character": 9
+                                        "line": 0,
+                                        "character": 7
                                     }
                                 }
                             },
@@ -168,11 +188,11 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 11,
+                            "line": 12,
                             "character": 8
                         },
                         "end": {
-                            "line": 11,
+                            "line": 12,
                             "character": 9
                         }
                     },
@@ -186,11 +206,11 @@ main :: fn () {
                                 "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n",
                                 "range": {
                                     "start": {
-                                        "line": 11,
+                                        "line": 12,
                                         "character": 8
                                     },
                                     "end": {
-                                        "line": 11,
+                                        "line": 12,
                                         "character": 9
                                     }
                                 }
@@ -205,6 +225,16 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
+        "result": []
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": []
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
         "result": [
             {
                 "label": "visible",
@@ -215,23 +245,7 @@ main :: fn () {
     },
     {
         "jsonrpc": "2.0",
-        "id": 3,
-        "result": [
-            {
-                "label": "lpfnWndProc",
-                "kind": 5,
-                "insertText": "lpfnWndProc: "
-            },
-            {
-                "label": "lpszClassName",
-                "kind": 5,
-                "insertText": "lpszClassName: "
-            }
-        ]
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
+        "id": 5,
         "result": []
     },
     {
