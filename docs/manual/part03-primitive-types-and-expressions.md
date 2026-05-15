@@ -332,3 +332,15 @@ literal materialises as `f64`.
 default_int   := 42    -- default_int is an i32
 default_float := 3.14  -- default_float is an f64
 ```
+
+An explicit function return type can also provide context to a returned local
+whose initializer is still untyped:
+
+```nerd
+Result :: isize
+
+callback :: fn () -> Result {
+    result := 0  -- result is inferred as Result, not defaulted to i32
+    return result
+}
+```
