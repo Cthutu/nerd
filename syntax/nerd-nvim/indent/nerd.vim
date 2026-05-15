@@ -55,7 +55,7 @@ function! s:TrimCode(line) abort
   return substitute(s:StripLineComment(a:line), '\s\+$', '', '')
 endfunction
 
-function! s:HasUnclosedOpenDelimiter(line) abort
+function! s:UnclosedOpenDelimiter(line) abort
   let l:line = s:StripLineComment(a:line)
   let l:stack = []
   let l:in_string = v:false
@@ -80,7 +80,7 @@ function! s:HasUnclosedOpenDelimiter(line) abort
     if l:ch ==# '"'
       let l:in_string = v:true
     elseif l:ch =~# '[{[(]'
-      call add(l:stack, l:ch)
+      call add(l:stack, [l:ch, l:i])
     elseif l:ch =~# '[}\])]' && !empty(l:stack)
       call remove(l:stack, -1)
     endif
@@ -88,7 +88,11 @@ function! s:HasUnclosedOpenDelimiter(line) abort
     let l:i += 1
   endwhile
 
-  return !empty(l:stack)
+  if empty(l:stack)
+    return ['', -1]
+  endif
+
+  return l:stack[-1]
 endfunction
 
 function! GetNerdIndent(lnum) abort
@@ -101,8 +105,11 @@ function! GetNerdIndent(lnum) abort
   let l:prev = s:TrimCode(getline(l:prevnum))
   let l:line = s:TrimCode(getline(a:lnum))
 
-  if s:HasUnclosedOpenDelimiter(l:prev)
+  let l:open = s:UnclosedOpenDelimiter(l:prev)
+  if l:open[0] ==# '{'
     let l:indent += shiftwidth()
+  elseif l:open[0] ==# '(' || l:open[0] ==# '['
+    let l:indent = l:open[1] + 1
   endif
 
   if l:line =~# '^\s*[}\])]'
