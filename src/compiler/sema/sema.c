@@ -15908,6 +15908,35 @@ internal void sema_count_local_ref(const Sema* sema,
     read_counts[local_index] += (u32)delta;
 }
 
+internal u32 sema_first_local_read_node(const Ast*  ast,
+                                        const Sema* sema,
+                                        u32         local_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_SymbolRef ||
+            (i < array_count(sema->node_is_type_expr) &&
+             sema->node_is_type_expr[i]) ||
+            sema->node_local_indices[i] != local_index) {
+            continue;
+        }
+
+        bool assignment_target = false;
+        for (u32 assign = 0; assign < array_count(ast->nodes); ++assign) {
+            const AstNode* assign_node = &ast->nodes[assign];
+            if (assign_node->kind == AK_Assign && assign_node->a == i) {
+                assignment_target = true;
+                break;
+            }
+        }
+        if (!assignment_target) {
+            return i;
+        }
+    }
+
+    return U32_MAX;
+}
+
 internal bool sema_validate_unused_locals(const Lexer* lexer,
                                           const Ast*   ast,
                                           const Sema*  sema)
@@ -15941,15 +15970,30 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
 
     for (u32 i = 0; i < array_count(sema->locals); ++i) {
         const SemaLocal* local = &sema->locals[i];
-        if (!sema_local_is_runtime_value(local) ||
-            (local->owner_decl_index < array_count(sema->decls) &&
-             sema->decls[local->owner_decl_index].kind == SK_GenericFunction) ||
-            sema_symbol_is_deliberately_unused(
-                lex_symbol(lexer, local->symbol_handle)) ||
-            read_counts[i] > 0) {
+        bool             generic_function_local =
+            local->owner_decl_index < array_count(sema->decls) &&
+            sema->decls[local->owner_decl_index].kind == SK_GenericFunction;
+        string symbol = lex_symbol(lexer, local->symbol_handle);
+
+        if (sema_local_is_runtime_value(local) && !generic_function_local &&
+            sema_symbol_is_deliberately_unused(symbol) && read_counts[i] > 0) {
+            u32  use_node = sema_first_local_read_node(ast, sema, i);
+            bool ok       = error_0347_used_underscore_local(
+                lexer->source,
+                use_node != U32_MAX
+                    ? sema_node_span(lexer, &ast->nodes[use_node])
+                    : sema_local_span(lexer, ast, local),
+                sema_local_span(lexer, ast, local),
+                symbol,
+                sema_unused_local_kind_name(local));
+            array_free(read_counts);
+            return ok;
+        }
+
+        if (!sema_local_is_runtime_value(local) || generic_function_local ||
+            sema_symbol_is_deliberately_unused(symbol) || read_counts[i] > 0) {
             continue;
         }
-        string symbol       = lex_symbol(lexer, local->symbol_handle);
         string binding_kind = sema_unused_local_kind_name(local);
         bool   ok = error_0335_unused_local(lexer->source,
                                             sema_local_span(lexer, ast, local),

@@ -334,6 +334,11 @@ bool error_0346_unknown_ffi_symbol(NerdSource source,
                                    ErrorSpan  span,
                                    string     symbol,
                                    string     library);
+bool error_0347_used_underscore_local(NerdSource source,
+                                      ErrorSpan  use_span,
+                                      ErrorSpan  decl_span,
+                                      string     symbol,
+                                      string     binding_kind);
 
 //------------------------------------------------------------------------------
 // Low-level error system

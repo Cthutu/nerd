@@ -233,6 +233,15 @@ helper :: fn (_unused: i32) -> i32 {
 }
 ```
 
+If you later read a leading-underscore binding, Nerd reports an error so you can
+rename it back to an ordinary name:
+
+```nerd
+helper :: fn (_value: i32) -> i32 {
+    return _value  -- error: _value is marked unused but is read
+}
+```
+
 Use bare `_` when a value is intentionally discarded. The discard binding may be
 used more than once in the same scope:
 

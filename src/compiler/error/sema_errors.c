@@ -1294,3 +1294,41 @@ bool error_0346_unknown_ffi_symbol(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report use of a function-local binding marked deliberately unused.
+
+bool error_0347_used_underscore_local(NerdSource source,
+                                      ErrorSpan  use_span,
+                                      ErrorSpan  decl_span,
+                                      string     symbol,
+                                      string     binding_kind)
+{
+    ErrorInfo error =
+        error_init(347,
+                   source,
+                   use_span,
+                   "Used " STRINGP " `" STRINGP "` marked as unused",
+                   STRINGV(binding_kind),
+                   STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        use_span,
+                        "This read uses `" STRINGP "`",
+                        STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        decl_span,
+                        "`" STRINGP "` is marked unused by its leading `_`",
+                        STRINGV(symbol));
+    error_add_note(
+        &error,
+        "Leading `_` names are reserved for bindings that are deliberately "
+        "unused.");
+    error_add_help(&error,
+                   "Rename `" STRINGP
+                   "` without the leading `_` now that it is used.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

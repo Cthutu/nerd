@@ -127,7 +127,9 @@ main :: fn () -> i32 {
 
 Remove the binding if it is not needed. Use a leading underscore only when the
 binding is intentionally present for documentation, future work, or shape
-matching. Use bare `_` when a returned value is deliberately ignored.
+matching. If a leading-underscore binding is read later, rename it without the
+leading `_`; Nerd reports that use as an error. Use bare `_` when a returned
+value is deliberately ignored.
 
 ## Control Flow Errors
 
