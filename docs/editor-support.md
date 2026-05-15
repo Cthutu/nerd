@@ -45,6 +45,11 @@ The server lookup order is:
 The install recipe packages and installs the extension after installing the
 compiler.
 
+The VS Code extension also adjusts indentation after Enter for Nerd buffers.
+This mirrors the Neovim indent file for cases that VS Code's declarative
+language configuration cannot express, such as returning to the declaration
+indent after a multi-line FFI signature closes.
+
 ## Verification
 
 For language or LSP behaviour changes, run:

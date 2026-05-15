@@ -49,6 +49,8 @@ def check_vscode_extension() -> None:
         "findUserServer()",
         'const command = sourcePath',
         "getServerEnvironment(sourcePath)",
+        "registerEnterIndentation(context)",
+        "computeNerdIndent(lines, line)",
         "nerd.restartLanguageServer",
     ]
     for fragment in required_fragments:

@@ -17,6 +17,7 @@ let launchedServerPath: string | undefined;
 let restartTimer: NodeJS.Timeout | undefined;
 let serverWatcher: fs.FSWatcher | undefined;
 let formatterRegistration: vscode.Disposable | undefined;
+let applyingIndentEdit = false;
 
 function execFileAsync(
     command: string,
@@ -217,6 +218,190 @@ function registerFormatter(context: vscode.ExtensionContext) {
     context.subscriptions.push(formatterRegistration);
 }
 
+function stripLineComment(line: string): string {
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (inString) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch === "\\") {
+                escaped = true;
+            } else if (ch === "\"") {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (ch === "\"") {
+            inString = true;
+            continue;
+        }
+
+        if (ch === "-" && line[i + 1] === "-") {
+            return line.slice(0, i);
+        }
+    }
+
+    return line;
+}
+
+function trimCode(line: string): string {
+    return stripLineComment(line).replace(/\s+$/, "");
+}
+
+function unclosedOpenDelimiter(line: string): { ch: string; column: number } | undefined {
+    const code = stripLineComment(line);
+    const stack: { ch: string; column: number }[] = [];
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < code.length; i++) {
+        const ch = code[i];
+
+        if (inString) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch === "\\") {
+                escaped = true;
+            } else if (ch === "\"") {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (ch === "\"") {
+            inString = true;
+        } else if (ch === "{" || ch === "[" || ch === "(") {
+            stack.push({ ch, column: i });
+        } else if ((ch === "}" || ch === "]" || ch === ")") && stack.length > 0) {
+            stack.pop();
+        }
+    }
+
+    return stack.at(-1);
+}
+
+function matchingOpenContinuationLine(lines: string[], lineIndex: number): number | undefined {
+    let depth = 0;
+
+    for (let current = lineIndex; current >= 0; current--) {
+        const code = stripLineComment(lines[current]);
+        for (let i = code.length - 1; i >= 0; i--) {
+            const ch = code[i];
+            if (ch === ")" || ch === "]") {
+                depth++;
+            } else if (ch === "(" || ch === "[") {
+                depth--;
+                if (depth === 0) {
+                    return current;
+                }
+            }
+        }
+    }
+
+    return undefined;
+}
+
+function leadingWhitespaceWidth(line: string): number {
+    const match = line.match(/^\s*/);
+    return match ? match[0].length : 0;
+}
+
+function previousNonBlankLine(lines: string[], lineIndex: number): number | undefined {
+    for (let current = lineIndex - 1; current >= 0; current--) {
+        if (lines[current].trim().length > 0) {
+            return current;
+        }
+    }
+    return undefined;
+}
+
+function computeNerdIndent(lines: string[], lineIndex: number, shiftWidth = 4): number {
+    const prevIndex = previousNonBlankLine(lines, lineIndex);
+    if (prevIndex === undefined) {
+        return 0;
+    }
+
+    let indent = leadingWhitespaceWidth(lines[prevIndex]);
+    const prev = trimCode(lines[prevIndex]);
+    const line = trimCode(lines[lineIndex] ?? "");
+
+    if (/[)\]]/.test(prev)) {
+        const openLine = matchingOpenContinuationLine(lines, prevIndex);
+        if (openLine !== undefined) {
+            indent = leadingWhitespaceWidth(lines[openLine]);
+        }
+    }
+
+    const open = unclosedOpenDelimiter(prev);
+    if (open?.ch === "{") {
+        indent += shiftWidth;
+    } else if (open?.ch === "(" || open?.ch === "[") {
+        indent = open.column + 1;
+    }
+
+    if (/^\s*[}\])]/.test(line)) {
+        indent -= shiftWidth;
+    }
+
+    return Math.max(indent, 0);
+}
+
+async function applyNerdEnterIndent(document: vscode.TextDocument, line: number) {
+    if (line < 0 || line >= document.lineCount) {
+        return;
+    }
+
+    const lines = Array.from({ length: document.lineCount }, (_, i) =>
+        document.lineAt(i).text
+    );
+    const expectedIndent = computeNerdIndent(lines, line);
+    const text = document.lineAt(line).text;
+    const actualIndentText = text.match(/^\s*/)?.[0] ?? "";
+    const expectedIndentText = " ".repeat(expectedIndent);
+
+    if (actualIndentText === expectedIndentText) {
+        return;
+    }
+
+    applyingIndentEdit = true;
+    try {
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(
+            document.uri,
+            new vscode.Range(line, 0, line, actualIndentText.length),
+            expectedIndentText
+        );
+        await vscode.workspace.applyEdit(edit);
+    } finally {
+        applyingIndentEdit = false;
+    }
+}
+
+function registerEnterIndentation(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            if (applyingIndentEdit || event.document.languageId !== "nerd") {
+                return;
+            }
+
+            for (const change of event.contentChanges) {
+                const newlineCount = (change.text.match(/\n/g) ?? []).length;
+                if (newlineCount !== 1) {
+                    continue;
+                }
+
+                const insertedLine = change.range.start.line + 1;
+                void applyNerdEnterIndent(event.document, insertedLine);
+            }
+        })
+    );
+}
+
 function scheduleRestart(reason: string) {
     if (!clientContext) {
         return;
@@ -355,6 +540,7 @@ export function activate(
     }
 
     registerFormatter(context);
+    registerEnterIndentation(context);
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "nerd.restartLanguageServer",
