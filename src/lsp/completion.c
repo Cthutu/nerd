@@ -361,6 +361,29 @@ lsp_completion_add(Arena* arena, JsonValue* items, string label, u32 kind)
     json_array_push(items, item);
 }
 
+internal void lsp_completion_add_plex_literal_field(Arena*     arena,
+                                                    JsonValue* items,
+                                                    string     label)
+{
+    for (usize i = 0; i < array_count(items->array.values); ++i) {
+        JsonValue* existing       = items->array.values[i];
+        JsonValue* existing_label = json_object_get_cstr(existing, "label");
+        if (existing_label != NULL && existing_label->kind == JSON_STRING &&
+            string_eq(json_string(existing_label), label)) {
+            return;
+        }
+    }
+
+    JsonValue* item = json_new_object(arena);
+    json_object_set_string(item, arena, "label", label);
+    json_object_set_number(item, arena, "kind", 5); // Field
+    json_object_set_string(item,
+                           arena,
+                           "insertText",
+                           string_format(arena, STRINGP ": ", STRINGV(label)));
+    json_array_push(items, item);
+}
+
 internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
                                                        JsonValue* items)
 {
@@ -1481,6 +1504,8 @@ internal u32 lsp_completion_ast_enum_payload_symbol(const Ast* ast,
     return U32_MAX;
 }
 
+internal bool lsp_completion_seen_name(Array(string) seen, string name);
+
 internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
                                                             JsonValue*   items,
                                                             const Lexer* lexer,
@@ -1501,6 +1526,52 @@ internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
                 arena, items, lex_symbol(lexer, field->symbol_handle), 5);
         }
     }
+}
+
+internal bool
+lsp_completion_add_ast_plex_literal_fields_for_name(Arena*       arena,
+                                                    JsonValue*   items,
+                                                    const Lexer* lexer,
+                                                    const Ast*   ast,
+                                                    string       type_name,
+                                                    Array(string) seen)
+{
+    usize before = array_count(items->array.values);
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind != AK_Bind || node->a == U32_MAX ||
+            !string_eq(lex_symbol(lexer, node->a), type_name) ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypePlex ||
+            value->a >= array_count(ast->plex_types)) {
+            continue;
+        }
+
+        const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
+        for (u32 field_index = 0; field_index < plex->field_count;
+             ++field_index) {
+            u32 ast_field_index = plex->first_field + field_index;
+            if (ast_field_index >= array_count(ast->plex_fields)) {
+                break;
+            }
+
+            const AstPlexField* field = &ast->plex_fields[ast_field_index];
+            if (field->symbol_handle == U32_MAX) {
+                continue;
+            }
+            string name = lex_symbol(lexer, field->symbol_handle);
+            if (!lsp_completion_seen_name(seen, name)) {
+                lsp_completion_add_plex_literal_field(arena, items, name);
+            }
+        }
+        break;
+    }
+    return array_count(items->array.values) > before;
 }
 
 internal void lsp_completion_add_ast_on_payload_members(Arena*       arena,
@@ -1769,6 +1840,68 @@ internal bool lsp_completion_add_text_plex_fields(Arena*     arena,
                 items,
                 (string){.data = line.data + start, .count = i - start},
                 5);
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return array_count(items->array.values) > before;
+}
+
+internal bool lsp_completion_seen_name(Array(string) seen, string name)
+{
+    for (u32 i = 0; i < array_count(seen); ++i) {
+        if (string_eq(seen[i], name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool lsp_completion_add_text_plex_literal_fields(Arena*     arena,
+                                                          JsonValue* items,
+                                                          string     source,
+                                                          string     type_name,
+                                                          Array(string) seen)
+{
+    usize line_start = 0;
+    bool  in_plex    = false;
+    usize before     = array_count(items->array.values);
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        if (!in_plex) {
+            if (lsp_completion_line_starts_decl(line, type_name, s("plex"))) {
+                in_plex = true;
+            }
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        if (line.count > 0 && line.data[0] == '}') {
+            break;
+        }
+
+        usize i = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i > start) {
+            string name = {.data = line.data + start, .count = i - start};
+            if (!lsp_completion_seen_name(seen, name)) {
+                lsp_completion_add_plex_literal_field(arena, items, name);
+            }
         }
         line_start = line_end + (line_end < source.count ? 1 : 0);
     }
@@ -2982,6 +3115,262 @@ internal void lsp_completion_add_source_module_members(Arena*             arena,
     arena_done(&temp);
 }
 
+internal bool lsp_completion_token_is_open(TokenKind kind)
+{
+    return kind == TK_LBrace || kind == TK_LParen || kind == TK_LBracket;
+}
+
+internal bool lsp_completion_token_is_close(TokenKind kind)
+{
+    return kind == TK_RBrace || kind == TK_RParen || kind == TK_RBracket;
+}
+
+internal u32 lsp_completion_symbol_handle_at_token(const Lexer* lexer,
+                                                   u32          token_index)
+{
+    u32 symbol_index = 0;
+    for (u32 i = 0; i <= token_index && i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind != TK_Symbol) {
+            continue;
+        }
+        if (i == token_index) {
+            return symbol_index < array_count(lexer->symbol_handles)
+                       ? lexer->symbol_handles[symbol_index]
+                       : U32_MAX;
+        }
+        symbol_index++;
+    }
+    return U32_MAX;
+}
+
+internal bool lsp_completion_enclosing_brace(const Lexer* lexer,
+                                             usize        offset,
+                                             u32*         out_open_token)
+{
+    Array(u32) stack = NULL;
+    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
+        const Token* token = &lexer->tokens[i];
+        if (token->offset >= offset) {
+            break;
+        }
+        if (lsp_completion_token_is_open(token->kind)) {
+            array_push(stack, i);
+        } else if (lsp_completion_token_is_close(token->kind) &&
+                   array_count(stack) > 0) {
+            (void)array_pop(stack);
+        }
+    }
+
+    bool found = false;
+    for (usize i = array_count(stack); i > 0; --i) {
+        u32 token_index = stack[i - 1];
+        if (lexer->tokens[token_index].kind == TK_LBrace) {
+            *out_open_token = token_index;
+            found           = true;
+            break;
+        }
+    }
+
+    array_free(stack);
+    return found;
+}
+
+internal bool lsp_completion_plex_literal_field_position(string source,
+                                                         usize  offset,
+                                                         usize  open_end,
+                                                         string prefix)
+{
+    usize line_start = offset;
+    while (line_start > 0 && source.data[line_start - 1] != '\n') {
+        line_start--;
+    }
+
+    usize content_start = MAX(line_start, open_end);
+    usize prefix_start =
+        offset >= prefix.count ? offset - prefix.count : offset;
+    for (usize i = content_start; i < prefix_start; ++i) {
+        if (source.data[i] != ' ' && source.data[i] != '\t') {
+            return false;
+        }
+    }
+    for (usize i = content_start; i < offset; ++i) {
+        if (source.data[i] == ':') {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool lsp_completion_plex_literal_type_path(const Lexer* lexer,
+                                                    u32          open_token,
+                                                    string*      out_module,
+                                                    string*      out_type)
+{
+    if (open_token == 0 || lexer->tokens[open_token - 1].kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 type_symbol =
+        lsp_completion_symbol_handle_at_token(lexer, open_token - 1);
+    if (type_symbol == U32_MAX) {
+        return false;
+    }
+    *out_type = lex_symbol(lexer, type_symbol);
+
+    if (open_token >= 3 && lexer->tokens[open_token - 2].kind == TK_Dot &&
+        lexer->tokens[open_token - 3].kind == TK_Symbol) {
+        u32 module_symbol =
+            lsp_completion_symbol_handle_at_token(lexer, open_token - 3);
+        if (module_symbol != U32_MAX) {
+            *out_module = lex_symbol(lexer, module_symbol);
+        }
+    }
+
+    return true;
+}
+
+internal void lsp_completion_plex_literal_seen_fields(const Lexer* lexer,
+                                                      u32          open_token,
+                                                      Array(string) * out_seen)
+{
+    u32 depth = 0;
+    for (u32 i = open_token + 1; i + 1 < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == TK_LBrace || kind == TK_LParen || kind == TK_LBracket) {
+            depth++;
+            continue;
+        }
+        if (kind == TK_RBrace || kind == TK_RParen || kind == TK_RBracket) {
+            if (depth == 0) {
+                return;
+            }
+            depth--;
+            continue;
+        }
+        if (depth != 0 || kind != TK_Symbol ||
+            lexer->tokens[i + 1].kind != TK_Colon) {
+            continue;
+        }
+        u32 symbol = lsp_completion_symbol_handle_at_token(lexer, i);
+        if (symbol != U32_MAX) {
+            array_push(*out_seen, lex_symbol(lexer, symbol));
+        }
+    }
+}
+
+internal bool lsp_completion_add_plex_literal_fields_from_file(Arena*     arena,
+                                                               JsonValue* items,
+                                                               cstr       path,
+                                                               string type_name,
+                                                               Array(string)
+                                                                   seen)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    bool  added = false;
+    Lexer lexer = {0};
+    if (lex((NerdSource){.source = source, .source_path = s(path)}, &lexer)) {
+        Ast ast = ast_parse(&lexer);
+        if (array_count(ast.nodes) > 0) {
+            added = lsp_completion_add_ast_plex_literal_fields_for_name(
+                arena, items, &lexer, &ast, type_name, seen);
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+
+    if (!added) {
+        added = lsp_completion_add_text_plex_literal_fields(
+            arena, items, source, type_name, seen);
+    }
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    filemap_unload(&map);
+    return added;
+}
+
+internal void lsp_completion_add_plex_literal_fields(Arena*             arena,
+                                                     JsonValue*         items,
+                                                     const LspDocument* doc,
+                                                     string             uri,
+                                                     string             prefix,
+                                                     usize              offset)
+{
+    const Lexer* lexer      = &doc->front_end.lexer;
+    u32          open_token = U32_MAX;
+    if (!lsp_completion_enclosing_brace(lexer, offset, &open_token) ||
+        open_token >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    usize open_end = lex_token_end_offset(lexer, &lexer->tokens[open_token]);
+    if (!lsp_completion_plex_literal_field_position(
+            doc->source, offset, open_end, prefix)) {
+        return;
+    }
+
+    string module_name = {0};
+    string type_name   = {0};
+    if (!lsp_completion_plex_literal_type_path(
+            lexer, open_token, &module_name, &type_name)) {
+        return;
+    }
+
+    Array(string) seen = NULL;
+    lsp_completion_plex_literal_seen_fields(lexer, open_token, &seen);
+
+    if (module_name.count == 0) {
+        if (!lsp_completion_add_ast_plex_literal_fields_for_name(
+                arena, items, lexer, &doc->front_end.ast, type_name, seen)) {
+            (void)lsp_completion_add_text_plex_literal_fields(
+                arena, items, doc->source, type_name, seen);
+        }
+        array_free(seen);
+        return;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    string module_path = {0};
+    cstr   resolved    = NULL;
+    if (lsp_completion_source_module_path_for_binding(
+            &temp, doc->source, module_name, &module_path) &&
+        lsp_completion_resolve_text_module(
+            &temp, doc, module_path, uri, &resolved)) {
+        if (!lsp_completion_add_plex_literal_fields_from_file(
+                arena, items, resolved, type_name, seen) &&
+            string_eq(path_filename(s(resolved)), s("mod.n"))) {
+            cstr    module_dir = path_dirname(&temp, resolved);
+            DirIter iter       = {0};
+            if (dir_iter_init(&iter, module_dir)) {
+                cstr path         = NULL;
+                bool is_directory = false;
+                while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+                    if (!is_directory &&
+                        lsp_completion_path_is_module_part_file(path) &&
+                        lsp_completion_add_plex_literal_fields_from_file(
+                            arena, items, path, type_name, seen)) {
+                        break;
+                    }
+                }
+                dir_iter_done(&iter);
+            }
+        }
+    }
+    arena_done(&temp);
+    array_free(seen);
+}
+
 internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
 {
     static cstr keywords[] = {
@@ -3290,6 +3679,15 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     string     use_path = {0};
     if (lsp_completion_use_context(view.source, offset, &use_path)) {
         lsp_completion_add_modules(message->arena, items, doc, use_path);
+        lsp_completion_filter_items(items, prefix);
+        json_object_set_array(response, "result", items);
+        lsp_send_response(message->arena, response);
+        return;
+    }
+
+    lsp_completion_add_plex_literal_fields(
+        message->arena, items, doc, uri, prefix, offset);
+    if (array_count(items->array.values) > 0) {
         lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);

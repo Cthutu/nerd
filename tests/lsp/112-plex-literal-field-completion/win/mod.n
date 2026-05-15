@@ -1,0 +1,5 @@
+pub WNDCLASSA :: plex {
+    style u32
+    lpfnWndProc ^void
+    lpszClassName ^i8
+}
