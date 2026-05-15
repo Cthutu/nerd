@@ -8,6 +8,7 @@ directory. On Linux/macOS this is `~/.config/nvim`; on Windows this is
 
 - `lua/plugins/nerd.lua` -> `~/.config/nvim/lua/plugins/nerd.lua`
 - `ftdetect/nerd.vim` -> `~/.config/nvim/ftdetect/nerd.vim`
+- `indent/nerd.vim` -> `~/.config/nvim/indent/nerd.vim`
 - `syntax/nerd.vim` -> `~/.config/nvim/syntax/nerd.vim`
 
 The LazyVim plugin config:

@@ -63,6 +63,7 @@ nvim_src_dir := "syntax/nerd-nvim"
 nvim_config_dir := if os_family() == "windows" { replace(env_var("LOCALAPPDATA"), "\\", "/") + "/nvim" } else { "~/.config/nvim" }
 nvim_plugin_dir := nvim_config_dir + "/lua/plugins"
 nvim_ftdetect_dir := nvim_config_dir + "/ftdetect"
+nvim_indent_dir := nvim_config_dir + "/indent"
 nvim_syntax_dir := nvim_config_dir + "/syntax"
 
 npm-install:
@@ -75,9 +76,10 @@ uninstall:
     -code --uninstall-extension {{ext_id}}
 
 install-nvim:
-    mkdir -p {{nvim_plugin_dir}} {{nvim_ftdetect_dir}} {{nvim_syntax_dir}}
+    mkdir -p {{nvim_plugin_dir}} {{nvim_ftdetect_dir}} {{nvim_indent_dir}} {{nvim_syntax_dir}}
     cp {{nvim_src_dir}}/lua/plugins/nerd.lua {{nvim_plugin_dir}}/nerd.lua
     cp {{nvim_src_dir}}/ftdetect/nerd.vim {{nvim_ftdetect_dir}}/nerd.vim
+    cp {{nvim_src_dir}}/indent/nerd.vim {{nvim_indent_dir}}/nerd.vim
     cp {{nvim_src_dir}}/syntax/nerd.vim {{nvim_syntax_dir}}/nerd.vim
 
 install:

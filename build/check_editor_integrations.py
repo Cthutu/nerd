@@ -61,6 +61,7 @@ def check_nvim_files() -> None:
     required = [
         nvim_root / "lua" / "plugins" / "nerd.lua",
         nvim_root / "ftdetect" / "nerd.vim",
+        nvim_root / "indent" / "nerd.vim",
         nvim_root / "syntax" / "nerd.vim",
     ]
     for path in required:
@@ -80,6 +81,14 @@ def check_nvim_files() -> None:
     ftdetect = required[1].read_text(encoding="utf-8")
     if "*.n setfiletype nerd" not in ftdetect:
         raise AssertionError("Neovim ftdetect does not map .n to nerd")
+
+    indent = required[2].read_text(encoding="utf-8")
+    for fragment in [
+        "setlocal indentexpr=GetNerdIndent(v:lnum)",
+        "function! GetNerdIndent(lnum) abort",
+    ]:
+        if fragment not in indent:
+            raise AssertionError(f"Neovim indent file is missing {fragment!r}")
 
 
 def lsp_message(payload: dict) -> bytes:
