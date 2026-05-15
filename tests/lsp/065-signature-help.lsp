@@ -46,6 +46,10 @@ main :: fn () => add(20, 2)
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

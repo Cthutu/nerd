@@ -64,6 +64,10 @@ broken: fn ()
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

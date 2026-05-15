@@ -54,6 +54,10 @@ show :: fn (_items: []Point) {
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

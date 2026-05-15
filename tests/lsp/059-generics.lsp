@@ -59,6 +59,10 @@ main :: fn () => id(1)
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

@@ -68,6 +68,10 @@ use_frame :: fn (fs: ^FrameSystem) {
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

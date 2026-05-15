@@ -274,6 +274,11 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_array_push(signature_triggers, json_new_string(arena, s(",")));
     json_object_set_array(
         signature_provider, "triggerCharacters", signature_triggers);
+    JsonValue* signature_retriggers = json_new_array(arena);
+    json_array_push(signature_retriggers, json_new_string(arena, s(",")));
+    json_array_push(signature_retriggers, json_new_string(arena, s("\n")));
+    json_object_set_array(
+        signature_provider, "retriggerCharacters", signature_retriggers);
     json_object_set_object(
         capabilities, "signatureHelpProvider", signature_provider);
 

@@ -1,38 +1,21 @@
-FrameInfo :: plex {
-    handle u64
-    title_heap []
-}
-
-FrameSystem :: plex {
-    frames [..]FrameInfo
-}
-
-impl FrameSystem {
-    delete_frame_info :: fn (fs: ^Self, handle: u64) {
-        for i, frame in fs.frames {
-            on frame.handle == handle => {
-                frame.title_heap.
-            }
-        }
-    }
+add :: fn (a: i32, b: i32 = 1, c: i32 = a + b) => a + b + c
+main :: fn () {
+    add(20,
+        2
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/completion",
+        "method": "textDocument/signatureHelp",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 13,
-                "character": 33
-            },
-            "context": {
-                "triggerKind": 2,
-                "triggerCharacter": "."
+                "line": 3,
+                "character": 8
             }
         }
     }
@@ -98,34 +81,34 @@ impl FrameSystem {
                 {
                     "range": {
                         "start": {
-                            "line": 3,
+                            "line": 4,
                             "character": 0
                         },
                         "end": {
-                            "line": 3,
+                            "line": 4,
                             "character": 1
                         }
                     },
                     "severity": 1,
-                    "code": "0205",
+                    "code": "0203",
                     "source": "nerd",
-                    "message": "Expected declaration or expression but found RightBrace `}`",
+                    "message": "Expected RightParen `)` but found RightBrace `}`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 3,
+                                        "line": 4,
                                         "character": 0
                                     },
                                     "end": {
-                                        "line": 3,
+                                        "line": 4,
                                         "character": 1
                                     }
                                 }
                             },
-                            "message": "help: Expected a type annotation after ':', but found RightBrace `}`"
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
                         }
                     ]
                 }
@@ -135,7 +118,36 @@ impl FrameSystem {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": []
+        "result": {
+            "signatures": [
+                {
+                    "label": "add(a: i32, b: i32 = 1, c: i32 = a + b)",
+                    "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
+                    "parameters": [
+                        {
+                            "label": [
+                                4,
+                                10
+                            ]
+                        },
+                        {
+                            "label": [
+                                12,
+                                22
+                            ]
+                        },
+                        {
+                            "label": [
+                                24,
+                                38
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "activeSignature": 0,
+            "activeParameter": 1
+        }
     },
     {
         "jsonrpc": "2.0",

@@ -63,6 +63,10 @@ main :: fn () => on Point { x: 3, y: 4 } {
                     "triggerCharacters": [
                         "(",
                         ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
                     ]
                 },
                 "semanticTokensProvider": {

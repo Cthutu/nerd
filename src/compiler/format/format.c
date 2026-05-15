@@ -28,6 +28,7 @@ internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Lexer*   lexer,
                                             u32            first_item,
                                             u32            item_count);
+internal void  format_emit_spaces(StringBuilder* sb, usize count);
 internal void  format_emit_indent(StringBuilder* sb, u32 indent_level);
 internal void  format_emit_top_on(StringBuilder* sb,
                                   const Cst*     cst,
@@ -56,6 +57,17 @@ internal void  format_emit_on_block_multiline(StringBuilder* sb,
                                               const Lexer*   lexer,
                                               u32            node_index,
                                               u32            indent_level);
+internal void  format_emit_call_multiline_aligned(StringBuilder* sb,
+                                                  const Cst*     cst,
+                                                  const Lexer*   lexer,
+                                                  u32            node_index,
+                                                  usize call_start_column);
+internal bool  format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
+                                                     const Cst*     cst,
+                                                     const Lexer*   lexer,
+                                                     u32            node_index,
+                                                     usize          prefix_width,
+                                                     u32 indent_level);
 internal usize format_rendered_expr_width(const Cst*   cst,
                                           const Lexer* lexer,
                                           u32          node_index,
@@ -76,30 +88,35 @@ internal bool  format_emit_block_comments_before_token(StringBuilder* sb,
                                                        u32    token_index,
                                                        u32    indent_level,
                                                        usize* out_last_end);
-internal void  format_skip_block_comments_before_offset(const Lexer* lexer,
-                                                        u32*  io_comment_index,
-                                                        usize end_offset);
-internal bool  format_comment_is_trailing_after_offset(NerdSource   source,
-                                                       usize        end_offset,
-                                                       LexerComment comment);
-internal bool  format_comments_have_blank_line_between(NerdSource   source,
-                                                       LexerComment previous,
-                                                       LexerComment current);
-internal bool  format_node_has_trailing_comment(const Cst*   cst,
-                                                const Lexer* lexer,
-                                                u32          node_index);
-internal bool  format_emit_trailing_comment_after_offset(StringBuilder* sb,
-                                                         const Lexer*   lexer,
+internal bool  format_string_has_newline(string text);
+internal string format_render_expr_to_string(Arena*       arena,
+                                             const Cst*   cst,
+                                             const Lexer* lexer,
+                                             u32          node_index);
+internal void   format_skip_block_comments_before_offset(const Lexer* lexer,
                                                          u32*  io_comment_index,
                                                          usize end_offset);
-internal bool  format_emit_trailing_comment_after_token(StringBuilder* sb,
-                                                        const Lexer*   lexer,
-                                                        u32* io_comment_index,
-                                                        u32  token_index);
-internal bool  format_emit_trailing_comment_by_index(StringBuilder* sb,
-                                                     const Lexer*   lexer,
-                                                     u32* io_comment_index,
-                                                     u32  comment_index);
+internal bool   format_comment_is_trailing_after_offset(NerdSource   source,
+                                                        usize        end_offset,
+                                                        LexerComment comment);
+internal bool   format_comments_have_blank_line_between(NerdSource   source,
+                                                        LexerComment previous,
+                                                        LexerComment current);
+internal bool   format_node_has_trailing_comment(const Cst*   cst,
+                                                 const Lexer* lexer,
+                                                 u32          node_index);
+internal bool   format_emit_trailing_comment_after_offset(StringBuilder* sb,
+                                                          const Lexer*   lexer,
+                                                          u32*  io_comment_index,
+                                                          usize end_offset);
+internal bool   format_emit_trailing_comment_after_token(StringBuilder* sb,
+                                                         const Lexer*   lexer,
+                                                         u32* io_comment_index,
+                                                         u32  token_index);
+internal bool   format_emit_trailing_comment_by_index(StringBuilder* sb,
+                                                      const Lexer*   lexer,
+                                                      u32* io_comment_index,
+                                                      u32  comment_index);
 internal bool
 format_find_trailing_comment_index_after_offset(NerdSource   source,
                                                 const Lexer* lexer,
@@ -1519,6 +1536,76 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
     g_format_expr_indent_level = indent_level;
     format_emit_expr(sb, cst, lexer, node_index, parent_precedence);
     g_format_expr_indent_level = saved_indent;
+}
+
+internal void format_emit_call_multiline_aligned(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index,
+                                                 usize call_start_column)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    ASSERT(node->kind == CK_Call, "Expected call expression");
+
+    Arena arena = {0};
+    arena_init(&arena);
+
+    string callee = format_render_expr_to_string(&arena, cst, lexer, node->a);
+    sb_append_string(sb, callee);
+    sb_append_char(sb, '(');
+
+    const CstCallInfo* call = &cst->calls[node->b];
+    if (call->arg_count == 0) {
+        sb_append_char(sb, ')');
+        arena_done(&arena);
+        return;
+    }
+
+    usize arg_column = call_start_column + callee.count + 1;
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, arg_column);
+        }
+        format_emit_expr(
+            sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
+    }
+    sb_append_char(sb, ')');
+
+    arena_done(&arena);
+}
+
+internal bool format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
+                                                    const Cst*     cst,
+                                                    const Lexer*   lexer,
+                                                    u32            node_index,
+                                                    usize          prefix_width,
+                                                    u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+
+    Arena arena         = {0};
+    arena_init(&arena);
+    StringBuilder single_sb = {0};
+    sb_init(&single_sb, &arena);
+    format_emit_expr_with_indent(
+        &single_sb, cst, lexer, node_index, 0, indent_level);
+    string single = sb_to_string(&single_sb);
+    if (format_string_has_newline(single) ||
+        prefix_width + single.count <= FORMAT_WRAP_WIDTH ||
+        node->kind != CK_Call) {
+        sb_append_string(sb, single);
+        arena_done(&arena);
+        return false;
+    }
+
+    u32 saved_indent           = g_format_expr_indent_level;
+    g_format_expr_indent_level = indent_level;
+    format_emit_call_multiline_aligned(
+        sb, cst, lexer, node_index, prefix_width);
+    g_format_expr_indent_level = saved_indent;
+    arena_done(&arena);
+    return true;
 }
 
 internal u32 g_format_value_indent_level = 0;
@@ -5585,8 +5672,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
                     sb, cst, lexer, stmt->a, indent_level);
             } else {
                 sb_append_char(sb, ' ');
-                format_emit_expr_with_indent(
-                    sb, cst, lexer, stmt->a, 0, indent_level);
+                format_emit_wrapped_call_expr_if_long(sb,
+                                                      cst,
+                                                      lexer,
+                                                      stmt->a,
+                                                      (usize)indent_level * 4 +
+                                                          7,
+                                                      indent_level);
             }
         }
         sb_append_char(sb, '\n');
@@ -5699,7 +5791,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Variable) {
-        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
+        string symbol = lex_symbol(lexer, cst_get_symbol(stmt));
+        sb_append_string(sb, symbol);
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
             cst->nodes[stmt->b].kind == CK_ZeroInit ||
             cst->nodes[stmt->b].kind == CK_Undefined) {
@@ -5707,8 +5800,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_variable_payload(sb, cst, lexer, stmt->b, indent_level);
         } else {
             sb_append_cstr(sb, " := ");
-            format_emit_expr_with_indent(
-                sb, cst, lexer, stmt->b, 0, indent_level);
+            format_emit_wrapped_call_expr_if_long(sb,
+                                                  cst,
+                                                  lexer,
+                                                  stmt->b,
+                                                  (usize)indent_level * 4 +
+                                                      symbol.count + 4,
+                                                  indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -5767,11 +5865,22 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Assign) {
-        format_emit_expr_with_indent(sb, cst, lexer, stmt->a, 0, indent_level);
+        Arena arena = {0};
+        arena_init(&arena);
+        string lhs = format_render_expr_to_string(&arena, cst, lexer, stmt->a);
+        string op  = format_assignment_operator(lexer, stmt);
+        sb_append_string(sb, lhs);
         sb_append_char(sb, ' ');
-        sb_append_string(sb, format_assignment_operator(lexer, stmt));
+        sb_append_string(sb, op);
         sb_append_char(sb, ' ');
-        format_emit_expr_with_indent(sb, cst, lexer, stmt->b, 0, indent_level);
+        format_emit_wrapped_call_expr_if_long(sb,
+                                              cst,
+                                              lexer,
+                                              stmt->b,
+                                              (usize)indent_level * 4 +
+                                                  lhs.count + op.count + 2,
+                                              indent_level);
+        arena_done(&arena);
         sb_append_char(sb, '\n');
         return;
     }
@@ -5839,8 +5948,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 sb, cst, lexer, stmt->a, indent_level);
         } else if (!format_emit_call_with_block_on_arg(
                        sb, cst, lexer, stmt->a, indent_level)) {
-            format_emit_expr_with_indent(
-                sb, cst, lexer, stmt->a, 0, indent_level);
+            format_emit_wrapped_call_expr_if_long(
+                sb, cst, lexer, stmt->a, (usize)indent_level * 4, indent_level);
         }
         sb_append_char(sb, '\n');
     }
