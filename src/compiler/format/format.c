@@ -3521,9 +3521,13 @@ internal bool format_collect_aligned_statement(Arena*       arena,
                 return false;
             }
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
-            value =
-                format_render_value_to_string(arena, cst, lexer, payload->b);
             value_payload = &cst->nodes[payload->b];
+            value         = (value_payload->kind == CK_StringLiteral ||
+                             value_payload->kind == CK_StringConcat)
+                                ? format_render_value_to_string(
+                                      arena, cst, lexer, payload->b)
+                                : format_render_expr_to_string(
+                                      arena, cst, lexer, payload->b);
         } else if (format_node_is_value_constant_payload(payload)) {
             value = format_render_value_to_string(arena, cst, lexer, node->b);
         } else {
@@ -3537,7 +3541,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             value_payload->kind == CK_StringLiteral ||
             value_payload->kind == CK_StringConcat;
         if (!format_statement_is_single_line(cst, lexer, node_index) &&
-            !is_multiline_string_value) {
+            !is_multiline_string_value && format_string_has_newline(value)) {
             return false;
         }
 
@@ -3796,11 +3800,27 @@ internal bool format_aligned_statements_same_family(FormatAlignedStatement a,
     return true;
 }
 
+internal usize format_string_last_line_width(string text)
+{
+    usize width = 0;
+    for (usize i = 0; i < text.count; ++i) {
+        if (text.data[i] == '\n') {
+            width = 0;
+        } else {
+            width++;
+        }
+    }
+    return width;
+}
+
 internal void
 format_emit_aligned_statement_group(StringBuilder*                sb,
+                                    const Cst*                    cst,
+                                    const Lexer*                  lexer,
                                     const FormatAlignedStatement* stmts,
                                     u32                           stmt_count,
-                                    u32                           indent_level)
+                                    u32                           indent_level,
+                                    u32*                          comment_index)
 {
     usize max_symbol_width = 0;
     usize max_type_width   = 0;
@@ -3817,6 +3837,7 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
     bool has_type_column = max_type_width > 0;
 
     for (u32 i = 0; i < stmt_count; ++i) {
+        usize current_column = (usize)indent_level * 4;
         format_emit_indent(sb, indent_level);
         if (stmts[i].is_public) {
             sb_append_cstr(sb, "pub ");
@@ -3827,12 +3848,14 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
         for (usize pad = symbol_width; pad < max_symbol_width; ++pad) {
             sb_append_char(sb, ' ');
         }
+        current_column += max_symbol_width;
 
         if (stmts[i].is_assignment) {
             sb_append_char(sb, ' ');
             sb_append_string(sb, stmts[i].op);
             sb_append_char(sb, ' ');
             sb_append_string(sb, stmts[i].value);
+            current_column += 2 + stmts[i].op.count + stmts[i].value.count;
         } else if (!has_type_column) {
             if (stmts[i].is_bind) {
                 usize value_start_width =
@@ -3841,15 +3864,20 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                     FORMAT_WRAP_WIDTH) {
                     sb_append_cstr(sb, " :: ");
                     sb_append_string(sb, stmts[i].value);
+                    current_column = value_start_width + stmts[i].value.count;
                 } else {
                     sb_append_cstr(sb, " ::");
                     sb_append_char(sb, '\n');
-                    format_emit_indent(sb, indent_level + 1);
+                    format_emit_spaces(sb, value_start_width);
                     sb_append_string(sb, stmts[i].value);
+                    current_column =
+                        value_start_width +
+                        format_string_last_line_width(stmts[i].value);
                 }
             } else {
                 sb_append_cstr(sb, " := ");
                 sb_append_string(sb, stmts[i].value);
+                current_column += 4 + stmts[i].value.count;
             }
         } else {
             sb_append_cstr(sb, " : ");
@@ -3862,20 +3890,41 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                  ++pad) {
                 sb_append_char(sb, ' ');
             }
+            current_column += 3 + max_type_width + 1;
             usize value_start_width =
                 (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
             if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 sb_append_char(sb, ' ');
                 sb_append_string(sb, stmts[i].value);
+                current_column = value_start_width + stmts[i].value.count;
             } else {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 sb_append_char(sb, '\n');
-                format_emit_indent(sb, indent_level + 1);
+                format_emit_spaces(sb, value_start_width);
                 sb_append_string(sb, stmts[i].value);
+                current_column = value_start_width +
+                                 format_string_last_line_width(stmts[i].value);
             }
         }
-        sb_append_char(sb, '\n');
+
+        u32 trailing_comment_index = U32_MAX;
+        if (comment_index &&
+            format_find_trailing_comment_index_after_offset(
+                lexer->source,
+                lexer,
+                lex_token_end_offset(lexer,
+                                     &lexer->tokens[format_node_end_token_index(
+                                         cst, lexer, stmts[i].node_index)]),
+                &trailing_comment_index) &&
+            trailing_comment_index >= *comment_index) {
+            LexerComment comment = lexer->comments[trailing_comment_index];
+            format_emit_trailing_comment_text_aligned(
+                sb, comment.text, current_column + 1, current_column);
+            *comment_index = trailing_comment_index + 1;
+        } else {
+            sb_append_char(sb, '\n');
+        }
     }
 }
 
@@ -5104,7 +5153,8 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 if (has_blank_line) {
                     break;
                 }
-                if (has_comment) {
+                if (has_comment && !format_node_has_trailing_comment(
+                                       cst, lexer, last_aligned_index)) {
                     break;
                 }
 
@@ -5113,21 +5163,15 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 cursor             = next_statement + 1;
             }
 
-            bool aligned_has_trailing_comment = false;
-            for (u32 aligned_index = 0; aligned_index < array_count(aligned);
-                 ++aligned_index) {
-                if (format_node_has_trailing_comment(
-                        cst, lexer, aligned[aligned_index].node_index)) {
-                    aligned_has_trailing_comment = true;
-                    break;
-                }
-            }
-
-            if (!aligned_has_trailing_comment &&
-                (array_count(aligned) > 1 ||
-                 !aligned[0].uses_standard_single_line)) {
-                format_emit_aligned_statement_group(
-                    sb, aligned, (u32)array_count(aligned), indent_level);
+            if (array_count(aligned) > 1 ||
+                !aligned[0].uses_standard_single_line) {
+                format_emit_aligned_statement_group(sb,
+                                                    cst,
+                                                    lexer,
+                                                    aligned,
+                                                    (u32)array_count(aligned),
+                                                    indent_level,
+                                                    &comment_index);
                 previous_statement_index = last_aligned_index;
                 i                        = last_aligned_index;
                 usize aligned_end_offset =
@@ -6076,7 +6120,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 if (has_blank_line) {
                     break;
                 }
-                if (has_comment) {
+                if (has_comment &&
+                    !format_node_has_trailing_comment(
+                        &cst, &lexer, cst.bindings[last_aligned_binding])) {
                     break;
                 }
 
@@ -6084,19 +6130,14 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 last_aligned_binding = cursor;
             }
 
-            bool aligned_has_trailing_comment = false;
-            for (u32 aligned_index = 0; aligned_index < array_count(aligned);
-                 ++aligned_index) {
-                if (format_node_has_trailing_comment(
-                        &cst, &lexer, aligned[aligned_index].node_index)) {
-                    aligned_has_trailing_comment = true;
-                    break;
-                }
-            }
-
-            if (!aligned_has_trailing_comment && array_count(aligned) > 1) {
-                format_emit_aligned_statement_group(
-                    sb, aligned, (u32)array_count(aligned), 0);
+            if (array_count(aligned) > 1) {
+                format_emit_aligned_statement_group(sb,
+                                                    &cst,
+                                                    &lexer,
+                                                    aligned,
+                                                    (u32)array_count(aligned),
+                                                    0,
+                                                    &comment_index);
                 i                      = last_aligned_binding;
                 first_binding          = false;
                 previous_binding_index = cst.bindings[last_aligned_binding];
