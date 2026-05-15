@@ -6,6 +6,7 @@
 
 #include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
+#include <compiler/modules/modules.h>
 #include <compiler/sema/sema.h>
 #include <lsp/lsp.h>
 
@@ -261,6 +262,30 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
 {
     if (!lsp_signature_decl_is_callable(view, decl)) {
         return false;
+    }
+
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &view->doc->program, decl->import_module_index, &module)) {
+            const SemaDecl* imported_decl = NULL;
+            if (lsp_sema_decl(
+                    module.sema, decl->import_decl_index, &imported_decl)) {
+                LspTypeFactView imported_view = {
+                    .doc    = view->doc,
+                    .source = module.lexer->source.source,
+                    .lexer  = module.lexer,
+                    .ast    = module.ast,
+                    .sema   = module.sema,
+                };
+                return lsp_signature_decl_label(&imported_view,
+                                                arena,
+                                                imported_decl,
+                                                out_label,
+                                                out_params);
+            }
+        }
     }
 
     decl = lsp_signature_resolve_callable_alias(view, decl);
@@ -674,18 +699,16 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
         }
 
         lsp_signature_skip_space(source, &cursor);
-        if (cursor + 1 >= line_end || source.data[cursor] != ':' ||
-            source.data[cursor + 1] != ':') {
-            line_start = line_end + (line_end < source.count ? 1 : 0);
-            continue;
+        if (cursor + 1 < line_end && source.data[cursor] == ':' &&
+            source.data[cursor + 1] == ':') {
+            cursor += 2;
+            lsp_signature_skip_space(source, &cursor);
+            if (!lsp_signature_match_ident_at(source, &cursor, s("fn"))) {
+                line_start = line_end + (line_end < source.count ? 1 : 0);
+                continue;
+            }
+            lsp_signature_skip_space(source, &cursor);
         }
-        cursor += 2;
-        lsp_signature_skip_space(source, &cursor);
-        if (!lsp_signature_match_ident_at(source, &cursor, s("fn"))) {
-            line_start = line_end + (line_end < source.count ? 1 : 0);
-            continue;
-        }
-        lsp_signature_skip_space(source, &cursor);
         if (cursor >= source.count || source.data[cursor] != '(') {
             line_start = line_end + (line_end < source.count ? 1 : 0);
             continue;
@@ -711,7 +734,8 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
             }
         }
         if (params_end == U32_MAX) {
-            return false;
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
         }
 
         StringBuilder sb = {0};
@@ -751,6 +775,179 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
     }
 
     return false;
+}
+
+internal cstr lsp_signature_text_module_relative(Arena* arena,
+                                                 string module_path,
+                                                 cstr   extension)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (usize i = 0; i < module_path.count; ++i) {
+        if (module_path.data[i] == '.') {
+#if OS_WINDOWS
+            sb_append_char(&sb, '\\');
+#else
+            sb_append_char(&sb, '/');
+#endif
+        } else {
+            sb_append_char(&sb, (char)module_path.data[i]);
+        }
+    }
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+}
+
+internal bool lsp_signature_resolve_text_module_in_root(Arena* arena,
+                                                        string module_path,
+                                                        cstr   root,
+                                                        cstr*  out_path)
+{
+    cstr module_file =
+        path_join(arena,
+                  root,
+                  lsp_signature_text_module_relative(arena, module_path, ".n"));
+    if (!path_exists(module_file) || path_is_directory(module_file)) {
+        cstr module_dir = path_join(
+            arena,
+            root,
+            lsp_signature_text_module_relative(arena, module_path, ""));
+        module_file = path_join(arena, module_dir, "mod.n");
+    }
+
+    if (!path_exists(module_file) || path_is_directory(module_file)) {
+        return false;
+    }
+    cstr canonical = path_canonical(arena, module_file);
+    if (canonical == NULL) {
+        return false;
+    }
+    *out_path = canonical;
+    return true;
+}
+
+internal bool lsp_signature_resolve_text_module(Arena*             arena,
+                                                const LspDocument* doc,
+                                                string             module_path,
+                                                string current_source_path,
+                                                cstr*  out_path)
+{
+    NerdSource current_source = doc->front_end.lexer.source;
+    if (current_source.source_path.count == 0) {
+        current_source.source_path = current_source_path;
+    }
+    cstr current_path = module_source_file_path(arena, current_source);
+    if (current_path != NULL &&
+        lsp_signature_resolve_text_module_in_root(
+            arena, module_path, path_dirname(arena, current_path), out_path)) {
+        return true;
+    }
+
+    NerdSource root_source = doc->program.root_source.source_path.count > 0
+                                 ? doc->program.root_source
+                                 : doc->front_end.lexer.source;
+    cstr       root_path   = module_source_file_path(arena, root_source);
+    if (root_path != NULL &&
+        lsp_signature_resolve_text_module_in_root(
+            arena, module_path, path_dirname(arena, root_path), out_path)) {
+        return true;
+    }
+
+    cstr lib_path = getenv("NERD_LIB_PATH");
+    if (lib_path != NULL && *lib_path != '\0') {
+#if OS_WINDOWS
+        char separator = ';';
+#else
+        char separator = ':';
+#endif
+        const char* cursor = lib_path;
+        while (*cursor != '\0') {
+            const char* end = strchr(cursor, separator);
+            usize len = end != NULL ? (usize)(end - cursor) : strlen(cursor);
+            if (len > 0) {
+                char* root = arena_alloc(arena, len + 1);
+                memcpy(root, cursor, len);
+                root[len] = '\0';
+                if (lsp_signature_resolve_text_module_in_root(
+                        arena, module_path, root, out_path)) {
+                    return true;
+                }
+            }
+            if (end == NULL) {
+                break;
+            }
+            cursor = end + 1;
+        }
+    }
+
+    cstr exe_dir  = path_executable_dir(arena);
+    cstr mods_dir = path_join(arena, exe_dir, "mods");
+    return lsp_signature_resolve_text_module_in_root(
+        arena, module_path, mods_dir, out_path);
+}
+
+internal bool lsp_signature_source_use_decl_label(Arena*             arena,
+                                                  const LspDocument* doc,
+                                                  string      document_uri,
+                                                  string      name,
+                                                  string*     out_label,
+                                                  JsonValue** out_params)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    bool found = false;
+    for (usize line_start = 0; line_start < doc->source.count && !found;) {
+        usize line_end = line_start;
+        while (line_end < doc->source.count &&
+               doc->source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line   = {.data  = doc->source.data + line_start,
+                         .count = line_end - line_start};
+        usize  cursor = 0;
+        lsp_signature_skip_space(line, &cursor);
+        if (lsp_signature_match_ident_at(line, &cursor, s("pub"))) {
+            lsp_signature_skip_space(line, &cursor);
+        }
+        if (!lsp_signature_match_ident_at(line, &cursor, s("use"))) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        lsp_signature_skip_space(line, &cursor);
+        usize path_start = cursor;
+        while (cursor < line.count &&
+               (lsp_signature_is_ident_char(line.data[cursor]) ||
+                line.data[cursor] == '.')) {
+            cursor++;
+        }
+        if (cursor == path_start) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        string module_path = {.data  = line.data + path_start,
+                              .count = cursor - path_start};
+        cstr   resolved    = NULL;
+        if (lsp_signature_resolve_text_module(
+                &temp, doc, module_path, document_uri, &resolved)) {
+            FileMap map    = {0};
+            string  source = filemap_load(resolved, &map);
+            if (source.data != NULL) {
+                found = lsp_signature_source_decl_label(
+                    arena, source, name, out_label, out_params);
+                filemap_unload(&map);
+            }
+        }
+
+        line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+    }
+
+    arena_done(&temp);
+    return found;
 }
 
 void lsp_handle_signature_help(LspState* state, const LspMessage* message)
@@ -805,7 +1002,13 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                             source_view.source,
                                             name,
                                             &source_label,
-                                            &source_parameters)) {
+                                            &source_parameters) ||
+            lsp_signature_source_use_decl_label(message->arena,
+                                                source_view.doc,
+                                                uri,
+                                                name,
+                                                &source_label,
+                                                &source_parameters)) {
             JsonValue* signature = json_new_object(message->arena);
             json_object_set_string(
                 signature, message->arena, "label", source_label);
@@ -856,7 +1059,13 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                             source_view.source,
                                             name,
                                             &source_label,
-                                            &source_parameters)) {
+                                            &source_parameters) ||
+            lsp_signature_source_use_decl_label(message->arena,
+                                                source_view.doc,
+                                                uri,
+                                                name,
+                                                &source_label,
+                                                &source_parameters)) {
         } else {
             json_object_set_null(response, message->arena, "result");
             lsp_send_response(message->arena, response);
@@ -914,8 +1123,17 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         }
     }
     if (!labelled) {
-        labelled = lsp_signature_source_decl_label(
-            message->arena, source_view.source, name, &label, &parameters);
+        labelled = lsp_signature_source_decl_label(message->arena,
+                                                   source_view.source,
+                                                   name,
+                                                   &label,
+                                                   &parameters) ||
+                   lsp_signature_source_use_decl_label(message->arena,
+                                                       source_view.doc,
+                                                       uri,
+                                                       name,
+                                                       &label,
+                                                       &parameters);
         if (!labelled) {
             json_object_set_null(response, message->arena, "result");
             lsp_send_response(message->arena, response);

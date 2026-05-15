@@ -1,0 +1,12 @@
+pub HWND    :: ^void
+pub UINT    :: u32
+pub WPARAM  :: usize
+pub LPARAM  :: isize
+pub LRESULT :: isize
+
+pub ffi "user32" {
+    DefWindowProcA (hWnd   : HWND,
+                    Msg    : UINT,
+                    wParam : WPARAM,
+                    lParam : LPARAM) -> LRESULT
+}
