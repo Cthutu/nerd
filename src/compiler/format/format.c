@@ -3813,6 +3813,129 @@ internal usize format_string_last_line_width(string text)
     return width;
 }
 
+internal bool format_find_wrappable_infix_operator(string value,
+                                                   usize  start,
+                                                   usize* out_op_start,
+                                                   usize* out_op_end)
+{
+    for (usize i = start; i + 2 < value.count; ++i) {
+        if (value.data[i] != ' ') {
+            continue;
+        }
+        usize op_start = i + 1;
+        usize op_end   = op_start;
+        while (op_end < value.count &&
+               (value.data[op_end] == '|' || value.data[op_end] == '&' ||
+                value.data[op_end] == '^' || value.data[op_end] == '+' ||
+                value.data[op_end] == '-' || value.data[op_end] == '*' ||
+                value.data[op_end] == '/' || value.data[op_end] == '%' ||
+                value.data[op_end] == '<' || value.data[op_end] == '>' ||
+                value.data[op_end] == '=' || value.data[op_end] == '!')) {
+            op_end++;
+        }
+        if (op_end == op_start || op_end >= value.count ||
+            value.data[op_end] != ' ') {
+            continue;
+        }
+        *out_op_start = op_start;
+        *out_op_end   = op_end;
+        return true;
+    }
+    return false;
+}
+
+internal bool format_emit_wrapped_infix_value(StringBuilder* sb,
+                                              string         value,
+                                              usize          first_column,
+                                              usize  continuation_column,
+                                              usize* out_current_column)
+{
+    if (format_string_has_newline(value)) {
+        return false;
+    }
+
+    usize first_op_start = 0;
+    usize first_op_end   = 0;
+    if (!format_find_wrappable_infix_operator(
+            value, 0, &first_op_start, &first_op_end)) {
+        return false;
+    }
+
+    usize cursor      = 0;
+    usize line_column = first_column;
+
+    while (cursor < value.count) {
+        usize next_op_start = 0;
+        usize next_op_end   = 0;
+        bool  has_next_op   = format_find_wrappable_infix_operator(
+            value, cursor, &next_op_start, &next_op_end);
+        usize segment_end = has_next_op ? next_op_start - 1 : value.count;
+        while (segment_end > cursor && value.data[segment_end - 1] == ' ') {
+            segment_end--;
+        }
+        if (segment_end <= cursor) {
+            return false;
+        }
+
+        usize segment_width = segment_end - cursor;
+        if (line_column + segment_width > FORMAT_WRAP_WIDTH &&
+            line_column > first_column) {
+            sb_append_char(sb, '\n');
+            format_emit_spaces(sb, continuation_column);
+            line_column = continuation_column;
+            continue;
+        }
+
+        sb_append_string(
+            sb, string_from(value.data + cursor, segment_end - cursor));
+        line_column += segment_width;
+
+        if (!has_next_op) {
+            break;
+        }
+
+        usize following_start = next_op_end + 1;
+        usize following_end   = value.count;
+        usize ignored_start   = 0;
+        usize ignored_end     = 0;
+        if (format_find_wrappable_infix_operator(
+                value, following_start, &ignored_start, &ignored_end)) {
+            following_end = ignored_start - 1;
+        }
+        while (following_end > following_start &&
+               value.data[following_end - 1] == ' ') {
+            following_end--;
+        }
+
+        usize op_width        = next_op_end - next_op_start;
+        usize following_width = following_end > following_start
+                                    ? following_end - following_start
+                                    : 0;
+        usize op_piece_width  = 1 + op_width + 1;
+        if (line_column + op_piece_width + following_width >
+            FORMAT_WRAP_WIDTH) {
+            sb_append_char(sb, '\n');
+            format_emit_spaces(sb, continuation_column);
+            sb_append_string(sb,
+                             string_from(value.data + next_op_start,
+                                         next_op_end - next_op_start));
+            sb_append_char(sb, ' ');
+            line_column = continuation_column + op_width + 1;
+        } else {
+            sb_append_char(sb, ' ');
+            sb_append_string(sb,
+                             string_from(value.data + next_op_start,
+                                         next_op_end - next_op_start));
+            sb_append_char(sb, ' ');
+            line_column += op_piece_width;
+        }
+        cursor = following_start;
+    }
+
+    *out_current_column = line_column;
+    return true;
+}
+
 internal void
 format_emit_aligned_statement_group(StringBuilder*                sb,
                                     const Cst*                    cst,
@@ -3893,21 +4016,41 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             current_column += 3 + max_type_width + 1;
             usize value_start_width =
                 (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
-            if (value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
+            if (!format_string_has_newline(stmts[i].value) &&
+                value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 sb_append_char(sb, ' ');
                 sb_append_string(sb, stmts[i].value);
                 current_column = value_start_width + stmts[i].value.count;
             } else {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
-                sb_append_char(sb, '\n');
-                format_emit_spaces(sb, value_start_width);
-                sb_append_string(sb, stmts[i].value);
-                current_column = value_start_width +
-                                 format_string_last_line_width(stmts[i].value);
+                usize first_op_start = 0;
+                usize first_op_end   = 0;
+                if (!format_string_has_newline(stmts[i].value) &&
+                    format_find_wrappable_infix_operator(
+                        stmts[i].value, 0, &first_op_start, &first_op_end)) {
+                    sb_append_char(sb, ' ');
+                    bool wrapped =
+                        format_emit_wrapped_infix_value(sb,
+                                                        stmts[i].value,
+                                                        value_start_width,
+                                                        value_start_width + 4,
+                                                        &current_column);
+                    ASSERT(wrapped, "Expected infix value to wrap");
+                    UNUSED(wrapped);
+                    goto aligned_statement_done;
+                } else {
+                    sb_append_char(sb, '\n');
+                    format_emit_spaces(sb, value_start_width);
+                    sb_append_string(sb, stmts[i].value);
+                    current_column =
+                        value_start_width +
+                        format_string_last_line_width(stmts[i].value);
+                }
             }
         }
 
+    aligned_statement_done:
         u32 trailing_comment_index = U32_MAX;
         if (comment_index &&
             format_find_trailing_comment_index_after_offset(

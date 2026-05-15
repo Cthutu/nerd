@@ -6,7 +6,8 @@ on "windows" {
 on "windows" {
 
     pub WS_TILED            : DWORD : WS_OVERLAPPED
-    pub WS_OVERLAPPEDWINDOW : DWORD :
-                                      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX
+    pub WS_OVERLAPPEDWINDOW : DWORD : WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
+                                          | WS_THICKFRAME | WS_MINIMIZEBOX
+                                          | WS_MAXIMIZEBOX
 
 }
