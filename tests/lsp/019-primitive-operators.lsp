@@ -33,7 +33,8 @@ main :: fn () => on (ratio >= 1.0 && !no) => 1 else 0
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

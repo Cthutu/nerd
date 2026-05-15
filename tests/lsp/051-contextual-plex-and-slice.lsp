@@ -45,7 +45,8 @@ show :: fn (_items: []Point) {
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

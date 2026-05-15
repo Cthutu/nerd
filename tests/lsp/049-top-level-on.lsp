@@ -40,7 +40,8 @@ main :: fn () => answer
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

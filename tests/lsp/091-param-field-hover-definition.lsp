@@ -59,7 +59,8 @@ use_frame :: fn (fs: ^FrameSystem) {
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

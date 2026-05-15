@@ -54,7 +54,8 @@ main :: fn () => on Point { x: 3, y: 4 } {
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

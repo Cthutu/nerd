@@ -8,6 +8,7 @@ main :: fn () {
     point := Point {
         x: 1
         v
+        q
     }
 }
 ¬
@@ -20,7 +21,7 @@ main :: fn () {
                 "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n",
                 "languageId": "nerd",
                 "version": 1,
-                "text": "win :: use win\n\nPoint :: plex {\n    x i32\n    y i32\n    visible bool\n}\n\nmain :: fn () {\n    point := Point {\n        x: 1\n        v\n    }\n    class := win.WNDCLASSA {\n        style: 0\n        lp\n    }\n}\n"
+                "text": "win :: use win\n\nPoint :: plex {\n    x i32\n    y i32\n    visible bool\n}\n\nmain :: fn () {\n    point := Point {\n        x: 1\n        v\n        q\n    }\n    class := win.WNDCLASSA {\n        style: 0\n        lp\n    }\n}\n"
             }
         }
     },
@@ -47,8 +48,22 @@ main :: fn () {
                 "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n"
             },
             "position": {
-                "line": 15,
+                "line": 16,
                 "character": 10
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n"
+            },
+            "position": {
+                "line": 12,
+                "character": 9
             }
         }
     }
@@ -73,7 +88,8 @@ main :: fn () {
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },
@@ -212,6 +228,11 @@ main :: fn () {
                 "insertText": "lpszClassName: "
             }
         ]
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "result": []
     },
     {
         "jsonrpc": "2.0",

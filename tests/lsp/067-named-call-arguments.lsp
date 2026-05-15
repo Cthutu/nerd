@@ -51,7 +51,8 @@ main :: fn () => add(a = 20, b = 2)
                 "documentSymbolProvider": true,
                 "completionProvider": {
                     "triggerCharacters": [
-                        "."
+                        ".",
+                        "{"
                     ],
                     "resolveProvider": false
                 },

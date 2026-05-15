@@ -261,6 +261,7 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     JsonValue* completion_provider = json_new_object(arena);
     JsonValue* trigger_characters  = json_new_array(arena);
     json_array_push(trigger_characters, json_new_string(arena, s(".")));
+    json_array_push(trigger_characters, json_new_string(arena, s("{")));
     json_object_set_array(
         completion_provider, "triggerCharacters", trigger_characters);
     json_object_set_bool(completion_provider, arena, "resolveProvider", false);

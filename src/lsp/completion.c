@@ -3299,7 +3299,7 @@ internal bool lsp_completion_add_plex_literal_fields_from_file(Arena*     arena,
     return added;
 }
 
-internal void lsp_completion_add_plex_literal_fields(Arena*             arena,
+internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
                                                      JsonValue*         items,
                                                      const LspDocument* doc,
                                                      string             uri,
@@ -3310,20 +3310,20 @@ internal void lsp_completion_add_plex_literal_fields(Arena*             arena,
     u32          open_token = U32_MAX;
     if (!lsp_completion_enclosing_brace(lexer, offset, &open_token) ||
         open_token >= array_count(lexer->tokens)) {
-        return;
+        return false;
     }
 
     usize open_end = lex_token_end_offset(lexer, &lexer->tokens[open_token]);
     if (!lsp_completion_plex_literal_field_position(
             doc->source, offset, open_end, prefix)) {
-        return;
+        return false;
     }
 
     string module_name = {0};
     string type_name   = {0};
     if (!lsp_completion_plex_literal_type_path(
             lexer, open_token, &module_name, &type_name)) {
-        return;
+        return false;
     }
 
     Array(string) seen = NULL;
@@ -3336,7 +3336,7 @@ internal void lsp_completion_add_plex_literal_fields(Arena*             arena,
                 arena, items, doc->source, type_name, seen);
         }
         array_free(seen);
-        return;
+        return true;
     }
 
     Arena temp = {0};
@@ -3369,6 +3369,7 @@ internal void lsp_completion_add_plex_literal_fields(Arena*             arena,
     }
     arena_done(&temp);
     array_free(seen);
+    return true;
 }
 
 internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
@@ -3685,9 +3686,8 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         return;
     }
 
-    lsp_completion_add_plex_literal_fields(
-        message->arena, items, doc, uri, prefix, offset);
-    if (array_count(items->array.values) > 0) {
+    if (lsp_completion_add_plex_literal_fields(
+            message->arena, items, doc, uri, prefix, offset)) {
         lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);
