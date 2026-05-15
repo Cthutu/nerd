@@ -25,9 +25,10 @@ The current LazyVim integration:
 - registers `.n` files as Nerd source
 - configures `nvim-lspconfig` to launch the Nerd LSP
 - configures `conform.nvim` to format a temporary file with `nerd format`
+- installs a Nerd indent file for block and continuation indentation
 
-Tree-sitter highlighting and indentation support are intentionally deferred
-until a later editor milestone.
+Tree-sitter highlighting support is intentionally deferred until a later editor
+milestone.
 
 ## VS Code Extension
 
@@ -73,4 +74,10 @@ nvim --headless -u NONE \
   +'syntax on' +'filetype on' +'edit _tmp/c4.n' \
   +'lua io.write((vim.bo.filetype or "") .. ":" .. (vim.bo.syntax or ""))' \
   +qa
+```
+
+For Neovim indentation changes, run:
+
+```sh
+python3 build/check_nvim_indent.py
 ```

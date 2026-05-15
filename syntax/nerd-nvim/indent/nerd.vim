@@ -55,7 +55,7 @@ function! s:TrimCode(line) abort
   return substitute(s:StripLineComment(a:line), '\s\+$', '', '')
 endfunction
 
-function! s:UnclosedOpenDelimiter(line) abort
+function! s:ScanDelimiterLine(line, lnum, stack, last_closed) abort
   let l:line = s:StripLineComment(a:line)
   let l:stack = []
   let l:in_string = v:false
@@ -80,19 +80,54 @@ function! s:UnclosedOpenDelimiter(line) abort
     if l:ch ==# '"'
       let l:in_string = v:true
     elseif l:ch =~# '[{[(]'
-      call add(l:stack, [l:ch, l:i])
-    elseif l:ch =~# '[}\])]' && !empty(l:stack)
-      call remove(l:stack, -1)
+      call add(a:stack, [l:ch, a:lnum, l:i])
+    elseif l:ch =~# '[}\])]' && !empty(a:stack)
+      let a:last_closed[0] = remove(a:stack, -1)
     endif
 
     let l:i += 1
   endwhile
+endfunction
+
+function! s:MatchingOpenContinuationLine(lnum) abort
+  let l:depth = 0
+  let l:line = a:lnum
+
+  while l:line >= 1
+    let l:text = s:StripLineComment(getline(l:line))
+    let l:i = strlen(l:text) - 1
+
+    while l:i >= 0
+      let l:ch = strpart(l:text, l:i, 1)
+
+      if l:ch ==# ')' || l:ch ==# ']'
+        let l:depth += 1
+      elseif l:ch ==# '(' || l:ch ==# '['
+        let l:depth -= 1
+        if l:depth == 0
+          return l:line
+        endif
+      endif
+
+      let l:i -= 1
+    endwhile
+
+    let l:line -= 1
+  endwhile
+
+  return 0
+endfunction
+
+function! s:UnclosedOpenDelimiter(line) abort
+  let l:stack = []
+  let l:last_closed = [['', 0, -1]]
+  call s:ScanDelimiterLine(a:line, 0, l:stack, l:last_closed)
 
   if empty(l:stack)
     return ['', -1]
   endif
 
-  return l:stack[-1]
+  return [l:stack[-1][0], l:stack[-1][2]]
 endfunction
 
 function! GetNerdIndent(lnum) abort
@@ -104,6 +139,13 @@ function! GetNerdIndent(lnum) abort
   let l:indent = indent(l:prevnum)
   let l:prev = s:TrimCode(getline(l:prevnum))
   let l:line = s:TrimCode(getline(a:lnum))
+
+  if l:prev =~# '[)\]]'
+    let l:open_line = s:MatchingOpenContinuationLine(l:prevnum)
+    if l:open_line > 0
+      let l:indent = indent(l:open_line)
+    endif
+  endif
 
   let l:open = s:UnclosedOpenDelimiter(l:prev)
   if l:open[0] ==# '{'
