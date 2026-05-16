@@ -142,7 +142,7 @@ defer {
 ```
 
 This is especially helpful in functions with several returns or loops with
-`break` and `continue`.
+`break` and `again`.
 
 ## Returning Dynamic Arrays
 

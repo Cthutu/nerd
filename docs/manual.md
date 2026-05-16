@@ -223,7 +223,7 @@ Concepts:
 - scope of locals
 - `defer <statement>`
 - `defer { ... }`
-- cleanup on natural exit, `return`, `break`, and `continue`
+- cleanup on natural exit, `return`, `break`, and `again`
 
 Rules to teach:
 
@@ -232,7 +232,7 @@ Rules to teach:
 - Deferred statements run when the current scope exits.
 - Defers run in last-in, first-out order.
 - A deferred statement must be valid where it appears semantically; invalid
-  deferred `break` or `continue` is still rejected.
+  deferred `break` or `again` is still rejected.
 
 Authoring coverage:
 
@@ -296,7 +296,7 @@ Concepts:
 - indexed `for index, item in collection`
 - item pointer iteration
 - `break`
-- `continue`
+- `again`
 - labelled expression blocks and loops
 - value-producing loops
 - loop `else`
@@ -304,7 +304,7 @@ Concepts:
 Rules to teach:
 
 - `break` exits a loop, or an expression block when targeting one.
-- `continue` resumes a loop.
+- `again` resumes a loop.
 - A value-producing finite loop needs an `else` branch for normal exhaustion.
 - Labels disambiguate nested loop and expression-block targets.
 - Indexed `for in` binds the index as `usize`.
@@ -314,7 +314,7 @@ Authoring coverage:
 - [038-for-infinite.t](/home/matt/nerd/tests/language/038-for-infinite.t)
 - [041-for-while.t](/home/matt/nerd/tests/language/041-for-while.t)
 - [042-for-c-style.t](/home/matt/nerd/tests/language/042-for-c-style.t)
-- [044-for-break-continue.t](/home/matt/nerd/tests/language/044-for-break-continue.t)
+- [044-for-break-again.t](/home/matt/nerd/tests/language/044-for-break-again.t)
 - [049-labelled-loop-expressions.t](/home/matt/nerd/tests/language/049-labelled-loop-expressions.t)
 - [050-for-else.t](/home/matt/nerd/tests/language/050-for-else.t)
 - [076-for-in-and-deref.t](/home/matt/nerd/tests/language/076-for-in-and-deref.t)
@@ -512,7 +512,7 @@ Concepts:
   - type mismatches
   - invalid assignment targets
   - missing `else` on value-producing `on`
-  - invalid `break` or `continue`
+  - invalid `break` or `again`
   - module privacy errors
 
 Rules to teach:

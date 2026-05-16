@@ -2552,7 +2552,7 @@ internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_break ||
-        cst_current_token(state).kind == TK_continue) {
+        cst_current_token(state).kind == TK_again) {
         u32     token_index = state->token_index;
         CstKind kind        = cst_current_token(state).kind == TK_break
                                   ? CK_BreakExpr
@@ -4119,7 +4119,7 @@ internal bool cst_parse_block_statement(CstParseState* state)
     }
 
     if (cst_current_token(state).kind == TK_break ||
-        cst_current_token(state).kind == TK_continue) {
+        cst_current_token(state).kind == TK_again) {
         CstKind kind =
             cst_current_token(state).kind == TK_break ? CK_Break : CK_Continue;
         cst_advance(state);

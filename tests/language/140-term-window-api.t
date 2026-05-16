@@ -111,7 +111,7 @@ write_text :: fn (window: ^Window, x: u16, y: u16, text: string, ink: u32, paper
 skip_zeroes :: fn (values: []u8) -> usize {
     count: usize = 0
     for i: usize = 0; i < values.count; i += 1 {
-        on values[i] == 0 => continue
+        on values[i] == 0 => again
         count += 1
     }
     return count

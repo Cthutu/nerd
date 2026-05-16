@@ -1,7 +1,7 @@
 main :: fn () {
     _total := 0
     for i := 0; i < 6; i += 1 {
-        on i == 2 => continue
+        on i == 2 => again
         on i == 5 => break
         _total += i
     }
@@ -186,7 +186,7 @@ main :: fn () {
                 0,
                 0,
                 3,
-                8,
+                5,
                 2,
                 0,
                 1,

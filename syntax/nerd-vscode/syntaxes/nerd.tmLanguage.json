@@ -59,7 +59,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.function.nerd",
-                    "match": "\\b(fn|return|break|continue|for|on|else|defer|assert|as|plex|union|enum|ffi|mod|use|pub|impl|with|in|test)\\b"
+                    "match": "\\b(fn|return|break|again|for|on|else|defer|assert|as|plex|union|enum|ffi|mod|use|pub|impl|with|in|test)\\b"
                 },
                 {
                     "name": "constant.language.boolean.nerd",

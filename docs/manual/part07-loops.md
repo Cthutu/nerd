@@ -54,15 +54,15 @@ The three parts are:
 | condition | checked before each iteration |
 | update | runs after each iteration |
 
-## `continue`
+## `again`
 
-`continue` skips to the next loop iteration:
+`again` skips to the next loop iteration:
 
 ```nerd
 main :: fn () -> i32 {
     total := 0
     for i := 0; i < 5; i += 1 {
-        on i == 2 => continue  -- skip the rest of this iteration
+        on i == 2 => again  -- skip the rest of this iteration
         total += i
     }
     return total
@@ -171,7 +171,7 @@ main :: fn () -> i32 {
 A finite value-producing loop needs `else`, because the loop might finish
 without hitting a value-producing `break`.
 
-An `on` branch does not capture loop control. A `break` or `continue` inside an
+An `on` branch does not capture loop control. A `break` or `again` inside an
 `on` branch targets the surrounding loop, so this is a compact way to return a
 loop value when a condition is met:
 

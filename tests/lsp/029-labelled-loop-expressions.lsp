@@ -1,6 +1,6 @@
 main :: fn () {
     for i := 0; i < 3; i += 1 $outer {
-        on i == 1 => continue $outer
+        on i == 1 => again $outer
         break $outer
     }
     value :: for $value {
@@ -182,11 +182,11 @@ main :: fn () {
                 0,
                 0,
                 3,
-                8,
+                5,
                 2,
                 0,
                 0,
-                9,
+                6,
                 1,
                 4,
                 0,

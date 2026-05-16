@@ -1068,7 +1068,7 @@ internal void format_emit_expr(StringBuilder* sb,
         }
         break;
     case CK_ContinueExpr:
-        sb_append_cstr(sb, "continue");
+        sb_append_cstr(sb, "again");
         if (node->b != U32_MAX) {
             sb_append_cstr(sb, " $");
             sb_append_string(sb, lex_symbol(lexer, node->b));
@@ -5710,8 +5710,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 sb_append_char(sb, '\n');
             } else if (deferred->kind == CK_Break ||
                        deferred->kind == CK_Continue) {
-                sb_append_cstr(
-                    sb, deferred->kind == CK_Break ? "break" : "continue");
+                sb_append_cstr(sb,
+                               deferred->kind == CK_Break ? "break" : "again");
                 if (deferred->b != U32_MAX) {
                     sb_append_cstr(sb, " $");
                     sb_append_string(sb, lex_symbol(lexer, deferred->b));
@@ -5776,7 +5776,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_char(sb, '\n');
             return;
         }
-        sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "continue");
+        sb_append_cstr(sb, stmt->kind == CK_Break ? "break" : "again");
         if (stmt->b != U32_MAX) {
             sb_append_cstr(sb, " $");
             sb_append_string(sb, lex_symbol(lexer, stmt->b));
@@ -6710,7 +6710,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_defer:
     case TK_assert:
     case TK_break:
-    case TK_continue:
+    case TK_again:
     case TK_return:
     case TK_plex:
     case TK_union:
@@ -6734,7 +6734,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_defer:
     case TK_assert:
     case TK_break:
-    case TK_continue:
+    case TK_again:
     case TK_return:
     case TK_plex:
     case TK_union:

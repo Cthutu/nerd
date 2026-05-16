@@ -141,7 +141,7 @@ first
 ## Scope Exit
 
 Deferred statements run when the current scope exits naturally, by `return`, by
-`break`, or by `continue`.
+`break`, or by `again`.
 
 ```nerd
 use std.io
@@ -182,4 +182,4 @@ main :: fn () {
 
 This example uses a dynamic array, which is introduced in Part 9. The important
 point here is the cleanup shape: write the cleanup next to the acquisition.
-Later `return`, `break`, or `continue` paths still run it.
+Later `return`, `break`, or `again` paths still run it.

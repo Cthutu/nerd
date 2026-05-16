@@ -90,7 +90,7 @@ typedef enum {
     TK_defer,
     TK_assert,
     TK_break,
-    TK_continue,
+    TK_again,
     TK_return,
     TK_plex,
     TK_union,

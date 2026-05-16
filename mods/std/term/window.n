@@ -153,7 +153,7 @@ impl TermWindow {
             sgr_bytes := term_try_parse_sgr(text, i, base_ink, base_paper, ^current_ink, ^current_paper)
             on sgr_bytes != 0 => {
                 i += sgr_bytes
-                continue
+                again
             }
 
             ch: u32
@@ -166,18 +166,18 @@ impl TermWindow {
 
             on glyph_width > window.rect.width.as(usize) => {
                 cx += glyph_width.as(i32)
-                continue
+                again
             }
 
             on cx + glyph_width.as(i32) <= 0 => {
                 cx += glyph_width.as(i32)
-                continue
+                again
             }
 
             on cx >= window.rect.width.as(i32) => return
             on cx < 0 => {
                 cx += glyph_width.as(i32)
-                continue
+                again
             }
             on cx + glyph_width.as(i32) > window.rect.width.as(i32) => return
 

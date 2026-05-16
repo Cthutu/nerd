@@ -54,7 +54,7 @@ Common causes:
 - reads of `undefined` bindings before assignment
 - unused local variables, parameters, or pattern binders
 - discarded non-`void` expression results
-- invalid `break` or `continue`
+- invalid `break` or `again`
 - non-exhaustive value-producing `on`
 - private module members
 - invalid FFI signatures
@@ -133,13 +133,13 @@ value is deliberately ignored.
 
 ## Control Flow Errors
 
-`break` and `continue` must target valid control-flow constructs.
+`break` and `again` must target valid control-flow constructs.
 
 - `break` can leave loops and expression blocks.
-- `continue` can only continue loops.
+- `again` can only resume loops.
 - Labels can make nested targets explicit.
 
-Deferred statements follow the same rules: a `break` or `continue` inside a
+Deferred statements follow the same rules: a `break` or `again` inside a
 deferred statement still needs a valid target where it appears.
 
 ## Source Tests

@@ -5,7 +5,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword nerdKeyword fn return break continue for on else defer assert as plex union enum ffi mod use pub impl with in test yes no nil undefined
+syn keyword nerdKeyword fn return break again for on else defer assert as plex union enum ffi mod use pub impl with in test yes no nil undefined
 syn keyword nerdType i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool isize usize string void
 syn match nerdComment "--.*$"
 syn match nerdNumber "\v<\d+(\.\d+)?>"

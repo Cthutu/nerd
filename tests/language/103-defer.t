@@ -29,7 +29,7 @@ main :: fn () {
 
     for i := 0; i < 3; i += 1 {
         defer total += 100
-        on i == 0 => continue
+        on i == 0 => again
         on i == 1 => break
         total += 1000
     }
@@ -104,7 +104,7 @@ func fn.1() -> i32 {
       }
       expr void on bool equal(i32 local.3(i), i32 0) {
     value(bool yes) => {
-      continue
+      again
     }
   }
       expr void on bool equal(i32 local.3(i), i32 1) {

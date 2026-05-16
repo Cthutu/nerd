@@ -826,7 +826,7 @@ term_try_parse_sgr :: fn (text: string,
             current = current * 10 + (ch - '0').as(i32)
             have_digit = yes
             i += 1
-            continue
+            again
         }
 
         on ch == ';' => {
@@ -837,7 +837,7 @@ term_try_parse_sgr :: fn (text: string,
             current = 0
             have_digit = no
             i += 1
-            continue
+            again
         }
 
         on ch == 'm' => {
@@ -1135,7 +1135,7 @@ pub term_fb_write :: fn (x: i32, y: i32, text: string) {
         on ch == '\n' => {
             cx = x
             cy += 1
-            continue
+            again
         }
 
         on cx >= g_term_fb_size.0 => {
@@ -1187,7 +1187,7 @@ term_fb_present :: fn () {
             index := term_fb_index(x, y)
             on g_term_fb_dirty[index] == 0 => {
                 x += 1
-                continue
+                again
             }
 
             ink := g_term_fb_ink[index]

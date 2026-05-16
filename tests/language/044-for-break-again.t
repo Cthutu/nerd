@@ -1,7 +1,7 @@
 main :: fn () {
     total := 0
     for i := 0; i < 6; i += 1 {
-        on i == 2 => continue
+        on i == 2 => again
         on i == 5 => break
         total += i
     }
@@ -24,7 +24,7 @@ func fn.0() -> i32 {
     body {
       expr void on bool equal(i32 local.1(i), i32 2) {
     value(bool yes) => {
-      continue
+      again
     }
   }
       expr void on bool equal(i32 local.1(i), i32 5) {

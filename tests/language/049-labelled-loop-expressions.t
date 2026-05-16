@@ -4,7 +4,7 @@ main :: fn () {
     total := 0
     for i := 0; i < 5; i += 1 $outer {
         for j := 0; j < 5; j += 1 $inner {
-            on j == 1 => continue $outer
+            on j == 1 => again $outer
             total += 100
         }
         total += i
@@ -64,7 +64,7 @@ func fn.0() -> i32 {
     body {
       expr void on bool equal(i32 local.4(j), i32 1) {
     value(bool yes) => {
-      continue $outer
+      again $outer
     }
   }
       assign i32 local.2(total) = i32 add(i32 local.2(total), i32 100)

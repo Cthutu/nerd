@@ -150,12 +150,12 @@ main :: fn () {
 }
 ¬
 main :: fn () {
-    continue
+    again
 }
 ¬
 {
     "code": "0328",
-    "message": "`continue` can only be used inside a loop",
+    "message": "`again` can only be used inside a loop",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 2,
@@ -166,19 +166,19 @@ main :: fn () {
             "kind": "primary",
             "line": 2,
             "column": 5,
-            "length": 8,
-            "message": "This `continue` is not inside a `for` loop"
+            "length": 5,
+            "message": "This `again` is not inside a `for` loop"
         }
     ],
     "notes": [],
     "help": [
-        "Move `continue` into a `for` loop body."
+        "Move `again` into a `for` loop body."
     ]
 }
 ¬
 main :: fn () {
     for {
-        continue $missing
+        again $missing
     }
 }
 ¬
@@ -195,7 +195,7 @@ main :: fn () {
             "kind": "primary",
             "line": 3,
             "column": 9,
-            "length": 8,
+            "length": 5,
             "message": "No enclosing expression block or loop has this label"
         }
     ],
@@ -208,14 +208,14 @@ main :: fn () {
 main :: fn () {
     $block {
         for {
-            continue $block
+            again $block
         }
     }
 }
 ¬
 {
     "code": "0331",
-    "message": "`continue` label `$block` does not name a loop",
+    "message": "`again` label `$block` does not name a loop",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 4,
@@ -226,13 +226,13 @@ main :: fn () {
             "kind": "primary",
             "line": 4,
             "column": 13,
-            "length": 8,
+            "length": 5,
             "message": "This label names an expression block, not a `for` loop"
         }
     ],
     "notes": [],
     "help": [
-        "Use `break $block` for an expression block, or `continue` to a `for ... $label { ... }` loop."
+        "Use `break $block` for an expression block, or `again` to a `for ... $label { ... }` loop."
     ]
 }
 ¬

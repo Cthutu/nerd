@@ -144,8 +144,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `assert`");
     case TK_break:
         return string_from_cstr("Keyword `break`");
-    case TK_continue:
-        return string_from_cstr("Keyword `continue`");
+    case TK_again:
+        return string_from_cstr("Keyword `again`");
     case TK_return:
         return string_from_cstr("Keyword `return`");
     case TK_plex:

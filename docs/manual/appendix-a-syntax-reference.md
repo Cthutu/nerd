@@ -112,8 +112,8 @@ break
 break expr
 break $label
 break $label expr
-continue
-continue $label
+again
+again $label
 defer statement
 defer { statements }
 ```

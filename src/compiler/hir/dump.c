@@ -982,7 +982,7 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
         break;
     case HIR_STMT_Continue:
         hir_append_indent(sb, indent);
-        sb_append_cstr(sb, "continue");
+        sb_append_cstr(sb, "again");
         if (stmt->symbol_handle != U32_MAX) {
             sb_append_cstr(sb, " $");
             sb_append_string(sb, lex_symbol(lexer, stmt->symbol_handle));

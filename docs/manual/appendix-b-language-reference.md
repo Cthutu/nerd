@@ -80,7 +80,7 @@ intended exit code.
 - `assert` checks a `bool` condition at runtime and exits with status 127 if it
   is false.
 - `break` exits a loop or expression block.
-- `continue` resumes a loop.
+- `again` resumes a loop.
 - Labels make nested targets explicit.
 - `defer` runs code when the current scope exits.
 - Deferred statements run in last-in, first-out order.

@@ -44,7 +44,7 @@ visible_byte_count :: fn (text: string) -> i32 {
                 }
                 on i < text.count => i += 1
             }
-            continue
+            again
         }
 
         count += 1
@@ -294,7 +294,7 @@ main :: fn () {
         event := term_poll_event()
         on event_is_quit(event) => {
             term_done()
-            continue
+            again
         }
 
         render(^backdrop, ^main_panel, ^probe_panel, ^ticker_panel, frame)

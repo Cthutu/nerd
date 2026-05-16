@@ -16153,7 +16153,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_ContinueExpr:
         if (loop_depth == 0) {
             return error_0328_loop_control_outside_loop(
-                lexer->source, sema_node_span(lexer, node), s("continue"));
+                lexer->source, sema_node_span(lexer, node), s("again"));
         }
         if (node->b != U32_MAX) {
             if (sema_loop_label_is_visible(

@@ -773,21 +773,20 @@ bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
-// Report `break` or `continue` used outside a valid control-flow target.
+// Report `break` or `again` used outside a valid control-flow target.
 
 bool error_0328_loop_control_outside_loop(NerdSource source,
                                           ErrorSpan  span,
                                           string     keyword)
 {
     bool      is_break = string_eq(keyword, s("break"));
-    ErrorInfo error =
-        error_init(328,
-                   source,
-                   span,
-                   is_break ? "`break` can only be used inside a "
-                              "loop or expression block"
-                            : "`continue` can only be used inside "
-                              "a loop");
+    ErrorInfo error = error_init(328,
+                                 source,
+                                 span,
+                                 is_break ? "`break` can only be used inside a "
+                                            "loop or expression block"
+                                          : "`again` can only be used inside "
+                                            "a loop");
     if (is_break) {
         error_add_reference(
             &error,
@@ -800,8 +799,8 @@ bool error_0328_loop_control_outside_loop(NerdSource source,
         error_add_reference(&error,
                             ERROR_REF_PRIMARY,
                             span,
-                            "This `continue` is not inside a `for` loop");
-        error_add_help(&error, "Move `continue` into a `for` loop body.");
+                            "This `again` is not inside a `for` loop");
+        error_add_help(&error, "Move `again` into a `for` loop body.");
     }
     error_render(&error);
     return false;
@@ -837,7 +836,7 @@ bool error_0329_missing_expression_block_break(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report a labelled break or continue that does not name an enclosing target.
+// Report a labelled break or again that does not name an enclosing target.
 
 bool error_0330_unknown_control_label(NerdSource source,
                                       ErrorSpan  span,
@@ -860,7 +859,7 @@ bool error_0330_unknown_control_label(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report a labelled continue that targets an expression block instead of a
+// Report a labelled again that targets an expression block instead of a
 // loop.
 
 bool error_0331_continue_to_non_loop_label(NerdSource source,
@@ -871,7 +870,7 @@ bool error_0331_continue_to_non_loop_label(NerdSource source,
         error_init(331,
                    source,
                    span,
-                   "`continue` label `$" STRINGP "` does not name a loop",
+                   "`again` label `$" STRINGP "` does not name a loop",
                    STRINGV(label));
     error_add_reference(
         &error,
@@ -880,7 +879,7 @@ bool error_0331_continue_to_non_loop_label(NerdSource source,
         "This label names an expression block, not a `for` loop");
     error_add_help(&error,
                    "Use `break $" STRINGP "` for an expression block, or "
-                   "`continue` to a `for ... $label { ... }` loop.",
+                   "`again` to a `for ... $label { ... }` loop.",
                    STRINGV(label));
     error_render(&error);
     return false;

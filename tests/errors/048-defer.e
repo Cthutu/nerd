@@ -26,12 +26,12 @@ main :: fn () {
 }
 ¬
 main :: fn () {
-    defer continue
+    defer again
 }
 ¬
 {
     "code": "0328",
-    "message": "`continue` can only be used inside a loop",
+    "message": "`again` can only be used inside a loop",
     "source_file": "tests/errors/048-defer.e",
     "primary_location": {
         "line": 2,
@@ -42,12 +42,12 @@ main :: fn () {
             "kind": "primary",
             "line": 2,
             "column": 11,
-            "length": 8,
-            "message": "This `continue` is not inside a `for` loop"
+            "length": 5,
+            "message": "This `again` is not inside a `for` loop"
         }
     ],
     "notes": [],
     "help": [
-        "Move `continue` into a `for` loop body."
+        "Move `again` into a `for` loop body."
     ]
 }
