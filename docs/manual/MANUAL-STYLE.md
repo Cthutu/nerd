@@ -60,12 +60,8 @@ Examples:
 
 Forward references are acceptable when they are explicit and brief.
 
-Use this shape:
-
-```md
-Pointers are introduced in Part 8; here `^value` means the loop item is a
-pointer to an element rather than a copy.
-```
+Use a short sentence that points to the later section without introducing syntax
+that the current section has not taught yet.
 
 Do not stop the current section to fully teach a later topic. Give only enough
 context for the current example to make sense.

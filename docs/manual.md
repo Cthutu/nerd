@@ -1,20 +1,19 @@
-# Nerd Manual Plan
+# Nerd Manual Authoring Map
 
-This document defines the structure for a learner-facing Nerd language manual.
-It is not an implementation guide for the compiler. The goal is to teach the
-language from first principles, using examples that can be compiled and run with
-the current toolchain.
+This document is the authoring map for the learner-facing Nerd language manual.
+It is not the manual itself and it is not an implementation guide for the
+compiler. The goal of the manual is to teach the language from first principles,
+using examples that can be compiled and run with the current toolchain.
 
 The manual should be written as a sequence of logical sections. Each section
 introduces one cluster of concepts, explains the rules, then shows small
 programs that exercise those rules. Longer examples should build toward the
 style used in [examples/text-adventure/adv.n](/home/matt/nerd/examples/text-adventure/adv.n).
 
-The generated manual should be split into separate part files under
-`docs/manual/`. The top-level [manual.md](/home/matt/nerd/docs/manual.md)
-remains the planning document until the manual is written.
+The manual lives in separate part files under `docs/manual/`. This file is
+retained as a maintenance checklist for future manual revisions.
 
-Recommended generated layout:
+Current layout:
 
 - `docs/manual/README.md`
   Manual index, audience, setup instructions, and reading order.
@@ -312,7 +311,7 @@ Rules to teach:
 Authoring coverage:
 
 - [038-for-infinite.t](/home/matt/nerd/tests/language/038-for-infinite.t)
-- [041-for-while.t](/home/matt/nerd/tests/language/041-for-while.t)
+- [041-for-while.t](/home/matt/nerd/tests/language/041-for-while.t) for condition loops
 - [042-for-c-style.t](/home/matt/nerd/tests/language/042-for-c-style.t)
 - [044-for-break-again.t](/home/matt/nerd/tests/language/044-for-break-again.t)
 - [049-labelled-loop-expressions.t](/home/matt/nerd/tests/language/049-labelled-loop-expressions.t)

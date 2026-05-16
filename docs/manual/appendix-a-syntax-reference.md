@@ -24,8 +24,8 @@ Name :: plex { field Type }
 Name :: plex [T, U] { field Type }
 Name :: union { field Type }
 Name :: union [T, U] { field Type }
-Name :: enum { Variant Payload(Type) }
-Name :: enum [T, U] { Variant Payload(Type) }
+Name :: enum { Variant, Payload(Type) }
+Name :: enum [T, U] { Variant, Payload(Type) }
 pub name :: value
 pub name := value
 pub Name :: Type
@@ -141,9 +141,7 @@ for { ... }
 for condition { ... }
 for init; condition; update { ... }
 for item in collection { ... }
-for ^item in collection { ... }
 for index, item in collection { ... }
-for index, ^item in collection { ... }
 for item in [start..end] { ... }
 for item in [start..=end] { ... }
 for index, item in [start..end] { ... }
@@ -214,9 +212,9 @@ Type.size
 ```nerd
 literal
 _
-name
-Variant
-Variant(name)
+as name
+Variant()
+Variant(as name)
 { field: pattern }
 Type { field: pattern }
 left, right

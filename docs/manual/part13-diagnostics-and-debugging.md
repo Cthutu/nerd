@@ -126,7 +126,7 @@ main :: fn () -> i32 {
 ```
 
 Remove the binding if it is not needed. Use a leading underscore only when the
-binding is intentionally present for documentation, future work, or shape
+binding is intentionally present for documentation, placeholder code, or shape
 matching. If a leading-underscore binding is read later, rename it without the
 leading `_`; Nerd reports that use as an error. Use bare `_` when a returned
 value is deliberately ignored.
@@ -176,9 +176,8 @@ Use `-v` or `--verbose` to print a result line as each selected test finishes:
 nerd test path/to/file.n -v
 ```
 
-Test declarations are not normal module API declarations. The test runner
-turns each selected test into a hidden zero-parameter function and calls those
-functions from a generated test entry point.
+Test declarations are not exported module API. They are discovered and run by
+the `nerd test` command.
 
 The current test runner uses fail-fast assertion behaviour. If an `assert`
 inside a test fails, the program exits with status 127 and later selected tests

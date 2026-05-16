@@ -163,9 +163,9 @@ int_id := id[i32]  -- choose the i32 version as a function value
 return int_id(42)  -- function values are called normally
 ```
 
-The first version of generics accepts type parameters only. Constraints are
-future work; for now, a generic body must be valid for each concrete use that
-the program asks the compiler to build.
+Generics accept type parameters only. Constraints are not part of the current
+generic syntax, so a generic body must be valid for each concrete use that the
+program asks the compiler to build.
 
 ## Nested Functions
 

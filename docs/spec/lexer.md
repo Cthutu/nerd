@@ -14,7 +14,7 @@ manual. It records every `TokenKind` defined in
   not as tokens.
 - The test-section separator `¬` stops lexing by truncating
   `lexer->source.source`; it is not emitted as a token.
-- Identifiers start with an ASCII letter or `_`, then continue with ASCII
+- Identifiers start with an ASCII letter or `_`, then may contain ASCII
   letters, decimal digits, or `_`. If the identifier text matches a keyword, the
   keyword token is emitted instead of `TK_Symbol`.
 - Numeric literal separators use `_`. Separators are accepted inside digits but

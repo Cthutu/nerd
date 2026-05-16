@@ -2,8 +2,8 @@
 
 [Manual Index](README.md) | Previous: [Blocks, Scope, And Cleanup](part05-blocks-scope-and-cleanup.md) | Next: [Loops](part07-loops.md)
 
-`on` is Nerd's main branching construct. Branching means choosing which
-expression or statement to run based on a condition or value. `on` covers simple
+`on` is Nerd's branching construct. Branching means choosing which expression or
+statement to run based on a condition or value. All branch forms use `on`: simple
 boolean branches, condition chains, and pattern matching.
 
 ## Short Boolean Form

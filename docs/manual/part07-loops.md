@@ -2,8 +2,8 @@
 
 [Manual Index](README.md) | Previous: [Branching With `on`](part06-branching-with-on.md) | Next: [Compound Data](part08-compound-data.md)
 
-Nerd uses `for` for loops. The same keyword covers infinite loops, condition
-loops, C-style loops, and iteration over collections.
+Nerd uses `for` for every loop. The same keyword covers infinite loops,
+condition loops, C-style loops, and iteration over collections.
 
 ## Infinite Loops
 
@@ -88,24 +88,6 @@ main :: fn () {
 }
 ```
 
-When you need to mutate items in place, iterate pointers when the collection
-supports it:
-
-Pointer syntax is introduced in Part 8; here `^value` means the loop item is a
-pointer to an element rather than a copy of the element.
-
-```nerd
-main :: fn () -> i32 {
-    values := [1, 2, 3]
-    for ^value in values {  -- iterate pointers to the elements
-        value^ += 1         -- update the element through the pointer
-    }
-    return values[0]
-}
-```
-
-The item variable is a pointer, so use postfix `^` to read or assign through it.
-
 When both the collection index and item are needed, bind both names:
 
 ```nerd
@@ -119,14 +101,7 @@ main :: fn () {
 }
 ```
 
-The index binding has type `usize`. Pointer item iteration can also include an
-index:
-
-```nerd
-for i, ^value in values {
-    value^ += i.as(i32)
-}
-```
+The index binding has type `usize`.
 
 Integer ranges use bracketed `start..end` or `start..=end` forms:
 
@@ -188,8 +163,8 @@ find :: fn (values: [..]i32, needle: i32) -> i32 {
 Expression blocks are still value targets, so `break $label <expr>` can target a
 labelled expression block when that is the nearest matching label.
 
-The same conditional break can be written with `break [label] on <condition> =>
-<expr>`:
+The same conditional break can be written with `break on <condition> => <expr>`.
+When needed, place a loop label after `break`:
 
 ```nerd
 find :: fn (values: [..]i32, needle: i32) -> i32 {

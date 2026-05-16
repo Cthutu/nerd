@@ -30,7 +30,9 @@ If you are new to the codebase, read these first:
 9. [testing.md](/home/matt/nerd/docs/testing.md)
 
 If you are learning the Nerd language rather than the compiler implementation,
-start with [manual/README.md](/home/matt/nerd/docs/manual/README.md).
+start with [manual/README.md](/home/matt/nerd/docs/manual/README.md). If you are
+validating the language against the implementation, use
+[spec/README.md](/home/matt/nerd/docs/spec/README.md).
 
 ## Overviews
 
@@ -65,6 +67,10 @@ start with [manual/README.md](/home/matt/nerd/docs/manual/README.md).
 The learner-facing manual lives under:
 
 - [manual/README.md](/home/matt/nerd/docs/manual/README.md)
+
+The implementation-derived language specs live under:
+
+- [spec/README.md](/home/matt/nerd/docs/spec/README.md)
 
 The manual planning document is retained as an authoring map:
 

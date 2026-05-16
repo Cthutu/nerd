@@ -101,6 +101,8 @@ Game :: plex {
 Then dispatch commands with `on`:
 
 ```nerd
+io :: use std.io
+
 describe :: fn (game: Game) {
     on game.room {  -- branch on the current room
         Cave => io.prn("It is very dark in here.")

@@ -12,6 +12,9 @@ The examples are intentionally small and executable. Standard library functions
 are used where they keep examples readable, but the standard library itself is
 documented separately because it is still evolving.
 
+Nerd uses a small set of core control-flow keywords: all loops start with
+`for`, and branching uses `on`.
+
 ## Reading Order
 
 1. [First Programs](part01-first-programs.md)

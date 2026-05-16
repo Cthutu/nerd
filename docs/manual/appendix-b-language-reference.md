@@ -76,6 +76,8 @@ intended exit code.
 
 ## Control Flow
 
+- All loops use `for`.
+- All branch forms use `on`.
 - `return` exits the current function.
 - `assert` checks a `bool` condition at runtime and exits with status 127 if it
   is false.
@@ -116,7 +118,6 @@ intended exit code.
   but not including `end`.
 - `for item in [start..=end] { ... }` iterates integer values from `start`
   through `end`.
-- `for ^item in collection { ... }` iterates mutable item pointers where valid.
 - `for index, item in collection { ... }` also binds the current index as
   `usize`.
 
@@ -150,8 +151,9 @@ intended exit code.
 ## Generics
 
 - The current generic system supports type parameters only.
-- Numeric or value generic parameters are future work.
-- Constraints are future work and are expected to build on traits.
+- Numeric or value generic parameters are not part of the current generic
+  syntax.
+- Generic constraints are not part of the current generic syntax.
 - Every explicit generic use must provide all type arguments.
 - Generic instantiations are compiled as concrete functions and types.
 
