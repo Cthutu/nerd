@@ -22,6 +22,39 @@ manual. It records every `TokenKind` defined in
 - Single-quoted packed integer literals emit `TK_Integer`, not a distinct
   character-literal token.
 
+## Interpolated Strings
+
+Interpolated strings start with `$"` and emit `TK_InterpolatedStringStart`.
+String continuations start with `+"` and emit `TK_StringContinuationStart`.
+Both forms then use the same text/expression scanning path.
+
+Text between interpolation expressions is decoded into ordinary `TK_String`
+tokens and stored in `lexer->strings`. Empty text chunks are not emitted. Escape
+sequences in text chunks use the same decoder as string and packed integer
+literals: `\\`, `\n`, `\r`, `\t`, `\0`, `\a`, `\b`, `\f`, `\v`, and `\xNN`
+are recognised, and `\"` produces a quote.
+
+An unescaped `{` inside interpolated text ends the current text chunk, emits
+`TK_LBrace`, and switches back to normal expression lexing. The expression body
+uses ordinary Nerd tokens. Nested `{` and `}` tokens are counted so braces inside
+the interpolation expression do not close the interpolation early.
+
+When the brace depth returns to zero, the closing `}` is emitted as `TK_RBrace`
+and the lexer resumes interpolated text scanning. A closing `"` in text mode
+emits `TK_InterpolatedStringEnd`. If the source ends before that closing quote,
+the lexer reports an unterminated string literal.
+
+For example, `$"Hello {name}"` emits this token shape:
+
+| Source fragment | Token kind |
+| --- | --- |
+| `$"` | `TK_InterpolatedStringStart` |
+| `Hello ` | `TK_String` |
+| `{` | `TK_LBrace` |
+| `name` | `TK_Symbol` |
+| `}` | `TK_RBrace` |
+| `"` | `TK_InterpolatedStringEnd` |
+
 ## Literal And Identifier Tokens
 
 | Token kind                   | Source spelling                                                                    | Payload                 | Notes                                                                                     |
