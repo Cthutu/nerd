@@ -1,7 +1,7 @@
 main :: fn () -> i32 {
     nums: [..]i32
 
-    nums.reserve(8)
+    nums.reserve_to(8)
     on nums.count != 0 => return 1
     on nums.capacity < 8 => return 2
 

@@ -2440,7 +2440,8 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
                                                    const HirFunction* function,
                                                    const HirExpr*     call,
-                                                   u32 receiver_expr_index);
+                                                   u32  receiver_expr_index,
+                                                   bool relative);
 
 internal LlvmValue llvm_emit_dynamic_array_clear(LlvmFunctionContext* ctx,
                                                  const HirFunction*   function,
@@ -2472,7 +2473,8 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
                                                   const HirFunction*   function,
                                                   const HirExpr*       call,
                                                   u32  receiver_expr_index,
-                                                  bool initialize);
+                                                  bool initialize,
+                                                  bool relative);
 
 internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
                                const HirFunction*   function,
@@ -7602,9 +7604,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return llvm_emit_dynamic_array_push(
                         ctx, function, expr, dynarray_receiver);
                 }
-                if (string_eq_cstr(dynarray_method, "reserve")) {
+                if (string_eq_cstr(dynarray_method, "reserve_to")) {
                     return llvm_emit_dynamic_array_reserve(
-                        ctx, function, expr, dynarray_receiver);
+                        ctx, function, expr, dynarray_receiver, false);
+                }
+                if (string_eq_cstr(dynarray_method, "reserve_extra")) {
+                    return llvm_emit_dynamic_array_reserve(
+                        ctx, function, expr, dynarray_receiver, true);
                 }
                 if (string_eq_cstr(dynarray_method, "clear")) {
                     return llvm_emit_dynamic_array_clear(
@@ -7630,13 +7636,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return llvm_emit_dynamic_array_append(
                         ctx, function, expr, dynarray_receiver);
                 }
-                if (string_eq_cstr(dynarray_method, "resize")) {
+                if (string_eq_cstr(dynarray_method, "resize_to")) {
                     return llvm_emit_dynamic_array_resize(
-                        ctx, function, expr, dynarray_receiver, true);
+                        ctx, function, expr, dynarray_receiver, true, false);
                 }
-                if (string_eq_cstr(dynarray_method, "resize_undefined")) {
+                if (string_eq_cstr(dynarray_method, "resize_undefined_to")) {
                     return llvm_emit_dynamic_array_resize(
-                        ctx, function, expr, dynarray_receiver, false);
+                        ctx, function, expr, dynarray_receiver, false, false);
+                }
+                if (string_eq_cstr(dynarray_method, "extend")) {
+                    return llvm_emit_dynamic_array_resize(
+                        ctx, function, expr, dynarray_receiver, true, true);
+                }
+                if (string_eq_cstr(dynarray_method, "extend_undefined")) {
+                    return llvm_emit_dynamic_array_resize(
+                        ctx, function, expr, dynarray_receiver, false, true);
                 }
                 return (LlvmValue){0};
             }
@@ -9010,7 +9024,8 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
                                                    const HirFunction* function,
                                                    const HirExpr*     call,
-                                                   u32 receiver_expr_index)
+                                                   u32  receiver_expr_index,
+                                                   bool relative)
 {
     if (call->arg_count != 1 ||
         receiver_expr_index >= array_count(ctx->hir->exprs)) {
@@ -9059,6 +9074,20 @@ internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
               STRINGV(data_ptr_ptr),
               STRINGV(capacity),
               STRINGV(capacity_ptr));
+    if (relative) {
+        string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+        string count     = llvm_temp(ctx);
+        string needed    = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load i64, ptr " STRINGP "\n"
+                  "  " STRINGP " = add i64 " STRINGP ", " STRINGP "\n",
+                  STRINGV(count),
+                  STRINGV(count_ptr),
+                  STRINGV(needed),
+                  STRINGV(count),
+                  STRINGV(requested_i64));
+        requested_i64 = needed;
+    }
 
     string grows = llvm_temp(ctx);
     sb_format(ctx->sb,
@@ -9625,7 +9654,8 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
                                                   const HirFunction*   function,
                                                   const HirExpr*       call,
                                                   u32  receiver_expr_index,
-                                                  bool initialize)
+                                                  bool initialize,
+                                                  bool relative)
 {
     if (call->arg_count != 1 ||
         receiver_expr_index >= array_count(ctx->hir->exprs)) {
@@ -9679,6 +9709,15 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
               STRINGV(count_ptr),
               STRINGV(capacity),
               STRINGV(capacity_ptr));
+    if (relative) {
+        string new_count = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = add i64 " STRINGP ", " STRINGP "\n",
+                  STRINGV(new_count),
+                  STRINGV(old_count),
+                  STRINGV(requested_i64));
+        requested_i64 = new_count;
+    }
 
     string grows = llvm_temp(ctx);
     sb_format(ctx->sb,

@@ -1554,9 +1554,12 @@ internal string lsp_field_hover_text(const LspDocument* doc,
                 recognised = true;
             } else if (string_eq(name, s("push")) ||
                        string_eq(name, s("append")) ||
-                       string_eq(name, s("reserve")) ||
-                       string_eq(name, s("resize")) ||
-                       string_eq(name, s("resize_undefined")) ||
+                       string_eq(name, s("reserve_to")) ||
+                       string_eq(name, s("reserve_extra")) ||
+                       string_eq(name, s("resize_to")) ||
+                       string_eq(name, s("resize_undefined_to")) ||
+                       string_eq(name, s("extend")) ||
+                       string_eq(name, s("extend_undefined")) ||
                        string_eq(name, s("delete")) ||
                        string_eq(name, s("swap_delete")) ||
                        string_eq(name, s("pop")) ||

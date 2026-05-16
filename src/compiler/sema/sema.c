@@ -7896,10 +7896,13 @@ internal bool sema_dynarray_method_signature(Sema*        sema,
         array_push(params, item_type);
     } else if (string_eq(method, s("append"))) {
         array_push(params, sema_add_slice_type(sema, item_type));
-    } else if (string_eq(method, s("reserve"))) {
+    } else if (string_eq(method, s("reserve_to")) ||
+               string_eq(method, s("reserve_extra"))) {
         array_push(params, sema_builtin_type(sema, STK_Usize));
-    } else if (string_eq(method, s("resize")) ||
-               string_eq(method, s("resize_undefined"))) {
+    } else if (string_eq(method, s("resize_to")) ||
+               string_eq(method, s("resize_undefined_to")) ||
+               string_eq(method, s("extend")) ||
+               string_eq(method, s("extend_undefined"))) {
         array_push(params, sema_builtin_type(sema, STK_Usize));
     } else if (string_eq(method, s("delete")) ||
                string_eq(method, s("swap_delete"))) {
@@ -13774,9 +13777,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 sema_type_name(
                                     lexer, sema, &temp_arena, arg_type));
                         }
-                    } else if (string_eq(method, s("reserve")) ||
-                               string_eq(method, s("resize")) ||
-                               string_eq(method, s("resize_undefined")) ||
+                    } else if (string_eq(method, s("reserve_to")) ||
+                               string_eq(method, s("reserve_extra")) ||
+                               string_eq(method, s("resize_to")) ||
+                               string_eq(method, s("resize_undefined_to")) ||
+                               string_eq(method, s("extend")) ||
+                               string_eq(method, s("extend_undefined")) ||
                                string_eq(method, s("delete")) ||
                                string_eq(method, s("swap_delete"))) {
                         if (call->arg_count != 1) {

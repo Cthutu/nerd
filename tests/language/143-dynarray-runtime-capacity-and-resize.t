@@ -3,12 +3,12 @@ make :: fn (initial_size: usize) -> i32 {
     on values.capacity < initial_size => return 1
     on values.count != 0 => return 2
 
-    values.resize_undefined(initial_size)
+    values.resize_undefined_to(initial_size)
     values[0] = 7
     values[1] = 8
     values[2] = 9
 
-    values.resize(5)
+    values.resize_to(5)
     on values.count != 5 => return 3
     on values[3] != 0 => return 4
     on values[4] != 0 => return 5
@@ -42,11 +42,11 @@ func fn.0(initial_size: usize) -> i32 {
       return i32 2
     }
   }
-  expr void call fn (usize) -> void field([..]i32 local.1(values), resize_undefined)(usize local.0(initial_size))
+  expr void call fn (usize) -> void field([..]i32 local.1(values), resize_undefined_to)(usize local.0(initial_size))
   assign i32 index([..]i32 local.1(values), untyped integer 0) = i32 7
   assign i32 index([..]i32 local.1(values), untyped integer 1) = i32 8
   assign i32 index([..]i32 local.1(values), untyped integer 2) = i32 9
-  expr void call fn (usize) -> void field([..]i32 local.1(values), resize)(usize 5)
+  expr void call fn (usize) -> void field([..]i32 local.1(values), resize_to)(usize 5)
   expr void on bool not_equal(usize field([..]i32 local.1(values), count), usize 5) {
     value(bool yes) => {
       return i32 3

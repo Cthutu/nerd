@@ -55,9 +55,12 @@ Common operations:
 | `.delete(index)` | remove one item and preserve order |
 | `.swap_delete(index)` | remove one item by replacing it with the last item |
 | `.append(slice)` | add many items from a slice |
-| `.reserve(capacity)` | ensure storage for at least this many items |
-| `.resize(count)` | change the count and default-initialise new items |
-| `.resize_undefined(count)` | change the count without initialising new items |
+| `.reserve_to(capacity)` | ensure storage for at least this absolute capacity |
+| `.reserve_extra(additional)` | ensure room for this many more live items |
+| `.resize_to(count)` | set the count and default-initialise new items |
+| `.resize_undefined_to(count)` | set the count without initialising new items |
+| `.extend(count)` | add this many default-initialised items |
+| `.extend_undefined(count)` | add this many uninitialised items |
 | `.clear()` | set the count to zero but keep storage |
 | `.free()` | release owned storage |
 

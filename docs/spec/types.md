@@ -103,18 +103,21 @@ expressions.
 
 The semantic analyser recognises methods on dynamic arrays:
 
-| Method             | Arguments                       | Result    |
-| ------------------ | ------------------------------- | --------- |
-| `push`             | item                            | `void`    |
-| `append`           | matching slice or dynamic array | `void`    |
-| `reserve`          | integer count                   | `void`    |
-| `resize`           | integer count                   | `void`    |
-| `resize_undefined` | integer count                   | `void`    |
-| `delete`           | integer index                   | `void`    |
-| `swap_delete`      | integer index                   | `void`    |
-| `pop`              | none                            | item type |
-| `clear`            | none                            | `void`    |
-| `free`             | none                            | `void`    |
+| Method                | Arguments                       | Result    |
+| --------------------- | ------------------------------- | --------- |
+| `push`                | item                            | `void`    |
+| `append`              | matching slice or dynamic array | `void`    |
+| `reserve_to`          | absolute capacity               | `void`    |
+| `reserve_extra`       | additional room beyond count    | `void`    |
+| `resize_to`           | absolute count                  | `void`    |
+| `resize_undefined_to` | absolute count                  | `void`    |
+| `extend`              | additional count                | `void`    |
+| `extend_undefined`    | additional count                | `void`    |
+| `delete`              | integer index                   | `void`    |
+| `swap_delete`         | integer index                   | `void`    |
+| `pop`                 | none                            | item type |
+| `clear`               | none                            | `void`    |
+| `free`                | none                            | `void`    |
 
 These are language-recognised method calls rather than ordinary functions from
 the standard library.

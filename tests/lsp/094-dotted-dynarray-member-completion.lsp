@@ -168,11 +168,15 @@ impl FrameSystem {
                 "kind": 2
             },
             {
-                "label": "reserve",
+                "label": "reserve_to",
                 "kind": 2
             },
             {
-                "label": "resize",
+                "label": "reserve_extra",
+                "kind": 2
+            },
+            {
+                "label": "resize_to",
                 "kind": 2
             },
             {
@@ -180,7 +184,15 @@ impl FrameSystem {
                 "kind": 2
             },
             {
-                "label": "resize_undefined",
+                "label": "resize_undefined_to",
+                "kind": 2
+            },
+            {
+                "label": "extend",
+                "kind": 2
+            },
+            {
+                "label": "extend_undefined",
                 "kind": 2
             }
         ]

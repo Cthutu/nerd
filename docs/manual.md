@@ -379,7 +379,8 @@ Concepts:
 - `.push`
 - `.delete` and `.swap_delete`
 - `.append`
-- `.reserve`
+- `.reserve_to` and `.reserve_extra`
+- `.resize_to`, `.resize_undefined_to`, `.extend`, and `.extend_undefined`
 - `.clear`
 - `.free`
 - slicing dynamic arrays

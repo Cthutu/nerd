@@ -46,9 +46,12 @@ Dynamic arrays own storage and expose language-recognised operations:
 | --- | --- |
 | `push(value)` | Append one item. |
 | `append(values)` | Append a matching slice or dynamic array. |
-| `reserve(count)` | Ensure storage for at least `count` items. |
-| `resize(count)` | Set the live count and default-initialise new items. |
-| `resize_undefined(count)` | Set the live count without initialising new items. |
+| `reserve_to(capacity)` | Ensure absolute storage for at least `capacity` items. |
+| `reserve_extra(additional)` | Ensure room for `additional` more items beyond the current live count. |
+| `resize_to(count)` | Set the live count to absolute `count` and default-initialise new items. |
+| `resize_undefined_to(count)` | Set the live count to absolute `count` without initialising new items. |
+| `extend(count)` | Add `count` default-initialised items. |
+| `extend_undefined(count)` | Add `count` uninitialised items. |
 | `delete(index)` | Remove one item and preserve order by shifting later items. |
 | `swap_delete(index)` | Remove one item by replacing it with the last item. |
 | `pop()` | Remove and return the last item. |

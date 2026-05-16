@@ -34,7 +34,7 @@ main :: fn () -> i32 {
 
     prn($"{view[0]} {view[1]} {view[2]} {view[3]} {view[4]}")
 
-    names.reserve(10)
+    names.reserve_to(10)
     on names.capacity < 10 => return 11
 
     words := make_words()
@@ -157,7 +157,7 @@ func fn.1() -> i32 {
     }
   }
   expr void call bind.2(prn)(string interpolate(string index([]string local.5(view), untyped integer 0), <unknown> " ", string index([]string local.5(view), untyped integer 1), <unknown> " ", string index([]string local.5(view), untyped integer 2), <unknown> " ", string index([]string local.5(view), untyped integer 3), <unknown> " ", string index([]string local.5(view), untyped integer 4)))
-  expr void call fn (usize) -> void field([..]string local.3(names), reserve)(usize 10)
+  expr void call fn (usize) -> void field([..]string local.3(names), reserve_to)(usize 10)
   expr void on bool less(usize field([..]string local.3(names), capacity), usize 10) {
     value(bool yes) => {
       return i32 11

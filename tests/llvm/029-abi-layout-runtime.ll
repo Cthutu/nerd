@@ -26,7 +26,7 @@ score :: fn(choice: Choice) -> i32 {
 use_dyn :: fn() -> i32 {
     values: [..]Pair
     values.push(Pair { left: 3, right: 4 })
-    values.reserve(4)
+    values.reserve_to(4)
     first := values[0]
     values.free()
     return first.left + first.right.as(i32)

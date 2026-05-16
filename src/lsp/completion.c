@@ -390,19 +390,22 @@ internal void lsp_completion_add_plex_literal_field(Arena*     arena,
 internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
                                                        JsonValue* items)
 {
-    lsp_completion_add(arena, items, s("data"), 5);             // Field
-    lsp_completion_add(arena, items, s("count"), 5);            // Field
-    lsp_completion_add(arena, items, s("capacity"), 5);         // Field
-    lsp_completion_add(arena, items, s("append"), 2);           // Method
-    lsp_completion_add(arena, items, s("clear"), 2);            // Method
-    lsp_completion_add(arena, items, s("delete"), 2);           // Method
-    lsp_completion_add(arena, items, s("free"), 2);             // Method
-    lsp_completion_add(arena, items, s("pop"), 2);              // Method
-    lsp_completion_add(arena, items, s("push"), 2);             // Method
-    lsp_completion_add(arena, items, s("reserve"), 2);          // Method
-    lsp_completion_add(arena, items, s("resize"), 2);           // Method
-    lsp_completion_add(arena, items, s("swap_delete"), 2);      // Method
-    lsp_completion_add(arena, items, s("resize_undefined"), 2); // Method
+    lsp_completion_add(arena, items, s("data"), 5);                // Field
+    lsp_completion_add(arena, items, s("count"), 5);               // Field
+    lsp_completion_add(arena, items, s("capacity"), 5);            // Field
+    lsp_completion_add(arena, items, s("append"), 2);              // Method
+    lsp_completion_add(arena, items, s("clear"), 2);               // Method
+    lsp_completion_add(arena, items, s("delete"), 2);              // Method
+    lsp_completion_add(arena, items, s("free"), 2);                // Method
+    lsp_completion_add(arena, items, s("pop"), 2);                 // Method
+    lsp_completion_add(arena, items, s("push"), 2);                // Method
+    lsp_completion_add(arena, items, s("reserve_to"), 2);          // Method
+    lsp_completion_add(arena, items, s("reserve_extra"), 2);       // Method
+    lsp_completion_add(arena, items, s("resize_to"), 2);           // Method
+    lsp_completion_add(arena, items, s("swap_delete"), 2);         // Method
+    lsp_completion_add(arena, items, s("resize_undefined_to"), 2); // Method
+    lsp_completion_add(arena, items, s("extend"), 2);              // Method
+    lsp_completion_add(arena, items, s("extend_undefined"), 2);    // Method
 }
 
 internal bool lsp_completion_is_internal_label(string label)
