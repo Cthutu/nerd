@@ -18,22 +18,22 @@ main :: fn () -> i32 {
 hir 0
 module module.0(092-stdlib-arena.input)
 import module.1(std.arena)
-import import.0 __impl_126_init from module.1(std.arena).decl.7: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { ^u8^u8 base, 
-import import.1 __impl_126_done from module.1(std.arena).decl.8: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex {
-import import.2 __impl_126_store from module.1(std.arena).decl.9: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { 
-import import.3 __impl_126_restore from module.1(std.arena).decl.10: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { ^u8^u8
-import import.4 __impl_126_reset from module.1(std.arena).decl.11: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex {
-import import.5 arena_new from module.1(std.arena).decl.2: fn (usize) -> plex { []u8[]u8 base, usize curs
-import import.6 arena_capacity from module.1(std.arena).decl.3: fn (^plex { []u8[]u8 base, usize cursor }plex {
+import import.0 arena_capacity from module.1(std.arena).decl.3: fn (^plex { []u8[]u8 base, usize cursor }plex {
+import import.1 arena_new from module.1(std.arena).decl.2: fn (usize) -> plex { []u8[]u8 base, usize curs
+import import.2 __impl_126_init from module.1(std.arena).decl.7: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { ^u8^u8 base, 
+import import.3 __impl_126_done from module.1(std.arena).decl.8: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex {
+import import.4 __impl_126_store from module.1(std.arena).decl.9: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { 
+import import.5 __impl_126_restore from module.1(std.arena).decl.10: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex { ^u8^u8
+import import.6 __impl_126_reset from module.1(std.arena).decl.11: fn (^plex { ^u8^u8 base, usize cursor, usize committed_size, usize reserved_size, usize alloc_granularity, usize grow_rate }plex {
 import import.7 arena_alloc from module.1(std.arena).decl.4: fn (^plex { []u8[]u8 base, usize cursor }plex { []u8[
 import import.8 arena_free from module.1(std.arena).decl.5: fn (^plex { []u8[]u8 base, usize cursor }plex 
-bind __impl_126_init = import.0
-bind __impl_126_done = import.1
-bind __impl_126_store = import.2
-bind __impl_126_restore = import.3
-bind __impl_126_reset = import.4
-bind arena_new = import.5
-bind arena_capacity = import.6
+bind arena_capacity = import.0
+bind arena_new = import.1
+bind __impl_126_init = import.2
+bind __impl_126_done = import.3
+bind __impl_126_store = import.4
+bind __impl_126_restore = import.5
+bind __impl_126_reset = import.6
 bind arena_alloc = import.7
 bind arena_free = import.8
 bind arena = module.1
@@ -50,13 +50,13 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+declare i64 @$arena_capacity(ptr)
+declare { { ptr, i64 }, i64 } @$arena_new(i64)
 declare void @$__impl_126_init(ptr, i64, i64)
 declare void @$__impl_126_done(ptr)
 declare i64 @$__impl_126_store(ptr)
 declare void @$__impl_126_restore(ptr, i64)
 declare void @$__impl_126_reset(ptr)
-declare { { ptr, i64 }, i64 } @$arena_new(i64)
-declare i64 @$arena_capacity(ptr)
 declare { ptr, i64 } @$arena_alloc(ptr, i64)
 declare void @$arena_free(ptr)
 

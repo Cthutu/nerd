@@ -2318,6 +2318,7 @@ internal bool sema_node_is_inside_function_body(const Ast* ast, u32 node_index)
     return false;
 }
 
+#if OS_WINDOWS
 internal bool sema_ascii_eq_ci(string a, cstr b)
 {
     usize i = 0;
@@ -2336,6 +2337,7 @@ internal bool sema_ascii_eq_ci(string a, cstr b)
     }
     return i == a.count && b[i] == '\0';
 }
+#endif
 
 internal bool sema_windows_library_should_validate(string library)
 {
@@ -2360,6 +2362,7 @@ internal bool sema_windows_library_should_validate(string library)
 #endif
 }
 
+#if OS_WINDOWS
 internal cstr sema_string_to_cstr(Arena* arena, string value)
 {
     char* result = arena_alloc(arena, value.count + 1);
@@ -2367,6 +2370,7 @@ internal cstr sema_string_to_cstr(Arena* arena, string value)
     result[value.count] = '\0';
     return result;
 }
+#endif
 
 internal bool
 sema_windows_ffi_symbol_exists(Arena* arena, string library, string symbol)

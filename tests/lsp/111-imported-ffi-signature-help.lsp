@@ -131,7 +131,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
-            "uri": "file:///C%3A/Users/matt/nerd/tests/lsp/111-imported-ffi-signature-help/main.n",
+            "uri": "__REPO_URI__/tests/lsp/111-imported-ffi-signature-help/main.n",
             "diagnostics": [
                 {
                     "range": {
@@ -151,7 +151,7 @@ main :: fn () {
                     "relatedInformation": [
                         {
                             "location": {
-                                "uri": "file:///C%3A/Users/matt/nerd/tests/lsp/111-imported-ffi-signature-help/main.n",
+                                "uri": "__REPO_URI__/tests/lsp/111-imported-ffi-signature-help/main.n",
                                 "range": {
                                     "start": {
                                         "line": 4,
