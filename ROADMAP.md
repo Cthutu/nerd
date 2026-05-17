@@ -524,7 +524,7 @@ library layering are in place.
   - [x] prefer existing direct field/member behaviour before trait lookup
   - [x] report ambiguity when multiple traits provide the same receiver method
     for a type
-  - [ ] require explicit trait calls for functions that cannot be resolved from
+  - [x] require explicit trait calls for functions that cannot be resolved from
     a receiver value
 - [ ] Parser and AST work:
   - [x] parse trait declarations

@@ -1339,7 +1339,37 @@ bool error_0348_ambiguous_method_call(NerdSource source,
                         STRINGV(symbol));
     error_add_help(&error,
                    "Call an inherent method with a unique name, or use an "
-                   "explicit trait call once that syntax is available.");
+                   "explicit trait call such as `Trait.member(value, ...)`.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a bare call to a trait member name.
+
+bool error_0349_unqualified_trait_member_call(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     member,
+                                              string     trait)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Trait member `" STRINGP "` must be called explicitly",
+                   STRINGV(member));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is a member of trait `" STRINGP "`",
+                        STRINGV(member),
+                        STRINGV(trait));
+    error_add_help(&error,
+                   "Use receiver syntax, `" STRINGP "." STRINGP
+                   "(value, ...)`, or `" STRINGP "[Type]." STRINGP "(...)`.",
+                   STRINGV(trait),
+                   STRINGV(member),
+                   STRINGV(trait),
+                   STRINGV(member));
     error_render(&error);
     return false;
 }

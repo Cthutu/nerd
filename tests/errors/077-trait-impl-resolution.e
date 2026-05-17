@@ -156,6 +156,45 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Call an inherent method with a unique name, or use an explicit trait call once that syntax is available."
+        "Call an inherent method with a unique name, or use an explicit trait call such as `Trait.member(value, ...)`."
+    ]
+}
+¬
+Display :: trait {
+    show :: fn (Self) -> string
+}
+
+Point :: plex {
+    x i32
+}
+
+impl Display for Point {
+    show :: fn (self: Self) => "point"
+}
+
+main :: fn () {
+    point := Point { x: 1 }
+    _ := show(point)
+}
+¬
+{
+    "message": "Trait member `show` must be called explicitly",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 15,
+        "column": 10
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 15,
+            "column": 10,
+            "length": 4,
+            "message": "`show` is a member of trait `Display`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use receiver syntax, `Display.show(value, ...)`, or `Display[Type].show(...)`."
     ]
 }

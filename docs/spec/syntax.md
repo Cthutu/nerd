@@ -118,7 +118,9 @@ be called explicitly with `<Trait>.<member>(value, ...)`, which restricts lookup
 to implementations of that trait and uses the first argument as the receiver.
 When the implementation type cannot be inferred from a receiver argument, use
 `<Trait>[Type].<member>(...)` to select the implementation directly. Generic
-trait parameters and constraints are future milestone work.
+trait members are not placed in the ordinary function namespace: a bare call
+such as `show(value)` does not resolve to a trait member. Generic trait
+parameters and constraints are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

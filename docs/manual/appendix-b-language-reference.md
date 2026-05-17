@@ -162,7 +162,9 @@ intended exit code.
   are ambiguous when multiple trait impl methods with the same name are valid
   for the receiver type. Use `Trait.member(value, ...)` to explicitly select a
   trait member implementation. Use `Trait[Type].member(...)` when there is no
-  receiver argument to infer the implementation type.
+  receiver argument to infer the implementation type. Trait members are not
+  ordinary top-level functions, so a bare call such as `member(value)` does not
+  resolve to a trait member.
   Local trait implementations are checked against the required member
   signatures. Duplicate non-generic implementations for the same trait and
   target type are rejected. Generic trait constraints are not part of the

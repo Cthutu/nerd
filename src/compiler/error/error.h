@@ -359,6 +359,10 @@ bool error_0347_used_underscore_local(NerdSource source,
 bool error_0348_ambiguous_method_call(NerdSource source,
                                       ErrorSpan  span,
                                       string     symbol);
+bool error_0349_unqualified_trait_member_call(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     member,
+                                              string     trait);
 
 //------------------------------------------------------------------------------
 // Low-level error system

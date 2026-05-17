@@ -3985,6 +3985,36 @@ internal const AstNode* sema_trait_member_value(const Ast*     ast,
     return value;
 }
 
+internal u32 sema_find_trait_with_member(const Ast* ast,
+                                         Sema*      sema,
+                                         u32        member_symbol)
+{
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->kind != SK_Trait ||
+            decl->value_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* trait_node = &ast->nodes[decl->value_node_index];
+        if (trait_node->kind != AK_Trait ||
+            trait_node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* body = &ast->nodes[trait_node->a];
+        for (u32 member_index = body->a; member_index < body->b;
+             ++member_index) {
+            const AstNode* member = &ast->nodes[member_index];
+            if (member->kind == AK_Bind &&
+                ast_get_symbol(member) == member_symbol) {
+                return decl->symbol_handle;
+            }
+        }
+    }
+    return U32_MAX;
+}
+
 internal bool sema_impl_has_member(const Ast*     ast,
                                    const AstNode* body,
                                    u32            symbol,
@@ -14339,6 +14369,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_builtin_type(sema, STK_Arena);
                 type_index = sema_builtin_type(sema, STK_Arena);
                 break;
+            }
+            if (callee_node->kind == AK_SymbolRef &&
+                sema->node_local_indices[node->a] == sema_no_local() &&
+                sema->node_decl_indices[node->a] == sema_no_decl()) {
+                u32 trait_symbol =
+                    sema_find_trait_with_member(ast, sema, callee_node->a);
+                if (trait_symbol != U32_MAX) {
+                    return error_0349_unqualified_trait_member_call(
+                        lexer->source,
+                        sema_node_span(lexer, callee_node),
+                        lex_symbol(lexer, callee_node->a),
+                        lex_symbol(lexer, trait_symbol));
+                }
             }
             const AstNode* field_callee                   = callee_node;
             u32            explicit_method_arg_node_index = U32_MAX;
