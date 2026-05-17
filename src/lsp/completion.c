@@ -3457,7 +3457,7 @@ internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
     static cstr keywords[] = {
         "assert", "break", "again", "defer",     "else", "enum",   "ffi",
         "fn",     "for",   "impl",  "intrinsic", "on",   "pragma", "pub",
-        "return", "test",  "trait", "union",     "use",
+        "return", "test",  "trait", "union",     "use",  "where",
     };
 
     for (usize i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {

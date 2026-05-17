@@ -46,8 +46,8 @@ top-level-on    ::= 'on' [ '!' ] STRING '{' { top-level-item } '}'
 top-level-assert-on
                 ::= 'assert' 'on' [ '!' ] STRING
 source-test     ::= 'test' STRING block
-impl-block      ::= 'impl' type '{' { top-level-item } '}'
-                  | 'impl' type 'for' type '{' { top-level-item } '}'
+impl-block      ::= 'impl' type where-clause? '{' { top-level-item } '}'
+                  | 'impl' type 'for' type where-clause? '{' { top-level-item } '}'
 ```
 
 `pub` applies only to bindings, variables, FFI declarations, and `use`
@@ -79,7 +79,7 @@ declaration     ::= function-declaration
                   | trait-declaration
 
 function-declaration
-                ::= 'fn' generic-params? '(' named-param-list? ')' [ '->' type ] function-body
+                ::= 'fn' generic-params? '(' named-param-list? ')' [ '->' type ] where-clause? function-body
 
 function-body   ::= '=>' expression
                   | block
@@ -94,6 +94,11 @@ named-param-list
                 ::= named-param { ',' named-param }
 
 generic-params  ::= '[' IDENT { ',' IDENT } ']'
+
+where-clause    ::= 'where' where-constraint { ',' where-constraint }
+
+where-constraint
+                ::= IDENT ':' type
 ```
 
 The binding operators are two adjacent tokens in the lexer: `::` is parsed as
@@ -113,7 +118,11 @@ implementation target are rejected. Implementations may target compound types
 and primitive built-in types. A trait implementation block is the complete
 implementation for one trait/type pair; implementations are not split or merged
 across multiple blocks.
-Generic methods may also receive explicit type arguments with
+Generic functions and generic impl blocks may carry `where` constraints such as
+`where T: Display` or `where T: Display, U: Eq`. Constraint clauses are parsed
+and formatted, and constraint trait names must resolve to known traits.
+Constraint proving at instantiation time is future semantic work. Generic
+methods may also receive explicit type arguments with
 `value.method[T](...)`. Receiver method lookup prefers inherent impl methods
 before trait impl methods. If multiple trait impl methods with the same name are
 valid for the receiver type, the receiver call is ambiguous. A trait member may
@@ -122,8 +131,7 @@ to implementations of that trait and uses the first argument as the receiver.
 When the implementation type cannot be inferred from a receiver argument, use
 `<Trait>[Type].<member>(...)` to select the implementation directly. Generic
 trait members are not placed in the ordinary function namespace: a bare call
-such as `show(value)` does not resolve to a trait member. Generic trait
-constraints are future milestone work.
+such as `show(value)` does not resolve to a trait member.
 
 ## Modules, FFI, And Pragmas
 

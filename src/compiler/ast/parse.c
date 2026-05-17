@@ -667,6 +667,81 @@ internal bool ast_parse_optional_generic_params(AstParseState* state,
     return true;
 }
 
+internal bool ast_parse_optional_where_constraints(AstParseState* state,
+                                                   u32* out_first_constraint,
+                                                   u32* out_constraint_count)
+{
+    *out_first_constraint = U32_MAX;
+    *out_constraint_count = 0;
+    if (state->token.kind != TK_where &&
+        ast_peek_kind_at(state, 0) != TK_where) {
+        return true;
+    }
+
+    if (state->token.kind != TK_where && !ast_expect_token(state, TK_where)) {
+        return false;
+    }
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(state->lexer->source,
+                                        ast_token_span(state, &state->token),
+                                        TK_Symbol);
+    }
+
+    u32 first_constraint = (u32)array_count(state->where_constraints);
+    u32 constraint_count = 0;
+    for (;;) {
+        if (state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+
+        AstToken param_token = state->token;
+        if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
+            return false;
+        }
+
+        u32 trait_type_node = U32_MAX;
+        if (!ast_parse_type(state, &trait_type_node)) {
+            return false;
+        }
+
+        array_push(state->where_constraints,
+                   (AstWhereConstraint){
+                       .token_index           = param_token.token_index,
+                       .param_symbol          = param_token.value.symbol_handle,
+                       .trait_type_node_index = trait_type_node,
+                   });
+        constraint_count++;
+
+        if (state->token.kind == TK_Comma) {
+            if (!ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol);
+            }
+            continue;
+        }
+        if (ast_peek_kind_at(state, 0) == TK_Comma) {
+            if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                return error_0201_missing_value(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol);
+            }
+            continue;
+        }
+        break;
+    }
+
+    *out_first_constraint = first_constraint;
+    *out_constraint_count = constraint_count;
+    return true;
+}
+
 bool ast_parse_fn_signature(AstParseState* state,
                             bool           allow_named_params,
                             bool           require_return_type,
@@ -803,6 +878,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                                          ast_peek_kind_at(state, 0));
     }
 
+    u32 first_constraint = U32_MAX;
+    u32 constraint_count = 0;
+    if (!ast_parse_optional_where_constraints(
+            state, &first_constraint, &constraint_count)) {
+        return false;
+    }
+
     u32 signature_index = (u32)array_count(state->fn_signatures);
     array_push(state->fn_signatures,
                (AstFnSignature){
@@ -810,6 +892,8 @@ bool ast_parse_fn_signature(AstParseState* state,
                    .param_count            = param_count,
                    .return_type_node_index = return_type,
                    .generic_params_index   = generic_params_index,
+                   .first_constraint       = first_constraint,
+                   .constraint_count       = constraint_count,
                });
     *out_signature_index = signature_index;
     return true;
@@ -3839,6 +3923,13 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
         }
     }
 
+    u32 first_constraint = U32_MAX;
+    u32 constraint_count = 0;
+    if (!ast_parse_optional_where_constraints(
+            state, &first_constraint, &constraint_count)) {
+        return false;
+    }
+
     if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -3913,6 +4004,8 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
                    .target_type_node_index = target_type,
                    .body_node_index        = block_index,
                    .generic_params_index   = generic_params_index,
+                   .first_constraint       = first_constraint,
+                   .constraint_count       = constraint_count,
                });
     state->nodes[impl_node].a   = impl_index;
     state->nodes[block_index].a = first_item;
@@ -5086,6 +5179,7 @@ Ast ast_parse(Lexer* lexer)
         .nodes                 = state.nodes,
         .generic_params        = state.generic_params,
         .generic_param_symbols = state.generic_param_symbols,
+        .where_constraints     = state.where_constraints,
         .params                = state.params,
         .fn_signatures         = state.fn_signatures,
         .ffi_infos             = state.ffi_infos,
@@ -5122,6 +5216,7 @@ error:
     ast_done(&(Ast){.nodes                 = state.nodes,
                     .generic_params        = state.generic_params,
                     .generic_param_symbols = state.generic_param_symbols,
+                    .where_constraints     = state.where_constraints,
                     .params                = state.params,
                     .fn_signatures         = state.fn_signatures,
                     .ffi_infos             = state.ffi_infos,
@@ -5163,6 +5258,7 @@ void ast_done(Ast* ast)
     array_free(ast->nodes);
     array_free(ast->generic_params);
     array_free(ast->generic_param_symbols);
+    array_free(ast->where_constraints);
     array_free(ast->params);
     array_free(ast->fn_signatures);
     array_free(ast->ffi_infos);

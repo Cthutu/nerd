@@ -4319,6 +4319,36 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
     return true;
 }
 
+internal bool
+sema_validate_where_constraints(const Lexer* lexer, const Ast* ast, Sema* sema)
+{
+    for (u32 i = 0; i < array_count(ast->where_constraints); ++i) {
+        const AstWhereConstraint* constraint = &ast->where_constraints[i];
+        u32 trait_symbol                     = sema_trait_symbol_from_type_node(
+            ast, constraint->trait_type_node_index);
+        if (trait_symbol == U32_MAX) {
+            return error_0304_type_mismatch(
+                lexer->source,
+                sema_node_span(lexer,
+                               &ast->nodes[constraint->trait_type_node_index]),
+                s("known trait"),
+                s("non-trait type expression"));
+        }
+
+        u32 trait_decl_index = sema_find_decl(sema, trait_symbol);
+        if (trait_decl_index == sema_no_decl() ||
+            sema->decls[trait_decl_index].kind != SK_Trait) {
+            return error_0304_type_mismatch(
+                lexer->source,
+                sema_node_span(lexer,
+                               &ast->nodes[constraint->trait_type_node_index]),
+                s("known trait"),
+                lex_symbol(lexer, trait_symbol));
+        }
+    }
+    return true;
+}
+
 internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                                           const Ast*             ast,
                                           const FrontEndOptions* options,
@@ -17485,6 +17515,10 @@ bool sema_analyse(const Lexer*           lexer,
     }
 
     if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_validate_where_constraints(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

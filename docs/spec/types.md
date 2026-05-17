@@ -76,6 +76,10 @@ when receiver lookup would be ambiguous. Use `Default[Point].default()` when a
 trait member has no receiver argument and the implementation type must be named
 directly. Trait members are not ordinary top-level functions; use one of the
 trait call forms instead of a bare call such as `show(point)`.
+Generic functions and generic impl blocks may declare trait constraints with
+`where T: Trait`. Multiple constraints are comma-separated. Constraint trait
+names must resolve to known traits; proving that a concrete instantiation
+satisfies each constraint is future semantic work.
 For local trait declarations, implementations must provide every required
 member with a compatible function signature after substituting the trait self
 type with the implementation target type. Duplicate non-generic implementations

@@ -692,6 +692,7 @@ internal bool lexer_lex_one_token(NerdSource source,
             {"pub", 3, TK_pub},
             {"impl", 4, TK_impl},
             {"trait", 5, TK_trait},
+            {"where", 5, TK_where},
             {"pragma", 6, TK_pragma},
             {"with", 4, TK_with},
             {"in", 2, TK_in},
@@ -1221,6 +1222,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_union:
     case TK_break:
     case TK_trait:
+    case TK_where:
         return token->offset + 5;
     case TK_no:
         return token->offset + 2;

@@ -19,6 +19,7 @@ name :: fn (...) -> Type { ... }
 name :: fn (...) => expr
 name :: fn [T, U] (...) -> Type { ... }
 name :: fn [T, U] (...) => expr
+name :: fn [T] (...) -> Type where T: Trait { ... }
 Name :: Type
 Name :: plex { field Type }
 Name :: plex [T, U] { field Type }
@@ -45,6 +46,9 @@ impl TraitName for Type {
 }
 impl Name[T] {
     name :: fn (self: ^Name[T], value: T) { ... }
+}
+impl Name[T] where T: Trait {
+    name :: fn (self: Name[T]) -> T { ... }
 }
 ffi "lib" foreign_name (...) -> Type
 pub ffi "lib" foreign_name (...) -> Type

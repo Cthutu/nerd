@@ -999,6 +999,53 @@ internal bool cst_parse_fn_signature(CstParseState* state,
                                         out_signature_index);
 }
 
+internal bool cst_parse_optional_where_constraints(CstParseState* state,
+                                                   u32* out_first_constraint,
+                                                   u32* out_constraint_count)
+{
+    *out_first_constraint = CST_NO_VALUE;
+    *out_constraint_count = 0;
+    if (cst_current_token(state).kind != TK_where) {
+        return true;
+    }
+
+    cst_advance(state);
+    u32 first_constraint = (u32)array_count(state->cst.where_constraints);
+    u32 constraint_count = 0;
+    for (;;) {
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+        u32 token_index  = state->token_index;
+        u32 param_symbol = cst_current_symbol_handle(state);
+        cst_advance(state);
+        if (!cst_consume(state, TK_Colon)) {
+            return false;
+        }
+
+        u32 trait_type = 0;
+        if (!cst_parse_type(state, &trait_type)) {
+            return false;
+        }
+        array_push(state->cst.where_constraints,
+                   (CstWhereConstraint){
+                       .token_index           = token_index,
+                       .param_symbol          = param_symbol,
+                       .trait_type_node_index = trait_type,
+                   });
+        constraint_count++;
+
+        if (cst_current_token(state).kind != TK_Comma) {
+            break;
+        }
+        cst_advance(state);
+    }
+
+    *out_first_constraint = first_constraint;
+    *out_constraint_count = constraint_count;
+    return true;
+}
+
 internal bool cst_parse_callable_signature(CstParseState* state,
                                            TokenKind      introducer,
                                            bool           allow_named_params,
@@ -1122,6 +1169,13 @@ internal bool cst_parse_callable_signature(CstParseState* state,
         return false;
     }
 
+    u32 first_constraint = CST_NO_VALUE;
+    u32 constraint_count = 0;
+    if (!cst_parse_optional_where_constraints(
+            state, &first_constraint, &constraint_count)) {
+        return false;
+    }
+
     u32 signature_index = (u32)array_count(state->cst.fn_signatures);
     array_push(state->cst.fn_signatures,
                (CstFnSignature){
@@ -1129,6 +1183,8 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                    .param_count            = param_count,
                    .return_type_node_index = return_type,
                    .generic_params_index   = generic_params_index,
+                   .first_constraint       = first_constraint,
+                   .constraint_count       = constraint_count,
                    .is_varargs             = is_varargs,
                });
     *out_signature_index = signature_index;
@@ -5148,6 +5204,12 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
             return false;
         }
     }
+    u32 first_constraint = CST_NO_VALUE;
+    u32 constraint_count = 0;
+    if (!cst_parse_optional_where_constraints(
+            state, &first_constraint, &constraint_count)) {
+        return false;
+    }
     if (!cst_consume(state, TK_LBrace)) {
         return false;
     }
@@ -5193,6 +5255,8 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
                    .target_type_node_index = target_type,
                    .body_node_index        = block_node,
                    .generic_params_index   = generic_params_index,
+                   .first_constraint       = first_constraint,
+                   .constraint_count       = constraint_count,
                });
     state->cst.nodes[impl_node].a  = impl_index;
     state->cst.nodes[block_node].a = first_item;
@@ -5612,6 +5676,7 @@ void cst_done(Cst* cst)
     array_free(cst->nodes);
     array_free(cst->generic_params);
     array_free(cst->generic_param_symbols);
+    array_free(cst->where_constraints);
     array_free(cst->integers);
     array_free(cst->floats);
     array_free(cst->bindings);

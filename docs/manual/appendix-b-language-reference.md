@@ -190,7 +190,9 @@ intended exit code.
 - The current generic system supports type parameters only.
 - Numeric or value generic parameters are not part of the current generic
   syntax.
-- Generic constraints are not part of the current generic syntax.
+- Generic functions and generic impl blocks may use `where T: Trait` clauses.
+  Multiple constraints are comma-separated. Constraint trait names are checked,
+  but constraints are not yet proven at instantiation time.
 - Every explicit generic use must provide all type arguments.
 - Generic instantiations are compiled as concrete functions and types.
 

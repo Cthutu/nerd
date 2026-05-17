@@ -510,8 +510,8 @@ library layering are in place.
   - [ ] user-defined non-iterator collections can expose iterator-producing
     functions; do not add a separate `Iterable` trait in this milestone
 - [ ] Add generic constraint syntax:
-  - [ ] `where T: TraitName`
-  - [ ] support multiple trait constraints in a `where` clause
+  - [x] `where T: TraitName`
+  - [x] support multiple trait constraints in a `where` clause
   - [ ] interpret constraints as requirements that matching implementations
     exist at instantiation time
 - [ ] Add trait member call syntax:
@@ -531,14 +531,14 @@ library layering are in place.
   - [x] parse trait generic parameter lists
   - [x] parse optional named self aliases
   - [x] parse trait impl blocks
-  - [ ] parse `where` clauses on generic functions and impl blocks
+  - [x] parse `where` clauses on generic functions and impl blocks
 - [ ] Sema work:
   - [x] register trait declarations and required members
   - [x] substitute `Self` when checking local impl members
   - [x] substitute named self aliases when checking impl members
   - [x] require impls to provide all required trait functions
   - [x] reject local impl members with incompatible signatures
-  - [ ] validate `where` constraints against known traits
+  - [x] validate `where` constraints against known traits
   - [ ] Add stricter non-lazy generic body checks once constraints exist:
     unresolved names that do not depend on concrete type arguments should be
     rejected before a generic function or impl method is instantiated, while
@@ -559,7 +559,7 @@ library layering are in place.
   - [x] format trait generic parameter lists
   - [x] format named self aliases
   - [x] format trait impl blocks
-  - [ ] format `where` clauses
+  - [x] format `where` clauses
   - [ ] format receiver and explicit trait member calls
 - [ ] LSP/editor work:
   - [ ] hover for trait declarations and impl members

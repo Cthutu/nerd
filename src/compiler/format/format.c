@@ -2098,6 +2098,14 @@ internal u32 format_fn_signature_end_token_index(const Cst*   cst,
 
     u32 close_index = format_find_matching_close_token_index(
         lexer, paren_index, TK_LParen, TK_RParen);
+    if (signature->constraint_count > 0) {
+        const CstWhereConstraint* constraint =
+            &cst->where_constraints[signature->first_constraint +
+                                    signature->constraint_count - 1];
+        return format_node_end_token_index(
+            cst, lexer, constraint->trait_type_node_index);
+    }
+
     if (signature->return_type_node_index == U32_MAX) {
         return close_index;
     }
@@ -4191,6 +4199,29 @@ internal void format_emit_fn_signature_prefix(StringBuilder*        sb,
     }
 }
 
+internal void format_emit_where_constraints(StringBuilder* sb,
+                                            const Cst*     cst,
+                                            const Lexer*   lexer,
+                                            u32            first_constraint,
+                                            u32            constraint_count)
+{
+    if (constraint_count == 0) {
+        return;
+    }
+
+    sb_append_cstr(sb, " where ");
+    for (u32 i = 0; i < constraint_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const CstWhereConstraint* constraint =
+            &cst->where_constraints[first_constraint + i];
+        sb_append_string(sb, lex_symbol(lexer, constraint->param_symbol));
+        sb_append_cstr(sb, ": ");
+        format_emit_expr(sb, cst, lexer, constraint->trait_type_node_index, 0);
+    }
+}
+
 internal void format_emit_fn_param(StringBuilder*  sb,
                                    const Cst*      cst,
                                    const Lexer*    lexer,
@@ -4276,6 +4307,11 @@ internal void format_emit_fn_signature_one_line(StringBuilder*        sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
+    format_emit_where_constraints(sb,
+                                  cst,
+                                  lexer,
+                                  signature->first_constraint,
+                                  signature->constraint_count);
 }
 
 internal void format_emit_fn_signature(StringBuilder* sb,
@@ -4327,6 +4363,11 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
+    format_emit_where_constraints(sb,
+                                  cst,
+                                  lexer,
+                                  signature->first_constraint,
+                                  signature->constraint_count);
 
     arena_done(&temp_arena);
 }
@@ -4726,6 +4767,8 @@ internal void format_emit_impl(StringBuilder* sb,
         sb_append_cstr(sb, " for ");
     }
     format_emit_expr(sb, cst, lexer, impl->target_type_node_index, 0);
+    format_emit_where_constraints(
+        sb, cst, lexer, impl->first_constraint, impl->constraint_count);
     sb_append_cstr(sb, " {\n\n");
     format_emit_block_contents(
         sb, cst, lexer, impl->body_node_index, indent_level + 1);
@@ -6821,6 +6864,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_pub:
     case TK_impl:
     case TK_trait:
+    case TK_where:
     case TK_with:
         return true;
     default:
@@ -6847,6 +6891,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_pub:
     case TK_impl:
     case TK_trait:
+    case TK_where:
     case TK_with:
         return true;
     default:

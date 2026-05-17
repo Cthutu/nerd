@@ -257,6 +257,7 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_pub:
     case TK_impl:
     case TK_trait:
+    case TK_where:
     case TK_pragma:
     case TK_with:
     case TK_in:

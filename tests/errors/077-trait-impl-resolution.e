@@ -232,3 +232,31 @@ main :: fn () => 0
         "Use a concrete non-generic declaration for now."
     ]
 }
+¬
+value :: fn [T] (input: T) -> T where T: Missing {
+    return input
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Type mismatch: expected `known trait`, found `Missing`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 1,
+        "column": 42
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 42,
+            "length": 7,
+            "message": "This expression has type `Missing`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

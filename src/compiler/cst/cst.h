@@ -210,6 +210,12 @@ typedef struct {
 } CstGenericParams;
 
 typedef struct {
+    u32 token_index;
+    u32 param_symbol;
+    u32 trait_type_node_index;
+} CstWhereConstraint;
+
+typedef struct {
     u32 symbol_handle;
     u32 type_node_index;
     u32 default_node_index;
@@ -220,6 +226,8 @@ typedef struct {
     u32  param_count;
     u32  return_type_node_index;
     u32  generic_params_index;
+    u32  first_constraint;
+    u32  constraint_count;
     bool is_varargs;
 } CstFnSignature;
 
@@ -421,6 +429,8 @@ typedef struct {
     u32 target_type_node_index;
     u32 body_node_index;
     u32 generic_params_index;
+    u32 first_constraint;
+    u32 constraint_count;
 } CstImplInfo;
 
 typedef enum : u32 {
@@ -449,6 +459,7 @@ typedef struct {
     Array(CstNode) nodes;
     Array(CstGenericParams) generic_params;
     Array(u32) generic_param_symbols;
+    Array(CstWhereConstraint) where_constraints;
     Array(u64) integers;
     Array(f64) floats;
     Array(u32) bindings;

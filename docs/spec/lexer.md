@@ -146,6 +146,7 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_pub`       | `pub`           |                                |
 | `TK_impl`      | `impl`          |                                |
 | `TK_trait`     | `trait`         |                                |
+| `TK_where`     | `where`         |                                |
 | `TK_pragma`    | `pragma`        |                                |
 | `TK_with`      | `with`          |                                |
 | `TK_in`        | `in`            |                                |

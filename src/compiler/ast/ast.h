@@ -226,10 +226,18 @@ typedef struct {
 } AstGenericParams;
 
 typedef struct {
+    u32 token_index;
+    u32 param_symbol;
+    u32 trait_type_node_index;
+} AstWhereConstraint;
+
+typedef struct {
     u32  first_param;
     u32  param_count;
     u32  return_type_node_index;
     u32  generic_params_index;
+    u32  first_constraint;
+    u32  constraint_count;
     bool is_varargs;
 } AstFnSignature;
 
@@ -423,6 +431,8 @@ typedef struct {
     u32 target_type_node_index;
     u32 body_node_index;
     u32 generic_params_index;
+    u32 first_constraint;
+    u32 constraint_count;
 } AstImplInfo;
 
 typedef enum : u32 {
@@ -451,6 +461,7 @@ typedef struct {
     Array(AstNode) nodes;
     Array(AstGenericParams) generic_params;
     Array(u32) generic_param_symbols;
+    Array(AstWhereConstraint) where_constraints;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;

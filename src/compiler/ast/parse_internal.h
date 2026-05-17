@@ -61,6 +61,7 @@ typedef struct {
     Array(AstNode) nodes;
     Array(AstGenericParams) generic_params;
     Array(u32) generic_param_symbols;
+    Array(AstWhereConstraint) where_constraints;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
     Array(AstFfiInfo) ffi_infos;
