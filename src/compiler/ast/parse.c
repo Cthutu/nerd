@@ -1530,7 +1530,8 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
         return false;
     }
 
-    u32 block_index = 0;
+    AstToken block_open  = state->token;
+    u32      block_index = 0;
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Block,
@@ -1542,10 +1543,12 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
     u32 first_item = (u32)array_count(state->nodes);
 
     if (!ast_next_token(state)) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
-                                         TK_RBrace,
-                                         TK_EOF);
+        return error_0203_expected_closing_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_RBrace,
+            TK_EOF,
+            ast_token_span(state, &block_open));
     }
 
     while (state->token.kind != TK_RBrace) {
@@ -1601,11 +1604,12 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
             return false;
         }
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
+            return error_0203_expected_closing_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_RBrace,
-                TK_EOF);
+                TK_EOF,
+                ast_token_span(state, &block_open));
         }
     }
 
@@ -2406,8 +2410,9 @@ bool ast_parse_nested_block(AstParseState* state, u32* out_node)
 {
     ASSERT(state->token.kind == TK_LBrace, "Expected '{' token for block");
 
-    u32 block_token_index = state->token.token_index;
-    u32 block_index       = 0;
+    AstToken block_open        = state->token;
+    u32      block_token_index = state->token.token_index;
+    u32      block_index       = 0;
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Block,
@@ -2419,10 +2424,12 @@ bool ast_parse_nested_block(AstParseState* state, u32* out_node)
     u32 first_statement = (u32)array_count(state->nodes);
 
     if (!ast_next_token(state)) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
-                                         TK_RBrace,
-                                         TK_EOF);
+        return error_0203_expected_closing_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_RBrace,
+            TK_EOF,
+            ast_token_span(state, &block_open));
     }
 
     while (state->token.kind != TK_RBrace) {
@@ -2431,11 +2438,12 @@ bool ast_parse_nested_block(AstParseState* state, u32* out_node)
         }
 
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
+            return error_0203_expected_closing_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_RBrace,
-                TK_EOF);
+                TK_EOF,
+                ast_token_span(state, &block_open));
         }
 
         if (state->token.kind == TK_RBrace) {
@@ -3584,8 +3592,9 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
         return false;
     }
 
-    u32 block_token_index = state->token.token_index;
-    u32 block_index       = 0;
+    AstToken block_open        = state->token;
+    u32      block_token_index = state->token.token_index;
+    u32      block_index       = 0;
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Block,
@@ -3597,10 +3606,12 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
     u32 first_item = (u32)array_count(state->nodes);
 
     if (!ast_next_token(state)) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
-                                         TK_RBrace,
-                                         TK_EOF);
+        return error_0203_expected_closing_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_RBrace,
+            TK_EOF,
+            ast_token_span(state, &block_open));
     }
 
     while (state->token.kind != TK_RBrace) {
@@ -3613,11 +3624,12 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
         }
 
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
+            return error_0203_expected_closing_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_RBrace,
-                TK_EOF);
+                TK_EOF,
+                ast_token_span(state, &block_open));
         }
     }
 
@@ -3783,7 +3795,8 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
         return false;
     }
 
-    u32 block_index = 0;
+    AstToken block_open  = state->token;
+    u32      block_index = 0;
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Block,
@@ -3795,10 +3808,12 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
     u32 first_item = (u32)array_count(state->nodes);
 
     if (!ast_next_token(state)) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
-                                         TK_RBrace,
-                                         TK_EOF);
+        return error_0203_expected_closing_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_RBrace,
+            TK_EOF,
+            ast_token_span(state, &block_open));
     }
 
     while (state->token.kind != TK_RBrace) {
@@ -3811,11 +3826,12 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
         }
 
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
+            return error_0203_expected_closing_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_RBrace,
-                TK_EOF);
+                TK_EOF,
+                ast_token_span(state, &block_open));
         }
     }
 
@@ -4033,10 +4049,14 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
 {
     ASSERT(state->token.kind == TK_LBrace, "Expected '{' token for fn block");
 
+    AstToken block_open = state->token;
     if (!ast_next_token(state)) {
-        return error_0201_missing_value(state->token.source,
-                                        ast_token_span(state, &state->token),
-                                        state->token.kind);
+        return error_0203_expected_closing_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_RBrace,
+            TK_EOF,
+            ast_token_span(state, &block_open));
     }
 
     while (state->token.kind != TK_RBrace) {
@@ -4045,11 +4065,12 @@ internal bool ast_parse_fn_block(AstParseState* state, u32 fn_start_index)
         }
 
         if (!ast_next_token(state)) {
-            return error_0203_expected_token(
+            return error_0203_expected_closing_token(
                 state->lexer->source,
                 ast_token_span(state, &state->token),
                 TK_RBrace,
-                TK_EOF);
+                TK_EOF,
+                ast_token_span(state, &block_open));
         }
 
         if (state->token.kind == TK_RBrace) {

@@ -49,3 +49,36 @@
         "Add the missing opening parenthesis or remove the extra right parenthesis"
     ]
 }
+¬
+main :: fn () {
+    return 0
+¬
+{
+    "code": "0203",
+    "message": "Expected RightBrace `}` but found EOF",
+    "source_file": "tests/errors/003-delimiters.e",
+    "primary_location": {
+        "line": 1,
+        "column": 15
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 15,
+            "length": 1,
+            "message": "This opening delimiter is not closed"
+        },
+        {
+            "kind": "secondary",
+            "line": 2,
+            "column": 13,
+            "length": 0,
+            "message": "Reached EOF while looking for RightBrace `}`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Add the missing closing delimiter for this block"
+    ]
+}

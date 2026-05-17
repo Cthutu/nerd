@@ -132,6 +132,35 @@ bool error_0203_expected_token(NerdSource source,
         "Check for a missing closing delimiter or misplaced operator");
 }
 
+bool error_0203_expected_closing_token(NerdSource source,
+                                       ErrorSpan  span,
+                                       TokenKind  expected_kind,
+                                       TokenKind  actual_kind,
+                                       ErrorSpan  opening_span)
+{
+    string    expected = token_kind_to_string(expected_kind);
+    string    actual   = token_kind_to_string(actual_kind);
+    ErrorInfo error    = error_init(203,
+                                    source,
+                                    opening_span,
+                                    "Expected %.*s but found %.*s",
+                                    STRINGV(expected),
+                                    STRINGV(actual));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        opening_span,
+                        "This opening delimiter is not closed");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        span,
+                        "Reached %.*s while looking for %.*s",
+                        STRINGV(actual),
+                        STRINGV(expected));
+    error_add_help(&error, "Add the missing closing delimiter for this block");
+    error_render(&error);
+    return false;
+}
+
 bool error_0204_unexpected_token_ex(NerdSource source,
                                     ErrorSpan  span,
                                     TokenKind  actual_kind,
