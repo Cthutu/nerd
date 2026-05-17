@@ -260,3 +260,42 @@ main :: fn () => 0
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+Display :: trait {
+    show :: fn (Self) -> string
+}
+
+Plain :: plex {
+    x i32
+}
+
+value :: fn [T] (input: T) -> T where T: Display {
+    return input
+}
+
+main :: fn () {
+    plain := Plain { x: 1 }
+    _ := value(plain)
+}
+¬
+{
+    "message": "Type mismatch: expected `Display implementation`, found `Plain`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 15,
+        "column": 16
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 15,
+            "column": 16,
+            "length": 5,
+            "message": "This expression has type `Plain`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

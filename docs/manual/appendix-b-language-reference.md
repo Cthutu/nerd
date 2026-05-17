@@ -192,7 +192,7 @@ intended exit code.
   syntax.
 - Generic functions and generic impl blocks may use `where T: Trait` clauses.
   Multiple constraints are comma-separated. Constraint trait names are checked,
-  but constraints are not yet proven at instantiation time.
+  and each concrete instantiation must have matching trait implementations.
 - Every explicit generic use must provide all type arguments.
 - Generic instantiations are compiled as concrete functions and types.
 

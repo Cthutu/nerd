@@ -512,7 +512,7 @@ library layering are in place.
 - [ ] Add generic constraint syntax:
   - [x] `where T: TraitName`
   - [x] support multiple trait constraints in a `where` clause
-  - [ ] interpret constraints as requirements that matching implementations
+  - [x] interpret constraints as requirements that matching implementations
     exist at instantiation time
 - [ ] Add trait member call syntax:
   - [x] receiver form `<value>.<trait_fn>(...)`
@@ -543,7 +543,7 @@ library layering are in place.
     unresolved names that do not depend on concrete type arguments should be
     rejected before a generic function or impl method is instantiated, while
     constraint-sensitive operations should be checked against trait bounds.
-  - [ ] prove trait requirements for generic instantiations
+  - [x] prove trait requirements for generic instantiations
   - [x] reject missing or duplicate non-generic implementations
   - [ ] reject overlapping or ambiguous implementations
   - [ ] provide useful `help` text when trait generic parameters are required
@@ -577,7 +577,7 @@ library layering are in place.
   - [x] language tests for primitive implementations
   - [x] language tests for receiver-form trait calls
   - [x] language tests for explicit trait calls
-  - [ ] language tests for generic constraints using `where T: Trait`
+  - [x] language tests for generic constraints using `where T: Trait`
   - [ ] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
@@ -591,7 +591,8 @@ library layering are in place.
   - [x] error tests for incompatible impl member signatures
   - [x] error tests for unknown traits in impls
   - [x] error tests for duplicate non-generic impls
-  - [ ] error tests for unknown traits in constraints
+  - [x] error tests for unknown traits in constraints
+  - [x] error tests for unsatisfied generic constraints
   - [ ] error tests for overlapping generic impls
   - [x] error tests for ambiguous receiver trait calls
   - [ ] error tests for non-inferable trait generic parameters with useful
@@ -604,7 +605,7 @@ library layering are in place.
   - [ ] manual examples for `Self` and `trait for Value`
   - [ ] manual examples for `impl Trait for Type`
   - [ ] manual examples for receiver and explicit trait calls
-  - [ ] manual examples for generic constraints using traits
+  - [x] manual examples for generic constraints using traits
   - [ ] manual section for built-in traits in `std.traits`
   - [ ] manual examples for `Default` initialisation and zero-init fallback
   - [ ] manual examples for `Iterator` and `Option[Item]`

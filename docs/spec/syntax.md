@@ -120,9 +120,9 @@ implementation for one trait/type pair; implementations are not split or merged
 across multiple blocks.
 Generic functions and generic impl blocks may carry `where` constraints such as
 `where T: Display` or `where T: Display, U: Eq`. Constraint clauses are parsed
-and formatted, and constraint trait names must resolve to known traits.
-Constraint proving at instantiation time is future semantic work. Generic
-methods may also receive explicit type arguments with
+and formatted, constraint trait names must resolve to known traits, and each
+concrete instantiation must satisfy every constraint. Generic methods may also
+receive explicit type arguments with
 `value.method[T](...)`. Receiver method lookup prefers inherent impl methods
 before trait impl methods. If multiple trait impl methods with the same name are
 valid for the receiver type, the receiver call is ambiguous. A trait member may
