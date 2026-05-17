@@ -106,6 +106,64 @@ internal bool module_path_exists_in_root(Arena*               arena,
     return true;
 }
 
+internal cstr module_qualified_to_relative(Arena* arena,
+                                           string qualified_name,
+                                           cstr   extension)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (usize i = 0; i < qualified_name.count; ++i) {
+        char ch = (char)qualified_name.data[i];
+        if (ch == '.') {
+#if OS_WINDOWS
+            ch = '\\';
+#else
+            ch = '/';
+#endif
+        }
+        sb_append_char(&sb, ch);
+    }
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+}
+
+internal bool module_qualified_exists_in_root(Arena* arena,
+                                              string qualified_name,
+                                              cstr   root,
+                                              ModuleResolveResult* out_result)
+{
+    cstr module_file = path_join(
+        arena, root, module_qualified_to_relative(arena, qualified_name, ".n"));
+    if (!path_exists(module_file) || path_is_directory(module_file)) {
+        cstr module_dir =
+            path_join(arena,
+                      root,
+                      module_qualified_to_relative(arena, qualified_name, ""));
+        module_file = path_join(arena, module_dir, "mod.n");
+    }
+
+    if (!path_exists(module_file) || path_is_directory(module_file)) {
+        return false;
+    }
+
+    cstr canonical_path = path_canonical(arena, module_file);
+    if (canonical_path == NULL) {
+        return false;
+    }
+
+    if (out_result != NULL) {
+        char* data = arena_alloc(arena, qualified_name.count + 1);
+        memcpy(data, qualified_name.data, qualified_name.count);
+        data[qualified_name.count] = '\0';
+        *out_result                = (ModuleResolveResult){
+            .resolved_path  = canonical_path,
+            .qualified_name = data,
+        };
+    }
+    return true;
+}
+
 internal bool module_path_exists_in_env_roots(Arena*               arena,
                                               const Lexer*         lexer,
                                               const Ast*           ast,
@@ -133,6 +191,44 @@ internal bool module_path_exists_in_env_roots(Arena*               arena,
             root[len] = '\0';
             if (module_path_exists_in_root(
                     arena, lexer, ast, path, root, out_result)) {
+                return true;
+            }
+        }
+
+        if (end == NULL) {
+            break;
+        }
+        cursor = end + 1;
+    }
+
+    return false;
+}
+
+internal bool module_qualified_exists_in_env_roots(Arena* arena,
+                                                   string qualified_name,
+                                                   cstr   env_value,
+                                                   ModuleResolveResult* out)
+{
+    if (env_value == NULL || *env_value == '\0') {
+        return false;
+    }
+
+#if OS_WINDOWS
+    char separator = ';';
+#else
+    char separator = ':';
+#endif
+
+    const char* cursor = env_value;
+    while (*cursor != '\0') {
+        const char* end = strchr(cursor, separator);
+        usize       len = end != NULL ? (usize)(end - cursor) : strlen(cursor);
+        if (len > 0) {
+            char* root = (char*)arena_alloc(arena, len + 1);
+            memcpy(root, cursor, len);
+            root[len] = '\0';
+            if (module_qualified_exists_in_root(
+                    arena, qualified_name, root, out)) {
                 return true;
             }
         }
@@ -261,6 +357,57 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
     cstr mods_dir = path_join(arena, exe_dir, "mods");
     if (module_path_exists_in_root(
             arena, lexer, ast, path, mods_dir, out_result)) {
+        return MRS_Found;
+    }
+
+    return MRS_NotFound;
+}
+
+ModuleResolveStatus module_resolve_qualified(Arena*     arena,
+                                             NerdSource root_source,
+                                             NerdSource current_source,
+                                             string     qualified_name,
+                                             ModuleResolveResult* out_result)
+{
+    if (root_source.source_path.count == 0) {
+        return MRS_InvalidRootSource;
+    }
+
+    cstr root_path = module_source_file_path(arena, root_source);
+    if (root_path == NULL) {
+        return MRS_InvalidRootSource;
+    }
+
+    cstr current_path = module_source_file_path(arena, current_source);
+    if (current_path != NULL) {
+        cstr current_dir = path_dirname(arena, current_path);
+        if (module_qualified_exists_in_root(
+                arena, qualified_name, current_dir, out_result)) {
+            return MRS_Found;
+        }
+    }
+
+    cstr root_dir = path_dirname(arena, root_path);
+    if (module_qualified_exists_in_root(
+            arena, qualified_name, root_dir, out_result)) {
+        return MRS_Found;
+    }
+
+    cstr lib_path = getenv("NERD_LIB_PATH");
+    if (module_qualified_exists_in_env_roots(
+            arena, qualified_name, lib_path, out_result)) {
+        return MRS_Found;
+    }
+
+    cstr exe_dir = path_executable_dir(arena);
+    if (module_qualified_exists_in_root(
+            arena, qualified_name, exe_dir, out_result)) {
+        return MRS_Found;
+    }
+
+    cstr mods_dir = path_join(arena, exe_dir, "mods");
+    if (module_qualified_exists_in_root(
+            arena, qualified_name, mods_dir, out_result)) {
         return MRS_Found;
     }
 

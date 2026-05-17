@@ -171,12 +171,10 @@ main :: fn () {
 
 ## Arenas
 
-The `core` module provides a pointer-stable arena API for allocations that can
-be released together:
+The implicitly imported `core` module provides a pointer-stable arena API for
+allocations that can be released together:
 
 ```nerd
-use core
-
 main :: fn () {
     scratch: arena
     scratch = arena(4096, 4096)
@@ -226,8 +224,6 @@ can be returned from functions and stored as ordinary `string` values until that
 temporary arena is reset:
 
 ```nerd
-use core
-
 label :: fn (value: i32) -> string {
     return $"value={value}"
 }

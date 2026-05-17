@@ -41,6 +41,11 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
                                         const Ast*           ast,
                                         const AstModulePath* path,
                                         ModuleResolveResult* out_result);
+ModuleResolveStatus module_resolve_qualified(Arena*     arena,
+                                             NerdSource root_source,
+                                             NerdSource current_source,
+                                             string     qualified_name,
+                                             ModuleResolveResult* out_result);
 cstr                module_source_file_path(Arena* arena, NerdSource source);
 
 //------------------------------------------------------------------------------

@@ -466,7 +466,7 @@ library layering are in place.
   - [x] `Order`
   - [x] `Default`
   - [ ] `Iterator`
-- [ ] Make `core` implicitly available to every module so language-required
+- [x] Make `core` implicitly available to every module so language-required
   declarations do not need repetitive imports.
 - [x] Treat built-in traits as normal canonical core declarations
   where practical, with compiler recognition based on module path and name

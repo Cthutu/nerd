@@ -76,12 +76,14 @@ internal ErrorSpan sema_decl_span(const Lexer*    lexer,
                                   const Ast*      ast,
                                   const SemaDecl* decl);
 
-internal u32 sema_enclosing_function_return_type(const Sema* sema,
-                                                 u32         node_index);
-internal u32 sema_ast_enclosing_function_return_type(const Lexer* lexer,
-                                                     const Ast*   ast,
-                                                     Sema*        sema,
-                                                     u32          node_index);
+internal u32  sema_enclosing_function_return_type(const Sema* sema,
+                                                  u32         node_index);
+internal u32  sema_ast_enclosing_function_return_type(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      Sema*        sema,
+                                                      u32          node_index);
+internal bool sema_module_is_core(const ProgramInfo* program, u32 module_index);
+internal bool sema_decl_is_from_core(const Sema* sema, const SemaDecl* decl);
 
 internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
 {
@@ -1297,6 +1299,9 @@ internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
                                                      Sema*  sema,
                                                      const ModuleInfo* module,
                                                      u32 module_index);
+internal bool sema_import_implicit_core_arena_methods(Lexer* lexer,
+                                                      Sema*  sema,
+                                                      u32    receiver_type);
 internal bool
 sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type);
 internal bool sema_method_matches_trait_symbol(const Lexer*      lexer,
@@ -1686,6 +1691,77 @@ internal bool sema_import_module_exports_to_decls(const Lexer* lexer,
             sema,
             &sema->program->modules[module->return_type],
             module->return_type);
+    }
+
+    return true;
+}
+
+internal bool sema_import_implicit_core_decls(const Lexer* lexer, Sema* sema)
+{
+    if (sema == NULL || sema->program == NULL ||
+        sema_module_is_core(sema->program, sema->current_module_index)) {
+        return true;
+    }
+
+    u32 core_module_index = U32_MAX;
+    for (u32 i = 0; i < array_count(sema->program->modules); ++i) {
+        if (sema_module_is_core(sema->program, i)) {
+            core_module_index = i;
+            break;
+        }
+    }
+    if (core_module_index == U32_MAX) {
+        return true;
+    }
+
+    const ModuleInfo* core_module = &sema->program->modules[core_module_index];
+    const Lexer*      core_lexer  = &core_module->front_end.lexer;
+    const Sema*       core_sema   = &core_module->front_end.sema;
+    for (u32 i = 0; i < array_count(core_module->export_decl_indices); ++i) {
+        u32 import_decl_index = core_module->export_decl_indices[i];
+        if (import_decl_index >= array_count(core_sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl* export_decl = &core_sema->decls[import_decl_index];
+        if (sema_find_method_for_decl(core_sema, import_decl_index) != NULL) {
+            continue;
+        }
+        if (export_decl->symbol_handle == U32_MAX ||
+            sema_find_symbol_handle_by_name(
+                lexer, lex_symbol(core_lexer, export_decl->symbol_handle)) ==
+                sema_no_decl()) {
+            continue;
+        }
+
+        string name = lex_symbol(core_lexer, export_decl->symbol_handle);
+        if (!string_eq_cstr(name, "Display") && !string_eq_cstr(name, "Eq") &&
+            !string_eq_cstr(name, "Order") &&
+            !string_eq_cstr(name, "Default") &&
+            !string_eq_cstr(name, "Option") &&
+            !string_eq_cstr(name, "Result") && !string_eq_cstr(name, "arena") &&
+            !string_eq_cstr(name, "temp_arena")) {
+            continue;
+        }
+
+        u32 symbol = sema_import_symbol_handle(
+            (Lexer*)lexer, core_lexer, export_decl->symbol_handle);
+        if (sema_find_decl(sema, symbol) != sema_no_decl()) {
+            continue;
+        }
+
+        u32 type          = sema_import_type((Lexer*)lexer,
+                                             sema,
+                                             core_lexer,
+                                             core_sema,
+                                             export_decl->type_index);
+        u32 imported_decl = sema_ensure_module_export_decl(sema,
+                                                           symbol,
+                                                           type,
+                                                           export_decl->kind,
+                                                           core_module_index,
+                                                           import_decl_index);
+        (void)imported_decl;
     }
 
     return true;
@@ -2874,6 +2950,46 @@ internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
                                     source_method->decl_index,
                                     imported_decl);
     }
+}
+
+internal bool sema_type_is_arena_or_arena_pointer(const Sema* sema,
+                                                  u32         type_index)
+{
+    if (type_index == sema_no_type() ||
+        type_index >= array_count(sema->types)) {
+        return false;
+    }
+
+    if (sema->types[type_index].kind == STK_Arena) {
+        return true;
+    }
+    if (sema->types[type_index].kind == STK_Pointer) {
+        u32 target = sema->types[type_index].first_param_type;
+        return target < array_count(sema->types) &&
+               sema->types[target].kind == STK_Arena;
+    }
+    return false;
+}
+
+internal bool sema_import_implicit_core_arena_methods(Lexer* lexer,
+                                                      Sema*  sema,
+                                                      u32    receiver_type)
+{
+    if (sema == NULL || sema->program == NULL ||
+        !sema_type_is_arena_or_arena_pointer(sema, receiver_type) ||
+        sema_module_is_core(sema->program, sema->current_module_index)) {
+        return true;
+    }
+
+    for (u32 i = 0; i < array_count(sema->program->modules); ++i) {
+        if (sema_module_is_core(sema->program, i)) {
+            sema_import_public_methods_from_module(
+                lexer, sema, &sema->program->modules[i], i);
+            return true;
+        }
+    }
+
+    return true;
 }
 
 internal bool sema_resolve_generic_type_application(const Lexer* lexer,
@@ -10219,6 +10335,11 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
     *out_found                              = false;
     bool                   found_trait_call = false;
     SemaResolvedMethodCall trait_call       = {0};
+
+    if (!sema_import_implicit_core_arena_methods(
+            (Lexer*)lexer, sema, receiver_type)) {
+        return false;
+    }
 
     u32 first_pass = explicit_trait_symbol == U32_MAX ? 0 : 1;
     for (u32 pass = first_pass; pass < 2; ++pass) {
@@ -18184,6 +18305,10 @@ bool sema_analyse(const Lexer*           lexer,
     }
 
     if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_import_implicit_core_decls(lexer, &sema)) {
         sema_done(&sema);
         return false;
     }

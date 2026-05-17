@@ -16,6 +16,7 @@ library is moving toward three layers:
 - `core`
   Language-adjacent helpers with minimal dependencies. This contains the arena
   API, the temporary arena, language-required traits, and core result types.
+  Every module implicitly imports `core`.
 - `std`
   Portable higher-level utilities.
 - `sys`

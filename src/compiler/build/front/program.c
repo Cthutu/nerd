@@ -773,6 +773,19 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
                                           const FrontEndOptions* options,
                                           Timing*                timing,
                                           string                 qualified_name,
+                                          cstr                   resolved_path);
+
+internal bool program_load_implicit_core(ProgramInfo*           program,
+                                         const FrontEndOptions* options,
+                                         Timing*                timing,
+                                         u32          owner_module_index,
+                                         const Lexer* lexer,
+                                         NerdSource   current_source);
+
+internal bool program_load_module_by_path(ProgramInfo*           program,
+                                          const FrontEndOptions* options,
+                                          Timing*                timing,
+                                          string                 qualified_name,
                                           cstr                   resolved_path)
 {
     u32 existing = program_find_module_by_path(program, resolved_path);
@@ -831,6 +844,15 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         program->modules[module_index].state = MODULE_Failed;
         return false;
     }
+    if (!program_load_implicit_core(program,
+                                    options,
+                                    timing,
+                                    module_index,
+                                    &module_lexer,
+                                    module_source)) {
+        program->modules[module_index].state = MODULE_Failed;
+        return false;
+    }
 
     if (!program_front_end_finish(
             program, module_index, options, timing, false)) {
@@ -841,6 +863,83 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
     current = &program->modules[module_index];
     program_collect_module_exports(current);
     current->state = MODULE_Loaded;
+    return true;
+}
+
+internal bool program_record_module_import(ProgramInfo* program,
+                                           u32          owner_module_index,
+                                           u32          import_module_index)
+{
+    if (owner_module_index >= array_count(program->modules) ||
+        import_module_index >= array_count(program->modules) ||
+        owner_module_index == import_module_index) {
+        return true;
+    }
+
+    ModuleInfo* owner = &program->modules[owner_module_index];
+    for (u32 i = 0; i < array_count(owner->imported_module_indices); ++i) {
+        if (owner->imported_module_indices[i] == import_module_index) {
+            return true;
+        }
+    }
+    array_push(owner->imported_module_indices, import_module_index);
+    return true;
+}
+
+internal bool program_load_implicit_core(ProgramInfo*           program,
+                                         const FrontEndOptions* options,
+                                         Timing*                timing,
+                                         u32          owner_module_index,
+                                         const Lexer* lexer,
+                                         NerdSource   current_source)
+{
+    if (owner_module_index >= array_count(program->modules) ||
+        string_eq_cstr(program->modules[owner_module_index].qualified_name,
+                       "core")) {
+        return true;
+    }
+
+    bool needs_core = false;
+    for (u32 i = 0; lexer != NULL && i < array_count(lexer->symbol_handles);
+         ++i) {
+        string symbol = lex_symbol(lexer, lexer->symbol_handles[i]);
+        if (string_eq_cstr(symbol, "Display") || string_eq_cstr(symbol, "Eq") ||
+            string_eq_cstr(symbol, "Order") ||
+            string_eq_cstr(symbol, "Default") ||
+            string_eq_cstr(symbol, "Option") ||
+            string_eq_cstr(symbol, "Result") ||
+            string_eq_cstr(symbol, "arena") ||
+            string_eq_cstr(symbol, "temp_arena")) {
+            needs_core = true;
+            break;
+        }
+    }
+    if (!needs_core) {
+        return true;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    ModuleResolveResult resolved = {0};
+    ModuleResolveStatus status   = module_resolve_qualified(
+        &temp, program->root_source, current_source, s("core"), &resolved);
+    if (status != MRS_Found) {
+        arena_done(&temp);
+        return true;
+    }
+
+    bool ok = program_load_module_by_path(program,
+                                          options,
+                                          timing,
+                                          s(resolved.qualified_name),
+                                          resolved.resolved_path);
+    u32  loaded_index =
+        program_find_module_by_path(program, resolved.resolved_path);
+    arena_done(&temp);
+    if (!ok) {
+        return false;
+    }
+    (void)loaded_index;
     return true;
 }
 
@@ -906,19 +1005,10 @@ program_collect_module_dependencies(ProgramInfo*           program,
         if (!ok) {
             return false;
         }
-        if (loaded_index != U32_MAX) {
-            ModuleInfo* owner = &program->modules[owner_module_index];
-            bool        already_recorded = false;
-            for (u32 j = 0; j < array_count(owner->imported_module_indices);
-                 ++j) {
-                if (owner->imported_module_indices[j] == loaded_index) {
-                    already_recorded = true;
-                    break;
-                }
-            }
-            if (!already_recorded) {
-                array_push(owner->imported_module_indices, loaded_index);
-            }
+        if (loaded_index != U32_MAX &&
+            !program_record_module_import(
+                program, owner_module_index, loaded_index)) {
+            return false;
         }
     }
 
@@ -994,6 +1084,16 @@ bool front_end_program(NerdSource             source,
             &root_ast,
             0,
             (u32)array_count(root_ast.nodes))) {
+        program.modules[program.root_module_index].state = MODULE_Failed;
+        program_info_done(&program);
+        return false;
+    }
+    if (!program_load_implicit_core(&program,
+                                    &effective_options,
+                                    timing,
+                                    program.root_module_index,
+                                    &root_lexer,
+                                    source)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;

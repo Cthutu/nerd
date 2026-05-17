@@ -24,6 +24,10 @@ fields, for example `io.prn`.
 
 `pub use module.path` re-exports the imported module's public declarations.
 
+Every module implicitly imports `core`. Local declarations with the same name
+as a core export take precedence over the implicit import. An explicit
+`use core` is still allowed and follows normal duplicate-binding checks.
+
 ## Resolution Order
 
 `module_resolve_path` currently searches:

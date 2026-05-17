@@ -1,4 +1,3 @@
-use core
 use std.io
 
 Point :: plex {

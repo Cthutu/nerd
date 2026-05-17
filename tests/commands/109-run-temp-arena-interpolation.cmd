@@ -1,5 +1,4 @@
 use std.io
-use core
 
 make :: fn (value: i32) -> string {
     return $"value-{value}-abcdefghijklmnopqrstuvwxyz"
