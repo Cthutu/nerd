@@ -3832,9 +3832,27 @@ internal bool llvm_impl_is_display_trait(const LlvmFunctionContext* ctx,
         impl != NULL
             ? llvm_ast_unwrap_expr_or_stmt(ast, impl->trait_type_node_index)
             : NULL;
-    return ctx != NULL && trait != NULL && trait->kind == AK_SymbolRef &&
-           trait->a != U32_MAX &&
-           string_eq_cstr(lex_symbol(ctx->lexer, trait->a), "Display");
+    if (ctx == NULL || trait == NULL || trait->kind != AK_SymbolRef ||
+        trait->a == U32_MAX ||
+        !string_eq_cstr(lex_symbol(ctx->lexer, trait->a), "Display")) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(ctx->sema->decls); ++i) {
+        const SemaDecl* decl = &ctx->sema->decls[i];
+        if (decl->symbol_handle != trait->a || decl->kind != SK_Trait) {
+            continue;
+        }
+        u32 module_index = decl->import_module_index != sema_no_decl()
+                               ? decl->import_module_index
+                               : ctx->sema->current_module_index;
+        return ctx->sema->program != NULL &&
+               module_index < array_count(ctx->sema->program->modules) &&
+               string_eq_cstr(
+                   ctx->sema->program->modules[module_index].qualified_name,
+                   "core");
+    }
+    return false;
 }
 
 internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,

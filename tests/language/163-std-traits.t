@@ -1,5 +1,5 @@
 use std.io
-use std.traits
+use core
 
 Point :: plex {
     x i32

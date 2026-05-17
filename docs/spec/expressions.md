@@ -90,5 +90,6 @@ Interpolated strings type as `string`. Literal-only interpolations can fold to a
 compile-time string. Runtime interpolations allocate their result from the
 temporary arena, so the result remains valid until `temp_arena.reset()`.
 Primitive values and built-in aggregate values have structural formatting. Other
-values may be interpolated when their type implements `Display`; interpolation
-calls `Display.show(value)` and inserts the returned string.
+values may be interpolated when their type implements the canonical
+`core.Display` trait; interpolation calls `Display.show(value)` and inserts the
+returned string.

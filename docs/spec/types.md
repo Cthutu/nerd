@@ -67,6 +67,8 @@ self type `Value` instead of `Self`.
 
 Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
+Language-required traits such as `Display` are canonical declarations from
+`core`.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when

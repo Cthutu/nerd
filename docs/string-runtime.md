@@ -13,7 +13,7 @@ The current implementation is intentionally simple:
 - lowering is explicit in HIR and LLVM
 - the C runtime uses a global append-only arena-backed builder
 - conversion support includes built-in values and `Display.show` for types that
-  implement `Display`
+  implement the canonical `core.Display` trait
 
 This is a first runtime model, not the final VM-oriented design.
 
@@ -85,7 +85,7 @@ Inside interpolation braces, sema currently accepts:
 - `f32`
 - `f64`
 - built-in aggregate values whose elements can be interpolated
-- values whose type implements `Display`
+- values whose type implements `core.Display`
 
 Unsupported values, such as function-typed expressions, produce a dedicated
 semantic error.

@@ -1,8 +1,5 @@
+use core
 use std.io
-
-Display :: trait {
-    show :: fn (Self) -> string
-}
 
 Point :: plex {
     x i32

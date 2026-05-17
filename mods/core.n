@@ -55,3 +55,33 @@ impl arena {
     }
 
 }
+
+--
+-- Canonical language-required trait and result declarations.
+--
+
+pub Display :: trait {
+    show :: fn (Self) -> string
+}
+
+pub Eq :: trait {
+    eq :: fn (Self, Self) -> bool
+}
+
+pub Order :: trait {
+    compare :: fn (Self, Self) -> i32
+}
+
+pub Default :: trait {
+    default :: fn () -> Self
+}
+
+pub Option :: enum [T] {
+    None
+    Some(T)
+}
+
+pub Result :: enum [T, E] {
+    Ok(T)
+    Err(E)
+}

@@ -2244,6 +2244,45 @@ internal u32 sema_find_decl(const Sema* sema, u32 symbol_handle)
     return sema_no_decl();
 }
 
+internal bool sema_module_is_core(const ProgramInfo* program, u32 module_index)
+{
+    return program != NULL && module_index < array_count(program->modules) &&
+           string_eq_cstr(program->modules[module_index].qualified_name,
+                          "core");
+}
+
+internal bool sema_decl_is_from_core(const Sema* sema, const SemaDecl* decl)
+{
+    if (sema == NULL || decl == NULL) {
+        return false;
+    }
+    if (decl->import_module_index != sema_no_decl()) {
+        return sema_module_is_core(sema->program, decl->import_module_index);
+    }
+    return sema_module_is_core(sema->program, sema->current_module_index);
+}
+
+internal u32 sema_find_core_trait_symbol(const Lexer* lexer,
+                                         const Sema*  sema,
+                                         string       name)
+{
+    u32 symbol = sema_find_symbol_handle_by_name(lexer, name);
+    if (symbol == sema_no_decl()) {
+        return sema_no_decl();
+    }
+
+    u32 decl_index = sema_find_decl(sema, symbol);
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
+        return sema_no_decl();
+    }
+
+    const SemaDecl* decl = &sema->decls[decl_index];
+    return decl->kind == SK_Trait && sema_decl_is_from_core(sema, decl)
+               ? symbol
+               : sema_no_decl();
+}
+
 typedef enum : u8 {
     SEMA_ALIAS_UNSEEN,
     SEMA_ALIAS_RESOLVING,
@@ -13304,7 +13343,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 continue;
             }
             u32 display_symbol =
-                sema_find_symbol_handle_by_name(lexer, s("Display"));
+                sema_find_core_trait_symbol(lexer, sema, s("Display"));
             if (display_symbol != sema_no_decl()) {
                 if (!sema_type_satisfies_trait_constraint(
                         lexer,
@@ -18107,7 +18146,8 @@ bool sema_analyse(const Lexer*           lexer,
     if (options == NULL) {
         effective_options.require_entry_point = true;
     }
-    sema.program = effective_options.program;
+    sema.program              = effective_options.program;
+    sema.current_module_index = effective_options.current_module_index;
 
     // Seed commonly-used built-in types so later materialisation can always
     // canonicalise untyped numeric literals to runtime storage types.

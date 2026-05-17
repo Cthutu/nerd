@@ -147,7 +147,8 @@ the roadmap before committing the implementation.
   library-driven language changes.
 - Keep `docs/stdlib.md` as a separate standard-library document; the language
   manual should reference the standard library only for small examples.
-- [ ] Add `Option[T]` and `Result[T, E]` to the standard library.
+- [x] Add `Option[T]` and `Result[T, E]` to `core` because they support
+  language-level APIs such as iterator results.
 - [ ] Keep parsing traits such as `Parse` at standard-library level rather than
   making them language-known traits.
 
@@ -459,13 +460,15 @@ library layering are in place.
 
 - [ ] Add traits as a simple interface mechanism for types.
 - [x] Use the `trait` keyword rather than `interface`.
-- [ ] Define the language-known built-in traits in `std.traits`:
+- [ ] Define the language-known built-in traits in `core`:
   - [x] `Display`
   - [x] `Eq`
   - [x] `Order`
   - [x] `Default`
   - [ ] `Iterator`
-- [ ] Treat built-in traits as normal canonical standard-library declarations
+- [ ] Make `core` implicitly available to every module so language-required
+  declarations do not need repetitive imports.
+- [x] Treat built-in traits as normal canonical core declarations
   where practical, with compiler recognition based on module path and name
   rather than unqualified spelling.
 - [ ] Add trait declaration syntax:
@@ -487,6 +490,9 @@ library layering are in place.
   - [x] allow generic implementations such as `impl Eq for []T where T: Eq`
   - [x] reject duplicate non-generic implementations in the first version
   - [x] reject overlapping generic implementations in the first version
+- [x] Add core generic result types:
+  - [x] `Option[T]` with `None` and `Some(T)`
+  - [x] `Result[T, E]` with `Ok(T)` and `Err(E)`
 - [ ] Add built-in trait semantics:
   - [x] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
@@ -579,6 +585,7 @@ library layering are in place.
   - [x] language tests for explicit trait calls
   - [x] language tests for generic constraints using `where T: Trait`
   - [x] language tests for `Display` interpolation on a plex value
+  - [x] language tests for `core.Option[T]` and `core.Result[T, E]`
   - [x] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
@@ -607,11 +614,11 @@ library layering are in place.
   - [x] manual examples for `impl Trait for Type`
   - [x] manual examples for receiver and explicit trait calls
   - [x] manual examples for generic constraints using traits
-  - [ ] manual section for built-in traits in `std.traits`
+  - [ ] manual section for built-in traits in `core`
   - [ ] manual examples for `Default` initialisation and zero-init fallback
   - [ ] manual examples for `Iterator` and `Option[Item]`
-  - [ ] standard-library documentation for `Option[T]`, `Result[T, E]`, and
-    `std.traits`
+  - [ ] standard-library documentation for `core.Option[T]`,
+    `core.Result[T, E]`, and core built-in traits
   - [x] syntax-reference appendix entries
   - [x] language-reference appendix rules
 

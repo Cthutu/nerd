@@ -164,6 +164,7 @@ typedef struct {
 
 typedef struct {
     const ProgramInfo* program;
+    u32                current_module_index;
     Array(SemaType) types;
     Array(u32) type_param_types;
     Array(u32) type_param_symbols;

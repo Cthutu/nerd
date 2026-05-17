@@ -14,8 +14,8 @@ The current standard modules live under [mods](/home/matt/nerd/mods). The
 library is moving toward three layers:
 
 - `core`
-  Language-adjacent helpers with minimal dependencies. This currently contains
-  the first source-level arena API.
+  Language-adjacent helpers with minimal dependencies. This contains the arena
+  API, the temporary arena, language-required traits, and core result types.
 - `std`
   Portable higher-level utilities.
 - `sys`
@@ -33,7 +33,8 @@ library is moving toward three layers:
 - `std.string`
   String utilities.
 - `std.traits`
-  Canonical trait declarations for common behaviours.
+  Compatibility module for common trait declarations. Language-required traits
+  are canonical in `core`.
 - `sys.linux`
   Low-level Linux C and syscall-adjacent bindings.
 
@@ -97,6 +98,18 @@ should prefer the built-in `arena` type exposed through `core`.
 - `arena.restore(mark: u32)`
 - `arena.done()`
 - `temp_arena.reset()`
+- `Display`
+  Requires `show :: fn (Self) -> string`.
+- `Eq`
+  Requires `eq :: fn (Self, Self) -> bool`.
+- `Order`
+  Requires `compare :: fn (Self, Self) -> i32`.
+- `Default`
+  Requires `default :: fn () -> Self`.
+- `Option[T]`
+  Tagged enum with `None` and `Some(T)`.
+- `Result[T, E]`
+  Tagged enum with `Ok(T)` and `Err(E)`.
 
 Arena sizes are rounded up to the platform page size by the runtime. Arena
 construction reserves one 4 GiB virtual address range and commits pages on
@@ -123,8 +136,9 @@ array when it is no longer needed.
 - `Default`
   Requires `default :: fn () -> Self`.
 
-These are ordinary standard-library trait declarations. Generic traits such as
-`Iterator[Item]` are deferred until generic trait syntax and constraints land.
+This module remains as a compatibility location while existing code moves to
+`core`. Language features that recognise built-in traits use the canonical
+declarations in `core`, not duplicate same-named declarations elsewhere.
 
 ### Experimental `std.random`
 
