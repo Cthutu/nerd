@@ -1513,6 +1513,30 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                                         ast_token_span(state, &trait_token),
                                         TK_trait);
     }
+    u32 self_alias_symbol = U32_MAX;
+    if (state->token.kind == TK_for) {
+        AstToken for_token = state->token;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(state->lexer->source,
+                                            ast_token_span(state, &for_token),
+                                            TK_Symbol);
+        }
+        if (state->token.kind != TK_Symbol) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_Symbol,
+                state->token.kind);
+        }
+        self_alias_symbol = state->token.value.symbol_handle;
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                TK_EOF);
+        }
+    }
     if (state->token.kind != TK_LBrace) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -1525,6 +1549,7 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                        (AstNode){
                            .kind        = AK_Trait,
                            .token_index = trait_token.token_index,
+                           .b           = self_alias_symbol,
                        },
                        &trait_node)) {
         return false;

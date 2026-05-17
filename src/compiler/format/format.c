@@ -4743,7 +4743,12 @@ internal void format_emit_trait_multiline(StringBuilder* sb,
     const CstNode* trait = &cst->nodes[node_index];
     ASSERT(trait->kind == CK_Trait, "Expected trait node");
 
-    sb_append_cstr(sb, "trait {\n");
+    sb_append_cstr(sb, "trait");
+    if (trait->b != U32_MAX) {
+        sb_append_cstr(sb, " for ");
+        sb_append_string(sb, lex_symbol(lexer, trait->b));
+    }
+    sb_append_cstr(sb, " {\n");
     format_emit_block_contents(sb, cst, lexer, trait->a, indent_level + 1);
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');

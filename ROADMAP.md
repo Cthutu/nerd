@@ -529,13 +529,13 @@ library layering are in place.
 - [ ] Parser and AST work:
   - [x] parse trait declarations
   - [ ] parse trait generic parameter lists
-  - [ ] parse optional named self aliases
+  - [x] parse optional named self aliases
   - [x] parse trait impl blocks
   - [ ] parse `where` clauses on generic functions and impl blocks
 - [ ] Sema work:
   - [x] register trait declarations and required members
   - [x] substitute `Self` when checking local impl members
-  - [ ] substitute named self aliases when checking impl members
+  - [x] substitute named self aliases when checking impl members
   - [x] require impls to provide all required trait functions
   - [x] reject local impl members with incompatible signatures
   - [ ] validate `where` constraints against known traits
@@ -556,7 +556,7 @@ library layering are in place.
   - [ ] preserve monomorphisation behaviour for generic impls
 - [ ] Formatter work:
   - [x] format trait declarations
-  - [ ] format named self aliases
+  - [x] format named self aliases
   - [x] format trait impl blocks
   - [ ] format `where` clauses
   - [ ] format receiver and explicit trait member calls
@@ -570,7 +570,7 @@ library layering are in place.
   - [ ] document symbols for impl blocks
 - [ ] Tests:
   - [x] language tests for trait declarations using `Self`
-  - [ ] language tests for trait declarations using `trait for Value`
+  - [x] language tests for trait declarations using `trait for Value`
   - [x] language tests for plex implementations
   - [x] language tests for union and enum implementations
   - [x] language tests for primitive implementations
@@ -586,7 +586,7 @@ library layering are in place.
     implementation exists
   - [ ] language tests for `Iterator` returning `Option[Item]`
   - [ ] language tests for `for elem` and `for ^elem` item typing
-  - [ ] error tests for missing required impl members
+  - [x] error tests for missing required impl members
   - [x] error tests for incompatible impl member signatures
   - [x] error tests for unknown traits in impls
   - [x] error tests for duplicate non-generic impls

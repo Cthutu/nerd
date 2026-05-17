@@ -2468,6 +2468,15 @@ internal bool sema_node_is_inside_trait_body(const Ast* ast, u32 node_index)
     return false;
 }
 
+internal u32 sema_trait_self_alias_symbol(const Lexer*   lexer,
+                                          const AstNode* trait_node)
+{
+    if (trait_node->b != U32_MAX) {
+        return trait_node->b;
+    }
+    return sema_find_symbol_handle_by_name(lexer, s("Self"));
+}
+
 internal u32 sema_mangle_method_symbol(const Lexer* lexer,
                                        u32          impl_node_index,
                                        u32          method_symbol)
@@ -4180,7 +4189,19 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
         return false;
     }
 
-    u32 self_symbol      = sema_find_symbol_handle_by_name(lexer, s("Self"));
+    u32 trait_symbol =
+        sema_trait_symbol_from_type_node(ast, impl->trait_type_node_index);
+    u32 trait_decl_index = sema_find_decl(sema, trait_symbol);
+    if (trait_decl_index == sema_no_decl() ||
+        trait_decl_index >= array_count(sema->decls) ||
+        sema->decls[trait_decl_index].value_node_index >=
+            array_count(ast->nodes)) {
+        return true;
+    }
+    const AstNode* trait_node =
+        &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+
+    u32 self_symbol      = sema_trait_self_alias_symbol(lexer, trait_node);
     u32 subst_symbols[1] = {self_symbol};
     u32 subst_types[1]   = {target_type};
     SemaTypeSubstitution subst = {

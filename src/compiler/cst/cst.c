@@ -5205,8 +5205,21 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_trait(CstParseState* state, u32* out_node)
 {
-    u32 token_index = state->token_index;
+    u32 token_index       = state->token_index;
+    u32 self_alias_symbol = U32_MAX;
     cst_advance(state);
+
+    if (cst_current_token(state).kind == TK_for) {
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+        self_alias_symbol = cst_current_symbol_handle(state);
+        if (self_alias_symbol == CST_NO_VALUE) {
+            return false;
+        }
+        cst_advance(state);
+    }
 
     if (!cst_consume(state, TK_LBrace)) {
         return false;
@@ -5217,6 +5230,7 @@ internal bool cst_parse_trait(CstParseState* state, u32* out_node)
                        (CstNode){
                            .kind        = CK_Trait,
                            .token_index = token_index,
+                           .b           = self_alias_symbol,
                        },
                        &trait_node)) {
         return false;

@@ -85,7 +85,7 @@ function-body   ::= '=>' expression
                   | block
 
 trait-declaration
-                ::= 'trait' '{' { trait-member } '}'
+                ::= 'trait' [ 'for' IDENT ] '{' { trait-member } '}'
 
 trait-member    ::= IDENT '::' function-type
 
@@ -101,20 +101,21 @@ The binding operators are two adjacent tokens in the lexer: `::` is parsed as
 
 Trait declarations are registered as semantic declarations, formatted, exposed
 to LSP document symbols, and kept out of generated backend output. Trait
-implementation blocks validate that all required member names are present, and
-local trait implementations validate compatible member signatures after `Self`
-substitution. Impl members are callable through normal receiver method syntax.
-Duplicate non-generic implementations for the same trait and implementation
-target are rejected. Implementations may target compound types and primitive
-built-in types. A trait implementation block is the complete implementation for
-one trait/type pair; implementations are not split or merged across multiple
-blocks.
+declarations may name the self type with `trait for Value`; otherwise the self
+type is named `Self`. Trait implementation blocks validate that all required
+member names are present, and local trait implementations validate compatible
+member signatures after self-type substitution. Impl members are callable
+through normal receiver method syntax. Duplicate non-generic implementations
+for the same trait and implementation target are rejected. Implementations may
+target compound types and primitive built-in types. A trait implementation
+block is the complete implementation for one trait/type pair; implementations
+are not split or merged across multiple blocks.
 Generic methods may also receive explicit type arguments with
 `value.method[T](...)`. Receiver method lookup prefers inherent impl methods
 before trait impl methods. If multiple trait impl methods with the same name are
 valid for the receiver type, the receiver call is ambiguous. Generic trait
-parameters, named self aliases, constraints, and explicit trait member calls are
-future milestone work.
+parameters, constraints, and explicit trait member calls are future milestone
+work.
 
 ## Modules, FFI, And Pragmas
 

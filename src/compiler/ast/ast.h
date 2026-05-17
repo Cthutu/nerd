@@ -98,7 +98,7 @@
 // | AK_ModRef          | Ast module path index | 0                            |
 // | AK_Use             | Ast index of module expression | 0                  |
 // | AK_Impl            | Ast impl-info index | 0                             |
-// | AK_Trait           | Ast block node index | 0                            |
+// | AK_Trait           | Ast block node index | Self alias symbol or U32_MAX |
 // | AK_TopOn           | Ast top-on info index | 0                           |
 // | AK_Pragma          | Ast pragma-info index | 0                          |
 //

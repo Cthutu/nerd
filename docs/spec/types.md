@@ -59,7 +59,8 @@ function-type   ::= 'fn' generic-params? '(' type-list? ')' '->' type
 ```
 
 Function types use unnamed parameter types. Trait requirements reuse this
-syntax, for example `show :: fn (Self) -> string`.
+syntax, for example `show :: fn (Self) -> string`. A trait may use
+`trait for Value` to name the self type `Value` instead of `Self`.
 
 Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
@@ -68,10 +69,10 @@ syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when
 multiple trait impl methods with the same name are valid for the receiver type.
 For local trait declarations, implementations must provide every required
-member with a compatible function signature after substituting `Self` with the
-implementation target type. Duplicate non-generic implementations for the same
-trait and target type are rejected. A trait implementation is atomic: all
-required members for one trait/type pair must appear in the same
+member with a compatible function signature after substituting the trait self
+type with the implementation target type. Duplicate non-generic implementations
+for the same trait and target type are rejected. A trait implementation is
+atomic: all required members for one trait/type pair must appear in the same
 `impl Trait for Type` block. The language does not merge partial
 implementations of the same trait for the same type across multiple impl
 blocks.
