@@ -1412,6 +1412,8 @@ internal u32 sema_ensure_module_export_decl(Sema*        sema,
         kind = SK_Variable;
     } else if (import_decl_kind == SK_GenericFunction) {
         kind = SK_GenericFunction;
+    } else if (import_decl_kind == SK_Trait) {
+        kind = SK_Trait;
     } else if (import_decl_kind == SK_FfiFunction) {
         kind = SK_FfiFunction;
     } else if (type_index != sema_no_type() &&
@@ -2443,6 +2445,21 @@ internal u32 sema_enclosing_impl_node_index(const Ast* ast, u32 node_index)
 internal bool sema_node_is_inside_impl_body(const Ast* ast, u32 node_index)
 {
     return sema_enclosing_impl_node_index(ast, node_index) != U32_MAX;
+}
+
+internal bool sema_node_is_inside_trait_body(const Ast* ast, u32 node_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* owner = &ast->nodes[i];
+        if (owner->kind != AK_Trait || owner->a >= array_count(ast->nodes)) {
+            continue;
+        }
+        const AstNode* body = &ast->nodes[owner->a];
+        if (body->a <= node_index && node_index < body->b) {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal u32 sema_mangle_method_symbol(const Lexer* lexer,
@@ -3699,7 +3716,7 @@ internal bool sema_try_classify_type_alias(const Lexer* lexer,
     }
     if (decl->kind == SK_Variable || decl->kind == SK_Function ||
         decl->kind == SK_FfiFunction || decl->kind == SK_Module ||
-        decl->kind == SK_BuiltinFunction) {
+        decl->kind == SK_BuiltinFunction || decl->kind == SK_Trait) {
         *out_is_type    = false;
         *out_type_index = sema_no_type();
         return true;
@@ -4052,6 +4069,9 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             }
             continue;
         }
+        if (node->kind == AK_Trait) {
+            continue;
+        }
         if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
             continue;
         }
@@ -4088,6 +4108,9 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             continue;
         }
         if (sema_node_is_inside_impl_body(ast, i)) {
+            continue;
+        }
+        if (sema_node_is_inside_trait_body(ast, i)) {
             continue;
         }
         if (node->kind == AK_FfiDef) {
@@ -4163,6 +4186,8 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             kind = SK_FfiFunction;
         } else if (value->kind == AK_ModRef) {
             kind = SK_Module;
+        } else if (value->kind == AK_Trait) {
+            kind = SK_Trait;
         }
 
         array_push(sema->decls,
@@ -14676,7 +14701,7 @@ sema_assign_decl_types(const Lexer* lexer, const Ast* ast, Sema* sema)
         u32       inferred_type = sema_no_type();
 
         if (decl->kind == SK_TypeAlias || decl->kind == SK_GenericTypeAlias ||
-            decl->kind == SK_GenericFunction) {
+            decl->kind == SK_GenericFunction || decl->kind == SK_Trait) {
             if (decl->bind_node_index != sema_no_decl()) {
                 sema->node_type_indices[decl->bind_node_index] =
                     decl->type_index;
@@ -15445,6 +15470,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_ModRef:
     case AK_Use:
     case AK_Impl:
+    case AK_Trait:
     case AK_Pragma:
         return true;
 

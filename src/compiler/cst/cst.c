@@ -48,6 +48,7 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node);
 internal bool cst_token_has_newline_before(const CstParseState* state,
                                            u32                  token_index);
 internal bool cst_parse_pragma(CstParseState* state, u32* out_node);
+internal bool cst_parse_trait(CstParseState* state, u32* out_node);
 
 //------------------------------------------------------------------------------
 // Return the current token, or a synthetic EOF token when the cursor is past
@@ -4347,6 +4348,10 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_value(CstParseState* state, u32* out_node)
 {
+    if (cst_current_token(state).kind == TK_trait) {
+        return cst_parse_trait(state, out_node);
+    }
+
     if (cst_remaining_bind_value_is_type_syntax(state)) {
         return cst_parse_type(state, out_node);
     }
@@ -5185,6 +5190,80 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
     state->cst.nodes[block_node].b = (u32)array_count(state->cst.nodes);
     if (out_node != NULL) {
         *out_node = impl_node;
+    }
+    return true;
+}
+
+internal bool cst_parse_trait(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    if (!cst_consume(state, TK_LBrace)) {
+        return false;
+    }
+
+    u32 trait_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Trait,
+                           .token_index = token_index,
+                       },
+                       &trait_node)) {
+        return false;
+    }
+
+    u32 block_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Block,
+                           .token_index = state->token_index - 1,
+                       },
+                       &block_node)) {
+        return false;
+    }
+    u32 first_item = (u32)array_count(state->cst.nodes);
+
+    while (cst_current_token(state).kind != TK_RBrace) {
+        if (cst_current_token(state).kind != TK_Symbol) {
+            return false;
+        }
+
+        u32 member_token  = state->token_index;
+        u32 member_symbol = cst_current_symbol_handle(state);
+        if (member_symbol == CST_NO_VALUE) {
+            return false;
+        }
+        cst_advance(state);
+        if (!cst_consume(state, TK_Colon) || !cst_consume(state, TK_Colon)) {
+            return false;
+        }
+        u32 value_node = 0;
+        if (!cst_parse_type(state, &value_node)) {
+            return false;
+        }
+        if (value_node >= array_count(state->cst.nodes) ||
+            state->cst.nodes[value_node].kind != CK_TypeFn) {
+            return false;
+        }
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_Bind,
+                               .token_index = member_token,
+                               .a           = member_symbol,
+                               .b           = value_node,
+                           },
+                           NULL)) {
+            return false;
+        }
+    }
+    cst_advance(state);
+
+    state->cst.nodes[trait_node].a = block_node;
+    state->cst.nodes[block_node].a = first_item;
+    state->cst.nodes[block_node].b = (u32)array_count(state->cst.nodes);
+    if (out_node != NULL) {
+        *out_node = trait_node;
     }
     return true;
 }

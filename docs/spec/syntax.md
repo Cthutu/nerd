@@ -75,12 +75,18 @@ variable-initializer
 declaration     ::= function-declaration
                   | ffi-declaration
                   | use-module-ref
+                  | trait-declaration
 
 function-declaration
                 ::= 'fn' generic-params? '(' named-param-list? ')' [ '->' type ] function-body
 
 function-body   ::= '=>' expression
                   | block
+
+trait-declaration
+                ::= 'trait' '{' { trait-member } '}'
+
+trait-member    ::= IDENT '::' function-type
 
 named-param     ::= IDENT ':' type [ '=' expression ]
 named-param-list
@@ -91,6 +97,12 @@ generic-params  ::= '[' IDENT { ',' IDENT } ']'
 
 The binding operators are two adjacent tokens in the lexer: `::` is parsed as
 `':' ':'`, and `:=` is parsed as `':' '='`.
+
+Trait declarations are currently syntax-only interface declarations. They are
+registered as semantic declarations, formatted, exposed to LSP document
+symbols, and kept out of generated backend output. Trait implementations,
+generic trait parameters, named self aliases, constraints, and trait member
+calls are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

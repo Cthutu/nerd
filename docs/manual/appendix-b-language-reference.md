@@ -144,6 +144,9 @@ intended exit code.
 - Associated functions in impl blocks are called as `Type.name(...)` and return
   `Self` or `^Self`.
 - Public methods inside an impl block are imported with their type's module.
+- Trait declarations use `Name :: trait { member :: fn (Self) -> Type }`.
+  They currently declare syntax-only interfaces: implementations, constraints,
+  and trait member calls are not part of the current language surface.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

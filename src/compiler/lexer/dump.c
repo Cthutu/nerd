@@ -164,6 +164,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `pub`");
     case TK_impl:
         return string_from_cstr("Keyword `impl`");
+    case TK_trait:
+        return string_from_cstr("Keyword `trait`");
     case TK_pragma:
         return string_from_cstr("Keyword `pragma`");
     case TK_with:

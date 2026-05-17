@@ -323,7 +323,7 @@ the roadmap before committing the implementation.
 ### Traits Milestone
 
 - [ ] Add traits as a simple interface mechanism for types.
-- [ ] Use the `trait` keyword rather than `interface`.
+- [x] Use the `trait` keyword rather than `interface`.
 - [ ] Define the language-known built-in traits in `std.traits`:
   - [ ] `Display`
   - [ ] `Eq`
@@ -334,7 +334,7 @@ the roadmap before committing the implementation.
   where practical, with compiler recognition based on module path and name
   rather than unqualified spelling.
 - [ ] Add trait declaration syntax:
-  - [ ] `Name :: trait { ... }`
+  - [x] `Name :: trait { ... }`
   - [ ] generic traits such as `Name :: trait [Item] for Value { ... }`
   - [ ] optional named self form `Name :: trait for Value { ... }`
   - [ ] make `Self` available inside every trait body
@@ -391,7 +391,7 @@ the roadmap before committing the implementation.
   - [ ] require explicit trait calls for functions that cannot be resolved from
     a receiver value
 - [ ] Parser and AST work:
-  - [ ] parse trait declarations
+  - [x] parse trait declarations
   - [ ] parse trait generic parameter lists
   - [ ] parse optional named self aliases
   - [ ] parse impl blocks
@@ -412,11 +412,11 @@ the roadmap before committing the implementation.
     but cannot be inferred
 - [ ] Backend lowering work:
   - [ ] lower trait calls to statically selected concrete functions
-  - [ ] keep trait declarations out of generated backend output
+  - [x] keep trait declarations out of generated backend output
   - [ ] emit implementation functions with stable generated backend names
   - [ ] preserve monomorphisation behaviour for generic impls
 - [ ] Formatter work:
-  - [ ] format trait declarations
+  - [x] format trait declarations
   - [ ] format named self aliases
   - [ ] format impl blocks
   - [ ] format `where` clauses
@@ -427,9 +427,10 @@ the roadmap before committing the implementation.
     possible
   - [ ] semantic tokens for `trait`, `impl`, `where`, `Self`, and trait member
     declarations
-  - [ ] document symbols for traits and impl blocks
+  - [x] document symbols for traits
+  - [ ] document symbols for impl blocks
 - [ ] Tests:
-  - [ ] language tests for trait declarations using `Self`
+  - [x] language tests for trait declarations using `Self`
   - [ ] language tests for trait declarations using `trait for Value`
   - [ ] language tests for plex implementations
   - [ ] language tests for union, enum, and primitive implementations
@@ -451,7 +452,8 @@ the roadmap before committing the implementation.
   - [ ] error tests for ambiguous receiver trait calls
   - [ ] error tests for non-inferable trait generic parameters with useful
     `help` messages
-  - [ ] format tests for trait and impl syntax
+  - [x] format tests for trait declarations
+  - [ ] format tests for impl syntax
   - [ ] LSP tests for hover/symbol/token behaviour affected by traits
 - [ ] Documentation:
   - [ ] manual section introducing traits as interfaces for types

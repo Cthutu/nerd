@@ -662,6 +662,11 @@ internal void   format_emit_type_enum_multiline(StringBuilder* sb,
                                                 const Lexer*   lexer,
                                                 u32            node_index,
                                                 u32            indent_level);
+internal void   format_emit_trait_multiline(StringBuilder* sb,
+                                            const Cst*     cst,
+                                            const Lexer*   lexer,
+                                            u32            node_index,
+                                            u32            indent_level);
 internal void   format_emit_expr(StringBuilder* sb,
                                  const Cst*     cst,
                                  const Lexer*   lexer,
@@ -1390,6 +1395,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypeEnum:
         format_emit_type_enum_multiline(sb, cst, lexer, node_index, 0);
         break;
+    case CK_Trait:
+        format_emit_trait_multiline(sb, cst, lexer, node_index, 0);
+        break;
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
         break;
@@ -1972,7 +1980,7 @@ internal bool format_node_is_value_constant_payload(const CstNode* node)
            node->kind != CK_FfiDef && node->kind != CK_FfiBlock &&
            node->kind != CK_ModRef && node->kind != CK_For &&
            node->kind != CK_ExprBlock && node->kind != CK_TypePlex &&
-           node->kind != CK_TypeEnum;
+           node->kind != CK_TypeEnum && node->kind != CK_Trait;
 }
 
 internal string format_assignment_operator(const Lexer*   lexer,
@@ -2150,6 +2158,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_PlexUpdate:
     case CK_TypePlex:
     case CK_TypeEnum:
+    case CK_Trait:
         return format_find_matching_close_after_token(
             lexer, node->token_index, TK_LBrace, TK_RBrace);
     case CK_TypeApply:
@@ -4721,6 +4730,21 @@ internal void format_emit_impl(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal void format_emit_trait_multiline(StringBuilder* sb,
+                                          const Cst*     cst,
+                                          const Lexer*   lexer,
+                                          u32            node_index,
+                                          u32            indent_level)
+{
+    const CstNode* trait = &cst->nodes[node_index];
+    ASSERT(trait->kind == CK_Trait, "Expected trait node");
+
+    sb_append_cstr(sb, "trait {\n");
+    format_emit_block_contents(sb, cst, lexer, trait->a, indent_level + 1);
+    format_emit_indent(sb, indent_level);
+    sb_append_char(sb, '}');
+}
+
 internal void format_emit_test(StringBuilder* sb,
                                const Cst*     cst,
                                const Lexer*   lexer,
@@ -5594,6 +5618,8 @@ internal void format_emit_for_header_item(StringBuilder* sb,
             format_emit_type_plex_multiline(sb, cst, lexer, item->b, 0);
         } else if (cst->nodes[item->b].kind == CK_TypeEnum) {
             format_emit_type_enum_multiline(sb, cst, lexer, item->b, 0);
+        } else if (cst->nodes[item->b].kind == CK_Trait) {
+            format_emit_trait_multiline(sb, cst, lexer, item->b, 0);
         } else {
             format_emit_value_with_indent(sb, cst, lexer, item->b, 0);
         }
@@ -5866,6 +5892,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
         } else if (cst->nodes[stmt->b].kind == CK_TypeEnum) {
             format_emit_type_enum_multiline(
                 sb, cst, lexer, stmt->b, indent_level);
+        } else if (cst->nodes[stmt->b].kind == CK_Trait) {
+            format_emit_trait_multiline(sb, cst, lexer, stmt->b, indent_level);
         } else {
             format_emit_value_with_indent(
                 sb, cst, lexer, stmt->b, indent_level);
@@ -6455,6 +6483,8 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 format_emit_type_plex_multiline(sb, &cst, &lexer, node->b, 0);
             } else if (cst.nodes[node->b].kind == CK_TypeEnum) {
                 format_emit_type_enum_multiline(sb, &cst, &lexer, node->b, 0);
+            } else if (cst.nodes[node->b].kind == CK_Trait) {
+                format_emit_trait_multiline(sb, &cst, &lexer, node->b, 0);
             } else {
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
@@ -6762,6 +6792,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_use:
     case TK_pub:
     case TK_impl:
+    case TK_trait:
     case TK_with:
         return true;
     default:
@@ -6787,6 +6818,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_use:
     case TK_pub:
     case TK_impl:
+    case TK_trait:
     case TK_with:
         return true;
     default:

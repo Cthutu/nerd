@@ -428,6 +428,8 @@ internal u32 lsp_completion_decl_kind(SemaDeclKind kind)
     case SK_TypeAlias:
     case SK_GenericTypeAlias:
         return 22; // Struct
+    case SK_Trait:
+        return 8; // Interface
     case SK_Constant:
         return 21; // Constant
     case SK_Variable:
@@ -3467,24 +3469,9 @@ internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
 internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
 {
     static cstr keywords[] = {
-        "assert",
-        "break",
-        "again",
-        "defer",
-        "else",
-        "enum",
-        "ffi",
-        "fn",
-        "for",
-        "impl",
-        "intrinsic",
-        "on",
-        "pragma",
-        "pub",
-        "return",
-        "test",
-        "union",
-        "use",
+        "assert", "break", "again", "defer",     "else", "enum",   "ffi",
+        "fn",     "for",   "impl",  "intrinsic", "on",   "pragma", "pub",
+        "return", "test",  "trait", "union",     "use",
     };
 
     for (usize i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {

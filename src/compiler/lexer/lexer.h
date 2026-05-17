@@ -100,6 +100,7 @@ typedef enum {
     TK_use,
     TK_pub,
     TK_impl,
+    TK_trait,
     TK_pragma,
     TK_with,
     TK_in,

@@ -76,6 +76,7 @@
 // | CK_ModRef          | Module path index     | 0                     |
 // | CK_Use             | Module node index     | 0                     |
 // | CK_Impl            | Impl-info index       | 0                     |
+// | CK_Trait           | Block node index      | 0                     |
 // | CK_TopOn           | Top-on/assert-on info index | 0              |
 // | CK_Pragma          | Pragma-info index     | 0                     |
 // | CK_Test            | Name string node      | Body block node       |
@@ -165,6 +166,7 @@ typedef enum {
     CK_ModRef,
     CK_Use,
     CK_Impl,
+    CK_Trait,
     CK_TopOn,
     CK_Pragma,
     CK_Test,

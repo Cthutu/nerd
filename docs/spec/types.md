@@ -57,6 +57,9 @@ type-list       ::= type { ',' type }
 function-type   ::= 'fn' generic-params? '(' type-list? ')' '->' type
 ```
 
+Function types use unnamed parameter types. Trait requirements reuse this
+syntax, for example `show :: fn (Self) -> string`.
+
 Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful
 language form is a non-empty type list.

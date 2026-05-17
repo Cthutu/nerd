@@ -3095,6 +3095,8 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 
         const SemaDecl* decl = &sema->decls[decl_index];
         switch (decl->kind) {
+        case SK_Trait:
+            break;
         case SK_Module:
             {
                 u32 module_index = hir_no_index();

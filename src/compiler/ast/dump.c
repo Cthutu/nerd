@@ -150,6 +150,10 @@ string ast_kind_to_string(AstKind kind)
         return s("ModRef");
     case AK_Use:
         return s("Use");
+    case AK_Impl:
+        return s("Impl");
+    case AK_Trait:
+        return s("Trait");
     case AK_TopOn:
         return s("TopOn");
     case AK_Pragma:

@@ -21,6 +21,7 @@ typedef enum : u8 {
     SK_BuiltinFunction,
     SK_GenericTypeAlias,
     SK_GenericFunction,
+    SK_Trait,
 } SemaDeclKind;
 
 typedef enum : u8 {

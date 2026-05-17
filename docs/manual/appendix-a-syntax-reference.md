@@ -26,6 +26,9 @@ Name :: union { field Type }
 Name :: union [T, U] { field Type }
 Name :: enum { Variant, Payload(Type) }
 Name :: enum [T, U] { Variant, Payload(Type) }
+Name :: trait {
+    member :: fn (Self) -> Type
+}
 pub name :: value
 pub name := value
 pub Name :: Type
@@ -105,6 +108,9 @@ fn (a: Type) => expr
 fn [T] (a: T) => expr
 fn (Type, Type) -> ReturnType
 ```
+
+Trait member requirements use function type syntax, so their parameter list
+contains types rather than named parameters.
 
 ## Control Flow
 

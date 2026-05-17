@@ -8,6 +8,7 @@
 #include <lsp/lsp.h>
 
 #define LSP_NO_DECL UINT32_MAX
+#define LSP_SYMBOL_KIND_INTERFACE 11
 #define LSP_SYMBOL_KIND_FUNCTION 12
 #define LSP_SYMBOL_KIND_VARIABLE 13
 #define LSP_SYMBOL_KIND_CONSTANT 14
@@ -2086,10 +2087,14 @@ internal bool lsp_get_request_context(LspState*           state,
 
 internal int lsp_decl_symbol_kind(const SemaDecl* decl)
 {
-    return decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
-                   decl->kind == SK_FfiFunction
-               ? LSP_SYMBOL_KIND_FUNCTION
-               : LSP_SYMBOL_KIND_CONSTANT;
+    if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
+        decl->kind == SK_FfiFunction) {
+        return LSP_SYMBOL_KIND_FUNCTION;
+    }
+    if (decl->kind == SK_Trait) {
+        return LSP_SYMBOL_KIND_INTERFACE;
+    }
+    return LSP_SYMBOL_KIND_CONSTANT;
 }
 
 //------------------------------------------------------------------------------
@@ -2122,6 +2127,9 @@ internal int lsp_cst_binding_symbol_kind(const Cst* cst, const CstNode* bind)
          value->kind == CK_FfiDef)) {
         return LSP_SYMBOL_KIND_FUNCTION;
     }
+    if (value && value->kind == CK_Trait) {
+        return LSP_SYMBOL_KIND_INTERFACE;
+    }
 
     return bind->kind == CK_Variable ? LSP_SYMBOL_KIND_VARIABLE
                                      : LSP_SYMBOL_KIND_CONSTANT;
@@ -2138,6 +2146,9 @@ internal string lsp_cst_binding_detail(Arena*         arena,
         (value->kind == CK_FnExpr || value->kind == CK_FnBlock ||
          value->kind == CK_FfiDef)) {
         return s("function");
+    }
+    if (value && value->kind == CK_Trait) {
+        return s("trait");
     }
 
     return bind->kind == CK_Variable ? s("variable") : s("binding");
@@ -2228,6 +2239,8 @@ internal void lsp_append_document_symbol(Arena*             arena,
         json_object_set_string(symbol, arena, "detail", fallback_detail);
     } else if (decl->kind == SK_TypeAlias) {
         json_object_set_string(symbol, arena, "detail", s("type alias"));
+    } else if (decl->kind == SK_Trait) {
+        json_object_set_string(symbol, arena, "detail", s("trait"));
     } else if (decl->kind == SK_Constant) {
         i64 value = 0;
         if (lsp_eval_decl_value(doc, decl_index, &value)) {
