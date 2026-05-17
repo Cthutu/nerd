@@ -11,15 +11,18 @@ impl Display for Point {
     show :: fn (self: Self) => $"Point({self.x}, {self.y})"
 }
 
-id :: fn [T] (value: T) -> T where T: Display {
+id :: fn [T] (value: T) -> T
+where T: Display {
     return value
 }
 
-describe :: fn [T] (value: T) -> string where T: Display {
+describe :: fn [T] (value: T) -> string
+where T: Display {
     return value.show()
 }
 
-describe_explicit :: fn [T] (value: T) -> string where T: Display {
+describe_explicit :: fn [T] (value: T) -> string
+where T: Display {
     return Display.show(value)
 }
 
@@ -27,7 +30,8 @@ Box :: plex [T] {
     value T
 }
 
-impl Box[T] where T: Display {
+impl Box[T]
+where T: Display {
     get :: fn (self: Self) -> T {
         return self.value
     }

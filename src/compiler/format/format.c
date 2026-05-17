@@ -1794,6 +1794,26 @@ internal usize format_sb_current_column(const StringBuilder* sb)
     return column;
 }
 
+internal usize format_sb_current_line_indent(const StringBuilder* sb)
+{
+    usize line_start = 0;
+    for (usize i = sb->size; i > 0; --i) {
+        if (sb->data[i - 1] == '\n') {
+            line_start = i;
+            break;
+        }
+    }
+
+    usize indent = 0;
+    for (usize i = line_start; i < sb->size; ++i) {
+        if (sb->data[i] != ' ') {
+            break;
+        }
+        ++indent;
+    }
+    return indent;
+}
+
 internal bool format_string_has_newline(string text)
 {
     for (usize i = 0; i < text.count; ++i) {
@@ -4199,27 +4219,62 @@ internal void format_emit_fn_signature_prefix(StringBuilder*        sb,
     }
 }
 
+internal void format_emit_where_constraints_at_indent(StringBuilder* sb,
+                                                      const Cst*     cst,
+                                                      const Lexer*   lexer,
+                                                      u32   first_constraint,
+                                                      u32   constraint_count,
+                                                      usize indent)
+{
+    if (constraint_count == 0) {
+        return;
+    }
+
+    usize name_width = 0;
+    if (constraint_count > 1) {
+        for (u32 i = 0; i < constraint_count; ++i) {
+            const CstWhereConstraint* constraint =
+                &cst->where_constraints[first_constraint + i];
+            usize name_count =
+                lex_symbol(lexer, constraint->param_symbol).count;
+            if (name_count > name_width) {
+                name_width = name_count;
+            }
+        }
+    }
+
+    sb_append_char(sb, '\n');
+    format_emit_spaces(sb, indent);
+    sb_append_cstr(sb, "where ");
+    for (u32 i = 0; i < constraint_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, indent + 6);
+        }
+        const CstWhereConstraint* constraint =
+            &cst->where_constraints[first_constraint + i];
+        string name = lex_symbol(lexer, constraint->param_symbol);
+        sb_append_string(sb, name);
+        for (usize pad = name.count; pad < name_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+        sb_append_cstr(sb, ": ");
+        format_emit_expr(sb, cst, lexer, constraint->trait_type_node_index, 0);
+    }
+}
+
 internal void format_emit_where_constraints(StringBuilder* sb,
                                             const Cst*     cst,
                                             const Lexer*   lexer,
                                             u32            first_constraint,
                                             u32            constraint_count)
 {
-    if (constraint_count == 0) {
-        return;
-    }
-
-    sb_append_cstr(sb, " where ");
-    for (u32 i = 0; i < constraint_count; ++i) {
-        if (i > 0) {
-            sb_append_cstr(sb, ", ");
-        }
-        const CstWhereConstraint* constraint =
-            &cst->where_constraints[first_constraint + i];
-        sb_append_string(sb, lex_symbol(lexer, constraint->param_symbol));
-        sb_append_cstr(sb, ": ");
-        format_emit_expr(sb, cst, lexer, constraint->trait_type_node_index, 0);
-    }
+    format_emit_where_constraints_at_indent(sb,
+                                            cst,
+                                            lexer,
+                                            first_constraint,
+                                            constraint_count,
+                                            format_sb_current_line_indent(sb));
 }
 
 internal void format_emit_fn_param(StringBuilder*  sb,
@@ -4307,11 +4362,12 @@ internal void format_emit_fn_signature_one_line(StringBuilder*        sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
-    format_emit_where_constraints(sb,
-                                  cst,
-                                  lexer,
-                                  signature->first_constraint,
-                                  signature->constraint_count);
+    format_emit_where_constraints_at_indent(sb,
+                                            cst,
+                                            lexer,
+                                            signature->first_constraint,
+                                            signature->constraint_count,
+                                            0);
 }
 
 internal void format_emit_fn_signature(StringBuilder* sb,
@@ -4322,6 +4378,7 @@ internal void format_emit_fn_signature(StringBuilder* sb,
 {
     const CstFnSignature* signature = &cst->fn_signatures[signature_index];
 
+    usize start_indent              = format_sb_current_line_indent(sb);
     Arena temp_arena                = {0};
     arena_init(&temp_arena);
     StringBuilder single_line = {0};
@@ -4363,11 +4420,12 @@ internal void format_emit_fn_signature(StringBuilder* sb,
         sb_append_cstr(sb, " -> ");
         format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
     }
-    format_emit_where_constraints(sb,
-                                  cst,
-                                  lexer,
-                                  signature->first_constraint,
-                                  signature->constraint_count);
+    format_emit_where_constraints_at_indent(sb,
+                                            cst,
+                                            lexer,
+                                            signature->first_constraint,
+                                            signature->constraint_count,
+                                            start_indent);
 
     arena_done(&temp_arena);
 }

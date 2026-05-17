@@ -399,7 +399,8 @@ Generic functions and impl blocks can require trait implementations with a
 `where` clause:
 
 ```nerd
-describe :: fn [T] (value: T) -> string where T: Display {
+describe :: fn [T] (value: T) -> string
+where T: Display {
     return value.show()
 }
 ```
