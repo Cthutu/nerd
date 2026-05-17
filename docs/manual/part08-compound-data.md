@@ -413,6 +413,22 @@ A trait implementation is atomic. Required members for one trait/type pair are
 not merged from multiple impl blocks. Duplicate concrete implementations and
 overlapping generic implementations are rejected.
 
+Trait implementations can be generic when the implementation target contains
+type parameters:
+
+```nerd
+impl Display for Box[T]
+where T: Display {
+    show :: fn (self: Self) -> string {
+        return self.value.show()
+    }
+}
+```
+
+The type parameters are inferred from the target type. The `where` clause states
+what each concrete instantiation must prove before the implementation can be
+used.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:

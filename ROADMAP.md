@@ -484,7 +484,7 @@ library layering are in place.
 - [ ] Add implementation syntax:
   - [x] `impl TraitName for Type { ... }`
   - [x] allow implementations for plex, union, enum, and primitive types
-  - [ ] allow generic implementations such as `impl [T] Eq for []T where T: Eq`
+  - [x] allow generic implementations such as `impl Eq for []T where T: Eq`
   - [x] reject duplicate non-generic implementations in the first version
   - [x] reject overlapping generic implementations in the first version
 - [ ] Add built-in trait semantics:
@@ -553,7 +553,7 @@ library layering are in place.
     functions
   - [x] keep trait declarations out of generated backend output
   - [ ] emit implementation functions with stable generated backend names
-  - [ ] preserve monomorphisation behaviour for generic impls
+  - [x] preserve monomorphisation behaviour for generic impls
 - [ ] Formatter work:
   - [x] format trait declarations
   - [x] format trait generic parameter lists
@@ -578,7 +578,7 @@ library layering are in place.
   - [x] language tests for receiver-form trait calls
   - [x] language tests for explicit trait calls
   - [x] language tests for generic constraints using `where T: Trait`
-  - [ ] language tests for generic impls
+  - [x] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
   - [x] language tests for built-in `Display`, `Eq`, and `Default`

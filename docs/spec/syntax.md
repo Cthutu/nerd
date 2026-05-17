@@ -117,7 +117,9 @@ method syntax. Duplicate concrete implementations and overlapping generic
 implementations for the same trait are rejected. Implementations may target
 compound types and primitive built-in types. A trait implementation block is
 the complete implementation for one trait/type pair; implementations are not
-split or merged across multiple blocks.
+split or merged across multiple blocks. Generic implementation parameters are
+inferred from the target type, for example
+`impl Display for Box[T] where T: Display { ... }`.
 Generic functions and generic impl blocks may carry `where` constraints. The
 formatter places `where` on a new line, such as `where T: Display`, and aligns
 multi-constraint clauses. Constraint clauses are parsed and formatted,

@@ -4089,13 +4089,15 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
                                         lex_symbol(lexer, trait_symbol));
     }
 
-    u32 ignored_target_type = sema_no_type();
-    if (!sema_resolve_type_node(lexer,
-                                ast,
-                                sema,
-                                impl->target_type_node_index,
-                                &ignored_target_type)) {
-        return false;
+    if (impl->generic_params_index == U32_MAX) {
+        u32 ignored_target_type = sema_no_type();
+        if (!sema_resolve_type_node(lexer,
+                                    ast,
+                                    sema,
+                                    impl->target_type_node_index,
+                                    &ignored_target_type)) {
+            return false;
+        }
     }
 
     if (sema->decls[trait_decl_index].value_node_index >=
@@ -4353,8 +4355,11 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
 {
     const AstNode*     impl_node = &ast->nodes[impl_node_index];
     const AstImplInfo* impl      = &ast->impls[impl_node->a];
+    if (impl->generic_params_index != U32_MAX) {
+        return true;
+    }
 
-    u32 target_type              = sema_no_type();
+    u32 target_type = sema_no_type();
     if (!sema_resolve_type_node(
             lexer, ast, sema, impl->target_type_node_index, &target_type)) {
         return false;
