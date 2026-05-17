@@ -4454,6 +4454,33 @@ internal void format_emit_ffi_entry(StringBuilder*       sb,
     arena_done(&temp_arena);
 }
 
+internal void format_emit_ffi_signature_tail(StringBuilder* sb,
+                                             const Cst*     cst,
+                                             const Lexer*   lexer,
+                                             u32            signature_index)
+{
+    const CstFnSignature* signature = &cst->fn_signatures[signature_index];
+    sb_append_char(sb, '(');
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const CstParam* param = &cst->params[signature->first_param + i];
+        format_emit_fn_param(sb, cst, lexer, param);
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_char(sb, ')');
+    if (signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+}
+
 internal void format_emit_ffi_def(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
@@ -4463,6 +4490,13 @@ internal void format_emit_ffi_def(StringBuilder* sb,
     const CstFfiInfo* ffi = &cst->ffi_infos[ffi_info_index];
 
     UNUSED(flags);
+    if (ffi->library_node_index == U32_MAX) {
+        sb_append_cstr(sb, "intrinsic \"");
+        sb_append_string(sb, lex_symbol(lexer, ffi->foreign_symbol_handle));
+        sb_append_cstr(sb, "\" ");
+        format_emit_ffi_signature_tail(sb, cst, lexer, ffi->signature_index);
+        return;
+    }
     sb_append_cstr(sb, "ffi ");
     format_emit_expr(sb, cst, lexer, ffi->library_node_index, 0);
     sb_append_char(sb, ' ');
@@ -6716,6 +6750,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_union:
     case TK_enum:
     case TK_ffi:
+    case TK_intrinsic:
     case TK_pragma:
     case TK_use:
     case TK_pub:
@@ -6740,6 +6775,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_union:
     case TK_enum:
     case TK_ffi:
+    case TK_intrinsic:
     case TK_pragma:
     case TK_use:
     case TK_pub:

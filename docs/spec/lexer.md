@@ -141,6 +141,7 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_union`     | `union`         |                                |
 | `TK_enum`      | `enum`          |                                |
 | `TK_ffi`       | `ffi`           |                                |
+| `TK_intrinsic` | `intrinsic`     |                                |
 | `TK_use`       | `use`           |                                |
 | `TK_pub`       | `pub`           |                                |
 | `TK_impl`      | `impl`          |                                |

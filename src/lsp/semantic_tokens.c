@@ -252,6 +252,7 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_union:
     case TK_enum:
     case TK_ffi:
+    case TK_intrinsic:
     case TK_use:
     case TK_pub:
     case TK_impl:

@@ -6265,6 +6265,9 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_FfiDef:
         {
             const AstFfiInfo* ffi_info = &ast->ffi_infos[node->a];
+            if (ffi_info->library_node_index == U32_MAX) {
+                return true;
+            }
             return sema_resolve_node_refs(lexer,
                                           ast,
                                           owner_decl_index,
@@ -6715,6 +6718,9 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_FfiDef:
         {
             const AstFfiInfo* ffi_info = &ast->ffi_infos[node->a];
+            if (ffi_info->library_node_index == U32_MAX) {
+                return;
+            }
             sema_collect_node_deps(ast,
                                    sema,
                                    owner_decl_index,
@@ -14501,34 +14507,34 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             const AstFfiInfo*     ffi_info = &ast->ffi_infos[node->a];
             const AstFnSignature* signature =
                 &ast->fn_signatures[ffi_info->signature_index];
-            u32 string_type  = sema_builtin_type(sema, STK_String);
-            u32 library_type = sema_no_type();
-            if (!sema_infer_node_type(lexer,
-                                      ast,
-                                      sema,
-                                      ffi_info->library_node_index,
-                                      string_type,
-                                      &library_type)) {
-                return false;
-            }
-            if (!sema_type_matches(sema, library_type, string_type)) {
-                return error_0304_type_mismatch(
-                    lexer->source,
-                    sema_node_span(lexer,
-                                   &ast->nodes[ffi_info->library_node_index]),
-                    sema_type_name(lexer, sema, &temp_arena, string_type),
-                    sema_type_name(lexer, sema, &temp_arena, library_type));
-            }
-            if (!sema_expr_is_constantish(
-                    ast, sema, ffi_info->library_node_index)) {
-                return error_0304_type_mismatch(
-                    lexer->source,
-                    sema_node_span(lexer,
-                                   &ast->nodes[ffi_info->library_node_index]),
-                    s("compile-time string"),
-                    sema_type_name(lexer, sema, &temp_arena, library_type));
-            }
-            {
+            if (ffi_info->library_node_index != U32_MAX) {
+                u32 string_type  = sema_builtin_type(sema, STK_String);
+                u32 library_type = sema_no_type();
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          ffi_info->library_node_index,
+                                          string_type,
+                                          &library_type)) {
+                    return false;
+                }
+                if (!sema_type_matches(sema, library_type, string_type)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(
+                            lexer, &ast->nodes[ffi_info->library_node_index]),
+                        sema_type_name(lexer, sema, &temp_arena, string_type),
+                        sema_type_name(lexer, sema, &temp_arena, library_type));
+                }
+                if (!sema_expr_is_constantish(
+                        ast, sema, ffi_info->library_node_index)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(
+                            lexer, &ast->nodes[ffi_info->library_node_index]),
+                        s("compile-time string"),
+                        sema_type_name(lexer, sema, &temp_arena, library_type));
+                }
                 string library = {0};
                 if (sema_ffi_library_literal(
                         lexer, ast, ffi_info->library_node_index, &library) &&

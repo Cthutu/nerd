@@ -35,6 +35,9 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
         const Hir* hir = &program->modules[module_index].front_end.hir;
         for (u32 i = 0; i < array_count(hir->externs); ++i) {
             string library = hir->externs[i].library;
+            if (library.count == 0) {
+                continue;
+            }
             if (string_eq(library, s("c")) || string_eq(library, s("nrt"))) {
                 continue;
             }

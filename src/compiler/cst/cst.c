@@ -713,8 +713,8 @@ cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
     return next_kind == TK_EOF ||
            (cst_token_has_newline_before(state, token_index) &&
             (next_kind == TK_impl || next_kind == TK_pub ||
-             next_kind == TK_use || next_kind == TK_on ||
-             next_kind == TK_ffi)) ||
+             next_kind == TK_use || next_kind == TK_on || next_kind == TK_ffi ||
+             next_kind == TK_intrinsic)) ||
            (next_kind == TK_Symbol &&
             cst_kind_at_stream_index(state, token_index + 1) == TK_Colon);
 }
@@ -4052,7 +4052,8 @@ internal bool cst_parse_block_statement(CstParseState* state)
         return cst_parse_pragma(state, NULL);
     }
 
-    if (cst_current_token(state).kind == TK_ffi) {
+    if (cst_current_token(state).kind == TK_ffi ||
+        cst_current_token(state).kind == TK_intrinsic) {
         return cst_parse_ffi_def(state, NULL, true, CNF_None);
     }
 
@@ -4358,6 +4359,10 @@ internal bool cst_parse_value(CstParseState* state, u32* out_node)
         return cst_parse_ffi_def(state, out_node, false, CNF_None);
     }
 
+    if (cst_current_token(state).kind == TK_intrinsic) {
+        return cst_parse_ffi_def(state, out_node, false, CNF_None);
+    }
+
     if (cst_current_token(state).kind == TK_use) {
         return cst_parse_mod_ref(state, out_node);
     }
@@ -4413,16 +4418,23 @@ internal bool cst_parse_ffi_def(CstParseState* state,
                                 bool           allow_block,
                                 CstNodeFlag    flags)
 {
-    u32 token_index = state->token_index;
+    u32  token_index  = state->token_index;
+    bool is_intrinsic = cst_current_token(state).kind == TK_intrinsic;
     cst_advance(state);
 
-    bool old_stop_before_ffi_name = state->stop_before_ffi_name;
-    state->stop_before_ffi_name   = true;
-    u32  library_node_index       = 0;
-    bool parsed_library = cst_parse_expr_bp(state, 0, &library_node_index);
-    state->stop_before_ffi_name = old_stop_before_ffi_name;
-    if (!parsed_library) {
-        return false;
+    u32 library_node_index = CST_NO_VALUE;
+    if (is_intrinsic) {
+        if (cst_current_token(state).kind != TK_String) {
+            return false;
+        }
+    } else {
+        bool old_stop_before_ffi_name = state->stop_before_ffi_name;
+        state->stop_before_ffi_name   = true;
+        bool parsed_library = cst_parse_expr_bp(state, 0, &library_node_index);
+        state->stop_before_ffi_name = old_stop_before_ffi_name;
+        if (!parsed_library) {
+            return false;
+        }
     }
 
     if (cst_current_token(state).kind == TK_LBrace) {
@@ -4504,13 +4516,28 @@ internal bool cst_parse_ffi_def(CstParseState* state,
                              out_node);
     }
 
-    if (cst_current_token(state).kind != TK_Symbol) {
+    if (!is_intrinsic && cst_current_token(state).kind != TK_Symbol) {
         return false;
     }
     u32 symbol_token  = state->token_index;
-    u32 symbol_handle = cst_current_symbol_handle(state);
-    if (symbol_handle == CST_NO_VALUE) {
-        return false;
+    u32 symbol_handle = CST_NO_VALUE;
+    if (is_intrinsic) {
+        const Token* token = &state->lexer->tokens[state->token_index];
+        usize        start = token->offset + 1;
+        usize        end   = lex_token_end_offset(state->lexer, token);
+        if (end <= start) {
+            return false;
+        }
+        string intrinsic_name = string_from(
+            state->lexer->source.source.data + start, end - start - 1);
+        InternAddResult ignored = {0};
+        symbol_handle =
+            lex_add_symbol((Lexer*)state->lexer, intrinsic_name, &ignored);
+    } else {
+        symbol_handle = cst_current_symbol_handle(state);
+        if (symbol_handle == CST_NO_VALUE) {
+            return false;
+        }
     }
     cst_advance(state);
 
@@ -5206,7 +5233,8 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
         cst_advance(state);
     }
 
-    if (cst_current_token(state).kind == TK_ffi) {
+    if (cst_current_token(state).kind == TK_ffi ||
+        cst_current_token(state).kind == TK_intrinsic) {
         return cst_parse_ffi_def(
             state, out_node, true, is_public ? CNF_Public : CNF_None);
     }

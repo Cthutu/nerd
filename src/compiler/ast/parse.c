@@ -1491,7 +1491,8 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 
 ParsingQuery ast_parsing_query_for_token(TokenKind kind)
 {
-    if (kind == TK_fn || kind == TK_ffi || kind == TK_use) {
+    if (kind == TK_fn || kind == TK_ffi || kind == TK_intrinsic ||
+        kind == TK_use) {
         return PQ_Declaration;
     }
 
@@ -2889,7 +2890,7 @@ internal bool ast_parse_block_statement(AstParseState* state)
         return ast_parse_pragma(state, NULL);
     }
 
-    if (state->token.kind == TK_ffi) {
+    if (state->token.kind == TK_ffi || state->token.kind == TK_intrinsic) {
         return ast_parse_declaration(state, NULL, true, ANF_None);
     }
 
@@ -3783,6 +3784,7 @@ internal bool ast_parse_top_level_item(AstParseState* state)
 
     switch (state->token.kind) {
     case TK_ffi:
+    case TK_intrinsic:
         return ast_parse_declaration(
             state, NULL, true, is_public ? ANF_Public : ANF_None);
     case TK_use:
@@ -3949,22 +3951,33 @@ bool ast_parse_declaration(AstParseState* state,
         return ast_parse_module_ref_after_use(state, out_node);
     }
 
-    if (state->token.kind == TK_ffi) {
-        AstToken ffi_token = state->token;
+    if (state->token.kind == TK_ffi || state->token.kind == TK_intrinsic) {
+        AstToken decl_token   = state->token;
+        bool     is_intrinsic = state->token.kind == TK_intrinsic;
 
         if (!ast_next_token(state)) {
             return error_0201_missing_value(state->lexer->source,
-                                            ast_token_span(state, &ffi_token),
-                                            TK_ffi);
+                                            ast_token_span(state, &decl_token),
+                                            decl_token.kind);
         }
 
-        bool old_stop_before_ffi_name = state->stop_before_ffi_name;
-        state->stop_before_ffi_name   = true;
-        u32  library_node_index       = 0;
-        bool parsed_library = ast_parse_expr(state, &library_node_index);
-        state->stop_before_ffi_name = old_stop_before_ffi_name;
-        if (!parsed_library) {
-            return false;
+        u32 library_node_index = U32_MAX;
+        if (is_intrinsic) {
+            if (state->token.kind != TK_String) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_String,
+                    state->token.kind);
+            }
+        } else {
+            bool old_stop_before_ffi_name = state->stop_before_ffi_name;
+            state->stop_before_ffi_name   = true;
+            bool parsed_library = ast_parse_expr(state, &library_node_index);
+            state->stop_before_ffi_name = old_stop_before_ffi_name;
+            if (!parsed_library) {
+                return false;
+            }
         }
 
         if (state->token.kind == TK_LBrace) {
@@ -4118,7 +4131,7 @@ bool ast_parse_declaration(AstParseState* state,
                         state,
                         (AstNode){.kind        = AK_FfiDef,
                                   .flags       = entry_flags,
-                                  .token_index = ffi_token.token_index,
+                                  .token_index = decl_token.token_index,
                                   .a           = ffi_index},
                         NULL)) {
                     return false;
@@ -4137,14 +4150,25 @@ bool ast_parse_declaration(AstParseState* state,
         }
 
         if (state->token.kind != TK_Symbol) {
-            return error_0203_expected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                TK_Symbol,
-                state->token.kind);
+            if (!is_intrinsic) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
         }
-        u32 symbol_handle      = state->token.value.symbol_handle;
+        u32 symbol_handle      = U32_MAX;
         u32 symbol_token_index = state->token.token_index;
+        if (is_intrinsic) {
+            string intrinsic_name =
+                state->lexer->strings[state->token.value.string_index];
+            InternAddResult ignored = {0};
+            symbol_handle =
+                lex_add_symbol(state->lexer, intrinsic_name, &ignored);
+        } else {
+            symbol_handle = state->token.value.symbol_handle;
+        }
         if (state->token_index == state->token.token_index &&
             !ast_next_token(state)) {
             return error_0203_expected_token(
@@ -4190,7 +4214,7 @@ bool ast_parse_declaration(AstParseState* state,
         return ast_emit_node(state,
                              (AstNode){.kind        = AK_FfiDef,
                                        .flags       = flags,
-                                       .token_index = ffi_token.token_index,
+                                       .token_index = decl_token.token_index,
                                        .a           = ffi_index},
                              out_node);
     }

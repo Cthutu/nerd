@@ -71,6 +71,23 @@ ffi "c" {
 Use this form when the C name is unclear, conflicts with a better wrapper name,
 or does not fit your source style.
 
+## Intrinsic Bindings
+
+`intrinsic` binds a named compiler/runtime intrinsic without a library operand:
+
+```nerd
+syscall :: intrinsic "syscall" (number: u64,
+                                a0: u64,
+                                a1: u64,
+                                a2: u64,
+                                a3: u64,
+                                a4: u64,
+                                a5: u64) -> i64
+```
+
+The string gives the lowered symbol name. Use this for platform-specific
+bindings that are not modelled as ordinary `ffi "lib"` declarations.
+
 ## Library Operands
 
 The library operand is a compile-time string. A compile-time string is a string

@@ -109,12 +109,16 @@ module-path     ::= IDENT { '.' IDENT }
 
 ffi-declaration ::= 'ffi' expression ffi-entry
                   | 'ffi' expression '{' { [ 'pub' ] ffi-entry } '}'
+                  | intrinsic-declaration
 
 ffi-entry       ::= IDENT [ '::' IDENT ] '(' ffi-param-list? ')' [ '->' type ]
 
 ffi-param       ::= [ IDENT ':' ] type
 ffi-param-list  ::= ffi-param { ',' ffi-param } [ ',' '...' ]
                   | '...'
+
+intrinsic-declaration
+                ::= 'intrinsic' STRING '(' ffi-param-list? ')' [ '->' type ]
 
 pragma          ::= 'pragma' IDENT [ '(' pragma-param-list? ')' ]
 pragma-param    ::= INT | FLOAT | STRING | 'yes' | 'no'

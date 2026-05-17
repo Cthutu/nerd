@@ -49,6 +49,7 @@ pub ffi "lib" {
     local_name :: foreign_name (...) -> Type
 }
 local_name :: ffi "lib" foreign_name (...) -> Type
+name :: intrinsic "symbol" (...) -> Type
 name :: use module.path
 use module.path
 pub use module.path

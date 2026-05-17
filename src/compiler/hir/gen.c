@@ -821,7 +821,8 @@ internal void hir_add_extern(Hir*            hir,
     }
 
     string library = {0};
-    if (!hir_eval_string_constant(ffi_lexer,
+    if (ffi_info->library_node_index != U32_MAX &&
+        !hir_eval_string_constant(ffi_lexer,
                                   ffi_ast,
                                   ffi_sema,
                                   hir,

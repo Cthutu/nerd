@@ -3477,6 +3477,7 @@ internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
         "fn",
         "for",
         "impl",
+        "intrinsic",
         "on",
         "pragma",
         "pub",
