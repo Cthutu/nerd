@@ -158,6 +158,12 @@ Run tests from the command line:
 nerd test path/to/file.n
 ```
 
+Use `check` when you only want lexing, parsing, imports, and semantic analysis:
+
+```sh
+nerd check path/to/file.n
+```
+
 Use `--list` to show discovered test names without running them:
 
 ```sh

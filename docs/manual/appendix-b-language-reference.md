@@ -93,6 +93,8 @@ intended exit code.
 - Tests are top-level declarations.
 - Test names are string literals.
 - Test declarations are not exported module API.
+- `nerd check root.n` checks lexing, parsing, imports, and semantic analysis
+  without generating HIR, LLVM, or an executable.
 - `nerd test root.n --list` lists discovered tests.
 - `nerd test root.n --filter text` runs matching tests.
 - `nerd test root.n -v` prints one result line per selected test.

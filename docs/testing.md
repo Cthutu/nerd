@@ -115,13 +115,15 @@ Command tests use `.cmd` files with three sections:
 2. expected process return value
 3. expected stdout
 
-They may also include optional sections for run mode, extra CLI arguments, and
-command name. The parser accepts three to six sections.
+They may also include optional sections for run mode, extra CLI arguments,
+command name, and expected stderr. The parser accepts three to seven sections.
 
 The Python runner writes the source into a generated `.input.n` file next to the test
 case and invokes the relevant compiler command against that file. This covers
 behaviour outside the pure compiler pipeline, such as `run` resolving generated
 binaries correctly when the input path is relative to the current directory.
+Use command tests for public CLI behaviour such as `nerd check` exiting
+successfully without generating an executable.
 
 ## Platform-Specific Tests
 

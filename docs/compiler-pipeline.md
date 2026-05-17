@@ -214,9 +214,13 @@ does not yet claim cross-target reproducibility, 32-bit support, or C-compatible
 aggregate FFI passing/returning. Those require explicit target datalayout/triple
 emission, layout-context expansion, ABI diagnostics, and regression tests.
 
-Use `--timing` with `nerd build` or `nerd run` to print phase timings. Back-end
-timings use wall-clock time so the external clang invocation is included in the
-`link executable` phase.
+`nerd check file.n` runs the whole-program front end through lexing, parsing,
+module loading, and semantic analysis, then stops before HIR generation. Use it
+for fast validation when no executable or sidecar output is needed.
+
+Use `--timing` with `nerd check`, `nerd build`, or `nerd run` to print phase
+timings. Back-end timings use wall-clock time so the external clang invocation
+is included in the `link executable` phase.
 
 Runtime helpers that exchange Nerd strings use a stable pointer/scalar ABI
 rather than C by-value structs. Generated LLVM stores `{ ptr, i64 }` string

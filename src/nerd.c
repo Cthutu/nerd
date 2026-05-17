@@ -262,6 +262,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     //       ]
     //     },
     //     {
+    //       "name": "check",
+    //       "summary": "Check one program without code generation"
+    //     },
+    //     {
     //       "name": "test",
     //       "summary": "Run the compiler test command"
     //     },
@@ -381,6 +385,28 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             commands,
             nerd_cli_make_command(
                 arena, "r", "Alias for run", run_flags, run_params));
+    }
+    {
+        JsonValue* check_params = json_new_array(arena);
+        JsonValue* check_flags  = json_new_array(arena);
+        json_array_push(
+            check_flags,
+            nerd_cli_make_flag(arena, "release", "r", "Check release build"));
+        json_array_push(check_params,
+                        nerd_cli_make_param(arena,
+                                            "input",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Source file to check",
+                                            true));
+        json_array_push(commands,
+                        nerd_cli_make_command(arena,
+                                              "check",
+                                              "Check one program without code "
+                                              "generation",
+                                              check_flags,
+                                              check_params));
     }
     {
         JsonValue* flags  = json_new_array(arena);
@@ -608,6 +634,24 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
     };
 }
 
+internal NerdCheckConfig
+nerd_check_config_from_json(const JsonValue* cli_result, Array(string) keywords)
+{
+    return (NerdCheckConfig){
+        .source =
+            (NerdSource){
+                .source_path = nerd_cli_param_string(
+                    cli_result, "command.params.input", (string){0}),
+            },
+        .release =
+            nerd_cli_flag_bool(cli_result, "command.flags.release", false),
+        .verbose =
+            nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
+        .timing = nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
+        .keywords = keywords,
+    };
+}
+
 internal NerdTestConfig nerd_test_config_from_json(const JsonValue* cli_result,
                                                    Array(string) keywords)
 {
@@ -801,6 +845,10 @@ internal int nerd_run_with_cli(int argc, char** argv)
         NerdBuildConfig config =
             nerd_build_config_from_json(cli_result, cli_keywords);
         result = compiler_cmd_build(&config);
+    } else if (string_eq_cstr(name, "check")) {
+        NerdCheckConfig config =
+            nerd_check_config_from_json(cli_result, cli_keywords);
+        result = compiler_cmd_check(&config);
     } else if (string_eq_cstr(name, "run") || string_eq_cstr(name, "r")) {
         NerdRunConfig config =
             nerd_run_config_from_json(cli_result, cli_keywords);

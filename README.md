@@ -75,6 +75,8 @@ python3 build/build.py
 LLVM backend status:
 
 - `nerd build --llvm source.n` writes the HIR-derived LLVM IR sidecar.
+- `nerd check source.n` runs lexing, parsing, and semantic analysis without
+  HIR generation, LLVM generation, or linking.
 - `nerd run source.n` and `nerd build source.n` compile executables with the
   LLVM backend.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer

@@ -40,6 +40,14 @@ typedef struct {
 
 typedef struct {
     NerdSource source;
+    bool       release;
+    bool       verbose;
+    bool       timing;
+    Array(string) keywords;
+} NerdCheckConfig;
+
+typedef struct {
+    NerdSource source;
     string     output_path;
     bool       emit_hir;
     bool       emit_llvm;
@@ -90,6 +98,7 @@ typedef struct {
 //------------------------------------------------------------------------------
 
 int compiler_cmd_build(const NerdBuildConfig* config);
+int compiler_cmd_check(const NerdCheckConfig* config);
 int compiler_cmd_test(const NerdTestConfig* config);
 int compiler_cmd_format(const NerdFormatConfig* config);
 int compiler_cmd_run(const NerdRunConfig* config);
