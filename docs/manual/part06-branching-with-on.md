@@ -74,6 +74,21 @@ Patterns can include:
 | enum variants | covered in Part 8 |
 | structural patterns | covered in Part 8 |
 
+Branch bodies can be expressions, blocks, `return`, `break`, or `again`. In
+block-form `on`, write each branch on its own line when using comparison
+patterns:
+
+```nerd
+return on size {
+    >= 8 => 8
+    >= 4 => 4
+    else => 1
+}
+```
+
+The newline before `>= 4` helps mark it as the next branch head, not as part of
+the previous branch result.
+
 ## Ranges
 
 Integer ranges use `..` or `..=`:

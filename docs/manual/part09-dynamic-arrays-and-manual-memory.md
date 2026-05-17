@@ -206,10 +206,36 @@ method calls such as `scratch.alloc[i32]()` are still roadmap work.
 ready for reuse. `done()` releases the arena's owned storage. Call `done()` for
 arenas that own runtime memory.
 
+Runtime interpolated strings use a separate thread-local temporary arena. They
+can be returned from functions and stored as ordinary `string` values until that
+temporary arena is reset:
+
+```nerd
+use core
+
+label :: fn (value: i32) -> string {
+    return $"value={value}"
+}
+
+main :: fn () {
+    for {
+        text := label(42)
+        -- use text during this frame or request
+
+        temp_arena_reset()
+    }
+}
+```
+
+Programs without a frame or request loop do not need to reset the temporary
+arena. Programs with a loop should call `temp_arena_reset()` at a clear boundary
+after temporary strings from the previous iteration are no longer needed.
+
 ## Ownership Rule Of Thumb
 
 - Dynamic arrays own storage.
 - Slices borrow storage.
 - `free()` releases owned storage.
 - Arena allocations are valid until the arena is reset or released.
+- Runtime interpolated strings are valid until `temp_arena_reset()`.
 - `defer` is the normal way to keep cleanup attached to a scope.

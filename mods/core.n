@@ -19,15 +19,16 @@ ffi "nrt" {
 }
 
 arena_alignment :: fn [T] () -> usize {
-    size := T.size
-    on size >= 8 => return 8
-    on size >= 4 => return 4
-    on size >= 2 => return 2
-    return 1
+    return on T.size {
+        >= 8 => 8
+        >= 4 => 4
+        >= 2 => 2
+        else => 1
+    }
 }
 
 pub arena :: fn (num_bytes: usize, increment: usize = 0) -> Arena {
-    result: Arena
+    result : Arena
     nrt_arena_init(^result, num_bytes, increment)
     return result
 }

@@ -25,7 +25,9 @@ statement ::= pragma
 ```
 
 Statements do not require semicolons. Statement boundaries are inferred from the
-token stream and enclosing parser context.
+token stream and enclosing parser context. Newlines are not general separators,
+but they can act as boundary hints where an expression would otherwise consume
+the start of the next statement or `on` branch.
 
 ## Bindings And Variables
 

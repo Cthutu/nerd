@@ -62,10 +62,10 @@ Runtime interpolation results are allocated from a thread-local temporary string
 arena. They may be returned, assigned to variables, and passed through ordinary
 `string` values. The storage remains valid until the temporary arena is reset.
 
-The first source-level arena milestone will expose this model as `temp_arena`
-from `core`, so programs with request or frame loops can reset temporary
-storage explicitly at a clear boundary. Programs that never reset the temporary
-arena keep these strings for the process lifetime.
+The `core.temp_arena_reset()` function resets this storage explicitly. Programs
+with request or frame loops should call it at a clear boundary after temporary
+strings from the previous iteration are no longer needed. Programs that never
+reset the temporary arena keep these strings for the process lifetime.
 
 Top-level interpolated bindings are allowed when all interpolation parts are
 compile-time values. Top-level interpolations that need runtime string building

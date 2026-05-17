@@ -355,11 +355,11 @@ library layering are in place.
   - [ ] consider `store`/`restore` marks if they fit the same model cleanly
 - [ ] Add `temp_arena`:
   - [ ] provide a canonical global temporary arena from `core`
-  - [ ] define interpolation strings as allocated from `temp_arena`
-  - [ ] document that values allocated from `temp_arena` remain valid until
-    `temp_arena.reset()`
-  - [ ] allow applications without a main loop to never reset `temp_arena`
-  - [ ] encourage main-loop applications to call `temp_arena.reset()` at a
+  - [x] define interpolation strings as allocated from `temp_arena`
+  - [x] document that values allocated from `temp_arena` remain valid until
+    `temp_arena_reset()`
+  - [x] allow applications without a main loop to never reset `temp_arena`
+  - [x] encourage main-loop applications to call `temp_arena_reset()` at a
     clear frame/request boundary
 - [ ] Reorganise standard modules into three layers:
   - [ ] `core`: language-adjacent requirements, built-in traits when resumed,
@@ -397,7 +397,7 @@ library layering are in place.
   - [x] lower arena construction, allocation, reset, and release
   - [x] expose page-size alignment through the runtime
   - [x] keep pointer alignment correct for currently supported element types
-  - [ ] update interpolation lowering to allocate returned/intermediate strings
+  - [x] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
 - [ ] Formatter, LSP, and editor work:
   - [ ] format arena construction syntax if it requires new syntax handling
@@ -410,7 +410,7 @@ library layering are in place.
   - [x] command test for `alloc[T]` and `alloc_array[T]`
   - [x] command test proving allocated pointers remain stable after growth
   - [x] command test for `reset` reuse
-  - [ ] language tests for interpolation strings returned from functions via
+  - [x] command test for interpolation strings returned from functions via
     `temp_arena`
   - [ ] command tests for migrated `core`, `std`, and `sys` imports
   - [ ] error tests for invalid arena constructor arguments and invalid generic
@@ -420,14 +420,14 @@ library layering are in place.
     reorganisation
 - [ ] Documentation:
   - [x] manual section for first arena API and reset lifetime rules
-  - [ ] manual examples showing main-loop `temp_arena.reset()` usage
+  - [x] manual examples showing main-loop `temp_arena_reset()` usage
   - [ ] manual/module documentation for the `core`, `std`, and `sys` split
   - [ ] syntax-reference appendix entries for arena construction if new syntax
     is introduced
   - [ ] language-reference appendix rules for arena allocation, reset, and
     interpolation lifetime
   - [x] update `docs/stdlib.md` to describe the new module hierarchy
-  - [ ] update `docs/string-runtime.md` after interpolation moves to
+  - [x] update `docs/string-runtime.md` after interpolation moves to
     `temp_arena`
 
 ### Traits Milestone (On Hold)

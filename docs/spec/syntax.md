@@ -358,6 +358,11 @@ The single-line `on condition => value` form is valid where statement
 boundaries permit it. The `else` branch is required for the boolean expression
 form that produces a value.
 
+Inside block-form `on`, branch expressions stop before the next branch head.
+For comparison-pattern heads such as `< 0` or `>= 10`, a preceding newline is
+one of the hints that the comparison starts a new branch rather than continuing
+the previous branch expression.
+
 ## Patterns
 
 ```bnf

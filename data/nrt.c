@@ -230,39 +230,64 @@ void string_slice(NerdString* out,
     *out = (NerdString){.data = value->data + start, .count = end - start};
 }
 
-#define NERD_STRING_ARENA_CAPACITY (64 * 1024)
+#define NERD_STRING_BUILDER_INITIAL_CAPACITY 4096
 
-static _Thread_local u8     g_string_arena[NERD_STRING_ARENA_CAPACITY];
-static _Thread_local size_t g_string_arena_cursor = 0;
+static _Thread_local NrtArena g_temp_arena;
+static _Thread_local u8*      g_string_builder_data     = NULL;
+static _Thread_local size_t   g_string_builder_capacity = 0;
+static _Thread_local size_t   g_string_builder_cursor   = 0;
 
-void string_builder_reset(void) { g_string_arena_cursor = 0; }
+static void string_builder_ensure_capacity(size_t needed)
+{
+    if (needed <= g_string_builder_capacity) {
+        return;
+    }
 
-size_t string_builder_mark(void) { return g_string_arena_cursor; }
+    size_t capacity = g_string_builder_capacity;
+    if (capacity == 0) {
+        capacity = NERD_STRING_BUILDER_INITIAL_CAPACITY;
+    }
+    while (capacity < needed) {
+        capacity *= 2;
+    }
+
+    u8* data = (u8*)realloc(g_string_builder_data, capacity);
+    if (data == NULL) {
+        nrt_eprn("fatal: string builder allocation failed");
+        abort();
+    }
+    g_string_builder_data     = data;
+    g_string_builder_capacity = capacity;
+}
+
+void string_builder_reset(void)
+{
+    g_string_builder_cursor = 0;
+    nrt_arena_reset(&g_temp_arena);
+}
+
+size_t string_builder_mark(void) { return g_string_builder_cursor; }
 
 void string_builder_append_string(const NerdString* str)
 {
     if (str == NULL) {
         return;
     }
-    if (g_string_arena_cursor + str->count > NERD_STRING_ARENA_CAPACITY) {
-        nrt_eprn("fatal: string arena overflow");
-        abort();
-    }
+    string_builder_ensure_capacity(g_string_builder_cursor + str->count);
 
     if (str->count > 0) {
-        memcpy(g_string_arena + g_string_arena_cursor, str->data, str->count);
-        g_string_arena_cursor += str->count;
+        memcpy(g_string_builder_data + g_string_builder_cursor,
+               str->data,
+               str->count);
+        g_string_builder_cursor += str->count;
     }
 }
 
 void string_builder_append_byte(u8 byte)
 {
-    if (g_string_arena_cursor + 1 > NERD_STRING_ARENA_CAPACITY) {
-        nrt_eprn("fatal: string arena overflow");
-        abort();
-    }
+    string_builder_ensure_capacity(g_string_builder_cursor + 1);
 
-    g_string_arena[g_string_arena_cursor++] = byte;
+    g_string_builder_data[g_string_builder_cursor++] = byte;
 }
 
 void string_builder_finish(NerdString* out, size_t start)
@@ -270,8 +295,18 @@ void string_builder_finish(NerdString* out, size_t start)
     if (out == NULL) {
         return;
     }
-    *out = (NerdString){.data  = g_string_arena + start,
-                        .count = g_string_arena_cursor - start};
+    if (start > g_string_builder_cursor) {
+        nrt_eprn("fatal: invalid string builder mark");
+        abort();
+    }
+
+    size_t count = g_string_builder_cursor - start;
+    u8*    data  = NULL;
+    if (count > 0) {
+        data = (u8*)nrt_arena_alloc(&g_temp_arena, count, 1);
+        memcpy(data, g_string_builder_data + start, count);
+    }
+    *out = (NerdString){.data = data, .count = count};
 }
 
 void to_string$string(NerdString* out, const NerdString* value)
