@@ -1750,6 +1750,13 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                                  },
                                  out_node);
         }
+    case TK_At:
+        return error_0204_unexpected_token_here(
+            token.source,
+            ast_token_span(state, &token),
+            token.kind,
+            NULL,
+            "Remove `@` or replace it with a valid declaration or expression");
     default:
         return error_0201_missing_value(
             token.source, ast_token_span(state, &token), token.kind);

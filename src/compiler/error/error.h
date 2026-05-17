@@ -144,6 +144,11 @@ bool error_0204_unexpected_token_ex(NerdSource source,
                                     TokenKind  actual_kind,
                                     cstr       note,
                                     cstr       help);
+bool error_0204_unexpected_token_here(NerdSource source,
+                                      ErrorSpan  span,
+                                      TokenKind  actual_kind,
+                                      cstr       note,
+                                      cstr       help);
 bool error_0204_unexpected_token(NerdSource source,
                                  ErrorSpan  span,
                                  TokenKind  actual_kind,

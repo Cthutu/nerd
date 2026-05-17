@@ -72,3 +72,28 @@
         "Insert an operator such as +, -, *, /, or %% between values"
     ]
 }
+¬
+@
+¬
+{
+    "code": "0204",
+    "message": "Unexpected At `@`",
+    "source_file": "tests/errors/002-missing-values.e",
+    "primary_location": {
+        "line": 1,
+        "column": 1
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 1,
+            "length": 1,
+            "message": "At `@` cannot appear here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Remove `@` or replace it with a valid declaration or expression"
+    ]
+}

@@ -208,6 +208,30 @@ bool error_0204_unexpected_token_ex(NerdSource source,
     return false;
 }
 
+bool error_0204_unexpected_token_here(NerdSource source,
+                                      ErrorSpan  span,
+                                      TokenKind  actual_kind,
+                                      cstr       note,
+                                      cstr       help)
+{
+    string    actual = token_kind_to_string(actual_kind);
+    ErrorInfo error =
+        error_init(204, source, span, "Unexpected %.*s", STRINGV(actual));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "%.*s cannot appear here",
+                        STRINGV(actual));
+    if (note) {
+        error_add_note(&error, "%s", note);
+    }
+    if (help) {
+        error_add_help(&error, "%s", help);
+    }
+    error_render(&error);
+    return false;
+}
+
 bool error_0204_unexpected_token(
     NerdSource source, ErrorSpan span, TokenKind actual_kind, cstr format, ...)
 {
