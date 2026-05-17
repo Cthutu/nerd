@@ -6644,6 +6644,17 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       node->a,
                                       sema);
     case AK_Index:
+        {
+            const AstNode* target = &ast->nodes[node->a];
+            if (target->kind == AK_SymbolRef) {
+                u32 decl_index = sema_find_decl(sema, target->a);
+                if (decl_index != sema_no_decl() &&
+                    sema->decls[decl_index].kind == SK_Trait) {
+                    sema_mark_type_expr_nodes(ast, sema, node->b);
+                }
+            }
+        }
+        // fallthrough
     case AK_TypeArray:
         return sema_resolve_node_refs(lexer,
                                       ast,
@@ -9911,7 +9922,8 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
                                                u32          call_node_index,
                                                u32          target_type,
                                                u32          method_symbol,
-                                               bool*        out_found,
+                                               u32   explicit_trait_symbol,
+                                               bool* out_found,
                                                SemaResolvedMethodCall* out_call)
 {
     const AstNode*     call_node = &ast->nodes[call_node_index];
@@ -9945,6 +9957,13 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
             if (source_method == NULL) {
                 continue;
             }
+        }
+        if (!sema_method_matches_trait_symbol(lexer,
+                                              source_lexer,
+                                              source_ast,
+                                              source_method,
+                                              explicit_trait_symbol)) {
+            continue;
         }
 
         const SemaDecl* source_decl = &source_sema->decls[source_decl_index];
@@ -14345,6 +14364,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                           node_index,
                                                           associated_target,
                                                           field_callee->b,
+                                                          U32_MAX,
                                                           &found_associated,
                                                           &associated_call)) {
                         return false;
@@ -14357,6 +14377,53 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         type_index = sema->types[associated_call.fn_type_index]
                                          .return_type;
                         break;
+                    }
+                }
+
+                if (field_callee->a < array_count(ast->nodes) &&
+                    ast->nodes[field_callee->a].kind == AK_Index) {
+                    const AstNode* trait_target =
+                        &ast->nodes[ast->nodes[field_callee->a].a];
+                    if (trait_target->kind == AK_SymbolRef) {
+                        u32 trait_symbol = trait_target->a;
+                        u32 trait_decl   = sema_find_decl(sema, trait_symbol);
+                        if (trait_decl != sema_no_decl() &&
+                            sema->decls[trait_decl].kind == SK_Trait) {
+                            u32 explicit_target_type = sema_no_type();
+                            if (!sema_resolve_type_node(
+                                    lexer,
+                                    ast,
+                                    sema,
+                                    ast->nodes[field_callee->a].b,
+                                    &explicit_target_type)) {
+                                return false;
+                            }
+
+                            bool                   found_associated = false;
+                            SemaResolvedMethodCall associated_call  = {0};
+                            if (!sema_try_resolve_associated_call(
+                                    lexer,
+                                    ast,
+                                    sema,
+                                    node_index,
+                                    explicit_target_type,
+                                    field_callee->b,
+                                    trait_symbol,
+                                    &found_associated,
+                                    &associated_call)) {
+                                return false;
+                            }
+                            if (found_associated) {
+                                sema->node_type_indices[node->a] =
+                                    associated_call.fn_type_index;
+                                sema->node_lowered_symbol_handles[node->a] =
+                                    associated_call.lowered_symbol_handle;
+                                type_index =
+                                    sema->types[associated_call.fn_type_index]
+                                        .return_type;
+                                break;
+                            }
+                        }
                     }
                 }
 

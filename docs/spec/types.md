@@ -69,7 +69,9 @@ syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when
 multiple trait impl methods with the same name are valid for the receiver type.
 Use `Display.show(point)` to explicitly select a trait member implementation
-when receiver lookup would be ambiguous.
+when receiver lookup would be ambiguous. Use `Default[Point].default()` when a
+trait member has no receiver argument and the implementation type must be named
+directly.
 For local trait declarations, implementations must provide every required
 member with a compatible function signature after substituting the trait self
 type with the implementation target type. Duplicate non-generic implementations

@@ -116,8 +116,9 @@ before trait impl methods. If multiple trait impl methods with the same name are
 valid for the receiver type, the receiver call is ambiguous. A trait member may
 be called explicitly with `<Trait>.<member>(value, ...)`, which restricts lookup
 to implementations of that trait and uses the first argument as the receiver.
-Generic trait parameters, constraints, and explicit implementation member calls
-are future milestone work.
+When the implementation type cannot be inferred from a receiver argument, use
+`<Trait>[Type].<member>(...)` to select the implementation directly. Generic
+trait parameters and constraints are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

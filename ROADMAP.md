@@ -517,7 +517,7 @@ library layering are in place.
 - [ ] Add trait member call syntax:
   - [x] receiver form `<value>.<trait_fn>(...)`
   - [x] explicit form `<Trait>.<trait_fn>(value, ...)`
-  - [ ] explicit implementation form `<Trait>[Type].<trait_fn>(...)` when the
+  - [x] explicit implementation form `<Trait>[Type].<trait_fn>(...)` when the
     implementation type cannot be inferred from a receiver argument, such as
     `Default[Foo].default()`
   - [x] resolve receiver calls through matching trait implementations
