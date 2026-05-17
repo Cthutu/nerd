@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 typedef uint8_t u8;
 
@@ -12,6 +17,22 @@ typedef struct {
     u8*    data;
     size_t count;
 } NerdString;
+
+typedef struct NrtArenaBlock {
+    struct NrtArenaBlock* next;
+    size_t                capacity;
+    size_t                cursor;
+    max_align_t           data[];
+} NrtArenaBlock;
+
+typedef struct {
+    NrtArenaBlock* first;
+    NrtArenaBlock* current;
+    size_t         initial_size;
+    size_t         increment;
+} NrtArena;
+
+void string_builder_reset(void);
 
 static void nrt_epr(const char* format, ...)
 {
@@ -59,6 +80,129 @@ bool string_eq(const NerdString* lhs, const NerdString* rhs)
     }
     return memcmp(lhs->data, rhs->data, lhs->count) == 0;
 }
+
+static size_t nrt_page_size(void)
+{
+#if defined(_WIN32)
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return (size_t)info.dwPageSize;
+#else
+    long page_size = sysconf(_SC_PAGESIZE);
+    return page_size > 0 ? (size_t)page_size : 4096;
+#endif
+}
+
+static size_t nrt_align_up(size_t value, size_t alignment)
+{
+    if (alignment == 0) {
+        return value;
+    }
+    size_t remainder = value % alignment;
+    return remainder == 0 ? value : value + alignment - remainder;
+}
+
+static NrtArenaBlock* nrt_arena_new_block(size_t capacity)
+{
+    NrtArenaBlock* block =
+        (NrtArenaBlock*)malloc(sizeof(NrtArenaBlock) + capacity);
+    if (block == NULL) {
+        nrt_eprn("fatal: arena allocation failed");
+        abort();
+    }
+    block->next     = NULL;
+    block->capacity = capacity;
+    block->cursor   = 0;
+    return block;
+}
+
+void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
+{
+    if (arena == NULL) {
+        return;
+    }
+
+    size_t page = nrt_page_size();
+    if (initial_size == 0) {
+        initial_size = page;
+    }
+    initial_size = nrt_align_up(initial_size, page);
+    if (increment == 0) {
+        increment = initial_size;
+    }
+    increment = nrt_align_up(increment, page);
+
+    arena->first        = nrt_arena_new_block(initial_size);
+    arena->current      = arena->first;
+    arena->initial_size = initial_size;
+    arena->increment    = increment;
+}
+
+void nrt_arena_done(NrtArena* arena)
+{
+    if (arena == NULL) {
+        return;
+    }
+    NrtArenaBlock* block = arena->first;
+    while (block != NULL) {
+        NrtArenaBlock* next = block->next;
+        free(block);
+        block = next;
+    }
+    *arena = (NrtArena){0};
+}
+
+void nrt_arena_reset(NrtArena* arena)
+{
+    if (arena == NULL) {
+        return;
+    }
+    for (NrtArenaBlock* block = arena->first; block != NULL;
+         block                = block->next) {
+        block->cursor = 0;
+    }
+    arena->current = arena->first;
+}
+
+void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
+{
+    if (arena == NULL) {
+        return NULL;
+    }
+    if (arena->first == NULL) {
+        nrt_arena_init(arena, 0, 0);
+    }
+    if (alignment == 0) {
+        alignment = sizeof(void*);
+    }
+
+    NrtArenaBlock* block = arena->current;
+    size_t         start = nrt_align_up(block->cursor, alignment);
+    if (start + size > block->capacity) {
+        size_t capacity = arena->increment;
+        size_t needed   = nrt_align_up(size + alignment, nrt_page_size());
+        if (capacity < needed) {
+            capacity = needed;
+        }
+        NrtArenaBlock* next = block->next;
+        while (next != NULL && next->capacity < needed) {
+            next = next->next;
+        }
+        if (next == NULL) {
+            next        = nrt_arena_new_block(capacity);
+            next->next  = block->next;
+            block->next = next;
+        }
+        block          = next;
+        arena->current = block;
+        start          = nrt_align_up(block->cursor, alignment);
+    }
+
+    block->cursor = start + size;
+    return (void*)((u8*)block->data + start);
+}
+
+void nrt_temp_arena_reset(void) { string_builder_reset(); }
 
 static bool string_is_utf8_boundary(const NerdString* value, size_t index)
 {

@@ -10,8 +10,20 @@ API reference.
 
 ## Current Modules
 
-The current standard modules live under [mods/std](/home/matt/nerd/mods/std).
+The current standard modules live under [mods](/home/matt/nerd/mods). The
+library is moving toward three layers:
 
+- `core`
+  Language-adjacent helpers with minimal dependencies. This currently contains
+  the first source-level arena API.
+- `std`
+  Portable higher-level utilities.
+- `sys`
+  Platform and OS bindings. The current tree has started this split under
+  `std.os` and will continue moving low-level modules toward `sys`.
+
+- `core`
+  Pointer-stable arena construction, allocation, reset, and release helpers.
 - `std.io`
   Basic input and output helpers.
 - `std.mem`
@@ -64,6 +76,21 @@ stable user-facing library functions.
 ### `std.arena`
 
 Arena helpers built on top of `std.mem`.
+
+### `core`
+
+- `Arena`
+- `arena(num_bytes: usize, increment: usize = 0) -> Arena`
+- `alloc[T](arena: ^Arena) -> ^T`
+- `alloc_array[T](arena: ^Arena, count: usize) -> []T`
+- `Arena.reset()`
+- `Arena.done()`
+- `temp_arena_reset()`
+
+Arena sizes are rounded up to the platform page size by the runtime. Arena
+growth appends stable blocks rather than reallocating live storage, so earlier
+allocation pointers do not move. `reset()` invalidates previous allocations and
+reuses storage; `done()` releases owned arena blocks.
 
 ### `std.string`
 

@@ -13340,8 +13340,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema->types[source_type].kind == STK_UntypedInteger &&
                 sema->types[target_type].kind == STK_Pointer;
 
+            bool void_pointer_cast =
+                source_type != sema_no_type() &&
+                target_type != sema_no_type() &&
+                sema->types[source_type].kind == STK_Pointer &&
+                sema->types[target_type].kind == STK_Pointer &&
+                (sema->types[sema->types[source_type].first_param_type].kind ==
+                     STK_Void ||
+                 sema->types[sema->types[target_type].first_param_type].kind ==
+                     STK_Void);
+
             if (!(primitive_cast || string_slice_cast ||
-                  untyped_integer_pointer_cast)) {
+                  untyped_integer_pointer_cast || void_pointer_cast)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),

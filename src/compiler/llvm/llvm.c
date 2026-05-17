@@ -4337,6 +4337,30 @@ internal bool llvm_generic_callee_name_for_call(LlvmFunctionContext* ctx,
             ctx->hir, ctx->lexer, ctx->arena, function_index);
         return true;
     }
+    if (callee->kind == HIR_EXPR_Index &&
+        llvm_type_is_function(ctx->sema, callee->type_index) &&
+        callee->operand_expr_index < array_count(ctx->hir->exprs)) {
+        const HirExpr* target = &ctx->hir->exprs[callee->operand_expr_index];
+        if (target->kind == HIR_EXPR_LocalRef &&
+            target->ref_kind == HIR_REF_Binding) {
+            const HirImport* import =
+                llvm_binding_import(ctx->hir, target->ref_index);
+            const Hir* source_hir      = NULL;
+            u32        source_fn_index = U32_MAX;
+            if (import != NULL &&
+                llvm_import_source_generic_function(ctx->sema,
+                                                    ctx->lexer,
+                                                    import,
+                                                    target->symbol_handle,
+                                                    callee->type_index,
+                                                    &source_hir,
+                                                    &source_fn_index)) {
+                *out = llvm_function_name_string(
+                    source_hir, ctx->lexer, ctx->arena, source_fn_index);
+                return true;
+            }
+        }
+    }
     return false;
 }
 
@@ -4391,6 +4415,11 @@ internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
     if (source_int_bits > 0 &&
         llvm_type_kind(ctx->sema, target_type) == STK_Pointer) {
         return s("inttoptr");
+    }
+
+    if (llvm_type_kind(ctx->sema, source_type) == STK_Pointer &&
+        llvm_type_kind(ctx->sema, target_type) == STK_Pointer) {
+        return s("");
     }
 
     return (string){0};

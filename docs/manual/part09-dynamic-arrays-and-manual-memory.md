@@ -169,9 +169,47 @@ main :: fn () {
 }
 ```
 
+## Arenas
+
+The `core` module provides an early pointer-stable arena API for allocations
+that can be released together:
+
+```nerd
+use core
+
+main :: fn () {
+    scratch: Arena
+    scratch = arena(4096, 4096)
+    defer scratch.done()
+
+    value := alloc[i32](^scratch)
+    value^ = 42
+
+    bytes := alloc_array[u8](^scratch, 128)
+    bytes[0] = 1
+
+    scratch.reset()  -- invalidates earlier arena allocations
+}
+```
+
+`arena(num_bytes)` creates an arena with at least that many bytes of initial
+capacity. `arena(num_bytes, increment)` also sets the growth increment used when
+the arena runs out of room. Both sizes are rounded up by the runtime to the
+platform page size. Growth appends stable blocks, so previously returned
+pointers are not moved.
+
+Use `alloc[T](^arena)` for one value and `alloc_array[T](^arena, count)` for a
+slice. The current source API uses top-level generic functions because generic
+method calls such as `scratch.alloc[i32]()` are still roadmap work.
+
+`reset()` makes previous arena pointers and slices invalid but keeps the arena
+ready for reuse. `done()` releases the arena's owned storage. Call `done()` for
+arenas that own runtime memory.
+
 ## Ownership Rule Of Thumb
 
 - Dynamic arrays own storage.
 - Slices borrow storage.
 - `free()` releases owned storage.
+- Arena allocations are valid until the arena is reset or released.
 - `defer` is the normal way to keep cleanup attached to a scope.

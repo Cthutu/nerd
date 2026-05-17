@@ -1,0 +1,63 @@
+--
+-- Core language-adjacent helpers.
+--
+
+pub Arena :: plex #c {
+    first        ^void
+    current      ^void
+    initial_size usize
+    increment    usize
+}
+
+ffi "c" {
+    nrt_arena_init  (arena: ^Arena, initial_size: usize, increment: usize)
+    nrt_arena_done  (arena: ^Arena)
+    nrt_arena_reset (arena: ^Arena)
+    nrt_arena_alloc (arena: ^Arena, size: usize, alignment: usize) -> ^void
+
+    nrt_temp_arena_reset ()
+}
+
+arena_alignment :: fn [T] () -> usize {
+    size := T.size
+    on size >= 8 => return 8
+    on size >= 4 => return 4
+    on size >= 2 => return 2
+    return 1
+}
+
+pub arena :: fn (num_bytes: usize, increment: usize = 0) -> Arena {
+    result: Arena
+    nrt_arena_init(^result, num_bytes, increment)
+    return result
+}
+
+pub alloc :: fn [T] (a: ^Arena) -> ^T {
+    return nrt_arena_alloc(a, T.size, arena_alignment[T]()).as(^T)
+}
+
+pub alloc_array :: fn [T] (a: ^Arena, count: usize) -> []T {
+    ptr := nrt_arena_alloc(a, T.size * count, arena_alignment[T]()).as(^T)
+    return ptr.as([]T, count)
+}
+
+impl Arena {
+
+    pub alloc_bytes :: fn (self: ^Self, count: usize) -> []u8 {
+        ptr := nrt_arena_alloc(self, count, 1).as(^u8)
+        return ptr.as([]u8, count)
+    }
+
+    pub reset :: fn (self: ^Self) {
+        nrt_arena_reset(self)
+    }
+
+    pub done :: fn (self: ^Self) {
+        nrt_arena_done(self)
+    }
+
+}
+
+pub temp_arena_reset :: fn () {
+    nrt_temp_arena_reset()
+}

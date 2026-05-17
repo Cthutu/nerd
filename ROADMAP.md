@@ -329,26 +329,29 @@ trait syntax and implementation support already landed, but pause trait
 constraints, built-in traits, and trait-driven interpolation until the arena and
 library layering are in place.
 
-- [ ] Add a built-in `arena` type.
-- [ ] Keep the arena implementation pointer-stable:
-  - [ ] arena allocation must not move previously returned pointers
-  - [ ] arena growth should reserve/commit additional pages or append stable
+- [x] Add the first source-level arena type in `core` as `Arena`.
+- [x] Keep the arena implementation pointer-stable:
+  - [x] arena allocation must not move previously returned pointers
+  - [x] arena growth should reserve/commit additional pages or append stable
     blocks rather than reallocating live storage
-  - [ ] keep the implementation close to the Nerd compiler's C arena model
+  - [x] keep the implementation close to the Nerd compiler's C arena model
     where practical
-- [ ] Add arena construction syntax:
-  - [ ] `arena(num_bytes)` creates an arena with at least that capacity
-  - [ ] round requested byte counts up to the nearest platform page size
-  - [ ] `arena(num_bytes, increment)` sets the growth increment for exhausted
+- [x] Add first arena construction API:
+  - [x] `arena(num_bytes)` creates an arena with at least that capacity
+  - [x] round requested byte counts up to the nearest platform page size
+  - [x] `arena(num_bytes, increment)` sets the growth increment for exhausted
     arenas
-  - [ ] round growth increments up to the nearest platform page size
-  - [ ] define sensible defaults for omitted growth behaviour
-- [ ] Add arena methods:
-  - [ ] `alloc[T]` returns memory aligned for `T`
-  - [ ] `alloc_array[T](count)` returns contiguous storage aligned for `T`
-  - [ ] `reset` invalidates allocations from the arena without freeing the
+  - [x] round growth increments up to the nearest platform page size
+  - [x] define sensible defaults for omitted growth behaviour
+- [ ] Add arena allocation APIs:
+  - [x] `core.alloc[T](^arena)` returns memory aligned for `T`
+  - [x] `core.alloc_array[T](^arena, count)` returns contiguous storage aligned
+    for `T`
+  - [ ] support method syntax for generic allocation once generic method calls
+    are resolved, such as `arena.alloc[T]()`
+  - [x] `reset` invalidates allocations from the arena without freeing the
     arena itself
-  - [ ] add `done` or equivalent explicit release if arenas own OS/heap memory
+  - [x] add `done` or equivalent explicit release if arenas own OS/heap memory
   - [ ] consider `store`/`restore` marks if they fit the same model cleanly
 - [ ] Add `temp_arena`:
   - [ ] provide a canonical global temporary arena from `core`
@@ -379,17 +382,21 @@ library layering are in place.
     reference, a compatibility wrapper, or is replaced by the built-in arena
   - [ ] update imports in tests, examples, and docs after module moves
 - [ ] Parser and semantic work:
-  - [ ] parse arena construction syntax without conflicting with ordinary calls
-  - [ ] type-check arena constructors and methods
-  - [ ] type-check generic arena allocation methods
+  - [x] use ordinary function-call syntax for first arena construction API
+  - [x] type-check arena constructors and lifecycle methods
+  - [x] type-check generic arena allocation functions
+  - [x] allow explicit generic calls through imported module bindings in LLVM
+    lowering
+  - [x] allow casts between `^void` and typed pointers for runtime allocation
+    wrappers
   - [ ] decide whether `arena` values are copyable, move-only, or copied by
     handle
   - [ ] define reset invalidation as a documented programmer responsibility for
     the first version
 - [ ] Backend/runtime work:
-  - [ ] lower arena construction, allocation, reset, and release
-  - [ ] expose page-size alignment through the runtime or platform layer
-  - [ ] keep pointer alignment correct for all allocated element types
+  - [x] lower arena construction, allocation, reset, and release
+  - [x] expose page-size alignment through the runtime
+  - [x] keep pointer alignment correct for currently supported element types
   - [ ] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
 - [ ] Formatter, LSP, and editor work:
@@ -399,10 +406,10 @@ library layering are in place.
   - [ ] update editor syntax files if new keywords or built-in token handling
     are added
 - [ ] Tests:
-  - [ ] language tests for arena construction with one and two arguments
-  - [ ] language tests for `alloc[T]` and `alloc_array[T]`
-  - [ ] language tests proving allocated pointers remain stable after growth
-  - [ ] language tests for `reset` reuse
+  - [x] command test for arena construction with two arguments
+  - [x] command test for `alloc[T]` and `alloc_array[T]`
+  - [x] command test proving allocated pointers remain stable after growth
+  - [x] command test for `reset` reuse
   - [ ] language tests for interpolation strings returned from functions via
     `temp_arena`
   - [ ] command tests for migrated `core`, `std`, and `sys` imports
@@ -412,14 +419,14 @@ library layering are in place.
   - [ ] LSP tests for module completion after the `core`/`std`/`sys`
     reorganisation
 - [ ] Documentation:
-  - [ ] manual section for arenas, `temp_arena`, and reset lifetime rules
+  - [x] manual section for first arena API and reset lifetime rules
   - [ ] manual examples showing main-loop `temp_arena.reset()` usage
   - [ ] manual/module documentation for the `core`, `std`, and `sys` split
   - [ ] syntax-reference appendix entries for arena construction if new syntax
     is introduced
   - [ ] language-reference appendix rules for arena allocation, reset, and
     interpolation lifetime
-  - [ ] update `docs/stdlib.md` to describe the new module hierarchy
+  - [x] update `docs/stdlib.md` to describe the new module hierarchy
   - [ ] update `docs/string-runtime.md` after interpolation moves to
     `temp_arena`
 
