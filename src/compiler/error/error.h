@@ -132,6 +132,10 @@ bool error_0203_expected_closing_token(NerdSource source,
                                        TokenKind  expected_kind,
                                        TokenKind  actual_kind,
                                        ErrorSpan  opening_span);
+bool error_0203_expected_closing_token_before(NerdSource source,
+                                              ErrorSpan  span,
+                                              TokenKind  expected_kind,
+                                              ErrorSpan  opening_span);
 
 // Used when parsing succeeds for a complete expression but trailing tokens
 // remain.

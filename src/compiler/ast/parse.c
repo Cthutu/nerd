@@ -3750,6 +3750,24 @@ internal u32 ast_impl_generic_params_index(AstParseState* state,
     return index;
 }
 
+internal bool
+ast_impl_member_looks_like_top_level_type_decl(const AstParseState* state)
+{
+    u32 cursor = state->token.token_index;
+    if (ast_kind_at_stream_index(state, cursor) == TK_pub) {
+        cursor++;
+    }
+    if (ast_kind_at_stream_index(state, cursor) != TK_Symbol ||
+        ast_kind_at_stream_index(state, cursor + 1) != TK_Colon ||
+        ast_kind_at_stream_index(state, cursor + 2) != TK_Colon) {
+        return false;
+    }
+
+    TokenKind value_kind = ast_kind_at_stream_index(state, cursor + 3);
+    return value_kind == TK_trait || value_kind == TK_plex ||
+           value_kind == TK_union || value_kind == TK_enum;
+}
+
 internal bool ast_parse_impl(AstParseState* state, u32* out_node)
 {
     ASSERT(state->token.kind == TK_impl, "Expected 'impl' token");
@@ -3817,6 +3835,14 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
     }
 
     while (state->token.kind != TK_RBrace) {
+        if (ast_impl_member_looks_like_top_level_type_decl(state)) {
+            return error_0203_expected_closing_token_before(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                ast_token_span(state, &block_open));
+        }
+
         bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;
         bool ok                         = ast_parse_top_level_item(state);

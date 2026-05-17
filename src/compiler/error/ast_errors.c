@@ -161,6 +161,32 @@ bool error_0203_expected_closing_token(NerdSource source,
     return false;
 }
 
+bool error_0203_expected_closing_token_before(NerdSource source,
+                                              ErrorSpan  span,
+                                              TokenKind  expected_kind,
+                                              ErrorSpan  opening_span)
+{
+    string    expected = token_kind_to_string(expected_kind);
+    ErrorInfo error    = error_init(203,
+                                    source,
+                                    span,
+                                    "Expected %.*s before declaration",
+                                    STRINGV(expected));
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "A closing delimiter is needed before this declaration");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        opening_span,
+                        "This opening delimiter is not closed");
+    error_add_help(&error,
+                   "Add the missing closing delimiter before this line");
+    error_render(&error);
+    return false;
+}
+
 bool error_0204_unexpected_token_ex(NerdSource source,
                                     ErrorSpan  span,
                                     TokenKind  actual_kind,
