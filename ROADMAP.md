@@ -516,7 +516,7 @@ library layering are in place.
     exist at instantiation time
 - [ ] Add trait member call syntax:
   - [x] receiver form `<value>.<trait_fn>(...)`
-  - [ ] explicit form `<Trait>.<trait_fn>(value, ...)`
+  - [x] explicit form `<Trait>.<trait_fn>(value, ...)`
   - [ ] explicit implementation form `<Trait>[Type].<trait_fn>(...)` when the
     implementation type cannot be inferred from a receiver argument, such as
     `Default[Foo].default()`
@@ -575,7 +575,7 @@ library layering are in place.
   - [x] language tests for union and enum implementations
   - [x] language tests for primitive implementations
   - [x] language tests for receiver-form trait calls
-  - [ ] language tests for explicit trait calls
+  - [x] language tests for explicit trait calls
   - [ ] language tests for generic constraints using `where T: Trait`
   - [ ] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and

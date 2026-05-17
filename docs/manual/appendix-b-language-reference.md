@@ -160,7 +160,8 @@ intended exit code.
   the implemented type with normal receiver syntax, such as `value.member()`.
   Inherent impl methods take precedence over trait impl methods. Receiver calls
   are ambiguous when multiple trait impl methods with the same name are valid
-  for the receiver type.
+  for the receiver type. Use `Trait.member(value, ...)` to explicitly select a
+  trait member implementation.
   Local trait implementations are checked against the required member
   signatures. Duplicate non-generic implementations for the same trait and
   target type are rejected. Generic trait constraints are not part of the

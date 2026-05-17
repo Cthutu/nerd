@@ -1251,12 +1251,20 @@ internal u32 hir_lower_expr(Hir*         hir,
                     });
 
                 Array(HirCallArg) lowered_args = NULL;
+                bool explicit_trait_call =
+                    node_index <
+                        array_count(sema->node_method_call_explicit_traits) &&
+                    sema->node_method_call_explicit_traits[node_index];
+                u32 receiver_node_index =
+                    explicit_trait_call && call->arg_count > 0
+                        ? ast->call_args[call->first_arg]
+                        : callee_node->a;
                 u32 receiver_expr_index =
-                    hir_lower_expr(hir, lexer, ast, sema, callee_node->a);
+                    hir_lower_expr(hir, lexer, ast, sema, receiver_node_index);
                 u32 receiver_type =
                     hir_function_param_type(sema, callee_type, 0);
                 if (receiver_type == sema_no_type()) {
-                    receiver_type = hir_node_type(sema, callee_node->a);
+                    receiver_type = hir_node_type(sema, receiver_node_index);
                 }
                 if (sema->node_method_call_receiver_refs[node_index]) {
                     receiver_expr_index = hir_add_expr(
@@ -1287,13 +1295,14 @@ internal u32 hir_lower_expr(Hir*         hir,
                                .symbol_handle = U32_MAX,
                            });
 
-                for (u32 i = 0; i < call->arg_count; ++i) {
+                u32 first_call_arg = explicit_trait_call ? 1 : 0;
+                for (u32 i = first_call_arg; i < call->arg_count; ++i) {
                     u32 arg_node_index = ast->call_args[call->first_arg + i];
                     u32 arg_symbol     = U32_MAX;
                     arg_node_index     = hir_call_arg_value_node(
                         ast, arg_node_index, &arg_symbol);
-                    u32 expected_arg_type =
-                        hir_function_param_type(sema, callee_type, i + 1);
+                    u32 expected_arg_type = hir_function_param_type(
+                        sema, callee_type, i + 1 - first_call_arg);
                     array_push(lowered_args,
                                (HirCallArg){
                                    .expr_index = hir_lower_expr_with_expected(
@@ -3208,6 +3217,8 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
             inst->node_method_call_receiver_refs;
         inst_sema.node_method_call_receiver_derefs =
             inst->node_method_call_receiver_derefs;
+        inst_sema.node_method_call_explicit_traits =
+            inst->node_method_call_explicit_traits;
         inst_sema.locals = sema->locals;
         inst_sema.scopes = sema->scopes;
         hir_add_function(&hir,

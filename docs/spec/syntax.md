@@ -113,9 +113,11 @@ are not split or merged across multiple blocks.
 Generic methods may also receive explicit type arguments with
 `value.method[T](...)`. Receiver method lookup prefers inherent impl methods
 before trait impl methods. If multiple trait impl methods with the same name are
-valid for the receiver type, the receiver call is ambiguous. Generic trait
-parameters, constraints, and explicit trait member calls are future milestone
-work.
+valid for the receiver type, the receiver call is ambiguous. A trait member may
+be called explicitly with `<Trait>.<member>(value, ...)`, which restricts lookup
+to implementations of that trait and uses the first argument as the receiver.
+Generic trait parameters, constraints, and explicit implementation member calls
+are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

@@ -9097,6 +9097,8 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                 sema_copy_bool_array(sema->node_method_call_receiver_refs),
             .node_method_call_receiver_derefs =
                 sema_copy_bool_array(sema->node_method_call_receiver_derefs),
+            .node_method_call_explicit_traits =
+                sema_copy_bool_array(sema->node_method_call_explicit_traits),
         });
 
     *out_symbol = symbol;
@@ -9460,6 +9462,36 @@ typedef struct {
     bool receiver_deref;
 } SemaResolvedMethodCall;
 
+internal bool sema_method_matches_trait_symbol(const Lexer*      lexer,
+                                               const Lexer*      source_lexer,
+                                               const Ast*        source_ast,
+                                               const SemaMethod* source_method,
+                                               u32               trait_symbol)
+{
+    if (trait_symbol == U32_MAX) {
+        return true;
+    }
+    if (!source_method->is_trait_impl ||
+        source_method->impl_node_index >= array_count(source_ast->nodes)) {
+        return false;
+    }
+    const AstNode* impl_node =
+        &source_ast->nodes[source_method->impl_node_index];
+    if (impl_node->kind != AK_Impl ||
+        impl_node->a >= array_count(source_ast->impls)) {
+        return false;
+    }
+    const AstImplInfo* impl = &source_ast->impls[impl_node->a];
+    if (impl->trait_type_node_index == U32_MAX) {
+        return false;
+    }
+    u32 source_trait_symbol = sema_trait_symbol_from_type_node(
+        source_ast, impl->trait_type_node_index);
+    return source_trait_symbol != U32_MAX &&
+           string_eq(lex_symbol(source_lexer, source_trait_symbol),
+                     lex_symbol(lexer, trait_symbol));
+}
+
 internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            const Ast*   ast,
                                            Sema*        sema,
@@ -9467,6 +9499,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            u32          receiver_type,
                                            u32          method_symbol,
                                            u32          explicit_arg_node_index,
+                                           u32          explicit_trait_symbol,
+                                           u32          call_arg_offset,
                                            bool*        out_found,
                                            SemaResolvedMethodCall* out_call)
 {
@@ -9476,7 +9510,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
     bool                   found_trait_call = false;
     SemaResolvedMethodCall trait_call       = {0};
 
-    for (u32 pass = 0; pass < 2; ++pass) {
+    u32 first_pass = explicit_trait_symbol == U32_MAX ? 0 : 1;
+    for (u32 pass = first_pass; pass < 2; ++pass) {
         bool want_trait_method = pass == 1;
         for (u32 i = 0; i < array_count(sema->methods); ++i) {
             const SemaMethod* method = &sema->methods[i];
@@ -9506,6 +9541,13 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 if (source_method == NULL) {
                     continue;
                 }
+            }
+            if (!sema_method_matches_trait_symbol(lexer,
+                                                  source_lexer,
+                                                  source_ast,
+                                                  source_method,
+                                                  explicit_trait_symbol)) {
+                continue;
             }
 
             const SemaDecl* source_decl =
@@ -9714,20 +9756,29 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 required_count--;
             }
             u32 max_count = source_signature->param_count - 1;
-            if (call->arg_count < required_count ||
-                call->arg_count > max_count) {
+            if (call->arg_count < call_arg_offset) {
                 array_free(source_arg_types);
-                u32 expected_count = call->arg_count < required_count
+                return error_0313_argument_count_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, call_node),
+                    call_arg_offset,
+                    call->arg_count);
+            }
+            u32 visible_arg_count = call->arg_count - call_arg_offset;
+            if (visible_arg_count < required_count ||
+                visible_arg_count > max_count) {
+                array_free(source_arg_types);
+                u32 expected_count = visible_arg_count < required_count
                                          ? required_count
                                          : max_count;
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, call_node),
-                    expected_count,
+                    expected_count + call_arg_offset,
                     call->arg_count);
             }
 
-            for (u32 j = 0; j < call->arg_count; ++j) {
+            for (u32 j = 0; j < visible_arg_count; ++j) {
                 const AstParam* source_param =
                     &source_ast->params[source_signature->first_param + 1 + j];
                 u32 expected_source = sema_no_type();
@@ -9746,7 +9797,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                                                source_sema,
                                                                expected_source)
                                             : expected_source;
-                u32 arg_node     = ast->call_args[call->first_arg + j];
+                u32 arg_node =
+                    ast->call_args[call->first_arg + call_arg_offset + j];
                 if (!sema_call_arg_value_node(lexer,
                                               ast,
                                               source_lexer,
@@ -14308,6 +14360,67 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
 
+                if (field_callee->a < array_count(ast->nodes) &&
+                    ast->nodes[field_callee->a].kind == AK_SymbolRef) {
+                    u32 trait_symbol = ast->nodes[field_callee->a].a;
+                    u32 trait_decl   = sema_find_decl(sema, trait_symbol);
+                    if (trait_decl != sema_no_decl() &&
+                        sema->decls[trait_decl].kind == SK_Trait) {
+                        if (call->arg_count == 0) {
+                            return error_0313_argument_count_mismatch(
+                                lexer->source,
+                                sema_node_span(lexer, node),
+                                1,
+                                0);
+                        }
+                        u32 receiver_node = ast->call_args[call->first_arg];
+                        u32 explicit_receiver_type = sema_no_type();
+                        if (!sema_infer_node_type(lexer,
+                                                  ast,
+                                                  sema,
+                                                  receiver_node,
+                                                  sema_no_type(),
+                                                  &explicit_receiver_type)) {
+                            return false;
+                        }
+
+                        bool                   found_trait_method = false;
+                        SemaResolvedMethodCall trait_method_call  = {0};
+                        if (!sema_try_resolve_method_call(
+                                lexer,
+                                ast,
+                                sema,
+                                node_index,
+                                explicit_receiver_type,
+                                field_callee->b,
+                                explicit_method_arg_node_index,
+                                trait_symbol,
+                                1,
+                                &found_trait_method,
+                                &trait_method_call)) {
+                            return false;
+                        }
+                        if (found_trait_method) {
+                            sema->node_type_indices[node->a] =
+                                trait_method_call.fn_type_index;
+                            sema->node_lowered_symbol_handles[node->a] =
+                                trait_method_call.lowered_symbol_handle;
+                            sema->node_method_call_decl_indices[node_index] =
+                                trait_method_call.decl_index;
+                            sema->node_method_call_receiver_refs[node_index] =
+                                trait_method_call.receiver_ref;
+                            sema->node_method_call_receiver_derefs[node_index] =
+                                trait_method_call.receiver_deref;
+                            sema->node_method_call_explicit_traits[node_index] =
+                                true;
+                            type_index =
+                                sema->types[trait_method_call.fn_type_index]
+                                    .return_type;
+                            break;
+                        }
+                    }
+                }
+
                 u32 receiver_type = sema_no_type();
                 if (!sema_infer_node_type(lexer,
                                           ast,
@@ -14479,6 +14592,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         receiver_type,
                         field_callee->b,
                         explicit_method_arg_node_index,
+                        U32_MAX,
+                        0,
                         &found_method,
                         &method_call)) {
                     return false;
@@ -17219,6 +17334,7 @@ bool sema_analyse(const Lexer*           lexer,
         array_push(sema.node_method_call_decl_indices, sema_no_decl());
         array_push(sema.node_method_call_receiver_refs, false);
         array_push(sema.node_method_call_receiver_derefs, false);
+        array_push(sema.node_method_call_explicit_traits, false);
         array_push(sema.node_implicit_array_type_indices, sema_no_type());
         array_push(sema.node_is_type_expr, false);
         array_push(sema.node_const_known, false);
@@ -17332,6 +17448,7 @@ void sema_done(Sema* sema)
         array_free(inst->node_method_call_decl_indices);
         array_free(inst->node_method_call_receiver_refs);
         array_free(inst->node_method_call_receiver_derefs);
+        array_free(inst->node_method_call_explicit_traits);
     }
     array_free(sema->types);
     array_free(sema->type_param_types);
@@ -17352,6 +17469,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_method_call_decl_indices);
     array_free(sema->node_method_call_receiver_refs);
     array_free(sema->node_method_call_receiver_derefs);
+    array_free(sema->node_method_call_explicit_traits);
     array_free(sema->node_implicit_array_type_indices);
     array_free(sema->on_branch_local_indices);
     array_free(sema->pattern_local_indices);
