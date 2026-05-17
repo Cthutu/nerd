@@ -1,4 +1,5 @@
 use std.io
+use std.os.linux
 use term
 
 main :: fn () {
