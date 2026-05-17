@@ -146,8 +146,9 @@ intended exit code.
 - Public methods inside an impl block are imported with their type's module.
 - Trait declarations use `Name :: trait { member :: fn (Self) -> Type }`.
 - Trait implementations use `impl TraitName for Type { ... }` and must provide
-  all required member names. Trait member dispatch and constraints are not part
-  of the current language surface.
+  all required member names. Methods supplied by a trait impl can be called on
+  the implemented type with normal receiver syntax, such as `value.member()`.
+  Generic trait constraints are not part of the current language surface.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

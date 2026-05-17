@@ -4061,10 +4061,7 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_Impl) {
             const AstImplInfo* impl = &ast->impls[node->a];
-            if (impl->trait_type_node_index != U32_MAX) {
-                continue;
-            }
-            const AstNode* body = &ast->nodes[impl->body_node_index];
+            const AstNode*     body = &ast->nodes[impl->body_node_index];
             for (u32 method_node_index = body->a; method_node_index < body->b;
                  ++method_node_index) {
                 const AstNode* method_node = &ast->nodes[method_node_index];
