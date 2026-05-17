@@ -436,7 +436,8 @@ language-known traits and result types:
 
 - `Display` supplies `show :: fn (Self) -> string`. String interpolation uses
   this trait for non-built-in values.
-- `Eq` supplies `eq :: fn (Self, Self) -> bool`.
+- `Eq` supplies `eq :: fn (Self, Self) -> bool`. The `==` and `!=` operators
+  use this trait for non-built-in values.
 - `Order` supplies `compare :: fn (Self, Self) -> i32`.
 - `Default` supplies `default :: fn () -> Self`.
 - `Option[T]` is an enum with `None` and `Some(T)`.

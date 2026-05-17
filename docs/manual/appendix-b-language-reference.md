@@ -39,6 +39,8 @@ intended exit code.
 - `nil` is available for pointer-like and slice-like values where supported.
 - Pointer equality supports matching pointer types, `nil`, and `^void` compared
   with any pointer type.
+- Non-built-in equality with `==` and `!=` uses the canonical `core.Eq`
+  implementation for the value type.
 - Local variables, parameters, and pattern binders must be read unless their
   names start with `_`.
 

@@ -8990,6 +8990,71 @@ internal bool sema_pointer_types_are_equality_comparable(const Sema* sema,
            sema->types[rhs_pointee].kind == STK_Void;
 }
 
+internal u32 sema_find_core_eq_method_decl(
+    const Lexer* lexer, const Ast* ast, Sema* sema, u32 lhs_type, u32 rhs_type)
+{
+    u32 eq_trait = sema_find_core_trait_symbol(lexer, sema, s("Eq"));
+    if (eq_trait == sema_no_decl() || lhs_type == sema_no_type() ||
+        rhs_type == sema_no_type()) {
+        return sema_no_decl();
+    }
+
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (!method->is_trait_impl || method->generic_params_index != U32_MAX ||
+            method->symbol_handle == U32_MAX ||
+            !string_eq_cstr(lex_symbol(lexer, method->symbol_handle), "eq") ||
+            method->impl_node_index >= array_count(ast->nodes) ||
+            method->decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[method->impl_node_index];
+        if (impl_node->kind != AK_Impl ||
+            impl_node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        const AstImplInfo* impl = &ast->impls[impl_node->a];
+        if (sema_trait_symbol_from_type_node(
+                ast, impl->trait_type_node_index) != eq_trait) {
+            continue;
+        }
+
+        u32 target_type = sema_no_type();
+        if (!sema_resolve_type_node(lexer,
+                                    ast,
+                                    sema,
+                                    method->target_type_node_index,
+                                    &target_type) ||
+            !sema_type_matches(sema, target_type, lhs_type)) {
+            continue;
+        }
+
+        u32 fn_type = sema->decls[method->decl_index].type_index;
+        if (fn_type >= array_count(sema->types) ||
+            sema->types[fn_type].kind != STK_Function ||
+            sema->types[fn_type].param_count < 2 ||
+            sema->types[fn_type].return_type !=
+                sema_builtin_type(sema, STK_Bool)) {
+            continue;
+        }
+
+        u32 first_param = sema->types[fn_type].first_param_type;
+        if (first_param + 1 >= array_count(sema->type_param_types) ||
+            !sema_type_matches(
+                sema, sema->type_param_types[first_param], lhs_type) ||
+            !sema_type_matches(
+                sema, sema->type_param_types[first_param + 1], rhs_type)) {
+            continue;
+        }
+
+        return method->decl_index;
+    }
+
+    return sema_no_decl();
+}
+
 internal bool sema_on_covers_all_enum_variants(const Ast*  ast,
                                                const Sema* sema,
                                                u32         on_index,
@@ -15116,6 +15181,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
                 if (sema_pointer_types_are_equality_comparable(
                         sema, lhs_type, rhs_type)) {
+                    type_index = sema_builtin_type(sema, STK_Bool);
+                    break;
+                }
+                u32 eq_method_decl = sema_find_core_eq_method_decl(
+                    lexer, ast, sema, lhs_type, rhs_type);
+                if (eq_method_decl != sema_no_decl()) {
+                    sema->node_method_call_decl_indices[node_index] =
+                        eq_method_decl;
                     type_index = sema_builtin_type(sema, STK_Bool);
                     break;
                 }

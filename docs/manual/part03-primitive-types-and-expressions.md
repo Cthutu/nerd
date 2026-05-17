@@ -102,6 +102,9 @@ Comparison operators produce `bool`:
 | `>`      | greater than          |
 | `>=`     | greater than or equal |
 
+For non-built-in values, `==` and `!=` use the canonical `core.Eq`
+implementation when one exists for the value type.
+
 Logical operators work with `bool`:
 
 | Operator                  | Meaning |

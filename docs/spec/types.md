@@ -72,6 +72,8 @@ Language-required traits such as `Display` are canonical declarations from
 `Default`, `Iterator[Item]`, `Option[T]`, and `Result[T, E]`. These names are
 available through the implicit `core` import unless shadowed by a local
 declaration.
+`Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
+supplies equality for non-built-in values used with `==` and `!=`.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when

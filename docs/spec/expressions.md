@@ -36,6 +36,11 @@ From lowest binding power to highest:
 | `+`, `-`                                                                        | Additive operators.                 |
 | `*`, `/`, `%`                                                                   | Multiplicative operators.           |
 | calls, indexing, slicing, fields, casts, plex literals, `with`, postfix `^`     | Postfix operators.                  |
+
+The `==` and `!=` operators are built in for primitive equality, strings,
+enums, pointers, slices, and dynamic arrays where supported. For other values,
+the analyser accepts equality when the type implements the canonical `core.Eq`
+trait, and lowering calls `Eq.eq(lhs, rhs)`. `!=` negates that result.
 | prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
 
 Assignments require assignable targets. Compound assignments lower through the

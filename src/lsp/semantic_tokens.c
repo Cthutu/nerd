@@ -139,6 +139,38 @@ internal u32 lsp_semantic_find_field_node(const Ast* ast, u32 token_index)
 }
 
 //------------------------------------------------------------------------------
+// Return the call node that uses one field node as its callee.
+
+internal u32 lsp_semantic_call_node_for_field_callee(const Ast* ast,
+                                                     u32 field_node_index)
+{
+    if (field_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Call || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        u32            callee_node_index = node->a;
+        const AstNode* callee            = &ast->nodes[callee_node_index];
+        if (callee->kind == AK_TypeApply &&
+            callee->a < array_count(ast->type_applications)) {
+            callee_node_index =
+                ast->type_applications[callee->a].target_node_index;
+        }
+
+        if (callee_node_index == field_node_index) {
+            return i;
+        }
+    }
+
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
 // Return the declaration index associated with one binding symbol handle.
 
 // Return whether one declaration index names a function-like symbol.
@@ -160,14 +192,34 @@ internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
 internal u32 lsp_semantic_symbol_type(const LspDeclarationView* view,
                                       u32                       token_index)
 {
+    const Token* token = NULL;
+    if (lsp_lexer_token(view->lexer, token_index, &token)) {
+        usize  end = lex_token_end_offset(view->lexer, token);
+        string text =
+            string_from(view->lexer->source.source.data + token->offset,
+                        end - token->offset);
+        if (string_eq(text, s("Self"))) {
+            return LSP_SEMANTIC_KEYWORD;
+        }
+    }
+
     u32 bind_node_index = lsp_semantic_find_bind_node(view->ast, token_index);
     if (bind_node_index != U32_MAX) {
         const AstNode* bind       = NULL;
         u32            decl_index = U32_MAX;
-        if (lsp_ast_node(view->ast, bind_node_index, &bind) &&
-            lsp_sema_decl_by_symbol(view->sema, bind->a, NULL, &decl_index) &&
-            lsp_semantic_decl_is_function(view->sema, decl_index)) {
-            return LSP_SEMANTIC_FUNCTION;
+        if (lsp_ast_node(view->ast, bind_node_index, &bind)) {
+            if (bind->b < array_count(view->ast->nodes)) {
+                const AstNode* value = &view->ast->nodes[bind->b];
+                if (value->kind == AK_FnDef || value->kind == AK_TypeFn ||
+                    value->kind == AK_FfiDef) {
+                    return LSP_SEMANTIC_FUNCTION;
+                }
+            }
+            if (lsp_sema_decl_by_symbol(
+                    view->sema, bind->a, NULL, &decl_index) &&
+                lsp_semantic_decl_is_function(view->sema, decl_index)) {
+                return LSP_SEMANTIC_FUNCTION;
+            }
         }
         return LSP_SEMANTIC_VARIABLE;
     }
@@ -182,6 +234,17 @@ internal u32 lsp_semantic_symbol_type(const LspDeclarationView* view,
     }
 
     u32 field_node_index = lsp_semantic_find_field_node(view->ast, token_index);
+    u32 call_node_index =
+        lsp_semantic_call_node_for_field_callee(view->ast, field_node_index);
+    if (call_node_index != U32_MAX &&
+        call_node_index <
+            array_count(view->sema->node_method_call_decl_indices)) {
+        decl_index = view->sema->node_method_call_decl_indices[call_node_index];
+        if (decl_index != sema_no_decl() &&
+            lsp_semantic_decl_is_function(view->sema, decl_index)) {
+            return LSP_SEMANTIC_FUNCTION;
+        }
+    }
     if (lsp_sema_node_decl(view->sema, field_node_index, &decl_index)) {
         if (lsp_semantic_decl_is_function(view->sema, decl_index)) {
             return LSP_SEMANTIC_FUNCTION;

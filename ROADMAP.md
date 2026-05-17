@@ -496,7 +496,7 @@ library layering are in place.
 - [ ] Add built-in trait semantics:
   - [x] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
-  - [ ] `Eq` supports equality semantics
+  - [x] `Eq` supports equality semantics
   - [ ] `Order` supports comparison semantics through a `compare`-style member
   - [ ] `Default` customises default initialisation for typed bindings
   - [ ] `Iterator[Item]` supplies `next :: fn (iter: ^Iter) -> Option[Item]`
@@ -567,14 +567,14 @@ library layering are in place.
   - [x] format trait impl blocks
   - [x] format `where` clauses
   - [x] format receiver and explicit trait member calls
-- [ ] LSP/editor work:
-  - [ ] hover for trait declarations and impl members
-  - [ ] go-to-definition from trait member calls to selected impl members where
+- [x] LSP/editor work:
+  - [x] hover for trait declarations and impl members
+  - [x] go-to-definition from trait member calls to selected impl members where
     possible
-  - [ ] semantic tokens for `trait`, `impl`, `where`, `Self`, and trait member
+  - [x] semantic tokens for `trait`, `impl`, `where`, `Self`, and trait member
     declarations
   - [x] document symbols for traits
-  - [ ] document symbols for impl blocks
+  - [x] document symbols for impl blocks
 - [ ] Tests:
   - [x] language tests for trait declarations using `Self`
   - [x] language tests for trait declarations using `trait for Value`
@@ -590,6 +590,7 @@ library layering are in place.
   - [x] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
   - [x] language tests for built-in `Display`, `Eq`, and `Default`
+  - [x] language tests for `Eq` driving `==` and `!=`
   - [ ] language tests for `Default` overriding typed-binding initialisation
   - [ ] language tests for zero-initialisation fallback when no `Default`
     implementation exists
@@ -607,7 +608,7 @@ library layering are in place.
     `help` messages
   - [x] format tests for trait declarations
   - [x] format tests for trait impl syntax
-  - [ ] LSP tests for hover/symbol/token behaviour affected by traits
+  - [x] LSP tests for hover/symbol/token behaviour affected by traits
 - [ ] Documentation:
   - [x] manual section introducing traits as interfaces for types
   - [x] manual examples for `Self` and `trait for Value`
