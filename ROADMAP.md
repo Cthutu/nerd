@@ -614,10 +614,10 @@ library layering are in place.
   - [x] manual examples for `impl Trait for Type`
   - [x] manual examples for receiver and explicit trait calls
   - [x] manual examples for generic constraints using traits
-  - [ ] manual section for built-in traits in `core`
+  - [x] manual section for built-in traits in `core`
   - [ ] manual examples for `Default` initialisation and zero-init fallback
   - [ ] manual examples for `Iterator` and `Option[Item]`
-  - [ ] standard-library documentation for `core.Option[T]`,
+  - [x] standard-library documentation for `core.Option[T]`,
     `core.Result[T, E]`, and core built-in traits
   - [x] syntax-reference appendix entries
   - [x] language-reference appendix rules

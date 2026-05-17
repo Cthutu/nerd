@@ -429,6 +429,23 @@ The type parameters are inferred from the target type. The `where` clause states
 what each concrete instantiation must prove before the implementation can be
 used.
 
+### Built-In Core Traits
+
+The `core` module is implicitly available in every module. It defines the
+language-known traits and result types:
+
+- `Display` supplies `show :: fn (Self) -> string`. String interpolation uses
+  this trait for non-built-in values.
+- `Eq` supplies `eq :: fn (Self, Self) -> bool`.
+- `Order` supplies `compare :: fn (Self, Self) -> i32`.
+- `Default` supplies `default :: fn () -> Self`.
+- `Option[T]` is an enum with `None` and `Some(T)`.
+- `Result[T, E]` is an enum with `Ok(T)` and `Err(E)`.
+
+These names can be used without `use core`. A local declaration with the same
+name takes precedence over the implicit core declaration, and an explicit
+`use core` remains valid when a module wants to make that dependency visible.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:
