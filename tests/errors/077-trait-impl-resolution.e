@@ -38,6 +38,49 @@ Display :: trait {
     show :: fn (Self) -> string
 }
 
+Point :: plex {
+    x i32
+}
+
+impl Display for Point {
+    show :: fn (self: Self) => "point"
+}
+
+bad :: fn [T] (value: T) -> string {
+    return value.show()
+}
+
+main :: fn () {
+    point := Point { x: 1 }
+    _ := bad(point)
+}
+¬
+{
+    "message": "Type mismatch: expected `Display constraint`, found `T`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 14,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 14,
+            "column": 12,
+            "length": 5,
+            "message": "This expression has type `T`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+Display :: trait {
+    show :: fn (Self) -> string
+}
+
 impl Display for Missing {
     show :: fn (self: Self) => "missing"
 }

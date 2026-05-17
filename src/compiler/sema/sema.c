@@ -66,6 +66,8 @@ internal bool sema_try_resolve_qualified_type_node(const Lexer* lexer,
                                                    Sema*        sema,
                                                    u32          node_index,
                                                    u32*         out_type_index);
+internal u32  sema_ast_enclosing_function_start_node(const Ast* ast,
+                                                     u32        node_index);
 internal bool
 sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type);
 internal const AstCastInfo* sema_cast_info(const Ast* ast, const AstNode* node);
@@ -9344,6 +9346,192 @@ sema_validate_decl_where_constraints(const Lexer*            lexer,
     return true;
 }
 
+internal bool sema_where_constraints_include_trait(const Lexer* lexer,
+                                                   const Ast*   ast,
+                                                   u32    first_constraint,
+                                                   u32    constraint_count,
+                                                   u32    param_symbol,
+                                                   string trait_name)
+{
+    for (u32 i = 0; i < constraint_count; ++i) {
+        const AstWhereConstraint* constraint =
+            &ast->where_constraints[first_constraint + i];
+        if (constraint->param_symbol != param_symbol) {
+            continue;
+        }
+        u32 constraint_trait = sema_trait_symbol_from_type_node(
+            ast, constraint->trait_type_node_index);
+        if (constraint_trait != U32_MAX &&
+            string_eq(lex_symbol(lexer, constraint_trait), trait_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool sema_generic_param_has_trait_constraint(const Ast*   ast,
+                                                      const Lexer* lexer,
+                                                      u32          node_index,
+                                                      u32          param_symbol,
+                                                      string       trait_name)
+{
+    u32 fn_start_index =
+        sema_ast_enclosing_function_start_node(ast, node_index);
+    if (fn_start_index != U32_MAX) {
+        const AstNode* fn_start = &ast->nodes[fn_start_index];
+        if (fn_start->a < array_count(ast->fn_signatures)) {
+            const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+            if (sema_where_constraints_include_trait(
+                    lexer,
+                    ast,
+                    signature->first_constraint,
+                    signature->constraint_count,
+                    param_symbol,
+                    trait_name)) {
+                return true;
+            }
+        }
+    }
+
+    u32 impl_node_index = sema_enclosing_impl_node_index(ast, node_index);
+    if (impl_node_index != U32_MAX) {
+        const AstNode* impl_node = &ast->nodes[impl_node_index];
+        if (impl_node->a < array_count(ast->impls)) {
+            const AstImplInfo* impl = &ast->impls[impl_node->a];
+            if (sema_where_constraints_include_trait(lexer,
+                                                     ast,
+                                                     impl->first_constraint,
+                                                     impl->constraint_count,
+                                                     param_symbol,
+                                                     trait_name)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal u32 sema_direct_generic_param_symbol_from_type_node(
+    const Lexer* lexer, const Ast* ast, u32 type_node_index)
+{
+    if (type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    while (
+        (type_node->kind == AK_Expression || type_node->kind == AK_Statement) &&
+        type_node->a < array_count(ast->nodes)) {
+        type_node_index = type_node->a;
+        type_node       = &ast->nodes[type_node_index];
+    }
+
+    if (type_node->kind != AK_SymbolRef) {
+        return U32_MAX;
+    }
+
+    for (u32 i = 0; i < g_sema_type_subst.count; ++i) {
+        if (g_sema_type_subst.param_symbols[i] == type_node->a) {
+            return type_node->a;
+        }
+    }
+    (void)lexer;
+    return U32_MAX;
+}
+
+internal u32 sema_direct_generic_param_symbol_from_value_node(
+    const Lexer* lexer, const Ast* ast, const Sema* sema, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    u32 local_index = sema->node_local_indices[node_index];
+    if (local_index != sema_no_local() &&
+        local_index < array_count(sema->locals)) {
+        const SemaLocal* local = &sema->locals[local_index];
+        return sema_direct_generic_param_symbol_from_type_node(
+            lexer, ast, local->type_node_index);
+    }
+    return U32_MAX;
+}
+
+internal u32 sema_trait_method_receiver_node_index(const Ast* ast,
+                                                   u32        call_node_index,
+                                                   u32        call_arg_offset)
+{
+    const AstNode*     call = &ast->nodes[call_node_index];
+    const AstCallInfo* info = &ast->calls[call->b];
+    if (call_arg_offset > 0 && info->arg_count >= call_arg_offset) {
+        return ast->call_args[info->first_arg];
+    }
+
+    const AstNode* callee = &ast->nodes[call->a];
+    if (callee->kind == AK_Index && callee->a < array_count(ast->nodes)) {
+        callee = &ast->nodes[callee->a];
+    }
+    if (callee->kind == AK_Field) {
+        return callee->a;
+    }
+    return U32_MAX;
+}
+
+internal bool sema_require_trait_constraint_for_generic_receiver(
+    const Lexer*      lexer,
+    const Ast*        ast,
+    const Sema*       sema,
+    u32               call_node_index,
+    u32               call_arg_offset,
+    const Lexer*      source_lexer,
+    const Ast*        source_ast,
+    const SemaMethod* source_method)
+{
+    if (!source_method->is_trait_impl) {
+        return true;
+    }
+
+    u32 receiver_node_index = sema_trait_method_receiver_node_index(
+        ast, call_node_index, call_arg_offset);
+    u32 param_symbol = sema_direct_generic_param_symbol_from_value_node(
+        lexer, ast, sema, receiver_node_index);
+    if (param_symbol == U32_MAX) {
+        return true;
+    }
+
+    const AstNode* impl_node =
+        source_method->impl_node_index < array_count(source_ast->nodes)
+            ? &source_ast->nodes[source_method->impl_node_index]
+            : NULL;
+    if (impl_node == NULL || impl_node->kind != AK_Impl ||
+        impl_node->a >= array_count(source_ast->impls)) {
+        return true;
+    }
+    const AstImplInfo* impl         = &source_ast->impls[impl_node->a];
+    u32                trait_symbol = sema_trait_symbol_from_type_node(
+        source_ast, impl->trait_type_node_index);
+    if (trait_symbol == U32_MAX) {
+        return true;
+    }
+    string trait_name = lex_symbol(source_lexer, trait_symbol);
+    if (sema_generic_param_has_trait_constraint(
+            ast, lexer, call_node_index, param_symbol, trait_name)) {
+        return true;
+    }
+
+    return error_0304_type_mismatch(
+        lexer->source,
+        sema_node_span(lexer, &ast->nodes[receiver_node_index]),
+        string_format(&temp_arena, STRINGP " constraint", STRINGV(trait_name)),
+        lex_symbol(lexer, param_symbol));
+}
+
 internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                                                        const Ast*   ast,
                                                        Sema*        sema,
@@ -10213,6 +10401,19 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                     generic,
                     source_arg_types,
                     sema_node_span(source_lexer, source_fn_def))) {
+                array_free(source_arg_types);
+                return false;
+            }
+
+            if (!sema_require_trait_constraint_for_generic_receiver(
+                    lexer,
+                    ast,
+                    sema,
+                    call_node_index,
+                    call_arg_offset,
+                    source_lexer,
+                    source_ast,
+                    source_method)) {
                 array_free(source_arg_types);
                 return false;
             }
