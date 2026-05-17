@@ -6,10 +6,7 @@ Point :: plex {
 }
 
 impl Display for Point {
-    show :: fn (self: Self) -> string {
-        on self.x == 3 && self.y == 4 => return "Point(3, 4)"
-        return "Point"
-    }
+    show :: fn (self: Self) => $"Point({self.x}, {self.y})"
 }
 
 Display :: trait {
@@ -28,17 +25,24 @@ Point(3, 4)
 
 ¬
 hir 0
+module module.0(162-trait-impl.input)
+import module.1(std.io)
+import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
+import import.4 input from module.1(std.io).decl.10: fn (string) -> string
+bind pr = import.0
+bind epr = import.1
+bind prn = import.2
+bind eprn = import.3
+bind input = import.4
 bind Point = type.0
 bind __impl_8_show = fn.0
 bind main = fn.1
 type type.0 = Point
 func fn.0(self: Point) -> string {
-  expr void on bool logical_and(bool equal(i32 field(Point local.0(self), x), i32 3), bool equal(i32 field(Point local.0(self), y), i32 4)) {
-    value(bool yes) => {
-      return string "Point(3, 4)"
-    }
-  }
-  return string "Point"
+  return string interpolate(<unknown> "Point(", i32 field(Point local.0(self), x), <unknown> ", ", i32 field(Point local.0(self), y), <unknown> ")")
 }
 func fn.1() -> i32 {
   let point: Point = Point plex(x: i32 3, y: i32 4)

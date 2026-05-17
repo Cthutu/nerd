@@ -334,7 +334,7 @@ bool error_0309_type_alias_cycle(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
-// Report use of runtime interpolation outside a supported local context.
+// Report use of runtime interpolation outside a runtime context.
 
 bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
 {
@@ -342,15 +342,14 @@ bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
         error_init(310,
                    source,
                    span,
-                   "Runtime interpolated strings must be statement-local");
+                   "Runtime interpolated strings cannot be top-level values");
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
                         "This interpolation needs runtime string building");
     error_add_help(&error,
                    "Use only compile-time values in top-level interpolated "
-                   "strings, or move the interpolation into a statement-local "
-                   "function context.");
+                   "strings, or move the interpolation into a function.");
     error_render(&error);
     return false;
 }
@@ -376,25 +375,6 @@ bool error_0311_invalid_interpolation_type(NerdSource source,
     error_add_help(&error,
                    "Use a built-in primitive or `string`, or cast the value "
                    "to a supported type first.");
-    error_render(&error);
-    return false;
-}
-
-//------------------------------------------------------------------------------
-// Report use of an interpolated temporary where the value could outlive
-// statement scope.
-
-bool error_0312_interpolated_string_escapes(NerdSource source, ErrorSpan span)
-{
-    ErrorInfo error = error_init(
-        312, source, span, "Interpolated string cannot escape statement scope");
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This value would outlive the temporary string arena");
-    error_add_help(&error,
-                   "Use interpolated strings only in statement-local contexts "
-                   "such as call arguments for now.");
     error_render(&error);
     return false;
 }

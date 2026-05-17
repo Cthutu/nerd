@@ -275,10 +275,11 @@ name :: "world"
 message :: $"hello {name}"  -- compile-time interpolation
 ```
 
-This is useful for top-level bindings. Runtime interpolated strings use a
-temporary string builder and must be used in statement-local positions, such as
-function call arguments. A top-level interpolated binding must therefore use
-only compile-time values inside `{...}`.
+This is useful for top-level bindings. Runtime interpolated strings use the
+temporary string arena and may be returned or stored as ordinary `string`
+values. A top-level interpolated binding must still use only compile-time values
+inside `{...}` because top-level runtime string building is not available during
+module initialisation.
 
 ## C Strings
 

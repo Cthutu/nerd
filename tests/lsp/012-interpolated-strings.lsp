@@ -74,7 +74,7 @@ message := $"count={count}"
                     "severity": 1,
                     "code": "0310",
                     "source": "nerd",
-                    "message": "Runtime interpolated strings must be statement-local",
+                    "message": "Runtime interpolated strings cannot be top-level values",
                     "relatedInformation": [
                         {
                             "location": {
@@ -90,7 +90,7 @@ message := $"count={count}"
                                     }
                                 }
                             },
-                            "message": "help: Use only compile-time values in top-level interpolated strings, or move the interpolation into a statement-local function context."
+                            "message": "help: Use only compile-time values in top-level interpolated strings, or move the interpolation into a function."
                         }
                     ]
                 }

@@ -3,7 +3,7 @@ message := $"count={count}"
 ¬
 {
     "code": "0310",
-    "message": "Runtime interpolated strings must be statement-local",
+    "message": "Runtime interpolated strings cannot be top-level values",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
         "line": 2,
@@ -20,7 +20,7 @@ message := $"count={count}"
     ],
     "notes": [],
     "help": [
-        "Use only compile-time values in top-level interpolated strings, or move the interpolation into a statement-local function context."
+        "Use only compile-time values in top-level interpolated strings, or move the interpolation into a function."
     ]
 }
 ¬
@@ -51,31 +51,5 @@ main :: fn () {
     "notes": [],
     "help": [
         "Use a built-in primitive or `string`, or cast the value to a supported type first."
-    ]
-}
-¬
-value := 1
-main :: fn () => $"value={value}"
-¬
-{
-    "code": "0312",
-    "message": "Interpolated string cannot escape statement scope",
-    "source_file": "tests/errors/008-interpolated-strings.e",
-    "primary_location": {
-        "line": 2,
-        "column": 18
-    },
-    "references": [
-        {
-            "kind": "primary",
-            "line": 2,
-            "column": 18,
-            "length": 2,
-            "message": "This value would outlive the temporary string arena"
-        }
-    ],
-    "notes": [],
-    "help": [
-        "Use interpolated strings only in statement-local contexts such as call arguments for now."
     ]
 }

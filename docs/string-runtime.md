@@ -9,7 +9,7 @@ implementation details.
 The current implementation is intentionally simple:
 
 - interpolated strings with only compile-time parts lower to string literals
-- runtime interpolated strings are temporary values only
+- runtime interpolated strings are backed by the global temporary string arena
 - lowering is explicit in HIR and LLVM
 - the C runtime uses a global append-only arena-backed builder
 - conversion support is limited to built-in primitive types and `string`
@@ -58,15 +58,14 @@ and Unix-style C ABIs.
 
 ## Lifetime Model
 
-For this first implementation, interpolation results are temporary values that
-live only for the surrounding statement. The runtime resets the thread-local
-builder after a statement that uses interpolation completes.
+Runtime interpolation results are allocated from a thread-local temporary string
+arena. They may be returned, assigned to variables, and passed through ordinary
+`string` values. The storage remains valid until the temporary arena is reset.
 
-That keeps the runtime simple and avoids exposing manual reset operations in the
-language, but it also means interpolated strings may not escape statement
-scope. Returning them, assigning them to variables, or storing them in other
-bindings is rejected in sema for now unless the interpolation is fully
-compile-time and lowers to an ordinary string literal.
+The first source-level arena milestone will expose this model as `temp_arena`
+from `core`, so programs with request or frame loops can reset temporary
+storage explicitly at a clear boundary. Programs that never reset the temporary
+arena keep these strings for the process lifetime.
 
 Top-level interpolated bindings are allowed when all interpolation parts are
 compile-time values. Top-level interpolations that need runtime string building
@@ -85,5 +84,6 @@ Inside interpolation braces, sema currently accepts:
 Unsupported values, such as function-typed expressions, produce a dedicated
 semantic error.
 
-Interpolated strings also produce a dedicated error when they are used in an
-escaping context.
+Top-level runtime interpolated bindings still produce a dedicated error because
+there is no runtime statement context in which to build them during module
+initialisation.

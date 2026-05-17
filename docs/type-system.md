@@ -547,11 +547,11 @@ recursively.
 Slice interpolation renders the visible slice contents in the same bracketed
 shape, such as `[1, 2, 3]`.
 
-Runtime interpolated strings are temporary statement-local values. Sema rejects
-uses that would let them escape, such as returning or storing them. If every
-part of an interpolated string is compile-time, IR lowers it to an ordinary
-string literal instead, so it can be used in top-level bindings and other
-escaping positions.
+Runtime interpolated strings are allocated from the temporary string arena and
+may be returned, assigned, or stored like ordinary `string` values. They remain
+valid until that arena is reset. If every part of an interpolated string is
+compile-time, IR lowers it to an ordinary string literal instead, so it can be
+used in top-level bindings and other escaping positions.
 
 ## Type Names
 
