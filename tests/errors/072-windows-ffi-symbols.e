@@ -6,7 +6,6 @@ ffi "user32" {
 main :: fn () {}
 ¬
 {
-    "code": "0346",
     "message": "Foreign symbol `GetModuleHandle` was not found in `user32`",
     "source_file": "tests/errors/072-windows-ffi-symbols.e",
     "primary_location": {

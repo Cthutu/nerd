@@ -15,7 +15,6 @@ impl Display for Point {
 main :: fn () => 0
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `fn (Point) -> string`, found `fn (Point) -> i32`",
     "source_file": "tests/errors/076-trait-signatures.e",
     "primary_location": {

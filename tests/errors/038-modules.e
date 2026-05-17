@@ -2,7 +2,6 @@ bad :: use std.missing
 
 main :: fn() {}¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known module`, found `module path`",
     "source_file": "tests/errors/038-modules.e",
     "primary_location": {

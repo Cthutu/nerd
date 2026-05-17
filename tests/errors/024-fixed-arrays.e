@@ -6,7 +6,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `array, slice, dynamic array, string, or pointer`, found `untyped integer`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
@@ -36,7 +35,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `integer index`, found `string`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
@@ -62,7 +60,6 @@ values: [2]i32: [1, "two"]
 main :: fn () => values[0]
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
@@ -88,7 +85,6 @@ values: [3]i32: [1, 2]
 main :: fn () => values[0]
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `[3]i32`, found `array with different length`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {
@@ -114,7 +110,6 @@ values: [2]i32: [1, 2, 3]
 main :: fn () => values[0]
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `[2]i32`, found `array with different length`",
     "source_file": "tests/errors/024-fixed-arrays.e",
     "primary_location": {

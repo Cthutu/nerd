@@ -5,7 +5,6 @@ impl Thing {
 main :: fn () => 0
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `function method`, found `non-function binding`",
     "source_file": "tests/errors/058-inherent-impl-methods.e",
     "primary_location": {

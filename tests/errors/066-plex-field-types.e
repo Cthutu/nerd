@@ -3,7 +3,6 @@ Bad :: plex {
 }
 ¬
 {
-    "code": "0303",
     "message": "Unknown type `Missing`",
     "source_file": "tests/errors/066-plex-field-types.e",
     "primary_location": {
@@ -31,7 +30,6 @@ Bad :: plex {
 main :: fn () {}
 ¬
 {
-    "code": "0208",
     "message": "Expected type but found Colon `:`",
     "source_file": "tests/errors/066-plex-field-types.e",
     "primary_location": {

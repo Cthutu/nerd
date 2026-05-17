@@ -1,7 +1,6 @@
 part body
 ¬
 {
-    "code": "0202",
     "message": "Missing operator before Symbol",
     "source_file": "tests/errors/063-obsolete-part.e",
     "primary_location": {

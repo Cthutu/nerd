@@ -3,7 +3,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `Red`",
     "source_file": "tests/errors/034-enum-unit-variants.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known enum variant`, found `Blue`",
     "source_file": "tests/errors/034-enum-unit-variants.e",
     "primary_location": {
@@ -65,7 +63,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0327",
     "message": "Value-producing block-form `on` expressions must be exhaustive",
     "source_file": "tests/errors/034-enum-unit-variants.e",
     "primary_location": {
@@ -94,7 +91,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known enum variant`, found `Blue`",
     "source_file": "tests/errors/034-enum-unit-variants.e",
     "primary_location": {

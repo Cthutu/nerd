@@ -4,17 +4,7 @@
 
 Compiler diagnostics are messages produced when the compiler cannot accept a
 program. They are meant to point at the source rule that was broken. Read them
-from top to bottom: code, message, primary location, notes, and help.
-
-## Diagnostic Ranges
-
-Nerd diagnostic codes are grouped by compiler phase:
-
-- `0100`-`0199`: lexer diagnostics
-- `0200`-`0299`: parser and AST construction diagnostics
-- `0300`-`0399`: semantic analysis diagnostics
-
-This tells you roughly how far the compiler got.
+from top to bottom: message, primary location, notes, and help.
 
 ## Lexer Errors
 
@@ -65,7 +55,6 @@ A diagnostic has:
 
 | Part | Meaning |
 | --- | --- |
-| code | stable category, such as `0304` |
 | main message | short description of what failed |
 | primary source location | where the compiler found the problem |
 | notes | extra context about the rule |

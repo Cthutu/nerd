@@ -4,7 +4,6 @@ Bad :: plex {
 main :: fn () {}
 ¬
 {
-    "code": "0303",
     "message": "Unknown type `MissingType`",
     "source_file": "tests/errors/062-type-declarations.e",
     "primary_location": {

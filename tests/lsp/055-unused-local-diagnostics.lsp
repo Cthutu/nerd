@@ -73,7 +73,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0335",
                     "source": "nerd",
                     "message": "Unused local variable `value`",
                     "relatedInformation": [

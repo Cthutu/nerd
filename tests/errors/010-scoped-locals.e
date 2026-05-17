@@ -5,7 +5,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0301",
     "message": "Duplicate binding for symbol `value`",
     "source_file": "tests/errors/010-scoped-locals.e",
     "primary_location": {
@@ -41,7 +40,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `later`",
     "source_file": "tests/errors/010-scoped-locals.e",
     "primary_location": {
@@ -69,7 +67,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `value`",
     "source_file": "tests/errors/010-scoped-locals.e",
     "primary_location": {
@@ -99,7 +96,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `inner`",
     "source_file": "tests/errors/010-scoped-locals.e",
     "primary_location": {

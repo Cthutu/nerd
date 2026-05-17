@@ -7,7 +7,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0327",
     "message": "Value-producing block-form `on` expressions must be exhaustive",
     "source_file": "tests/errors/036-generalised-on.e",
     "primary_location": {
@@ -38,7 +37,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `bool`, found `i32`",
     "source_file": "tests/errors/036-generalised-on.e",
     "primary_location": {
@@ -69,7 +67,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0326",
     "message": "Operator `>` requires matching numeric operands, found `string` and `string`",
     "source_file": "tests/errors/036-generalised-on.e",
     "primary_location": {

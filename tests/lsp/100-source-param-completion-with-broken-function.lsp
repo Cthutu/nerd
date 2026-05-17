@@ -92,7 +92,6 @@ broken : fn(frame: ^Thing) {
                         }
                     },
                     "severity": 1,
-                    "code": "0203",
                     "source": "nerd",
                     "message": "Expected Colon `:` but found Keyword `fn`",
                     "relatedInformation": [

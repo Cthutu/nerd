@@ -5,7 +5,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0332",
     "message": "Missing `else` for loop expression returning `untyped integer`",
     "source_file": "tests/errors/022-loop-expressions.e",
     "primary_location": {
@@ -38,7 +37,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `untyped integer`, found `string`",
     "source_file": "tests/errors/022-loop-expressions.e",
     "primary_location": {
@@ -68,7 +66,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0333",
     "message": "Loop `else` requires a value-producing loop expression",
     "source_file": "tests/errors/022-loop-expressions.e",
     "primary_location": {

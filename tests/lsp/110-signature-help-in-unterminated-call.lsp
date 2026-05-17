@@ -89,7 +89,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0201",
                     "source": "nerd",
                     "message": "Missing value before RightBrace `}`",
                     "relatedInformation": [

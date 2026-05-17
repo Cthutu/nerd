@@ -2,7 +2,6 @@ add :: fn (a: i32, b: i32) => a + b
 main :: fn () => add(20)
 ¬
 {
-    "code": "0313",
     "message": "Argument count mismatch: expected 2, found 1",
     "source_file": "tests/errors/011-function-calls.e",
     "primary_location": {
@@ -29,7 +28,6 @@ use_u32 :: fn (value: u32) => 0
 main :: fn () => use_u32(neg)
 ¬
 {
-    "code": "0323",
     "message": "Cannot infer negative integer as `u32`",
     "source_file": "tests/errors/011-function-calls.e",
     "primary_location": {

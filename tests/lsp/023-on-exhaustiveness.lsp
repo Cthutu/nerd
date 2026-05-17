@@ -74,7 +74,6 @@ main :: fn () => on value {
                         }
                     },
                     "severity": 1,
-                    "code": "0327",
                     "source": "nerd",
                     "message": "Value-producing block-form `on` expressions must be exhaustive",
                     "relatedInformation": [

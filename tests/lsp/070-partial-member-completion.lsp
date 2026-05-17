@@ -95,7 +95,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0300",
                     "source": "nerd",
                     "message": "Unknown symbol `missing_symbol`",
                     "relatedInformation": [

@@ -3,7 +3,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `bool`, found `untyped integer`",
     "source_file": "tests/errors/050-assert.e",
     "primary_location": {
@@ -30,7 +29,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string`, found `untyped integer`",
     "source_file": "tests/errors/050-assert.e",
     "primary_location": {

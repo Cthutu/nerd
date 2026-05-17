@@ -5,7 +5,6 @@ main :: fn () => on value {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `bool`, found `i32`",
     "source_file": "tests/errors/031-on-pattern-guards.e",
     "primary_location": {
@@ -33,7 +32,6 @@ main :: fn () => on value {
 }
 ¬
 {
-    "code": "0327",
     "message": "Value-producing block-form `on` expressions must be exhaustive",
     "source_file": "tests/errors/031-on-pattern-guards.e",
     "primary_location": {

@@ -2,7 +2,6 @@ pair :: fn [A, B] (a: A, b: B) => a
 main :: fn () => pair[i32](1, "two")
 ¬
 {
-    "code": "0313",
     "message": "Argument count mismatch: expected 2, found 1",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {

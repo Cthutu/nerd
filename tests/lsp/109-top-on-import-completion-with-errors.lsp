@@ -92,7 +92,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0204",
                     "source": "nerd",
                     "message": "Unexpected Symbol after expression",
                     "relatedInformation": [

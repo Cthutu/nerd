@@ -90,7 +90,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0203",
                     "source": "nerd",
                     "message": "Expected RightParen `)` but found RightBrace `}`",
                     "relatedInformation": [

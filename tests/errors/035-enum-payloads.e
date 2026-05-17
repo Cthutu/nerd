@@ -4,7 +4,6 @@ main :: fn () {
     value: Maybe = Some("bad")
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/035-enum-payloads.e",
     "primary_location": {
@@ -35,7 +34,6 @@ main :: fn () -> i32 {
     }
 }¬
 {
-    "code": "0313",
     "message": "Argument count mismatch: expected 1, found 2",
     "source_file": "tests/errors/035-enum-payloads.e",
     "primary_location": {
@@ -67,7 +65,6 @@ main :: fn () -> i32 {
     }
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `Maybe`, found `Other`",
     "source_file": "tests/errors/035-enum-payloads.e",
     "primary_location": {

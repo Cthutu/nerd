@@ -2,7 +2,6 @@ test {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected String but found LeftBrace `{`",
     "source_file": "tests/errors/060-source-tests.e",
     "primary_location": {

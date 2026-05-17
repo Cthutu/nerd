@@ -4,7 +4,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0347",
     "message": "Used local variable `_result` marked as unused",
     "source_file": "tests/errors/073-used-underscore-local.e",
     "primary_location": {

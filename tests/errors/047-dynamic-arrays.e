@@ -4,7 +4,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string`, found `untyped integer`",
     "source_file": "tests/errors/047-dynamic-arrays.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `[]string`, found `untyped integer`",
     "source_file": "tests/errors/047-dynamic-arrays.e",
     "primary_location": {
@@ -60,7 +58,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0313",
     "message": "Argument count mismatch: expected 0, found 1",
     "source_file": "tests/errors/047-dynamic-arrays.e",
     "primary_location": {
@@ -88,7 +85,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `usize`, found `string`",
     "source_file": "tests/errors/047-dynamic-arrays.e",
     "primary_location": {
@@ -116,7 +112,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0313",
     "message": "Argument count mismatch: expected 1, found 0",
     "source_file": "tests/errors/047-dynamic-arrays.e",
     "primary_location": {

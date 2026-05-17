@@ -3,7 +3,6 @@ main :: fn () {
     v: Value = Value { i: 1, f: 2.0 }
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `one union field`, found `different field count`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () -> i32 {
     }
 }¬
 {
-    "code": "0321",
     "message": "Block-form `on` does not support values of type `Value`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
@@ -58,7 +56,6 @@ main :: fn () {
     v: Value = Value {}
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `one union field`, found `different field count`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
@@ -84,7 +81,6 @@ main :: fn () {
     v: Value = Value { text: "bad" }
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known union field`, found `text`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
@@ -111,7 +107,6 @@ main :: fn () {
     w := v with { f: 2.0 }
 }¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `plex value`, found `Value`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {

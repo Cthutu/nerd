@@ -1,7 +1,6 @@
 18446744073709551616
 ¬
 {
-    "code": "0101",
     "message": "Integer literal is too large",
     "source_file": "tests/errors/009-coverage-gaps.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ¬
 {
-    "code": "0104",
     "message": "Symbol is too long",
     "source_file": "tests/errors/009-coverage-gaps.e",
     "primary_location": {
@@ -53,7 +51,6 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 main ::
 ¬
 {
-    "code": "0205",
     "message": "Expected declaration or expression but found EOF",
     "source_file": "tests/errors/009-coverage-gaps.e",
     "primary_location": {

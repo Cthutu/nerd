@@ -5,7 +5,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `plex or union type`, found `<unknown>`",
     "source_file": "tests/errors/044-contextual-plex-literal.e",
     "primary_location": {

@@ -1,7 +1,6 @@
 main :: fn () => on 1.as(i32) => 42 else 7
 ¬
 {
-    "code": "0319",
     "message": "`on` condition must have type `bool`, found `i32`",
     "source_file": "tests/errors/015-on-short-form.e",
     "primary_location": {
@@ -27,7 +26,6 @@ enabled: bool = yes
 main :: fn () => on enabled => 42 else "no"
 ¬
 {
-    "code": "0320",
     "message": "`on` branches must return the same type",
     "source_file": "tests/errors/015-on-short-form.e",
     "primary_location": {

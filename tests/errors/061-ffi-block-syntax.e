@@ -5,7 +5,6 @@ ffi "c" {
 main :: fn () {}
 ¬
 {
-    "code": "0203",
     "message": "Expected LeftParen `(` but found Integer",
     "source_file": "tests/errors/061-ffi-block-syntax.e",
     "primary_location": {
@@ -36,7 +35,6 @@ ffi "c" {
 main :: fn () {}
 ¬
 {
-    "code": "0203",
     "message": "Expected ThinArrow `->` but found FatArrow `=>`",
     "source_file": "tests/errors/061-ffi-block-syntax.e",
     "primary_location": {

@@ -10,7 +10,7 @@
 
 bool error_0200_code_too_complex(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error = error_init(200, source, span, "Code is too complex");
+    ErrorInfo error = error_init(source, span, "Code is too complex");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This expression exceeds AST limits");
     error_add_help(
@@ -26,8 +26,8 @@ bool error_0201_missing_value_ex(NerdSource source,
                                  cstr       help)
 {
     string    token = token_kind_to_string(expected_kind);
-    ErrorInfo error = error_init(
-        201, source, span, "Missing value before %.*s", STRINGV(token));
+    ErrorInfo error =
+        error_init(source, span, "Missing value before %.*s", STRINGV(token));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -63,7 +63,7 @@ bool error_0202_missing_operator_ex(NerdSource source,
 {
     string    token = token_kind_to_string(expected_kind);
     ErrorInfo error = error_init(
-        202, source, span, "Missing operator before %.*s", STRINGV(token));
+        source, span, "Missing operator before %.*s", STRINGV(token));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -100,8 +100,7 @@ bool error_0203_expected_token_ex(NerdSource source,
 {
     string    expected = token_kind_to_string(expected_kind);
     string    actual   = token_kind_to_string(actual_kind);
-    ErrorInfo error    = error_init(203,
-                                    source,
+    ErrorInfo error    = error_init(source,
                                     span,
                                     "Expected %.*s but found %.*s",
                                     STRINGV(expected),
@@ -140,8 +139,7 @@ bool error_0203_expected_closing_token(NerdSource source,
 {
     string    expected = token_kind_to_string(expected_kind);
     string    actual   = token_kind_to_string(actual_kind);
-    ErrorInfo error    = error_init(203,
-                                    source,
+    ErrorInfo error    = error_init(source,
                                     opening_span,
                                     "Expected %.*s but found %.*s",
                                     STRINGV(expected),
@@ -167,11 +165,8 @@ bool error_0203_expected_closing_token_before(NerdSource source,
                                               ErrorSpan  opening_span)
 {
     string    expected = token_kind_to_string(expected_kind);
-    ErrorInfo error    = error_init(203,
-                                    source,
-                                    span,
-                                    "Expected %.*s before declaration",
-                                    STRINGV(expected));
+    ErrorInfo error    = error_init(
+        source, span, "Expected %.*s before declaration", STRINGV(expected));
     error_add_reference(
         &error,
         ERROR_REF_PRIMARY,
@@ -195,7 +190,7 @@ bool error_0204_unexpected_token_ex(NerdSource source,
 {
     string    actual = token_kind_to_string(actual_kind);
     ErrorInfo error  = error_init(
-        204, source, span, "Unexpected %.*s after expression", STRINGV(actual));
+        source, span, "Unexpected %.*s after expression", STRINGV(actual));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "Found %.*s here", STRINGV(actual));
     if (note) {
@@ -216,7 +211,7 @@ bool error_0204_unexpected_token_here(NerdSource source,
 {
     string    actual = token_kind_to_string(actual_kind);
     ErrorInfo error =
-        error_init(204, source, span, "Unexpected %.*s", STRINGV(actual));
+        error_init(source, span, "Unexpected %.*s", STRINGV(actual));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -272,8 +267,7 @@ bool error_0205_expected_declaration_or_expression_ex(NerdSource source,
 {
     string    actual = token_kind_to_string(actual_kind);
     ErrorInfo error =
-        error_init(205,
-                   source,
+        error_init(source,
                    span,
                    "Expected declaration or expression but found %.*s",
                    STRINGV(actual));
@@ -317,7 +311,7 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
 bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)
 {
     ErrorInfo error =
-        error_init(206, source, span, "Invalid binding target before `:=`");
+        error_init(source, span, "Invalid binding target before `:=`");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "`:=` starts a new binding here");
     error_add_note(
@@ -339,8 +333,8 @@ bool error_0207_unexpected_operator(NerdSource source,
                                     cstr       note,
                                     cstr       help)
 {
-    ErrorInfo error = error_init(
-        207, source, span, "Unexpected %s %s", actual_operator, context);
+    ErrorInfo error =
+        error_init(source, span, "Unexpected %s %s", actual_operator, context);
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -365,7 +359,7 @@ bool error_0208_expected_type(NerdSource source,
 {
     string    actual = token_kind_to_string(actual_kind);
     ErrorInfo error  = error_init(
-        208, source, span, "Expected type but found %.*s", STRINGV(actual));
+        source, span, "Expected type but found %.*s", STRINGV(actual));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "A type is expected here");
     if (note) {

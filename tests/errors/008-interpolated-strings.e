@@ -2,7 +2,6 @@ count := 3
 message := $"count={count}"
 ¬
 {
-    "code": "0310",
     "message": "Runtime interpolated strings cannot be top-level values",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0311",
     "message": "Cannot interpolate values of type `fn () -> i32`",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {

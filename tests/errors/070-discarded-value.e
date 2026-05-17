@@ -7,7 +7,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0345",
     "message": "Expression result of type `i32` is not used",
     "source_file": "tests/errors/070-discarded-value.e",
     "primary_location": {

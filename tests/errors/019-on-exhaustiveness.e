@@ -4,7 +4,6 @@ main :: fn () => on value {
 }
 ¬
 {
-    "code": "0327",
     "message": "Value-producing block-form `on` expressions must be exhaustive",
     "source_file": "tests/errors/019-on-exhaustiveness.e",
     "primary_location": {

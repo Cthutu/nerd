@@ -7,7 +7,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `bool`, found `untyped integer`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -38,7 +37,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `i`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -65,7 +63,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -95,7 +92,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0206",
     "message": "Invalid binding target before `:=`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -127,7 +123,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected LeftBrace `{` but found RightBrace `}`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -154,7 +149,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`again` can only be used inside a loop",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -183,7 +177,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0330",
     "message": "Unknown control label `$missing`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -214,7 +207,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0331",
     "message": "`again` label `$block` does not name a loop",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
@@ -242,7 +234,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected LeftBrace `{` but found RightBrace `}`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {

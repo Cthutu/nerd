@@ -76,7 +76,6 @@ main :: fn () {}
                         }
                     },
                     "severity": 1,
-                    "code": "0346",
                     "source": "nerd",
                     "message": "Foreign symbol `GetModuleHandle` was not found in `user32`",
                     "relatedInformation": [

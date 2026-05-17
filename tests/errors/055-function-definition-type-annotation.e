@@ -3,7 +3,6 @@ bad : fn() -> i32 {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected Equal `=` but found LeftBrace `{`",
     "source_file": "tests/errors/055-function-definition-type-annotation.e",
     "primary_location": {
@@ -30,7 +29,6 @@ bad : fn() -> i32 {
 bad : fn() -> i32 => 1
 ¬
 {
-    "code": "0203",
     "message": "Expected Equal `=` but found FatArrow `=>`",
     "source_file": "tests/errors/055-function-definition-type-annotation.e",
     "primary_location": {
@@ -58,7 +56,6 @@ bad : fn(frame: ^Frame) {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected Colon `:` but found Keyword `fn`",
     "source_file": "tests/errors/055-function-definition-type-annotation.e",
     "primary_location": {

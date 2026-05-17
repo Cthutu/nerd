@@ -106,7 +106,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0304",
                     "source": "nerd",
                     "message": "Plex literal is missing required fields",
                     "relatedInformation": [

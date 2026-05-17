@@ -5,7 +5,6 @@ Room :: plex {
 main :: fn () {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `non-negative integer constant`, found `string`",
     "source_file": "tests/errors/043-array-length-constants.e",
     "primary_location": {

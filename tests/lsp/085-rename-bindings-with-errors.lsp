@@ -108,7 +108,6 @@ main :: fn () -> i32 {
                         }
                     },
                     "severity": 1,
-                    "code": "0345",
                     "source": "nerd",
                     "message": "Expression result of type `i32` is not used",
                     "relatedInformation": [

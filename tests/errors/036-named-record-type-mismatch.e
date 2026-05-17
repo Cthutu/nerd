@@ -14,7 +14,6 @@ objs: []Object = [
 ]
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `^Location`, found `^Object`",
     "source_file": "tests/errors/036-named-record-type-mismatch.e",
     "primary_location": {

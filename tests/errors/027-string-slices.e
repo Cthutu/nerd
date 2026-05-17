@@ -6,7 +6,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string field `.data` or `.count``, found `len`",
     "source_file": "tests/errors/027-string-slices.e",
     "primary_location": {
@@ -34,7 +33,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `integer slice bound`, found `bool`",
     "source_file": "tests/errors/027-string-slices.e",
     "primary_location": {

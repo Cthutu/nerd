@@ -92,7 +92,6 @@ main :: fn () => 0
                         }
                     },
                     "severity": 1,
-                    "code": "0303",
                     "source": "nerd",
                     "message": "Unknown type `MissingType`",
                     "relatedInformation": [

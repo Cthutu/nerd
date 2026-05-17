@@ -5,7 +5,6 @@ main :: fn() {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known module export`, found `secret`",
     "source_file": "tests/errors/041-module-privacy.e",
     "primary_location": {
@@ -33,7 +32,6 @@ use test.reexport
 main :: fn() => forty_two
 ¬
 {
-    "code": "0301",
     "message": "Duplicate binding for symbol `forty_two`",
     "source_file": "tests/errors/041-module-privacy.e",
     "primary_location": {

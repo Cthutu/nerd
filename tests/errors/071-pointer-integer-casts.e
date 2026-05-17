@@ -4,7 +4,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0307",
     "message": "Cannot cast `usize` to `^u8`",
     "source_file": "tests/errors/071-pointer-integer-casts.e",
     "primary_location": {

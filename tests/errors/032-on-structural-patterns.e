@@ -4,7 +4,6 @@ main :: fn () => on (1, 2) {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `tuple with matching arity`, found `(i32, i32)`",
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {
@@ -33,7 +32,6 @@ main :: fn () => on Point { x: 1, y: 2 } {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known plex field`, found `z`",
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {
@@ -61,7 +59,6 @@ main :: fn () => on (1, 2) {
 }
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `x`",
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {
@@ -95,7 +92,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `Point`, found `Other`",
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {

@@ -3,7 +3,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/048-defer.e",
     "primary_location": {
@@ -30,7 +29,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`again` can only be used inside a loop",
     "source_file": "tests/errors/048-defer.e",
     "primary_location": {

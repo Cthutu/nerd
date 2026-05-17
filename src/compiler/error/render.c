@@ -556,31 +556,16 @@ internal void error_normal_render(const ErrorInfo* error_info)
     }
 
     //
-    // Output the main error message and code
+    // Output the main error message
     //
 
-    string prefix        = {0};
-    string styled_prefix = {0};
-    if (error_info->kind == ERROR_KIND_RUNTIME) {
-        prefix = string_format(
-            &temp_arena, "%s: ", error_kind_label(error_info->kind));
-        styled_prefix = string_format(&temp_arena,
-                                      "%s%s:%s ",
-                                      primary_colour,
-                                      error_kind_label(error_info->kind),
-                                      ANSI_RESET);
-    } else {
-        prefix        = string_format(&temp_arena,
-                                      "%s[%04u]: ",
-                                      error_kind_label(error_info->kind),
-                                      error_info->code);
-        styled_prefix = string_format(&temp_arena,
-                                      "%s%s[%04u]:%s ",
-                                      primary_colour,
-                                      error_kind_label(error_info->kind),
-                                      error_info->code,
-                                      ANSI_RESET);
-    }
+    string prefix =
+        string_format(&temp_arena, "%s: ", error_kind_label(error_info->kind));
+    string styled_prefix = string_format(&temp_arena,
+                                         "%s%s:%s ",
+                                         primary_colour,
+                                         error_kind_label(error_info->kind),
+                                         ANSI_RESET);
     error_print_wrapped(prefix, styled_prefix, error_info->error_message);
 
     bool has_source = error_info->source.source.count > 0 ||
@@ -650,11 +635,6 @@ internal void error_test_render(const ErrorInfo* error_info)
     error_info      = &mapped_info;
 
     JsonValue* root = json_new_object(&temp_arena);
-    json_object_set_string(
-        root,
-        &temp_arena,
-        "code",
-        string_format(&temp_arena, "%04u", error_info->code));
     json_object_set_string(
         root, &temp_arena, "message", error_info->error_message);
     json_object_set_string(root,
@@ -778,11 +758,6 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
                            &temp_arena,
                            "severity",
                            (f64)error_lsp_severity(error_info->kind));
-    json_object_set_string(
-        diagnostic,
-        &temp_arena,
-        "code",
-        string_format(&temp_arena, "%04u", error_info->code));
     json_object_set_cstr(diagnostic, &temp_arena, "source", "nerd");
     json_object_set_string(
         diagnostic, &temp_arena, "message", error_info->error_message);

@@ -1,7 +1,6 @@
 ~
 ¬
 {
-    "code": "0100",
     "message": "Unexpected character '~'",
     "source_file": "tests/errors/001-unknown-characters.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 21n
 ¬
 {
-    "code": "0103",
     "message": "Invalid character 'n' in number literal",
     "source_file": "tests/errors/001-unknown-characters.e",
     "primary_location": {

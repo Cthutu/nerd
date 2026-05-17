@@ -3,7 +3,6 @@ assert on "missing_platform_key"
 main :: fn () {}
 ¬
 {
-    "code": "0336",
     "message": "Platform assertion failed for `missing_platform_key`",
     "source_file": "tests/errors/074-platform-assertions.e",
     "primary_location": {

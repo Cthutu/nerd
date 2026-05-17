@@ -13,7 +13,6 @@ impl Display for Point {
 main :: fn () => 0
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `trait member`, found `show`",
     "source_file": "tests/errors/075-trait-impls.e",
     "primary_location": {

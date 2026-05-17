@@ -6,7 +6,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `tuple with matching arity`, found `(i32, i32, i32)`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
@@ -34,7 +33,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `tuple`, found `i32`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
@@ -62,7 +60,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0305",
     "message": "Cannot assign to `a`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
@@ -92,7 +89,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
@@ -124,7 +120,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known plex field`, found `y`",
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {

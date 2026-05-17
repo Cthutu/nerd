@@ -2,7 +2,6 @@ add :: fn (a: i32, b: i32) -> i32 => a + b
 main :: fn () => add(20, 22)
 ¬
 {
-    "code": "0318",
     "message": "Cannot combine an explicit return type with a fat-arrow body",
     "source_file": "tests/errors/014-invalid-function-forms.e",
     "primary_location": {

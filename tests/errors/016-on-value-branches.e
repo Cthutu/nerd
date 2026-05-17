@@ -4,7 +4,6 @@ main :: fn () => on message {
 }
 ¬
 {
-    "code": "0321",
     "message": "Block-form `on` does not support values of type `untyped float`",
     "source_file": "tests/errors/016-on-value-branches.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () => on value {
 }
 ¬
 {
-    "code": "0322",
     "message": "Block-form `on` wildcard pattern must use `else`",
     "source_file": "tests/errors/016-on-value-branches.e",
     "primary_location": {

@@ -19,14 +19,10 @@
 //
 // Some notes about the error system:
 //
-//      - Every error has a 4-digit error code (a category)
-//      - An error code also determines which area of the compiler the error
-//        has occurred.  E.g. 0100-0199 are lexer errors, 0200-0299 are AST
-//        errors.
-//      - Each error category has a unique error function API.  This function
-//        is used to set up information for the error rendering system, such
-//        as the error code, the error message format, and any additional
-//        information that is needed, notes, help messages and source locations.
+//      - Each diagnostic has a unique error function API. This function is
+//        used to set up information for the error rendering system, such as
+//        the error message format and any additional information that is
+//        needed, notes, help messages and source locations.
 //      - The error rendering system is responsible for rendering the error
 //        message, notes and help messages, and source locations in a nice
 //        format.
@@ -384,7 +380,6 @@ typedef struct {
 
 typedef struct {
     ErrorKind  kind;
-    u16        code; // 4-digit error code
     string     error_message;
     NerdSource source;
     ErrorSpan  span;
@@ -393,10 +388,9 @@ typedef struct {
     Array(string) help_messages;
 } ErrorInfo;
 
+ErrorInfo error_init(NerdSource source, ErrorSpan span, cstr error_format, ...);
 ErrorInfo
-error_init(u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...);
-ErrorInfo warning_init(
-    u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...);
+warning_init(NerdSource source, ErrorSpan span, cstr error_format, ...);
 void error_add_reference(
     ErrorInfo* error_info, ErrorRefKind kind, ErrorSpan span, cstr format, ...);
 void error_add_notev(ErrorInfo* error_info, cstr format, va_list args);
@@ -411,7 +405,7 @@ void error_add_help(ErrorInfo* error_info, cstr format, ...);
 // contrived example,
 //
 //--------------------------------------------------------------------
-// error[0100]: Unexpected character '@'
+// error: Unexpected character '@'
 //  --> src/main.nerd:42:5
 //    |
 // 40 |     a := 2;
@@ -446,7 +440,6 @@ void error_add_help(ErrorInfo* error_info, cstr format, ...);
 // In test mode, JSON is produced instead and pretty-printed:
 //
 // {
-//     "code": "0100",
 //     "message": "Unexpected character '@'",
 //     "source_file": "src/main.nerd",
 //     "primary_location": {

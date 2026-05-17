@@ -4,7 +4,6 @@ use value
 main :: fn() {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known module`, found `module path`",
     "source_file": "tests/errors/039-use-modules.e",
     "primary_location": {

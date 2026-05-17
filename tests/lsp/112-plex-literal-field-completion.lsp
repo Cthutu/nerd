@@ -158,7 +158,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0304",
                     "source": "nerd",
                     "message": "Type mismatch: expected `known module`, found `module path`",
                     "relatedInformation": [
@@ -201,7 +200,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0304",
                     "source": "nerd",
                     "message": "Type mismatch: expected `known plex field`, found `v`",
                     "relatedInformation": [

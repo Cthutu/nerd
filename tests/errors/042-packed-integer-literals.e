@@ -1,7 +1,6 @@
 'abc
 ¬
 {
-    "code": "0107",
     "message": "Unterminated packed integer literal",
     "source_file": "tests/errors/042-packed-integer-literals.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 'abcdefghi'
 ¬
 {
-    "code": "0108",
     "message": "Packed integer literal is too large",
     "source_file": "tests/errors/042-packed-integer-literals.e",
     "primary_location": {

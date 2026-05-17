@@ -2,7 +2,6 @@ bad :: fn (a: i32 = 1, b: i32) => a + b
 main :: fn () => bad(1, 2)
 ¬
 {
-    "code": "0336",
     "message": "Required parameter `b` cannot follow a defaulted parameter",
     "source_file": "tests/errors/056-default-parameters.e",
     "primary_location": {
@@ -30,7 +29,6 @@ bad :: fn (a: i32 = b, b: i32 = 2) => a + b
 main :: fn () => bad()
 ¬
 {
-    "code": "0338",
     "message": "Default parameter cannot reference later parameter `b`",
     "source_file": "tests/errors/056-default-parameters.e",
     "primary_location": {
@@ -58,7 +56,6 @@ bad :: fn (a: i32 = "no") => a
 main :: fn () => bad()
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/056-default-parameters.e",
     "primary_location": {
@@ -84,7 +81,6 @@ puts :: ffi "c" puts (value: string = "x") -> i32
 main :: fn () => 0
 ¬
 {
-    "code": "0337",
     "message": "FFI parameter `value` cannot have a default value",
     "source_file": "tests/errors/056-default-parameters.e",
     "primary_location": {

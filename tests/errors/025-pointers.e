@@ -4,7 +4,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `addressable value`, found `untyped integer`",
     "source_file": "tests/errors/025-pointers.e",
     "primary_location": {
@@ -37,7 +36,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `integer index`, found `string`",
     "source_file": "tests/errors/025-pointers.e",
     "primary_location": {
@@ -63,7 +61,6 @@ pointer: ^i32: ^[1, 2]
 main :: fn () => pointer[0]
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `^i32`, found `^[2]i32`",
     "source_file": "tests/errors/025-pointers.e",
     "primary_location": {

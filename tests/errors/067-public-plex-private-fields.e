@@ -9,7 +9,6 @@ pub Public :: plex {
 main :: fn () {}
 ¬
 {
-    "code": "0341",
     "message": "Public type `Public` exposes private type `Private`",
     "source_file": "tests/errors/067-public-plex-private-fields.e",
     "primary_location": {
@@ -44,7 +43,6 @@ pub Public :: plex {
 main :: fn () {}
 ¬
 {
-    "code": "0341",
     "message": "Public type `Public` exposes private type `Private`",
     "source_file": "tests/errors/067-public-plex-private-fields.e",
     "primary_location": {

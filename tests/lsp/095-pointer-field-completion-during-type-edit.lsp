@@ -107,7 +107,6 @@ impl FrameSystem {
                         }
                     },
                     "severity": 1,
-                    "code": "0205",
                     "source": "nerd",
                     "message": "Expected declaration or expression but found RightBrace `}`",
                     "relatedInformation": [

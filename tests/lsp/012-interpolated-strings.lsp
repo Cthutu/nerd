@@ -72,7 +72,6 @@ message := $"count={count}"
                         }
                     },
                     "severity": 1,
-                    "code": "0310",
                     "source": "nerd",
                     "message": "Runtime interpolated strings cannot be top-level values",
                     "relatedInformation": [

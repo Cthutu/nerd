@@ -4,7 +4,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0334",
     "message": "Cannot read `value` before it has been assigned",
     "source_file": "tests/errors/052-definite-assignment.e",
     "primary_location": {
@@ -46,7 +45,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0334",
     "message": "Cannot read `value` before it has been assigned",
     "source_file": "tests/errors/052-definite-assignment.e",
     "primary_location": {
@@ -86,7 +84,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0334",
     "message": "Cannot read `value` before it has been assigned",
     "source_file": "tests/errors/052-definite-assignment.e",
     "primary_location": {

@@ -4,7 +4,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `tuple`, found `untyped integer`",
     "source_file": "tests/errors/023-tuples.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `valid tuple field`, found `(i32, string)`",
     "source_file": "tests/errors/023-tuples.e",
     "primary_location": {
@@ -58,7 +56,6 @@ pair: (i32, string): (1, 2)
 main :: fn () => pair.0
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string`, found `untyped integer`",
     "source_file": "tests/errors/023-tuples.e",
     "primary_location": {

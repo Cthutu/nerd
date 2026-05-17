@@ -1,7 +1,6 @@
 (1+2
 ¬
 {
-    "code": "0203",
     "message": "Expected RightParen `)` but found EOF",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 1)
 ¬
 {
-    "code": "0204",
     "message": "Unexpected RightParen `)` after expression",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
@@ -54,7 +52,6 @@ main :: fn () {
     return 0
 ¬
 {
-    "code": "0203",
     "message": "Expected RightBrace `}` but found EOF",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {
@@ -91,7 +88,6 @@ Display :: trait {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected RightBrace `}` before declaration",
     "source_file": "tests/errors/003-delimiters.e",
     "primary_location": {

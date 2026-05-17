@@ -168,7 +168,6 @@ main :: fn () {}
                         }
                     },
                     "severity": 1,
-                    "code": "0306",
                     "source": "nerd",
                     "message": "Invalid variable type `module`",
                     "relatedInformation": [
@@ -211,7 +210,6 @@ main :: fn () {}
                         }
                     },
                     "severity": 1,
-                    "code": "0203",
                     "source": "nerd",
                     "message": "Expected Symbol but found RightBrace `}`",
                     "relatedInformation": [

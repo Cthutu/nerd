@@ -5,7 +5,6 @@ main :: fn () => on value {
 }
 ¬
 {
-    "code": "0324",
     "message": "Block-form `on` range pattern is empty",
     "source_file": "tests/errors/017-on-ranges.e",
     "primary_location": {

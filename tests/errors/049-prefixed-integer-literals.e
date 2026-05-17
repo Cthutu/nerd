@@ -1,7 +1,6 @@
 0xG
 ¬
 {
-    "code": "0103",
     "message": "Invalid character 'G' in number literal",
     "source_file": "tests/errors/049-prefixed-integer-literals.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 0b2
 ¬
 {
-    "code": "0103",
     "message": "Invalid character '2' in number literal",
     "source_file": "tests/errors/049-prefixed-integer-literals.e",
     "primary_location": {
@@ -51,7 +49,6 @@
 0o8
 ¬
 {
-    "code": "0103",
     "message": "Invalid character '8' in number literal",
     "source_file": "tests/errors/049-prefixed-integer-literals.e",
     "primary_location": {
@@ -76,7 +73,6 @@
 0x
 ¬
 {
-    "code": "0103",
     "message": "Invalid character 'x' in number literal",
     "source_file": "tests/errors/049-prefixed-integer-literals.e",
     "primary_location": {

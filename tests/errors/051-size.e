@@ -3,7 +3,6 @@ value :: io.size
 main :: fn () {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `runtime-sized value`, found `module`",
     "source_file": "tests/errors/051-size.e",
     "primary_location": {

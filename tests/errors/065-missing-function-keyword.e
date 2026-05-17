@@ -3,7 +3,6 @@ main :: () {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected Keyword `fn` but found LeftParen `(`",
     "source_file": "tests/errors/065-missing-function-keyword.e",
     "primary_location": {
@@ -34,7 +33,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected Keyword `fn` but found LeftParen `(`",
     "source_file": "tests/errors/065-missing-function-keyword.e",
     "primary_location": {
@@ -63,7 +61,6 @@ main :: f () {
 }
 ¬
 {
-    "code": "0203",
     "message": "Expected Keyword `fn` but found Symbol",
     "source_file": "tests/errors/065-missing-function-keyword.e",
     "primary_location": {

@@ -3,7 +3,6 @@ Node :: plex {
 }
 ¬
 {
-    "code": "0309",
     "message": "Type alias cycle involving `Node`",
     "source_file": "tests/errors/037-direct-recursive-record-type.e",
     "primary_location": {

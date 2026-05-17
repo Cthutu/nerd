@@ -16,7 +16,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0344",
     "message": "Impl function `init` cannot be called as an associated function",
     "source_file": "tests/errors/069-associated-functions.e",
     "primary_location": {

@@ -9,7 +9,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0314",
     "message": "Missing return for function returning `string`",
     "source_file": "tests/errors/012-missing-function-return.e",
     "primary_location": {

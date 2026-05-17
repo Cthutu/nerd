@@ -2,7 +2,6 @@ a :: b + 1
 b :: a + 1
 ¬
 {
-    "code": "0302",
     "message": "Dependency cycle involving `b`",
     "source_file": "tests/errors/005-dependency-cycles.e",
     "primary_location": {
@@ -35,7 +34,6 @@ Price :: Cost
 Cost :: Price
 ¬
 {
-    "code": "0309",
     "message": "Type alias cycle involving `Cost`",
     "source_file": "tests/errors/005-dependency-cycles.e",
     "primary_location": {

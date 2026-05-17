@@ -6,7 +6,6 @@ Mode :: enum {
 main :: fn () {}
 ¬
 {
-    "code": "0342",
     "message": "Duplicate enum discriminant value `1`",
     "source_file": "tests/errors/068-enum-discriminants.e",
     "primary_location": {
@@ -44,7 +43,6 @@ Mode :: enum {
 main :: fn () {}
 ¬
 {
-    "code": "0343",
     "message": "Duplicate enum variant `Read`",
     "source_file": "tests/errors/068-enum-discriminants.e",
     "primary_location": {
@@ -82,7 +80,6 @@ Mode :: enum {
 main :: fn () {}
 ¬
 {
-    "code": "0342",
     "message": "Duplicate enum discriminant value `1`",
     "source_file": "tests/errors/068-enum-discriminants.e",
     "primary_location": {

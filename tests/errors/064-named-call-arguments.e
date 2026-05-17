@@ -2,7 +2,6 @@ add :: fn (a: i32, b: i32 = 1, c: i32 = a + b) => a + b + c
 main :: fn () => add(a = 1, c = 3)
 ¬
 {
-    "code": "0340",
     "message": "Named argument `c` does not match parameter `b`",
     "source_file": "tests/errors/064-named-call-arguments.e",
     "primary_location": {

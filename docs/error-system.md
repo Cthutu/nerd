@@ -13,7 +13,6 @@ The core interfaces are in
 Each reported diagnostic is assembled as an `ErrorInfo` value containing:
 
 - an `ErrorKind`
-- a four-digit code
 - the main message
 - source file data
 - a primary span
@@ -64,19 +63,18 @@ responsible for rejecting invalid source programs.
 
 ## Diagnostic Shape Policy
 
-The project treats numbered diagnostics as broad compiler-error categories, not
-as one-off leaf cases.
+The project treats diagnostic helpers as broad compiler-error categories, not as
+one-off leaf cases.
 
 That has a few consequences:
 
-- the error code identifies the compiler phase and broad class of failure
 - the rendered main message carries the concrete details for the current source
   case
 - notes explain why the diagnostic applies
 - help messages explain what the user can do next
 
-For example, a parser diagnostic code in the `0200` range should describe a
-general parser failure class such as:
+For example, a parser diagnostic helper should describe a general parser failure
+class such as:
 
 - missing value
 - missing operator
@@ -86,25 +84,6 @@ general parser failure class such as:
 It should not name one tiny syntax corner-case in the function/API itself. The
 current source-specific wording belongs in the rendered message, note, and help
 text instead.
-
-### Category Breadth
-
-A diagnostic code is considered broad enough when it can support a future
-command such as:
-
-```text
-nerd explain 0207
-```
-
-and that explanation can describe the category generically:
-
-- what kind of compiler failure it is
-- what sort of source constructs usually trigger it
-- how to interpret the rendered message, notes, and help
-
-If a code cannot be explained without talking about exactly one syntax
-incident, it is probably too narrow and should be merged into a broader
-category.
 
 ### Main Message
 
@@ -119,7 +98,7 @@ Examples:
 - `Expected \`]` but found \`)``
 - `Unexpected \`<\` after \`..\``
 
-The code stays broad; the rendered message stays precise.
+The helper stays broad; the rendered message stays precise.
 
 ### Notes And Help
 
@@ -150,25 +129,6 @@ a reliable recovery clue. For example, a binding value shaped like
 `name :: (...) { ... }`, `name :: symbol (...) { ... }`, or
 `name := (...) { ... }` is diagnosed at the apparent function introducer,
 because function values after binding operators must start with `fn`.
-
-## Error-Code Ranges
-
-The project keeps phase-specific ranges:
-
-- `0100` to `0199` for lexer errors
-- `0200` to `0299` for parser and AST errors
-- `0300` to `0399` for semantic-analysis errors
-
-Runtime errors are intentionally reported by category name (`runtime-error`)
-rather than by a language diagnostic code, because they describe the compiler's
-execution environment instead of user source.
-
-That convention matters for readability, tests, and future coverage.
-
-Recent semantic examples in the current milestone include:
-
-- `0302` for runtime/value dependency cycles
-- `0309` for type-alias cycles during type resolution
 
 ## Render Modes
 
@@ -221,7 +181,7 @@ parses the rendered JSON diagnostics back into LSP responses.
 
 Normal rendering builds compiler-style diagnostics with:
 
-- `error[CODE]: message`
+- `error: message`
 - file, line, and column
 - a source snippet
 - primary `^` markers
@@ -238,9 +198,9 @@ The usual pattern is:
 1. first check whether an existing broad diagnostic category already fits
 2. if an existing category fits, reuse it and pass source-specific message,
    note, and help context
-3. only add a new numbered helper in
+3. only add a new helper in
    [error.h](/home/matt/nerd/src/compiler/error/error.h) when the category is
-   broad enough to be explained generically
+   broad enough to reuse across source cases
 4. implement the helper in the relevant phase-specific file
 5. attach the right primary and secondary references
 6. add contextual help text for likely fixes

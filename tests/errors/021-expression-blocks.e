@@ -6,7 +6,6 @@ value: i32: ${
 main :: fn () => value
 ¬
 {
-    "code": "0329",
     "message": "Missing `break` for expression block returning `i32`",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {
@@ -36,7 +35,6 @@ value: i32: ${
 main :: fn () => value
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {
@@ -66,7 +64,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`again` can only be used inside a loop",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {
@@ -93,7 +90,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0328",
     "message": "`break` can only be used inside a loop or expression block",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {
@@ -123,7 +119,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0330",
     "message": "Unknown control label `$missing`",
     "source_file": "tests/errors/021-expression-blocks.e",
     "primary_location": {

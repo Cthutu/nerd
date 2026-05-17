@@ -72,7 +72,6 @@ Cost :: Price
                         }
                     },
                     "severity": 1,
-                    "code": "0309",
                     "source": "nerd",
                     "message": "Type alias cycle involving `Cost`",
                     "relatedInformation": [

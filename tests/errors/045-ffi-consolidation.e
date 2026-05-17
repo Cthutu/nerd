@@ -6,7 +6,6 @@ bad_point_local :: ffi "c" bad_point (Point)
 
 main :: fn() {}¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe parameter type`, found `Point`",
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
@@ -36,7 +35,6 @@ bad_mode_local :: ffi "c" bad_mode () -> Mode
 
 main :: fn() {}¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe return type`, found `Mode`",
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
@@ -61,7 +59,6 @@ main :: fn() {}¬
 
 main :: fn() {}¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe parameter type`, found `(i32, i32)`",
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {

@@ -4,7 +4,6 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "code": "0335",
     "message": "Unused local variable `value`",
     "source_file": "tests/errors/053-unused-locals.e",
     "primary_location": {
@@ -37,7 +36,6 @@ helper :: fn (value: i32) -> i32 {
 }
 ¬
 {
-    "code": "0335",
     "message": "Unused parameter `value`",
     "source_file": "tests/errors/053-unused-locals.e",
     "primary_location": {

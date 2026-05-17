@@ -3,7 +3,6 @@ bad_param :: ffi "c" bad (string)
 main :: fn() {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe parameter type`, found `string`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
@@ -30,7 +29,6 @@ bad_return :: ffi "c" bad () -> []u8
 main :: fn() {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe return type`, found `[]u8`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
@@ -59,7 +57,6 @@ main :: fn() {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `FFI-safe vararg type`, found `string`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
@@ -86,7 +83,6 @@ bad :: fn (...) -> i32
 main :: fn() {}
 ¬
 {
-    "code": "0203",
     "message": "Expected Symbol but found Ellipsis `...`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
@@ -114,7 +110,6 @@ bad_lib_type :: ffi lib bad () -> i32
 main :: fn() {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string`, found `untyped integer`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
@@ -142,7 +137,6 @@ bad_lib_runtime :: ffi lib bad () -> i32
 main :: fn() {}
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `compile-time string`, found `string`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {

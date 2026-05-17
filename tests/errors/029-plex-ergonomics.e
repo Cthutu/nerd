@@ -12,7 +12,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known plex field`, found `z`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
@@ -46,7 +45,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `unique plex field`, found `x`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
@@ -80,7 +78,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
@@ -109,7 +106,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `plex value`, found `i32`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {

@@ -1,7 +1,6 @@
 on 1 {}
 ¬
 {
-    "code": "0203",
     "message": "Expected String but found Integer",
     "source_file": "tests/errors/040-top-level-on.e",
     "primary_location": {
@@ -30,7 +29,6 @@ on !"debug" {
 main :: fn () => answer
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `answer`",
     "source_file": "tests/errors/040-top-level-on.e",
     "primary_location": {

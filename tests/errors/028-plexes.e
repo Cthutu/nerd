@@ -11,7 +11,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `known plex field`, found `z`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
@@ -46,7 +45,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Plex literal is missing required field",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
@@ -83,7 +81,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `unique plex field`, found `x`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
@@ -118,7 +115,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `string`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {

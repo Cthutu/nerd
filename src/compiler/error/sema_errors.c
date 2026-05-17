@@ -12,7 +12,7 @@
 bool error_0300_unknown_symbol(NerdSource source, ErrorSpan span, string symbol)
 {
     ErrorInfo error = error_init(
-        300, source, span, "Unknown symbol `" STRINGP "`", STRINGV(symbol));
+        source, span, "Unknown symbol `" STRINGP "`", STRINGV(symbol));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This symbol is not defined");
     error_add_help(&error,
@@ -30,8 +30,7 @@ bool error_0301_duplicate_binding(NerdSource source,
                                   string     symbol,
                                   ErrorSpan  previous_span)
 {
-    ErrorInfo error = error_init(301,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Duplicate binding for symbol `" STRINGP "`",
                                  STRINGV(symbol));
@@ -61,8 +60,7 @@ bool error_0302_dependency_cycle(NerdSource source,
                                  ErrorSpan  dependency_span,
                                  string     dependency_symbol)
 {
-    ErrorInfo error = error_init(302,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Dependency cycle involving `" STRINGP "`",
                                  STRINGV(symbol));
@@ -90,7 +88,7 @@ bool error_0303_unknown_type(NerdSource source,
                              string     type_name)
 {
     ErrorInfo error = error_init(
-        303, source, span, "Unknown type `" STRINGP "`", STRINGV(type_name));
+        source, span, "Unknown type `" STRINGP "`", STRINGV(type_name));
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This type name is not defined");
     error_add_help(&error,
@@ -109,8 +107,7 @@ bool error_0304_type_mismatch(NerdSource source,
                               string     actual_type)
 {
     ErrorInfo error =
-        error_init(304,
-                   source,
+        error_init(source,
                    span,
                    "Type mismatch: expected `" STRINGP "`, found `" STRINGP "`",
                    STRINGV(expected_type),
@@ -135,8 +132,7 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
                                         ...)
 {
     ErrorInfo error =
-        error_init(304,
-                   source,
+        error_init(source,
                    span,
                    "Type mismatch: expected `" STRINGP "`, found `" STRINGP "`",
                    STRINGV(expected_type),
@@ -163,7 +159,6 @@ bool error_0304_address_of_constant_binding(NerdSource source,
                                             string     symbol)
 {
     ErrorInfo error = error_init(
-        304,
         source,
         span,
         "Type mismatch: expected `addressable value`, found `" STRINGP "`",
@@ -190,8 +185,7 @@ bool error_0304_missing_plex_fields(NerdSource source,
                                     string     missing_fields,
                                     u32        missing_field_count)
 {
-    ErrorInfo error = error_init(304,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Plex literal is missing required field%s",
                                  missing_field_count == 1 ? "" : "s");
@@ -220,7 +214,7 @@ bool error_0305_invalid_assignment_target(NerdSource source,
                                           string     symbol)
 {
     ErrorInfo error = error_init(
-        305, source, span, "Cannot assign to `" STRINGP "`", STRINGV(symbol));
+        source, span, "Cannot assign to `" STRINGP "`", STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -242,8 +236,7 @@ bool error_0306_invalid_variable_type(NerdSource source,
                                       ErrorSpan  span,
                                       string     type_name)
 {
-    ErrorInfo error = error_init(306,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Invalid variable type `" STRINGP "`",
                                  STRINGV(type_name));
@@ -266,8 +259,7 @@ bool error_0307_invalid_cast(NerdSource source,
                              string     source_type,
                              string     target_type)
 {
-    ErrorInfo error = error_init(307,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Cannot cast `" STRINGP "` to `" STRINGP "`",
                                  STRINGV(source_type),
@@ -288,8 +280,7 @@ bool error_0308_type_used_as_value(NerdSource source,
                                    ErrorSpan  span,
                                    string     type_name)
 {
-    ErrorInfo error = error_init(308,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Cannot use type `" STRINGP "` as a value",
                                  STRINGV(type_name));
@@ -312,8 +303,7 @@ bool error_0309_type_alias_cycle(NerdSource source,
                                  ErrorSpan  dependency_span,
                                  string     dependency_symbol)
 {
-    ErrorInfo error = error_init(309,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Type alias cycle involving `" STRINGP "`",
                                  STRINGV(symbol));
@@ -339,8 +329,7 @@ bool error_0309_type_alias_cycle(NerdSource source,
 bool error_0310_invalid_interpolation_context(NerdSource source, ErrorSpan span)
 {
     ErrorInfo error =
-        error_init(310,
-                   source,
+        error_init(source,
                    span,
                    "Runtime interpolated strings cannot be top-level values");
     error_add_reference(&error,
@@ -362,8 +351,7 @@ bool error_0311_invalid_interpolation_type(NerdSource source,
                                            string     type_name)
 {
     ErrorInfo error =
-        error_init(311,
-                   source,
+        error_init(source,
                    span,
                    "Cannot interpolate values of type `" STRINGP "`",
                    STRINGV(type_name));
@@ -388,8 +376,7 @@ bool error_0313_argument_count_mismatch(NerdSource source,
                                         u32        actual_count)
 {
     ErrorInfo error =
-        error_init(313,
-                   source,
+        error_init(source,
                    span,
                    "Argument count mismatch: expected %u, found %u",
                    expected_count,
@@ -414,8 +401,7 @@ bool error_0314_missing_return(NerdSource source,
                                string     return_type)
 {
     ErrorInfo error =
-        error_init(314,
-                   source,
+        error_init(source,
                    span,
                    "Missing return for function returning `" STRINGP "`",
                    STRINGV(return_type));
@@ -441,8 +427,7 @@ bool error_0314_missing_return(NerdSource source,
 
 bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error =
-        error_init(315, source, span, "Missing entry point `main`");
+    ErrorInfo error = error_init(source, span, "Missing entry point `main`");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "No `main` function is defined");
     error_add_note(&error, "Programs currently require a `main` entry point.");
@@ -462,8 +447,7 @@ bool error_0316_invalid_entry_point(NerdSource source,
                                     string     actual_type)
 {
     ErrorInfo error =
-        error_init(316,
-                   source,
+        error_init(source,
                    span,
                    "Invalid type for entry point `main`: found `" STRINGP "`",
                    STRINGV(actual_type));
@@ -486,8 +470,7 @@ bool error_0317_non_closure_capture(NerdSource source,
                                     ErrorSpan  span,
                                     string     symbol)
 {
-    ErrorInfo error = error_init(317,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Cannot capture outer binding `" STRINGP "`",
                                  STRINGV(symbol));
@@ -511,8 +494,7 @@ bool error_0317_non_closure_capture(NerdSource source,
 
 bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error = error_init(318,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Cannot combine an explicit return type with "
                                  "a fat-arrow body");
@@ -539,8 +521,7 @@ bool error_0319_invalid_on_condition(NerdSource source,
                                      ErrorSpan  span,
                                      string     actual_type)
 {
-    ErrorInfo error = error_init(319,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "`on` condition must have type `bool`, found "
                                  "`" STRINGP "`",
@@ -562,8 +543,7 @@ bool error_0336_platform_assertion_failed(NerdSource source,
                                           string     key,
                                           bool       is_negated)
 {
-    ErrorInfo error = error_init(336,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Platform assertion failed for `" STRINGP "`",
                                  STRINGV(key));
@@ -597,7 +577,7 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
                                         string     false_type)
 {
     ErrorInfo error = error_init(
-        320, source, false_span, "`on` branches must return the same type");
+        source, false_span, "`on` branches must return the same type");
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         false_span,
@@ -621,7 +601,6 @@ bool error_0321_invalid_on_match_type(NerdSource source,
                                       string     actual_type)
 {
     ErrorInfo error = error_init(
-        321,
         source,
         span,
         "Block-form `on` does not support values of type `" STRINGP "`",
@@ -643,7 +622,7 @@ bool error_0321_invalid_on_match_type(NerdSource source,
 bool error_0322_invalid_on_wildcard_pattern(NerdSource source, ErrorSpan span)
 {
     ErrorInfo error = error_init(
-        322, source, span, "Block-form `on` wildcard pattern must use `else`");
+        source, span, "Block-form `on` wildcard pattern must use `else`");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This wildcard matches every value");
     error_add_help(&error,
@@ -662,8 +641,7 @@ bool error_0323_negative_unsigned_inference(NerdSource source,
                                             string     target_type)
 {
     ErrorInfo error =
-        error_init(323,
-                   source,
+        error_init(source,
                    span,
                    "Cannot infer negative integer as `" STRINGP "`",
                    STRINGV(target_type));
@@ -687,7 +665,7 @@ bool error_0324_invalid_on_range_bounds(NerdSource source,
                                         bool       inclusive)
 {
     ErrorInfo error =
-        error_init(324, source, span, "Block-form `on` range pattern is empty");
+        error_init(source, span, "Block-form `on` range pattern is empty");
     error_add_reference(
         &error, ERROR_REF_PRIMARY, span, "This range cannot match any values");
     error_add_help(&error,
@@ -709,8 +687,7 @@ bool error_0325_invalid_unary_operand(NerdSource source,
                                       string     expected_type,
                                       string     actual_type)
 {
-    ErrorInfo error = error_init(325,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Operator `" STRINGP "` requires `" STRINGP
                                  "`, found `" STRINGP "`",
@@ -740,8 +717,7 @@ bool error_0326_invalid_binary_operands(NerdSource source,
                                         string     left_type,
                                         string     right_type)
 {
-    ErrorInfo error = error_init(326,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Operator `" STRINGP "` requires " STRINGP
                                  ", found `" STRINGP "` and `" STRINGP "`",
@@ -770,7 +746,6 @@ bool error_0326_invalid_binary_operands(NerdSource source,
 bool error_0327_non_exhaustive_on(NerdSource source, ErrorSpan span)
 {
     ErrorInfo error = error_init(
-        327,
         source,
         span,
         "Value-producing block-form `on` expressions must be exhaustive");
@@ -793,8 +768,7 @@ bool error_0328_loop_control_outside_loop(NerdSource source,
                                           string     keyword)
 {
     bool      is_break = string_eq(keyword, s("break"));
-    ErrorInfo error = error_init(328,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  is_break ? "`break` can only be used inside a "
                                             "loop or expression block"
@@ -827,7 +801,6 @@ bool error_0329_missing_expression_block_break(NerdSource source,
                                                string     type_name)
 {
     ErrorInfo error = error_init(
-        329,
         source,
         span,
         "Missing `break` for expression block returning `" STRINGP "`",
@@ -855,11 +828,8 @@ bool error_0330_unknown_control_label(NerdSource source,
                                       ErrorSpan  span,
                                       string     label)
 {
-    ErrorInfo error = error_init(330,
-                                 source,
-                                 span,
-                                 "Unknown control label `$" STRINGP "`",
-                                 STRINGV(label));
+    ErrorInfo error = error_init(
+        source, span, "Unknown control label `$" STRINGP "`", STRINGV(label));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -880,8 +850,7 @@ bool error_0331_continue_to_non_loop_label(NerdSource source,
                                            string     label)
 {
     ErrorInfo error =
-        error_init(331,
-                   source,
+        error_init(source,
                    span,
                    "`again` label `$" STRINGP "` does not name a loop",
                    STRINGV(label));
@@ -906,8 +875,7 @@ bool error_0332_missing_loop_else(NerdSource source,
                                   string     type_name)
 {
     ErrorInfo error =
-        error_init(332,
-                   source,
+        error_init(source,
                    span,
                    "Missing `else` for loop expression returning `" STRINGP "`",
                    STRINGV(type_name));
@@ -933,11 +901,8 @@ bool error_0332_missing_loop_else(NerdSource source,
 
 bool error_0333_invalid_loop_else(NerdSource source, ErrorSpan span)
 {
-    ErrorInfo error =
-        error_init(333,
-                   source,
-                   span,
-                   "Loop `else` requires a value-producing loop expression");
+    ErrorInfo error = error_init(
+        source, span, "Loop `else` requires a value-producing loop expression");
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -959,8 +924,7 @@ bool error_0334_read_before_assignment(NerdSource source,
                                        ErrorSpan  decl_span)
 {
     ErrorInfo error =
-        error_init(334,
-                   source,
+        error_init(source,
                    span,
                    "Cannot read `" STRINGP "` before it has been assigned",
                    STRINGV(symbol));
@@ -994,8 +958,7 @@ bool error_0335_unused_local(NerdSource source,
                              string     symbol,
                              string     binding_kind)
 {
-    ErrorInfo error = error_init(335,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Unused " STRINGP " `" STRINGP "`",
                                  STRINGV(binding_kind),
@@ -1023,8 +986,7 @@ bool error_0336_required_param_after_default(NerdSource source,
                                              ErrorSpan  span,
                                              string     symbol)
 {
-    ErrorInfo error = error_init(336,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Required parameter `" STRINGP
                                  "` cannot follow a defaulted parameter",
@@ -1051,8 +1013,7 @@ bool error_0337_default_param_on_ffi(NerdSource source,
                                      string     symbol)
 {
     ErrorInfo error =
-        error_init(337,
-                   source,
+        error_init(source,
                    span,
                    "FFI parameter `" STRINGP "` cannot have a default value",
                    STRINGV(symbol));
@@ -1078,7 +1039,6 @@ bool error_0338_default_param_later_reference(NerdSource source,
                                               string     symbol)
 {
     ErrorInfo error = error_init(
-        338,
         source,
         span,
         "Default parameter cannot reference later parameter `" STRINGP "`",
@@ -1107,8 +1067,7 @@ bool error_0339_generics_not_implemented(NerdSource source,
                                          string     construct)
 {
     ErrorInfo error =
-        error_init(339,
-                   source,
+        error_init(source,
                    span,
                    "Generics are not implemented for `" STRINGP "` yet",
                    STRINGV(construct));
@@ -1134,8 +1093,7 @@ bool error_0340_named_argument_position(NerdSource source,
                                         string     expected,
                                         string     found)
 {
-    ErrorInfo error = error_init(340,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Named argument `" STRINGP
                                  "` does not match parameter `" STRINGP "`",
@@ -1167,8 +1125,7 @@ bool error_0341_private_type_in_public_field(NerdSource source,
                                              string     public_type,
                                              string     private_type)
 {
-    ErrorInfo error = error_init(341,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Public type `" STRINGP
                                  "` exposes private type `" STRINGP "`",
@@ -1200,7 +1157,7 @@ bool error_0342_duplicate_enum_discriminant(NerdSource source,
                                             ErrorSpan  previous_span)
 {
     ErrorInfo error = error_init(
-        342, source, span, "Duplicate enum discriminant value `%lld`", value);
+        source, span, "Duplicate enum discriminant value `%lld`", value);
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -1227,11 +1184,8 @@ bool error_0343_duplicate_enum_variant(NerdSource source,
                                        string     symbol,
                                        ErrorSpan  previous_span)
 {
-    ErrorInfo error = error_init(343,
-                                 source,
-                                 span,
-                                 "Duplicate enum variant `" STRINGP "`",
-                                 STRINGV(symbol));
+    ErrorInfo error = error_init(
+        source, span, "Duplicate enum variant `" STRINGP "`", STRINGV(symbol));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -1257,8 +1211,7 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
                                                    ErrorSpan  span,
                                                    string     symbol)
 {
-    ErrorInfo error = error_init(344,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Impl function `" STRINGP
                                  "` cannot be called as an associated function",
@@ -1285,8 +1238,7 @@ bool error_0345_discarded_value(NerdSource source,
                                 string     type_name)
 {
     ErrorInfo error =
-        error_init(345,
-                   source,
+        error_init(source,
                    span,
                    "Expression result of type `" STRINGP "` is not used",
                    STRINGV(type_name));
@@ -1310,8 +1262,7 @@ bool error_0346_unknown_ffi_symbol(NerdSource source,
                                    string     symbol,
                                    string     library)
 {
-    ErrorInfo error = error_init(346,
-                                 source,
+    ErrorInfo error = error_init(source,
                                  span,
                                  "Foreign symbol `" STRINGP
                                  "` was not found in `" STRINGP "`",
@@ -1343,8 +1294,7 @@ bool error_0347_used_underscore_local(NerdSource source,
                                       string     binding_kind)
 {
     ErrorInfo error =
-        error_init(347,
-                   source,
+        error_init(source,
                    use_span,
                    "Used " STRINGP " `" STRINGP "` marked as unused",
                    STRINGV(binding_kind),

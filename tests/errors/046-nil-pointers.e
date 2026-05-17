@@ -3,7 +3,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `i32`, found `nil`",
     "source_file": "tests/errors/046-nil-pointers.e",
     "primary_location": {

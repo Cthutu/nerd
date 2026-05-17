@@ -1,7 +1,6 @@
 "Hello, world!
 ¬
 {
-    "code": "0106",
     "message": "Unterminated string literal",
     "source_file": "tests/errors/006-unterminated-strings.e",
     "primary_location": {

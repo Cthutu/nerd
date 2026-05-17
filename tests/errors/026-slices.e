@@ -4,7 +4,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `array, slice, dynamic array, or string`, found `untyped integer`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
@@ -32,7 +31,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `integer slice bound`, found `bool`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
@@ -63,7 +61,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `slice field `.data` or `.count``, found `len`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
@@ -91,7 +88,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0207",
     "message": "Unexpected `<` after `..`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {

@@ -15,7 +15,6 @@ global_variable Arena           g_error_rendered_arena = {0};
 global_variable string          g_error_last_rendered  = {0};
 
 internal ErrorInfo error_info_init(ErrorKind  kind,
-                                   u16        code,
                                    NerdSource source,
                                    ErrorSpan  span,
                                    cstr       error_format,
@@ -87,7 +86,7 @@ bool error_runtime(const char* format, ...)
     va_list args;
     va_start(args, format);
     ErrorInfo error_info = error_info_init(
-        ERROR_KIND_RUNTIME, 0, (NerdSource){0}, (ErrorSpan){0}, format, args);
+        ERROR_KIND_RUNTIME, (NerdSource){0}, (ErrorSpan){0}, format, args);
     va_end(args);
     error_render(&error_info);
     return false;
@@ -96,7 +95,6 @@ bool error_runtime(const char* format, ...)
 void error_system_reset(void) { arena_reset(&g_error_arena); }
 
 internal ErrorInfo error_info_init(ErrorKind  kind,
-                                   u16        code,
                                    NerdSource source,
                                    ErrorSpan  span,
                                    cstr       error_format,
@@ -106,31 +104,29 @@ internal ErrorInfo error_info_init(ErrorKind  kind,
 
     return (ErrorInfo){
         .kind          = kind,
-        .code          = code,
         .error_message = error_message,
         .source        = source,
         .span          = span,
     };
 }
 
-ErrorInfo
-error_init(u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...)
+ErrorInfo error_init(NerdSource source, ErrorSpan span, cstr error_format, ...)
 {
     va_list args;
     va_start(args, error_format);
-    ErrorInfo error_info = error_info_init(
-        ERROR_KIND_ERROR, code, source, span, error_format, args);
+    ErrorInfo error_info =
+        error_info_init(ERROR_KIND_ERROR, source, span, error_format, args);
     va_end(args);
     return error_info;
 }
 
-ErrorInfo warning_init(
-    u16 code, NerdSource source, ErrorSpan span, cstr error_format, ...)
+ErrorInfo
+warning_init(NerdSource source, ErrorSpan span, cstr error_format, ...)
 {
     va_list args;
     va_start(args, error_format);
-    ErrorInfo error_info = error_info_init(
-        ERROR_KIND_WARNING, code, source, span, error_format, args);
+    ErrorInfo error_info =
+        error_info_init(ERROR_KIND_WARNING, source, span, error_format, args);
     va_end(args);
     return error_info;
 }

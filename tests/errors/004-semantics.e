@@ -1,7 +1,6 @@
 main :: fn () => mystery
 ¬
 {
-    "code": "0300",
     "message": "Unknown symbol `mystery`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -27,7 +26,6 @@ answer :: 42
 answer :: 7
 ¬
 {
-    "code": "0301",
     "message": "Duplicate binding for symbol `answer`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -59,7 +57,6 @@ answer :: 7
 value: mystery: 1
 ¬
 {
-    "code": "0303",
     "message": "Unknown type `mystery`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -84,7 +81,6 @@ value: mystery: 1
 value: string: 1
 ¬
 {
-    "code": "0304",
     "message": "Type mismatch: expected `string`, found `untyped integer`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -113,7 +109,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0305",
     "message": "Cannot assign to `value`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -143,7 +138,6 @@ main :: fn () {
 }
 ¬
 {
-    "code": "0317",
     "message": "Cannot capture outer binding `x`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -169,7 +163,6 @@ Price :: u16
 main :: fn () => Price
 ¬
 {
-    "code": "0308",
     "message": "Cannot use type `Price` as a value",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {
@@ -194,7 +187,6 @@ main :: fn () => Price
 main :: fn () => "hi".as(u8)
 ¬
 {
-    "code": "0307",
     "message": "Cannot cast `string` to `u8`",
     "source_file": "tests/errors/004-semantics.e",
     "primary_location": {

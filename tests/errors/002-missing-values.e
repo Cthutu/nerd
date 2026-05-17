@@ -1,7 +1,6 @@
 +42
 ¬
 {
-    "code": "0201",
     "message": "Missing value before Plus `+`",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {
@@ -26,7 +25,6 @@
 63+
 ¬
 {
-    "code": "0201",
     "message": "Missing value before EOF",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {
@@ -51,7 +49,6 @@
 28 29
 ¬
 {
-    "code": "0202",
     "message": "Missing operator before Integer",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {
@@ -76,7 +73,6 @@
 @
 ¬
 {
-    "code": "0204",
     "message": "Unexpected At `@`",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {

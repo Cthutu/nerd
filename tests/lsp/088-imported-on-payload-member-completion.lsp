@@ -99,7 +99,6 @@ main :: fn () {
                         }
                     },
                     "severity": 1,
-                    "code": "0203",
                     "source": "nerd",
                     "message": "Expected Symbol but found RightBrace `}`",
                     "relatedInformation": [
