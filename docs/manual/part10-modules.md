@@ -79,9 +79,10 @@ Use imports sparingly in larger files so readers can tell where names come from.
 
 Top-level `on` blocks can contain declarations and `use` statements. The
 condition is a string feature symbol. Built-in symbols include the host platform
-names such as `"windows"` and `"linux"`, and extra symbols can be enabled from
-the CLI with `-Dname`. The compiler only loads imports from an enabled platform
-branch:
+names such as `"windows"` and `"linux"`, `"posix"` on POSIX-like systems,
+`"debug"` or `"release"` for the current build mode, and architecture symbols
+such as `"x64"`. Extra symbols can be enabled from the CLI with `-Dname`. The
+compiler only loads imports from an enabled platform branch:
 
 ```nerd
 on "linux" {

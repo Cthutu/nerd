@@ -237,6 +237,9 @@ internal bool program_keyword_is_defined(const FrontEndOptions* options,
     if (!options->release && string_eq_cstr(name, "debug")) {
         return true;
     }
+    if (options->release && string_eq_cstr(name, "release")) {
+        return true;
+    }
 #if OS_WINDOWS
     if (string_eq_cstr(name, "windows")) {
         return true;
@@ -259,6 +262,11 @@ internal bool program_keyword_is_defined(const FrontEndOptions* options,
 #endif
 #if OS_POSIX
     if (string_eq_cstr(name, "posix")) {
+        return true;
+    }
+#endif
+#if ARCH_X86_64
+    if (string_eq_cstr(name, "x64")) {
         return true;
     }
 #endif

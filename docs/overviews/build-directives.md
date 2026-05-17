@@ -20,7 +20,9 @@ Add directives as line comments in C source files:
 
 `run` directives may include a platform filter, for example `run(windows)`,
 `run(linux)`, `run(macos)`, `run(bsd)`, or `run(posix)`. Multiple platform names
-can be comma-separated.
+can be comma-separated. These filters are evaluated by the build tooling and are
+separate from Nerd source-level platform keys such as `"debug"`, `"release"`,
+and `"x64"`.
 
 Unknown directives are treated as errors by the build tooling.
 
