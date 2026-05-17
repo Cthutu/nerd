@@ -32,20 +32,73 @@ compiler_cmd_run_artifacts(Arena* arena, const NerdRunConfig* config)
 }
 
 //------------------------------------------------------------------------------
-// Remove every temporary file shape that `run` can create.
+// Remove temporary file shapes that `run` can create for a single executable
+// path. Cleanup must stay exact enough to never match the source file stem.
 
-internal bool compiler_cmd_string_starts_with(string text, string prefix)
+internal bool compiler_cmd_string_eq_cstr(string text, cstr value)
 {
-    return text.count >= prefix.count &&
-           memcmp(text.data, prefix.data, prefix.count) == 0;
+    usize value_len = strlen(value);
+    return text.count == value_len && memcmp(text.data, value, value_len) == 0;
 }
 
-internal void compiler_cmd_run_cleanup_matching(Arena* arena,
-                                                cstr   dir_path,
-                                                string file_prefix)
+internal bool compiler_cmd_string_ends_with_cstr(string text, cstr suffix)
 {
-    void*   mark = arena_store(arena);
-    DirIter iter = {0};
+    usize suffix_len = strlen(suffix);
+    return text.count >= suffix_len &&
+           memcmp(text.data + text.count - suffix_len, suffix, suffix_len) == 0;
+}
+
+internal bool compiler_cmd_run_is_module_llvm(string filename, cstr base_name)
+{
+    usize base_len = strlen(base_name);
+    if (filename.count <= base_len + 4 ||
+        memcmp(filename.data, base_name, base_len) != 0 ||
+        filename.data[base_len] != '.' || filename.data[base_len + 1] != 'm' ||
+        !compiler_cmd_string_ends_with_cstr(filename, ".ll")) {
+        return false;
+    }
+
+    for (usize i = base_len + 2; i + 3 < filename.count; ++i) {
+        if (filename.data[i] < '0' || filename.data[i] > '9') {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool compiler_cmd_run_has_generated_suffix(string filename,
+                                                    cstr   base_name,
+                                                    cstr   suffix)
+{
+    usize base_len   = strlen(base_name);
+    usize suffix_len = strlen(suffix);
+    return filename.count == base_len + suffix_len &&
+           memcmp(filename.data, base_name, base_len) == 0 &&
+           memcmp(filename.data + base_len, suffix, suffix_len) == 0;
+}
+
+internal bool compiler_cmd_run_is_generated_for(string filename, cstr base_name)
+{
+    if (compiler_cmd_string_eq_cstr(filename, base_name)) {
+        return true;
+    }
+    if (compiler_cmd_run_has_generated_suffix(
+            filename, base_name, ".link.ll") ||
+        compiler_cmd_run_has_generated_suffix(filename, base_name, ".nrt.o") ||
+        compiler_cmd_run_has_generated_suffix(filename, base_name, ".pdb")) {
+        return true;
+    }
+    return compiler_cmd_run_is_module_llvm(filename, base_name);
+}
+
+internal void compiler_cmd_run_cleanup_generated_for_binary(Arena* arena,
+                                                            cstr   binary_path)
+{
+    cstr    dir_path  = path_dirname(arena, binary_path);
+    string  base      = path_filename(s(binary_path));
+    cstr    base_name = compiler_cmd_copy_path(arena, base);
+    void*   mark      = arena_store(arena);
+    DirIter iter      = {0};
     if (!dir_iter_init(&iter, dir_path)) {
         return;
     }
@@ -59,7 +112,7 @@ internal void compiler_cmd_run_cleanup_matching(Arena* arena,
         }
 
         string filename = path_filename(s(path));
-        if (compiler_cmd_string_starts_with(filename, file_prefix)) {
+        if (compiler_cmd_run_is_generated_for(filename, base_name)) {
             path_remove(path);
         }
         arena_restore(arena, mark);
@@ -74,14 +127,8 @@ internal void compiler_cmd_run_cleanup_generated(
         return;
     }
 
-    path_remove(artifacts->binary_path);
-#if OS_WINDOWS
-    path_remove(path_replace_extension(arena, artifacts->binary_path, ".pdb"));
-#endif
-
-    cstr dir_path = path_dirname(arena, artifacts->binary_path);
-    compiler_cmd_run_cleanup_matching(
-        arena, dir_path, path_filename(s(artifacts->binary_path)));
+    compiler_cmd_run_cleanup_generated_for_binary(arena,
+                                                  artifacts->binary_path);
 }
 
 internal void compiler_cmd_run_cleanup_failed_compile(
@@ -93,14 +140,7 @@ internal void compiler_cmd_run_cleanup_failed_compile(
     path_remove(artifacts->llvm_path);
 
     cstr build_binary = compiler_cmd_build_binary_path(arena, output_root);
-    path_remove(build_binary);
-#if OS_WINDOWS
-    path_remove(path_replace_extension(arena, build_binary, ".pdb"));
-#endif
-
-    compiler_cmd_run_cleanup_matching(arena,
-                                      path_dirname(arena, build_binary),
-                                      path_filename(s(build_binary)));
+    compiler_cmd_run_cleanup_generated_for_binary(arena, build_binary);
 }
 
 //------------------------------------------------------------------------------

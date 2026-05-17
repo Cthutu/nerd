@@ -645,6 +645,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             stderr_failure = check_equal(path, "stderr", expected_stderr, actual_stderr)
             if stderr_failure:
                 failures.append(stderr_failure)
+    if command in {"run", "r"} and not input_path.exists():
+        failures.append(Failure(path, "run command deleted its input source file"))
 
     debug_symbols = executable.with_suffix(".pdb")
     if run_mode == "keep" and not executable.exists():
