@@ -9349,6 +9349,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            u32          call_node_index,
                                            u32          receiver_type,
                                            u32          method_symbol,
+                                           u32          explicit_arg_node_index,
                                            bool*        out_found,
                                            SemaResolvedMethodCall* out_call)
 {
@@ -9405,6 +9406,44 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             for (u32 j = 0; j < generic->symbol_count; ++j) {
                 array_push(source_arg_types, sema_no_type());
             }
+            if (explicit_arg_node_index != U32_MAX) {
+                Array(u32) explicit_arg_nodes = NULL;
+                sema_collect_generic_arg_nodes(
+                    ast, explicit_arg_node_index, &explicit_arg_nodes);
+                u32 explicit_arg_count = (u32)array_count(explicit_arg_nodes);
+                if (explicit_arg_count != generic->symbol_count) {
+                    array_free(explicit_arg_nodes);
+                    array_free(source_arg_types);
+                    return error_0313_argument_count_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer,
+                                       &ast->nodes[explicit_arg_node_index]),
+                        generic->symbol_count,
+                        explicit_arg_count);
+                }
+                for (u32 j = 0; j < array_count(explicit_arg_nodes); ++j) {
+                    u32 explicit_type = sema_no_type();
+                    if (!sema_resolve_type_node(lexer,
+                                                ast,
+                                                sema,
+                                                explicit_arg_nodes[j],
+                                                &explicit_type)) {
+                        array_free(explicit_arg_nodes);
+                        array_free(source_arg_types);
+                        return false;
+                    }
+                    source_arg_types[j] =
+                        imported ? sema_import_type((Lexer*)source_lexer,
+                                                    source_sema,
+                                                    lexer,
+                                                    sema,
+                                                    explicit_type)
+                                 : explicit_type;
+                }
+                array_free(explicit_arg_nodes);
+            }
+        } else if (explicit_arg_node_index != U32_MAX) {
+            continue;
         }
 
         u32  source_receiver_type = imported
@@ -14027,12 +14066,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_Call:
         {
-            const AstCallInfo* call        = &ast->calls[node->b];
-            const AstNode*     callee_node = &ast->nodes[node->a];
-            if (callee_node->kind == AK_Field) {
+            const AstCallInfo* call         = &ast->calls[node->b];
+            const AstNode*     callee_node  = &ast->nodes[node->a];
+            const AstNode*     field_callee = callee_node;
+            u32                explicit_method_arg_node_index = U32_MAX;
+            if (callee_node->kind == AK_Index) {
+                const AstNode* generic_target = &ast->nodes[callee_node->a];
+                if (generic_target->kind == AK_Field) {
+                    field_callee                   = generic_target;
+                    explicit_method_arg_node_index = callee_node->b;
+                }
+            }
+            if (field_callee->kind == AK_Field) {
                 u32 associated_target = sema_no_type();
-                if (sema_try_resolve_type_symbol(
-                        lexer, ast, sema, callee_node->a, &associated_target)) {
+                if (sema_try_resolve_type_symbol(lexer,
+                                                 ast,
+                                                 sema,
+                                                 field_callee->a,
+                                                 &associated_target)) {
                     bool                   found_associated = false;
                     SemaResolvedMethodCall associated_call  = {0};
                     if (!sema_try_resolve_associated_call(lexer,
@@ -14040,7 +14091,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                           sema,
                                                           node_index,
                                                           associated_target,
-                                                          callee_node->b,
+                                                          field_callee->b,
                                                           &found_associated,
                                                           &associated_call)) {
                         return false;
@@ -14060,17 +14111,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (!sema_infer_node_type(lexer,
                                           ast,
                                           sema,
-                                          callee_node->a,
+                                          field_callee->a,
                                           sema_no_type(),
                                           &receiver_type)) {
                     return false;
                 }
                 if (receiver_type != sema_no_type() &&
                     sema->types[receiver_type].kind == STK_DynamicArray) {
-                    if (!sema_node_can_mutate_dynarray(ast, callee_node->a)) {
+                    if (!sema_node_can_mutate_dynarray(ast, field_callee->a)) {
                         return error_0305_invalid_assignment_target(
                             lexer->source,
-                            sema_node_span(lexer, &ast->nodes[callee_node->a]),
+                            sema_node_span(lexer, &ast->nodes[field_callee->a]),
                             s("expression"));
                     }
 
@@ -14078,16 +14129,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     if (!sema_dynarray_method_signature(sema,
                                                         lexer,
                                                         receiver_type,
-                                                        callee_node->b,
+                                                        field_callee->b,
                                                         &method_type)) {
                         return error_0304_type_mismatch(
                             lexer->source,
-                            sema_node_span(lexer, callee_node),
+                            sema_node_span(lexer, field_callee),
                             s("dynamic array method"),
-                            lex_symbol(lexer, callee_node->b));
+                            lex_symbol(lexer, field_callee->b));
                     }
 
-                    string method = lex_symbol(lexer, callee_node->b);
+                    string method = lex_symbol(lexer, field_callee->b);
                     u32 item_type = sema->types[receiver_type].first_param_type;
                     u32 slice_type = sema_add_slice_type(sema, item_type);
                     u32 usize_type = sema_builtin_type(sema, STK_Usize);
@@ -14219,14 +14270,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
                 bool                   found_method = false;
                 SemaResolvedMethodCall method_call  = {0};
-                if (!sema_try_resolve_method_call(lexer,
-                                                  ast,
-                                                  sema,
-                                                  node_index,
-                                                  receiver_type,
-                                                  callee_node->b,
-                                                  &found_method,
-                                                  &method_call)) {
+                if (!sema_try_resolve_method_call(
+                        lexer,
+                        ast,
+                        sema,
+                        node_index,
+                        receiver_type,
+                        field_callee->b,
+                        explicit_method_arg_node_index,
+                        &found_method,
+                        &method_call)) {
                     return false;
                 }
                 if (found_method) {

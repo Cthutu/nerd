@@ -52,7 +52,9 @@ cast        ::= expression '.as' '(' type [ ',' expression ] ')'
 ```
 
 Named call arguments are parser-supported and checked against the resolved
-function signature. Tuple fields use integer selectors.
+function signature. Tuple fields use integer selectors. Generic functions and
+methods can provide explicit type arguments before the call parentheses, as in
+`id[i32](value)` or `arena.alloc[i32]()`.
 
 ## Indexing And Slicing
 

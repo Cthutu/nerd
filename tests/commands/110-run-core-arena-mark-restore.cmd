@@ -6,14 +6,14 @@ main :: fn () -> i32 {
     defer a.done()
 
     base := a.base
-    first := alloc[i32](^a)
+    first := a.alloc[i32]()
     first^ = 11
 
     mark := a.mark()
-    second := alloc[i32](^a)
+    second := a.alloc[i32]()
     second^ = 22
 
-    bytes := alloc_array[u8](^a, 9000)
+    bytes := a.alloc_array[u8](9000)
     bytes[0] = 3
     bytes[8999] = 4
 
@@ -21,7 +21,7 @@ main :: fn () -> i32 {
     on first^ != 11 => return 2
 
     a.restore(mark)
-    replacement := alloc[i32](^a)
+    replacement := a.alloc[i32]()
     replacement^ = 33
 
     on replacement != second => return 3

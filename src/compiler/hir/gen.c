@@ -1212,10 +1212,21 @@ internal u32 hir_lower_expr(Hir*         hir,
             if (node_index < array_count(sema->node_method_call_decl_indices) &&
                 sema->node_method_call_decl_indices[node_index] !=
                     sema_no_decl() &&
-                node->a < array_count(ast->nodes) &&
-                ast->nodes[node->a].kind == AK_Field) {
-                const AstNode*     callee_node = &ast->nodes[node->a];
-                const AstCallInfo* call        = &ast->calls[node->b];
+                node->a < array_count(ast->nodes)) {
+                u32 method_field_node_index = node->a;
+                if (ast->nodes[node->a].kind == AK_Index) {
+                    u32 target_node_index = ast->nodes[node->a].a;
+                    if (target_node_index < array_count(ast->nodes) &&
+                        ast->nodes[target_node_index].kind == AK_Field) {
+                        method_field_node_index = target_node_index;
+                    }
+                }
+                if (ast->nodes[method_field_node_index].kind != AK_Field) {
+                    return hir_add_unsupported_expr(hir, sema, node_index);
+                }
+                const AstNode* callee_node =
+                    &ast->nodes[method_field_node_index];
+                const AstCallInfo* call = &ast->calls[node->b];
                 u32                decl_index =
                     sema->node_method_call_decl_indices[node_index];
                 u32 callee_type = hir_node_type(sema, node->a);

@@ -5,10 +5,10 @@ main :: fn () -> i32 {
     a: Arena
     a = arena(16, 8)
 
-    first := alloc[i32](^a)
+    first := a.alloc[i32]()
     first^ = 41
 
-    bytes := alloc_array[u8](^a, 9000)
+    bytes := a.alloc_array[u8](9000)
     bytes[0] = 1
     bytes[8999] = 2
 
@@ -16,7 +16,7 @@ main :: fn () -> i32 {
     prn($"first={first^} bytes={bytes[0]}:{bytes[8999]}")
 
     a.reset()
-    reused := alloc[i32](^a)
+    reused := a.alloc[i32]()
     reused^ = 5
 
     result := on first == reused {

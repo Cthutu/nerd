@@ -57,6 +57,8 @@ intended exit code.
 - Generic functions are written as `fn [T] (...) -> R`.
 - Generic calls can infer all type arguments, as in `id(1)`.
 - Generic calls can provide all type arguments, as in `id[i32](1)`.
+- Generic method calls can provide type arguments after the method name, as in
+  `arena.alloc[i32]()`.
 - Concrete generic function values are written as `name[T]`.
 - Partial explicit generic argument lists are invalid.
 

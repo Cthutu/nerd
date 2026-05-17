@@ -72,11 +72,12 @@ also sets the page-rounded growth increment used when more pages must be
 committed. Requests that would move the arena cursor beyond the reserved range
 terminate at runtime.
 
-`alloc[T](^arena)` allocates one `T` aligned for `T`; `alloc_array[T](^arena,
-count)` allocates contiguous storage for `count` values. `mark()` returns the
-current cursor. `restore(mark)` invalidates allocations made after that mark.
-`reset()` invalidates all allocations from the arena without releasing its
-reserved address range. `done()` releases the reserved range.
+`arena.alloc[T]()` allocates one `T` aligned for `T`;
+`arena.alloc_array[T](count)` allocates contiguous storage for `count` values.
+`mark()` returns the current cursor. `restore(mark)` invalidates allocations
+made after that mark. `reset()` invalidates all allocations from the arena
+without releasing its reserved address range. `done()` releases the reserved
+range.
 
 ## Defer
 

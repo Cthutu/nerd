@@ -182,10 +182,10 @@ main :: fn () {
     scratch = arena(4096, 4096)
     defer scratch.done()
 
-    value := alloc[i32](^scratch)
+    value := scratch.alloc[i32]()
     value^ = 42
 
-    bytes := alloc_array[u8](^scratch, 128)
+    bytes := scratch.alloc_array[u8](128)
     bytes[0] = 1
 
     mark := scratch.mark()
@@ -207,9 +207,9 @@ An arena can grow up to its reserved 4 GiB address range. Arena marks and
 offsets are 32-bit values, and allocation fails at runtime if a request would
 move the cursor beyond that range.
 
-Use `alloc[T](^arena)` for one value and `alloc_array[T](^arena, count)` for a
-slice. The current source API uses top-level generic functions because generic
-method calls such as `scratch.alloc[i32]()` are still roadmap work.
+Use `arena.alloc[T]()` for one value and `arena.alloc_array[T](count)` for a
+slice. Compatibility wrappers are still available as `alloc[T](^arena)` and
+`alloc_array[T](^arena, count)`.
 
 `mark()` returns the current arena cursor as a `u32`. `restore(mark)` moves the
 cursor back to a previous mark, invalidating allocations made after that mark

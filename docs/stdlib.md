@@ -88,8 +88,10 @@ should prefer `core.Arena`.
 
 - `Arena`
 - `arena(num_bytes: usize, increment: usize = 0) -> Arena`
-- `alloc[T](arena: ^Arena) -> ^T`
-- `alloc_array[T](arena: ^Arena, count: usize) -> []T`
+- `Arena.alloc[T]() -> ^T`
+- `Arena.alloc_array[T](count: usize) -> []T`
+- `alloc[T](arena: ^Arena) -> ^T` compatibility wrapper
+- `alloc_array[T](arena: ^Arena, count: usize) -> []T` compatibility wrapper
 - `Arena.reset()`
 - `Arena.mark() -> u32`
 - `Arena.restore(mark: u32)`

@@ -299,7 +299,7 @@ the roadmap before committing the implementation.
 - [x] Add method resolution:
   - [x] resolve `value.method(args...)` to a matching inherent method
   - [x] infer generic impl parameters from the receiver type
-  - [x] require all generic method parameters to be inferred
+  - [x] allow explicit generic method arguments as `value.method[T](args...)`
   - [x] keep dynamic-array built-in methods working
   - [x] import public methods across modules
 - [x] Add lowering:
@@ -349,11 +349,11 @@ library layering are in place.
   - [x] round growth increments up to the nearest platform page size
   - [x] define sensible defaults for omitted growth behaviour
 - [x] Add arena allocation APIs:
-  - [x] `core.alloc[T](^arena)` returns memory aligned for `T`
-  - [x] `core.alloc_array[T](^arena, count)` returns contiguous storage aligned
+  - [x] `arena.alloc[T]()` returns memory aligned for `T`
+  - [x] `arena.alloc_array[T](count)` returns contiguous storage aligned
     for `T`
-  - [ ] support method syntax for generic allocation once generic method calls
-    are resolved, such as `arena.alloc[T]()`
+  - [x] keep `core.alloc[T](^arena)` and `core.alloc_array[T](^arena, count)`
+    as compatibility wrappers
   - [x] `reset` invalidates allocations from the arena without freeing the
     arena itself
   - [x] add `done` or equivalent explicit release if arenas own OS/heap memory
@@ -418,7 +418,7 @@ library layering are in place.
     are added
 - [ ] Tests:
   - [x] command test for arena construction with two arguments
-  - [x] command test for `alloc[T]` and `alloc_array[T]`
+  - [x] command test for `arena.alloc[T]()` and `arena.alloc_array[T](count)`
   - [x] command test proving allocated pointers remain stable after growth
   - [x] command test proving arena base address remains stable after growth
     within the reserved range

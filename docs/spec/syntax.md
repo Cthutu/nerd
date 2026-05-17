@@ -104,8 +104,9 @@ to LSP document symbols, and kept out of generated backend output. Trait
 implementation blocks validate that all required member names are present, and
 local trait implementations validate compatible member signatures after `Self`
 substitution. Impl members are callable through normal receiver method syntax.
-Generic trait parameters, named self aliases, constraints, and explicit trait
-member calls are future milestone work.
+Generic methods may also receive explicit type arguments with
+`value.method[T](...)`. Generic trait parameters, named self aliases,
+constraints, and explicit trait member calls are future milestone work.
 
 ## Modules, FFI, And Pragmas
 
@@ -280,6 +281,7 @@ postfix-expression
 
 postfix         ::= '(' call-arg-list? ')'
                   | '[' expression ']'
+                  | generic-args
                   | '[' [ expression ] '..' [ expression ] ']'
                   | '.' IDENT
                   | '.' INT
@@ -291,6 +293,7 @@ postfix         ::= '(' call-arg-list? ')'
 call-arg        ::= expression
                   | IDENT '=' expression
 call-arg-list   ::= call-arg { ',' call-arg }
+generic-args    ::= '[' type { ',' type } ']'
 
 tuple-or-group  ::= '(' expression ')'
                   | '(' expression ',' expression-list? ')'
@@ -301,6 +304,10 @@ array-or-range  ::= '[' expression-list? ']'
 
 function-value  ::= 'fn' generic-params? '(' named-param-list? ')' [ '->' type ] function-body
 ```
+
+The bracket postfix is intentionally ambiguous between indexing and explicit
+generic arguments until semantic analysis knows whether the target is a generic
+function or method.
 
 `interpolated-string` starts with `$"` and is parsed from the token stream
 described in [`lexer.md`](lexer.md#interpolated-strings). A `+"..."` string
