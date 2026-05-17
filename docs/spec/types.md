@@ -64,6 +64,9 @@ Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`.
+For local trait declarations, implementations must provide every required
+member with a compatible function signature after substituting `Self` with the
+implementation target type.
 
 Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful

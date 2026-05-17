@@ -458,10 +458,10 @@ library layering are in place.
 - [ ] Add traits as a simple interface mechanism for types.
 - [x] Use the `trait` keyword rather than `interface`.
 - [ ] Define the language-known built-in traits in `std.traits`:
-  - [ ] `Display`
-  - [ ] `Eq`
-  - [ ] `Order`
-  - [ ] `Default`
+  - [x] `Display`
+  - [x] `Eq`
+  - [x] `Order`
+  - [x] `Default`
   - [ ] `Iterator`
 - [ ] Treat built-in traits as normal canonical standard-library declarations
   where practical, with compiler recognition based on module path and name
@@ -530,10 +530,11 @@ library layering are in place.
   - [x] parse trait impl blocks
   - [ ] parse `where` clauses on generic functions and impl blocks
 - [ ] Sema work:
-  - [ ] register trait declarations and required members
-  - [ ] substitute `Self` and named self aliases when checking impl members
+  - [x] register trait declarations and required members
+  - [x] substitute `Self` when checking local impl members
+  - [ ] substitute named self aliases when checking impl members
   - [x] require impls to provide all required trait functions
-  - [ ] reject impl members with incompatible signatures
+  - [x] reject local impl members with incompatible signatures
   - [ ] validate `where` constraints against known traits
   - [ ] Add stricter non-lazy generic body checks once constraints exist:
     unresolved names that do not depend on concrete type arguments should be
@@ -573,13 +574,14 @@ library layering are in place.
   - [ ] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
+  - [x] language tests for built-in `Display`, `Eq`, and `Default`
   - [ ] language tests for `Default` overriding typed-binding initialisation
   - [ ] language tests for zero-initialisation fallback when no `Default`
     implementation exists
   - [ ] language tests for `Iterator` returning `Option[Item]`
   - [ ] language tests for `for elem` and `for ^elem` item typing
   - [ ] error tests for missing required impl members
-  - [ ] error tests for incompatible impl member signatures
+  - [x] error tests for incompatible impl member signatures
   - [ ] error tests for unknown traits in constraints or impls
   - [ ] error tests for duplicate or overlapping impls
   - [ ] error tests for ambiguous receiver trait calls

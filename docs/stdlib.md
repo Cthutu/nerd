@@ -32,6 +32,8 @@ library is moving toward three layers:
   Arena allocation helpers.
 - `std.string`
   String utilities.
+- `std.traits`
+  Canonical trait declarations for common behaviours.
 - `sys.linux`
   Low-level Linux C and syscall-adjacent bindings.
 
@@ -107,6 +109,20 @@ and reuses storage, and `done()` releases the reserved arena range.
 
 `split` returns a dynamic array and the caller is responsible for freeing that
 array when it is no longer needed.
+
+### `std.traits`
+
+- `Display`
+  Requires `show :: fn (Self) -> string`.
+- `Eq`
+  Requires `eq :: fn (Self, Self) -> bool`.
+- `Order`
+  Requires `compare :: fn (Self, Self) -> i32`.
+- `Default`
+  Requires `default :: fn () -> Self`.
+
+These are ordinary standard-library trait declarations. Generic traits such as
+`Iterator[Item]` are deferred until generic trait syntax and constraints land.
 
 ### Experimental `std.random`
 

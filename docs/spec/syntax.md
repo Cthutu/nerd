@@ -99,12 +99,13 @@ generic-params  ::= '[' IDENT { ',' IDENT } ']'
 The binding operators are two adjacent tokens in the lexer: `::` is parsed as
 `':' ':'`, and `:=` is parsed as `':' '='`.
 
-Trait declarations are currently syntax-only interface declarations. They are
-registered as semantic declarations, formatted, exposed to LSP document
-symbols, and kept out of generated backend output. Trait implementation blocks
-currently validate that all required member names are present, but they are not
-yet used for trait member call dispatch. Generic trait parameters, named self
-aliases, constraints, and trait member calls are future milestone work.
+Trait declarations are registered as semantic declarations, formatted, exposed
+to LSP document symbols, and kept out of generated backend output. Trait
+implementation blocks validate that all required member names are present, and
+local trait implementations validate compatible member signatures after `Self`
+substitution. Impl members are callable through normal receiver method syntax.
+Generic trait parameters, named self aliases, constraints, and explicit trait
+member calls are future milestone work.
 
 ## Modules, FFI, And Pragmas
 
