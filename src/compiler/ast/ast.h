@@ -413,6 +413,7 @@ typedef struct {
 } AstPragmaInfo;
 
 typedef struct {
+    u32 trait_type_node_index;
     u32 target_type_node_index;
     u32 body_node_index;
     u32 generic_params_index;

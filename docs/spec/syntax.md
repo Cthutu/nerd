@@ -47,6 +47,7 @@ top-level-assert-on
                 ::= 'assert' 'on' [ '!' ] STRING
 source-test     ::= 'test' STRING block
 impl-block      ::= 'impl' type '{' { top-level-item } '}'
+                  | 'impl' type 'for' type '{' { top-level-item } '}'
 ```
 
 `pub` applies only to bindings, variables, FFI declarations, and `use`
@@ -100,9 +101,10 @@ The binding operators are two adjacent tokens in the lexer: `::` is parsed as
 
 Trait declarations are currently syntax-only interface declarations. They are
 registered as semantic declarations, formatted, exposed to LSP document
-symbols, and kept out of generated backend output. Trait implementations,
-generic trait parameters, named self aliases, constraints, and trait member
-calls are future milestone work.
+symbols, and kept out of generated backend output. Trait implementation blocks
+currently validate that all required member names are present, but they are not
+yet used for trait member call dispatch. Generic trait parameters, named self
+aliases, constraints, and trait member calls are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

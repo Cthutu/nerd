@@ -5136,9 +5136,17 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
+    u32 trait_type  = U32_MAX;
     u32 target_type = 0;
     if (!cst_parse_type(state, &target_type)) {
         return false;
+    }
+    if (cst_current_token(state).kind == TK_for) {
+        trait_type = target_type;
+        cst_advance(state);
+        if (!cst_parse_type(state, &target_type)) {
+            return false;
+        }
     }
     if (!cst_consume(state, TK_LBrace)) {
         return false;
@@ -5181,6 +5189,7 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
     u32 impl_index = (u32)array_count(state->cst.impls);
     array_push(state->cst.impls,
                (CstImplInfo){
+                   .trait_type_node_index  = trait_type,
                    .target_type_node_index = target_type,
                    .body_node_index        = block_node,
                    .generic_params_index   = generic_params_index,

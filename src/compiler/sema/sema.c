@@ -3937,6 +3937,118 @@ internal bool sema_node_is_inside_top_on_body(const Ast* ast,
            innermost_body != current_body_node_index;
 }
 
+internal u32 sema_trait_symbol_from_type_node(const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_SymbolRef) {
+        return node->a;
+    }
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        return sema_trait_symbol_from_type_node(
+            ast, ast->type_applications[node->a].target_node_index);
+    }
+    return U32_MAX;
+}
+
+internal const AstNode* sema_trait_member_value(const Ast*     ast,
+                                                const AstNode* member)
+{
+    if (member->kind != AK_Bind || member->b >= array_count(ast->nodes)) {
+        return NULL;
+    }
+    const AstNode* value = &ast->nodes[member->b];
+    if (value->kind == AK_AnnotatedValue &&
+        value->b < array_count(ast->nodes)) {
+        value = &ast->nodes[value->b];
+    }
+    return value;
+}
+
+internal bool sema_impl_has_member(const Ast*     ast,
+                                   const AstNode* body,
+                                   u32            symbol,
+                                   u32*           out_member_node_index)
+{
+    for (u32 i = body->a; i < body->b; ++i) {
+        const AstNode* member = &ast->nodes[i];
+        if (member->kind == AK_Bind && ast_get_symbol(member) == symbol) {
+            *out_member_node_index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool sema_validate_trait_impl(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       const Sema*  sema,
+                                       u32          impl_node_index)
+{
+    const AstNode*     impl_node = &ast->nodes[impl_node_index];
+    const AstImplInfo* impl      = &ast->impls[impl_node->a];
+    u32                trait_symbol =
+        sema_trait_symbol_from_type_node(ast, impl->trait_type_node_index);
+    if (trait_symbol == U32_MAX) {
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_node_span(lexer, impl_node),
+                                        s("known trait"),
+                                        s("non-trait type expression"));
+    }
+
+    u32 trait_decl_index = sema_find_decl(sema, trait_symbol);
+    if (trait_decl_index == sema_no_decl() ||
+        sema->decls[trait_decl_index].kind != SK_Trait ||
+        sema->decls[trait_decl_index].value_node_index >=
+            array_count(ast->nodes)) {
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_node_span(lexer, impl_node),
+                                        s("known trait"),
+                                        lex_symbol(lexer, trait_symbol));
+    }
+
+    const AstNode* trait_node =
+        &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+    if (trait_node->kind != AK_Trait ||
+        trait_node->a >= array_count(ast->nodes)) {
+        return true;
+    }
+
+    const AstNode* trait_body = &ast->nodes[trait_node->a];
+    const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
+    for (u32 i = trait_body->a; i < trait_body->b; ++i) {
+        const AstNode* required = &ast->nodes[i];
+        if (required->kind != AK_Bind) {
+            continue;
+        }
+        u32 required_symbol = ast_get_symbol(required);
+        u32 member_index    = U32_MAX;
+        if (!sema_impl_has_member(
+                ast, impl_body, required_symbol, &member_index)) {
+            return error_0304_type_mismatch(lexer->source,
+                                            sema_node_span(lexer, impl_node),
+                                            s("trait member"),
+                                            lex_symbol(lexer, required_symbol));
+        }
+
+        const AstNode* value =
+            sema_trait_member_value(ast, &ast->nodes[member_index]);
+        if (value == NULL || value->kind != AK_FnDef) {
+            return error_0304_type_mismatch(
+                lexer->source,
+                sema_node_span(lexer, &ast->nodes[member_index]),
+                s("function trait member"),
+                s("non-function binding"));
+        }
+    }
+
+    return true;
+}
+
 internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                                           const Ast*             ast,
                                           const FrontEndOptions* options,
@@ -3949,7 +4061,10 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_Impl) {
             const AstImplInfo* impl = &ast->impls[node->a];
-            const AstNode*     body = &ast->nodes[impl->body_node_index];
+            if (impl->trait_type_node_index != U32_MAX) {
+                continue;
+            }
+            const AstNode* body = &ast->nodes[impl->body_node_index];
             for (u32 method_node_index = body->a; method_node_index < body->b;
                  ++method_node_index) {
                 const AstNode* method_node = &ast->nodes[method_node_index];
@@ -4212,6 +4327,25 @@ internal bool sema_collect_decls(const Lexer*           lexer,
 {
     return sema_collect_decls_in_range(
         lexer, ast, options, 0, (u32)array_count(ast->nodes), U32_MAX, sema);
+}
+
+internal bool
+sema_validate_trait_impls(const Lexer* lexer, const Ast* ast, const Sema* sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Impl || node->a >= array_count(ast->impls)) {
+            continue;
+        }
+        const AstImplInfo* impl = &ast->impls[node->a];
+        if (impl->trait_type_node_index == U32_MAX) {
+            continue;
+        }
+        if (!sema_validate_trait_impl(lexer, ast, sema, i)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 internal bool
@@ -16704,6 +16838,10 @@ bool sema_analyse(const Lexer*           lexer,
     }
 
     if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_validate_trait_impls(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
     }

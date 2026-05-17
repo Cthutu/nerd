@@ -37,6 +37,9 @@ impl Type {
     pub name :: fn (self: ^Type, ...) { ... }
     name :: fn (...) -> Self { ... }
 }
+impl TraitName for Type {
+    name :: fn (self: Self) -> ReturnType { ... }
+}
 impl Name[T] {
     name :: fn (self: ^Name[T], value: T) { ... }
 }

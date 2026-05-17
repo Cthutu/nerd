@@ -3748,9 +3748,22 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
             state->lexer->source, ast_token_span(state, &impl_token), TK_impl);
     }
 
+    u32 trait_type  = U32_MAX;
     u32 target_type = 0;
     if (!ast_parse_type(state, &target_type)) {
         return false;
+    }
+
+    if (ast_peek_kind_at(state, 0) == TK_for) {
+        trait_type = target_type;
+        if (!ast_next_token(state) || !ast_next_token(state)) {
+            return error_0201_missing_value(state->lexer->source,
+                                            ast_token_span(state, &impl_token),
+                                            TK_for);
+        }
+        if (!ast_parse_type(state, &target_type)) {
+            return false;
+        }
     }
 
     if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
@@ -3811,6 +3824,7 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
     u32 impl_index = (u32)array_count(state->impls);
     array_push(state->impls,
                (AstImplInfo){
+                   .trait_type_node_index  = trait_type,
                    .target_type_node_index = target_type,
                    .body_node_index        = block_index,
                    .generic_params_index   = generic_params_index,

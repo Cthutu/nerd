@@ -347,7 +347,7 @@ the roadmap before committing the implementation.
   - [ ] no associated constants
   - [ ] no trait objects or dynamic dispatch
 - [ ] Add implementation syntax:
-  - [ ] `impl TraitName for Type { ... }`
+  - [x] `impl TraitName for Type { ... }`
   - [ ] allow implementations for plex, union, enum, and primitive types
   - [ ] allow generic implementations such as `impl [T] Eq for []T where T: Eq`
   - [ ] reject overlapping implementations in the first version
@@ -394,12 +394,12 @@ the roadmap before committing the implementation.
   - [x] parse trait declarations
   - [ ] parse trait generic parameter lists
   - [ ] parse optional named self aliases
-  - [ ] parse impl blocks
+  - [x] parse trait impl blocks
   - [ ] parse `where` clauses on generic functions and impl blocks
 - [ ] Sema work:
   - [ ] register trait declarations and required members
   - [ ] substitute `Self` and named self aliases when checking impl members
-  - [ ] require impls to provide all required trait functions
+  - [x] require impls to provide all required trait functions
   - [ ] reject impl members with incompatible signatures
   - [ ] validate `where` constraints against known traits
   - [ ] Add stricter non-lazy generic body checks once constraints exist:
@@ -418,7 +418,7 @@ the roadmap before committing the implementation.
 - [ ] Formatter work:
   - [x] format trait declarations
   - [ ] format named self aliases
-  - [ ] format impl blocks
+  - [x] format trait impl blocks
   - [ ] format `where` clauses
   - [ ] format receiver and explicit trait member calls
 - [ ] LSP/editor work:
@@ -432,7 +432,7 @@ the roadmap before committing the implementation.
 - [ ] Tests:
   - [x] language tests for trait declarations using `Self`
   - [ ] language tests for trait declarations using `trait for Value`
-  - [ ] language tests for plex implementations
+  - [x] language tests for plex implementations
   - [ ] language tests for union, enum, and primitive implementations
   - [ ] language tests for receiver-form trait calls
   - [ ] language tests for explicit trait calls
@@ -453,7 +453,7 @@ the roadmap before committing the implementation.
   - [ ] error tests for non-inferable trait generic parameters with useful
     `help` messages
   - [x] format tests for trait declarations
-  - [ ] format tests for impl syntax
+  - [x] format tests for trait impl syntax
   - [ ] LSP tests for hover/symbol/token behaviour affected by traits
 - [ ] Documentation:
   - [ ] manual section introducing traits as interfaces for types

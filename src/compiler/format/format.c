@@ -4721,6 +4721,10 @@ internal void format_emit_impl(StringBuilder* sb,
 
     format_emit_indent(sb, indent_level);
     sb_append_cstr(sb, "impl ");
+    if (impl->trait_type_node_index != U32_MAX) {
+        format_emit_expr(sb, cst, lexer, impl->trait_type_node_index, 0);
+        sb_append_cstr(sb, " for ");
+    }
     format_emit_expr(sb, cst, lexer, impl->target_type_node_index, 0);
     sb_append_cstr(sb, " {\n\n");
     format_emit_block_contents(
