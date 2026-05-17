@@ -9,7 +9,7 @@ pub Arena :: plex #c {
     increment    usize
 }
 
-ffi "c" {
+ffi "nrt" {
     nrt_arena_init  (arena: ^Arena, initial_size: usize, increment: usize)
     nrt_arena_done  (arena: ^Arena)
     nrt_arena_reset (arena: ^Arena)
