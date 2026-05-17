@@ -153,6 +153,9 @@ intended exit code.
   `Self` or `^Self`.
 - Public methods inside an impl block are imported with their type's module.
 - Trait declarations use `Name :: trait { member :: fn (Self) -> Type }`.
+  `Name :: trait [T] { member :: fn (Self) -> T }` declares generic trait
+  parameters. Generic trait declarations parse and format, but generic trait
+  implementations are not semantic yet.
   `Name :: trait for Value { ... }` names the trait self type `Value` instead
   of `Self`.
 - Trait implementations use `impl TraitName for Type { ... }` and must provide

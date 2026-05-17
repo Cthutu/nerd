@@ -4742,14 +4742,33 @@ internal void format_emit_trait_multiline(StringBuilder* sb,
 {
     const CstNode* trait = &cst->nodes[node_index];
     ASSERT(trait->kind == CK_Trait, "Expected trait node");
+    ASSERT(trait->a < array_count(cst->trait_infos), "Expected trait info");
+    const CstTraitInfo* info = &cst->trait_infos[trait->a];
 
     sb_append_cstr(sb, "trait");
-    if (trait->b != U32_MAX) {
+    if (info->generic_params_index != U32_MAX) {
+        const CstGenericParams* generic =
+            &cst->generic_params[info->generic_params_index];
+        sb_append_cstr(sb, " [");
+        for (u32 i = 0; i < generic->symbol_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(
+                    lexer,
+                    cst->generic_param_symbols[generic->first_symbol + i]));
+        }
+        sb_append_char(sb, ']');
+    }
+    if (info->self_alias_symbol != U32_MAX) {
         sb_append_cstr(sb, " for ");
-        sb_append_string(sb, lex_symbol(lexer, trait->b));
+        sb_append_string(sb, lex_symbol(lexer, info->self_alias_symbol));
     }
     sb_append_cstr(sb, " {\n");
-    format_emit_block_contents(sb, cst, lexer, trait->a, indent_level + 1);
+    format_emit_block_contents(
+        sb, cst, lexer, info->body_node_index, indent_level + 1);
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 }

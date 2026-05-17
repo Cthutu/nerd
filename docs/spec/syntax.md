@@ -85,7 +85,7 @@ function-body   ::= '=>' expression
                   | block
 
 trait-declaration
-                ::= 'trait' [ 'for' IDENT ] '{' { trait-member } '}'
+                ::= 'trait' generic-params? [ 'for' IDENT ] '{' { trait-member } '}'
 
 trait-member    ::= IDENT '::' function-type
 
@@ -101,15 +101,18 @@ The binding operators are two adjacent tokens in the lexer: `::` is parsed as
 
 Trait declarations are registered as semantic declarations, formatted, exposed
 to LSP document symbols, and kept out of generated backend output. Trait
-declarations may name the self type with `trait for Value`; otherwise the self
-type is named `Self`. Trait implementation blocks validate that all required
-member names are present, and local trait implementations validate compatible
-member signatures after self-type substitution. Impl members are callable
-through normal receiver method syntax. Duplicate non-generic implementations
-for the same trait and implementation target are rejected. Implementations may
-target compound types and primitive built-in types. A trait implementation
-block is the complete implementation for one trait/type pair; implementations
-are not split or merged across multiple blocks.
+declarations may have generic parameter lists such as `trait [Item] { ... }`.
+Generic trait declarations are parsed and formatted, but implementing generic
+traits is future semantic work. Trait declarations may name the self type with
+`trait for Value`; otherwise the self type is named `Self`. Trait
+implementation blocks validate that all required member names are present, and
+local trait implementations validate compatible member signatures after
+self-type substitution. Impl members are callable through normal receiver
+method syntax. Duplicate non-generic implementations for the same trait and
+implementation target are rejected. Implementations may target compound types
+and primitive built-in types. A trait implementation block is the complete
+implementation for one trait/type pair; implementations are not split or merged
+across multiple blocks.
 Generic methods may also receive explicit type arguments with
 `value.method[T](...)`. Receiver method lookup prefers inherent impl methods
 before trait impl methods. If multiple trait impl methods with the same name are
@@ -120,7 +123,7 @@ When the implementation type cannot be inferred from a receiver argument, use
 `<Trait>[Type].<member>(...)` to select the implementation directly. Generic
 trait members are not placed in the ordinary function namespace: a bare call
 such as `show(value)` does not resolve to a trait member. Generic trait
-parameters and constraints are future milestone work.
+constraints are future milestone work.
 
 ## Modules, FFI, And Pragmas
 

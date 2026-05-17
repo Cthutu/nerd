@@ -29,6 +29,9 @@ Name :: enum [T, U] { Variant, Payload(Type) }
 Name :: trait {
     member :: fn (Self) -> Type
 }
+Name :: trait [T] {
+    member :: fn (Self) -> T
+}
 pub name :: value
 pub name := value
 pub Name :: Type

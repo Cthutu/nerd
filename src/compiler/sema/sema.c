@@ -2457,10 +2457,15 @@ internal bool sema_node_is_inside_trait_body(const Ast* ast, u32 node_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* owner = &ast->nodes[i];
-        if (owner->kind != AK_Trait || owner->a >= array_count(ast->nodes)) {
+        if (owner->kind != AK_Trait ||
+            owner->a >= array_count(ast->trait_infos)) {
             continue;
         }
-        const AstNode* body = &ast->nodes[owner->a];
+        const AstTraitInfo* trait = &ast->trait_infos[owner->a];
+        if (trait->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+        const AstNode* body = &ast->nodes[trait->body_node_index];
         if (body->a <= node_index && node_index < body->b) {
             return true;
         }
@@ -2469,10 +2474,14 @@ internal bool sema_node_is_inside_trait_body(const Ast* ast, u32 node_index)
 }
 
 internal u32 sema_trait_self_alias_symbol(const Lexer*   lexer,
+                                          const Ast*     ast,
                                           const AstNode* trait_node)
 {
-    if (trait_node->b != U32_MAX) {
-        return trait_node->b;
+    if (trait_node->a < array_count(ast->trait_infos)) {
+        const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
+        if (trait->self_alias_symbol != U32_MAX) {
+            return trait->self_alias_symbol;
+        }
     }
     return sema_find_symbol_handle_by_name(lexer, s("Self"));
 }
@@ -3998,11 +4007,15 @@ internal u32 sema_find_trait_with_member(const Ast* ast,
 
         const AstNode* trait_node = &ast->nodes[decl->value_node_index];
         if (trait_node->kind != AK_Trait ||
-            trait_node->a >= array_count(ast->nodes)) {
+            trait_node->a >= array_count(ast->trait_infos)) {
             continue;
         }
 
-        const AstNode* body = &ast->nodes[trait_node->a];
+        const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
+        if (trait->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+        const AstNode* body = &ast->nodes[trait->body_node_index];
         for (u32 member_index = body->a; member_index < body->b;
              ++member_index) {
             const AstNode* member = &ast->nodes[member_index];
@@ -4086,11 +4099,21 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
     const AstNode* trait_node =
         &ast->nodes[sema->decls[trait_decl_index].value_node_index];
     if (trait_node->kind != AK_Trait ||
-        trait_node->a >= array_count(ast->nodes)) {
+        trait_node->a >= array_count(ast->trait_infos)) {
         return true;
     }
 
-    const AstNode* trait_body = &ast->nodes[trait_node->a];
+    const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
+    if (trait->generic_params_index != U32_MAX) {
+        return error_0339_generics_not_implemented(
+            lexer->source,
+            sema_node_span(lexer, &ast->nodes[impl->trait_type_node_index]),
+            s("generic trait implementation"));
+    }
+    if (trait->body_node_index >= array_count(ast->nodes)) {
+        return true;
+    }
+    const AstNode* trait_body = &ast->nodes[trait->body_node_index];
     const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
     for (u32 i = trait_body->a; i < trait_body->b; ++i) {
         const AstNode* required = &ast->nodes[i];
@@ -4231,7 +4254,7 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
     const AstNode* trait_node =
         &ast->nodes[sema->decls[trait_decl_index].value_node_index];
 
-    u32 self_symbol      = sema_trait_self_alias_symbol(lexer, trait_node);
+    u32 self_symbol      = sema_trait_self_alias_symbol(lexer, ast, trait_node);
     u32 subst_symbols[1] = {self_symbol};
     u32 subst_types[1]   = {target_type};
     SemaTypeSubstitution subst = {
@@ -4626,11 +4649,15 @@ internal bool sema_validate_trait_impl_signatures(const Lexer* lexer,
         const AstNode* trait_node =
             &ast->nodes[sema->decls[trait_decl_index].value_node_index];
         if (trait_node->kind != AK_Trait ||
-            trait_node->a >= array_count(ast->nodes)) {
+            trait_node->a >= array_count(ast->trait_infos)) {
             continue;
         }
 
-        const AstNode* trait_body = &ast->nodes[trait_node->a];
+        const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
+        if (trait->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+        const AstNode* trait_body = &ast->nodes[trait->body_node_index];
         const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
         for (u32 member_index = trait_body->a; member_index < trait_body->b;
              ++member_index) {

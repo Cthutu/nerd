@@ -528,7 +528,7 @@ library layering are in place.
     a receiver value
 - [ ] Parser and AST work:
   - [x] parse trait declarations
-  - [ ] parse trait generic parameter lists
+  - [x] parse trait generic parameter lists
   - [x] parse optional named self aliases
   - [x] parse trait impl blocks
   - [ ] parse `where` clauses on generic functions and impl blocks
@@ -556,6 +556,7 @@ library layering are in place.
   - [ ] preserve monomorphisation behaviour for generic impls
 - [ ] Formatter work:
   - [x] format trait declarations
+  - [x] format trait generic parameter lists
   - [x] format named self aliases
   - [x] format trait impl blocks
   - [ ] format `where` clauses

@@ -98,7 +98,7 @@
 // | AK_ModRef          | Ast module path index | 0                            |
 // | AK_Use             | Ast index of module expression | 0                  |
 // | AK_Impl            | Ast impl-info index | 0                             |
-// | AK_Trait           | Ast block node index | Self alias symbol or U32_MAX |
+// | AK_Trait           | Ast trait-info index | 0                              |
 // | AK_TopOn           | Ast top-on info index | 0                           |
 // | AK_Pragma          | Ast pragma-info index | 0                          |
 //
@@ -294,6 +294,12 @@ typedef struct {
     u32 generic_params_index;
 } AstEnumTypeInfo;
 
+typedef struct {
+    u32 body_node_index;
+    u32 self_alias_symbol;
+    u32 generic_params_index;
+} AstTraitInfo;
+
 typedef enum : u32 {
     APTF_None   = 0,
     APTF_C      = 1 << 0,
@@ -460,6 +466,7 @@ typedef struct {
     Array(AstPlexTypeInfo) plex_types;
     Array(AstEnumVariant) enum_variants;
     Array(AstEnumTypeInfo) enum_types;
+    Array(AstTraitInfo) trait_infos;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
     Array(AstPattern) patterns;

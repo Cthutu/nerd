@@ -5209,6 +5209,37 @@ internal bool cst_parse_trait(CstParseState* state, u32* out_node)
     u32 self_alias_symbol = U32_MAX;
     cst_advance(state);
 
+    u32 generic_params_index = CST_NO_VALUE;
+    if (cst_current_token(state).kind == TK_LBracket) {
+        cst_advance(state);
+        u32 first_symbol = (u32)array_count(state->cst.generic_param_symbols);
+        u32 symbol_count = 0;
+        if (cst_current_token(state).kind != TK_RBracket) {
+            for (;;) {
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                array_push(state->cst.generic_param_symbols,
+                           cst_current_symbol_handle(state));
+                symbol_count++;
+                cst_advance(state);
+                if (cst_current_token(state).kind != TK_Comma) {
+                    break;
+                }
+                cst_advance(state);
+            }
+        }
+        if (!cst_consume(state, TK_RBracket)) {
+            return false;
+        }
+        generic_params_index = (u32)array_count(state->cst.generic_params);
+        array_push(state->cst.generic_params,
+                   (CstGenericParams){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+    }
+
     if (cst_current_token(state).kind == TK_for) {
         cst_advance(state);
         if (cst_current_token(state).kind != TK_Symbol) {
@@ -5225,12 +5256,20 @@ internal bool cst_parse_trait(CstParseState* state, u32* out_node)
         return false;
     }
 
+    u32 trait_info_index = (u32)array_count(state->cst.trait_infos);
+    array_push(state->cst.trait_infos,
+               (CstTraitInfo){
+                   .body_node_index      = U32_MAX,
+                   .self_alias_symbol    = self_alias_symbol,
+                   .generic_params_index = generic_params_index,
+               });
+
     u32 trait_node = 0;
     if (!cst_emit_node(state,
                        (CstNode){
                            .kind        = CK_Trait,
                            .token_index = token_index,
-                           .b           = self_alias_symbol,
+                           .a           = trait_info_index,
                        },
                        &trait_node)) {
         return false;
@@ -5282,8 +5321,8 @@ internal bool cst_parse_trait(CstParseState* state, u32* out_node)
     }
     cst_advance(state);
 
-    state->cst.nodes[trait_node].a = block_node;
-    state->cst.nodes[block_node].a = first_item;
+    state->cst.trait_infos[trait_info_index].body_node_index = block_node;
+    state->cst.nodes[block_node].a                           = first_item;
     state->cst.nodes[block_node].b = (u32)array_count(state->cst.nodes);
     if (out_node != NULL) {
         *out_node = trait_node;
@@ -5592,6 +5631,7 @@ void cst_done(Cst* cst)
     array_free(cst->plex_types);
     array_free(cst->enum_variants);
     array_free(cst->enum_types);
+    array_free(cst->trait_infos);
     array_free(cst->plex_literal_fields);
     array_free(cst->plex_literals);
     array_free(cst->patterns);

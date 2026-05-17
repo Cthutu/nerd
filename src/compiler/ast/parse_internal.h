@@ -76,6 +76,7 @@ typedef struct {
     Array(AstPlexTypeInfo) plex_types;
     Array(AstEnumVariant) enum_variants;
     Array(AstEnumTypeInfo) enum_types;
+    Array(AstTraitInfo) trait_infos;
     Array(AstPlexLiteralField) plex_literal_fields;
     Array(AstPlexLiteralInfo) plex_literals;
     Array(AstPattern) patterns;

@@ -1513,6 +1513,16 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                                         ast_token_span(state, &trait_token),
                                         TK_trait);
     }
+    u32 generic_params_index = U32_MAX;
+    if (!ast_parse_optional_generic_params(state, &generic_params_index)) {
+        return false;
+    }
+    if (generic_params_index != U32_MAX && !ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         TK_EOF);
+    }
     u32 self_alias_symbol = U32_MAX;
     if (state->token.kind == TK_for) {
         AstToken for_token = state->token;
@@ -1544,12 +1554,20 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                                          state->token.kind);
     }
 
+    u32 trait_info_index = (u32)array_count(state->trait_infos);
+    array_push(state->trait_infos,
+               (AstTraitInfo){
+                   .body_node_index      = U32_MAX,
+                   .self_alias_symbol    = self_alias_symbol,
+                   .generic_params_index = generic_params_index,
+               });
+
     u32 trait_node = 0;
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Trait,
                            .token_index = trait_token.token_index,
-                           .b           = self_alias_symbol,
+                           .a           = trait_info_index,
                        },
                        &trait_node)) {
         return false;
@@ -1638,8 +1656,8 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
         }
     }
 
-    state->nodes[trait_node].a  = block_index;
-    state->nodes[block_index].a = first_item;
+    state->trait_infos[trait_info_index].body_node_index = block_index;
+    state->nodes[block_index].a                          = first_item;
     state->nodes[block_index].b = (u32)array_count(state->nodes);
     if (out_node) {
         *out_node = trait_node;
@@ -5083,6 +5101,7 @@ Ast ast_parse(Lexer* lexer)
         .plex_types            = state.plex_types,
         .enum_variants         = state.enum_variants,
         .enum_types            = state.enum_types,
+        .trait_infos           = state.trait_infos,
         .plex_literal_fields   = state.plex_literal_fields,
         .plex_literals         = state.plex_literals,
         .patterns              = state.patterns,
@@ -5118,6 +5137,7 @@ error:
                     .plex_types            = state.plex_types,
                     .enum_variants         = state.enum_variants,
                     .enum_types            = state.enum_types,
+                    .trait_infos           = state.trait_infos,
                     .plex_literal_fields   = state.plex_literal_fields,
                     .plex_literals         = state.plex_literals,
                     .patterns              = state.patterns,
@@ -5158,6 +5178,7 @@ void ast_done(Ast* ast)
     array_free(ast->plex_types);
     array_free(ast->enum_variants);
     array_free(ast->enum_types);
+    array_free(ast->trait_infos);
     array_free(ast->plex_literal_fields);
     array_free(ast->plex_literals);
     array_free(ast->patterns);

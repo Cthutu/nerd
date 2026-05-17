@@ -76,7 +76,7 @@
 // | CK_ModRef          | Module path index     | 0                     |
 // | CK_Use             | Module node index     | 0                     |
 // | CK_Impl            | Impl-info index       | 0                     |
-// | CK_Trait           | Block node index      | Self alias symbol or U32_MAX |
+// | CK_Trait           | Trait-info index      | 0                     |
 // | CK_TopOn           | Top-on/assert-on info index | 0              |
 // | CK_Pragma          | Pragma-info index     | 0                     |
 // | CK_Test            | Name string node      | Body block node       |
@@ -292,6 +292,12 @@ typedef struct {
     u32 generic_params_index;
 } CstEnumTypeInfo;
 
+typedef struct {
+    u32 body_node_index;
+    u32 self_alias_symbol;
+    u32 generic_params_index;
+} CstTraitInfo;
+
 typedef enum : u32 {
     CPTF_None   = 0,
     CPTF_C      = 1 << 0,
@@ -462,6 +468,7 @@ typedef struct {
     Array(CstPlexTypeInfo) plex_types;
     Array(CstEnumVariant) enum_variants;
     Array(CstEnumTypeInfo) enum_types;
+    Array(CstTraitInfo) trait_infos;
     Array(CstPlexLiteralField) plex_literal_fields;
     Array(CstPlexLiteralInfo) plex_literals;
     Array(CstPattern) patterns;

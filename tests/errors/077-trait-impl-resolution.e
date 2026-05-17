@@ -198,3 +198,37 @@ main :: fn () {
         "Use receiver syntax, `Display.show(value, ...)`, or `Display[Type].show(...)`."
     ]
 }
+¬
+Iterator :: trait [Item] {
+    next :: fn (Self) -> Item
+}
+
+impl Iterator[i32] for i32 {
+    next :: fn (self: Self) => self
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Generics are not implemented for `generic trait implementation` yet",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 5,
+        "column": 14
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 14,
+            "length": 1,
+            "message": "This generic syntax is recognised but not lowered"
+        }
+    ],
+    "notes": [
+        "The parser and formatter understand the square-bracket generic syntax, but semantic instantiation is still in progress."
+    ],
+    "help": [
+        "Use a concrete non-generic declaration for now."
+    ]
+}
