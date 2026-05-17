@@ -43,6 +43,7 @@ typedef enum : u8 {
     STK_F64,
     STK_Isize,
     STK_Usize,
+    STK_Arena,
     STK_Function,
     STK_Module,
     STK_Tuple,

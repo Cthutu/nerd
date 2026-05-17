@@ -5,7 +5,6 @@ main :: fn () -> i32 {
     a := arena(16, 8)
     defer a.done()
 
-    base := a.base
     first := a.alloc[i32]()
     first^ = 11
 
@@ -17,7 +16,6 @@ main :: fn () -> i32 {
     bytes[0] = 3
     bytes[8999] = 4
 
-    on a.base != base => return 1
     on first^ != 11 => return 2
 
     a.restore(mark)

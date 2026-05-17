@@ -62,7 +62,7 @@ Runtime interpolation results are allocated from a thread-local temporary string
 arena. They may be returned, assigned to variables, and passed through ordinary
 `string` values. The storage remains valid until the temporary arena is reset.
 
-The `core.temp_arena_reset()` function resets this storage explicitly. Programs
+The `core.temp_arena.reset()` method resets this storage explicitly. Programs
 with request or frame loops should call it at a clear boundary after temporary
 strings from the previous iteration are no longer needed. Programs that never
 reset the temporary arena keep these strings for the process lifetime.

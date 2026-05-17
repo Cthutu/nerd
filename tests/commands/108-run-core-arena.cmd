@@ -2,7 +2,7 @@ use std.io
 use core
 
 main :: fn () -> i32 {
-    a: Arena
+    a: arena
     a = arena(16, 8)
 
     first := a.alloc[i32]()

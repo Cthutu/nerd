@@ -2,7 +2,7 @@ use core
 
 main :: fn () {
     a := arena(16, 8)
-    _ := a.base
+    _ := a.mark()
 }
 ¬
 [
@@ -85,22 +85,6 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 2,
         "result": [
-            {
-                "label": "base",
-                "kind": 5
-            },
-            {
-                "label": "current",
-                "kind": 5
-            },
-            {
-                "label": "committed_size",
-                "kind": 5
-            },
-            {
-                "label": "increment",
-                "kind": 5
-            },
             {
                 "label": "alloc",
                 "kind": 2

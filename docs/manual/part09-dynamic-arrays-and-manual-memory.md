@@ -171,14 +171,14 @@ main :: fn () {
 
 ## Arenas
 
-The `core` module provides an early pointer-stable arena API for allocations
-that can be released together:
+The `core` module provides a pointer-stable arena API for allocations that can
+be released together:
 
 ```nerd
 use core
 
 main :: fn () {
-    scratch: Arena
+    scratch: arena
     scratch = arena(4096, 4096)
     defer scratch.done()
 
@@ -196,20 +196,20 @@ main :: fn () {
 }
 ```
 
-`arena(num_bytes)` creates an arena with at least that many bytes of initial
-capacity. `arena(num_bytes, increment)` also sets the growth increment used when
-the arena runs out of room. Both sizes are rounded up by the runtime to the
-platform page size. The runtime reserves one stable address range for each
-arena and commits pages on demand as it grows. Previously returned element
-addresses do not move while the arena grows.
+`arena(num_bytes)` and `arena(num_bytes, increment)` are built-in construction
+syntax, not calls to a source-level function. The first form creates an arena
+with at least that many bytes of initial capacity. The second form also sets the
+growth increment used when the arena runs out of room. Both sizes are rounded up
+by the runtime to the platform page size. The runtime reserves one stable
+address range for each arena and commits pages on demand as it grows. Previously
+returned element addresses do not move while the arena grows.
 
 An arena can grow up to its reserved 4 GiB address range. Arena marks and
 offsets are 32-bit values, and allocation fails at runtime if a request would
 move the cursor beyond that range.
 
 Use `arena.alloc[T]()` for one value and `arena.alloc_array[T](count)` for a
-slice. Compatibility wrappers are still available as `alloc[T](^arena)` and
-`alloc_array[T](^arena, count)`.
+slice. The arena representation is opaque; use methods rather than fields.
 
 `mark()` returns the current arena cursor as a `u32`. `restore(mark)` moves the
 cursor back to a previous mark, invalidating allocations made after that mark
@@ -235,13 +235,13 @@ main :: fn () {
         text := label(42)
         -- use text during this frame or request
 
-        temp_arena_reset()
+        temp_arena.reset()
     }
 }
 ```
 
 Programs without a frame or request loop do not need to reset the temporary
-arena. Programs with a loop should call `temp_arena_reset()` at a clear boundary
+arena. Programs with a loop should call `temp_arena.reset()` at a clear boundary
 after temporary strings from the previous iteration are no longer needed.
 
 ## Ownership Rule Of Thumb
@@ -251,5 +251,5 @@ after temporary strings from the previous iteration are no longer needed.
 - `free()` releases owned storage.
 - Arena allocations are valid until the arena is restored before them, reset, or
   released.
-- Runtime interpolated strings are valid until `temp_arena_reset()`.
+- Runtime interpolated strings are valid until `temp_arena.reset()`.
 - `defer` is the normal way to keep cleanup attached to a scope.

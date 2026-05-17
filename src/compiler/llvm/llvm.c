@@ -307,6 +307,9 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
         llvm_type_kind(sema, type_index) == STK_Slice) {
         return layout->pointer_bits + layout->size_bits;
     }
+    if (llvm_type_kind(sema, type_index) == STK_Arena) {
+        return layout->pointer_bits * 2 + layout->size_bits * 2;
+    }
     if (llvm_type_kind(sema, type_index) == STK_Tuple ||
         llvm_type_kind(sema, type_index) == STK_Plex) {
         const SemaType* type = &sema->types[type_index];
@@ -632,6 +635,13 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
     case STK_Isize:
     case STK_Usize:
         sb_append_cstr(sb, layout->size_type);
+        break;
+    case STK_Arena:
+        sb_append_cstr(sb, "{ ptr, ptr, ");
+        sb_append_cstr(sb, layout->size_type);
+        sb_append_cstr(sb, ", ");
+        sb_append_cstr(sb, layout->size_type);
+        sb_append_cstr(sb, " }");
         break;
     case STK_F32:
         sb_append_cstr(sb, "float");
@@ -1374,6 +1384,7 @@ llvm_append_zero_value(StringBuilder* sb, const Sema* sema, u32 type_index)
     case STK_Array:
     case STK_Slice:
     case STK_String:
+    case STK_Arena:
         sb_append_cstr(sb, "zeroinitializer");
         break;
     default:
@@ -2003,7 +2014,8 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
         };
     }
     if (kind == STK_Enum || kind == STK_Tuple || kind == STK_Plex ||
-        kind == STK_Array || kind == STK_Slice || kind == STK_String) {
+        kind == STK_Array || kind == STK_Slice || kind == STK_String ||
+        kind == STK_Arena) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -4205,6 +4217,21 @@ internal bool llvm_callee_function_index(LlvmFunctionContext* ctx,
         }
     }
     return false;
+}
+
+internal bool llvm_is_arena_constructor_call(LlvmFunctionContext* ctx,
+                                             const HirExpr*       expr)
+{
+    if (expr == NULL || expr->kind != HIR_EXPR_Call ||
+        llvm_type_kind(ctx->sema, expr->type_index) != STK_Arena ||
+        expr->callee_expr_index >= array_count(ctx->hir->exprs)) {
+        return false;
+    }
+
+    const HirExpr* callee = &ctx->hir->exprs[expr->callee_expr_index];
+    return callee->kind == HIR_EXPR_LocalRef &&
+           callee->symbol_handle != U32_MAX &&
+           string_eq(lex_symbol(ctx->lexer, callee->symbol_handle), s("arena"));
 }
 
 internal bool
@@ -7610,6 +7637,70 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Call:
         {
+            if (llvm_is_arena_constructor_call(ctx, expr)) {
+                string arena_type = llvm_type_string(ctx, expr->type_index);
+                string slot       = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca " STRINGP "\n",
+                          STRINGV(slot),
+                          STRINGV(arena_type));
+
+                Array(LlvmValue) args = NULL;
+                for (u32 i = 0; i < expr->arg_count; ++i) {
+                    const HirCallArg* arg =
+                        &ctx->hir->call_args[expr->first_arg + i];
+                    LlvmValue value =
+                        llvm_emit_expr(ctx, function, arg->expr_index);
+                    if (!value.ok) {
+                        array_free(args);
+                        return (LlvmValue){0};
+                    }
+                    array_push(args,
+                               llvm_coerce_value_to_type(
+                                   ctx,
+                                   value,
+                                   llvm_builtin_type(ctx->sema, STK_Usize)));
+                    if (!args[array_count(args) - 1].ok) {
+                        array_free(args);
+                        return (LlvmValue){0};
+                    }
+                }
+                while (array_count(args) < 2) {
+                    array_push(args,
+                               (LlvmValue){
+                                   .ok = true,
+                                   .type_index =
+                                       llvm_builtin_type(ctx->sema, STK_Usize),
+                                   .value = s("0"),
+                               });
+                }
+
+                string usize_type = llvm_type_string(
+                    ctx, llvm_builtin_type(ctx->sema, STK_Usize));
+                sb_format(ctx->sb,
+                          "  call void @nrt_arena_init(ptr " STRINGP
+                          ", " STRINGP " " STRINGP ", " STRINGP " " STRINGP
+                          ")\n",
+                          STRINGV(slot),
+                          STRINGV(usize_type),
+                          STRINGV(args[0].value),
+                          STRINGV(usize_type),
+                          STRINGV(args[1].value));
+                array_free(args);
+
+                string value = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                          STRINGV(value),
+                          STRINGV(arena_type),
+                          STRINGV(slot));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = value,
+                };
+            }
+
             if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum) {
                 u32 variant_symbol = U32_MAX;
                 if (llvm_callee_symbol_handle(
@@ -10154,6 +10245,36 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
+internal void llvm_render_arena_runtime_declarations(StringBuilder* sb)
+{
+    static const LlvmRuntimeDecl decls[] = {
+        {"void", "nrt_arena_init", "ptr, i64, i64"},
+    };
+    llvm_render_runtime_declarations(
+        sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
+}
+
+internal bool llvm_hir_uses_arena_runtime(const Hir*   hir,
+                                          const Lexer* lexer,
+                                          const Sema*  sema)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind != HIR_EXPR_Call ||
+            llvm_type_kind(sema, expr->type_index) != STK_Arena ||
+            expr->callee_expr_index >= array_count(hir->exprs)) {
+            continue;
+        }
+        const HirExpr* callee = &hir->exprs[expr->callee_expr_index];
+        if (callee->kind == HIR_EXPR_LocalRef &&
+            callee->symbol_handle != U32_MAX &&
+            string_eq(lex_symbol(lexer, callee->symbol_handle), s("arena"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
@@ -10676,6 +10797,8 @@ string llvm_render_hir(const Hir*   hir,
     bool uses_assert_runtime = llvm_hir_uses_assert(hir);
     bool uses_dynamic_array_runtime =
         llvm_hir_uses_dynamic_array_runtime(hir, render_sema);
+    bool uses_arena_runtime =
+        llvm_hir_uses_arena_runtime(hir, lexer, render_sema);
 
     if (uses_string_runtime) {
         llvm_render_string_runtime_declarations(&sb);
@@ -10686,8 +10809,11 @@ string llvm_render_hir(const Hir*   hir,
     if (uses_dynamic_array_runtime) {
         llvm_render_dynamic_array_runtime_declarations(&sb);
     }
+    if (uses_arena_runtime) {
+        llvm_render_arena_runtime_declarations(&sb);
+    }
     if (uses_string_runtime || uses_assert_runtime ||
-        uses_dynamic_array_runtime) {
+        uses_dynamic_array_runtime || uses_arena_runtime) {
         sb_append_char(&sb, '\n');
     }
 

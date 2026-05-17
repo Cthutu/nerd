@@ -284,6 +284,8 @@ void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
 
 void nrt_temp_arena_reset(void) { string_builder_reset(); }
 
+NrtArena* nrt_temp_arena(void);
+
 static bool string_is_utf8_boundary(const NerdString* value, size_t index)
 {
     if (value == NULL || index > value->count) {
@@ -316,6 +318,8 @@ static _Thread_local NrtArena g_temp_arena;
 static _Thread_local u8*      g_string_builder_data     = NULL;
 static _Thread_local size_t   g_string_builder_capacity = 0;
 static _Thread_local size_t   g_string_builder_cursor   = 0;
+
+NrtArena* nrt_temp_arena(void) { return &g_temp_arena; }
 
 static void string_builder_ensure_capacity(size_t needed)
 {

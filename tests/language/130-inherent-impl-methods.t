@@ -65,9 +65,9 @@ func fn.2() -> void {
   expr void call bind.6(__impl_8_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
   expr <unknown> default
   let stack: plex { [..]i32[..]i32 = <unknown> default
-  expr void call bind.1(__impl_7_push_g_5d10070d)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 call bind.7(__impl_8_get)(Counter local.3(counter)))
-  expr void call bind.1(__impl_7_push_g_5d10070d)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 30)
-  expr void call fn (string) -> void field(module bind.4(io), prn)(string interpolate(i32 call bind.2(__impl_7_pop_g_5566832d)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.2(__impl_7_pop_g_5566832d)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.7(__impl_8_get)(Counter local.3(counter))))
+  expr void call bind.1(__impl_7_push_g_5d10045a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 call bind.7(__impl_8_get)(Counter local.3(counter)))
+  expr void call bind.1(__impl_7_push_g_5d10045a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 30)
+  expr void call fn (string) -> void field(module bind.4(io), prn)(string interpolate(i32 call bind.2(__impl_7_pop_g_5566807a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.2(__impl_7_pop_g_5566807a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.7(__impl_8_get)(Counter local.3(counter))))
 }
 ¬
 ; nerd llvm-ir 0

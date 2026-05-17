@@ -60,17 +60,17 @@ Dynamic arrays own storage and expose language-recognised operations:
 
 ## Arenas
 
-`core.Arena` is the source-level arena type. The runtime reserves one 4 GiB
-virtual address range for each arena and commits pages inside that range as
-needed, so element addresses returned by arena allocation remain stable while
-the arena grows. Arena cursors and marks are 32-bit offsets within the reserved
-range.
+`arena` is an opaque built-in type. The runtime reserves one 4 GiB virtual
+address range for each arena and commits pages inside that range as needed, so
+element addresses returned by arena allocation remain stable while the arena
+grows. Arena cursors and marks are 32-bit offsets within the reserved range.
 
-`arena(num_bytes)` creates an arena with at least that initial committed
-capacity, rounded up to the platform page size. `arena(num_bytes, increment)`
-also sets the page-rounded growth increment used when more pages must be
-committed. Requests that would move the arena cursor beyond the reserved range
-terminate at runtime.
+`arena(num_bytes)` and `arena(num_bytes, increment)` are built-in construction
+syntax, not calls to a source-level function. The first form creates an arena
+with at least that initial committed capacity, rounded up to the platform page
+size. The second form also sets the page-rounded growth increment used when
+more pages must be committed. Requests that would move the arena cursor beyond
+the reserved range terminate at runtime.
 
 `arena.alloc[T]()` allocates one `T` aligned for `T`;
 `arena.alloc_array[T](count)` allocates contiguous storage for `count` values.

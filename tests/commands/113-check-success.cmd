@@ -1,8 +1,8 @@
 use core
 
 main :: fn () -> i32 {
-    arena := arena(4096)
-    value := arena.mark()
+    scratch := arena(4096)
+    value := scratch.mark()
     return on value == 0 {
         yes  => 0
         else => 1

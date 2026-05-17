@@ -82,21 +82,21 @@ stable user-facing library functions.
 Arena helpers built on top of `std.mem`.
 
 This module remains as a compatibility/reference implementation. New code
-should prefer `core.Arena`.
+should prefer the built-in `arena` type exposed through `core`.
 
 ### `core`
 
-- `Arena`
-- `arena(num_bytes: usize, increment: usize = 0) -> Arena`
-- `Arena.alloc[T]() -> ^T`
-- `Arena.alloc_array[T](count: usize) -> []T`
-- `alloc[T](arena: ^Arena) -> ^T` compatibility wrapper
-- `alloc_array[T](arena: ^Arena, count: usize) -> []T` compatibility wrapper
-- `Arena.reset()`
-- `Arena.mark() -> u32`
-- `Arena.restore(mark: u32)`
-- `Arena.done()`
-- `temp_arena_reset()`
+- `arena`
+- `arena(num_bytes)` and `arena(num_bytes, increment)` built-in construction
+  syntax
+- `arena.alloc[T]() -> ^T`
+- `arena.alloc_array[T](count: usize) -> []T`
+- `arena.alloc_bytes(count: usize) -> []u8`
+- `arena.reset()`
+- `arena.mark() -> u32`
+- `arena.restore(mark: u32)`
+- `arena.done()`
+- `temp_arena.reset()`
 
 Arena sizes are rounded up to the platform page size by the runtime. Arena
 construction reserves one 4 GiB virtual address range and commits pages on

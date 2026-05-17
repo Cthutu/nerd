@@ -241,7 +241,7 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
                 pointee_kind != STK_Array && pointee_kind != STK_Slice &&
                 pointee_kind != STK_String &&
                 pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
-                pointee_kind != STK_Union) {
+                pointee_kind != STK_Union && pointee_kind != STK_Arena) {
                 break;
             }
             receiver_type = pointee_type;
@@ -728,7 +728,7 @@ internal void lsp_completion_add_members(Arena*             arena,
                 pointee_kind != STK_Array && pointee_kind != STK_Slice &&
                 pointee_kind != STK_String &&
                 pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
-                pointee_kind != STK_Union) {
+                pointee_kind != STK_Union && pointee_kind != STK_Arena) {
                 break;
             }
             type_index = pointee_type;
@@ -742,42 +742,28 @@ internal void lsp_completion_add_members(Arena*             arena,
         return;
     }
 
+    const Lexer* lexer = &doc->front_end.lexer;
     if (type->kind == STK_String || type->kind == STK_Slice) {
         lsp_completion_add(arena, items, s("data"), 5);  // Field
         lsp_completion_add(arena, items, s("count"), 5); // Field
-        return;
-    }
-
-    if (type->kind == STK_Array) {
+    } else if (type->kind == STK_Array) {
         lsp_completion_add(arena, items, s("count"), 5); // Field
-        return;
-    }
-
-    if (type->kind == STK_DynamicArray) {
+    } else if (type->kind == STK_DynamicArray) {
         lsp_completion_add_dynamic_array_members(arena, items);
-        return;
-    }
-
-    if (type->kind == STK_Tuple) {
+    } else if (type->kind == STK_Tuple) {
         for (u32 i = 0; i < type->param_count; ++i) {
             lsp_completion_add(arena, items, string_format(arena, "%u", i), 5);
         }
-        return;
-    }
-
-    if (type->kind != STK_Plex && type->kind != STK_Union) {
-        return;
-    }
-
-    const Lexer* lexer = &doc->front_end.lexer;
-    for (u32 i = 0; i < type->param_count; ++i) {
-        u32 param_index = type->first_param_type + i;
-        u32 symbol      = U32_MAX;
-        if (!lsp_sema_type_param(sema, param_index, &symbol, NULL)) {
-            continue;
-        }
-        if (symbol != U32_MAX) {
-            lsp_completion_add(arena, items, lex_symbol(lexer, symbol), 5);
+    } else if (type->kind == STK_Plex || type->kind == STK_Union) {
+        for (u32 i = 0; i < type->param_count; ++i) {
+            u32 param_index = type->first_param_type + i;
+            u32 symbol      = U32_MAX;
+            if (!lsp_sema_type_param(sema, param_index, &symbol, NULL)) {
+                continue;
+            }
+            if (symbol != U32_MAX) {
+                lsp_completion_add(arena, items, lex_symbol(lexer, symbol), 5);
+            }
         }
     }
 

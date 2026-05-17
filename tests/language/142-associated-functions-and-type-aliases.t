@@ -35,7 +35,7 @@ type type.1 = IntBox
 global value.0: IntBox = IntBox call fn (i32) -> IntBox field(IntBox bind.1(IntBox), init)(i32 40)
 func fn.0() -> i32 {
   let box: IntBox = IntBox call fn (i32) -> IntBox field(IntBox bind.1(IntBox), init)(i32 2)
-  return i32 subtract(i32 add(i32 add(i32 field(IntBox bind.2(global_box), value), i32 field(IntBox local.0(box), value)), i32 cast(usize call decl.4(__impl_16_item_size_g_549f6c0d)(IntBox local.0(box)) as i32)), i32 cast(usize field(i32 i32, size) as i32))
+  return i32 subtract(i32 add(i32 add(i32 field(IntBox bind.2(global_box), value), i32 field(IntBox local.0(box), value)), i32 cast(usize call decl.4(__impl_16_item_size_g_549f6b5a)(IntBox local.0(box)) as i32)), i32 cast(usize field(i32 i32, size) as i32))
 }
 inst func fn.1(value: i32) -> IntBox {
   return IntBox plex(value: i32 local.1(value))

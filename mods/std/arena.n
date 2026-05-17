@@ -23,20 +23,20 @@ pub arena_new :: fn (size: usize) -> HeapArena {
     return { base, cursor: 0 }
 }
 
-pub arena_capacity :: fn (arena: ^HeapArena) -> usize {
-    return arena.base.count
+pub arena_capacity :: fn (heap: ^HeapArena) -> usize {
+    return heap.base.count
 }
 
-pub arena_alloc :: fn (arena: ^HeapArena, size: usize) -> []u8 {
-    start := arena.cursor
-    arena.cursor += size
-    assert arena.cursor <= arena.base.count, "Heap arena overflow"
-    return arena.base[start .. arena.cursor]
+pub arena_alloc :: fn (heap: ^HeapArena, size: usize) -> []u8 {
+    start := heap.cursor
+    heap.cursor += size
+    assert heap.cursor <= heap.base.count, "Heap arena overflow"
+    return heap.base[start .. heap.cursor]
 }
 
-pub arena_free :: fn (arena: ^HeapArena) {
-    free(arena.base)
-    arena^ = { ... }
+pub arena_free :: fn (heap: ^HeapArena) {
+    free(heap.base)
+    heap^ = { ... }
 }
 
 -- Returns (alloc_granularity, reserve_granularity)
@@ -47,7 +47,7 @@ get_arena_memory_info :: fn () -> (usize, usize) {
 
 impl Arena {
 
-    pub init :: fn (arena         : ^Self,
+    pub init :: fn (self          : ^Self,
                     reserved_size : usize = kb(4),
                     grow_rate     : usize = 16) {
         (alloc_granularity, reserve_granularity) := get_arena_memory_info()
@@ -65,31 +65,31 @@ impl Arena {
             abort()
         }
 
-        arena.base = memory
-        arena.cursor = 0
-        arena.committed_size = initial_alloc_size
-        arena.reserved_size = reserved_size
-        arena.alloc_granularity = alloc_granularity
-        arena.grow_rate = grow_rate
+        self.base = memory
+        self.cursor = 0
+        self.committed_size = initial_alloc_size
+        self.reserved_size = reserved_size
+        self.alloc_granularity = alloc_granularity
+        self.grow_rate = grow_rate
     }
 
-    pub done :: fn (arena: ^Self) {
-        _ := munmap(arena.base, arena.reserved_size)
+    pub done :: fn (self: ^Self) {
+        _ := munmap(self.base, self.reserved_size)
 
-        arena^ = { ... }
+        self^ = { ... }
     }
 
-    pub store :: fn (arena: ^Self) -> usize {
-        return arena.cursor
+    pub store :: fn (self: ^Self) -> usize {
+        return self.cursor
     }
 
-    pub restore :: fn (arena: ^Self, mark: usize) {
-        assert mark <= arena.cursor, "Invalid arena restore point"
-        arena.cursor = mark
+    pub restore :: fn (self: ^Self, mark: usize) {
+        assert mark <= self.cursor, "Invalid arena restore point"
+        self.cursor = mark
     }
 
-    pub reset :: fn (arena: ^Self) {
-        arena.cursor = 0
+    pub reset :: fn (self: ^Self) {
+        self.cursor = 0
     }
 
 }

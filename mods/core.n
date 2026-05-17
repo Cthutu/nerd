@@ -2,23 +2,16 @@
 -- Core language-adjacent helpers.
 --
 
-pub Arena :: plex #c {
-    base           ^void
-    current        ^void
-    committed_size usize
-    increment      usize
-}
-
 ffi "nrt" {
-    nrt_arena_init    (arena: ^Arena, initial_size: usize, increment: usize)
-    nrt_arena_done    (arena: ^Arena)
-    nrt_arena_reset   (arena: ^Arena)
-    nrt_arena_mark    (arena: ^Arena) -> u32
-    nrt_arena_restore (arena: ^Arena, mark: u32)
-    nrt_arena_alloc   (arena: ^Arena, size: usize, alignment: usize) -> ^void
-
-    nrt_temp_arena_reset ()
+    nrt_arena_done    (arena: ^arena)
+    nrt_arena_reset   (arena: ^arena)
+    nrt_arena_mark    (arena: ^arena) -> u32
+    nrt_arena_restore (arena: ^arena, mark: u32)
+    nrt_arena_alloc   (arena: ^arena, size: usize, alignment: usize) -> ^void
+    nrt_temp_arena    () -> ^arena
 }
+
+pub temp_arena :: nrt_temp_arena()
 
 arena_alignment :: fn [T] () -> usize {
     return on T.size {
@@ -29,13 +22,7 @@ arena_alignment :: fn [T] () -> usize {
     }
 }
 
-pub arena :: fn (num_bytes: usize, increment: usize = 0) -> Arena {
-    result : Arena
-    nrt_arena_init(^result, num_bytes, increment)
-    return result
-}
-
-impl Arena {
+impl arena {
 
     pub alloc :: fn [T] (self: ^Self) -> ^T {
         return nrt_arena_alloc(self, T.size, arena_alignment[T]()).as(^T)
@@ -67,16 +54,4 @@ impl Arena {
         nrt_arena_done(self)
     }
 
-}
-
-pub alloc :: fn [T] (a: ^Arena) -> ^T {
-    return a.alloc[T]()
-}
-
-pub alloc_array :: fn [T] (a: ^Arena, count: usize) -> []T {
-    return a.alloc_array[T](count)
-}
-
-pub temp_arena_reset :: fn () {
-    nrt_temp_arena_reset()
 }

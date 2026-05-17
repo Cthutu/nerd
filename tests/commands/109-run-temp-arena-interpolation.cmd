@@ -17,7 +17,7 @@ main :: fn () -> i32 {
 
     prn($"total={total} last={last}")
 
-    temp_arena_reset()
+    temp_arena.reset()
     after := make(7)
     prn(after)
 

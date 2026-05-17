@@ -329,7 +329,7 @@ trait syntax and implementation support already landed, but pause trait
 constraints, built-in traits, and trait-driven interpolation until the arena and
 library layering are in place.
 
-- [x] Add the first source-level arena type in `core` as `Arena`.
+- [x] Add the first source-level arena type as opaque built-in `arena`.
 - [x] Keep the arena implementation pointer-stable using the compiler arena
   model:
   - [x] arena allocation must not move previously returned pointers
@@ -342,33 +342,35 @@ library layering are in place.
   - [x] keep the implementation close to the Nerd compiler's C arena model
     where practical
 - [x] Add first arena construction API:
-  - [x] `arena(num_bytes)` creates an arena with at least that capacity
+  - [x] `arena(num_bytes)` built-in syntax creates an arena with at least that
+    capacity
   - [x] round requested byte counts up to the nearest platform page size
-  - [x] `arena(num_bytes, increment)` sets the growth increment for exhausted
-    arenas
+  - [x] `arena(num_bytes, increment)` built-in syntax sets the growth increment
+    for exhausted arenas
   - [x] round growth increments up to the nearest platform page size
   - [x] define sensible defaults for omitted growth behaviour
 - [x] Add arena allocation APIs:
   - [x] `arena.alloc[T]()` returns memory aligned for `T`
   - [x] `arena.alloc_array[T](count)` returns contiguous storage aligned
     for `T`
-  - [x] keep `core.alloc[T](^arena)` and `core.alloc_array[T](^arena, count)`
-    as compatibility wrappers
+  - [x] remove global `core.alloc` and `core.alloc_array`; allocation is via
+    arena methods
   - [x] `reset` invalidates allocations from the arena without freeing the
     arena itself
   - [x] add `done` or equivalent explicit release if arenas own OS/heap memory
   - [x] add `mark` to return the current 32-bit arena cursor
   - [x] add `restore` to set the current cursor back to a previous mark
-- [ ] Add `temp_arena`:
-  - [ ] provide a canonical public global temporary arena from `core`
-  - [ ] make runtime string interpolation allocate from `core.temp_arena`
+- [x] Add `temp_arena`:
+  - [x] provide a canonical public temporary arena handle from `core`
+  - [x] make runtime string interpolation allocate from the same runtime arena
+    exposed as `core.temp_arena`
     rather than a private runtime-only arena
   - [x] define interpolation strings as allocated from `temp_arena`
   - [x] document that values allocated from `temp_arena` remain valid until
-    `temp_arena_reset()`
+    `temp_arena.reset()`
   - [x] allow applications without a main loop to never reset `temp_arena`
-  - [x] encourage main-loop applications to call `temp_arena_reset()` at a
-    clear frame/request boundary
+  - [x] encourage main-loop applications to call `temp_arena.reset()` at a clear
+    frame/request boundary
 - [x] Reorganise standard modules into three layers:
   - [x] `core`: language-adjacent requirements, built-in traits when resumed,
     `arena`, `temp_arena`, memory helpers, string helpers, and slice helpers
@@ -391,7 +393,7 @@ library layering are in place.
     reference, a compatibility wrapper, or is replaced by the built-in arena
   - [x] update imports in tests, examples, and docs after module moves
 - [ ] Parser and semantic work:
-  - [x] use ordinary function-call syntax for first arena construction API
+  - [x] use ordinary function-call-shaped built-in syntax for arena construction
   - [x] type-check arena constructors and lifecycle methods
   - [x] type-check generic arena allocation functions
   - [x] allow explicit generic calls through imported module bindings in LLVM
@@ -411,8 +413,9 @@ library layering are in place.
   - [x] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
 - [ ] Formatter, LSP, and editor work:
-  - [ ] format arena construction syntax if it requires new syntax handling
-  - [ ] provide completion/hover for `arena`, arena methods, and `temp_arena`
+  - [x] format arena construction syntax through ordinary call formatting
+  - [x] provide completion for `arena` methods
+  - [ ] provide hover for `arena`, arena methods, and `temp_arena`
     where existing LSP infrastructure supports built-ins/modules
   - [ ] update editor syntax files if new keywords or built-in token handling
     are added
@@ -439,10 +442,9 @@ library layering are in place.
     grows
   - [x] document the 4 GiB arena capacity limit and 32-bit arena indices
   - [x] document `mark` and `restore`
-  - [x] manual examples showing main-loop `temp_arena_reset()` usage
+  - [x] manual examples showing main-loop `temp_arena.reset()` usage
   - [x] manual/module documentation for the `core`, `std`, and `sys` split
-  - [ ] syntax-reference appendix entries for arena construction if new syntax
-    is introduced
+  - [x] syntax-reference appendix entries for arena construction syntax
   - [x] language-reference appendix rules for arena allocation, reset, and
     interpolation lifetime
   - [x] update `docs/stdlib.md` to describe the new module hierarchy
