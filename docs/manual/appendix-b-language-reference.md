@@ -153,8 +153,9 @@ intended exit code.
   all required member names. Methods supplied by a trait impl can be called on
   the implemented type with normal receiver syntax, such as `value.member()`.
   Local trait implementations are checked against the required member
-  signatures. Generic trait constraints are not part of the current language
-  surface.
+  signatures. Duplicate non-generic implementations for the same trait and
+  target type are rejected. Generic trait constraints are not part of the
+  current language surface.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

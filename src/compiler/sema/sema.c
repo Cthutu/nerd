@@ -4006,7 +4006,7 @@ internal u32 sema_find_impl_method_decl(const Sema* sema,
 
 internal bool sema_validate_trait_impl(const Lexer* lexer,
                                        const Ast*   ast,
-                                       const Sema*  sema,
+                                       Sema*        sema,
                                        u32          impl_node_index)
 {
     const AstNode*     impl_node = &ast->nodes[impl_node_index];
@@ -4028,6 +4028,16 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
                                         s("known trait"),
                                         lex_symbol(lexer, trait_symbol));
     }
+
+    u32 ignored_target_type = sema_no_type();
+    if (!sema_resolve_type_node(lexer,
+                                ast,
+                                sema,
+                                impl->target_type_node_index,
+                                &ignored_target_type)) {
+        return false;
+    }
+
     if (sema->decls[trait_decl_index].value_node_index >=
         array_count(ast->nodes)) {
         return true;
@@ -4066,6 +4076,74 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
                 s("function trait member"),
                 s("non-function binding"));
         }
+    }
+
+    return true;
+}
+
+internal bool sema_validate_duplicate_trait_impl(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 Sema*        sema,
+                                                 u32          impl_node_index)
+{
+    const AstNode*     impl_node = &ast->nodes[impl_node_index];
+    const AstImplInfo* impl      = &ast->impls[impl_node->a];
+    u32                trait_symbol =
+        sema_trait_symbol_from_type_node(ast, impl->trait_type_node_index);
+    if (trait_symbol == U32_MAX) {
+        return true;
+    }
+
+    u32 target_type = sema_no_type();
+    if (!sema_resolve_type_node(
+            lexer, ast, sema, impl->target_type_node_index, &target_type)) {
+        return false;
+    }
+    target_type = sema_materialise_type(sema, target_type);
+
+    for (u32 i = 0; i < impl_node_index; ++i) {
+        const AstNode* previous_node = &ast->nodes[i];
+        if (previous_node->kind != AK_Impl ||
+            previous_node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        const AstImplInfo* previous = &ast->impls[previous_node->a];
+        if (previous->trait_type_node_index == U32_MAX ||
+            sema_trait_symbol_from_type_node(
+                ast, previous->trait_type_node_index) != trait_symbol) {
+            continue;
+        }
+
+        u32 previous_target = sema_no_type();
+        if (!sema_resolve_type_node(lexer,
+                                    ast,
+                                    sema,
+                                    previous->target_type_node_index,
+                                    &previous_target)) {
+            return false;
+        }
+        previous_target = sema_materialise_type(sema, previous_target);
+        if (previous_target != target_type) {
+            continue;
+        }
+
+        Arena temp_arena = {0};
+        arena_init(&temp_arena);
+        string target_name =
+            sema_type_name(lexer, sema, &temp_arena, target_type);
+        string impl_name =
+            string_format(&temp_arena,
+                          STRINGP " for " STRINGP,
+                          STRINGV(lex_symbol(lexer, trait_symbol)),
+                          STRINGV(target_name));
+        bool ok =
+            error_0301_duplicate_binding(lexer->source,
+                                         sema_node_span(lexer, impl_node),
+                                         impl_name,
+                                         sema_node_span(lexer, previous_node));
+        arena_done(&temp_arena);
+        return ok;
     }
 
     return true;
@@ -4444,7 +4522,7 @@ internal bool sema_collect_decls(const Lexer*           lexer,
 }
 
 internal bool
-sema_validate_trait_impls(const Lexer* lexer, const Ast* ast, const Sema* sema)
+sema_validate_trait_impls(const Lexer* lexer, const Ast* ast, Sema* sema)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
@@ -4456,6 +4534,9 @@ sema_validate_trait_impls(const Lexer* lexer, const Ast* ast, const Sema* sema)
             continue;
         }
         if (!sema_validate_trait_impl(lexer, ast, sema, i)) {
+            return false;
+        }
+        if (!sema_validate_duplicate_trait_impl(lexer, ast, sema, i)) {
             return false;
         }
     }

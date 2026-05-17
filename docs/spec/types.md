@@ -66,7 +66,8 @@ The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`.
 For local trait declarations, implementations must provide every required
 member with a compatible function signature after substituting `Self` with the
-implementation target type.
+implementation target type. Duplicate non-generic implementations for the same
+trait and target type are rejected.
 
 Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful

@@ -483,9 +483,10 @@ library layering are in place.
   - [ ] no trait objects or dynamic dispatch
 - [ ] Add implementation syntax:
   - [x] `impl TraitName for Type { ... }`
-  - [ ] allow implementations for plex, union, enum, and primitive types
+  - [x] allow implementations for plex, union, enum, and primitive types
   - [ ] allow generic implementations such as `impl [T] Eq for []T where T: Eq`
-  - [ ] reject overlapping implementations in the first version
+  - [x] reject duplicate non-generic implementations in the first version
+  - [ ] reject overlapping generic implementations in the first version
 - [ ] Add built-in trait semantics:
   - [ ] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
@@ -514,12 +515,12 @@ library layering are in place.
   - [ ] interpret constraints as requirements that matching implementations
     exist at instantiation time
 - [ ] Add trait member call syntax:
-  - [ ] receiver form `<value>.<trait_fn>(...)`
+  - [x] receiver form `<value>.<trait_fn>(...)`
   - [ ] explicit form `<Trait>.<trait_fn>(value, ...)`
   - [ ] explicit implementation form `<Trait>[Type].<trait_fn>(...)` when the
     implementation type cannot be inferred from a receiver argument, such as
     `Default[Foo].default()`
-  - [ ] resolve receiver calls through matching trait implementations
+  - [x] resolve receiver calls through matching trait implementations
   - [ ] prefer existing direct field/member behaviour before trait lookup
   - [ ] report ambiguity when multiple traits provide the same receiver method
     for a type
@@ -543,11 +544,13 @@ library layering are in place.
     rejected before a generic function or impl method is instantiated, while
     constraint-sensitive operations should be checked against trait bounds.
   - [ ] prove trait requirements for generic instantiations
-  - [ ] reject missing, duplicate, overlapping, or ambiguous implementations
+  - [x] reject missing or duplicate non-generic implementations
+  - [ ] reject overlapping or ambiguous implementations
   - [ ] provide useful `help` text when trait generic parameters are required
     but cannot be inferred
 - [ ] Backend lowering work:
-  - [ ] lower trait calls to statically selected concrete functions
+  - [x] lower receiver-form trait calls to statically selected concrete
+    functions
   - [x] keep trait declarations out of generated backend output
   - [ ] emit implementation functions with stable generated backend names
   - [ ] preserve monomorphisation behaviour for generic impls
@@ -569,8 +572,9 @@ library layering are in place.
   - [x] language tests for trait declarations using `Self`
   - [ ] language tests for trait declarations using `trait for Value`
   - [x] language tests for plex implementations
-  - [ ] language tests for union, enum, and primitive implementations
-  - [ ] language tests for receiver-form trait calls
+  - [ ] language tests for union and enum implementations
+  - [x] language tests for primitive implementations
+  - [x] language tests for receiver-form trait calls
   - [ ] language tests for explicit trait calls
   - [ ] language tests for generic constraints using `where T: Trait`
   - [ ] language tests for generic impls
@@ -584,8 +588,10 @@ library layering are in place.
   - [ ] language tests for `for elem` and `for ^elem` item typing
   - [ ] error tests for missing required impl members
   - [x] error tests for incompatible impl member signatures
-  - [ ] error tests for unknown traits in constraints or impls
-  - [ ] error tests for duplicate or overlapping impls
+  - [x] error tests for unknown traits in impls
+  - [x] error tests for duplicate non-generic impls
+  - [ ] error tests for unknown traits in constraints
+  - [ ] error tests for overlapping generic impls
   - [ ] error tests for ambiguous receiver trait calls
   - [ ] error tests for non-inferable trait generic parameters with useful
     `help` messages
