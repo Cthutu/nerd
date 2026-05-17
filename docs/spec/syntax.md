@@ -113,11 +113,11 @@ traits is future semantic work. Trait declarations may name the self type with
 implementation blocks validate that all required member names are present, and
 local trait implementations validate compatible member signatures after
 self-type substitution. Impl members are callable through normal receiver
-method syntax. Duplicate non-generic implementations for the same trait and
-implementation target are rejected. Implementations may target compound types
-and primitive built-in types. A trait implementation block is the complete
-implementation for one trait/type pair; implementations are not split or merged
-across multiple blocks.
+method syntax. Duplicate concrete implementations and overlapping generic
+implementations for the same trait are rejected. Implementations may target
+compound types and primitive built-in types. A trait implementation block is
+the complete implementation for one trait/type pair; implementations are not
+split or merged across multiple blocks.
 Generic functions and generic impl blocks may carry `where` constraints such as
 `where T: Display` or `where T: Display, U: Eq`. Constraint clauses are parsed
 and formatted, constraint trait names must resolve to known traits, and each

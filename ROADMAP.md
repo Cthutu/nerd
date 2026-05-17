@@ -486,7 +486,7 @@ library layering are in place.
   - [x] allow implementations for plex, union, enum, and primitive types
   - [ ] allow generic implementations such as `impl [T] Eq for []T where T: Eq`
   - [x] reject duplicate non-generic implementations in the first version
-  - [ ] reject overlapping generic implementations in the first version
+  - [x] reject overlapping generic implementations in the first version
 - [ ] Add built-in trait semantics:
   - [ ] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
@@ -545,7 +545,7 @@ library layering are in place.
     constraint-sensitive operations should be checked against trait bounds.
   - [x] prove trait requirements for generic instantiations
   - [x] reject missing or duplicate non-generic implementations
-  - [ ] reject overlapping or ambiguous implementations
+  - [x] reject overlapping or ambiguous implementations
   - [ ] provide useful `help` text when trait generic parameters are required
     but cannot be inferred
 - [ ] Backend lowering work:
@@ -593,7 +593,7 @@ library layering are in place.
   - [x] error tests for duplicate non-generic impls
   - [x] error tests for unknown traits in constraints
   - [x] error tests for unsatisfied generic constraints
-  - [ ] error tests for overlapping generic impls
+  - [x] error tests for overlapping generic impls
   - [x] error tests for ambiguous receiver trait calls
   - [ ] error tests for non-inferable trait generic parameters with useful
     `help` messages
@@ -601,18 +601,18 @@ library layering are in place.
   - [x] format tests for trait impl syntax
   - [ ] LSP tests for hover/symbol/token behaviour affected by traits
 - [ ] Documentation:
-  - [ ] manual section introducing traits as interfaces for types
-  - [ ] manual examples for `Self` and `trait for Value`
-  - [ ] manual examples for `impl Trait for Type`
-  - [ ] manual examples for receiver and explicit trait calls
+  - [x] manual section introducing traits as interfaces for types
+  - [x] manual examples for `Self` and `trait for Value`
+  - [x] manual examples for `impl Trait for Type`
+  - [x] manual examples for receiver and explicit trait calls
   - [x] manual examples for generic constraints using traits
   - [ ] manual section for built-in traits in `std.traits`
   - [ ] manual examples for `Default` initialisation and zero-init fallback
   - [ ] manual examples for `Iterator` and `Option[Item]`
   - [ ] standard-library documentation for `Option[T]`, `Result[T, E]`, and
     `std.traits`
-  - [ ] syntax-reference appendix entries
-  - [ ] language-reference appendix rules
+  - [x] syntax-reference appendix entries
+  - [x] language-reference appendix rules
 
 ### LSP Completion And Incremental Sync Milestone
 

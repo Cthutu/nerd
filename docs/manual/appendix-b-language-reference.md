@@ -63,6 +63,8 @@ intended exit code.
   pair must appear in the same `impl Trait for Type` block. The language does
   not merge partial implementations of the same trait for the same type across
   multiple impl blocks.
+- Duplicate concrete trait implementations and overlapping generic trait
+  implementations are rejected.
 - Concrete generic function values are written as `name[T]`.
 - Partial explicit generic argument lists are invalid.
 
@@ -169,9 +171,8 @@ intended exit code.
   ordinary top-level functions, so a bare call such as `member(value)` does not
   resolve to a trait member.
   Local trait implementations are checked against the required member
-  signatures. Duplicate non-generic implementations for the same trait and
-  target type are rejected. Generic trait constraints are not part of the
-  current language surface.
+  signatures. Duplicate concrete implementations and overlapping generic
+  implementations for the same trait are rejected.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

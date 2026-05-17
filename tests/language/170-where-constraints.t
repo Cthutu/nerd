@@ -15,6 +15,14 @@ id :: fn [T] (value: T) -> T where T: Display {
     return value
 }
 
+describe :: fn [T] (value: T) -> string where T: Display {
+    return value.show()
+}
+
+describe_explicit :: fn [T] (value: T) -> string where T: Display {
+    return Display.show(value)
+}
+
 Box :: plex [T] {
     value T
 }
@@ -27,10 +35,11 @@ impl Box[T] where T: Display {
 
 main :: fn () -> i32 {
     point := id(Point { x: 3, y: 4 })
-    return point.x + point.y
+    return point.x + point.y + describe(point).count.as(i32) +
+        describe_explicit(point).count.as(i32)
 }
 ¬
-7
+29
 ¬
 
 ¬
@@ -46,9 +55,15 @@ func fn.0(self: Point) -> string {
 }
 func fn.1() -> i32 {
   let point: Point = Point call decl.3(id)(Point plex(x: i32 3, y: i32 4))
-  return i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y))
+  return i32 add(i32 add(i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y)), i32 cast(usize field(string call decl.4(describe)(Point local.1(point)), count) as i32)), i32 cast(usize field(string call decl.5(describe_explicit)(Point local.1(point)), count) as i32))
 }
 inst func fn.2(value: Point) -> Point {
   return Point local.2(value)
+}
+inst func fn.3(value: Point) -> string {
+  return string call bind.1(__impl_13_show)(Point local.3(value))
+}
+inst func fn.4(value: Point) -> string {
+  return string call bind.1(__impl_13_show)(Point local.4(value))
 }
 ¬

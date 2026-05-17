@@ -82,12 +82,12 @@ names must resolve to known traits, and each concrete instantiation must have a
 matching implementation for every required trait.
 For local trait declarations, implementations must provide every required
 member with a compatible function signature after substituting the trait self
-type with the implementation target type. Duplicate non-generic implementations
-for the same trait and target type are rejected. A trait implementation is
-atomic: all required members for one trait/type pair must appear in the same
-`impl Trait for Type` block. The language does not merge partial
-implementations of the same trait for the same type across multiple impl
-blocks.
+type with the implementation target type. Duplicate concrete implementations
+and overlapping generic implementations for the same trait are rejected. A
+trait implementation is atomic: all required members for one trait/type pair
+must appear in the same `impl Trait for Type` block. The language does not
+merge partial implementations of the same trait for the same type across
+multiple impl blocks.
 
 Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful

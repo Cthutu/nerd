@@ -344,6 +344,74 @@ Public methods are available when another module imports the type.
 They also remain available when the type is named through a qualified module
 binding, such as `collections.Stack[i32]`.
 
+## Traits
+
+A trait names behaviour that a type can provide. The first version supports
+required function members:
+
+```nerd
+Display :: trait {
+    show :: fn (Self) -> string
+}
+```
+
+`Self` means the type that implements the trait. A trait may also give the self
+type a domain-specific name:
+
+```nerd
+Clone :: trait for Value {
+    clone :: fn (Value) -> Value
+}
+```
+
+Implement a trait with `impl Trait for Type`. The implementation must provide
+all required members in one block:
+
+```nerd
+Point :: plex {
+    x i32
+    y i32
+}
+
+impl Display for Point {
+    show :: fn (self: Self) -> string {
+        return $"{self.x}, {self.y}"
+    }
+}
+```
+
+Trait members can be called with receiver syntax, or by naming the trait when a
+call needs to be explicit:
+
+```nerd
+main :: fn () -> string {
+    point := Point { x: 3 y: 4 }
+    return Display.show(point) + " / " + point.show()
+}
+```
+
+Inherent methods take precedence over trait methods. If multiple traits provide
+the same receiver method for a type, use `Trait.member(value, ...)` to select
+one. If the member has no receiver argument, name the implementation type with
+`Trait[Type].member(...)`.
+
+Generic functions and impl blocks can require trait implementations with a
+`where` clause:
+
+```nerd
+describe :: fn [T] (value: T) -> string where T: Display {
+    return value.show()
+}
+```
+
+Inside a generic function, receiver calls to trait methods require a matching
+constraint. It is not enough that one concrete call site happens to pass a type
+that implements the trait.
+
+A trait implementation is atomic. Required members for one trait/type pair are
+not merged from multiple impl blocks. Duplicate concrete implementations and
+overlapping generic implementations are rejected.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:

@@ -4151,6 +4151,113 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_generic_params_contain_symbol(const Ast* ast,
+                                                 u32 generic_params_index,
+                                                 u32 symbol)
+{
+    if (generic_params_index == U32_MAX) {
+        return false;
+    }
+    const AstGenericParams* generic =
+        &ast->generic_params[generic_params_index];
+    for (u32 i = 0; i < generic->symbol_count; ++i) {
+        if (ast->generic_param_symbols[generic->first_symbol + i] == symbol) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool sema_type_nodes_may_overlap(const Ast* ast,
+                                          u32        lhs_node_index,
+                                          u32        lhs_generic_params_index,
+                                          u32        rhs_node_index,
+                                          u32        rhs_generic_params_index)
+{
+    if (lhs_node_index >= array_count(ast->nodes) ||
+        rhs_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* lhs = &ast->nodes[lhs_node_index];
+    const AstNode* rhs = &ast->nodes[rhs_node_index];
+    while ((lhs->kind == AK_Expression || lhs->kind == AK_Statement) &&
+           lhs->a < array_count(ast->nodes)) {
+        lhs_node_index = lhs->a;
+        lhs            = &ast->nodes[lhs_node_index];
+    }
+    while ((rhs->kind == AK_Expression || rhs->kind == AK_Statement) &&
+           rhs->a < array_count(ast->nodes)) {
+        rhs_node_index = rhs->a;
+        rhs            = &ast->nodes[rhs_node_index];
+    }
+
+    if (lhs->kind == AK_SymbolRef &&
+        sema_generic_params_contain_symbol(
+            ast, lhs_generic_params_index, lhs->a)) {
+        return true;
+    }
+    if (rhs->kind == AK_SymbolRef &&
+        sema_generic_params_contain_symbol(
+            ast, rhs_generic_params_index, rhs->a)) {
+        return true;
+    }
+
+    if (lhs->kind != rhs->kind) {
+        return false;
+    }
+
+    switch (lhs->kind) {
+    case AK_SymbolRef:
+        return lhs->a == rhs->a;
+    case AK_TypePointer:
+    case AK_TypeSlice:
+        return sema_type_nodes_may_overlap(ast,
+                                           lhs->a,
+                                           lhs_generic_params_index,
+                                           rhs->a,
+                                           rhs_generic_params_index);
+    case AK_TypeArray:
+        return sema_type_nodes_may_overlap(ast,
+                                           lhs->b,
+                                           lhs_generic_params_index,
+                                           rhs->b,
+                                           rhs_generic_params_index);
+    case AK_TypeDynamicArray:
+        return sema_type_nodes_may_overlap(ast,
+                                           lhs->b,
+                                           lhs_generic_params_index,
+                                           rhs->b,
+                                           rhs_generic_params_index);
+    case AK_TypeApply:
+        {
+            const AstTypeApplyInfo* lhs_apply = &ast->type_applications[lhs->a];
+            const AstTypeApplyInfo* rhs_apply = &ast->type_applications[rhs->a];
+            if (lhs_apply->arg_count != rhs_apply->arg_count ||
+                !sema_type_nodes_may_overlap(ast,
+                                             lhs_apply->target_node_index,
+                                             lhs_generic_params_index,
+                                             rhs_apply->target_node_index,
+                                             rhs_generic_params_index)) {
+                return false;
+            }
+            for (u32 i = 0; i < lhs_apply->arg_count; ++i) {
+                if (!sema_type_nodes_may_overlap(
+                        ast,
+                        ast->tuple_items[lhs_apply->first_arg + i],
+                        lhs_generic_params_index,
+                        ast->tuple_items[rhs_apply->first_arg + i],
+                        rhs_generic_params_index)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    default:
+        return lhs_node_index == rhs_node_index;
+    }
+}
+
 internal bool sema_validate_duplicate_trait_impl(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
@@ -4163,13 +4270,6 @@ internal bool sema_validate_duplicate_trait_impl(const Lexer* lexer,
     if (trait_symbol == U32_MAX) {
         return true;
     }
-
-    u32 target_type = sema_no_type();
-    if (!sema_resolve_type_node(
-            lexer, ast, sema, impl->target_type_node_index, &target_type)) {
-        return false;
-    }
-    target_type = sema_materialise_type(sema, target_type);
 
     for (u32 i = 0; i < impl_node_index; ++i) {
         const AstNode* previous_node = &ast->nodes[i];
@@ -4185,28 +4285,39 @@ internal bool sema_validate_duplicate_trait_impl(const Lexer* lexer,
             continue;
         }
 
-        u32 previous_target = sema_no_type();
-        if (!sema_resolve_type_node(lexer,
-                                    ast,
-                                    sema,
-                                    previous->target_type_node_index,
-                                    &previous_target)) {
-            return false;
-        }
-        previous_target = sema_materialise_type(sema, previous_target);
-        if (previous_target != target_type) {
+        if (!sema_type_nodes_may_overlap(ast,
+                                         previous->target_type_node_index,
+                                         previous->generic_params_index,
+                                         impl->target_type_node_index,
+                                         impl->generic_params_index)) {
             continue;
         }
 
         Arena temp_arena = {0};
         arena_init(&temp_arena);
-        string target_name =
-            sema_type_name(lexer, sema, &temp_arena, target_type);
         string impl_name =
             string_format(&temp_arena,
-                          STRINGP " for " STRINGP,
-                          STRINGV(lex_symbol(lexer, trait_symbol)),
-                          STRINGV(target_name));
+                          STRINGP " implementation",
+                          STRINGV(lex_symbol(lexer, trait_symbol)));
+        if (previous->generic_params_index == U32_MAX &&
+            impl->generic_params_index == U32_MAX) {
+            u32 target_type = sema_no_type();
+            if (!sema_resolve_type_node(lexer,
+                                        ast,
+                                        sema,
+                                        impl->target_type_node_index,
+                                        &target_type)) {
+                arena_done(&temp_arena);
+                return false;
+            }
+            target_type = sema_materialise_type(sema, target_type);
+            string target_name =
+                sema_type_name(lexer, sema, &temp_arena, target_type);
+            impl_name = string_format(&temp_arena,
+                                      STRINGP " for " STRINGP,
+                                      STRINGV(lex_symbol(lexer, trait_symbol)),
+                                      STRINGV(target_name));
+        }
         bool ok =
             error_0301_duplicate_binding(lexer->source,
                                          sema_node_span(lexer, impl_node),
@@ -4646,10 +4757,10 @@ sema_validate_trait_impls(const Lexer* lexer, const Ast* ast, Sema* sema)
         if (impl->trait_type_node_index == U32_MAX) {
             continue;
         }
-        if (!sema_validate_trait_impl(lexer, ast, sema, i)) {
+        if (!sema_validate_duplicate_trait_impl(lexer, ast, sema, i)) {
             return false;
         }
-        if (!sema_validate_duplicate_trait_impl(lexer, ast, sema, i)) {
+        if (!sema_validate_trait_impl(lexer, ast, sema, i)) {
             return false;
         }
     }

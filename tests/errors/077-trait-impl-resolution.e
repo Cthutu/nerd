@@ -38,6 +38,96 @@ Display :: trait {
     show :: fn (Self) -> string
 }
 
+Box :: plex [T] {
+    value T
+}
+
+impl Display for Box[i32] {
+    show :: fn (self: Self) => "i32 box"
+}
+
+impl Display for Box[T] {
+    show :: fn (self: Self) => "any box"
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Duplicate binding for symbol `Display implementation`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 13,
+        "column": 1
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 13,
+            "column": 1,
+            "length": 4,
+            "message": "This binding redefines `Display implementation`"
+        },
+        {
+            "kind": "secondary",
+            "line": 9,
+            "column": 1,
+            "length": 4,
+            "message": "Previous binding of `Display implementation` is here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Rename one of the bindings or remove the duplicate definition."
+    ]
+}
+¬
+Display :: trait {
+    show :: fn (Self) -> string
+}
+
+Point :: plex {
+    x i32
+}
+
+impl Display for Point {
+    show :: fn (self: Self) => "point"
+}
+
+bad :: fn [T] (value: T) -> string {
+    return Display.show(value)
+}
+
+main :: fn () {
+    point := Point { x: 1 }
+    _ := bad(point)
+}
+¬
+{
+    "message": "Type mismatch: expected `Display constraint`, found `T`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 14,
+        "column": 25
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 14,
+            "column": 25,
+            "length": 5,
+            "message": "This expression has type `T`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+Display :: trait {
+    show :: fn (Self) -> string
+}
+
 Point :: plex {
     x i32
 }
