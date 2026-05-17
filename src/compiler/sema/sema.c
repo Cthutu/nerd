@@ -1739,7 +1739,9 @@ internal bool sema_import_implicit_core_decls(const Lexer* lexer, Sema* sema)
             !string_eq_cstr(name, "Order") &&
             !string_eq_cstr(name, "Default") &&
             !string_eq_cstr(name, "Option") &&
-            !string_eq_cstr(name, "Result") && !string_eq_cstr(name, "arena") &&
+            !string_eq_cstr(name, "Result") &&
+            !string_eq_cstr(name, "Iterator") &&
+            !string_eq_cstr(name, "arena") &&
             !string_eq_cstr(name, "temp_arena")) {
             continue;
         }

@@ -465,7 +465,7 @@ library layering are in place.
   - [x] `Eq`
   - [x] `Order`
   - [x] `Default`
-  - [ ] `Iterator`
+  - [x] `Iterator`
 - [x] Make `core` implicitly available to every module so language-required
   declarations do not need repetitive imports.
 - [x] Treat built-in traits as normal canonical core declarations
@@ -587,7 +587,7 @@ library layering are in place.
   - [x] language tests for `Display` interpolation on a plex value
   - [x] language tests for `core.Option[T]` and `core.Result[T, E]`
   - [x] language tests for generic impls
-  - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
+  - [x] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
   - [x] language tests for built-in `Display`, `Eq`, and `Default`
   - [ ] language tests for `Default` overriding typed-binding initialisation

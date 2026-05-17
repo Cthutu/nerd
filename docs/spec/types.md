@@ -69,8 +69,9 @@ Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
 Language-required traits such as `Display` are canonical declarations from
 `core`. The core declarations currently include `Display`, `Eq`, `Order`,
-`Default`, `Option[T]`, and `Result[T, E]`. These names are available through
-the implicit `core` import unless shadowed by a local declaration.
+`Default`, `Iterator[Item]`, `Option[T]`, and `Result[T, E]`. These names are
+available through the implicit `core` import unless shadowed by a local
+declaration.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when

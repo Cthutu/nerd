@@ -908,6 +908,7 @@ internal bool program_load_implicit_core(ProgramInfo*           program,
             string_eq_cstr(symbol, "Default") ||
             string_eq_cstr(symbol, "Option") ||
             string_eq_cstr(symbol, "Result") ||
+            string_eq_cstr(symbol, "Iterator") ||
             string_eq_cstr(symbol, "arena") ||
             string_eq_cstr(symbol, "temp_arena")) {
             needs_core = true;

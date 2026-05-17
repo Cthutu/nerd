@@ -85,3 +85,7 @@ pub Result :: enum [T, E] {
     Ok(T)
     Err(E)
 }
+
+pub Iterator :: trait [Item] for Iter {
+    next :: fn (^Iter) -> Option[Item]
+}

@@ -441,6 +441,7 @@ language-known traits and result types:
 - `Default` supplies `default :: fn () -> Self`.
 - `Option[T]` is an enum with `None` and `Some(T)`.
 - `Result[T, E]` is an enum with `Ok(T)` and `Err(E)`.
+- `Iterator[Item]` supplies `next :: fn (^Self) -> Option[Item]`.
 
 These names can be used without `use core`. A local declaration with the same
 name takes precedence over the implicit core declaration, and an explicit

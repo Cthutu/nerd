@@ -107,6 +107,8 @@ should prefer the built-in `arena` type exposed through `core`.
   Requires `compare :: fn (Self, Self) -> i32`.
 - `Default`
   Requires `default :: fn () -> Self`.
+- `Iterator[Item]`
+  Requires `next :: fn (^Self) -> Option[Item]`.
 - `Option[T]`
   Tagged enum with `None` and `Some(T)`.
 - `Result[T, E]`
