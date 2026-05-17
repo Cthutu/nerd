@@ -1041,6 +1041,46 @@ internal u32 hir_lower_eq_trait_expr(Hir*         hir,
     return call;
 }
 
+internal u32 hir_lower_default_trait_expr(Hir*        hir,
+                                          const Sema* sema,
+                                          u32         node_index)
+{
+    if (node_index >= array_count(sema->node_method_call_decl_indices)) {
+        return hir_no_index();
+    }
+
+    u32 decl_index = sema->node_method_call_decl_indices[node_index];
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
+        return hir_no_index();
+    }
+
+    u32 callee_type = sema->decls[decl_index].type_index;
+    u32 binding     = hir_decl_binding(hir, decl_index);
+    u32 callee      = hir_add_expr(
+        hir,
+        (HirExpr){
+            .kind          = HIR_EXPR_LocalRef,
+            .type_index    = callee_type,
+            .symbol_handle = sema->decls[decl_index].symbol_handle,
+            .local_index   = sema_no_local(),
+            .ref_kind =
+                binding != hir_no_index() ? HIR_REF_Binding : HIR_REF_Decl,
+            .ref_index = binding != hir_no_index() ? binding : decl_index,
+        });
+
+    return hir_add_expr(hir,
+                        (HirExpr){
+                            .kind          = HIR_EXPR_Call,
+                            .type_index    = hir_node_type(sema, node_index),
+                            .symbol_handle = U32_MAX,
+                            .local_index   = sema_no_local(),
+                            .callee_expr_index = callee,
+                            .first_arg = (u32)array_count(hir->call_args),
+                            .arg_count = 0,
+                        });
+}
+
 internal u32 hir_lower_expr(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
@@ -1054,6 +1094,12 @@ internal u32 hir_lower_expr(Hir*         hir,
 
     const AstNode* node = &ast->nodes[node_index];
     HirUnaryOp     unary_op;
+    if (node->kind == AK_ZeroInit) {
+        u32 default_expr = hir_lower_default_trait_expr(hir, sema, node_index);
+        if (default_expr != hir_no_index()) {
+            return default_expr;
+        }
+    }
     if (node->kind == AK_ZeroInit || node->kind == AK_Undefined) {
         return hir_add_default_value_expr(
             hir, sema, node_index, sema_no_type());
@@ -2038,8 +2084,12 @@ internal u32 hir_lower_stmt(Hir*         hir,
             u32 local_index = hir_node_local(sema, node_index);
             u32 local_type  = hir_local_type(sema, local_index);
             if (expr_index == hir_no_index() && local_type != sema_no_type()) {
-                expr_index = hir_add_default_value_expr(
-                    hir, sema, node_index, local_type);
+                expr_index =
+                    hir_lower_default_trait_expr(hir, sema, node_index);
+                if (expr_index == hir_no_index()) {
+                    expr_index = hir_add_default_value_expr(
+                        hir, sema, node_index, local_type);
+                }
             }
             if (local_type < array_count(sema->types) &&
                 sema->types[local_type].kind == STK_DynamicArray) {

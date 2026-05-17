@@ -74,6 +74,8 @@ available through the implicit `core` import unless shadowed by a local
 declaration.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
 supplies equality for non-built-in values used with `==` and `!=`.
+`Default.default()` supplies local typed-variable initialisation when the
+variable has no initializer and a concrete implementation exists.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when

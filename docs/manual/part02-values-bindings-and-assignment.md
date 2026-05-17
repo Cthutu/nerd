@@ -106,6 +106,30 @@ when no initial value is provided:
 | slice and dynamic array    | nil-backed empty value                 |
 | fixed array, tuple, plex   | each element or field gets its default |
 
+For local typed variables, a concrete `core.Default` implementation overrides
+that storage value:
+
+```nerd
+Point :: plex {
+    x i32
+    y i32
+}
+
+impl Default for Point {
+    default :: fn () -> Self {
+        return Point { x: 10, y: 20 }
+    }
+}
+
+main :: fn () -> i32 {
+    point: Point  -- calls Default[Point].default()
+    return point.x + point.y
+}
+```
+
+When no matching `Default` implementation exists, Nerd falls back to the
+default storage value from the table above.
+
 ## Assignment
 
 Use `=` to assign to an existing mutable target.
@@ -182,12 +206,12 @@ are explained in the next part.
 ## `undefined`
 
 `undefined` creates intentionally uninitialised storage for a typed value. It
-means "reserve storage for this value, but do not fill it with the type's
-default storage value".
+means "reserve storage for this value, but do not fill it with `Default` or the
+type's default storage value".
 
 ```nerd
 main :: fn () -> i32 {
-    value: i32 = undefined  -- skip the default storage value
+    value: i32 = undefined  -- skip default initialisation
     value = 42              -- assign before reading value
     return value
 }

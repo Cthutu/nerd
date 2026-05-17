@@ -7,10 +7,11 @@ in `docs/string-runtime.md`.
 
 ## Values And Storage
 
-Bindings are immutable values. Variables allocate mutable storage. Typed
-variables without an initializer are zero-initialised. Typed variables
-initialised with `undefined` deliberately skip initialisation and are protected
-by definite-assignment checks.
+Bindings are immutable values. Variables allocate mutable storage. Local typed
+variables without an initializer use a concrete canonical `core.Default`
+implementation when one exists for the variable type; otherwise they are
+zero-initialised. Typed variables initialised with `undefined` deliberately skip
+both forms of initialisation and are protected by definite-assignment checks.
 
 ## Zero Initialisation
 

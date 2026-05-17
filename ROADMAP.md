@@ -498,13 +498,13 @@ library layering are in place.
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
   - [x] `Eq` supports equality semantics
   - [ ] `Order` supports comparison semantics through a `compare`-style member
-  - [ ] `Default` customises default initialisation for typed bindings
+  - [x] `Default` customises default initialisation for typed bindings
   - [ ] `Iterator[Item]` supplies `next :: fn (iter: ^Iter) -> Option[Item]`
-- [ ] Add `Default` initialisation rules:
-  - [ ] `x: T` uses `Default[T].default()` when an implementation exists
-  - [ ] `x: T` falls back to zero-initialisation when no `Default`
+- [x] Add `Default` initialisation rules:
+  - [x] `x: T` uses `Default[T].default()` when an implementation exists
+  - [x] `x: T` falls back to zero-initialisation when no `Default`
     implementation exists
-  - [ ] `x: T = undefined` remains the explicit way to opt out of
+  - [x] `x: T = undefined` remains the explicit way to opt out of
     initialisation
 - [ ] Add `Iterator` loop rules:
   - [ ] use one `Iterator` trait only in the first version
@@ -591,8 +591,8 @@ library layering are in place.
     `Iterator`
   - [x] language tests for built-in `Display`, `Eq`, and `Default`
   - [x] language tests for `Eq` driving `==` and `!=`
-  - [ ] language tests for `Default` overriding typed-binding initialisation
-  - [ ] language tests for zero-initialisation fallback when no `Default`
+  - [x] language tests for `Default` overriding typed-binding initialisation
+  - [x] language tests for zero-initialisation fallback when no `Default`
     implementation exists
   - [ ] language tests for `Iterator` returning `Option[Item]`
   - [ ] language tests for `for elem` and `for ^elem` item typing
@@ -616,7 +616,7 @@ library layering are in place.
   - [x] manual examples for receiver and explicit trait calls
   - [x] manual examples for generic constraints using traits
   - [x] manual section for built-in traits in `core`
-  - [ ] manual examples for `Default` initialisation and zero-init fallback
+  - [x] manual examples for `Default` initialisation and zero-init fallback
   - [ ] manual examples for `Iterator` and `Option[Item]`
   - [x] standard-library documentation for `core.Option[T]`,
     `core.Result[T, E]`, and core built-in traits

@@ -40,12 +40,14 @@ variable ::= IDENT ':=' expression
 ```
 
 Bindings introduce constants, functions, FFI functions, module references, or
-type aliases. Variables introduce mutable storage. A typed variable without an
-initializer is zero-initialised.
+type aliases. Variables introduce mutable storage. A local typed variable
+without an initializer calls the canonical `core.Default` implementation for
+its type when a concrete implementation exists; otherwise it is
+zero-initialised.
 
 `undefined` is only valid where the parser builds an explicitly typed variable
-initializer. Semantic definite-assignment checks require it to be assigned before
-read.
+initializer. It opts out of both `Default` and zero-initialisation. Semantic
+definite-assignment checks require it to be assigned before read.
 
 ## Unused And Discard Names
 

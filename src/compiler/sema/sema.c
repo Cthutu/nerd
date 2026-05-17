@@ -9055,6 +9055,135 @@ internal u32 sema_find_core_eq_method_decl(
     return sema_no_decl();
 }
 
+internal u32 sema_find_core_default_method_decl(const Lexer* lexer,
+                                                const Ast*   ast,
+                                                Sema*        sema,
+                                                u32          target_type)
+{
+    u32 default_trait = sema_find_core_trait_symbol(lexer, sema, s("Default"));
+    if (default_trait == sema_no_decl() || target_type == sema_no_type()) {
+        return sema_no_decl();
+    }
+
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (!method->is_trait_impl || method->generic_params_index != U32_MAX ||
+            method->symbol_handle == U32_MAX ||
+            !string_eq_cstr(lex_symbol(lexer, method->symbol_handle),
+                            "default") ||
+            method->impl_node_index >= array_count(ast->nodes) ||
+            method->decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[method->impl_node_index];
+        if (impl_node->kind != AK_Impl ||
+            impl_node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        if (!sema_method_matches_trait_symbol(
+                lexer, lexer, ast, method, default_trait)) {
+            continue;
+        }
+
+        u32 impl_target_type = sema_no_type();
+        if (!sema_resolve_type_node(lexer,
+                                    ast,
+                                    sema,
+                                    method->target_type_node_index,
+                                    &impl_target_type) ||
+            !sema_type_matches(sema, impl_target_type, target_type)) {
+            continue;
+        }
+
+        const SemaDecl* decl = &sema->decls[method->decl_index];
+        if (decl->value_node_index >= array_count(ast->nodes) ||
+            ast->nodes[decl->value_node_index].kind != AK_FnDef) {
+            continue;
+        }
+        const AstNode*        fn_def    = &ast->nodes[decl->value_node_index];
+        const AstNode*        fn_start  = &ast->nodes[fn_def->a];
+        const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+        if (signature->param_count != 0 || !method->is_associated) {
+            continue;
+        }
+
+        return method->decl_index;
+    }
+
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->kind != SK_Function ||
+            decl->bind_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* bind = &ast->nodes[decl->bind_node_index];
+        if (bind->kind != AK_Bind ||
+            !string_eq_cstr(lex_symbol(lexer, ast_get_symbol(bind)),
+                            "default")) {
+            continue;
+        }
+
+        u32 impl_node_index =
+            sema_enclosing_impl_node_index(ast, decl->bind_node_index);
+        if (impl_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[impl_node_index];
+        if (impl_node->kind != AK_Impl ||
+            impl_node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        const AstImplInfo* impl = &ast->impls[impl_node->a];
+        u32                trait_symbol =
+            sema_trait_symbol_from_type_node(ast, impl->trait_type_node_index);
+        if (trait_symbol == U32_MAX ||
+            !string_eq(lex_symbol(lexer, trait_symbol),
+                       lex_symbol(lexer, default_trait))) {
+            continue;
+        }
+
+        u32 impl_target_type = sema_no_type();
+        if (!sema_resolve_type_node(lexer,
+                                    ast,
+                                    sema,
+                                    impl->target_type_node_index,
+                                    &impl_target_type) ||
+            !sema_type_matches(sema, impl_target_type, target_type)) {
+            continue;
+        }
+
+        if (decl->value_node_index >= array_count(ast->nodes) ||
+            ast->nodes[decl->value_node_index].kind != AK_FnDef) {
+            continue;
+        }
+        const AstNode*        fn_def    = &ast->nodes[decl->value_node_index];
+        const AstNode*        fn_start  = &ast->nodes[fn_def->a];
+        const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+        if (signature->param_count != 0 ||
+            signature->return_type_node_index == U32_MAX) {
+            continue;
+        }
+
+        u32 return_type = signature->return_type_node_index;
+        while (ast->nodes[return_type].kind == AK_Expression ||
+               ast->nodes[return_type].kind == AK_Statement) {
+            return_type = ast->nodes[return_type].a;
+        }
+        const AstNode* return_node = &ast->nodes[return_type];
+        if (return_node->kind == AK_SymbolRef &&
+            string_eq(lex_symbol(lexer, return_node->a), s("Self"))) {
+            return i;
+        }
+    }
+
+    return sema_no_decl();
+}
+
 internal bool sema_on_covers_all_enum_variants(const Ast*  ast,
                                                const Sema* sema,
                                                u32         on_index,
@@ -11599,6 +11728,39 @@ internal bool sema_block_has_value_break_for_target(const Ast* ast,
     return false;
 }
 
+internal void sema_select_default_method_for_local(const Lexer* lexer,
+                                                   const Ast*   ast,
+                                                   Sema*        sema,
+                                                   SemaLocal*   local)
+{
+    if (local->kind != SLK_Variable ||
+        local->value_node_index != sema_no_decl() ||
+        local->type_index == sema_no_type() ||
+        local->decl_node_index >= array_count(ast->nodes)) {
+        return;
+    }
+
+    const AstNode* payload = &ast->nodes[local->decl_node_index];
+    if (payload->kind != AK_Variable || payload->b >= array_count(ast->nodes)) {
+        return;
+    }
+
+    u32 payload_index = payload->b;
+    payload           = &ast->nodes[payload_index];
+    if (payload->kind != AK_ZeroInit) {
+        return;
+    }
+
+    u32 default_method_decl =
+        sema_find_core_default_method_decl(lexer, ast, sema, local->type_index);
+    if (default_method_decl != sema_no_decl()) {
+        sema->node_method_call_decl_indices[local->decl_node_index] =
+            default_method_decl;
+        sema->node_method_call_decl_indices[payload_index] =
+            default_method_decl;
+    }
+}
+
 internal bool sema_infer_local_binding_type(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -11607,6 +11769,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
 {
     SemaLocal* local = &sema->locals[local_index];
     if (local->type_index != sema_no_type()) {
+        sema_select_default_method_for_local(lexer, ast, sema, local);
         *out_type_index = local->type_index;
         return true;
     }
@@ -11713,7 +11876,8 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
                            : sema_materialise_type(sema, inferred));
         }
         sema->node_type_indices[local->decl_node_index] = local->type_index;
-        *out_type_index                                 = local->type_index;
+        sema_select_default_method_for_local(lexer, ast, sema, local);
+        *out_type_index = local->type_index;
     }
 
     ast_clear_flag(bind_node, ANF_ConstBusy);
@@ -16007,7 +16171,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_type_name(lexer, sema, &temp_arena, annotated));
                 }
                 local->type_index = annotated;
-                type_index        = annotated;
+                sema_select_default_method_for_local(lexer, ast, sema, local);
+                type_index = annotated;
                 break;
             }
 

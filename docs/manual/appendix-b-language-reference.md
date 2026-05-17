@@ -36,6 +36,11 @@ intended exit code.
 - `=` assigns to an existing mutable target.
 - `undefined` is intentionally uninitialised and must be assigned before it is
   read.
+- A local `name: Type` variable calls `core.Default[Type].default()` when a
+  concrete implementation exists; otherwise it uses the type's default storage
+  value.
+- `name: Type = undefined` opts out of both `Default` and default storage
+  initialisation.
 - `nil` is available for pointer-like and slice-like values where supported.
 - Pointer equality supports matching pointer types, `nil`, and `^void` compared
   with any pointer type.

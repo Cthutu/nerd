@@ -439,7 +439,9 @@ language-known traits and result types:
 - `Eq` supplies `eq :: fn (Self, Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values.
 - `Order` supplies `compare :: fn (Self, Self) -> i32`.
-- `Default` supplies `default :: fn () -> Self`.
+- `Default` supplies `default :: fn () -> Self`. Local typed variables without
+  an initializer use this trait when the variable type has a concrete
+  implementation.
 - `Option[T]` is an enum with `None` and `Some(T)`.
 - `Result[T, E]` is an enum with `Ok(T)` and `Err(E)`.
 - `Iterator[Item]` supplies `next :: fn (^Self) -> Option[Item]`.
