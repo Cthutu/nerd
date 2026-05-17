@@ -423,7 +423,9 @@ void error_add_help(ErrorInfo* error_info, cstr format, ...);
 //      - The line with the error has a marker (^) that points to the error. `^`
 //        is a primary marker, and `~` is used as a secondary marker.
 //      - The gutter width adapts to the width of the widest line number.
-//      - We always show 2 code lines before and after the error for context.
+//      - We show up to 2 code lines before and after each referenced source
+//        location. When referenced areas are far apart, a gutter-only divider
+//        separates the displayed regions.
 //  - There is a note that provides additional information about the error.
 //  - There is a help message to tell the user what they should do to attempt to
 //    fix the problem.

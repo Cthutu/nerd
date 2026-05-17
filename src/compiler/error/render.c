@@ -258,6 +258,11 @@ internal void error_print_gutter_blank(usize gutter_width)
     epr("%*s %s|%s\n", (int)gutter_width, "", ANSI_BOLD_CYAN, ANSI_RESET);
 }
 
+internal void error_print_gutter_divider(usize gutter_width)
+{
+    epr("%*s %s|%s\n", (int)gutter_width, "", ANSI_BOLD_CYAN, ANSI_RESET);
+}
+
 internal void
 error_print_source_line(usize gutter_width, u32 line_number, string source_line)
 {
@@ -422,6 +427,29 @@ internal void error_print_reference_line(const ErrorInfo* error_info,
     epr("%s\n", ANSI_RESET);
 }
 
+internal bool error_line_is_near_reference(const ErrorInfo* error_info,
+                                           u32              line)
+{
+    for (usize i = 0; i < array_count(error_info->references); i++) {
+        u32 ref_line = 0;
+        u32 ref_col  = 0;
+        if (!lex_offset_to_line_col(error_info->source,
+                                    error_info->references[i].span.start,
+                                    &ref_line,
+                                    &ref_col)) {
+            continue;
+        }
+        UNUSED(ref_col);
+
+        u32 ref_start = ref_line > 2 ? ref_line - 2 : 0;
+        u32 ref_end   = ref_line + 2;
+        if (ref_start <= line && line <= ref_end) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void error_print_snippet(const ErrorInfo* error_info)
 {
     string source_text = error_info->source.source;
@@ -462,11 +490,22 @@ internal void error_print_snippet(const ErrorInfo* error_info)
 
     error_print_gutter_blank(gutter_width);
 
+    bool printed_line = false;
+    u32  last_printed = 0;
     for (u32 line = display_start; line <= display_end; line++) {
+        if (!error_line_is_near_reference(error_info, line)) {
+            continue;
+        }
+        if (printed_line && line > last_printed + 1) {
+            error_print_gutter_divider(gutter_width);
+        }
+
         ErrorSpan line_span = error_find_line_span(source_text, line);
         string    line_text = string_from(source_text.data + line_span.start,
                                           line_span.end - line_span.start);
         error_print_source_line(gutter_width, line + 1, line_text);
+        printed_line = true;
+        last_printed = line;
 
         for (usize i = 0; i < array_count(error_info->references); i++) {
             const ErrorRef* ref = &error_info->references[i];
