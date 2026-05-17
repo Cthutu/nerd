@@ -33,16 +33,10 @@ fallback=9
 hir 0
 module module.0(072-top-level-on.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind answer = value.0
 bind mode_answer = value.1
 bind arch_answer = value.2
@@ -53,10 +47,10 @@ const value.1: untyped integer = untyped integer 11
 const value.2: untyped integer = untyped integer 13
 const value.3: untyped integer = untyped integer 9
 func fn.0() -> void {
-  expr void call bind.2(prn)(string interpolate(<unknown> "answer=", untyped integer bind.5(answer)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "mode=", untyped integer bind.6(mode_answer)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "arch=", untyped integer bind.7(arch_answer)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "fallback=", untyped integer bind.8(fallback)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "answer=", untyped integer bind.2(answer)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "mode=", untyped integer bind.3(mode_answer)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "arch=", untyped integer bind.4(arch_answer)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "fallback=", untyped integer bind.5(fallback)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -92,10 +86,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal void @fn.0() {

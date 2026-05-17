@@ -23,24 +23,18 @@ q other: 5, 6
 hir 0
 module module.0(056-plexes.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Point = type.0
 bind main = fn.0
 type type.0 = Point
 func fn.0() -> i32 {
   let p: Point = Point plex(x: i32 3, y: i32 4, name: string "origin")
   let q: Point = Point plex(name: string "other", x: i32 5, y: i32 6)
-  expr void call bind.2(prn)(string interpolate(<unknown> "p ", string field(Point local.0(p), name), <unknown> ": ", i32 field(Point local.0(p), x), <unknown> ", ", i32 field(Point local.0(p), y)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "q ", string field(Point local.1(q), name), <unknown> ": ", i32 field(Point local.1(q), x), <unknown> ", ", i32 field(Point local.1(q), y)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "p ", string field(Point local.0(p), name), <unknown> ": ", i32 field(Point local.0(p), x), <unknown> ", ", i32 field(Point local.0(p), y)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "q ", string field(Point local.1(q), name), <unknown> ": ", i32 field(Point local.1(q), x), <unknown> ", ", i32 field(Point local.1(q), y)))
   return i32 add(i32 add(i32 add(i32 field(Point local.0(p), x), i32 field(Point local.0(p), y)), i32 field(Point local.1(q), x)), i32 field(Point local.1(q), y))
 }
 ¬
@@ -77,10 +71,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

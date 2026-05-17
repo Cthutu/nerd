@@ -122,14 +122,14 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
+            "uri": "file:///home/matt/nerd/mods/core.n",
             "range": {
                 "start": {
-                    "line": 28,
+                    "line": 29,
                     "character": 4
                 },
                 "end": {
-                    "line": 28,
+                    "line": 29,
                     "character": 7
                 }
             }
@@ -139,7 +139,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
+            "uri": "file:///home/matt/nerd/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 0,

@@ -59,8 +59,6 @@ Each example in the manual should be one of:
 Complete examples should prefer:
 
 ```nerd
-use std.io
-
 main :: fn () {
     prn("hello")
 }
@@ -69,10 +67,12 @@ main :: fn () {
 When a feature depends on module qualification, use:
 
 ```nerd
-io :: use std.io
+str :: use std.string
 
 main :: fn () {
-    io.prn("hello")
+    parts := str.split("hello world", " ")
+    defer parts.free()
+    prn(parts[0])
 }
 ```
 
@@ -87,7 +87,6 @@ Concepts:
 - comments with `--`
 - expression-bodied and block-bodied functions
 - `void` return behaviour
-- importing `std.io`
 - printing with `pr` and `prn`
 
 Rules to teach:

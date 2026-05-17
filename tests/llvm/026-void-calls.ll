@@ -9,10 +9,7 @@ main :: fn() {
 
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"Hello\00"
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal void @fn.0() {

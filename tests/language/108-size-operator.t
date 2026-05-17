@@ -32,16 +32,10 @@ i32=4 literal=4 array=12 slice=16 string=16 ptr=8 nil=0 fn=8 void=0
 hir 0
 module module.0(108-size-operator.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind helper = fn.0
 bind main = fn.1
 func fn.0() -> i32 {
@@ -59,9 +53,9 @@ func fn.1() -> i32 {
   let string_size: usize = usize field(string local.0(text), size)
   let ptr_size: usize = usize field(^i32 local.3(ptr), size)
   let nil_size: usize = usize field(nil nil, size)
-  let fn_size: usize = usize field(fn () -> i32 bind.5(helper), size)
+  let fn_size: usize = usize field(fn () -> i32 bind.2(helper), size)
   let void_size: usize = usize field(void void, size)
-  expr void call bind.2(prn)(string interpolate(<unknown> "i32=", usize local.4(i32_size), <unknown> " literal=", usize local.5(literal_size), <unknown> " array=", usize local.6(array_size), <unknown> " slice=", usize local.7(slice_size), <unknown> " string=", usize local.8(string_size), <unknown> " ptr=", usize local.9(ptr_size), <unknown> " nil=", usize local.10(nil_size), <unknown> " fn=", usize local.11(fn_size), <unknown> " void=", usize local.12(void_size)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "i32=", usize local.4(i32_size), <unknown> " literal=", usize local.5(literal_size), <unknown> " array=", usize local.6(array_size), <unknown> " slice=", usize local.7(slice_size), <unknown> " string=", usize local.8(string_size), <unknown> " ptr=", usize local.9(ptr_size), <unknown> " nil=", usize local.10(nil_size), <unknown> " fn=", usize local.11(fn_size), <unknown> " void=", usize local.12(void_size)))
   let total: usize = usize add(usize add(usize add(usize add(usize add(usize add(usize add(usize add(usize local.4(i32_size), usize local.5(literal_size)), usize local.6(array_size)), usize local.7(slice_size)), usize local.8(string_size)), usize local.9(ptr_size)), usize local.10(nil_size)), usize local.11(fn_size)), usize local.12(void_size))
   return i32 cast(usize local.13(total) as i32)
 }
@@ -101,10 +95,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

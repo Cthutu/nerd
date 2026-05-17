@@ -1,7 +1,8 @@
 io :: use std.io
 
 main :: fn () {
-    io.prn("hello")
+    line := io.input("name: ")
+    prn(line)
 }
 ¬
 [
@@ -15,7 +16,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 7
+                "character": 15
             }
         }
     }
@@ -84,22 +85,6 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 2,
         "result": [
-            {
-                "label": "pr",
-                "kind": 3
-            },
-            {
-                "label": "epr",
-                "kind": 3
-            },
-            {
-                "label": "prn",
-                "kind": 3
-            },
-            {
-                "label": "eprn",
-                "kind": 3
-            },
             {
                 "label": "input",
                 "kind": 3

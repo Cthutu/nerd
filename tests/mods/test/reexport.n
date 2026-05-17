@@ -1,4 +1,4 @@
-pub printer :: use std.io
+pub printer :: use core
 
 pub forty_two :: fn() -> i32 {
     return 42

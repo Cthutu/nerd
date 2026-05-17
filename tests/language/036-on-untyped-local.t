@@ -18,20 +18,14 @@ non-zero: 2
 hir 0
 module module.0(036-on-untyped-local.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind main = fn.0
 func fn.0() -> void {
   let i: untyped integer = untyped integer 2
-  expr void call bind.2(prn)(string on i32 local.0(i) {
+  expr void call bind.0(prn)(string on i32 local.0(i) {
     value(i32 0) => {
       expr string "zero"
     }
@@ -68,10 +62,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal void @fn.0() {

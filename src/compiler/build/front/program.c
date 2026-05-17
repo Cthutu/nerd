@@ -910,7 +910,9 @@ internal bool program_load_implicit_core(ProgramInfo*           program,
             string_eq_cstr(symbol, "Result") ||
             string_eq_cstr(symbol, "Iterator") ||
             string_eq_cstr(symbol, "arena") ||
-            string_eq_cstr(symbol, "temp_arena")) {
+            string_eq_cstr(symbol, "temp_arena") ||
+            string_eq_cstr(symbol, "pr") || string_eq_cstr(symbol, "prn") ||
+            string_eq_cstr(symbol, "epr") || string_eq_cstr(symbol, "eprn")) {
             needs_core = true;
             break;
         }

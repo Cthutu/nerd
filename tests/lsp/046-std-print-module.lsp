@@ -1,4 +1,4 @@
-print :: use std.io
+print :: use core
 
 main :: fn () {
     print.prn("Hello")
@@ -146,14 +146,14 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
+            "uri": "file:///home/matt/nerd/mods/core.n",
             "range": {
                 "start": {
-                    "line": 28,
+                    "line": 29,
                     "character": 4
                 },
                 "end": {
-                    "line": 28,
+                    "line": 29,
                     "character": 7
                 }
             }
@@ -163,7 +163,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 5,
         "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
+            "uri": "file:///home/matt/nerd/mods/core.n",
             "range": {
                 "start": {
                     "line": 0,

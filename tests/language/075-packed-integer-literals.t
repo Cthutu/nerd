@@ -26,16 +26,8 @@ main :: fn () -> i32 {
 hir 0
 module module.0(075-packed-integer-literals.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 input from module.1(std.io).decl.5: fn (string) -> string
+bind input = import.0
 bind a = value.0
 bind ab = value.1
 bind abc = value.2
@@ -46,7 +38,7 @@ const value.1: u16 = u16 24930
 const value.2: u32 = u32 6382179
 const value.3: u64 = u64 418262508645
 func fn.0() -> i32 {
-  let ok: bool = bool logical_and(bool logical_and(bool logical_and(bool equal(u8 bind.5(a), u8 97), bool equal(u16 bind.6(ab), u16 24930)), bool equal(u32 bind.7(abc), u32 6382179)), bool equal(u64 bind.8(abcde), u64 418262508645))
+  let ok: bool = bool logical_and(bool logical_and(bool logical_and(bool equal(u8 bind.1(a), u8 97), bool equal(u16 bind.2(ab), u16 24930)), bool equal(u32 bind.3(abc), u32 6382179)), bool equal(u64 bind.4(abcde), u64 418262508645))
   let upper: bool = bool on u8 81 {
     range_inclusive(u8 65, u8 90) => {
       expr bool yes
@@ -76,10 +68,6 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
-declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

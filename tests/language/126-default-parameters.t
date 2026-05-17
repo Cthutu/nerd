@@ -29,16 +29,10 @@ inner 28
 hir 0
 module module.0(126-default-parameters.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind add = fn.0
 bind scale = fn.1
 bind with_call_default = fn.2
@@ -55,17 +49,17 @@ func fn.2(value: i32) -> i32 {
 }
 func fn.3(a: i32) -> void {
   let inner: fn (i32, i32) -> i32 = fn (i32, i32) -> i32 fn.4
-  expr void call bind.2(prn)(string interpolate(<unknown> "inner ", i32 call local.6(inner)(i32 local.5(a))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "inner ", i32 call local.6(inner)(i32 local.5(a))))
 }
 func fn.4(x: i32, y: i32) -> i32 {
   return i32 multiply(i32 local.7(x), i32 local.8(y))
 }
 func fn.5() -> void {
-  expr void call bind.2(prn)(string interpolate(<unknown> "one ", i32 call bind.5(add)(i32 2)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "two ", i32 call bind.5(add)(i32 2, i32 3)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "three ", i32 call bind.5(add)(i32 2, i32 3, i32 4)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "call ", i32 call bind.7(with_call_default)()))
-  expr void call bind.8(local_call)(i32 4)
+  expr void call bind.0(prn)(string interpolate(<unknown> "one ", i32 call bind.2(add)(i32 2)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "two ", i32 call bind.2(add)(i32 2, i32 3)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "three ", i32 call bind.2(add)(i32 2, i32 3, i32 4)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "call ", i32 call bind.4(with_call_default)()))
+  expr void call bind.5(local_call)(i32 4)
 }
 ¬
 ; nerd llvm-ir 0
@@ -98,10 +92,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0(i32 %a, i32 %b, i32 %c) {

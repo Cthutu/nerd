@@ -25,16 +25,10 @@ bits
 hir 0
 module module.0(031-primitive-operators.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind half = value.0
 bind limit = value.1
 bind main = fn.0
@@ -43,7 +37,7 @@ global value.1: f64 = f64 2
 func fn.0() -> i32 {
   let mask: u32 = u32 14
   let ordered: bool = bool logical_and(bool logical_and(bool logical_and(bool less(untyped integer 3, untyped integer 4), bool less_equal(untyped integer 4, untyped integer 4)), bool greater(untyped integer 5, untyped integer 4)), bool greater_equal(untyped integer 5, untyped integer 5))
-  expr void call bind.2(prn)(string on bool logical_and(bool less(untyped float 1.5, f64 bind.6(limit)), bool logical_not(bool no)) {
+  expr void call bind.0(prn)(string on bool logical_and(bool less(untyped float 1.5, f64 bind.3(limit)), bool logical_not(bool no)) {
     value(bool yes) => {
       expr string "float"
     }
@@ -51,7 +45,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.2(prn)(string on bool local.1(ordered) {
+  expr void call bind.0(prn)(string on bool local.1(ordered) {
     value(bool yes) => {
       expr string "cmp"
     }
@@ -59,7 +53,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.2(prn)(string on bool equal(untyped integer modulo(untyped integer 5, untyped integer 2), untyped integer 1) {
+  expr void call bind.0(prn)(string on bool equal(untyped integer modulo(untyped integer 5, untyped integer 2), untyped integer 1) {
     value(bool yes) => {
       expr string "mod"
     }
@@ -67,7 +61,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.2(prn)(string on bool logical_or(bool equal(u32 bitwise_xor(u32 bitwise_and(u32 local.0(mask), u32 11), u32 3), u32 9), bool no) {
+  expr void call bind.0(prn)(string on bool logical_or(bool equal(u32 bitwise_xor(u32 bitwise_and(u32 local.0(mask), u32 11), u32 3), u32 9), bool no) {
     value(bool yes) => {
       expr string "bits"
     }
@@ -75,7 +69,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  return untyped integer on bool logical_and(bool less_equal(f32 bind.5(half), f32 0.5), bool not_equal(untyped integer 3, untyped integer 4)) {
+  return untyped integer on bool logical_and(bool less_equal(f32 bind.2(half), f32 0.5), bool not_equal(untyped integer 3, untyped integer 4)) {
     value(bool yes) => {
       expr untyped integer 1
     }
@@ -97,10 +91,7 @@ func fn.0() -> i32 {
 @.str.m0.6 = private unnamed_addr constant [5 x i8] c"bits\00"
 @.str.m0.7 = private unnamed_addr constant [4 x i8] c"bad\00"
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 @$half = internal global float 0.000000e+00

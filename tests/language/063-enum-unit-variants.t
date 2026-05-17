@@ -42,16 +42,10 @@ total 60
 hir 0
 module module.0(063-enum-unit-variants.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Colour = type.0
 bind score = fn.0
 bind pick_shadowed = fn.1
@@ -78,12 +72,12 @@ func fn.1() -> Colour {
 func fn.2() -> i32 {
   let red: Colour = Colour Red
   let green: Colour = Colour Green
-  let blue: Colour = Colour field(Colour bind.5(Colour), Blue)
-  expr void call bind.2(prn)(string interpolate(<unknown> "red ", i32 call bind.6(score)(Colour local.3(red))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "green ", i32 call bind.6(score)(Colour local.4(green))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "blue ", i32 call bind.6(score)(Colour local.5(blue))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "shadowed ", i32 call bind.6(score)(Colour call bind.7(pick_shadowed)())))
-  expr void call bind.2(prn)(string interpolate(<unknown> "total ", i32 add(i32 add(i32 call bind.6(score)(Colour local.3(red)), i32 call bind.6(score)(Colour local.4(green))), i32 call bind.6(score)(Colour local.5(blue)))))
+  let blue: Colour = Colour field(Colour bind.2(Colour), Blue)
+  expr void call bind.0(prn)(string interpolate(<unknown> "red ", i32 call bind.3(score)(Colour local.3(red))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "green ", i32 call bind.3(score)(Colour local.4(green))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "blue ", i32 call bind.3(score)(Colour local.5(blue))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "shadowed ", i32 call bind.3(score)(Colour call bind.4(pick_shadowed)())))
+  expr void call bind.0(prn)(string interpolate(<unknown> "total ", i32 add(i32 add(i32 call bind.3(score)(Colour local.3(red)), i32 call bind.3(score)(Colour local.4(green))), i32 call bind.3(score)(Colour local.5(blue)))))
   return i32 0
 }
 ¬
@@ -117,10 +111,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i64 } %colour) {

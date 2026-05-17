@@ -16,26 +16,21 @@ by themselves; like other values in Nerd, they get names through bindings.
 The first example binds `main` to a simple function:
 
 ```nerd
-use std.io  -- import public names from the std.io module
-
 main :: fn () {
     prn("hello, Nerd")  -- print a line of text
 }
 ```
 
-This program imports `std.io`, declares a function named `main`, and prints one
-line of text. `std.io` is a module from the standard library. A module is a file
-of code that exports names for other files to use. Modules are covered later;
-for now, `use std.io` makes the printing functions `pr` and `prn` available.
-`pr` prints text without adding a newline. `prn` prints text and then moves to
-the next line.
+This program declares a function named `main` and prints one line of text.
+`pr` and `prn` come from `core`, which every file imports implicitly. `pr`
+prints text without adding a newline. `prn` prints text and then moves to the
+next line.
 
-| Form            | Meaning                               |
-| --------------- | ------------------------------------- |
-| `use std.io`    | import the public names from `std.io` |
-| `main :: ...`   | bind the top-level name `main`        |
-| `fn () { ... }` | define a function with no parameters  |
-| `prn("text")`   | print text followed by a newline      |
+| Form            | Meaning                              |
+| --------------- | ------------------------------------ |
+| `main :: ...`   | bind the top-level name `main`       |
+| `fn () { ... }` | define a function with no parameters |
+| `prn("text")`   | print text followed by a newline     |
 
 ## Comments
 
@@ -125,11 +120,9 @@ Expression-bodied functions infer their return type from the expression body.
 
 ## Printing
 
-Most examples in this manual use `std.io`:
+Most examples in this manual use `core` printing:
 
 ```nerd
-use std.io
-
 main :: fn () {
     pr("same line")       -- print without a newline
     prn(" then newline")  -- print, then add a newline
@@ -137,7 +130,5 @@ main :: fn () {
 ```
 
 `pr` prints text without a newline. `prn` prints text followed by a newline.
-They come from the standard library, which is a set of useful modules shipped
-with the compiler. The standard library is documented separately because it is
-still growing. In this manual, its exact API is not important at first; `std.io`
-is mainly a convenient way to see program behaviour.
+They come from `core`, which is imported implicitly so small examples can show
+program behaviour without an explicit module import.

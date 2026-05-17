@@ -21,25 +21,21 @@ same line
 hir 0
 module module.0(071-use-modules.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 pr from module.2(core).decl.11: fn (string) -> void
+import import.1 prn from module.2(core).decl.13: fn (string) -> void
+import import.2 input from module.1(std.io).decl.5: fn (string) -> string
 bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+bind prn = import.1
+bind input = import.2
 bind main = fn.0
 func fn.0() -> void {
-  expr void call bind.2(prn)(string "top")
+  expr void call bind.1(prn)(string "top")
   expr module <unsupported>
   let p: module = module <unsupported>
   expr void <unsupported>
-  expr void call bind.2(prn)(string "local")
+  expr void call bind.1(prn)(string "local")
   expr void call bind.0(pr)(string "same")
-  expr void call bind.2(prn)(string " line")
+  expr void call bind.1(prn)(string " line")
 }
 ¬
 ; nerd llvm-ir 0
@@ -51,9 +47,7 @@ func fn.0() -> void {
 @.str.m0.3 = private unnamed_addr constant [6 x i8] c" line\00"
 
 declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal void @fn.0() {

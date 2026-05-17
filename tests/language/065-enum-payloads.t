@@ -30,16 +30,10 @@ scores 0 5 30 100
 hir 0
 module module.0(065-enum-payloads.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Maybe = type.0
 bind score = fn.0
 bind main = fn.1
@@ -63,10 +57,10 @@ func fn.0(value: Maybe) -> i32 {
 func fn.1() -> i32 {
   let a: Maybe = Maybe None
   let b: Maybe = Maybe call Some(i32 5)
-  let c: Maybe = Maybe call Maybe field(Maybe bind.5(Maybe), Pair)(i32 10, i32 20)
+  let c: Maybe = Maybe call Maybe field(Maybe bind.2(Maybe), Pair)(i32 10, i32 20)
   let d: Maybe = Maybe call Text(string "hello")
-  expr void call bind.2(prn)(string interpolate(<unknown> "scores ", i32 call bind.6(score)(Maybe local.4(a)), <unknown> " ", i32 call bind.6(score)(Maybe local.5(b)), <unknown> " ", i32 call bind.6(score)(Maybe local.6(c)), <unknown> " ", i32 call bind.6(score)(Maybe local.7(d))))
-  return i32 call bind.6(score)(Maybe local.6(c))
+  expr void call bind.0(prn)(string interpolate(<unknown> "scores ", i32 call bind.3(score)(Maybe local.4(a)), <unknown> " ", i32 call bind.3(score)(Maybe local.5(b)), <unknown> " ", i32 call bind.3(score)(Maybe local.6(c)), <unknown> " ", i32 call bind.3(score)(Maybe local.7(d))))
+  return i32 call bind.3(score)(Maybe local.6(c))
 }
 ¬
 ; nerd llvm-ir 0
@@ -99,10 +93,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i128 } %value) {

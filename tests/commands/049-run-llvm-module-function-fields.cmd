@@ -1,7 +1,7 @@
-print :: use std.io
+print :: use core
 
 main :: fn() {
-    local_print :: use std.io
+    local_print :: use core
 
     local_print.prn("Local")
     print.prn("Hello")

@@ -28,16 +28,10 @@ main :: fn () {
 hir 0
 module module.0(084-nested-local-fn-in-block-body.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind lowercase_first = fn.0
 bind main = fn.2
 func fn.0(text: string, char: u8) -> u8 {
@@ -61,7 +55,7 @@ func fn.1(char: u8) -> u8 {
   }
 }
 func fn.2() -> void {
-  expr void call bind.2(prn)(string interpolate(u8 call bind.5(lowercase_first)(string "ABC")))
+  expr void call bind.0(prn)(string interpolate(u8 call bind.2(lowercase_first)(string "ABC")))
 }
 ¬
 ; nerd llvm-ir 0
@@ -90,10 +84,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {

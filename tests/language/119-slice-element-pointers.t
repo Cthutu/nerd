@@ -33,16 +33,10 @@ main :: fn () -> i32 {
 hir 0
 module module.0(119-slice-element-pointers.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind main = fn.0
 func fn.0() -> i32 {
   let fixed: [3]i32 = [3]i32 array(i32 10, i32 20, i32 30)
@@ -59,7 +53,7 @@ func fn.0() -> i32 {
   assign i32 deref(^i32 local.5(dyn_ptr)) = i32 7
   let text: string = string "abc"
   let char_ptr: ^u8 = ^u8 address_of(u8 index(string local.6(text), untyped integer 1))
-  expr void call bind.2(prn)(string interpolate(i32 index([3]i32 local.0(fixed), untyped integer 1), <unknown> " ", i32 index([]i32 local.2(slice), untyped integer 2), <unknown> " ", i32 index([..]i32 local.4(dyn), untyped integer 1), <unknown> " ", u8 deref(^u8 local.7(char_ptr))))
+  expr void call bind.0(prn)(string interpolate(i32 index([3]i32 local.0(fixed), untyped integer 1), <unknown> " ", i32 index([]i32 local.2(slice), untyped integer 2), <unknown> " ", i32 index([..]i32 local.4(dyn), untyped integer 1), <unknown> " ", u8 deref(^u8 local.7(char_ptr))))
   let result: i32 = i32 add(i32 add(i32 add(i32 index([3]i32 local.0(fixed), untyped integer 1), i32 index([]i32 local.2(slice), untyped integer 2)), i32 index([..]i32 local.4(dyn), untyped integer 1)), i32 cast(u8 deref(^u8 local.7(char_ptr)) as i32))
   expr void call fn () -> void field([..]i32 local.4(dyn), free)()
   return i32 local.8(result)
@@ -97,10 +91,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

@@ -35,16 +35,10 @@ main :: fn () {
 hir 0
 module module.0(079-contextual-plex-and-slice.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Point = type.0
 bind origin = value.0
 bind points = value.1
@@ -55,14 +49,14 @@ const value.0: Point = Point plex(x: i32 9, y: i32 8)
 const value.1: []Point = []Point array(Point plex(x: i32 1, y: i32 2), Point plex(x: i32 3, y: i32 4))
 func fn.0(items: []Point) -> void {
   let last: Point = Point index([]Point local.0(items), usize subtract(usize field([]Point local.0(items), count), usize 1))
-  expr void call bind.2(prn)(string interpolate(i32 field(Point local.1(last), x), <unknown> " ", i32 field(Point local.1(last), y)))
+  expr void call bind.0(prn)(string interpolate(i32 field(Point local.1(last), x), <unknown> " ", i32 field(Point local.1(last), y)))
 }
 func fn.1() -> void {
   let p: Point = Point plex(x: i32 5, y: i32 6)
-  expr void call bind.2(prn)(string interpolate(i32 field(Point bind.6(origin), x), <unknown> " ", i32 field(Point bind.6(origin), y)))
-  expr void call bind.2(prn)(string interpolate(i32 field(Point index([]Point bind.7(points), untyped integer 0), x), <unknown> " ", i32 field(Point index([]Point bind.7(points), untyped integer 1), y)))
-  expr void call bind.2(prn)(string interpolate(i32 field(Point local.2(p), x), <unknown> " ", i32 field(Point local.2(p), y)))
-  expr void call bind.8(show_last)([]Point array(Point plex(x: i32 13, y: i32 14), Point plex(x: i32 15, y: i32 16)))
+  expr void call bind.0(prn)(string interpolate(i32 field(Point bind.3(origin), x), <unknown> " ", i32 field(Point bind.3(origin), y)))
+  expr void call bind.0(prn)(string interpolate(i32 field(Point index([]Point bind.4(points), untyped integer 0), x), <unknown> " ", i32 field(Point index([]Point bind.4(points), untyped integer 1), y)))
+  expr void call bind.0(prn)(string interpolate(i32 field(Point local.2(p), x), <unknown> " ", i32 field(Point local.2(p), y)))
+  expr void call bind.5(show_last)([]Point array(Point plex(x: i32 13, y: i32 14), Point plex(x: i32 15, y: i32 16)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -96,10 +90,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal void @fn.0({ ptr, i64 } %items) {

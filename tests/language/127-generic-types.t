@@ -1,5 +1,3 @@
-io :: use std.io
-
 Box :: plex [T] {
     value T
 }
@@ -20,8 +18,8 @@ main :: fn () {
 
     m: Maybe[i32] = Some(c.number)
     on m {
-        Some(as value) => io.prn($"generic {value}")
-        None => io.prn("none")
+        Some(as value) => prn($"generic {value}")
+        None => prn("none")
     }
 }
 ¬
@@ -32,10 +30,8 @@ generic 8
 ¬
 hir 0
 module module.0(127-generic-types.input)
-import module.1(std.io)
-import import.0 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.0 prn from module.1(core).decl.13: fn (string) -> void
 bind prn = import.0
-bind io = module.1
 bind Box = type.0
 bind Cell = type.1
 bind Maybe = type.2
@@ -53,10 +49,10 @@ func fn.0() -> void {
   let m: enum { None, Some(i32) } = enum { None, Some(i32) } call Some(i32 field(union { i32 number, string text } local.1(c), number))
   expr void on enum { None, Some(i32) } local.2(m) {
     enum_variant(Some, as value) => {
-      expr void call fn (string) -> void field(module bind.1(io), prn)(string interpolate(<unknown> "generic ", i32 local.3(value)))
+      expr void call bind.0(prn)(string interpolate(<unknown> "generic ", i32 local.3(value)))
     }
     value(enum { None, Some(i32) } None) => {
-      expr void call fn (string) -> void field(module bind.1(io), prn)(string "none")
+      expr void call bind.0(prn)(string "none")
     }
   }
 }

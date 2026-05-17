@@ -1,7 +1,3 @@
-use std.io
-
-io :: use std.io
-
 cleanup_return :: fn () -> i32 {
     value := 1
     defer value = 9
@@ -21,7 +17,7 @@ main :: fn () {
     {
         defer total += 10
         defer {
-            io.prn("deferred-module-call")
+            prn("deferred-module-call")
         }
         total += 1
     }
@@ -47,18 +43,8 @@ after-loop=233
 ¬
 hir 0
 module module.0(103-defer.input)
-import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
-bind io = module.1
+import import.0 prn from module.1(core).decl.13: fn (string) -> void
+bind prn = import.0
 bind cleanup_return = fn.0
 bind main = fn.1
 func fn.0() -> i32 {
@@ -69,7 +55,7 @@ func fn.0() -> i32 {
   return i32 local.0(value)
 }
 func fn.1() -> i32 {
-  let total: i32 = i32 call bind.6(cleanup_return)()
+  let total: i32 = i32 call bind.1(cleanup_return)()
   let order: i32 = untyped integer 0
   {
     defer {
@@ -80,19 +66,19 @@ func fn.1() -> i32 {
     }
   }
   assign i32 local.1(total) = i32 add(i32 local.1(total), i32 local.2(order))
-  expr void call bind.2(prn)(string interpolate(<unknown> "order=", i32 local.2(order)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "order=", i32 local.2(order)))
   {
     defer {
       assign i32 local.1(total) = i32 add(i32 local.1(total), i32 10)
     }
     defer {
       {
-        expr void call fn (string) -> void field(module bind.5(io), prn)(string "deferred-module-call")
+        expr void call bind.0(prn)(string "deferred-module-call")
       }
     }
     assign i32 local.1(total) = i32 add(i32 local.1(total), i32 1)
   }
-  expr void call bind.2(prn)(string interpolate(<unknown> "after-block=", i32 local.1(total)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "after-block=", i32 local.1(total)))
   expr void for c_style {
     init {
       let i: i32 = untyped integer 0
@@ -118,7 +104,7 @@ func fn.1() -> i32 {
       assign i32 local.3(i) = i32 add(i32 local.3(i), i32 1)
     }
   }
-  expr void call bind.2(prn)(string interpolate(<unknown> "after-loop=", i32 local.1(total)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "after-loop=", i32 local.1(total)))
   return i32 local.1(total)
 }
 ¬
@@ -151,11 +137,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %local.0 = alloca i32

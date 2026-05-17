@@ -52,7 +52,7 @@ For a larger file, qualified modules make dependencies clearer:
 io :: use std.io  -- keep standard I/O names qualified
 
 main :: fn () {
-    io.prn("Welcome!")
+    prn("Welcome!")
 }
 ```
 
@@ -70,7 +70,7 @@ main :: fn () {
     defer parts.free()              -- free it before leaving the scope
 
     for part in parts {
-        io.prn($"word: {part}")
+        prn($"word: {part}")
     }
 }
 ```
@@ -105,8 +105,8 @@ io :: use std.io
 
 describe :: fn (game: Game) {
     on game.room {  -- branch on the current room
-        Cave => io.prn("It is very dark in here.")
-        Tunnel => io.prn("The tunnel narrows to the north.")
+        Cave => prn("It is very dark in here.")
+        Tunnel => prn("The tunnel narrows to the north.")
     }
 }
 

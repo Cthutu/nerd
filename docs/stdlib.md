@@ -26,7 +26,7 @@ library is moving toward three layers:
 - `core`
   Pointer-stable arena construction, allocation, reset, and release helpers.
 - `std.io`
-  Basic input and output helpers.
+  Basic input helpers.
 - `std.mem`
   Low-level allocation wrappers.
 - `std.arena`
@@ -69,8 +69,6 @@ This inventory is intentionally brief until the standard library settles.
 
 ### `std.io`
 
-- `pr(text: string) -> void`
-- `prn(text: string) -> void`
 - `input(prompt: string) -> string`
 
 ### `std.mem`
@@ -99,6 +97,10 @@ should prefer the built-in `arena` type exposed through `core`.
 - `arena.restore(mark: u32)`
 - `arena.done()`
 - `temp_arena.reset()`
+- `pr(text: string = "") -> void`
+- `prn(text: string = "") -> void`
+- `epr(text: string = "") -> void`
+- `eprn(text: string = "") -> void`
 - `Display`
   Requires `show :: fn (Self) -> string`.
 - `Eq`

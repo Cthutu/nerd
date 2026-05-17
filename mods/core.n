@@ -3,6 +3,10 @@
 --
 
 ffi "nrt" {
+    nrt_pr            (^u8, usize)
+    nrt_prn           (^u8, usize)
+    nrt_epr           (^u8, usize)
+    nrt_eprn          (^u8, usize)
     nrt_arena_done    (arena: ^arena)
     nrt_arena_reset   (arena: ^arena)
     nrt_arena_mark    (arena: ^arena) -> u32
@@ -12,6 +16,26 @@ ffi "nrt" {
 }
 
 pub temp_arena :: nrt_temp_arena()
+
+pub pr :: fn (text: string = "") -> void {
+    nrt_pr(text.data, text.count)
+    return
+}
+
+pub epr :: fn (text: string = "") -> void {
+    nrt_epr(text.data, text.count)
+    return
+}
+
+pub prn :: fn (text: string = "") -> void {
+    nrt_prn(text.data, text.count)
+    return
+}
+
+pub eprn :: fn (text: string = "") -> void {
+    nrt_eprn(text.data, text.count)
+    return
+}
 
 arena_alignment :: fn [T] () -> usize {
     return on T.size {

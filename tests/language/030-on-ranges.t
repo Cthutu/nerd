@@ -31,16 +31,10 @@ main :: fn () {
 hir 0
 module module.0(030-on-ranges.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind test_branch = fn.0
 bind main = fn.1
 func fn.0(size: u32) -> i32 {
@@ -57,12 +51,12 @@ func fn.0(size: u32) -> i32 {
   }
 }
 func fn.1() -> i32 {
-  expr void call bind.2(prn)(string interpolate(<unknown> "0: ", i32 call bind.5(test_branch)(u32 0)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "1: ", i32 call bind.5(test_branch)(u32 1)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "2: ", i32 call bind.5(test_branch)(u32 2)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "4: ", i32 call bind.5(test_branch)(u32 4)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "5: ", i32 call bind.5(test_branch)(u32 5)))
-  return i32 call bind.5(test_branch)(u32 5)
+  expr void call bind.0(prn)(string interpolate(<unknown> "0: ", i32 call bind.2(test_branch)(u32 0)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "1: ", i32 call bind.2(test_branch)(u32 1)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "2: ", i32 call bind.2(test_branch)(u32 2)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "4: ", i32 call bind.2(test_branch)(u32 4)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "5: ", i32 call bind.2(test_branch)(u32 5)))
+  return i32 call bind.2(test_branch)(u32 5)
 }
 ¬
 ; nerd llvm-ir 0
@@ -95,10 +89,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0(i32 %size) {

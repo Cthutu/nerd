@@ -3,10 +3,6 @@
 -- This module now loads through the normal module pipeline.
 
 ffi "nrt" {
-    nrt_pr        (^u8, usize)
-    nrt_prn       (^u8, usize)
-    nrt_epr       (^u8, usize)
-    nrt_eprn      (^u8, usize)
     nrt_read_line (^u8, usize) -> usize
 }
 
@@ -15,26 +11,6 @@ STDERR_FILENO :: 2
 
 input_buf : [256]u8
 input_len : usize
-
-pub pr :: fn (text: string = "") -> void {
-    nrt_pr(text.data, text.count)
-    return
-}
-
-pub epr :: fn (text: string = "") -> void {
-    nrt_epr(text.data, text.count)
-    return
-}
-
-pub prn :: fn (text: string = "") -> void {
-    nrt_prn(text.data, text.count)
-    return
-}
-
-pub eprn :: fn (text: string = "") -> void {
-    nrt_eprn(text.data, text.count)
-    return
-}
 
 pub input :: fn (prompt: string = "> ") -> string {
     pr(prompt)

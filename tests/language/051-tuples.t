@@ -33,16 +33,10 @@ nested tuple = ((7, seven), (8,), yes)
 hir 0
 module module.0(051-tuples.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind make_pair = fn.0
 bind main = fn.1
 func fn.0(a: i32, b: string) -> (i32, string) {
@@ -51,14 +45,14 @@ func fn.0(a: i32, b: string) -> (i32, string) {
 func fn.1() -> i32 {
   let pair: (i32, string) = (i32, string) tuple(untyped integer 7, string "seven")
   let single: (i32,) = (i32,) tuple(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 1))
-  let from_fn: (i32, string) = (i32, string) call bind.5(make_pair)(i32 3, string "three")
+  let from_fn: (i32, string) = (i32, string) call bind.2(make_pair)(i32 3, string "three")
   let nested: ((i32, string)(i32, string),  = ((i32, string)(i32, string),  tuple((i32, string) local.2(pair), (i32,) local.3(single), bool yes)
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair = ", i32 tuple_field((i32, string) local.2(pair), 0), <unknown> ", ", string tuple_field((i32, string) local.2(pair), 1)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair tuple = ", (i32, string) local.2(pair)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "single = ", i32 tuple_field((i32,) local.3(single), 0)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "single tuple = ", (i32,) local.3(single)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "from_fn = ", i32 tuple_field((i32, string) local.4(from_fn), 0), <unknown> ", ", string tuple_field((i32, string) local.4(from_fn), 1)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "nested tuple = ", ((i32, string)(i32, string),  local.5(nested)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair = ", i32 tuple_field((i32, string) local.2(pair), 0), <unknown> ", ", string tuple_field((i32, string) local.2(pair), 1)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair tuple = ", (i32, string) local.2(pair)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "single = ", i32 tuple_field((i32,) local.3(single), 0)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "single tuple = ", (i32,) local.3(single)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "from_fn = ", i32 tuple_field((i32, string) local.4(from_fn), 0), <unknown> ", ", string tuple_field((i32, string) local.4(from_fn), 1)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "nested tuple = ", ((i32, string)(i32, string),  local.5(nested)))
   return i32 add(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 tuple_field((i32,) local.3(single), 0)), i32 tuple_field((i32, string) local.4(from_fn), 0))
 }
 ¬
@@ -97,10 +91,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal { i32, { ptr, i64 } } @fn.0(i32 %a, { ptr, i64 } %b) {

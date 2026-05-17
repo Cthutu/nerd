@@ -19,8 +19,8 @@ module-path     ::= IDENT { '.' IDENT }
 ```
 
 Bare `use module.path` imports public exports into the current scope. A binding
-such as `io :: use std.io` stores the module value so exports are accessed as
-fields, for example `io.prn`.
+such as `str :: use std.string` stores the module value so exports are accessed
+as fields, for example `str.split`.
 
 `pub use module.path` re-exports the imported module's public declarations.
 

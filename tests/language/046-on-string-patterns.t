@@ -42,16 +42,10 @@ other: 3 unknown
 hir 0
 module module.0(046-on-string-patterns.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind choice = value.0
 bind warm = value.1
 bind cool = value.2
@@ -79,22 +73,22 @@ func fn.0(choice: string) -> i32 {
 func fn.1(choice: string) -> string {
   return string on string local.1(choice) {
     value(string "red") => {
-      expr string bind.6(warm)
+      expr string bind.3(warm)
     }
     value(string "blue") => {
-      expr string bind.7(cool)
+      expr string bind.4(cool)
     }
     else => {
-      expr string bind.8(unknown)
+      expr string bind.5(unknown)
     }
   }
 }
 func fn.2() -> i32 {
-  expr void call bind.2(prn)(string interpolate(<unknown> "red: ", i32 call bind.9(classify)(string "red"), <unknown> " ", string call bind.10(label)(string "red")))
-  expr void call bind.2(prn)(string interpolate(<unknown> "green: ", i32 call bind.9(classify)(string "green"), <unknown> " ", string call bind.10(label)(string "green")))
-  expr void call bind.2(prn)(string interpolate(<unknown> "blue: ", i32 call bind.9(classify)(string "blue"), <unknown> " ", string call bind.10(label)(string "blue")))
-  expr void call bind.2(prn)(string interpolate(<unknown> "other: ", i32 call bind.9(classify)(string "other"), <unknown> " ", string call bind.10(label)(string "other")))
-  return i32 call bind.9(classify)(string bind.5(choice))
+  expr void call bind.0(prn)(string interpolate(<unknown> "red: ", i32 call bind.6(classify)(string "red"), <unknown> " ", string call bind.7(label)(string "red")))
+  expr void call bind.0(prn)(string interpolate(<unknown> "green: ", i32 call bind.6(classify)(string "green"), <unknown> " ", string call bind.7(label)(string "green")))
+  expr void call bind.0(prn)(string interpolate(<unknown> "blue: ", i32 call bind.6(classify)(string "blue"), <unknown> " ", string call bind.7(label)(string "blue")))
+  expr void call bind.0(prn)(string interpolate(<unknown> "other: ", i32 call bind.6(classify)(string "other"), <unknown> " ", string call bind.7(label)(string "other")))
+  return i32 call bind.6(classify)(string bind.2(choice))
 }
 ¬
 ; nerd llvm-ir 0
@@ -147,10 +141,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ ptr, i64 } %choice) {

@@ -26,28 +26,22 @@ main :: fn () -> i32 {
 hir 0
 module module.0(059-destructuring-bindings.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind main = fn.0
 func fn.0() -> i32 {
   destructure let (i32, i32) tuple(untyped integer 2, untyped integer 3) { .0 -> a: i32, .1 -> b: i32 }
-  expr void call bind.2(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure assign (i32, i32) tuple(i32 local.1(b), i32 local.0(a)) { .0 -> a: i32, .1 -> b: i32 }
-  expr void call bind.2(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure assign (i32, i32) tuple(untyped integer 7, untyped integer 8) { .0 -> a: i32 }
-  expr void call bind.2(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure let (i32, string) tuple(untyped integer 4, string "four") { .0 -> c: i32, .1 -> d: string }
-  expr void call bind.2(prn)(string interpolate(i32 local.2(c), <unknown> " ", string local.3(d)))
+  expr void call bind.0(prn)(string interpolate(i32 local.2(c), <unknown> " ", string local.3(d)))
   destructure let (i32, string) tuple(i32 5, string "five") { .0 -> e: i32, .1 -> f: string }
-  expr void call bind.2(prn)(string interpolate(i32 local.4(e), <unknown> " ", string local.5(f)))
+  expr void call bind.0(prn)(string interpolate(i32 local.4(e), <unknown> " ", string local.5(f)))
   return i32 0
 }
 ¬
@@ -83,10 +77,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

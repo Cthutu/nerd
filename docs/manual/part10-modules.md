@@ -117,10 +117,12 @@ assert on !"windows"
 Bind a module to a local top-level name with `use` as the binding value:
 
 ```nerd
-io :: use std.io  -- bind the module to the name io
+str :: use std.string  -- bind the module to the name str
 
 main :: fn () {
-    io.prn("hello")  -- qualified access through io
+    parts := str.split("hello world", " ")
+    defer parts.free()
+    prn(parts[0])
 }
 ```
 
@@ -175,10 +177,10 @@ A module can re-export public names from another module. Use this when building
 a small public surface over several internal files.
 
 ```nerd
-pub io :: use std.io  -- re-export std.io through this module
+pub str :: use std.string  -- re-export std.string through this module
 ```
 
-Code that imports this module can then access the public `io` module binding.
+Code that imports this module can then access the public `str` module binding.
 
 Use `pub use` to import another module's public names into the current module
 and re-export them through this module:
@@ -192,19 +194,19 @@ visible to code that imports the folder module.
 
 ## Choosing A Use Form
 
-Use `use` for simple examples and small programs:
+Use implicit `core` names for simple examples and small programs:
 
 ```nerd
-use std.io  -- import names directly
+prn("hello")
 ```
 
 Use a named module binding when clarity matters:
 
 ```nerd
-io :: use std.io  -- keep names qualified
+str :: use std.string  -- keep names qualified
 ```
 
-Qualified names such as `io.prn` make dependencies explicit.
+Qualified names such as `str.split` make dependencies explicit.
 
 ## Standard Library
 

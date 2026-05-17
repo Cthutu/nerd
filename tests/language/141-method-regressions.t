@@ -39,16 +39,10 @@ area 25
 hir 0
 module module.0(141-method-regressions.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Rect = type.0
 bind __impl_7_area = fn.0
 bind __impl_7_grow = fn.1
@@ -63,15 +57,15 @@ func fn.1(self: ^Rect, amount: i32) -> void {
   assign i32 field(^Rect local.1(self), height) = i32 add(i32 field(^Rect local.1(self), height), i32 local.2(amount))
 }
 func fn.2(rect: ^Rect) -> i32 {
-  expr void call bind.7(__impl_7_grow)(^Rect local.3(rect), i32 2)
-  return i32 call bind.6(__impl_7_area)(Rect deref(^Rect local.3(rect)))
+  expr void call bind.4(__impl_7_grow)(^Rect local.3(rect), i32 2)
+  return i32 call bind.3(__impl_7_area)(Rect deref(^Rect local.3(rect)))
 }
 func fn.3() -> i32 {
   expr <unknown> default
   let rect: Rect = <unknown> default
-  expr void call bind.7(__impl_7_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
-  let result: i32 = i32 call bind.8(use_methods)(^Rect address_of(Rect local.4(rect)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "area ", i32 local.5(result)))
+  expr void call bind.4(__impl_7_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
+  let result: i32 = i32 call bind.5(use_methods)(^Rect address_of(Rect local.4(rect)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "area ", i32 local.5(result)))
   return i32 0
 }
 ¬
@@ -101,10 +95,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i32, i32 } %self) {

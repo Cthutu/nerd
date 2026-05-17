@@ -30,16 +30,10 @@ yes
 hir 0
 module module.0(081-nested-array-literals.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind RoomType = type.0
 bind Room = type.1
 bind rooms = value.0
@@ -48,10 +42,10 @@ type type.0 = RoomType
 type type.1 = Room
 const value.0: [2]Room = [2]Room array(Room plex(exits: [2]RoomType array(RoomType NONE, RoomType HALL)), Room plex(exits: [2]RoomType array(RoomType KITCHEN, RoomType NONE)))
 func fn.0() -> i32 {
-  expr void call bind.2(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.7(rooms), untyped integer 0), exits), untyped integer 0), RoomType NONE)))
-  expr void call bind.2(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.7(rooms), untyped integer 0), exits), untyped integer 1), RoomType HALL)))
-  expr void call bind.2(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.7(rooms), untyped integer 1), exits), untyped integer 0), RoomType KITCHEN)))
-  expr void call bind.2(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.7(rooms), untyped integer 1), exits), untyped integer 1), RoomType NONE)))
+  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 0), exits), untyped integer 0), RoomType NONE)))
+  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 0), exits), untyped integer 1), RoomType HALL)))
+  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 1), exits), untyped integer 0), RoomType KITCHEN)))
+  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 1), exits), untyped integer 1), RoomType NONE)))
   return i32 0
 }
 ¬
@@ -79,10 +73,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

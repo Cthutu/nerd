@@ -43,16 +43,10 @@ not-five 1 0
 hir 0
 module module.0(066-generalised-on.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind score = fn.0
 bind describe = fn.1
 bind not_five = fn.2
@@ -103,10 +97,10 @@ func fn.2(value: i32) -> i32 {
   }
 }
 func fn.3() -> i32 {
-  expr void call bind.2(prn)(string interpolate(<unknown> "scores ", i32 call bind.5(score)(i32 negate(i32 2)), <unknown> " ", i32 call bind.5(score)(i32 0), <unknown> " ", i32 call bind.5(score)(i32 2), <unknown> " ", i32 call bind.5(score)(i32 7), <unknown> " ", i32 call bind.5(score)(i32 12)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "descriptions ", string call bind.6(describe)(i32 negate(i32 2)), <unknown> " ", string call bind.6(describe)(i32 0), <unknown> " ", string call bind.6(describe)(i32 7), <unknown> " ", string call bind.6(describe)(i32 12)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "not-five ", i32 call bind.7(not_five)(i32 4), <unknown> " ", i32 call bind.7(not_five)(i32 5)))
-  return i32 call bind.5(score)(i32 12)
+  expr void call bind.0(prn)(string interpolate(<unknown> "scores ", i32 call bind.2(score)(i32 negate(i32 2)), <unknown> " ", i32 call bind.2(score)(i32 0), <unknown> " ", i32 call bind.2(score)(i32 2), <unknown> " ", i32 call bind.2(score)(i32 7), <unknown> " ", i32 call bind.2(score)(i32 12)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "descriptions ", string call bind.3(describe)(i32 negate(i32 2)), <unknown> " ", string call bind.3(describe)(i32 0), <unknown> " ", string call bind.3(describe)(i32 7), <unknown> " ", string call bind.3(describe)(i32 12)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "not-five ", i32 call bind.4(not_five)(i32 4), <unknown> " ", i32 call bind.4(not_five)(i32 5)))
+  return i32 call bind.2(score)(i32 12)
 }
 ¬
 ; nerd llvm-ir 0
@@ -149,10 +143,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0(i32 %value) {

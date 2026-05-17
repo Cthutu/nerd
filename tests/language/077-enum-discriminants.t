@@ -69,16 +69,10 @@ string
 hir 0
 module module.0(077-enum-discriminants.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Direction = type.0
 bind Token = type.1
 bind labels = value.0
@@ -124,12 +118,12 @@ func fn.1(token: Token) -> string {
   }
 }
 func fn.2() -> i32 {
-  let south: Direction = Direction field(Direction bind.5(Direction), SOUTH)
-  let string_token: Token = Token field(Token bind.6(Token), STRING)
-  expr void call bind.2(prn)(string index([12]string bind.7(labels), untyped integer 0))
-  expr void call bind.2(prn)(string index([12]string bind.7(labels), untyped integer 11))
-  expr void call bind.2(prn)(string call bind.8(describe_direction)(Direction local.2(south)))
-  expr void call bind.2(prn)(string call bind.9(describe_token)(Token local.3(string_token)))
+  let south: Direction = Direction field(Direction bind.2(Direction), SOUTH)
+  let string_token: Token = Token field(Token bind.3(Token), STRING)
+  expr void call bind.0(prn)(string index([12]string bind.4(labels), untyped integer 0))
+  expr void call bind.0(prn)(string index([12]string bind.4(labels), untyped integer 11))
+  expr void call bind.0(prn)(string call bind.5(describe_direction)(Direction local.2(south)))
+  expr void call bind.0(prn)(string call bind.6(describe_token)(Token local.3(string_token)))
   let ok: bool = bool logical_and(bool on Direction local.2(south) {
     value(Direction SOUTH) => {
       expr bool yes
@@ -180,10 +174,7 @@ func fn.2() -> i32 {
 @.str.m0.19 = private unnamed_addr constant [7 x i8] c"number\00"
 @.str.m0.20 = private unnamed_addr constant [7 x i8] c"string\00"
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 @$labels = internal global [12 x { ptr, i64 }] zeroinitializer

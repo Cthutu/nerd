@@ -110,13 +110,12 @@ table as a compact reference.
 
 ## Standard Library
 
-The manual may use standard library functions for simple examples, especially
-`std.io.pr` and `std.io.prn`.
+The manual may use core printing helpers for simple examples, especially `pr`
+and `prn`.
 
 When first used, explain only what the example needs:
 
-- `std.io` is a standard library module.
-- `use std.io` imports its public names.
+- `core` is imported implicitly.
 - `pr` prints without a newline.
 - `prn` prints with a newline.
 

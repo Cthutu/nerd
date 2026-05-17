@@ -17,23 +17,17 @@ fcntl = yes
 hir 0
 module module.0(069-ffi-varargs.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
 extern extern.0 fcntl from "c": fn (i32, i32, ...) -> i32
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+bind prn = import.0
+bind input = import.1
 bind fcntl = fn.0
 bind main = fn.1
 extern func fn.0(i32, i32) -> i32
 func fn.1() -> void {
-  let result: i32 = i32 call bind.5(fcntl)(i32 0, i32 1, untyped integer 0)
-  expr void call bind.2(prn)(string interpolate(<unknown> "fcntl = ", bool greater_equal(i32 local.0(result), i32 0)))
+  let result: i32 = i32 call bind.2(fcntl)(i32 0, i32 1, untyped integer 0)
+  expr void call bind.0(prn)(string interpolate(<unknown> "fcntl = ", bool greater_equal(i32 local.0(result), i32 0)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -63,10 +57,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 declare i32 @fcntl(i32, i32, ...)
@@ -91,4 +82,3 @@ define internal void @fn.1() {
 }
 
 @$main = alias void (), ptr @fn.1
-

@@ -60,16 +60,10 @@ point name named
 hir 0
 module module.0(061-on-structural-patterns.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Point = type.0
 bind score_pair = fn.0
 bind score_point = fn.1
@@ -121,14 +115,14 @@ func fn.2(point: Point) -> string {
   }
 }
 func fn.3() -> i32 {
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair zero ", i32 call bind.6(score_pair)((i32, i32) tuple(i32 0, i32 7))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair one ", i32 call bind.6(score_pair)((i32, i32) tuple(i32 1, i32 8))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair nine ", i32 call bind.6(score_pair)((i32, i32) tuple(i32 4, i32 9))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "pair else ", i32 call bind.6(score_pair)((i32, i32) tuple(i32 2, i32 3))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "point origin ", i32 call bind.7(score_point)(Point plex(x: i32 2, y: i32 3, name: string "origin"))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "point x ", i32 call bind.7(score_point)(Point plex(x: i32 3, y: i32 4, name: string "other"))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "point fallback ", i32 call bind.7(score_point)(Point plex(x: i32 5, y: i32 6, name: string "fallback"))))
-  expr void call bind.2(prn)(string interpolate(<unknown> "point name ", string call bind.8(name_of)(Point plex(x: i32 9, y: i32 10, name: string "named"))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair zero ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 0, i32 7))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair one ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 1, i32 8))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair nine ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 4, i32 9))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "pair else ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 2, i32 3))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "point origin ", i32 call bind.4(score_point)(Point plex(x: i32 2, y: i32 3, name: string "origin"))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "point x ", i32 call bind.4(score_point)(Point plex(x: i32 3, y: i32 4, name: string "other"))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "point fallback ", i32 call bind.4(score_point)(Point plex(x: i32 5, y: i32 6, name: string "fallback"))))
+  expr void call bind.0(prn)(string interpolate(<unknown> "point name ", string call bind.5(name_of)(Point plex(x: i32 9, y: i32 10, name: string "named"))))
   return i32 0
 }
 ¬
@@ -172,10 +166,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i32, i32 } %pair) {

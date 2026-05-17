@@ -40,16 +40,10 @@ typed plex patterns 1 2 0
 hir 0
 module module.0(151-typed-plex-patterns.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind Event = type.0
 bind KeyEvent = type.1
 bind Key = type.2
@@ -72,11 +66,11 @@ func fn.0(event: Event) -> i32 {
   }
 }
 func fn.1() -> i32 {
-  let escape: Event = Event call Event field(Event bind.5(Event), KeyDown)(KeyEvent plex(keycode: Key Escape, modifiers: i32 0, char: u32 0))
-  let other: Event = Event call Event field(Event bind.5(Event), KeyDown)(KeyEvent plex(keycode: Key Other, modifiers: i32 1, char: u32 2))
-  let up: Event = Event call Event field(Event bind.5(Event), KeyUp)(KeyEvent plex(keycode: Key Escape, modifiers: i32 0, char: u32 0))
-  expr void call bind.2(prn)(string interpolate(<unknown> "typed plex patterns ", i32 call bind.8(score)(Event local.1(escape)), <unknown> " ", i32 call bind.8(score)(Event local.2(other)), <unknown> " ", i32 call bind.8(score)(Event local.3(up))))
-  return i32 call bind.8(score)(Event local.1(escape))
+  let escape: Event = Event call Event field(Event bind.2(Event), KeyDown)(KeyEvent plex(keycode: Key Escape, modifiers: i32 0, char: u32 0))
+  let other: Event = Event call Event field(Event bind.2(Event), KeyDown)(KeyEvent plex(keycode: Key Other, modifiers: i32 1, char: u32 2))
+  let up: Event = Event call Event field(Event bind.2(Event), KeyUp)(KeyEvent plex(keycode: Key Escape, modifiers: i32 0, char: u32 0))
+  expr void call bind.0(prn)(string interpolate(<unknown> "typed plex patterns ", i32 call bind.5(score)(Event local.1(escape)), <unknown> " ", i32 call bind.5(score)(Event local.2(other)), <unknown> " ", i32 call bind.5(score)(Event local.3(up))))
+  return i32 call bind.5(score)(Event local.1(escape))
 }
 ¬
 ; nerd llvm-ir 0
@@ -107,10 +101,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i192 } %event) {

@@ -1,5 +1,4 @@
 -- Interpolates a field read from an indexed for-in item.
-io :: use std.io
 
 Location :: plex {
     description string
@@ -13,8 +12,8 @@ main :: fn () {
     player_loc: usize = 1
     for i, loc in locs {
         on {
-            i == player_loc => io.prn("same")
-            else => io.prn($"You go to {loc.description}.")
+            i == player_loc => prn("same")
+            else => prn($"You go to {loc.description}.")
         }
     }
 }
@@ -26,10 +25,8 @@ You go to field.
 ¬
 hir 0
 module module.0(117-interpolated-for-field.input)
-import module.1(std.io)
-import import.0 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.0 prn from module.1(core).decl.13: fn (string) -> void
 bind prn = import.0
-bind io = module.1
 bind Location = type.0
 bind locs = value.0
 bind main = fn.0
@@ -37,14 +34,14 @@ type type.0 = Location
 global value.0: []Location = []Location array(Location plex(description: string "field"))
 func fn.0() -> void {
   let player_loc: usize = usize 1
-  expr void for in i: usize, loc: ^Location in []Location bind.3(locs) {
+  expr void for in i: usize, loc: ^Location in []Location bind.2(locs) {
     body {
       expr void on condition {
     bool equal(usize local.1(i), usize local.0(player_loc)) => {
-      expr void call fn (string) -> void field(module bind.1(io), prn)(string "same")
+      expr void call bind.0(prn)(string "same")
     }
     else => {
-      expr void call fn (string) -> void field(module bind.1(io), prn)(string interpolate(<unknown> "You go to ", string field(^Location local.2(loc), description), <unknown> "."))
+      expr void call bind.0(prn)(string interpolate(<unknown> "You go to ", string field(^Location local.2(loc), description), <unknown> "."))
     }
   }
     }

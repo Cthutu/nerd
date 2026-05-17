@@ -77,16 +77,10 @@ look north
 hir 0
 module module.0(099-dynamic-arrays.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind make_words = fn.0
 bind main = fn.1
 func fn.0() -> [..]string {
@@ -156,20 +150,20 @@ func fn.1() -> i32 {
       return i32 10
     }
   }
-  expr void call bind.2(prn)(string interpolate(string index([]string local.5(view), untyped integer 0), <unknown> " ", string index([]string local.5(view), untyped integer 1), <unknown> " ", string index([]string local.5(view), untyped integer 2), <unknown> " ", string index([]string local.5(view), untyped integer 3), <unknown> " ", string index([]string local.5(view), untyped integer 4)))
+  expr void call bind.0(prn)(string interpolate(string index([]string local.5(view), untyped integer 0), <unknown> " ", string index([]string local.5(view), untyped integer 1), <unknown> " ", string index([]string local.5(view), untyped integer 2), <unknown> " ", string index([]string local.5(view), untyped integer 3), <unknown> " ", string index([]string local.5(view), untyped integer 4)))
   expr void call fn (usize) -> void field([..]string local.3(names), reserve_to)(usize 10)
   expr void on bool less(usize field([..]string local.3(names), capacity), usize 10) {
     value(bool yes) => {
       return i32 11
     }
   }
-  let words: [..]string = [..]string call bind.5(make_words)()
+  let words: [..]string = [..]string call bind.2(make_words)()
   expr void on bool not_equal(usize field([..]string local.6(words), count), usize 2) {
     value(bool yes) => {
       return i32 12
     }
   }
-  expr void call bind.2(prn)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
+  expr void call bind.0(prn)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
   expr void call fn () -> void field([..]string local.6(words), free)()
   expr <unknown> default
   let nums: [..]i32 = <unknown> default
@@ -282,10 +276,7 @@ declare ptr @malloc(i64)
 declare ptr @realloc(ptr, i64)
 declare void @free(ptr)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal ptr @fn.0() {

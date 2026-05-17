@@ -34,16 +34,10 @@ data first = 20
 hir 0
 module module.0(054-slices.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind main = fn.0
 func fn.0() -> i32 {
   let values: [5]i32 = [5]i32 array(i32 10, i32 20, i32 30, i32 40, i32 50)
@@ -53,13 +47,13 @@ func fn.0() -> i32 {
   let to_end: []i32 = []i32 slice([5]i32 local.0(values), untyped integer 2, <none>)
   let literal: []i32 = []i32 slice([3]i32 array(untyped integer 1, i32 2, i32 3), <none>, <none>)
   let reslice: []i32 = []i32 slice([]i32 local.1(all), untyped integer 1, untyped integer 3)
-  expr void call bind.2(prn)(string interpolate(<unknown> "all = ", []i32 local.1(all)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "middle = ", []i32 local.2(middle)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "from_start = ", []i32 local.3(from_start)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "to_end = ", []i32 local.4(to_end)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "literal = ", []i32 local.5(literal)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "reslice count = ", usize field([]i32 local.6(reslice), count)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "data first = ", i32 index(^i32 field([]i32 local.2(middle), data), untyped integer 0)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "all = ", []i32 local.1(all)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "middle = ", []i32 local.2(middle)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "from_start = ", []i32 local.3(from_start)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "to_end = ", []i32 local.4(to_end)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "literal = ", []i32 local.5(literal)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "reslice count = ", usize field([]i32 local.6(reslice), count)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "data first = ", i32 index(^i32 field([]i32 local.2(middle), data), untyped integer 0)))
   return i32 add(i32 add(i32 add(i32 index([]i32 local.2(middle), untyped integer 1), i32 index([]i32 local.3(from_start), untyped integer 2)), i32 index([]i32 local.4(to_end), untyped integer 0)), i32 index([]i32 local.5(literal), untyped integer 2))
 }
 ¬
@@ -95,10 +89,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {

@@ -37,16 +37,10 @@ labelled = 11
 hir 0
 module module.0(049-labelled-loop-expressions.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
-import import.4 input from module.1(std.io).decl.13: fn (string) -> string
-bind pr = import.0
-bind epr = import.1
-bind prn = import.2
-bind eprn = import.3
-bind input = import.4
+import import.0 prn from module.2(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+bind prn = import.0
+bind input = import.1
 bind main = fn.0
 func fn.0() -> i32 {
   let total: i32 = untyped integer 0
@@ -94,9 +88,9 @@ func fn.0() -> i32 {
       break $value_loop untyped integer 11
     }
   }
-  expr void call bind.2(prn)(string interpolate(<unknown> "total = ", i32 local.2(total)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "value = ", untyped integer local.0(value)))
-  expr void call bind.2(prn)(string interpolate(<unknown> "labelled = ", untyped integer local.1(labelled_value)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "total = ", i32 local.2(total)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "value = ", untyped integer local.0(value)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "labelled = ", untyped integer local.1(labelled_value)))
   return i32 add(i32 add(i32 local.2(total), i32 local.0(value)), i32 local.1(labelled_value))
 }
 ¬
@@ -128,10 +122,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$pr({ ptr, i64 })
-declare void @$epr({ ptr, i64 })
 declare void @$prn({ ptr, i64 })
-declare void @$eprn({ ptr, i64 })
 declare { ptr, i64 } @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
