@@ -9740,7 +9740,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 array_free(source_arg_types);
                 return error_0304_type_mismatch(
                     lexer->source,
-                    sema_node_span(source_lexer, source_fn_def),
+                    sema_node_span(lexer, &ast->nodes[call_node->a]),
                     s("inferable generic type parameter"),
                     lex_symbol(source_lexer, symbol));
             }
@@ -9998,7 +9998,7 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
                 array_free(source_arg_types);
                 return error_0304_type_mismatch(
                     lexer->source,
-                    sema_node_span(source_lexer, source_fn_def),
+                    sema_node_span(lexer, &ast->nodes[call_node->a]),
                     s("inferable generic type parameter"),
                     lex_symbol(source_lexer, symbol));
             }

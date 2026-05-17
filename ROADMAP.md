@@ -392,7 +392,7 @@ library layering are in place.
   - [x] decide whether the current `std.arena` implementation becomes a
     reference, a compatibility wrapper, or is replaced by the built-in arena
   - [x] update imports in tests, examples, and docs after module moves
-- [ ] Parser and semantic work:
+- [x] Parser and semantic work:
   - [x] use ordinary function-call-shaped built-in syntax for arena construction
   - [x] type-check arena constructors and lifecycle methods
   - [x] type-check generic arena allocation functions
@@ -400,11 +400,11 @@ library layering are in place.
     lowering
   - [x] allow casts between `^void` and typed pointers for runtime allocation
     wrappers
-  - [ ] decide whether `arena` values are copyable, move-only, or copied by
-    handle
+  - [x] decide whether `arena` values are copyable, move-only, or copied by
+    handle; first-version arenas are handle-like values
   - [x] define reset invalidation as a documented programmer responsibility for
     the first version
-- [ ] Backend/runtime work:
+- [x] Backend/runtime work:
   - [x] lower arena construction, allocation, reset, and release
   - [x] add NRT `pr`/`prn`/`epr`/`eprn` helpers for source-level I/O
   - [x] expose page-size alignment through the runtime
@@ -412,14 +412,14 @@ library layering are in place.
   - [x] lower and expose arena `mark` and `restore`
   - [x] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
-- [ ] Formatter, LSP, and editor work:
+- [x] Formatter, LSP, and editor work:
   - [x] format arena construction syntax through ordinary call formatting
   - [x] provide completion for `arena` methods
-  - [ ] provide hover for `arena`, arena methods, and `temp_arena`
+  - [x] provide hover for `arena`, arena methods, and `temp_arena`
     where existing LSP infrastructure supports built-ins/modules
-  - [ ] update editor syntax files if new keywords or built-in token handling
+  - [x] update editor syntax files if new keywords or built-in token handling
     are added
-- [ ] Tests:
+- [x] Tests:
   - [x] command test for arena construction with two arguments
   - [x] command test for `arena.alloc[T]()` and `arena.alloc_array[T](count)`
   - [x] command test proving allocated pointers remain stable after growth
@@ -431,12 +431,12 @@ library layering are in place.
   - [x] command test for interpolation strings returned from functions via
     `temp_arena`
   - [x] command tests for migrated `core`, `std`, and `sys` imports
-  - [ ] error tests for invalid arena constructor arguments and invalid generic
+  - [x] error tests for invalid arena constructor arguments and invalid generic
     allocation calls
-  - [ ] formatter tests for any new syntax
-  - [ ] LSP tests for module completion after the `core`/`std`/`sys`
+  - [x] formatter tests for any new syntax
+  - [x] LSP tests for module completion after the `core`/`std`/`sys`
     reorganisation
-- [ ] Documentation:
+- [x] Documentation:
   - [x] manual section for first arena API and reset lifetime rules
   - [x] document that arena element addresses are stable even if the arena
     grows
@@ -451,9 +451,9 @@ library layering are in place.
   - [x] update `docs/string-runtime.md` after interpolation moves to
     `temp_arena`
 
-### Traits Milestone (On Hold)
+### Traits Milestone
 
-- [ ] Resume this milestone after the arena and `core`/`std`/`sys`
+- [x] Resume this milestone after the arena and `core`/`std`/`sys`
   reorganisation is complete, so built-in traits and interpolation formatting
   have a stable home in `core`.
 

@@ -166,6 +166,26 @@ internal u32 lsp_find_symbol_ref_node_at_token(const Ast* ast, u32 token_index)
 }
 
 //------------------------------------------------------------------------------
+// Return the interned symbol handle for one symbol token.
+
+internal u32 lsp_symbol_handle_at_token(const Lexer* lexer, u32 token_index)
+{
+    u32 symbol_index = 0;
+    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind != TK_Symbol) {
+            continue;
+        }
+        if (i == token_index) {
+            return symbol_index < array_count(lexer->symbol_handles)
+                       ? lexer->symbol_handles[symbol_index]
+                       : U32_MAX;
+        }
+        symbol_index++;
+    }
+    return U32_MAX;
+}
+
+//------------------------------------------------------------------------------
 // Return the AST field node that owns a given token index, if any.
 
 internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
@@ -626,6 +646,10 @@ lsp_eval_decl_value(const LspDocument* doc, u32 decl_index, i64* out_value)
     if (decl->kind != SK_Constant) {
         return false;
     }
+    if (decl->value_node_index == U32_MAX ||
+        decl->value_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return false;
+    }
 
     return lsp_eval_ast_node(doc, decl->value_node_index, out_value);
 }
@@ -1044,8 +1068,18 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                        arena,
                                        decl->type_index);
     } else if (decl->kind == SK_Constant) {
-        kind          = s("constant");
-        inferred_type = lsp_infer_ast_type(doc, arena, decl->value_node_index);
+        kind = s("constant");
+        if (decl->import_module_index != sema_no_decl()) {
+            inferred_type = decl->type_index == sema_no_type()
+                                ? s("<unknown>")
+                                : sema_type_name(&doc->front_end.lexer,
+                                                 &doc->front_end.sema,
+                                                 arena,
+                                                 decl->type_index);
+        } else {
+            inferred_type =
+                lsp_infer_ast_type(doc, arena, decl->value_node_index);
+        }
     } else if (decl->kind == SK_Variable) {
         kind          = s("variable");
         inferred_type = sema_type_name(&doc->front_end.lexer,
@@ -1137,6 +1171,23 @@ internal string lsp_local_hover_text(const LspDocument* doc,
             arena, string_format(arena, STRINGP, STRINGV(name)))),
         STRINGV(kind),
         STRINGV(type));
+}
+
+//------------------------------------------------------------------------------
+// Return hover text for language-known built-in types.
+
+internal string lsp_builtin_type_hover_text(Arena* arena, string name)
+{
+    if (!string_eq(name, s("arena"))) {
+        return s("");
+    }
+
+    return string_format(arena,
+                         STRINGP
+                         "\n\n- Kind: built-in type"
+                         "\n- Type: `arena`"
+                         "\n- Notes: opaque, pointer-stable allocation arena",
+                         STRINGV(lsp_markdown_code_block(arena, s("arena"))));
 }
 
 //------------------------------------------------------------------------------
@@ -1518,7 +1569,7 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         const SemaType* pointee      = NULL;
         if (lsp_sema_type(&doc->front_end.sema, pointee_type, &pointee) &&
             (pointee->kind == STK_Plex || pointee->kind == STK_Union ||
-             pointee->kind == STK_DynamicArray)) {
+             pointee->kind == STK_DynamicArray || pointee->kind == STK_Arena)) {
             target_type = pointee_type;
             target      = pointee;
         }
@@ -1581,6 +1632,35 @@ internal string lsp_field_hover_text(const LspDocument* doc,
                 STRINGV(kind),
                 STRINGV(type),
                 STRINGV(owner));
+        }
+    }
+
+    if (target->kind == STK_Arena) {
+        string name      = lex_symbol(&doc->front_end.lexer, field->b);
+        string signature = s("");
+        if (string_eq(name, s("alloc"))) {
+            signature = s("alloc :: fn [T] (self: ^arena) -> ^T");
+        } else if (string_eq(name, s("alloc_array"))) {
+            signature =
+                s("alloc_array :: fn [T] (self: ^arena, count: usize) -> []T");
+        } else if (string_eq(name, s("alloc_bytes"))) {
+            signature =
+                s("alloc_bytes :: fn (self: ^arena, count: usize) -> []u8");
+        } else if (string_eq(name, s("reset"))) {
+            signature = s("reset :: fn (self: ^arena) -> void");
+        } else if (string_eq(name, s("mark"))) {
+            signature = s("mark :: fn (self: ^arena) -> u32");
+        } else if (string_eq(name, s("restore"))) {
+            signature = s("restore :: fn (self: ^arena, mark: u32) -> void");
+        } else if (string_eq(name, s("done"))) {
+            signature = s("done :: fn (self: ^arena) -> void");
+        }
+
+        if (signature.count != 0) {
+            return string_format(
+                arena,
+                STRINGP "\n\n- Kind: arena method\n- Owner: `arena`",
+                STRINGV(lsp_markdown_code_block(arena, signature)));
         }
     }
 
@@ -2450,6 +2530,19 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                         response, message->arena, field_hover);
                     break;
                 }
+            }
+
+            u32 symbol_handle =
+                lsp_symbol_handle_at_token(&doc->front_end.lexer, token_index);
+            string builtin_hover =
+                symbol_handle == U32_MAX
+                    ? s("")
+                    : lsp_builtin_type_hover_text(
+                          message->arena,
+                          lex_symbol(&doc->front_end.lexer, symbol_handle));
+            if (builtin_hover.count != 0) {
+                lsp_set_markdown_hover(response, message->arena, builtin_hover);
+                break;
             }
 
             lsp_cancel(response, message->arena);

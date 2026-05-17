@@ -17,6 +17,7 @@ The semantic analyser recognises these built-in type families:
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
 | `f32`, `f64`                       | Floating-point types.                                             |
+| `arena`                            | Opaque handle to a pointer-stable arena allocation region.        |
 
 `isize` and `usize` are pointer-sized integer types. Use `usize` for counts,
 indexes, byte sizes, and capacities. Use `isize` for signed offsets or other

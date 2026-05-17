@@ -210,6 +210,8 @@ move the cursor beyond that range.
 
 Use `arena.alloc[T]()` for one value and `arena.alloc_array[T](count)` for a
 slice. The arena representation is opaque; use methods rather than fields.
+Arena values are handle-like: assigning or passing an `arena` value copies the
+handle to the same underlying allocation state, not the owned storage.
 
 `mark()` returns the current arena cursor as a `u32`. `restore(mark)` moves the
 cursor back to a previous mark, invalidating allocations made after that mark
