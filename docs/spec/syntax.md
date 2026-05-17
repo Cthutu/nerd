@@ -110,8 +110,11 @@ built-in types. A trait implementation block is the complete implementation for
 one trait/type pair; implementations are not split or merged across multiple
 blocks.
 Generic methods may also receive explicit type arguments with
-`value.method[T](...)`. Generic trait parameters, named self aliases,
-constraints, and explicit trait member calls are future milestone work.
+`value.method[T](...)`. Receiver method lookup prefers inherent impl methods
+before trait impl methods. If multiple trait impl methods with the same name are
+valid for the receiver type, the receiver call is ambiguous. Generic trait
+parameters, named self aliases, constraints, and explicit trait member calls are
+future milestone work.
 
 ## Modules, FFI, And Pragmas
 

@@ -64,7 +64,9 @@ syntax, for example `show :: fn (Self) -> string`.
 Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
 The implementation member is callable through the normal receiver method
-syntax, for example `point.show()`.
+syntax, for example `point.show()`. Inherent impl methods take precedence over
+trait impl methods during receiver lookup. A receiver call is ambiguous when
+multiple trait impl methods with the same name are valid for the receiver type.
 For local trait declarations, implementations must provide every required
 member with a compatible function signature after substituting `Self` with the
 implementation target type. Duplicate non-generic implementations for the same

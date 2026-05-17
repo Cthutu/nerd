@@ -156,6 +156,9 @@ intended exit code.
 - Trait implementations use `impl TraitName for Type { ... }` and must provide
   all required member names. Methods supplied by a trait impl can be called on
   the implemented type with normal receiver syntax, such as `value.member()`.
+  Inherent impl methods take precedence over trait impl methods. Receiver calls
+  are ambiguous when multiple trait impl methods with the same name are valid
+  for the receiver type.
   Local trait implementations are checked against the required member
   signatures. Duplicate non-generic implementations for the same trait and
   target type are rejected. Generic trait constraints are not part of the

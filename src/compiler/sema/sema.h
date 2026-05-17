@@ -129,6 +129,7 @@ typedef struct {
     bool is_associated;
     bool first_param_is_receiver;
     bool returns_self;
+    bool is_trait_impl;
 } SemaMethod;
 
 //------------------------------------------------------------------------------

@@ -112,3 +112,50 @@ main :: fn () => 0
         "Rename one of the bindings or remove the duplicate definition."
     ]
 }
+¬
+Named :: trait {
+    name :: fn (Self) -> string
+}
+
+Labelled :: trait {
+    name :: fn (Self) -> string
+}
+
+Point :: plex {
+    x i32
+}
+
+impl Named for Point {
+    name :: fn (self: Self) => "named"
+}
+
+impl Labelled for Point {
+    name :: fn (self: Self) => "labelled"
+}
+
+main :: fn () {
+    point := Point { x: 1 }
+    _ := point.name()
+}
+¬
+{
+    "message": "Ambiguous method call `name`",
+    "source_file": "tests/errors/077-trait-impl-resolution.e",
+    "primary_location": {
+        "line": 23,
+        "column": 16
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 23,
+            "column": 16,
+            "length": 4,
+            "message": "Multiple trait implementations provide `name` for this receiver type"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Call an inherent method with a unique name, or use an explicit trait call once that syntax is available."
+    ]
+}

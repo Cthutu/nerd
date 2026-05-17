@@ -356,6 +356,9 @@ bool error_0347_used_underscore_local(NerdSource source,
                                       ErrorSpan  decl_span,
                                       string     symbol,
                                       string     binding_kind);
+bool error_0348_ambiguous_method_call(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

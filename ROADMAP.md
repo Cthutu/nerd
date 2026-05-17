@@ -521,8 +521,8 @@ library layering are in place.
     implementation type cannot be inferred from a receiver argument, such as
     `Default[Foo].default()`
   - [x] resolve receiver calls through matching trait implementations
-  - [ ] prefer existing direct field/member behaviour before trait lookup
-  - [ ] report ambiguity when multiple traits provide the same receiver method
+  - [x] prefer existing direct field/member behaviour before trait lookup
+  - [x] report ambiguity when multiple traits provide the same receiver method
     for a type
   - [ ] require explicit trait calls for functions that cannot be resolved from
     a receiver value
@@ -572,7 +572,7 @@ library layering are in place.
   - [x] language tests for trait declarations using `Self`
   - [ ] language tests for trait declarations using `trait for Value`
   - [x] language tests for plex implementations
-  - [ ] language tests for union and enum implementations
+  - [x] language tests for union and enum implementations
   - [x] language tests for primitive implementations
   - [x] language tests for receiver-form trait calls
   - [ ] language tests for explicit trait calls
@@ -592,7 +592,7 @@ library layering are in place.
   - [x] error tests for duplicate non-generic impls
   - [ ] error tests for unknown traits in constraints
   - [ ] error tests for overlapping generic impls
-  - [ ] error tests for ambiguous receiver trait calls
+  - [x] error tests for ambiguous receiver trait calls
   - [ ] error tests for non-inferable trait generic parameters with useful
     `help` messages
   - [x] format tests for trait declarations

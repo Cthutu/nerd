@@ -1322,3 +1322,26 @@ bool error_0347_used_underscore_local(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a receiver method call that could resolve through multiple trait
+// implementations.
+
+bool error_0348_ambiguous_method_call(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     symbol)
+{
+    ErrorInfo error = error_init(
+        source, span, "Ambiguous method call `" STRINGP "`", STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "Multiple trait implementations provide `" STRINGP
+                        "` for this receiver type",
+                        STRINGV(symbol));
+    error_add_help(&error,
+                   "Call an inherent method with a unique name, or use an "
+                   "explicit trait call once that syntax is available.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
