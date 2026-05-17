@@ -4644,11 +4644,18 @@ internal void format_emit_top_on(StringBuilder* sb,
     const CstTopOnInfo* top_on = &cst->top_ons[top_on_index];
 
     format_emit_indent(sb, indent_level);
-    sb_append_cstr(sb, "on ");
+    if (top_on->is_assert) {
+        sb_append_cstr(sb, "assert on ");
+    } else {
+        sb_append_cstr(sb, "on ");
+    }
     if (top_on->is_negated) {
         sb_append_char(sb, '!');
     }
     format_emit_string_literal(sb, lexer->strings[top_on->string_index], false);
+    if (top_on->is_assert) {
+        return;
+    }
     sb_append_cstr(sb, " {\n\n");
     format_emit_block_contents(
         sb, cst, lexer, top_on->body_node_index, indent_level + 1);

@@ -5017,9 +5017,73 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
                    .string_index    = string_index,
                    .body_node_index = block_node,
                    .is_negated      = is_negated,
+                   .is_assert       = false,
                });
     state->cst.nodes[top_on_node].a = top_on_info_index;
     state->cst.nodes[block_node].a  = first_item;
+    state->cst.nodes[block_node].b  = (u32)array_count(state->cst.nodes);
+    if (out_node) {
+        *out_node = top_on_node;
+    }
+    return true;
+}
+
+internal bool cst_parse_top_level_assert_on(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    if (cst_current_token(state).kind != TK_on) {
+        return false;
+    }
+    cst_advance(state);
+
+    bool is_negated = false;
+    if (cst_current_token(state).kind == TK_Bang) {
+        is_negated = true;
+        cst_advance(state);
+    }
+
+    if (cst_current_token(state).kind != TK_String) {
+        return false;
+    }
+    u32 string_index = cst_current_string_index(state);
+    if (string_index == CST_NO_VALUE) {
+        return false;
+    }
+    cst_advance(state);
+
+    u32 top_on_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_TopOn,
+                           .token_index = token_index,
+                       },
+                       &top_on_node)) {
+        return false;
+    }
+
+    u32 block_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_Block,
+                           .token_index = token_index,
+                       },
+                       &block_node)) {
+        return false;
+    }
+
+    u32 top_on_info_index = (u32)array_count(state->cst.top_ons);
+    array_push(state->cst.top_ons,
+               (CstTopOnInfo){
+                   .string_index    = string_index,
+                   .body_node_index = block_node,
+                   .is_negated      = is_negated,
+                   .is_assert       = true,
+               });
+
+    state->cst.nodes[top_on_node].a = top_on_info_index;
+    state->cst.nodes[block_node].a  = (u32)array_count(state->cst.nodes);
     state->cst.nodes[block_node].b  = (u32)array_count(state->cst.nodes);
     if (out_node) {
         *out_node = top_on_node;
@@ -5248,6 +5312,13 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
             return false;
         }
         return cst_parse_top_level_on(state, out_node);
+    }
+
+    if (cst_current_token(state).kind == TK_assert) {
+        if (is_public) {
+            return false;
+        }
+        return cst_parse_top_level_assert_on(state, out_node);
     }
 
     if (cst_current_token(state).kind == TK_pragma) {
