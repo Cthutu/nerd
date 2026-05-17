@@ -2169,8 +2169,7 @@ internal bool lsp_cst_symbol_node_info(const Cst*     cst,
         return true;
     }
 
-    if (node->kind != CK_Bind && node->kind != CK_Variable &&
-        node->kind != CK_Use) {
+    if (node->kind != CK_Bind && node->kind != CK_Variable) {
         return false;
     }
 
