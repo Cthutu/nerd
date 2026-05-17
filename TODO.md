@@ -25,20 +25,29 @@ Start by reading these files in order:
    - Follow into the specific manual chapters when touching syntax, semantics,
      diagnostics, or tests for a language feature.
 
-5. `docs/compiler-pipeline.md`
+5. `docs/spec/README.md` and the documents under `docs/spec/`
+   - Implementation-derived language specs for lexer, syntax, types,
+     expressions, statements, control flow, patterns, modules, FFI, runtime
+     model, diagnostics, tests, and implementation notes.
+   - Read these before changing language behaviour, tests, diagnostics,
+     formatter/LSP syntax handling, or user-facing documentation.
+   - When the manual and specs disagree, preserve the code-derived fact in the
+     spec and flag or fix the manual inconsistency as part of the task.
+
+6. `docs/compiler-pipeline.md`
    - Current compiler pipeline and stage responsibilities.
    - This is the fastest way to understand the active HIR and LLVM backend
      shape.
 
-6. `ARCHITECTURE_REVIEW.md`
+7. `ARCHITECTURE_REVIEW.md`
    - Top-level architecture review synthesis.
    - Read this before proposing boundary changes.
 
-7. `review/README.md`
+8. `review/README.md`
    - Map of the review workspace.
    - Use this to find audits, decision records, measurements, and prototypes.
 
-8. `review/decisions/*.md`
+9. `review/decisions/*.md`
    - Accepted architecture decisions.
    - Pay particular attention to:
      - HIR/backend boundary
@@ -47,12 +56,12 @@ Start by reading these files in order:
      - module bindings
      - LLVM sidecar generation from HIR
 
-9. `review/audits/*.md`
+10. `review/audits/*.md`
    - Evidence gathered during the review.
    - These explain why the formatter, LSP, memory, and HIR/backend boundaries
      are being changed.
 
-10. `docs/testing.md` and `tests/README.md`
+11. `docs/testing.md` and `tests/README.md`
     - Test harness expectations, fixture conventions, and cleanup rules.
     - Run `just test` before finalising meaningful compiler changes.
 
@@ -94,10 +103,17 @@ Working rules for this review:
 - Do not commit unrelated local changes such as editor task changes.
 - Prefer `just test` as the full gate; use focussed `python3 build/test.py
   --filter ...` runs while iterating.
-- Update affected documents as part of the same fix when behaviour, workflow,
-  architecture, or user-facing compiler details change.
-- After each fix, commit the reviewed change and run `just install` so the
-  installed `nerd` and standard modules match the verified source tree.
+- Standard task workflow:
+  - Make the smallest coherent change for the task.
+  - Update or add tests for changed behaviour.
+  - Update affected documentation in the same change, including manual pages
+    and `docs/spec/` language specs when syntax, semantics, diagnostics,
+    runtime behaviour, tests, workflow, architecture, or user-facing compiler
+    details change.
+  - Run `just test` after the task before finalising.
+  - Commit the work.
+  - Install the current verified compiler with `just install` so the installed
+    `nerd` and standard modules match the source tree.
 - Update review docs or decision records when an architectural agreement
   changes.
 - After each task, state the commit hash, verification run, and recommended
