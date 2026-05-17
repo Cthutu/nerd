@@ -59,6 +59,10 @@ intended exit code.
 - Generic calls can provide all type arguments, as in `id[i32](1)`.
 - Generic method calls can provide type arguments after the method name, as in
   `arena.alloc[i32]()`.
+- A trait implementation is atomic: all required members for one trait/type
+  pair must appear in the same `impl Trait for Type` block. The language does
+  not merge partial implementations of the same trait for the same type across
+  multiple impl blocks.
 - Concrete generic function values are written as `name[T]`.
 - Partial explicit generic argument lists are invalid.
 

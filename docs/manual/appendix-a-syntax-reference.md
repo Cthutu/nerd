@@ -71,6 +71,10 @@ test "name" { statements }
 The same `Name :: plex`, `Name :: union`, and `Name :: enum` declaration forms
 may also appear inside block scopes.
 
+Each `impl TraitName for Type` block is the complete implementation for that
+trait/type pair. Required trait members are not merged from multiple impl
+blocks.
+
 Unknown pragmas are accepted and ignored. Recognised pragmas may adjust compiler
 behaviour for the current program.
 

@@ -106,7 +106,9 @@ local trait implementations validate compatible member signatures after `Self`
 substitution. Impl members are callable through normal receiver method syntax.
 Duplicate non-generic implementations for the same trait and implementation
 target are rejected. Implementations may target compound types and primitive
-built-in types.
+built-in types. A trait implementation block is the complete implementation for
+one trait/type pair; implementations are not split or merged across multiple
+blocks.
 Generic methods may also receive explicit type arguments with
 `value.method[T](...)`. Generic trait parameters, named self aliases,
 constraints, and explicit trait member calls are future milestone work.
