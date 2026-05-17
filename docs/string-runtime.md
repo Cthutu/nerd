@@ -12,7 +12,8 @@ The current implementation is intentionally simple:
 - runtime interpolated strings are backed by the global temporary string arena
 - lowering is explicit in HIR and LLVM
 - the C runtime uses a global append-only arena-backed builder
-- conversion support is limited to built-in primitive types and `string`
+- conversion support includes built-in values and `Display.show` for types that
+  implement `Display`
 
 This is a first runtime model, not the final VM-oriented design.
 
@@ -61,6 +62,9 @@ and Unix-style C ABIs.
 Runtime interpolation results are allocated from a thread-local temporary string
 arena. They may be returned, assigned to variables, and passed through ordinary
 `string` values. The storage remains valid until the temporary arena is reset.
+Nested interpolations are supported: finishing an interpolated string copies the
+result into the temporary arena and restores the builder cursor to the mark that
+started that interpolation.
 
 The `core.temp_arena.reset()` method resets this storage explicitly. Programs
 with request or frame loops should call it at a clear boundary after temporary
@@ -80,6 +84,8 @@ Inside interpolation braces, sema currently accepts:
 - integer types
 - `f32`
 - `f64`
+- built-in aggregate values whose elements can be interpolated
+- values whose type implements `Display`
 
 Unsupported values, such as function-typed expressions, produce a dedicated
 semantic error.

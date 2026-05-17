@@ -259,6 +259,10 @@ Each expression inside `{...}` is evaluated, converted to text, and inserted at
 that position in the produced string. In the example, the result is the string
 `"value=42"`.
 
+Primitive values and built-in aggregate values can be interpolated directly.
+Other values can be interpolated when their type implements `Display`;
+interpolation calls `Display.show(value)` and inserts the returned string.
+
 Continuation literals after an interpolated string are part of the same
 interpolated string:
 

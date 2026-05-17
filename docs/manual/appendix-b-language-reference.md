@@ -187,6 +187,9 @@ intended exit code.
   allocations; resetting an arena invalidates all allocations from it.
 - Runtime interpolated strings are allocated from the temporary arena and remain
   valid until `temp_arena.reset()`.
+- Interpolation uses built-in formatting for primitive and built-in aggregate
+  values. For other values, the type must implement `Display`; interpolation
+  calls `Display.show(value)`.
 
 ## Generics
 

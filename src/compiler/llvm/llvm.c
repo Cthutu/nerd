@@ -3798,10 +3798,136 @@ internal void llvm_emit_append_byte(LlvmFunctionContext* ctx, u8 byte)
         ctx->sb, "  call void @string_builder_append_byte(i8 %u)\n", (u32)byte);
 }
 
+internal const Ast* llvm_current_ast(const LlvmFunctionContext* ctx)
+{
+    if (ctx == NULL || ctx->hir == NULL || ctx->sema == NULL ||
+        ctx->sema->program == NULL ||
+        ctx->hir->current_module_index >=
+            array_count(ctx->sema->program->modules)) {
+        return NULL;
+    }
+    return &ctx->sema->program->modules[ctx->hir->current_module_index]
+                .front_end.ast;
+}
+
+internal const AstNode* llvm_ast_unwrap_expr_or_stmt(const Ast* ast,
+                                                     u32        node_index)
+{
+    while (ast != NULL && node_index < array_count(ast->nodes)) {
+        const AstNode* node = &ast->nodes[node_index];
+        if ((node->kind != AK_Expression && node->kind != AK_Statement) ||
+            node->a >= array_count(ast->nodes)) {
+            return node;
+        }
+        node_index = node->a;
+    }
+    return NULL;
+}
+
+internal bool llvm_impl_is_display_trait(const LlvmFunctionContext* ctx,
+                                         const Ast*                 ast,
+                                         const AstImplInfo*         impl)
+{
+    const AstNode* trait =
+        impl != NULL
+            ? llvm_ast_unwrap_expr_or_stmt(ast, impl->trait_type_node_index)
+            : NULL;
+    return ctx != NULL && trait != NULL && trait->kind == AK_SymbolRef &&
+           trait->a != U32_MAX &&
+           string_eq_cstr(lex_symbol(ctx->lexer, trait->a), "Display");
+}
+
+internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,
+                                               u32                  type_index,
+                                               u32*                 out)
+{
+    const Ast* ast = llvm_current_ast(ctx);
+    if (ctx == NULL || ast == NULL || out == NULL) {
+        return false;
+    }
+
+    u32 string_type = llvm_builtin_type(ctx->sema, STK_String);
+    for (u32 i = 0; i < array_count(ctx->sema->methods); ++i) {
+        const SemaMethod* method = &ctx->sema->methods[i];
+        if (!method->is_trait_impl || method->generic_params_index != U32_MAX ||
+            !method->first_param_is_receiver ||
+            method->symbol_handle == U32_MAX ||
+            !string_eq_cstr(lex_symbol(ctx->lexer, method->symbol_handle),
+                            "show") ||
+            method->impl_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* impl_node = &ast->nodes[method->impl_node_index];
+        if (impl_node->kind != AK_Impl ||
+            impl_node->a >= array_count(ast->impls) ||
+            !llvm_impl_is_display_trait(ctx, ast, &ast->impls[impl_node->a]) ||
+            method->decl_index >= array_count(ctx->sema->decls)) {
+            continue;
+        }
+
+        u32 fn_type = ctx->sema->decls[method->decl_index].type_index;
+        if (!llvm_type_is_function(ctx->sema, fn_type) ||
+            llvm_function_param_count(ctx->sema, fn_type) != 1 ||
+            llvm_function_param_type(ctx->sema, fn_type, 0) != type_index ||
+            llvm_function_return_type(ctx->sema, fn_type) != string_type) {
+            continue;
+        }
+
+        for (u32 function_index = 0;
+             function_index < array_count(ctx->hir->functions);
+             ++function_index) {
+            const HirFunction* function = &ctx->hir->functions[function_index];
+            if (function->decl_index == method->decl_index ||
+                function->fn_node_index ==
+                    ctx->sema->decls[method->decl_index].value_node_index) {
+                *out = function_index;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal bool llvm_emit_append_display_string_value(LlvmFunctionContext* ctx,
+                                                    LlvmValue            value)
+{
+    u32 function_index = U32_MAX;
+    if (!llvm_display_show_function_index(
+            ctx, value.type_index, &function_index)) {
+        return false;
+    }
+
+    string function_name = llvm_function_name_string(
+        ctx->hir, ctx->lexer, ctx->arena, function_index);
+    string value_type = llvm_type_string(ctx, value.type_index);
+    string shown      = llvm_temp(ctx);
+    string shown_ptr  = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = call { ptr, i64 } " STRINGP "(" STRINGP
+              " " STRINGP ")\n"
+              "  " STRINGP " = alloca { ptr, i64 }\n"
+              "  store { ptr, i64 } " STRINGP ", ptr " STRINGP "\n"
+              "  call void @string_builder_append_string(ptr " STRINGP ")\n",
+              STRINGV(shown),
+              STRINGV(function_name),
+              STRINGV(value_type),
+              STRINGV(value.value),
+              STRINGV(shown_ptr),
+              STRINGV(shown),
+              STRINGV(shown_ptr),
+              STRINGV(shown_ptr));
+    return true;
+}
+
 internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
                                             LlvmValue            value)
 {
     SemaTypeKind kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (llvm_emit_append_display_string_value(ctx, value)) {
+        return true;
+    }
+
     if (kind == STK_Tuple || kind == STK_Plex) {
         llvm_emit_append_byte(ctx, '(');
         u32 field_count = llvm_record_field_count(ctx->sema, value.type_index);

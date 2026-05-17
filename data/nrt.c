@@ -391,6 +391,7 @@ void string_builder_finish(NerdString* out, size_t start)
         memcpy(data, g_string_builder_data + start, count);
     }
     *out = (NerdString){.data = data, .count = count};
+    g_string_builder_cursor = start;
 }
 
 void to_string$string(NerdString* out, const NerdString* value)

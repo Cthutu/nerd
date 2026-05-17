@@ -8758,7 +8758,8 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     }
 }
 
-internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
+internal bool sema_type_is_builtin_interpolatable(const Sema* sema,
+                                                  u32         type_index)
 {
     if (type_index == sema_no_type()) {
         return false;
@@ -8774,7 +8775,7 @@ internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
         {
             const SemaType* tuple = &sema->types[type_index];
             for (u32 i = 0; i < tuple->param_count; ++i) {
-                if (!sema_type_is_interpolatable(
+                if (!sema_type_is_builtin_interpolatable(
                         sema,
                         sema->type_param_types[tuple->first_param_type + i])) {
                     return false;
@@ -8783,11 +8784,11 @@ internal bool sema_type_is_interpolatable(const Sema* sema, u32 type_index)
             return true;
         }
     case STK_Array:
-        return sema_type_is_interpolatable(
+        return sema_type_is_builtin_interpolatable(
             sema, sema->types[type_index].first_param_type);
     case STK_Slice:
     case STK_DynamicArray:
-        return sema_type_is_interpolatable(
+        return sema_type_is_builtin_interpolatable(
             sema, sema->types[type_index].first_param_type);
     default:
         return sema_type_is_integer(sema, type_index);
@@ -13299,7 +13300,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             part_type                  = sema_materialise_type(sema, part_type);
             sema->node_type_indices[i] = part_type;
-            if (!sema_type_is_interpolatable(sema, part_type)) {
+            if (sema_type_is_builtin_interpolatable(sema, part_type)) {
+                continue;
+            }
+            u32 display_symbol =
+                sema_find_symbol_handle_by_name(lexer, s("Display"));
+            if (display_symbol != sema_no_decl()) {
+                if (!sema_type_satisfies_trait_constraint(
+                        lexer,
+                        ast,
+                        sema,
+                        part_type,
+                        display_symbol,
+                        sema_node_span(lexer, &ast->nodes[part->a]))) {
+                    return false;
+                }
+                continue;
+            }
+            {
                 return error_0311_invalid_interpolation_type(
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[part->a]),

@@ -488,7 +488,7 @@ library layering are in place.
   - [x] reject duplicate non-generic implementations in the first version
   - [x] reject overlapping generic implementations in the first version
 - [ ] Add built-in trait semantics:
-  - [ ] `Display` supplies text conversion for interpolation
+  - [x] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
   - [ ] `Eq` supports equality semantics
   - [ ] `Order` supports comparison semantics through a `compare`-style member
@@ -578,6 +578,7 @@ library layering are in place.
   - [x] language tests for receiver-form trait calls
   - [x] language tests for explicit trait calls
   - [x] language tests for generic constraints using `where T: Trait`
+  - [x] language tests for `Display` interpolation on a plex value
   - [x] language tests for generic impls
   - [ ] language tests for built-in `Display`, `Eq`, `Order`, `Default`, and
     `Iterator`
