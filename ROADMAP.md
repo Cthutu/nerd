@@ -632,5 +632,3 @@ near-term tasks without a fresh design pass.
 - A synthetic diagnostic harness for hard-limit error categories that are
   impractical to trigger through normal source files, including `0102`, `0105`,
   and `0200`.
-- Retiring `TODO.md` once its ideas have been integrated into active roadmap
-  work or deliberately discarded.

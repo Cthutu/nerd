@@ -2,27 +2,70 @@
 
 Nerd is a small compiler toolchain and language server implemented in C.
 
-The codebase is split into a few major areas:
+## Repository Map
 
-- `src/compiler` contains the compiler pipeline
-- `src/lsp` contains the language server
-- `build/test.py` contains the repository regression test runner
-- `build/test_install.py` contains installed-compiler smoke checks
-- `build/check_editor_integrations.py` checks VS Code/Neovim/LSP wiring
-- `tests` contains language, error, formatter, and LSP tests
-- `docs` contains developer-facing documentation
+- [docs/README.md](docs/README.md)
+  Developer documentation, manual, implementation-derived language specs, and
+  compiler subsystem notes.
+- [src/README.md](src/README.md)
+  Main compiler and language-server implementation entry points.
+- [tests/README.md](tests/README.md)
+  Regression test families and fixture conventions.
+- [syntax/README.md](syntax/README.md)
+  VS Code and Neovim editor integration ownership.
+- [review/README.md](review/README.md)
+  Historical architecture review evidence and accepted decision records.
+- [ROADMAP.md](ROADMAP.md)
+  Current project direction and active priorities.
+- [CODEX.md](CODEX.md)
+  Repo-specific guidance for Codex sessions.
 
-Start here if you are new to the repository:
+## Catching Up
 
-- [docs/README.md](/home/matt/nerd/docs/README.md)
-- [docs/overviews/INTERNALS.md](/home/matt/nerd/docs/overviews/INTERNALS.md)
-- [ROADMAP.md](/home/matt/nerd/ROADMAP.md)
-- [tests/README.md](/home/matt/nerd/tests/README.md)
+If you are new to the repository, read these in order:
+
+1. [CODEX.md](CODEX.md)
+   Repo-specific working rules for Codex sessions.
+2. [ROADMAP.md](ROADMAP.md)
+   Current project direction. Prefer this over older historical notes when they
+   disagree.
+3. [docs/README.md](docs/README.md)
+   Documentation map. Follow its links into the manual, specs, compiler
+   internals, diagnostics, standard library, LSP, editor support, and testing
+   docs.
+4. [src/README.md](src/README.md)
+   Current implementation entry points for the compiler and language server.
+5. [tests/README.md](tests/README.md)
+   Test harness expectations and fixture layout.
+
+Use the architecture review under [review/README.md](review/README.md) as
+historical context only. Read it when a task touches an architectural boundary
+or when current docs refer to a settled review decision.
+
+## Task Workflow
+
+- Make the smallest coherent change for the task.
+- Update or add tests for changed behaviour, including regression tests for
+  discovered bugs.
+- Update affected documentation in the same change. For language changes, keep
+  the learner-facing manual under [docs/manual](docs/manual/README.md) and the
+  implementation-derived specs under [docs/spec](docs/spec/README.md) aligned.
+- Prefer `just test` as the full gate; use focussed
+  `python3 build/test.py --filter ...` runs while iterating.
+- Run `just test` before finalising.
+- Commit the work, keeping commits small and describing the task slice in the
+  commit message.
+- Install the verified compiler with `just install` so the installed `nerd` and
+  standard modules match the source tree.
+- Do not commit unrelated local changes.
+- When reporting back, include the commit hash, verification run, and useful
+  next step.
 
 Useful commands:
 
 ```sh
 just test
+just install
 python3 build/test_install.py --nerd _bin/nerd-debug
 python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
 python3 build/build.py

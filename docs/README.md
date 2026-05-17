@@ -5,15 +5,17 @@ This folder contains developer-facing documentation for the repository.
 ## Source Of Truth
 
 Use [../ROADMAP.md](/home/matt/nerd/ROADMAP.md) for current project direction,
-active work, and cross-cutting engineering rules. Use
-[manual/README.md](/home/matt/nerd/docs/manual/README.md) and the manual
-appendices for source-level language behaviour.
+active work, and cross-cutting engineering rules. Use the learner-facing
+[manual/README.md](/home/matt/nerd/docs/manual/README.md) for source-level
+language behaviour and [spec/README.md](/home/matt/nerd/docs/spec/README.md)
+for implementation-derived language facts.
 
 The other documents in this folder are implementation notes. Keep them when
 they describe compiler structure, subsystem ownership, diagnostics, tooling, or
-standard-library surface that is not already covered by the manual. When one of
-these notes disagrees with the roadmap, the manual, tests, or the implementation,
-verify against the implementation and update the note before relying on it.
+standard-library surface that is not already covered by the manual or specs.
+When one of these notes disagrees with the roadmap, manual, specs, tests, or
+implementation, verify against the implementation and update the note before
+relying on it.
 
 ## Reading Order
 
@@ -82,4 +84,4 @@ Use the manual appendix for source-level syntax reference:
 
 Older language-design notes should not be added here unless they are still
 actively maintained. Retain outdated planning material only when the roadmap
-explicitly keeps it visible, such as [../TODO.md](/home/matt/nerd/TODO.md).
+explicitly keeps it visible.
