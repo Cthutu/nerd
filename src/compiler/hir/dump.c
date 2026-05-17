@@ -803,6 +803,9 @@ internal void hir_render_expr(StringBuilder* sb,
                     sb_append_cstr(sb, ", ");
                 }
                 if (loop->item_symbol != U32_MAX) {
+                    if (loop->item_deref) {
+                        sb_append_char(sb, '^');
+                    }
                     sb_append_string(sb, lex_symbol(lexer, loop->item_symbol));
                 } else {
                     sb_append_cstr(sb, "<item>");

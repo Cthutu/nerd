@@ -61,9 +61,9 @@ function-type   ::= 'fn' generic-params? '(' type-list? ')' '->' type
 Function types use unnamed parameter types. Trait requirements reuse this
 syntax, for example `show :: fn (Self) -> string`. A trait may use
 `trait [Item] { next :: fn (Self) -> Item }` to declare generic parameters.
-Generic trait declarations are parsed and formatted, but implementing generic
-traits is future semantic work. A trait may use `trait for Value` to name the
-self type `Value` instead of `Self`.
+Generic trait declarations, implementations, and constraints are semantic
+language features. A trait may use `trait for Value` to name the self type
+`Value` instead of `Self`.
 
 Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
@@ -78,6 +78,9 @@ supplies equality for non-built-in values used with `==` and `!=`.
 `<`, `<=`, `>`, and `>=`; the returned `i32` is compared with zero.
 `Default.default()` supplies local typed-variable initialisation when the
 variable has no initializer and a concrete implementation exists.
+`Iterator[Item].next(^iter)` supplies user-defined `for in` iteration by
+returning `Option[Item]`; `None` stops iteration and `Some(value)` supplies the
+loop item.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when

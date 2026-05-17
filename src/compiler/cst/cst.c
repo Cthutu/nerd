@@ -3926,6 +3926,7 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         .index_token_index    = U32_MAX,
         .item_symbol          = U32_MAX,
         .item_token_index     = U32_MAX,
+        .item_deref           = false,
         .label_symbol         = U32_MAX,
         .else_block_index     = U32_MAX,
     };
@@ -3938,10 +3939,15 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         return false;
     }
     cst_advance(state);
-    bool starts_for_in = cst_current_token(state).kind == TK_Symbol &&
-                         (cst_peek_kind_at(state, 1) == TK_in ||
-                          (cst_peek_kind_at(state, 1) == TK_Comma &&
-                           cst_peek_kind_at(state, 2) == TK_Symbol));
+    bool starts_for_in = (cst_current_token(state).kind == TK_Symbol &&
+                          (cst_peek_kind_at(state, 1) == TK_in ||
+                           (cst_peek_kind_at(state, 1) == TK_Comma &&
+                            (cst_peek_kind_at(state, 2) == TK_Symbol ||
+                             (cst_peek_kind_at(state, 2) == TK_Caret &&
+                              cst_peek_kind_at(state, 3) == TK_Symbol))))) ||
+                         (cst_current_token(state).kind == TK_Caret &&
+                          cst_peek_kind_at(state, 1) == TK_Symbol &&
+                          cst_peek_kind_at(state, 2) == TK_in);
     if (!cst_token_is_for_body_start(cst_current_token(state).kind) &&
         starts_for_in) {
         for_info.mode = CFM_In;
@@ -3954,8 +3960,19 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
                 return false;
             }
             if (cst_current_token(state).kind != TK_Symbol) {
+                if (cst_current_token(state).kind != TK_Caret) {
+                    return false;
+                }
+                for_info.item_deref = true;
+                cst_advance(state);
+            }
+            if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
+        }
+        if (cst_current_token(state).kind == TK_Caret) {
+            for_info.item_deref = true;
+            cst_advance(state);
         }
         for_info.item_symbol      = cst_current_symbol_handle(state);
         for_info.item_token_index = state->token_index;

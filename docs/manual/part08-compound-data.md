@@ -445,7 +445,10 @@ language-known traits and result types:
   implementation.
 - `Option[T]` is an enum with `None` and `Some(T)`.
 - `Result[T, E]` is an enum with `Ok(T)` and `Err(E)`.
-- `Iterator[Item]` supplies `next :: fn (^Self) -> Option[Item]`.
+- `Iterator[Item]` supplies `next :: fn (^Self) -> Option[Item]`. `for item in
+  iter` calls `next` until it returns `None`; `Some(value)` becomes the loop
+  item. If `Item` is a pointer type, `for ^item in iter` binds the pointed-to
+  value.
 
 These names can be used without `use core`. A local declaration with the same
 name takes precedence over the implicit core declaration, and an explicit

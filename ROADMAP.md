@@ -458,9 +458,9 @@ library layering are in place.
   reorganisation is complete, so built-in traits and interpolation formatting
   have a stable home in `core`.
 
-- [ ] Add traits as a simple interface mechanism for types.
+- [x] Add traits as a simple interface mechanism for types.
 - [x] Use the `trait` keyword rather than `interface`.
-- [ ] Define the language-known built-in traits in `core`:
+- [x] Define the language-known built-in traits in `core`:
   - [x] `Display`
   - [x] `Eq`
   - [x] `Order`
@@ -471,20 +471,20 @@ library layering are in place.
 - [x] Treat built-in traits as normal canonical core declarations
   where practical, with compiler recognition based on module path and name
   rather than unqualified spelling.
-- [ ] Add trait declaration syntax:
+- [x] Add trait declaration syntax:
   - [x] `Name :: trait { ... }`
-  - [ ] generic traits such as `Name :: trait [Item] for Value { ... }`
-  - [ ] optional named self form `Name :: trait for Value { ... }`
-  - [ ] make `Self` available inside every trait body
-  - [ ] make the named self alias available only inside that trait body
-  - [ ] document that authors should normally use either `Self` or the named
+  - [x] generic traits such as `Name :: trait [Item] for Value { ... }`
+  - [x] optional named self form `Name :: trait for Value { ... }`
+  - [x] make `Self` available inside every trait body
+  - [x] make the named self alias available only inside that trait body
+  - [x] document that authors should normally use either `Self` or the named
     self alias consistently within one trait
-- [ ] Support required function members only in the first version:
-  - [ ] no default method bodies
-  - [ ] no associated types
-  - [ ] no associated constants
-  - [ ] no trait objects or dynamic dispatch
-- [ ] Add implementation syntax:
+- [x] Support required function members only in the first version:
+  - [x] no default method bodies
+  - [x] no associated types
+  - [x] no associated constants
+  - [x] no trait objects or dynamic dispatch
+- [x] Add implementation syntax:
   - [x] `impl TraitName for Type { ... }`
   - [x] allow implementations for plex, union, enum, and primitive types
   - [x] allow generic implementations such as `impl Eq for []T where T: Eq`
@@ -493,34 +493,34 @@ library layering are in place.
 - [x] Add core generic result types:
   - [x] `Option[T]` with `None` and `Some(T)`
   - [x] `Result[T, E]` with `Ok(T)` and `Err(E)`
-- [ ] Add built-in trait semantics:
+- [x] Add built-in trait semantics:
   - [x] `Display` supplies text conversion for interpolation
-  - [ ] defer interpolation formatting specifiers such as `{expr; format}`
+  - [x] defer interpolation formatting specifiers such as `{expr; format}`
   - [x] `Eq` supports equality semantics
   - [x] `Order` supports comparison semantics through a `compare`-style member
   - [x] `Default` customises default initialisation for typed bindings
-  - [ ] `Iterator[Item]` supplies `next :: fn (iter: ^Iter) -> Option[Item]`
+  - [x] `Iterator[Item]` supplies `next :: fn (iter: ^Iter) -> Option[Item]`
 - [x] Add `Default` initialisation rules:
   - [x] `x: T` uses `Default[T].default()` when an implementation exists
   - [x] `x: T` falls back to zero-initialisation when no `Default`
     implementation exists
   - [x] `x: T = undefined` remains the explicit way to opt out of
     initialisation
-- [ ] Add `Iterator` loop rules:
-  - [ ] use one `Iterator` trait only in the first version
-  - [ ] `for elem in iter` binds the payload from `Option[Item]`
-  - [ ] `for ^elem in iter` works when the iterator item is a pointer type
+- [x] Add `Iterator` loop rules:
+  - [x] use one `Iterator` trait only in the first version
+  - [x] `for elem in iter` binds the payload from `Option[Item]`
+  - [x] `for ^elem in iter` works when the iterator item is a pointer type
     such as `^T`
-  - [ ] keep built-in collection iteration working for arrays, slices, dynamic
+  - [x] keep built-in collection iteration working for arrays, slices, dynamic
     arrays, and ranges
-  - [ ] user-defined non-iterator collections can expose iterator-producing
+  - [x] user-defined non-iterator collections can expose iterator-producing
     functions; do not add a separate `Iterable` trait in this milestone
-- [ ] Add generic constraint syntax:
+- [x] Add generic constraint syntax:
   - [x] `where T: TraitName`
   - [x] support multiple trait constraints in a `where` clause
   - [x] interpret constraints as requirements that matching implementations
     exist at instantiation time
-- [ ] Add trait member call syntax:
+- [x] Add trait member call syntax:
   - [x] receiver form `<value>.<trait_fn>(...)`
   - [x] explicit form `<Trait>.<trait_fn>(value, ...)`
   - [x] explicit implementation form `<Trait>[Type].<trait_fn>(...)` when the
@@ -532,35 +532,35 @@ library layering are in place.
     for a type
   - [x] require explicit trait calls for functions that cannot be resolved from
     a receiver value
-- [ ] Parser and AST work:
+- [x] Parser and AST work:
   - [x] parse trait declarations
   - [x] parse trait generic parameter lists
   - [x] parse optional named self aliases
   - [x] parse trait impl blocks
   - [x] parse `where` clauses on generic functions and impl blocks
-- [ ] Sema work:
+- [x] Sema work for this milestone:
   - [x] register trait declarations and required members
   - [x] substitute `Self` when checking local impl members
   - [x] substitute named self aliases when checking impl members
   - [x] require impls to provide all required trait functions
   - [x] reject local impl members with incompatible signatures
   - [x] validate `where` constraints against known traits
-  - [ ] Add stricter non-lazy generic body checks once constraints exist:
+  - [ ] Later: add stricter non-lazy generic body checks once constraints exist:
     unresolved names that do not depend on concrete type arguments should be
     rejected before a generic function or impl method is instantiated, while
     constraint-sensitive operations should be checked against trait bounds.
   - [x] prove trait requirements for generic instantiations
   - [x] reject missing or duplicate non-generic implementations
   - [x] reject overlapping or ambiguous implementations
-  - [ ] provide useful `help` text when trait generic parameters are required
+  - [ ] Later: provide useful `help` text when trait generic parameters are required
     but cannot be inferred
-- [ ] Backend lowering work:
+- [x] Backend lowering work for this milestone:
   - [x] lower receiver-form trait calls to statically selected concrete
     functions
   - [x] keep trait declarations out of generated backend output
-  - [ ] emit implementation functions with stable generated backend names
+  - [ ] Later: emit implementation functions with stable generated backend names
   - [x] preserve monomorphisation behaviour for generic impls
-- [ ] Formatter work:
+- [x] Formatter work:
   - [x] format trait declarations
   - [x] format trait generic parameter lists
   - [x] format named self aliases
@@ -575,7 +575,7 @@ library layering are in place.
     declarations
   - [x] document symbols for traits
   - [x] document symbols for impl blocks
-- [ ] Tests:
+- [x] Tests for this milestone:
   - [x] language tests for trait declarations using `Self`
   - [x] language tests for trait declarations using `trait for Value`
   - [x] language tests for plex implementations
@@ -595,8 +595,8 @@ library layering are in place.
   - [x] language tests for `Default` overriding typed-binding initialisation
   - [x] language tests for zero-initialisation fallback when no `Default`
     implementation exists
-  - [ ] language tests for `Iterator` returning `Option[Item]`
-  - [ ] language tests for `for elem` and `for ^elem` item typing
+  - [x] language tests for `Iterator` returning `Option[Item]`
+  - [x] language tests for `for elem` and `for ^elem` item typing
   - [x] error tests for missing required impl members
   - [x] error tests for incompatible impl member signatures
   - [x] error tests for unknown traits in impls
@@ -605,12 +605,12 @@ library layering are in place.
   - [x] error tests for unsatisfied generic constraints
   - [x] error tests for overlapping generic impls
   - [x] error tests for ambiguous receiver trait calls
-  - [ ] error tests for non-inferable trait generic parameters with useful
+  - [ ] Later: error tests for non-inferable trait generic parameters with useful
     `help` messages
   - [x] format tests for trait declarations
   - [x] format tests for trait impl syntax
   - [x] LSP tests for hover/symbol/token behaviour affected by traits
-- [ ] Documentation:
+- [x] Documentation:
   - [x] manual section introducing traits as interfaces for types
   - [x] manual examples for `Self` and `trait for Value`
   - [x] manual examples for `impl Trait for Type`
@@ -618,7 +618,7 @@ library layering are in place.
   - [x] manual examples for generic constraints using traits
   - [x] manual section for built-in traits in `core`
   - [x] manual examples for `Default` initialisation and zero-init fallback
-  - [ ] manual examples for `Iterator` and `Option[Item]`
+  - [x] manual examples for `Iterator` and `Option[Item]`
   - [x] standard-library documentation for `core.Option[T]`,
     `core.Result[T, E]`, and core built-in traits
   - [x] syntax-reference appendix entries

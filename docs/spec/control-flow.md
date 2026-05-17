@@ -19,13 +19,23 @@ for-statement ::= 'for' for-form [ '$' IDENT ] block [ 'else' block ]
 for-form      ::= /* empty */
                 | expression
                 | IDENT 'in' expression
+                | '^' IDENT 'in' expression
                 | IDENT ',' IDENT 'in' expression
+                | IDENT ',' '^' IDENT 'in' expression
                 | [ for-item-list ] ';' [ expression ] ';' [ for-item-list ]
 ```
 
 Every loop starts with `for`. Supported loop forms are infinite loops, condition
-loops, `for-in` loops, and C-style loops. `for-in` binders are plain
-identifiers.
+loops, `for-in` loops, and C-style loops. `for-in` binders are identifiers, or
+`^` followed by an identifier when the iterated item type is a pointer and the
+loop should bind the pointed-to value.
+
+Built-in collection iteration over arrays, slices, strings, and dynamic arrays
+binds pointer items. Range iteration binds integer values. User-defined
+iterator iteration is selected when the iterable type has a concrete
+`core.Iterator[Item]` implementation whose `next` method has type
+`fn (^Iter) -> Option[Item]`; `None` ends the loop and `Some(value)` binds the
+item.
 
 `break` exits the nearest loop or the named labelled loop. `again` resumes the
 nearest loop or the named labelled loop. `break` may carry a value when the loop

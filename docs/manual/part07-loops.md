@@ -72,7 +72,7 @@ main :: fn () -> i32 {
 ## `for in`
 
 Use `for item in collection` to iterate arrays, slices, strings, dynamic
-arrays, and integer ranges.
+arrays, integer ranges, and values that implement `core.Iterator[Item]`.
 
 Arrays and slices are introduced in Part 8, and dynamic arrays in Part 9. For
 now, read `words` as a fixed list of strings.
@@ -101,7 +101,9 @@ main :: fn () {
 }
 ```
 
-The index binding has type `usize`.
+The index binding has type `usize`. Collection items are pointers to elements.
+When the item type is a pointer, `for ^item in collection` dereferences each
+item before binding it.
 
 Integer ranges use bracketed `start..end` or `start..=end` forms:
 
@@ -124,6 +126,35 @@ iteration, an optional leading index binding has type `usize`:
 ```nerd
 for index, value in [3..6] {
     prn($"{index}: {value}")
+}
+```
+
+User-defined iterators implement `Iterator[Item]` and return `Option[Item]`
+from `next`. `None` ends the loop, while `Some(value)` binds `value` to the
+loop item:
+
+```nerd
+Counter :: plex { current i32 end i32 }
+
+impl Iterator[i32] for Counter {
+    next :: fn (self: ^Self) -> Option[i32] {
+        result: Option[i32] = None
+        on self.current < self.end {
+            yes => {
+                value := self.current
+                self.current += 1
+                result = Some(value)
+            }
+            else => {}
+        }
+        return result
+    }
+}
+
+sum := 0
+counter := Counter { current: 0, end: 4 }
+for value in counter {
+    sum += value
 }
 ```
 

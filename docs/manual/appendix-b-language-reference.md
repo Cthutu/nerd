@@ -132,7 +132,10 @@ intended exit code.
 - `for { ... }` loops forever until broken.
 - `for condition { ... }` loops while the condition is true.
 - `for init; condition; update { ... }` supports C-style iteration.
-- `for item in collection { ... }` iterates collection values.
+- `for item in collection { ... }` iterates built-in collections and
+  `Iterator[Item]` values.
+- `for ^item in collection { ... }` requires pointer items and binds the
+  pointed-to value.
 - `for item in [start..end] { ... }` iterates integer values from `start` up to
   but not including `end`.
 - `for item in [start..=end] { ... }` iterates integer values from `start`
