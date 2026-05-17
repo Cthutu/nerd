@@ -1,6 +1,6 @@
 Display :: trait{show::fn(Self)->string}
-Point :: plex{x i32}
-impl Display for Point{show::fn(self:Self)->string=>"point"}
+Point :: plex{x i32 y i32}
+impl Display for Point{show::fn(self:Self)->string=>$"Point({self.x}, {self.y})"}
 ¬
 Display :: trait {
     show :: fn (Self) -> string
@@ -8,10 +8,11 @@ Display :: trait {
 
 Point :: plex {
     x i32
+    y i32
 }
 
 impl Display for Point {
 
-    show :: fn (self: Self) => "point"
+    show :: fn (self: Self) => $"Point({self.x}, {self.y})"
 
 }
