@@ -560,7 +560,7 @@ library layering are in place.
   - [x] format named self aliases
   - [x] format trait impl blocks
   - [x] format `where` clauses
-  - [ ] format receiver and explicit trait member calls
+  - [x] format receiver and explicit trait member calls
 - [ ] LSP/editor work:
   - [ ] hover for trait declarations and impl members
   - [ ] go-to-definition from trait member calls to selected impl members where
