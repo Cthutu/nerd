@@ -34,7 +34,7 @@ typedef struct {
 
 void string_builder_reset(void);
 
-static void nrt_epr(const char* format, ...)
+static void nrt_eprintf(const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -42,13 +42,42 @@ static void nrt_epr(const char* format, ...)
     va_end(args);
 }
 
-static void nrt_eprn(const char* format, ...)
+static void nrt_eprintfn(const char* format, ...)
 {
     va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
-    nrt_epr("\n");
+    nrt_eprintf("\n");
+}
+
+static void nrt_write_bytes(FILE* stream, const void* data, size_t count)
+{
+    if (data != NULL && count > 0) {
+        fwrite(data, 1, count, stream);
+    }
+}
+
+void nrt_pr(const void* data, size_t count)
+{
+    nrt_write_bytes(stdout, data, count);
+}
+
+void nrt_epr(const void* data, size_t count)
+{
+    nrt_write_bytes(stderr, data, count);
+}
+
+void nrt_prn(const void* data, size_t count)
+{
+    nrt_pr(data, count);
+    fputc('\n', stdout);
+}
+
+void nrt_eprn(const void* data, size_t count)
+{
+    nrt_epr(data, count);
+    fputc('\n', stderr);
 }
 
 void nerd_assert(bool condition,
@@ -59,11 +88,11 @@ void nerd_assert(bool condition,
     if (condition) {
         return;
     }
-    nrt_epr("assertion failed at %s:%u: ", source_path, line);
+    nrt_eprintf("assertion failed at %s:%u: ", source_path, line);
     if (message != NULL && message->count > 0) {
         fwrite(message->data, 1, message->count, stderr);
     }
-    nrt_epr("\n");
+    nrt_eprintf("\n");
     exit(127);
 }
 
@@ -107,7 +136,7 @@ static NrtArenaBlock* nrt_arena_new_block(size_t capacity)
     NrtArenaBlock* block =
         (NrtArenaBlock*)malloc(sizeof(NrtArenaBlock) + capacity);
     if (block == NULL) {
-        nrt_eprn("fatal: arena allocation failed");
+        nrt_eprintfn("fatal: arena allocation failed");
         abort();
     }
     block->next     = NULL;
@@ -223,7 +252,7 @@ void string_slice(NerdString* out,
     if (value == NULL || start > end || end > value->count ||
         !string_is_utf8_boundary(value, start) ||
         !string_is_utf8_boundary(value, end)) {
-        nrt_eprn("fatal: string slice out of bounds");
+        nrt_eprintfn("fatal: string slice out of bounds");
         abort();
     }
 
@@ -253,7 +282,7 @@ static void string_builder_ensure_capacity(size_t needed)
 
     u8* data = (u8*)realloc(g_string_builder_data, capacity);
     if (data == NULL) {
-        nrt_eprn("fatal: string builder allocation failed");
+        nrt_eprintfn("fatal: string builder allocation failed");
         abort();
     }
     g_string_builder_data     = data;
@@ -296,7 +325,7 @@ void string_builder_finish(NerdString* out, size_t start)
         return;
     }
     if (start > g_string_builder_cursor) {
-        nrt_eprn("fatal: invalid string builder mark");
+        nrt_eprintfn("fatal: invalid string builder mark");
         abort();
     }
 

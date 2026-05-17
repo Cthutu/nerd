@@ -360,7 +360,9 @@ library layering are in place.
   - [ ] add `mark` to return the current 32-bit arena cursor
   - [ ] add `restore` to set the current cursor back to a previous mark
 - [ ] Add `temp_arena`:
-  - [ ] provide a canonical global temporary arena from `core`
+  - [ ] provide a canonical public global temporary arena from `core`
+  - [ ] make runtime string interpolation allocate from `core.temp_arena`
+    rather than a private runtime-only arena
   - [x] define interpolation strings as allocated from `temp_arena`
   - [x] document that values allocated from `temp_arena` remain valid until
     `temp_arena_reset()`
@@ -381,6 +383,7 @@ library layering are in place.
   - [ ] `std` may depend on `core` and delegate platform details to `sys`
   - [ ] avoid `sys` depending on `std`
 - [ ] Migrate existing modules:
+  - [x] route `std.io` printing through NRT stdout/stderr helpers
   - [ ] move low-level Linux bindings out of `std` and into `sys.linux` or
     related `sys.*` modules
   - [ ] move X11 bindings into `sys.x11`
@@ -401,6 +404,7 @@ library layering are in place.
     the first version
 - [ ] Backend/runtime work:
   - [x] lower arena construction, allocation, reset, and release
+  - [x] add NRT `pr`/`prn`/`epr`/`eprn` helpers for source-level I/O
   - [x] expose page-size alignment through the runtime
   - [x] keep pointer alignment correct for currently supported element types
   - [ ] lower and expose arena `mark` and `restore`
