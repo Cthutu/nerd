@@ -21,11 +21,11 @@ same line
 hir 0
 module module.0(071-use-modules.input)
 import module.1(std.io)
-import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
-import import.4 input from module.1(std.io).decl.10: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
 bind pr = import.0
 bind epr = import.1
 bind prn = import.2

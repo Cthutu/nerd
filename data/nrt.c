@@ -399,7 +399,7 @@ DEF_TO_STRING_INT(usize, uintptr_t, "%zu", size_t)
 DEF_TO_STRING_FLOAT(f32, float)
 DEF_TO_STRING_FLOAT(f64, double)
 
-size_t nerd_read_line(u8* buffer, size_t capacity)
+size_t nrt_read_line(u8* buffer, size_t capacity)
 {
     size_t count = 0;
     int    ch    = 0;

@@ -33,7 +33,7 @@ generic 8
 hir 0
 module module.0(127-generic-types.input)
 import module.1(std.io)
-import import.0 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.0 prn from module.1(std.io).decl.11: fn (string) -> void
 bind prn = import.0
 bind io = module.1
 bind Box = type.0

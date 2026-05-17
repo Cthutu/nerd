@@ -2,12 +2,12 @@
 --
 -- This module now loads through the normal module pipeline.
 
-ffi "c" {
-    write (i32, ^void, usize) -> isize
-}
-
 ffi "nrt" {
-    nerd_read_line (^u8, usize) -> usize
+    nrt_pr        (^void, usize)
+    nrt_prn       (^void, usize)
+    nrt_epr       (^void, usize)
+    nrt_eprn      (^void, usize)
+    nrt_read_line (^u8, usize) -> usize
 }
 
 STDOUT_FILENO :: 1
@@ -38,13 +38,6 @@ pub eprn :: fn (text: string = "") -> void {
 
 pub input :: fn (prompt: string = "> ") -> string {
     pr(prompt)
-    input_len = nerd_read_line(input_buf[..].data, input_buf[..].count)
+    input_len = nrt_read_line(input_buf[..].data, input_buf[..].count)
     return input_buf[0..input_len].as(string)
-}
-
-ffi "nrt" {
-    nrt_pr   (^void, usize)
-    nrt_prn  (^void, usize)
-    nrt_epr  (^void, usize)
-    nrt_eprn (^void, usize)
 }

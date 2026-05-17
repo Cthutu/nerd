@@ -22,11 +22,11 @@ hir 0
 module module.0(129-cross-module-generics.input)
 import module.1(std.io)
 import module.2(test.generics)
-import import.0 pr from module.1(std.io).decl.6: fn (string) -> void
-import import.1 epr from module.1(std.io).decl.7: fn (string) -> void
-import import.2 prn from module.1(std.io).decl.8: fn (string) -> void
-import import.3 eprn from module.1(std.io).decl.9: fn (string) -> void
-import import.4 input from module.1(std.io).decl.10: fn (string) -> string
+import import.0 pr from module.1(std.io).decl.9: fn (string) -> void
+import import.1 epr from module.1(std.io).decl.10: fn (string) -> void
+import import.2 prn from module.1(std.io).decl.11: fn (string) -> void
+import import.3 eprn from module.1(std.io).decl.12: fn (string) -> void
+import import.4 input from module.1(std.io).decl.13: fn (string) -> string
 import import.5 Stack from module.2(test.generics).decl.0: <unknown>
 import import.6 stack_push from module.2(test.generics).decl.1: <unknown>
 import import.7 stack_pop from module.2(test.generics).decl.2: <unknown>

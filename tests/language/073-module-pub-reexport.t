@@ -14,7 +14,7 @@ hir 0
 module module.0(073-module-pub-reexport.input)
 import module.1(test.reexport)
 import import.0 printer from module.1(test.reexport).decl.0: module
-import import.1 prn from module.2(std.io).decl.8: fn (string) -> void
+import import.1 prn from module.2(std.io).decl.11: fn (string) -> void
 bind printer = import.0
 bind prn = import.1
 bind wrapper = module.1

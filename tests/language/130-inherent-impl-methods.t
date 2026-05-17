@@ -39,7 +39,7 @@ import module.2(std.collections)
 import import.0 Stack from module.2(std.collections).decl.0: <unknown>
 import import.1 __impl_7_push from module.2(std.collections).decl.1: <unknown>
 import import.2 __impl_7_pop from module.2(std.collections).decl.2: <unknown>
-import import.3 prn from module.1(std.io).decl.8: fn (string) -> void
+import import.3 prn from module.1(std.io).decl.11: fn (string) -> void
 bind Stack = import.0
 bind __impl_7_push = import.1
 bind __impl_7_pop = import.2
