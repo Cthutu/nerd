@@ -330,10 +330,15 @@ constraints, built-in traits, and trait-driven interpolation until the arena and
 library layering are in place.
 
 - [x] Add the first source-level arena type in `core` as `Arena`.
-- [x] Keep the arena implementation pointer-stable:
+- [ ] Keep the arena implementation pointer-stable using the compiler arena
+  model:
   - [x] arena allocation must not move previously returned pointers
-  - [x] arena growth should reserve/commit additional pages or append stable
-    blocks rather than reallocating live storage
+  - [ ] use OS-based calls in `data/nrt.c` to reserve virtual address space and
+    commit pages on demand so each arena has one stable base pointer
+  - [ ] reserve a 4 GiB address range per arena and reject capacities/growth
+    beyond that range
+  - [ ] keep arena offsets/cursors representable as 32-bit indices within the
+    reserved range
   - [x] keep the implementation close to the Nerd compiler's C arena model
     where practical
 - [x] Add first arena construction API:
@@ -352,7 +357,8 @@ library layering are in place.
   - [x] `reset` invalidates allocations from the arena without freeing the
     arena itself
   - [x] add `done` or equivalent explicit release if arenas own OS/heap memory
-  - [ ] consider `store`/`restore` marks if they fit the same model cleanly
+  - [ ] add `mark` to return the current 32-bit arena cursor
+  - [ ] add `restore` to set the current cursor back to a previous mark
 - [ ] Add `temp_arena`:
   - [ ] provide a canonical global temporary arena from `core`
   - [x] define interpolation strings as allocated from `temp_arena`
@@ -397,6 +403,7 @@ library layering are in place.
   - [x] lower arena construction, allocation, reset, and release
   - [x] expose page-size alignment through the runtime
   - [x] keep pointer alignment correct for currently supported element types
+  - [ ] lower and expose arena `mark` and `restore`
   - [x] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
 - [ ] Formatter, LSP, and editor work:
@@ -409,7 +416,11 @@ library layering are in place.
   - [x] command test for arena construction with two arguments
   - [x] command test for `alloc[T]` and `alloc_array[T]`
   - [x] command test proving allocated pointers remain stable after growth
+  - [ ] command test proving arena base address remains stable after growth
+    within the reserved range
+  - [ ] command test for the 4 GiB arena capacity limit
   - [x] command test for `reset` reuse
+  - [ ] command test for `mark` and `restore`
   - [x] command test for interpolation strings returned from functions via
     `temp_arena`
   - [ ] command tests for migrated `core`, `std`, and `sys` imports
@@ -420,6 +431,10 @@ library layering are in place.
     reorganisation
 - [ ] Documentation:
   - [x] manual section for first arena API and reset lifetime rules
+  - [ ] document that arena element addresses are stable even if the arena
+    grows
+  - [ ] document the 4 GiB arena capacity limit and 32-bit arena indices
+  - [ ] document `mark` and `restore`
   - [x] manual examples showing main-loop `temp_arena_reset()` usage
   - [ ] manual/module documentation for the `core`, `std`, and `sys` split
   - [ ] syntax-reference appendix entries for arena construction if new syntax
