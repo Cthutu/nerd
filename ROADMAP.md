@@ -141,6 +141,8 @@ the roadmap before committing the implementation.
   real validation.
 - Keep the standard library surface disciplined while the core language is still
   moving.
+- Reorganise modules around the planned `core`, `std`, and `sys` split before
+  adding broad new library APIs.
 - Prefer simple modules that exercise existing language features before adding
   library-driven language changes.
 - Keep `docs/stdlib.md` as a separate standard-library document; the language
@@ -320,7 +322,112 @@ the roadmap before committing the implementation.
   - [x] convert `std.collections.Stack` helpers to inherent methods
   - [x] update examples that use `Stack`
 
-### Traits Milestone
+### Arena And Library Reorganisation Milestone
+
+This milestone takes priority over the remaining trait work. Keep the partial
+trait syntax and implementation support already landed, but pause trait
+constraints, built-in traits, and trait-driven interpolation until the arena and
+library layering are in place.
+
+- [ ] Add a built-in `arena` type.
+- [ ] Keep the arena implementation pointer-stable:
+  - [ ] arena allocation must not move previously returned pointers
+  - [ ] arena growth should reserve/commit additional pages or append stable
+    blocks rather than reallocating live storage
+  - [ ] keep the implementation close to the Nerd compiler's C arena model
+    where practical
+- [ ] Add arena construction syntax:
+  - [ ] `arena(num_bytes)` creates an arena with at least that capacity
+  - [ ] round requested byte counts up to the nearest platform page size
+  - [ ] `arena(num_bytes, increment)` sets the growth increment for exhausted
+    arenas
+  - [ ] round growth increments up to the nearest platform page size
+  - [ ] define sensible defaults for omitted growth behaviour
+- [ ] Add arena methods:
+  - [ ] `alloc[T]` returns memory aligned for `T`
+  - [ ] `alloc_array[T](count)` returns contiguous storage aligned for `T`
+  - [ ] `reset` invalidates allocations from the arena without freeing the
+    arena itself
+  - [ ] add `done` or equivalent explicit release if arenas own OS/heap memory
+  - [ ] consider `store`/`restore` marks if they fit the same model cleanly
+- [ ] Add `temp_arena`:
+  - [ ] provide a canonical global temporary arena from `core`
+  - [ ] define interpolation strings as allocated from `temp_arena`
+  - [ ] document that values allocated from `temp_arena` remain valid until
+    `temp_arena.reset()`
+  - [ ] allow applications without a main loop to never reset `temp_arena`
+  - [ ] encourage main-loop applications to call `temp_arena.reset()` at a
+    clear frame/request boundary
+- [ ] Reorganise standard modules into three layers:
+  - [ ] `core`: language-adjacent requirements, built-in traits when resumed,
+    `arena`, `temp_arena`, memory helpers, string helpers, and slice helpers
+  - [ ] `std`: portable higher-level utilities such as filesystem, paths,
+    collections, parsing, random, time abstractions, and networking
+  - [ ] `sys`: platform/system bindings such as `sys.windows`, `sys.linux`,
+    `sys.posix`, and `sys.x11`
+- [ ] Define dependency direction:
+  - [ ] `core` must avoid OS dependencies except for compiler/runtime-provided
+    primitives needed by built-ins
+  - [ ] `sys` may depend on `core`
+  - [ ] `std` may depend on `core` and delegate platform details to `sys`
+  - [ ] avoid `sys` depending on `std`
+- [ ] Migrate existing modules:
+  - [ ] move low-level Linux bindings out of `std` and into `sys.linux` or
+    related `sys.*` modules
+  - [ ] move X11 bindings into `sys.x11`
+  - [ ] decide whether the current `std.arena` implementation becomes a
+    reference, a compatibility wrapper, or is replaced by the built-in arena
+  - [ ] update imports in tests, examples, and docs after module moves
+- [ ] Parser and semantic work:
+  - [ ] parse arena construction syntax without conflicting with ordinary calls
+  - [ ] type-check arena constructors and methods
+  - [ ] type-check generic arena allocation methods
+  - [ ] decide whether `arena` values are copyable, move-only, or copied by
+    handle
+  - [ ] define reset invalidation as a documented programmer responsibility for
+    the first version
+- [ ] Backend/runtime work:
+  - [ ] lower arena construction, allocation, reset, and release
+  - [ ] expose page-size alignment through the runtime or platform layer
+  - [ ] keep pointer alignment correct for all allocated element types
+  - [ ] update interpolation lowering to allocate returned/intermediate strings
+    through `temp_arena`
+- [ ] Formatter, LSP, and editor work:
+  - [ ] format arena construction syntax if it requires new syntax handling
+  - [ ] provide completion/hover for `arena`, arena methods, and `temp_arena`
+    where existing LSP infrastructure supports built-ins/modules
+  - [ ] update editor syntax files if new keywords or built-in token handling
+    are added
+- [ ] Tests:
+  - [ ] language tests for arena construction with one and two arguments
+  - [ ] language tests for `alloc[T]` and `alloc_array[T]`
+  - [ ] language tests proving allocated pointers remain stable after growth
+  - [ ] language tests for `reset` reuse
+  - [ ] language tests for interpolation strings returned from functions via
+    `temp_arena`
+  - [ ] command tests for migrated `core`, `std`, and `sys` imports
+  - [ ] error tests for invalid arena constructor arguments and invalid generic
+    allocation calls
+  - [ ] formatter tests for any new syntax
+  - [ ] LSP tests for module completion after the `core`/`std`/`sys`
+    reorganisation
+- [ ] Documentation:
+  - [ ] manual section for arenas, `temp_arena`, and reset lifetime rules
+  - [ ] manual examples showing main-loop `temp_arena.reset()` usage
+  - [ ] manual/module documentation for the `core`, `std`, and `sys` split
+  - [ ] syntax-reference appendix entries for arena construction if new syntax
+    is introduced
+  - [ ] language-reference appendix rules for arena allocation, reset, and
+    interpolation lifetime
+  - [ ] update `docs/stdlib.md` to describe the new module hierarchy
+  - [ ] update `docs/string-runtime.md` after interpolation moves to
+    `temp_arena`
+
+### Traits Milestone (On Hold)
+
+- [ ] Resume this milestone after the arena and `core`/`std`/`sys`
+  reorganisation is complete, so built-in traits and interpolation formatting
+  have a stable home in `core`.
 
 - [ ] Add traits as a simple interface mechanism for types.
 - [x] Use the `trait` keyword rather than `interface`.
