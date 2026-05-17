@@ -3872,6 +3872,23 @@ internal bool sema_top_on_is_enabled(const FrontEndOptions* options,
     return info->is_negated ? !enabled : enabled;
 }
 
+internal bool sema_validate_top_on_assertion(const FrontEndOptions* options,
+                                             const Lexer*           lexer,
+                                             const Ast*             ast,
+                                             const AstNode*         node)
+{
+    ASSERT(node->kind == AK_TopOn, "Expected top-level on node");
+    const AstTopOnInfo* info = &ast->top_ons[node->a];
+    if (!info->is_assert || sema_top_on_is_enabled(options, lexer, ast, node)) {
+        return true;
+    }
+    return error_0336_platform_assertion_failed(
+        lexer->source,
+        sema_node_span(lexer, node),
+        lexer->strings[info->string_index],
+        info->is_negated);
+}
+
 internal bool sema_node_is_inside_top_on_body(const Ast* ast,
                                               u32        node_index,
                                               u32 current_body_node_index)
@@ -3886,7 +3903,10 @@ internal bool sema_node_is_inside_top_on_body(const Ast* ast,
         }
 
         const AstTopOnInfo* info = &ast->top_ons[owner->a];
-        const AstNode*      body = &ast->nodes[info->body_node_index];
+        if (info->body_node_index == U32_MAX) {
+            continue;
+        }
+        const AstNode* body = &ast->nodes[info->body_node_index];
         if (body->a <= node_index && node_index < body->b) {
             u32 span = body->b - body->a;
             if (innermost_body == U32_MAX || span < innermost_span) {
@@ -4036,9 +4056,17 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             continue;
         }
         if (node->kind == AK_TopOn) {
+            const AstTopOnInfo* info = &ast->top_ons[node->a];
+            if (info->is_assert) {
+                if (!sema_validate_top_on_assertion(
+                        options, lexer, ast, node)) {
+                    return false;
+                }
+                i++;
+                continue;
+            }
             if (sema_top_on_is_enabled(options, lexer, ast, node)) {
-                const AstTopOnInfo* info = &ast->top_ons[node->a];
-                const AstNode*      body = &ast->nodes[info->body_node_index];
+                const AstNode* body = &ast->nodes[info->body_node_index];
                 ASSERT(body->kind == AK_Block, "Expected top-level on body");
                 if (!sema_collect_decls_in_range(lexer,
                                                  ast,
@@ -7083,9 +7111,17 @@ sema_collect_top_level_uses_in_range(const Lexer*           lexer,
             continue;
         }
         if (node->kind == AK_TopOn) {
+            const AstTopOnInfo* info = &ast->top_ons[node->a];
+            if (info->is_assert) {
+                if (!sema_validate_top_on_assertion(
+                        options, lexer, ast, node)) {
+                    return false;
+                }
+                i++;
+                continue;
+            }
             if (sema_top_on_is_enabled(options, lexer, ast, node)) {
-                const AstTopOnInfo* info = &ast->top_ons[node->a];
-                const AstNode*      body = &ast->nodes[info->body_node_index];
+                const AstNode* body = &ast->nodes[info->body_node_index];
                 ASSERT(body->kind == AK_Block, "Expected top-level on body");
                 if (!sema_collect_top_level_uses_in_range(lexer,
                                                           ast,

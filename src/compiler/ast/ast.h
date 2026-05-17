@@ -387,6 +387,7 @@ typedef struct {
     u32  string_index;
     u32  body_node_index;
     bool is_negated;
+    bool is_assert;
 } AstTopOnInfo;
 
 typedef enum : u32 {

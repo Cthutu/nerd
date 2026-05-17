@@ -150,6 +150,8 @@ string ast_kind_to_string(AstKind kind)
         return s("ModRef");
     case AK_Use:
         return s("Use");
+    case AK_TopOn:
+        return s("TopOn");
     case AK_Pragma:
         return s("Pragma");
     case AK_FnDef:
@@ -430,6 +432,18 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_FnEnd:
             row[3] = table_cell_string(string_format(
                 &temp_arena, "def=%u start=%u", node->a, node->b));
+            break;
+        case AK_TopOn:
+            {
+                const AstTopOnInfo* top_on = &ast->top_ons[node->a];
+                row[3]                     = table_cell_string(
+                    string_format(&temp_arena,
+                                  "%s string=%u body=%u negated=%s",
+                                  top_on->is_assert ? "assert" : "on",
+                                  top_on->string_index,
+                                  top_on->body_node_index,
+                                  top_on->is_negated ? "yes" : "no"));
+            }
             break;
         default:
             row[3] = table_cell_string(s("Unknown"));

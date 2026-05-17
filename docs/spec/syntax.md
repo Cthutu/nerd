@@ -37,17 +37,23 @@ top-level-public-item
 top-level-private-item
                 ::= top-level-public-item
                   | top-level-on
+                  | top-level-assert-on
                   | pragma
                   | impl-block
                   | source-test
 
 top-level-on    ::= 'on' [ '!' ] STRING '{' { top-level-item } '}'
+top-level-assert-on
+                ::= 'assert' 'on' [ '!' ] STRING
 source-test     ::= 'test' STRING block
 impl-block      ::= 'impl' type '{' { top-level-item } '}'
 ```
 
 `pub` applies only to bindings, variables, FFI declarations, and `use`
 declarations.
+
+Top-level `assert on` is a file-level platform assertion. It fails compilation
+when the platform key is not enabled; it is not a runtime statement.
 
 ## Declarations And Bindings
 

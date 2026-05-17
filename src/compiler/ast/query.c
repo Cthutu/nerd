@@ -100,7 +100,9 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
                    : ast->nodes[for_info->else_block_index].b;
     }
     if (node->kind == AK_TopOn) {
-        return ast->nodes[ast->top_ons[node->a].body_node_index].b;
+        u32 body_node_index = ast->top_ons[node->a].body_node_index;
+        return body_node_index == U32_MAX ? node_index + 1
+                                          : ast->nodes[body_node_index].b;
     }
     if (node->kind == AK_Defer) {
         u32 end = ast_block_statement_end_exclusive(ast, node->a);

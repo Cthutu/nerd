@@ -575,6 +575,39 @@ bool error_0319_invalid_on_condition(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a failed top-level platform assertion.
+
+bool error_0336_platform_assertion_failed(NerdSource source,
+                                          ErrorSpan  span,
+                                          string     key,
+                                          bool       is_negated)
+{
+    ErrorInfo error = error_init(336,
+                                 source,
+                                 span,
+                                 "Platform assertion failed for `" STRINGP "`",
+                                 STRINGV(key));
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        is_negated ? "This file requires the platform key to be disabled"
+                   : "This file requires the platform key to be enabled");
+    if (is_negated) {
+        error_add_help(&error,
+                       "Build without this platform key, or remove the negated "
+                       "assertion.");
+    } else {
+        error_add_help(&error,
+                       "Build for a matching platform, build mode, or define "
+                       "the key with `-D" STRINGP "`.",
+                       STRINGV(key));
+    }
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Report mismatched branch result types in an `on` expression.
 
 bool error_0320_on_branch_type_mismatch(NerdSource source,

@@ -94,6 +94,24 @@ Names imported inside an enabled top-level `on` block become visible to the rest
 of the module, just like other top-level imports. Imports inside a disabled
 branch are ignored.
 
+Use `assert on` when the whole file is platform-specific:
+
+```nerd
+assert on "linux"
+
+pub open :: fn (path: string) -> i32 {
+    ...
+}
+```
+
+This is a compile-time file guard. If the platform key is not enabled, the
+compiler reports a platform assertion failure instead of compiling the file.
+Negation is accepted in the same position as `on` blocks:
+
+```nerd
+assert on !"windows"
+```
+
 ## Module Bindings
 
 Bind a module to a local top-level name with `use` as the binding value:

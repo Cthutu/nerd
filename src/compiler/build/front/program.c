@@ -291,6 +291,31 @@ internal bool program_top_on_is_enabled(const FrontEndOptions* options,
     return info->is_negated ? !enabled : enabled;
 }
 
+internal ErrorSpan program_node_span(const Lexer* lexer, const AstNode* node)
+{
+    const Token* token = &lexer->tokens[node->token_index];
+    return (ErrorSpan){.start = token->offset,
+                       .end   = lex_token_end_offset(lexer, token)};
+}
+
+internal bool program_validate_top_on_assertion(const FrontEndOptions* options,
+                                                const Lexer*           lexer,
+                                                const Ast*             ast,
+                                                const AstNode*         node)
+{
+    ASSERT(node->kind == AK_TopOn, "Expected top-level on node");
+    const AstTopOnInfo* info = &ast->top_ons[node->a];
+    if (!info->is_assert ||
+        program_top_on_is_enabled(options, lexer, ast, node)) {
+        return true;
+    }
+    return error_0336_platform_assertion_failed(
+        lexer->source,
+        program_node_span(lexer, node),
+        lexer->strings[info->string_index],
+        info->is_negated);
+}
+
 internal void program_apply_pragmas(ProgramInfo*           program,
                                     const FrontEndOptions* options,
                                     const Lexer*           lexer,
@@ -302,7 +327,10 @@ internal void program_apply_pragmas(ProgramInfo*           program,
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_TopOn) {
             const AstTopOnInfo* info = &ast->top_ons[node->a];
-            const AstNode*      body = &ast->nodes[info->body_node_index];
+            if (info->is_assert) {
+                continue;
+            }
+            const AstNode* body = &ast->nodes[info->body_node_index];
             ASSERT(body->kind == AK_Block, "Expected top-level on body block");
             if (program_top_on_is_enabled(options, lexer, ast, node)) {
                 program_apply_pragmas(
@@ -830,7 +858,14 @@ program_collect_module_dependencies(ProgramInfo*           program,
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_TopOn) {
             const AstTopOnInfo* info = &ast->top_ons[node->a];
-            const AstNode*      body = &ast->nodes[info->body_node_index];
+            if (info->is_assert) {
+                if (!program_validate_top_on_assertion(
+                        options, lexer, ast, node)) {
+                    return false;
+                }
+                continue;
+            }
+            const AstNode* body = &ast->nodes[info->body_node_index];
             ASSERT(body->kind == AK_Block, "Expected top-level on body block");
             if (program_top_on_is_enabled(options, lexer, ast, node) &&
                 !program_collect_module_dependencies(program,

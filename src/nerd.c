@@ -125,6 +125,7 @@ internal const NerdErrorExplain nerd_error_explanations[] = {
     {331, "Continue to non-loop label"},
     {332, "Missing loop else"},
     {333, "Invalid loop else"},
+    {336, "Platform assertion failed"},
 };
 
 internal const NerdErrorExplain* nerd_find_error_explanation(i32 code)

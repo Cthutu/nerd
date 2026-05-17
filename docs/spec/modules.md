@@ -42,6 +42,35 @@ A folder module uses `mod.n`. The front end can expand module part files from
 the same directory. Part files contribute to the same module analysis rather
 than becoming separate importable modules.
 
+## Platform Guards
+
+Top-level `on` blocks conditionally include declarations and imports:
+
+```bnf
+top-level-on ::= 'on' [ '!' ] STRING '{' { top-level-item } '}'
+```
+
+The string is a platform key. Built-in keys include operating systems such as
+`"linux"`, `"windows"`, `"macos"`, `"bsd"`, and `"posix"`, build-mode keys
+`"debug"` and `"release"`, and the `"x64"` architecture key.
+
+Use `assert on` to require a whole file to compile only for a matching platform:
+
+```bnf
+top-level-assert-on ::= 'assert' 'on' [ '!' ] STRING
+```
+
+```nerd
+assert on "linux"
+
+pub open :: fn (path: string) -> i32 {
+    ...
+}
+```
+
+If the assertion fails, compilation stops with a platform assertion diagnostic.
+Unlike a block `on`, `assert on` does not introduce a nested declaration region.
+
 ## Visibility
 
 Only `pub` top-level declarations are exported. `program_collect_module_exports`

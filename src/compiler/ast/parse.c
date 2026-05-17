@@ -3402,11 +3402,11 @@ internal bool ast_parse_grouped_use_entries(AstParseState* state,
 
 internal bool ast_parse_top_level_item(AstParseState* state);
 
-internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
+internal bool ast_parse_top_level_on_condition(AstParseState* state,
+                                               AstToken       on_token,
+                                               u32*           out_string_index,
+                                               bool*          out_is_negated)
 {
-    ASSERT(state->token.kind == TK_on, "Expected 'on' token");
-    AstToken on_token = state->token;
-
     if (!ast_next_token(state)) {
         return error_0201_missing_value(
             state->lexer->source, ast_token_span(state, &on_token), TK_on);
@@ -3429,7 +3429,21 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
                                          TK_String,
                                          state->token.kind);
     }
-    u32 string_index = state->token.value.string_index;
+    *out_string_index = state->token.value.string_index;
+    *out_is_negated   = is_negated;
+    return true;
+}
+
+internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_on, "Expected 'on' token");
+    AstToken on_token     = state->token;
+    u32      string_index = U32_MAX;
+    bool     is_negated   = false;
+    if (!ast_parse_top_level_on_condition(
+            state, on_token, &string_index, &is_negated)) {
+        return false;
+    }
 
     if (!ast_next_token(state)) {
         return error_0203_expected_token(state->lexer->source,
@@ -3497,9 +3511,76 @@ internal bool ast_parse_top_level_on(AstParseState* state, u32* out_node)
                    .string_index    = string_index,
                    .body_node_index = block_index,
                    .is_negated      = is_negated,
+                   .is_assert       = false,
                });
     state->nodes[top_on_node].a = top_on_index;
     state->nodes[block_index].a = first_item;
+    state->nodes[block_index].b = (u32)array_count(state->nodes);
+    if (out_node) {
+        *out_node = top_on_node;
+    }
+    return true;
+}
+
+internal bool ast_parse_top_level_assert_on(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_assert, "Expected 'assert' token");
+    AstToken assert_token = state->token;
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &assert_token),
+                                         TK_on,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_on) {
+        return error_0204_unexpected_token_ex(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            state->token.kind,
+            "Top-level assertions are written as `assert on \"key\"`.",
+            "Move runtime assertions inside a function body.");
+    }
+
+    AstToken on_token     = state->token;
+    u32      string_index = U32_MAX;
+    bool     is_negated   = false;
+    if (!ast_parse_top_level_on_condition(
+            state, on_token, &string_index, &is_negated)) {
+        return false;
+    }
+
+    u32 top_on_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_TopOn,
+                           .token_index = assert_token.token_index,
+                       },
+                       &top_on_node)) {
+        return false;
+    }
+
+    u32 block_index = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_Block,
+                           .token_index = assert_token.token_index,
+                       },
+                       &block_index)) {
+        return false;
+    }
+
+    u32 top_on_index = (u32)array_count(state->top_ons);
+    array_push(state->top_ons,
+               (AstTopOnInfo){
+                   .string_index    = string_index,
+                   .body_node_index = block_index,
+                   .is_negated      = is_negated,
+                   .is_assert       = true,
+               });
+
+    state->nodes[top_on_node].a = top_on_index;
+    state->nodes[block_index].a = (u32)array_count(state->nodes);
     state->nodes[block_index].b = (u32)array_count(state->nodes);
     if (out_node) {
         *out_node = top_on_node;
@@ -3716,6 +3797,15 @@ internal bool ast_parse_top_level_item(AstParseState* state)
                 "public binding");
         }
         return ast_parse_top_level_on(state, NULL);
+    case TK_assert:
+        if (is_public) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Top-level assertions cannot be public");
+        }
+        return ast_parse_top_level_assert_on(state, NULL);
     case TK_pragma:
         if (is_public) {
             return error_0204_unexpected_token(

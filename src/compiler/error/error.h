@@ -249,6 +249,10 @@ bool error_0318_mixed_function_return_style(NerdSource source, ErrorSpan span);
 bool error_0319_invalid_on_condition(NerdSource source,
                                      ErrorSpan  span,
                                      string     actual_type);
+bool error_0336_platform_assertion_failed(NerdSource source,
+                                          ErrorSpan  span,
+                                          string     key,
+                                          bool       is_negated);
 bool error_0320_on_branch_type_mismatch(NerdSource source,
                                         ErrorSpan  true_span,
                                         string     true_type,

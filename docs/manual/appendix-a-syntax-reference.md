@@ -52,6 +52,10 @@ local_name :: ffi "lib" foreign_name (...) -> Type
 name :: use module.path
 use module.path
 pub use module.path
+on "platform-key" { declarations }
+on !"platform-key" { declarations }
+assert on "platform-key"
+assert on !"platform-key"
 pragma symbol
 pragma symbol(123, 1.5, "text", yes, no)
 test "name" { statements }
