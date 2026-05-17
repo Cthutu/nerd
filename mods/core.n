@@ -3,17 +3,19 @@
 --
 
 pub Arena :: plex #c {
-    first        ^void
-    current      ^void
-    initial_size usize
-    increment    usize
+    base           ^void
+    current        ^void
+    committed_size usize
+    increment      usize
 }
 
 ffi "nrt" {
-    nrt_arena_init  (arena: ^Arena, initial_size: usize, increment: usize)
-    nrt_arena_done  (arena: ^Arena)
-    nrt_arena_reset (arena: ^Arena)
-    nrt_arena_alloc (arena: ^Arena, size: usize, alignment: usize) -> ^void
+    nrt_arena_init    (arena: ^Arena, initial_size: usize, increment: usize)
+    nrt_arena_done    (arena: ^Arena)
+    nrt_arena_reset   (arena: ^Arena)
+    nrt_arena_mark    (arena: ^Arena) -> u32
+    nrt_arena_restore (arena: ^Arena, mark: u32)
+    nrt_arena_alloc   (arena: ^Arena, size: usize, alignment: usize) -> ^void
 
     nrt_temp_arena_reset ()
 }
@@ -51,6 +53,14 @@ impl Arena {
 
     pub reset :: fn (self: ^Self) {
         nrt_arena_reset(self)
+    }
+
+    pub mark :: fn (self: ^Self) -> u32 {
+        return nrt_arena_mark(self)
+    }
+
+    pub restore :: fn (self: ^Self, mark: u32) {
+        nrt_arena_restore(self, mark)
     }
 
     pub done :: fn (self: ^Self) {

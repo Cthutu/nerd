@@ -19,8 +19,8 @@ library is moving toward three layers:
 - `std`
   Portable higher-level utilities.
 - `sys`
-  Platform and OS bindings. The current tree has started this split under
-  `std.os` and will continue moving low-level modules toward `sys`.
+  Platform and OS bindings such as `sys.linux`. Future platform modules belong
+  here rather than under `std`.
 
 - `core`
   Pointer-stable arena construction, allocation, reset, and release helpers.
@@ -32,6 +32,8 @@ library is moving toward three layers:
   Arena allocation helpers.
 - `std.string`
   String utilities.
+- `sys.linux`
+  Low-level Linux C and syscall-adjacent bindings.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
@@ -77,6 +79,9 @@ stable user-facing library functions.
 
 Arena helpers built on top of `std.mem`.
 
+This module remains as a compatibility/reference implementation. New code
+should prefer `core.Arena`.
+
 ### `core`
 
 - `Arena`
@@ -84,13 +89,17 @@ Arena helpers built on top of `std.mem`.
 - `alloc[T](arena: ^Arena) -> ^T`
 - `alloc_array[T](arena: ^Arena, count: usize) -> []T`
 - `Arena.reset()`
+- `Arena.mark() -> u32`
+- `Arena.restore(mark: u32)`
 - `Arena.done()`
 - `temp_arena_reset()`
 
 Arena sizes are rounded up to the platform page size by the runtime. Arena
-growth appends stable blocks rather than reallocating live storage, so earlier
-allocation pointers do not move. `reset()` invalidates previous allocations and
-reuses storage; `done()` releases owned arena blocks.
+construction reserves one 4 GiB virtual address range and commits pages on
+demand, so earlier allocation pointers do not move when the arena grows. Marks
+and offsets are 32-bit values within that range. `restore(mark)` invalidates
+allocations made after the mark, `reset()` invalidates all previous allocations
+and reuses storage, and `done()` releases the reserved arena range.
 
 ### `std.string`
 

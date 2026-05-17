@@ -86,7 +86,7 @@ compiler only loads imports from an enabled platform branch:
 
 ```nerd
 on "linux" {
-    use std.linux  -- imported only when the "linux" symbol is enabled
+    use sys.linux  -- imported only when the "linux" symbol is enabled
 }
 ```
 

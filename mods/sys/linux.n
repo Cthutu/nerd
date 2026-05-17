@@ -25,6 +25,8 @@ pub ffi "c" {
     sysconf (name: i32) -> i64
 }
 
+pub syscall :: intrinsic "syscall" (number: u64, a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> i64
+
 pub winsize :: plex #c {
     row    u16
     col    u16

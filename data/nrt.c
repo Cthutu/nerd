@@ -8,6 +8,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 #else
+#include <sys/mman.h>
 #include <unistd.h>
 #endif
 
@@ -18,18 +19,11 @@ typedef struct {
     size_t count;
 } NerdString;
 
-typedef struct NrtArenaBlock {
-    struct NrtArenaBlock* next;
-    size_t                capacity;
-    size_t                cursor;
-    max_align_t           data[];
-} NrtArenaBlock;
-
 typedef struct {
-    NrtArenaBlock* first;
-    NrtArenaBlock* current;
-    size_t         initial_size;
-    size_t         increment;
+    u8*    base;
+    u8*    current;
+    size_t committed_size;
+    size_t increment;
 } NrtArena;
 
 void string_builder_reset(void);
@@ -110,6 +104,9 @@ bool string_eq(const NerdString* lhs, const NerdString* rhs)
     return memcmp(lhs->data, rhs->data, lhs->count) == 0;
 }
 
+static const size_t NRT_ARENA_RESERVE_SIZE = (size_t)1 << 32;
+static const size_t NRT_ARENA_MAX_CURSOR   = UINT32_MAX;
+
 static size_t nrt_page_size(void)
 {
 #if defined(_WIN32)
@@ -131,18 +128,46 @@ static size_t nrt_align_up(size_t value, size_t alignment)
     return remainder == 0 ? value : value + alignment - remainder;
 }
 
-static NrtArenaBlock* nrt_arena_new_block(size_t capacity)
+static void nrt_arena_abort(const char* message)
 {
-    NrtArenaBlock* block =
-        (NrtArenaBlock*)malloc(sizeof(NrtArenaBlock) + capacity);
-    if (block == NULL) {
-        nrt_eprintfn("fatal: arena allocation failed");
-        abort();
+    nrt_eprintfn("fatal: %s", message);
+    exit(127);
+}
+
+static void* nrt_arena_reserve(size_t size)
+{
+#if defined(_WIN32)
+    return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+#else
+    void* memory =
+        mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+#endif
+}
+
+static bool nrt_arena_commit(u8* memory, size_t size)
+{
+    if (size == 0) {
+        return true;
     }
-    block->next     = NULL;
-    block->capacity = capacity;
-    block->cursor   = 0;
-    return block;
+#if defined(_WIN32)
+    return VirtualAlloc(memory, size, MEM_COMMIT, PAGE_READWRITE) != NULL;
+#else
+    return mprotect(memory, size, PROT_READ | PROT_WRITE) == 0;
+#endif
+}
+
+static void nrt_arena_release(u8* memory, size_t size)
+{
+    if (memory == NULL) {
+        return;
+    }
+#if defined(_WIN32)
+    (void)size;
+    VirtualFree(memory, 0, MEM_RELEASE);
+#else
+    munmap(memory, size);
+#endif
 }
 
 void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
@@ -156,15 +181,30 @@ void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
         initial_size = page;
     }
     initial_size = nrt_align_up(initial_size, page);
+    if (initial_size > NRT_ARENA_MAX_CURSOR) {
+        nrt_arena_abort("arena initial capacity exceeds 4 GiB");
+    }
     if (increment == 0) {
         increment = initial_size;
     }
     increment = nrt_align_up(increment, page);
+    if (increment > NRT_ARENA_MAX_CURSOR) {
+        nrt_arena_abort("arena growth increment exceeds 4 GiB");
+    }
 
-    arena->first        = nrt_arena_new_block(initial_size);
-    arena->current      = arena->first;
-    arena->initial_size = initial_size;
-    arena->increment    = increment;
+    u8* memory = (u8*)nrt_arena_reserve(NRT_ARENA_RESERVE_SIZE);
+    if (memory == NULL) {
+        nrt_arena_abort("arena address reservation failed");
+    }
+    if (!nrt_arena_commit(memory, initial_size)) {
+        nrt_arena_release(memory, NRT_ARENA_RESERVE_SIZE);
+        nrt_arena_abort("arena initial commit failed");
+    }
+
+    arena->base           = memory;
+    arena->current        = memory;
+    arena->committed_size = initial_size;
+    arena->increment      = increment;
 }
 
 void nrt_arena_done(NrtArena* arena)
@@ -172,12 +212,7 @@ void nrt_arena_done(NrtArena* arena)
     if (arena == NULL) {
         return;
     }
-    NrtArenaBlock* block = arena->first;
-    while (block != NULL) {
-        NrtArenaBlock* next = block->next;
-        free(block);
-        block = next;
-    }
+    nrt_arena_release(arena->base, NRT_ARENA_RESERVE_SIZE);
     *arena = (NrtArena){0};
 }
 
@@ -186,11 +221,27 @@ void nrt_arena_reset(NrtArena* arena)
     if (arena == NULL) {
         return;
     }
-    for (NrtArenaBlock* block = arena->first; block != NULL;
-         block                = block->next) {
-        block->cursor = 0;
+    arena->current = arena->base;
+}
+
+uint32_t nrt_arena_mark(NrtArena* arena)
+{
+    if (arena == NULL || arena->base == NULL) {
+        return 0;
     }
-    arena->current = arena->first;
+    return (uint32_t)(arena->current - arena->base);
+}
+
+void nrt_arena_restore(NrtArena* arena, uint32_t mark)
+{
+    if (arena == NULL || arena->base == NULL) {
+        return;
+    }
+    size_t cursor = (size_t)mark;
+    if (cursor > (size_t)(arena->current - arena->base)) {
+        nrt_arena_abort("invalid arena restore mark");
+    }
+    arena->current = arena->base + cursor;
 }
 
 void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
@@ -198,37 +249,37 @@ void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
     if (arena == NULL) {
         return NULL;
     }
-    if (arena->first == NULL) {
+    if (arena->base == NULL) {
         nrt_arena_init(arena, 0, 0);
     }
     if (alignment == 0) {
         alignment = sizeof(void*);
     }
 
-    NrtArenaBlock* block = arena->current;
-    size_t         start = nrt_align_up(block->cursor, alignment);
-    if (start + size > block->capacity) {
-        size_t capacity = arena->increment;
-        size_t needed   = nrt_align_up(size + alignment, nrt_page_size());
-        if (capacity < needed) {
-            capacity = needed;
-        }
-        NrtArenaBlock* next = block->next;
-        while (next != NULL && next->capacity < needed) {
-            next = next->next;
-        }
-        if (next == NULL) {
-            next        = nrt_arena_new_block(capacity);
-            next->next  = block->next;
-            block->next = next;
-        }
-        block          = next;
-        arena->current = block;
-        start          = nrt_align_up(block->cursor, alignment);
+    size_t cursor = (size_t)(arena->current - arena->base);
+    size_t start  = nrt_align_up(cursor, alignment);
+    if (start < cursor || size > NRT_ARENA_MAX_CURSOR - start) {
+        nrt_arena_abort("arena exceeded 4 GiB capacity");
     }
 
-    block->cursor = start + size;
-    return (void*)((u8*)block->data + start);
+    size_t end = start + size;
+    if (end > arena->committed_size) {
+        size_t page        = nrt_page_size();
+        size_t grow_target = nrt_align_up(end, arena->increment);
+        size_t commit_end  = nrt_align_up(grow_target, page);
+        if (commit_end < end || commit_end > NRT_ARENA_RESERVE_SIZE) {
+            nrt_arena_abort("arena exceeded 4 GiB capacity");
+        }
+        size_t commit_size = commit_end - arena->committed_size;
+        if (!nrt_arena_commit(arena->base + arena->committed_size,
+                              commit_size)) {
+            nrt_arena_abort("arena memory commit failed");
+        }
+        arena->committed_size = commit_end;
+    }
+
+    arena->current = arena->base + end;
+    return (void*)(arena->base + start);
 }
 
 void nrt_temp_arena_reset(void) { string_builder_reset(); }

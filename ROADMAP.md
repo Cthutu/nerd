@@ -330,14 +330,14 @@ constraints, built-in traits, and trait-driven interpolation until the arena and
 library layering are in place.
 
 - [x] Add the first source-level arena type in `core` as `Arena`.
-- [ ] Keep the arena implementation pointer-stable using the compiler arena
+- [x] Keep the arena implementation pointer-stable using the compiler arena
   model:
   - [x] arena allocation must not move previously returned pointers
-  - [ ] use OS-based calls in `data/nrt.c` to reserve virtual address space and
+  - [x] use OS-based calls in `data/nrt.c` to reserve virtual address space and
     commit pages on demand so each arena has one stable base pointer
-  - [ ] reserve a 4 GiB address range per arena and reject capacities/growth
+  - [x] reserve a 4 GiB address range per arena and reject capacities/growth
     beyond that range
-  - [ ] keep arena offsets/cursors representable as 32-bit indices within the
+  - [x] keep arena offsets/cursors representable as 32-bit indices within the
     reserved range
   - [x] keep the implementation close to the Nerd compiler's C arena model
     where practical
@@ -348,7 +348,7 @@ library layering are in place.
     arenas
   - [x] round growth increments up to the nearest platform page size
   - [x] define sensible defaults for omitted growth behaviour
-- [ ] Add arena allocation APIs:
+- [x] Add arena allocation APIs:
   - [x] `core.alloc[T](^arena)` returns memory aligned for `T`
   - [x] `core.alloc_array[T](^arena, count)` returns contiguous storage aligned
     for `T`
@@ -357,8 +357,8 @@ library layering are in place.
   - [x] `reset` invalidates allocations from the arena without freeing the
     arena itself
   - [x] add `done` or equivalent explicit release if arenas own OS/heap memory
-  - [ ] add `mark` to return the current 32-bit arena cursor
-  - [ ] add `restore` to set the current cursor back to a previous mark
+  - [x] add `mark` to return the current 32-bit arena cursor
+  - [x] add `restore` to set the current cursor back to a previous mark
 - [ ] Add `temp_arena`:
   - [ ] provide a canonical public global temporary arena from `core`
   - [ ] make runtime string interpolation allocate from `core.temp_arena`
@@ -369,27 +369,27 @@ library layering are in place.
   - [x] allow applications without a main loop to never reset `temp_arena`
   - [x] encourage main-loop applications to call `temp_arena_reset()` at a
     clear frame/request boundary
-- [ ] Reorganise standard modules into three layers:
-  - [ ] `core`: language-adjacent requirements, built-in traits when resumed,
+- [x] Reorganise standard modules into three layers:
+  - [x] `core`: language-adjacent requirements, built-in traits when resumed,
     `arena`, `temp_arena`, memory helpers, string helpers, and slice helpers
-  - [ ] `std`: portable higher-level utilities such as filesystem, paths,
+  - [x] `std`: portable higher-level utilities such as filesystem, paths,
     collections, parsing, random, time abstractions, and networking
-  - [ ] `sys`: platform/system bindings such as `sys.windows`, `sys.linux`,
+  - [x] `sys`: platform/system bindings such as `sys.windows`, `sys.linux`,
     `sys.posix`, and `sys.x11`
-- [ ] Define dependency direction:
-  - [ ] `core` must avoid OS dependencies except for compiler/runtime-provided
+- [x] Define dependency direction:
+  - [x] `core` must avoid OS dependencies except for compiler/runtime-provided
     primitives needed by built-ins
-  - [ ] `sys` may depend on `core`
-  - [ ] `std` may depend on `core` and delegate platform details to `sys`
-  - [ ] avoid `sys` depending on `std`
-- [ ] Migrate existing modules:
+  - [x] `sys` may depend on `core`
+  - [x] `std` may depend on `core` and delegate platform details to `sys`
+  - [x] avoid `sys` depending on `std`
+- [x] Migrate existing modules:
   - [x] route `std.io` printing through NRT stdout/stderr helpers
-  - [ ] move low-level Linux bindings out of `std` and into `sys.linux` or
+  - [x] move low-level Linux bindings out of `std` and into `sys.linux` or
     related `sys.*` modules
-  - [ ] move X11 bindings into `sys.x11`
-  - [ ] decide whether the current `std.arena` implementation becomes a
+  - [x] move X11 bindings into `sys.x11`
+  - [x] decide whether the current `std.arena` implementation becomes a
     reference, a compatibility wrapper, or is replaced by the built-in arena
-  - [ ] update imports in tests, examples, and docs after module moves
+  - [x] update imports in tests, examples, and docs after module moves
 - [ ] Parser and semantic work:
   - [x] use ordinary function-call syntax for first arena construction API
   - [x] type-check arena constructors and lifecycle methods
@@ -400,14 +400,14 @@ library layering are in place.
     wrappers
   - [ ] decide whether `arena` values are copyable, move-only, or copied by
     handle
-  - [ ] define reset invalidation as a documented programmer responsibility for
+  - [x] define reset invalidation as a documented programmer responsibility for
     the first version
 - [ ] Backend/runtime work:
   - [x] lower arena construction, allocation, reset, and release
   - [x] add NRT `pr`/`prn`/`epr`/`eprn` helpers for source-level I/O
   - [x] expose page-size alignment through the runtime
   - [x] keep pointer alignment correct for currently supported element types
-  - [ ] lower and expose arena `mark` and `restore`
+  - [x] lower and expose arena `mark` and `restore`
   - [x] update interpolation lowering to allocate returned/intermediate strings
     through `temp_arena`
 - [ ] Formatter, LSP, and editor work:
@@ -420,14 +420,14 @@ library layering are in place.
   - [x] command test for arena construction with two arguments
   - [x] command test for `alloc[T]` and `alloc_array[T]`
   - [x] command test proving allocated pointers remain stable after growth
-  - [ ] command test proving arena base address remains stable after growth
+  - [x] command test proving arena base address remains stable after growth
     within the reserved range
-  - [ ] command test for the 4 GiB arena capacity limit
+  - [x] command test for the 4 GiB arena capacity limit
   - [x] command test for `reset` reuse
-  - [ ] command test for `mark` and `restore`
+  - [x] command test for `mark` and `restore`
   - [x] command test for interpolation strings returned from functions via
     `temp_arena`
-  - [ ] command tests for migrated `core`, `std`, and `sys` imports
+  - [x] command tests for migrated `core`, `std`, and `sys` imports
   - [ ] error tests for invalid arena constructor arguments and invalid generic
     allocation calls
   - [ ] formatter tests for any new syntax
@@ -435,15 +435,15 @@ library layering are in place.
     reorganisation
 - [ ] Documentation:
   - [x] manual section for first arena API and reset lifetime rules
-  - [ ] document that arena element addresses are stable even if the arena
+  - [x] document that arena element addresses are stable even if the arena
     grows
-  - [ ] document the 4 GiB arena capacity limit and 32-bit arena indices
-  - [ ] document `mark` and `restore`
+  - [x] document the 4 GiB arena capacity limit and 32-bit arena indices
+  - [x] document `mark` and `restore`
   - [x] manual examples showing main-loop `temp_arena_reset()` usage
-  - [ ] manual/module documentation for the `core`, `std`, and `sys` split
+  - [x] manual/module documentation for the `core`, `std`, and `sys` split
   - [ ] syntax-reference appendix entries for arena construction if new syntax
     is introduced
-  - [ ] language-reference appendix rules for arena allocation, reset, and
+  - [x] language-reference appendix rules for arena allocation, reset, and
     interpolation lifetime
   - [x] update `docs/stdlib.md` to describe the new module hierarchy
   - [x] update `docs/string-runtime.md` after interpolation moves to

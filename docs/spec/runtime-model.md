@@ -58,6 +58,26 @@ Dynamic arrays own storage and expose language-recognised operations:
 | `clear()` | Set the live count to zero while keeping storage. |
 | `free()` | Release storage and reset to the nil representation. |
 
+## Arenas
+
+`core.Arena` is the source-level arena type. The runtime reserves one 4 GiB
+virtual address range for each arena and commits pages inside that range as
+needed, so element addresses returned by arena allocation remain stable while
+the arena grows. Arena cursors and marks are 32-bit offsets within the reserved
+range.
+
+`arena(num_bytes)` creates an arena with at least that initial committed
+capacity, rounded up to the platform page size. `arena(num_bytes, increment)`
+also sets the page-rounded growth increment used when more pages must be
+committed. Requests that would move the arena cursor beyond the reserved range
+terminate at runtime.
+
+`alloc[T](^arena)` allocates one `T` aligned for `T`; `alloc_array[T](^arena,
+count)` allocates contiguous storage for `count` values. `mark()` returns the
+current cursor. `restore(mark)` invalidates allocations made after that mark.
+`reset()` invalidates all allocations from the arena without releasing its
+reserved address range. `done()` releases the reserved range.
+
 ## Defer
 
 Deferred statements run when leaving the current scope, including exits through

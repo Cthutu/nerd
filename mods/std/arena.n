@@ -1,7 +1,7 @@
 -- Simple arena implementation
 
 use std.io
-use std.linux
+use sys.linux
 use std.mem
 
 pub Arena :: plex {

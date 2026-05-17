@@ -152,6 +152,12 @@ intended exit code.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.
+- `core.Arena` reserves one 4 GiB address range, grows by committing pages
+  inside that range, and keeps allocation addresses stable while it grows.
+- Arena marks are `u32` cursor values. Restoring to a mark invalidates later
+  allocations; resetting an arena invalidates all allocations from it.
+- Runtime interpolated strings are allocated from the temporary arena and remain
+  valid until `temp_arena_reset()`.
 
 ## Generics
 

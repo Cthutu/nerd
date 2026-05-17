@@ -188,6 +188,10 @@ main :: fn () {
     bytes := alloc_array[u8](^scratch, 128)
     bytes[0] = 1
 
+    mark := scratch.mark()
+    _more := scratch.alloc_bytes(256)
+    scratch.restore(mark)
+
     scratch.reset()  -- invalidates earlier arena allocations
 }
 ```
@@ -195,12 +199,21 @@ main :: fn () {
 `arena(num_bytes)` creates an arena with at least that many bytes of initial
 capacity. `arena(num_bytes, increment)` also sets the growth increment used when
 the arena runs out of room. Both sizes are rounded up by the runtime to the
-platform page size. Growth appends stable blocks, so previously returned
-pointers are not moved.
+platform page size. The runtime reserves one stable address range for each
+arena and commits pages on demand as it grows. Previously returned element
+addresses do not move while the arena grows.
+
+An arena can grow up to its reserved 4 GiB address range. Arena marks and
+offsets are 32-bit values, and allocation fails at runtime if a request would
+move the cursor beyond that range.
 
 Use `alloc[T](^arena)` for one value and `alloc_array[T](^arena, count)` for a
 slice. The current source API uses top-level generic functions because generic
 method calls such as `scratch.alloc[i32]()` are still roadmap work.
+
+`mark()` returns the current arena cursor as a `u32`. `restore(mark)` moves the
+cursor back to a previous mark, invalidating allocations made after that mark
+while leaving earlier allocations valid.
 
 `reset()` makes previous arena pointers and slices invalid but keeps the arena
 ready for reuse. `done()` releases the arena's owned storage. Call `done()` for
@@ -236,6 +249,7 @@ after temporary strings from the previous iteration are no longer needed.
 - Dynamic arrays own storage.
 - Slices borrow storage.
 - `free()` releases owned storage.
-- Arena allocations are valid until the arena is reset or released.
+- Arena allocations are valid until the arena is restored before them, reset, or
+  released.
 - Runtime interpolated strings are valid until `temp_arena_reset()`.
 - `defer` is the normal way to keep cleanup attached to a scope.
