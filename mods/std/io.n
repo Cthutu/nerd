@@ -3,10 +3,10 @@
 -- This module now loads through the normal module pipeline.
 
 ffi "nrt" {
-    nrt_pr        (^void, usize)
-    nrt_prn       (^void, usize)
-    nrt_epr       (^void, usize)
-    nrt_eprn      (^void, usize)
+    nrt_pr        (^u8, usize)
+    nrt_prn       (^u8, usize)
+    nrt_epr       (^u8, usize)
+    nrt_eprn      (^u8, usize)
     nrt_read_line (^u8, usize) -> usize
 }
 
