@@ -125,6 +125,12 @@ binaries correctly when the input path is relative to the current directory.
 Use command tests for public CLI behaviour such as `nerd check` exiting
 successfully without generating an executable.
 
+## Example Checks
+
+The runner also treats source files under `examples/` that declare `main` as
+example roots. Each root is checked with `nerd check`, so support modules without
+their own entry point are covered through the roots that import them.
+
 ## Platform-Specific Tests
 
 Tests that require a specific host platform can declare it in the source section:

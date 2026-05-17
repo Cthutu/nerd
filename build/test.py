@@ -61,6 +61,7 @@ SUITE_LABELS = {
     "format": "format",
     "lsp": "lsp",
     "commands": "command",
+    "examples": "example",
 }
 
 
@@ -688,6 +689,19 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     return failures
 
 
+def example_has_entry_point(path: pathlib.Path) -> bool:
+    source = path.read_text(encoding="utf-8")
+    return re.search(r"(?m)^\s*main\s*::", source) is not None
+
+
+def test_example(path: pathlib.Path) -> list[Failure]:
+    proc = run_cmd([str(NERD), "check", str(path)])
+    if proc.returncode == 0:
+        return []
+    stderr = normalize_repo_paths(strip_ansi(proc.stderr))
+    return [Failure(path, f"example check failed with exit {proc.returncode}\n{stderr}")]
+
+
 def collect() -> list[tuple[str, pathlib.Path]]:
     cases: list[tuple[str, pathlib.Path]] = []
     for kind, directory, suffix in [
@@ -705,6 +719,9 @@ def collect() -> list[tuple[str, pathlib.Path]]:
             if kind == "llvm" and re.search(r"(\.input)?\.m\d+\.ll$", path.name):
                 continue
             cases.append((kind, path))
+    for path in sorted((ROOT / "examples").glob("**/*.n")):
+        if example_has_entry_point(path):
+            cases.append(("examples", path))
     return cases
 
 
@@ -721,6 +738,7 @@ def main() -> int:
         "format": test_format,
         "lsp": test_lsp,
         "commands": test_command,
+        "examples": test_example,
     }
 
     cases = [(kind, path) for kind, path in collect() if args.filter in rel(path)]
