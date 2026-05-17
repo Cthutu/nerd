@@ -41,6 +41,11 @@ The `==` and `!=` operators are built in for primitive equality, strings,
 enums, pointers, slices, and dynamic arrays where supported. For other values,
 the analyser accepts equality when the type implements the canonical `core.Eq`
 trait, and lowering calls `Eq.eq(lhs, rhs)`. `!=` negates that result.
+
+The `<`, `<=`, `>`, and `>=` operators are built in for numeric values. For
+other values, the analyser accepts ordering when the type implements the
+canonical `core.Order` trait. Lowering calls `Order.compare(lhs, rhs)` and
+compares the returned `i32` with zero.
 | prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
 
 Assignments require assignable targets. Compound assignments lower through the

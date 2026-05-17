@@ -46,6 +46,8 @@ intended exit code.
   with any pointer type.
 - Non-built-in equality with `==` and `!=` uses the canonical `core.Eq`
   implementation for the value type.
+- Non-built-in ordering with `<`, `<=`, `>`, and `>=` uses the canonical
+  `core.Order` implementation for the value type.
 - Local variables, parameters, and pattern binders must be read unless their
   names start with `_`.
 

@@ -497,7 +497,7 @@ library layering are in place.
   - [x] `Display` supplies text conversion for interpolation
   - [ ] defer interpolation formatting specifiers such as `{expr; format}`
   - [x] `Eq` supports equality semantics
-  - [ ] `Order` supports comparison semantics through a `compare`-style member
+  - [x] `Order` supports comparison semantics through a `compare`-style member
   - [x] `Default` customises default initialisation for typed bindings
   - [ ] `Iterator[Item]` supplies `next :: fn (iter: ^Iter) -> Option[Item]`
 - [x] Add `Default` initialisation rules:
@@ -591,6 +591,7 @@ library layering are in place.
     `Iterator`
   - [x] language tests for built-in `Display`, `Eq`, and `Default`
   - [x] language tests for `Eq` driving `==` and `!=`
+  - [x] language tests for `Order` driving `<`, `<=`, `>`, and `>=`
   - [x] language tests for `Default` overriding typed-binding initialisation
   - [x] language tests for zero-initialisation fallback when no `Default`
     implementation exists

@@ -438,7 +438,8 @@ language-known traits and result types:
   this trait for non-built-in values.
 - `Eq` supplies `eq :: fn (Self, Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values.
-- `Order` supplies `compare :: fn (Self, Self) -> i32`.
+- `Order` supplies `compare :: fn (Self, Self) -> i32`. The `<`, `<=`, `>`,
+  and `>=` operators use this trait for non-built-in values.
 - `Default` supplies `default :: fn () -> Self`. Local typed variables without
   an initializer use this trait when the variable type has a concrete
   implementation.

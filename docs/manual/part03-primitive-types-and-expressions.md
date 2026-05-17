@@ -267,6 +267,11 @@ Other values can be interpolated when their type implements the canonical
 `core.Display` trait; interpolation calls `Display.show(value)` and inserts the
 returned string.
 
+Non-built-in values can use `==` and `!=` when their type implements
+`core.Eq`. They can use `<`, `<=`, `>`, and `>=` when their type implements
+`core.Order`; the operators call `Order.compare(lhs, rhs)` and compare the
+returned `i32` with zero.
+
 Continuation literals after an interpolated string are part of the same
 interpolated string:
 

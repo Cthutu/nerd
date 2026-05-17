@@ -74,6 +74,8 @@ available through the implicit `core` import unless shadowed by a local
 declaration.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
 supplies equality for non-built-in values used with `==` and `!=`.
+`Order.compare(lhs, rhs)` supplies ordering for non-built-in values used with
+`<`, `<=`, `>`, and `>=`; the returned `i32` is compared with zero.
 `Default.default()` supplies local typed-variable initialisation when the
 variable has no initializer and a concrete implementation exists.
 The implementation member is callable through the normal receiver method

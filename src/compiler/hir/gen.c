@@ -1041,6 +1041,92 @@ internal u32 hir_lower_eq_trait_expr(Hir*         hir,
     return call;
 }
 
+internal u32 hir_lower_order_trait_expr(Hir*         hir,
+                                        const Lexer* lexer,
+                                        const Ast*   ast,
+                                        const Sema*  sema,
+                                        u32          node_index,
+                                        HirBinaryOp  binary_op)
+{
+    if (node_index >= array_count(ast->nodes) ||
+        node_index >= array_count(sema->node_method_call_decl_indices)) {
+        return hir_no_index();
+    }
+
+    u32 decl_index = sema->node_method_call_decl_indices[node_index];
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
+        return hir_no_index();
+    }
+
+    const AstNode* node        = &ast->nodes[node_index];
+    u32            callee_type = sema->decls[decl_index].type_index;
+    u32            binding     = hir_decl_binding(hir, decl_index);
+    u32            callee      = hir_add_expr(
+        hir,
+        (HirExpr){
+            .kind          = HIR_EXPR_LocalRef,
+            .type_index    = callee_type,
+            .symbol_handle = sema->decls[decl_index].symbol_handle,
+            .local_index   = sema_no_local(),
+            .ref_kind =
+                binding != hir_no_index() ? HIR_REF_Binding : HIR_REF_Decl,
+            .ref_index = binding != hir_no_index() ? binding : decl_index,
+        });
+
+    u32 lhs = hir_lower_expr_with_expected(
+        hir,
+        lexer,
+        ast,
+        sema,
+        node->a,
+        hir_function_param_type(sema, callee_type, 0));
+    u32 rhs = hir_lower_expr_with_expected(
+        hir,
+        lexer,
+        ast,
+        sema,
+        node->b,
+        hir_function_param_type(sema, callee_type, 1));
+
+    u32 first_arg = (u32)array_count(hir->call_args);
+    array_push(hir->call_args,
+               (HirCallArg){.expr_index = lhs, .symbol_handle = U32_MAX});
+    array_push(hir->call_args,
+               (HirCallArg){.expr_index = rhs, .symbol_handle = U32_MAX});
+
+    u32 compare_type = sema->types[callee_type].return_type;
+    u32 compare      = hir_add_expr(hir,
+                                    (HirExpr){
+                                        .kind              = HIR_EXPR_Call,
+                                        .type_index        = compare_type,
+                                        .symbol_handle     = U32_MAX,
+                                        .local_index       = sema_no_local(),
+                                        .callee_expr_index = callee,
+                                        .first_arg         = first_arg,
+                                        .arg_count         = 2,
+                                    });
+    u32 zero         = hir_add_expr(hir,
+                                    (HirExpr){
+                                        .kind          = HIR_EXPR_IntegerLiteral,
+                                        .type_index    = compare_type,
+                                        .symbol_handle = U32_MAX,
+                                        .local_index   = sema_no_local(),
+                                        .integer       = 0,
+                                    });
+
+    return hir_add_expr(hir,
+                        (HirExpr){
+                            .kind           = HIR_EXPR_Binary,
+                            .type_index     = hir_node_type(sema, node_index),
+                            .symbol_handle  = U32_MAX,
+                            .local_index    = sema_no_local(),
+                            .lhs_expr_index = compare,
+                            .rhs_expr_index = zero,
+                            .binary_op      = binary_op,
+                        });
+}
+
 internal u32 hir_lower_default_trait_expr(Hir*        hir,
                                           const Sema* sema,
                                           u32         node_index)
@@ -1128,6 +1214,18 @@ internal u32 hir_lower_expr(Hir*         hir,
                 hir, lexer, ast, sema, node_index, binary_op);
             if (eq_expr != hir_no_index()) {
                 return eq_expr;
+            }
+        }
+        if ((binary_op == HIR_BINARY_Less ||
+             binary_op == HIR_BINARY_LessEqual ||
+             binary_op == HIR_BINARY_Greater ||
+             binary_op == HIR_BINARY_GreaterEqual) &&
+            node_index < array_count(sema->node_method_call_decl_indices) &&
+            sema->node_method_call_decl_indices[node_index] != sema_no_decl()) {
+            u32 order_expr = hir_lower_order_trait_expr(
+                hir, lexer, ast, sema, node_index, binary_op);
+            if (order_expr != hir_no_index()) {
+                return order_expr;
             }
         }
 
