@@ -107,7 +107,26 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 0,
+                            "character": 4
+                        },
+                        "end": {
+                            "line": 0,
+                            "character": 10
+                        }
+                    },
+                    "severity": 4,
+                    "source": "nerd",
+                    "message": "Unused use `std.io`",
+                    "tags": [
+                        1
+                    ]
+                }
+            ]
         }
     },
     {
@@ -124,7 +143,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
+            "uri": "__REPO_URI__/mods/core.n",
             "range": {
                 "start": {
                     "line": 29,
@@ -141,7 +160,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/io.n",
+            "uri": "__REPO_URI__/mods/std/io.n",
             "range": {
                 "start": {
                     "line": 0,

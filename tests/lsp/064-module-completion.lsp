@@ -77,7 +77,26 @@ main :: fn () {}
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 0,
+                            "character": 4
+                        },
+                        "end": {
+                            "line": 0,
+                            "character": 18
+                        }
+                    },
+                    "severity": 4,
+                    "source": "nerd",
+                    "message": "Unused use `test.lsp_types`",
+                    "tags": [
+                        1
+                    ]
+                }
+            ]
         }
     },
     {

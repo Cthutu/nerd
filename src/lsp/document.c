@@ -227,6 +227,220 @@ internal void lsp_publish_grouped_diagnostics(Arena*     arena,
     array_free(groups);
 }
 
+internal JsonValue*
+lsp_document_position(Arena* arena, NerdSource source, usize offset)
+{
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(source, offset, &line, &col)) {
+        return NULL;
+    }
+
+    JsonValue* position = json_new_object(arena);
+    json_object_set_number(position, arena, "line", line);
+    json_object_set_number(position, arena, "character", col);
+    return position;
+}
+
+internal JsonValue*
+lsp_document_range(Arena* arena, NerdSource source, usize start, usize end)
+{
+    JsonValue* start_position = lsp_document_position(arena, source, start);
+    JsonValue* end_position   = lsp_document_position(arena, source, end);
+    if (start_position == NULL || end_position == NULL) {
+        return NULL;
+    }
+
+    JsonValue* range = json_new_object(arena);
+    json_object_set_object(range, "start", start_position);
+    json_object_set_object(range, "end", end_position);
+    return range;
+}
+
+internal bool lsp_unused_use_module_index(const LspDocument* doc,
+                                          u32                use_index,
+                                          u32*               out_module_index)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    if (use_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* use = &ast->nodes[use_index];
+    if (use->kind != AK_Use || use->a >= array_count(ast->nodes) ||
+        use->a >= array_count(sema->node_type_indices)) {
+        return false;
+    }
+
+    u32 module_type = sema->node_type_indices[use->a];
+    if (module_type == sema_no_type() ||
+        module_type >= array_count(sema->types)) {
+        return false;
+    }
+
+    const SemaType* type = &sema->types[module_type];
+    if (type->kind != STK_Module) {
+        return false;
+    }
+
+    *out_module_index = type->return_type;
+    return true;
+}
+
+internal bool lsp_use_is_used(const LspDocument* doc, u32 use_index)
+{
+    const Sema* sema         = &doc->front_end.sema;
+    u32         module_index = U32_MAX;
+    if (!lsp_unused_use_module_index(doc, use_index, &module_index)) {
+        return true;
+    }
+
+    for (u32 i = 0; i < array_count(sema->node_decl_indices); ++i) {
+        u32 decl_index = sema->node_decl_indices[i];
+        if (decl_index == sema_no_decl() ||
+            decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl* decl = &sema->decls[decl_index];
+        if (decl->import_module_index == module_index) {
+            return true;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(sema->node_method_call_decl_indices); ++i) {
+        u32 decl_index = sema->node_method_call_decl_indices[i];
+        if (decl_index == sema_no_decl() ||
+            decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl* decl = &sema->decls[decl_index];
+        if (decl->import_module_index == module_index) {
+            return true;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(sema->node_local_indices); ++i) {
+        u32 local_index = sema->node_local_indices[i];
+        if (local_index == sema_no_local() ||
+            local_index >= array_count(sema->locals)) {
+            continue;
+        }
+
+        const SemaLocal* local = &sema->locals[local_index];
+        if (local->decl_node_index == use_index) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool lsp_use_module_path_range(const LspDocument* doc,
+                                        u32                use_index,
+                                        usize*             out_start,
+                                        usize*             out_end)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    if (use_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* use = &ast->nodes[use_index];
+    if (use->kind != AK_Use || use->a >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* module = &ast->nodes[use->a];
+    if (module->kind != AK_ModRef ||
+        module->a >= array_count(ast->module_paths) ||
+        module->token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+
+    const AstModulePath* path  = &ast->module_paths[module->a];
+    const Token*         first = &lexer->tokens[module->token_index];
+    if (first->kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 last_symbol_token = module->token_index;
+    u32 symbols_seen      = 0;
+    for (u32 i = module->token_index; i < array_count(lexer->tokens); ++i) {
+        const Token* token = &lexer->tokens[i];
+        if (token->kind == TK_Symbol) {
+            last_symbol_token = i;
+            symbols_seen++;
+            if (symbols_seen >= path->symbol_count) {
+                *out_start = first->offset;
+                *out_end   = lex_token_end_offset(
+                    lexer, &lexer->tokens[last_symbol_token]);
+                return true;
+            }
+            continue;
+        }
+
+        if (token->kind != TK_Dot) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+internal void lsp_add_unused_use_diagnostics(Arena*             arena,
+                                             const LspDocument* doc,
+                                             JsonValue*         diagnostics)
+{
+    if (diagnostics == NULL || diagnostics->kind != JSON_ARRAY ||
+        !doc->sema_partial) {
+        return;
+    }
+
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        if (ast->nodes[i].kind != AK_Use || lsp_use_is_used(doc, i)) {
+            continue;
+        }
+
+        usize start = 0;
+        usize end   = 0;
+        if (!lsp_use_module_path_range(doc, i, &start, &end)) {
+            continue;
+        }
+
+        JsonValue* range =
+            lsp_document_range(arena, doc->front_end.lexer.source, start, end);
+        if (range == NULL) {
+            continue;
+        }
+
+        string module_path = string_from(
+            doc->front_end.lexer.source.source.data + start, end - start);
+
+        StringBuilder message = {0};
+        sb_init(&message, arena);
+        sb_append_cstr(&message, "Unused use `");
+        sb_append_string(&message, module_path);
+        sb_append_char(&message, '`');
+
+        JsonValue* tags = json_new_array(arena);
+        json_array_push(tags, json_new_number(arena, 1));
+
+        JsonValue* diagnostic = json_new_object(arena);
+        json_object_set_object(diagnostic, "range", range);
+        json_object_set_number(diagnostic, arena, "severity", 4);
+        json_object_set_string(diagnostic, arena, "source", s("nerd"));
+        json_object_set_string(
+            diagnostic, arena, "message", sb_to_string(&message));
+        json_object_set_array(diagnostic, "tags", tags);
+        json_array_push(diagnostics, diagnostic);
+    }
+}
+
 internal bool lsp_front_end_document(NerdSource             source,
                                      const FrontEndOptions* options,
                                      ProgramInfo*           out_program,
@@ -631,6 +845,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     bool       ok          = lsp_analyse_document(doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
+    lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
     lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
 }
 
@@ -670,6 +885,7 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
     bool       ok          = lsp_analyse_document(doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
+    lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
     lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
 }
 

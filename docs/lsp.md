@@ -147,7 +147,10 @@ tables where possible. The server advertises the standard `unnecessary` token
 modifier and applies it to module path symbols in `use` statements when that
 import does not contribute a declaration or local binding referenced by the
 current file. Editors such as VS Code usually render that modifier as dimmed
-text.
+text. The diagnostics path also publishes a hint diagnostic with
+`DiagnosticTag.Unnecessary` for the same range, because clients generally use
+that tag for faded unused code even when a theme ignores semantic-token
+modifiers.
 
 ## Code Actions
 
