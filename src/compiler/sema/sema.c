@@ -3109,8 +3109,13 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                                                         const Ast*   ast,
                                                         const Sema*  sema,
                                                         u32          node_index,
+                                                        u32          depth,
                                                         u32* out_node_index)
 {
+    if (depth > array_count(sema->decls)) {
+        return false;
+    }
+
     node_index          = sema_unwrap_type_candidate_node(ast, node_index);
     const AstNode* node = &ast->nodes[node_index];
 
@@ -3119,9 +3124,22 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
         if (sema_is_builtin_type_name(lex_symbol(lexer, node->a))) {
             return false;
         }
-        if (sema_find_decl(sema, node->a) == sema_no_decl()) {
+        u32 decl_index = sema_find_decl(sema, node->a);
+        if (decl_index == sema_no_decl()) {
             *out_node_index = node_index;
             return true;
+        }
+        const SemaDecl* decl = &sema->decls[decl_index];
+        if (decl->kind != SK_TypeAlias &&
+            decl->type_node_index == sema_no_type() &&
+            decl->value_node_index != sema_no_decl()) {
+            return sema_find_unknown_type_ref_in_type_syntax(
+                lexer,
+                ast,
+                sema,
+                decl->value_node_index,
+                depth + 1,
+                out_node_index);
         }
         return false;
 
@@ -3134,6 +3152,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                         ast,
                         sema,
                         ast->params[signature->first_param + i].type_node_index,
+                        depth,
                         out_node_index)) {
                     return true;
                 }
@@ -3144,6 +3163,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                        ast,
                        sema,
                        signature->return_type_node_index,
+                       depth,
                        out_node_index);
         }
 
@@ -3155,6 +3175,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                     ast,
                     sema,
                     apply->target_node_index,
+                    depth,
                     out_node_index)) {
                 return true;
             }
@@ -3164,6 +3185,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                         ast,
                         sema,
                         ast->tuple_items[apply->first_arg + i],
+                        depth,
                         out_node_index)) {
                     return true;
                 }
@@ -3178,6 +3200,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                     ast,
                     sema,
                     ast->tuple_items[node->a + i],
+                    depth,
                     out_node_index)) {
                 return true;
             }
@@ -3187,12 +3210,12 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
     case AK_TypeArray:
     case AK_TypeDynamicArray:
         return sema_find_unknown_type_ref_in_type_syntax(
-            lexer, ast, sema, node->b, out_node_index);
+            lexer, ast, sema, node->b, depth, out_node_index);
 
     case AK_TypeSlice:
     case AK_TypePointer:
         return sema_find_unknown_type_ref_in_type_syntax(
-            lexer, ast, sema, node->a, out_node_index);
+            lexer, ast, sema, node->a, depth, out_node_index);
 
     case AK_TypePlex:
         {
@@ -3205,6 +3228,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                         ast,
                         sema,
                         field->type_node_index,
+                        depth,
                         out_node_index)) {
                     return true;
                 }
@@ -3224,6 +3248,7 @@ internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
                         ast,
                         sema,
                         variant->type_node_index,
+                        depth,
                         out_node_index)) {
                     return true;
                 }
@@ -3244,7 +3269,7 @@ internal bool sema_error_non_type_in_type_context(const Lexer* lexer,
 {
     u32 bad_type_ref = U32_MAX;
     if (sema_find_unknown_type_ref_in_type_syntax(
-            lexer, ast, sema, node_index, &bad_type_ref)) {
+            lexer, ast, sema, node_index, 0, &bad_type_ref)) {
         const AstNode* bad_node = &ast->nodes[bad_type_ref];
         return error_0303_unknown_type(lexer->source,
                                        sema_node_span(lexer, bad_node),

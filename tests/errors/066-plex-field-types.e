@@ -24,6 +24,34 @@ Bad :: plex {
     ]
 }
 ¬
+Alias :: Missing
+
+Bad :: plex {
+    cb fn (value: Alias) -> i32
+}
+¬
+{
+    "message": "Unknown type `Missing`",
+    "source_file": "tests/errors/066-plex-field-types.e",
+    "primary_location": {
+        "line": 1,
+        "column": 10
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 10,
+            "length": 7,
+            "message": "This type name is not defined"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use a defined type name, or one of the built-in primitive types."
+    ]
+}
+¬
 Bad :: plex {
     field: i32
 }
