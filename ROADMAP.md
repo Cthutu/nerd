@@ -152,6 +152,48 @@ the roadmap before committing the implementation.
 - [ ] Keep parsing traits such as `Parse` at standard-library level rather than
   making them language-known traits.
 
+### CLI And Binary Output Polish Milestone
+
+This milestone is for command-line and build-output polish after the current
+language/runtime layers are stable. Keep the first version host-toolchain only;
+do not imply cross-target packaging or platform ABI guarantees beyond what the
+current LLVM/clang backend can verify.
+
+- [ ] Add program argument support:
+  - [ ] allow the entry point to be either `main :: fn ()` or
+    `main :: fn (args: []string)`
+  - [ ] lower the runtime entry wrapper so command-line arguments are exposed as
+    Nerd `string` slices
+  - [ ] define whether `args[0]` is the executable path or the first user
+    argument, and document the choice
+  - [ ] reject unsupported `main` signatures with a targeted diagnostic and
+    help text
+  - [ ] add command tests for zero arguments, multiple arguments, and strings
+    containing spaces
+- [ ] Add library/object output:
+  - [ ] add a CLI mode or flag for producing relocatable object output instead
+    of an executable
+  - [ ] support conventional host artefact names such as `.o` on POSIX and
+    `.obj`/`.lib` on Windows where applicable
+  - [ ] define how public Nerd declarations become exported/linkable symbols
+  - [ ] keep temporary LLVM/runtime artefact cleanup consistent with existing
+    `run` and `build` cleanup rules
+  - [ ] add command tests for object/library generation and stale artefact
+    cleanup
+- [ ] Add DLL/shared-library support:
+  - [ ] add a CLI mode or flag for producing a host shared library
+  - [ ] support `.dll` on Windows and document any deferred POSIX `.so`/macOS
+    `.dylib` behaviour if not implemented together
+  - [ ] define explicit export rules for public functions and data
+  - [ ] decide how, or whether, the Nerd runtime object is linked into shared
+    libraries
+  - [ ] add command tests that build a shared library and link/load it from a
+    small host program where practical
+- [ ] Update documentation:
+  - [ ] CLI help and command reference for argument handling and output modes
+  - [ ] manual/language reference for allowed `main` signatures
+  - [ ] compiler pipeline notes for object and shared-library output paths
+
 ### Function Enhancements Milestone
 
 - [x] Add default parameters with syntax `name: Type = expr`.
