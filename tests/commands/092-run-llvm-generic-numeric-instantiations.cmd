@@ -1,6 +1,6 @@
 use std.io
 
-add :: fn [T] (a: T, b: T) {
+add :: fn [T] (a: T, b: T) -> T {
     return a + b
 }
 

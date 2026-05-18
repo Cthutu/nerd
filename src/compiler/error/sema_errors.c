@@ -1375,3 +1375,26 @@ bool error_0349_unqualified_trait_member_call(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a value-bearing return in a function that does not return a value.
+
+bool error_0350_unexpected_return_value(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Cannot return a value from a function with no return type");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `return` provides a value, but the function "
+                        "returns no value");
+    error_add_note(&error,
+                   "Functions written without `-> Type` return no value.");
+    error_add_help(&error,
+                   "Remove the returned expression, or add `-> Type` to the "
+                   "function signature.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

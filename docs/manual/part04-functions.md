@@ -78,15 +78,19 @@ is_large :: fn (value: i32) -> bool {
 }
 ```
 
-`void` functions can omit a final return:
+`void` functions can omit both `-> void` and a final return:
 
 ```nerd
 use std.io
 
-show :: fn (value: i32) -> void {
+show :: fn (value: i32) {
     prn($"value={value}")  -- no return value is needed
 }
 ```
+
+A block-bodied function without `-> Type` returns no value, so `return <expr>`
+inside it is an error. The entry point `main` is the compatibility exception:
+an unannotated block-bodied `main` may still return an integer process status.
 
 ## Expression-Bodied Functions
 

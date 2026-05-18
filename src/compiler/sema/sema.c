@@ -12836,6 +12836,12 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
+        if (stmt->a != U32_MAX && expected_return_type != sema_no_type() &&
+            sema->types[expected_return_type].kind == STK_Void) {
+            return error_0350_unexpected_return_value(
+                lexer->source, sema_node_span(lexer, stmt));
+        }
+
         if (stmt->a != U32_MAX) {
             u32 expected_return = expected_return_type;
             if (!sema_infer_node_type(lexer,
@@ -16721,6 +16727,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
             u32 return_type = sema_builtin_type(
                 sema, node->b == AFK_Block ? STK_Void : STK_UntypedInteger);
+            bool is_unannotated_main = false;
+            if (!has_explicit_return_type) {
+                u32 main_symbol =
+                    sema_find_symbol_handle_by_name(lexer, s("main"));
+                for (u32 i = 0; i < array_count(sema->decls); ++i) {
+                    const SemaDecl* decl = &sema->decls[i];
+                    if (decl->symbol_handle == main_symbol &&
+                        decl->value_node_index == node_index) {
+                        is_unannotated_main = true;
+                        break;
+                    }
+                }
+            }
 
             if (has_explicit_return_type &&
                 !sema_resolve_type_node(lexer,
@@ -16745,15 +16764,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return_type = sema_materialise_type(sema, return_type);
             } else {
                 bool has_return = false;
-                if (!sema_infer_block_statements(
-                        lexer,
-                        ast,
-                        sema,
-                        node->a + 1,
-                        fn_start->b,
-                        has_explicit_return_type ? return_type : sema_no_type(),
-                        &return_type,
-                        &has_return)) {
+                if (!sema_infer_block_statements(lexer,
+                                                 ast,
+                                                 sema,
+                                                 node->a + 1,
+                                                 fn_start->b,
+                                                 has_explicit_return_type ||
+                                                         !is_unannotated_main
+                                                     ? return_type
+                                                     : sema_no_type(),
+                                                 &return_type,
+                                                 &has_return)) {
                     return false;
                 }
                 if (has_explicit_return_type && !has_return) {

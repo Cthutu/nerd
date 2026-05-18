@@ -74,6 +74,14 @@ _ := compute_again()
 Assignments do not count as reads. Reading a leading-underscore local is an
 error; rename it without the leading `_` before using it as an ordinary value.
 
+## Return Statements
+
+`return` exits the enclosing function. `return expression` is valid only when
+the enclosing block-bodied function has an explicit `-> Type`, except that an
+unannotated block-bodied `main` may infer an integer process status for
+entry-point compatibility. Other block-bodied functions without `-> Type`
+return `void`, and a value-bearing `return` is rejected.
+
 ## Destructuring
 
 Destructuring statements support constant binding, mutable binding, typed

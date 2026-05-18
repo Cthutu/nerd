@@ -363,6 +363,7 @@ bool error_0349_unqualified_trait_member_call(NerdSource source,
                                               ErrorSpan  span,
                                               string     member,
                                               string     trait);
+bool error_0350_unexpected_return_value(NerdSource source, ErrorSpan span);
 
 //------------------------------------------------------------------------------
 // Low-level error system
