@@ -15039,7 +15039,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return false;
                 }
             }
-            if (else_block != NULL && !body_has_value_break) {
+            if (else_block != NULL && else_has_value_break &&
+                !body_has_value_break) {
                 return error_0333_invalid_loop_else(
                     lexer->source, sema_node_span(lexer, else_block));
             }
@@ -18611,6 +18612,8 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                 }
             }
             if (for_info->else_block_index != U32_MAX &&
+                sema_block_has_value_break_for_target(
+                    ast, for_info->else_block_index, for_info->label_symbol) &&
                 !sema_block_has_value_break_for_target(
                     ast, node->b, for_info->label_symbol)) {
                 return error_0333_invalid_loop_else(

@@ -7930,6 +7930,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             string cond_label   = llvm_label(ctx, "for.cond");
             string body_label   = llvm_label(ctx, "for.body");
             string update_label = llvm_label(ctx, "for.update");
+            string else_label   = loop->else_block_index != U32_MAX
+                                      ? llvm_label(ctx, "for.else")
+                                      : (string){0};
             string end_label    = llvm_label(ctx, "for.end");
             sb_format(
                 ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
@@ -7946,7 +7949,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           ", label %%" STRINGP "\n",
                           STRINGV(condition.value),
                           STRINGV(body_label),
-                          STRINGV(end_label));
+                          STRINGV(loop->else_block_index != U32_MAX
+                                      ? else_label
+                                      : end_label));
             } else {
                 sb_format(
                     ctx->sb, "  br label %%" STRINGP "\n", STRINGV(body_label));
@@ -7986,13 +7991,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->emitted_break        = old_break_emitted;
                 return (LlvmValue){0};
             }
-            bool loop_emitted_break = ctx->emitted_break;
-            llvm_pop_control_target(ctx, loop->label_symbol);
-            ctx->break_label          = old_break;
-            ctx->continue_label       = old_continue;
-            ctx->break_defer_count    = old_break_defer_count;
-            ctx->continue_defer_count = old_continue_defer_count;
-            ctx->emitted_break        = old_break_emitted;
+            bool   loop_emitted_break = ctx->emitted_break;
             string next_label =
                 loop->kind == HIR_FOR_CStyle ? update_label : cond_label;
             if (!ctx->block_terminated) {
@@ -8007,14 +8006,49 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                                    ctx->hir->for_update_stmts,
                                                    loop->first_update_stmt,
                                                    loop->update_stmt_count)) {
+                    llvm_pop_control_target(ctx, loop->label_symbol);
+                    ctx->break_label          = old_break;
+                    ctx->continue_label       = old_continue;
+                    ctx->break_defer_count    = old_break_defer_count;
+                    ctx->continue_defer_count = old_continue_defer_count;
+                    ctx->emitted_break        = old_break_emitted;
                     return (LlvmValue){0};
                 }
                 sb_format(
                     ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
             }
 
-            bool can_reach_end =
-                loop_emitted_break || loop->condition_expr_index != U32_MAX;
+            if (loop->else_block_index != U32_MAX) {
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
+                ctx->block_terminated = false;
+                if (!llvm_emit_effect_block(
+                        ctx, function, loop->else_block_index)) {
+                    llvm_pop_control_target(ctx, loop->label_symbol);
+                    ctx->break_label          = old_break;
+                    ctx->continue_label       = old_continue;
+                    ctx->break_defer_count    = old_break_defer_count;
+                    ctx->continue_defer_count = old_continue_defer_count;
+                    ctx->emitted_break        = old_break_emitted;
+                    return (LlvmValue){0};
+                }
+                loop_emitted_break = loop_emitted_break || ctx->emitted_break;
+                if (!ctx->block_terminated) {
+                    sb_format(ctx->sb,
+                              "  br label %%" STRINGP "\n",
+                              STRINGV(end_label));
+                }
+            }
+
+            llvm_pop_control_target(ctx, loop->label_symbol);
+            ctx->break_label          = old_break;
+            ctx->continue_label       = old_continue;
+            ctx->break_defer_count    = old_break_defer_count;
+            ctx->continue_defer_count = old_continue_defer_count;
+            ctx->emitted_break        = old_break_emitted;
+
+            bool can_reach_end        = loop_emitted_break ||
+                                        loop->condition_expr_index != U32_MAX ||
+                                        loop->else_block_index != U32_MAX;
             if (can_reach_end) {
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 ctx->block_terminated = false;
