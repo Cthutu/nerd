@@ -7193,6 +7193,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
                 format_emit_indent(state.sb, 1);
             } else if ((kind == TK_String || kind == TK_CString ||
                         kind == TK_StringContinuationStart) &&
+                       next_kind != TK_FatArrow &&
                        (previous_kind == TK_String ||
                         previous_kind == TK_CString ||
                         previous_kind == TK_InterpolatedStringEnd)) {
