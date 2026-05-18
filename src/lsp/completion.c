@@ -32,6 +32,15 @@ internal string lsp_completion_ident_before(string source, usize end)
     return (string){.data = source.data + start, .count = end - start};
 }
 
+internal bool lsp_completion_after_open_brace(string source, usize offset)
+{
+    while (offset > 0 && (source.data[offset - 1] == ' ' ||
+                          source.data[offset - 1] == '\t')) {
+        offset--;
+    }
+    return offset > 0 && source.data[offset - 1] == '{';
+}
+
 internal bool lsp_completion_label_matches_prefix(string label, string prefix)
 {
     if (prefix.count == 0) {
@@ -3452,19 +3461,6 @@ internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
     return true;
 }
 
-internal void lsp_completion_add_keywords(Arena* arena, JsonValue* items)
-{
-    static cstr keywords[] = {
-        "assert", "break", "again", "defer",     "else", "enum",   "ffi",
-        "fn",     "for",   "impl",  "intrinsic", "on",   "pragma", "pub",
-        "return", "test",  "trait", "union",     "use",  "where",
-    };
-
-    for (usize i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
-        lsp_completion_add(arena, items, s(keywords[i]), 14); // Keyword
-    }
-}
-
 internal bool
 lsp_completion_use_context(string source, usize offset, string* out_path)
 {
@@ -3759,6 +3755,11 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         lsp_send_response(message->arena, response);
         return;
     }
+    if (lsp_completion_after_open_brace(view.source, offset)) {
+        json_object_set_array(response, "result", items);
+        lsp_send_response(message->arena, response);
+        return;
+    }
 
     string receiver = {0};
     if (lsp_completion_member_context(view.source, offset, &receiver)) {
@@ -3801,7 +3802,6 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         return;
     }
 
-    lsp_completion_add_keywords(message->arena, items);
     lsp_completion_add_symbols(message->arena, items, doc);
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
