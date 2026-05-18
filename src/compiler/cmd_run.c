@@ -77,15 +77,28 @@ internal bool compiler_cmd_run_has_generated_suffix(string filename,
            memcmp(filename.data + base_len, suffix, suffix_len) == 0;
 }
 
+internal bool compiler_cmd_run_has_generated_stem_suffix(string filename,
+                                                         string base_stem,
+                                                         cstr   suffix)
+{
+    usize suffix_len = strlen(suffix);
+    return filename.count == base_stem.count + suffix_len &&
+           memcmp(filename.data, base_stem.data, base_stem.count) == 0 &&
+           memcmp(filename.data + base_stem.count, suffix, suffix_len) == 0;
+}
+
 internal bool compiler_cmd_run_is_generated_for(string filename, cstr base_name)
 {
     if (compiler_cmd_string_eq_cstr(filename, base_name)) {
         return true;
     }
+    string base_stem = path_stem(s(base_name));
     if (compiler_cmd_run_has_generated_suffix(
             filename, base_name, ".link.ll") ||
         compiler_cmd_run_has_generated_suffix(filename, base_name, ".nrt.o") ||
-        compiler_cmd_run_has_generated_suffix(filename, base_name, ".pdb")) {
+        compiler_cmd_run_has_generated_suffix(filename, base_name, ".pdb") ||
+        compiler_cmd_run_has_generated_stem_suffix(
+            filename, base_stem, ".pdb")) {
         return true;
     }
     return compiler_cmd_run_is_module_llvm(filename, base_name);

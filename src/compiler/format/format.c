@@ -577,6 +577,24 @@ internal void format_emit_string_text(StringBuilder* sb, string text)
     }
 }
 
+internal void format_emit_interpolated_string_text(StringBuilder* sb,
+                                                   string         text)
+{
+    for (usize i = 0; i < text.count; ++i) {
+        switch (text.data[i]) {
+        case '{':
+            sb_append_cstr(sb, "\\{");
+            break;
+        case '}':
+            sb_append_cstr(sb, "\\}");
+            break;
+        default:
+            format_emit_string_text(sb, string_from(text.data + i, 1));
+            break;
+        }
+    }
+}
+
 internal void format_emit_float_literal(StringBuilder* sb,
                                         const Lexer*   lexer,
                                         u32            token_index)
@@ -909,7 +927,8 @@ internal void format_emit_expr(StringBuilder* sb,
         for (u32 i = node->a; i < node->b; ++i) {
             const CstNode* part = &cst->nodes[i];
             if (part->kind == CK_StringLiteral) {
-                format_emit_string_text(sb, lexer->strings[part->a]);
+                format_emit_interpolated_string_text(sb,
+                                                     lexer->strings[part->a]);
                 continue;
             }
             if (part->kind == CK_InterpPartExpr) {
@@ -7141,7 +7160,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         } else if (in_interpolated_string && kind == TK_String) {
             u32 string_index = format_token_string_index(&lexer, i);
             if (string_index < array_count(lexer.strings)) {
-                sb_append_string(sb, lexer.strings[string_index]);
+                format_emit_interpolated_string_text(
+                    sb, lexer.strings[string_index]);
             } else {
                 sb_append_string(sb, format_token_text(&lexer, i));
             }

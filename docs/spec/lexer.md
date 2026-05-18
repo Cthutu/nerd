@@ -32,7 +32,8 @@ Text between interpolation expressions is decoded into ordinary `TK_String`
 tokens and stored in `lexer->strings`. Empty text chunks are not emitted. Escape
 sequences in text chunks use the same decoder as string and packed integer
 literals: `\\`, `\n`, `\r`, `\t`, `\0`, `\a`, `\b`, `\f`, `\v`, and `\xNN`
-are recognised, and `\"` produces a quote.
+are recognised. `\"` produces a quote, and `\{` or `\}` produce literal braces
+without starting or ending an interpolation expression.
 
 An unescaped `{` inside interpolated text ends the current text chunk, emits
 `TK_LBrace`, and switches back to normal expression lexing. The expression body

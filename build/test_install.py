@@ -47,8 +47,10 @@ def assert_no_link_temps(directory: pathlib.Path, stem: str, label: str) -> None
     patterns = [
         f"{stem}.link.ll",
         f"{stem}.nrt.o",
+        f"{stem}.pdb",
         f"_{stem}.link.ll",
         f"_{stem}.nrt.o",
+        f"_{stem}.pdb",
         f"__{stem}*",
     ]
     leftovers: list[pathlib.Path] = []
@@ -66,7 +68,9 @@ def assert_no_run_outputs(directory: pathlib.Path, stem: str, label: str) -> Non
     assert_no_link_temps(directory, stem, label)
     patterns = [
         f"{stem}*.ll",
+        f"{stem}*.pdb",
         f"_{stem}*.ll",
+        f"_{stem}*.pdb",
         f"{stem}.m*.ll",
         f"{stem}.input.m*.ll",
     ]

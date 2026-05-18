@@ -314,6 +314,10 @@ internal u8 lexer_decode_escape(string source_code, usize* io_index, u8 quote)
         return '\f';
     case 'v':
         return '\v';
+    case '{':
+        return '{';
+    case '}':
+        return '}';
     case 'x':
         {
             u8  value  = 0;

@@ -228,7 +228,7 @@ Type.size
 | `value: i32 = undefined` | `i32` |
 | `"string"` | `string` |
 | `c"c string"` | `^i8` to null-terminated bytes |
-| `$"interpolated {value}"` | `string` |
+| `$"interpolated {value}"`, `$"literal \{brace\}"` | `string` |
 | `[1, 2, 3]` | `[3]i32` |
 | `[start..end]`, `[start..=end]` | integer range usable by `for in` |
 | `(1, "two")` | `(i32, string)` |

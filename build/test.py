@@ -612,6 +612,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             cwd / f"_{path.stem}.out.link.ll",
             cwd / f"_{path.stem}.out.nrt.o",
             cwd / f"_{path.stem}.out.m1.ll",
+            cwd / f"_{path.stem}.pdb",
         ):
             stale.write_text("stale generated artifact\n", encoding="utf-8")
         if expected_exit != 0:
@@ -666,6 +667,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             f"{executable.name}*.nrt.o",
             f"_{path.stem}.out*.ll",
             f"_{path.stem}.out*.nrt.o",
+            f"_{path.stem}.pdb",
+            f"_{path.stem}.out*.pdb",
             f"{path.stem}.exe*.ll",
             f"{path.stem}.exe*.nrt.o",
             f"{path.stem}*.link.ll",
