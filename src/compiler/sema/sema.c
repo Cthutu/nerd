@@ -3093,30 +3093,166 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_is_builtin_type_name(string name)
+{
+    return string_eq(name, s("void")) || string_eq(name, s("bool")) ||
+           string_eq(name, s("string")) || string_eq(name, s("i8")) ||
+           string_eq(name, s("i16")) || string_eq(name, s("i32")) ||
+           string_eq(name, s("i64")) || string_eq(name, s("u8")) ||
+           string_eq(name, s("u16")) || string_eq(name, s("u32")) ||
+           string_eq(name, s("u64")) || string_eq(name, s("f32")) ||
+           string_eq(name, s("f64")) || string_eq(name, s("isize")) ||
+           string_eq(name, s("usize")) || string_eq(name, s("arena"));
+}
+
+internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
+                                                        const Ast*   ast,
+                                                        const Sema*  sema,
+                                                        u32          node_index,
+                                                        u32* out_node_index)
+{
+    node_index          = sema_unwrap_type_candidate_node(ast, node_index);
+    const AstNode* node = &ast->nodes[node_index];
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        if (sema_is_builtin_type_name(lex_symbol(lexer, node->a))) {
+            return false;
+        }
+        if (sema_find_decl(sema, node->a) == sema_no_decl()) {
+            *out_node_index = node_index;
+            return true;
+        }
+        return false;
+
+    case AK_TypeFn:
+        {
+            const AstFnSignature* signature = sema_ast_signature(ast, node);
+            for (u32 i = 0; i < signature->param_count; ++i) {
+                if (sema_find_unknown_type_ref_in_type_syntax(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->params[signature->first_param + i].type_node_index,
+                        out_node_index)) {
+                    return true;
+                }
+            }
+            return signature->return_type_node_index != U32_MAX &&
+                   sema_find_unknown_type_ref_in_type_syntax(
+                       lexer,
+                       ast,
+                       sema,
+                       signature->return_type_node_index,
+                       out_node_index);
+        }
+
+    case AK_TypeApply:
+        {
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            if (sema_find_unknown_type_ref_in_type_syntax(
+                    lexer,
+                    ast,
+                    sema,
+                    apply->target_node_index,
+                    out_node_index)) {
+                return true;
+            }
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                if (sema_find_unknown_type_ref_in_type_syntax(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->tuple_items[apply->first_arg + i],
+                        out_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    case AK_TypeTuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (sema_find_unknown_type_ref_in_type_syntax(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->tuple_items[node->a + i],
+                    out_node_index)) {
+                return true;
+            }
+        }
+        return false;
+
+    case AK_TypeArray:
+    case AK_TypeDynamicArray:
+        return sema_find_unknown_type_ref_in_type_syntax(
+            lexer, ast, sema, node->b, out_node_index);
+
+    case AK_TypeSlice:
+    case AK_TypePointer:
+        return sema_find_unknown_type_ref_in_type_syntax(
+            lexer, ast, sema, node->a, out_node_index);
+
+    case AK_TypePlex:
+        {
+            const AstPlexTypeInfo* plex = &ast->plex_types[node->a];
+            for (u32 i = 0; i < plex->field_count; ++i) {
+                const AstPlexField* field =
+                    &ast->plex_fields[plex->first_field + i];
+                if (sema_find_unknown_type_ref_in_type_syntax(
+                        lexer,
+                        ast,
+                        sema,
+                        field->type_node_index,
+                        out_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    case AK_TypeEnum:
+        {
+            const AstEnumTypeInfo* enum_type = &ast->enum_types[node->a];
+            for (u32 i = 0; i < enum_type->variant_count; ++i) {
+                const AstEnumVariant* variant =
+                    &ast->enum_variants[enum_type->first_variant + i];
+                if (variant->type_node_index != U32_MAX &&
+                    sema_find_unknown_type_ref_in_type_syntax(
+                        lexer,
+                        ast,
+                        sema,
+                        variant->type_node_index,
+                        out_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    default:
+        return false;
+    }
+}
+
 internal bool sema_error_non_type_in_type_context(const Lexer* lexer,
                                                   const Ast*   ast,
                                                   const Sema*  sema,
                                                   u32          node_index,
                                                   string       expected)
 {
-    u32 bad_node_index      = sema_unwrap_type_candidate_node(ast, node_index);
-    const AstNode* bad_node = &ast->nodes[bad_node_index];
-    if (bad_node->kind == AK_TypePointer) {
-        u32 pointee_index = sema_unwrap_type_candidate_node(ast, bad_node->a);
-        const AstNode* pointee = &ast->nodes[pointee_index];
-        if (pointee->kind == AK_SymbolRef &&
-            sema_find_decl(sema, pointee->a) == sema_no_decl()) {
-            return error_0303_unknown_type(lexer->source,
-                                           sema_node_span(lexer, pointee),
-                                           lex_symbol(lexer, pointee->a));
-        }
-    }
-    if (bad_node->kind == AK_SymbolRef &&
-        sema_find_decl(sema, bad_node->a) == sema_no_decl()) {
+    u32 bad_type_ref = U32_MAX;
+    if (sema_find_unknown_type_ref_in_type_syntax(
+            lexer, ast, sema, node_index, &bad_type_ref)) {
+        const AstNode* bad_node = &ast->nodes[bad_type_ref];
         return error_0303_unknown_type(lexer->source,
                                        sema_node_span(lexer, bad_node),
                                        lex_symbol(lexer, bad_node->a));
     }
+
+    u32 bad_node_index      = sema_unwrap_type_candidate_node(ast, node_index);
+    const AstNode* bad_node = &ast->nodes[bad_node_index];
     return error_0304_type_mismatch(lexer->source,
                                     sema_node_span(lexer, bad_node),
                                     expected,

@@ -52,3 +52,29 @@ main :: fn () {}
         "Remove the colon. Colons are used in plex literals such as `State { loc_index: 0 }`, not in plex definitions."
     ]
 }
+¬
+Bad :: plex {
+    cb fn (value: Missing) -> i32
+}
+¬
+{
+    "message": "Unknown type `Missing`",
+    "source_file": "tests/errors/066-plex-field-types.e",
+    "primary_location": {
+        "line": 2,
+        "column": 19
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 19,
+            "length": 7,
+            "message": "This type name is not defined"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use a defined type name, or one of the built-in primitive types."
+    ]
+}
