@@ -23,6 +23,9 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
+module module.0(146-ffi-block-forward-use.input)
+extern extern.0 malloc from "c": fn (usize) -> ^void
+extern extern.1 free from "c": fn (^void^void) ->
 bind wrap = fn.0
 bind c_malloc = fn.1
 bind c_free = fn.2
@@ -39,10 +42,8 @@ func fn.3() -> i32 {
       expr i32 1
     }
     else => {
-      expr i32 block {
-    expr void call bind.2(c_free)(^void local.0(ptr))
-    break i32 0
-  }
+      expr void call bind.2(c_free)(^void local.0(ptr))
+      break i32 0
     }
   }
 }
@@ -72,19 +73,13 @@ on.value.3:
 on.next.2:
   br label %on.body.4
 on.body.4:
-  %t2 = alloca i32, align 4
-  store i32 0, ptr %t2, align 4
   call void @free(ptr %t0)
-  store i32 0, ptr %t2, align 4
-  br label %block.end.6
-block.end.6:
-  %t3 = load i32, ptr %t2, align 4
-  br label %on.value.7
-on.value.7:
+  br label %on.value.6
+on.value.6:
   br label %on.end.0
 on.end.0:
-  %t4 = phi i32 [1, %on.value.3], [%t3, %on.value.7]
-  ret i32 %t4
+  %t2 = phi i32 [1, %on.value.3], [0, %on.value.6]
+  ret i32 %t2
 }
 
 @$wrap = internal alias ptr (), ptr @fn.0

@@ -30,8 +30,6 @@ func fn.0() -> i32 {
   let void_ptr: ^void = ^i32 local.1(ptr)
   expr void on ^i32 local.2(nil_ptr) {
     value(^i32 nil) => {
-      expr void block {
-  }
     }
     else => {
       return i32 1
@@ -64,32 +62,30 @@ define internal i32 @fn.0() {
   %t0 = icmp eq ptr null, null
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
-  br label %block.end.3
-block.end.3:
   br label %on.end.0
 on.next.2:
-  br label %on.body.4
-on.body.4:
+  br label %on.body.3
+on.body.3:
   ret i32 1
 on.end.0:
   %t1 = icmp eq ptr %local.0, null
   %t2 = icmp eq i1 %t1, 1
-  br i1 %t2, label %on.body.6, label %on.end.5
-on.body.6:
+  br i1 %t2, label %on.body.5, label %on.end.4
+on.body.5:
   ret i32 2
-on.end.5:
+on.end.4:
   %t3 = icmp ne ptr null, null
   %t4 = icmp eq i1 %t3, 1
-  br i1 %t4, label %on.body.8, label %on.end.7
-on.body.8:
+  br i1 %t4, label %on.body.7, label %on.end.6
+on.body.7:
   ret i32 3
-on.end.7:
+on.end.6:
   %t5 = icmp ne ptr %local.0, %local.0
   %t6 = icmp eq i1 %t5, 1
-  br i1 %t6, label %on.body.10, label %on.end.9
-on.body.10:
+  br i1 %t6, label %on.body.9, label %on.end.8
+on.body.9:
   ret i32 4
-on.end.9:
+on.end.8:
   ret i32 0
 }
 

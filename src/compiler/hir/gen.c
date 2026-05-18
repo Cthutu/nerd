@@ -253,6 +253,12 @@ internal u32 hir_lower_single_stmt_block(Hir*         hir,
                                          const Sema*  sema,
                                          u32          node_index);
 
+internal u32 hir_lower_on_branch_block(Hir*         hir,
+                                       const Lexer* lexer,
+                                       const Ast*   ast,
+                                       const Sema*  sema,
+                                       u32          expr_node_index);
+
 internal u32 hir_lower_pattern(Hir*         hir,
                                const Lexer* lexer,
                                const Ast*   ast,
@@ -1841,7 +1847,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                                              sema,
                                              branch->guard_node_index)
                             : hir_no_index(),
-                    .body_block_index = hir_lower_single_stmt_block(
+                    .body_block_index = hir_lower_on_branch_block(
                         hir, lexer, ast, sema, branch->expr_node_index),
                     .binder_symbol_handle = branch->binder_symbol_handle,
                 };
@@ -2134,6 +2140,22 @@ internal u32 hir_lower_single_stmt_block(Hir*         hir,
         hir->blocks[block_index].stmt_count++;
     }
     return block_index;
+}
+
+internal u32 hir_lower_on_branch_block(Hir*         hir,
+                                       const Lexer* lexer,
+                                       const Ast*   ast,
+                                       const Sema*  sema,
+                                       u32          expr_node_index)
+{
+    u32 root_index = hir_unwrap_node(ast, expr_node_index);
+    if (root_index < array_count(ast->nodes)) {
+        const AstNode* root = &ast->nodes[root_index];
+        if (root->kind == AK_ExprBlock && root->b == U32_MAX) {
+            return hir_lower_block_node(hir, lexer, ast, sema, root->a);
+        }
+    }
+    return hir_lower_single_stmt_block(hir, lexer, ast, sema, expr_node_index);
 }
 
 internal u32 hir_lower_stmt(Hir*         hir,

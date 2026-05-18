@@ -30,10 +30,8 @@ func fn.0(s: string, sep: string) -> [..]string {
   let parts: [..]string = <unknown> default
   expr <unknown> on <unknown> equal(<unknown> field(string local.1(sep), count), <unknown> 0) {
     value(<unknown> yes) => {
-      expr <unknown> block {
-    expr void call fn (string) -> void field([..]string local.2(parts), push)(string local.0(s))
-    return [..]string local.2(parts)
-  }
+      expr void call fn (string) -> void field([..]string local.2(parts), push)(string local.0(s))
+      return [..]string local.2(parts)
     }
   }
   return [..]string local.2(parts)
@@ -47,9 +45,7 @@ func fn.1() -> i32 {
   }
   expr <unknown> on <unknown> equal(<unknown> field([..]string local.3(parts), count), <unknown> 2) {
     value(<unknown> yes) => {
-      expr <unknown> block {
-    return i32 2
-  }
+      return i32 2
     }
     else => {
       return <unknown> 0
@@ -78,8 +74,8 @@ define internal ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
 on.body.1:
   %t3 = load ptr, ptr %local.2
   %t4 = icmp eq ptr %t3, null
-  br i1 %t4, label %dynarray.alloc.3, label %dynarray.ready.4
-dynarray.alloc.3:
+  br i1 %t4, label %dynarray.alloc.2, label %dynarray.ready.3
+dynarray.alloc.2:
   %t5 = call ptr @malloc(i64 24)
   %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %t5, i64 0, i32 0
   %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %t5, i64 0, i32 1
@@ -88,8 +84,8 @@ dynarray.alloc.3:
   store i64 0, ptr %t7
   store i64 0, ptr %t8
   store ptr %t5, ptr %local.2
-  br label %dynarray.ready.4
-dynarray.ready.4:
+  br label %dynarray.ready.3
+dynarray.ready.3:
   %t9 = load ptr, ptr %local.2
   %t10 = getelementptr inbounds { ptr, i64, i64 }, ptr %t9, i64 0, i32 0
   %t11 = getelementptr inbounds { ptr, i64, i64 }, ptr %t9, i64 0, i32 1
@@ -99,8 +95,8 @@ dynarray.ready.4:
   %t15 = load i64, ptr %t12
   %t16 = add i64 %t14, 1
   %t17 = icmp ugt i64 %t16, %t15
-  br i1 %t17, label %dynarray.grow.5, label %dynarray.store.6
-dynarray.grow.5:
+  br i1 %t17, label %dynarray.grow.4, label %dynarray.store.5
+dynarray.grow.4:
   %t18 = icmp eq i64 %t15, 0
   %t19 = mul i64 %t15, 2
   %t20 = select i1 %t18, i64 1, i64 %t19
@@ -108,8 +104,8 @@ dynarray.grow.5:
   %t22 = call ptr @realloc(ptr %t13, i64 %t21)
   store ptr %t22, ptr %t10
   store i64 %t20, ptr %t12
-  br label %dynarray.store.6
-dynarray.store.6:
+  br label %dynarray.store.5
+dynarray.store.5:
   %t23 = load ptr, ptr %t10
   %t24 = getelementptr inbounds { ptr, i64 }, ptr %t23, i64 %t14
   store { ptr, i64 } %s, ptr %t24
@@ -165,8 +161,8 @@ dynarray.field.done.7:
 on.body.9:
   ret i32 2
 on.next.10:
-  br label %on.body.12
-on.body.12:
+  br label %on.body.11
+on.body.11:
   ret i32 0
 on.end.8:
   ret i32 0

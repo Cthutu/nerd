@@ -33,15 +33,13 @@ func fn.0() -> i32 {
   let hit: i32 = untyped integer 0
   expr void on bool equal(i32 local.0(value), i32 2) {
     value(bool yes) => {
-      expr void block {
-    expr void on condition {
+      expr void on condition {
     bool equal(i32 local.0(value), i32 1) => {
       assign i32 local.1(hit) = i32 1
     }
     else => {
       assign i32 local.1(hit) = i32 2
     }
-  }
   }
     }
   }
@@ -86,18 +84,16 @@ define internal i32 @fn.0() {
   br i1 %t1, label %on.body.1, label %on.end.0
 on.body.1:
   %t2 = icmp eq i32 2, 1
-  br i1 %t2, label %on.body.4, label %on.next.5
-on.body.4:
+  br i1 %t2, label %on.body.3, label %on.next.4
+on.body.3:
   store i32 1, ptr %local.1
-  br label %on.end.3
-on.next.5:
-  br label %on.body.6
-on.body.6:
+  br label %on.end.2
+on.next.4:
+  br label %on.body.5
+on.body.5:
   store i32 2, ptr %local.1
-  br label %on.end.3
-on.end.3:
-  br label %block.end.2
-block.end.2:
+  br label %on.end.2
+on.end.2:
   br label %on.end.0
 on.end.0:
   %t3 = call i64 @string_builder_mark()
