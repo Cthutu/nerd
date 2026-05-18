@@ -166,9 +166,10 @@ missing-field diagnostic is present and while the cursor is on either the litera
 target or the literal body.
 
 The server also offers import quick fixes for unresolved symbols. It searches
-loaded modules and the available `mods` tree for public exports with the missing
-name, then inserts `use module.path` either at the top of the file or after the
-first leading group of `use` statements.
+loaded modules, sibling modules beside the active/root document, and the
+available `mods` tree for public exports with the missing name, then inserts
+`use module.path` either at the top of the file or after the first leading group
+of `use` statements.
 
 ## CST Usage
 

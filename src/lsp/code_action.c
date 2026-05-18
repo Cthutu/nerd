@@ -542,6 +542,13 @@ internal void lsp_code_action_find_modules_exporting_symbol_in_dir(
     dir_iter_done(&iter);
 }
 
+internal bool lsp_code_action_should_scan_module_root(cstr root)
+{
+    return root != NULL && path_exists(root) && path_is_directory(root) &&
+           strcmp(root, "/") != 0 && strcmp(root, "\\") != 0 &&
+           strcmp(root, ".") != 0;
+}
+
 internal void lsp_code_action_find_loaded_modules_exporting_symbol(
     Arena* arena, Array(string) * paths, const LspDocument* doc, string symbol)
 {
@@ -603,6 +610,26 @@ internal void lsp_code_action_find_modules_exporting_symbol(
 {
     lsp_code_action_find_loaded_modules_exporting_symbol(
         arena, paths, doc, symbol);
+
+    cstr current_path =
+        module_source_file_path(arena, doc->front_end.lexer.source);
+    if (current_path != NULL) {
+        cstr current_root = path_dirname(arena, current_path);
+        if (lsp_code_action_should_scan_module_root(current_root)) {
+            lsp_code_action_find_modules_exporting_symbol_in_dir(
+                arena, paths, current_root, current_root, symbol);
+        }
+    }
+
+    cstr root_source_path =
+        module_source_file_path(arena, doc->program.root_source);
+    if (root_source_path != NULL) {
+        cstr program_root = path_dirname(arena, root_source_path);
+        if (lsp_code_action_should_scan_module_root(program_root)) {
+            lsp_code_action_find_modules_exporting_symbol_in_dir(
+                arena, paths, program_root, program_root, symbol);
+        }
+    }
 
     cstr cwd_mods = path_canonical(arena, "mods");
     if (cwd_mods != NULL && path_exists(cwd_mods) &&
