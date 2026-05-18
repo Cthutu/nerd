@@ -6947,6 +6947,10 @@ internal bool format_token_needs_space_between(TokenKind previous,
         return false;
     }
 
+    if (previous == TK_Colon && current == TK_Caret) {
+        return true;
+    }
+
     if (current == TK_RParen || current == TK_RBracket || current == TK_Comma ||
         current == TK_Dot || current == TK_Caret) {
         return false;
