@@ -1398,3 +1398,25 @@ bool error_0350_unexpected_return_value(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report an `else` block on a syntactically infinite loop.
+
+bool error_0351_loop_else_on_infinite_loop(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(source, span, "Loop `else` cannot run on an infinite loop");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `else` block is unreachable because the loop has "
+                        "no exhaustion condition");
+    error_add_note(&error,
+                   "Loop `else` blocks run only when a finite loop exhausts "
+                   "without `break`.");
+    error_add_help(&error,
+                   "Remove the `else` block, add a loop condition, or use "
+                   "`break` to handle the exit path explicitly.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

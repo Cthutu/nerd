@@ -1,5 +1,3 @@
-use std.io
-
 main :: fn () -> i32 {
     ran_else := 0
     for i := 0; i < 0; i += 1 {
@@ -29,14 +27,30 @@ main :: fn () -> i32 {
     }
     on skipped_else != 3 => return 3
 
-    prn("ok")
+    for_in_else := 0
+    for item in [1, 2] {
+        on item^ == 3 => break
+    } else {
+        for_in_else = 5
+    }
+    on for_in_else != 5 => return 4
+
+    for_in_skipped_else := 0
+    for item in [1, 2] {
+        on item^ == 1 => {
+            for_in_skipped_else = 6
+            break
+        }
+    } else {
+        for_in_skipped_else = 7
+    }
+    on for_in_skipped_else != 6 => return 5
+
     return 0
 }
 ¬
 0
 ¬
-ok
-
 ¬
 delete
 ¬

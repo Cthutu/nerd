@@ -18612,6 +18612,14 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
                 }
             }
             if (for_info->else_block_index != U32_MAX &&
+                for_info->mode != AFM_In &&
+                for_info->condition_node_index == U32_MAX) {
+                return error_0351_loop_else_on_infinite_loop(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[for_info->else_block_index]));
+            }
+            if (for_info->else_block_index != U32_MAX &&
                 sema_block_has_value_break_for_target(
                     ast, for_info->else_block_index, for_info->label_symbol) &&
                 !sema_block_has_value_break_for_target(
