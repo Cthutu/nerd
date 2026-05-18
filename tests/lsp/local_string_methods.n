@@ -1,0 +1,5 @@
+impl string {
+    pub split_words :: fn (s: Self, sep: string) -> [..]string {
+        return [s]
+    }
+}

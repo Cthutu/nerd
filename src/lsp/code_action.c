@@ -411,6 +411,69 @@ internal bool lsp_code_action_symbol_ref_is_resolved(const LspDocument* doc,
     return true;
 }
 
+internal u32 lsp_code_action_unwrap_expr_node(const Ast* ast, u32 node_index)
+{
+    while (node_index < array_count(ast->nodes) &&
+           (ast->nodes[node_index].kind == AK_Expression ||
+            ast->nodes[node_index].kind == AK_Statement)) {
+        node_index = ast->nodes[node_index].a;
+    }
+    return node_index;
+}
+
+internal bool lsp_code_action_field_call_is_resolved(const LspDocument* doc,
+                                                     u32 field_node_index)
+{
+    if (!doc->bindings_ready) {
+        return false;
+    }
+
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Call) {
+            continue;
+        }
+
+        u32 callee_index = lsp_code_action_unwrap_expr_node(ast, node->a);
+        if (callee_index < array_count(ast->nodes) &&
+            ast->nodes[callee_index].kind == AK_Index) {
+            callee_index = lsp_code_action_unwrap_expr_node(
+                ast, ast->nodes[callee_index].a);
+        }
+        if (callee_index != field_node_index) {
+            continue;
+        }
+
+        u32 decl = i < array_count(sema->node_method_call_decl_indices)
+                       ? sema->node_method_call_decl_indices[i]
+                       : sema_no_decl();
+        return decl != sema_no_decl();
+    }
+
+    return true;
+}
+
+internal bool lsp_code_action_symbol_needs_import(const LspDocument* doc,
+                                                  u32 token_index)
+{
+    if (!lsp_code_action_symbol_ref_is_resolved(doc, token_index)) {
+        return true;
+    }
+
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_Field && node->token_index == token_index &&
+            !lsp_code_action_field_call_is_resolved(doc, i)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 internal bool lsp_code_action_module_path_seen(Array(string) paths, string path)
 {
     for (u32 i = 0; i < array_count(paths); ++i) {
@@ -478,6 +541,31 @@ internal bool lsp_code_action_ast_exports_symbol(const Lexer* lexer,
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_Impl && node->a < array_count(ast->impls)) {
+            const AstImplInfo* impl = &ast->impls[node->a];
+            if (impl->body_node_index >= array_count(ast->nodes)) {
+                continue;
+            }
+            const AstNode* body = &ast->nodes[impl->body_node_index];
+            if (body->kind != AK_Block) {
+                continue;
+            }
+            for (u32 item = body->a; item < body->b; ++item) {
+                const AstNode* member = &ast->nodes[item];
+                if (!ast_node_is_binding_like(member) ||
+                    !ast_has_flag(member, ANF_Public)) {
+                    continue;
+                }
+
+                u32 member_symbol = ast_get_symbol(member);
+                if (member_symbol != U32_MAX &&
+                    string_eq(lex_symbol(lexer, member_symbol), symbol)) {
+                    return true;
+                }
+            }
+            continue;
+        }
+
         if (!ast_node_is_binding_like(node) ||
             !ast_has_flag(node, ANF_Public)) {
             continue;
@@ -1444,7 +1532,7 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     u32   token_index = U32_MAX;
     if (lsp_code_action_symbol_token_at_offset(
             &doc->front_end.lexer, offset, &token_index) &&
-        !lsp_code_action_symbol_ref_is_resolved(doc, token_index)) {
+        lsp_code_action_symbol_needs_import(doc, token_index)) {
         const Token* token = &doc->front_end.lexer.tokens[token_index];
         usize        end   = lex_token_end_offset(&doc->front_end.lexer, token);
         string       symbol =
