@@ -11,6 +11,7 @@ The key files are:
 - [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
 - [src/lsp/completion.c](/home/matt/nerd/src/lsp/completion.c)
 - [src/lsp/signature.c](/home/matt/nerd/src/lsp/signature.c)
+- [src/lsp/semantic_tokens.c](/home/matt/nerd/src/lsp/semantic_tokens.c)
 - [src/lsp/code_action.c](/home/matt/nerd/src/lsp/code_action.c)
 - [src/lsp/rename.c](/home/matt/nerd/src/lsp/rename.c)
 
@@ -139,6 +140,15 @@ Signature help is triggered by `(` and `,`. It resolves the callable name throug
 the semantic declaration table, reports the active argument, includes default
 parameter expressions, and reminds the editor user of named-argument syntax.
 
+## Semantic Tokens
+
+Semantic tokens are produced from lexer tokens and enriched with AST and semantic
+tables where possible. The server advertises the standard `unnecessary` token
+modifier and applies it to module path symbols in `use` statements when that
+import does not contribute a declaration or local binding referenced by the
+current file. Editors such as VS Code usually render that modifier as dimmed
+text.
+
 ## Code Actions
 
 The server offers a quick fix for incomplete plex literals. When a literal is
@@ -151,6 +161,11 @@ back to the AST for local plex aliases, or imported module ASTs, so it remains
 available while the
 missing-field diagnostic is present and while the cursor is on either the literal
 target or the literal body.
+
+The server also offers import quick fixes for unresolved symbols. It searches
+loaded modules and the available `mods` tree for public exports with the missing
+name, then inserts `use module.path` either at the top of the file or after the
+first leading group of `use` statements.
 
 ## CST Usage
 

@@ -91,7 +91,9 @@ impl FrameSystem {
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

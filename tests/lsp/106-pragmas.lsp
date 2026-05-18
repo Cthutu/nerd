@@ -48,7 +48,9 @@ main :: fn () => 0
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

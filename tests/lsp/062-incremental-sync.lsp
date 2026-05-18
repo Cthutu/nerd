@@ -88,7 +88,9 @@ main :: fn () => answer
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

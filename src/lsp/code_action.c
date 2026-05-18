@@ -6,6 +6,7 @@
 
 #include <lsp/lsp.h>
 
+#include <compiler/error/error.h>
 #include <compiler/modules/modules.h>
 
 //------------------------------------------------------------------------------
@@ -33,6 +34,21 @@ internal cstr lsp_code_action_cstr(Arena* arena, string value)
     return data;
 }
 
+internal bool lsp_code_action_is_ident_char(u8 c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_';
+}
+
+internal string lsp_code_action_copy_string(Arena*    arena,
+                                            const u8* data,
+                                            usize     count)
+{
+    u8* copy = arena_alloc(arena, count);
+    memcpy(copy, data, count);
+    return (string){.data = copy, .count = count};
+}
+
 internal JsonValue*
 lsp_code_action_range(Arena* arena, NerdSource source, usize start, usize end)
 {
@@ -46,6 +62,33 @@ lsp_code_action_range(Arena* arena, NerdSource source, usize start, usize end)
     json_object_set_object(range, "start", start_position);
     json_object_set_object(range, "end", end_position);
     return range;
+}
+
+internal JsonValue* lsp_code_action_workspace_edit(Arena*     arena,
+                                                   string     uri,
+                                                   NerdSource source,
+                                                   usize      insert_offset,
+                                                   string     insert_text)
+{
+    JsonValue* range =
+        lsp_code_action_range(arena, source, insert_offset, insert_offset);
+    if (range == NULL) {
+        return NULL;
+    }
+
+    JsonValue* edit = json_new_object(arena);
+    json_object_set_object(edit, "range", range);
+    json_object_set_string(edit, arena, "newText", insert_text);
+
+    JsonValue* edits = json_new_array(arena);
+    json_array_push(edits, edit);
+
+    JsonValue* changes = json_new_object(arena);
+    json_object_set_array(changes, lsp_code_action_cstr(arena, uri), edits);
+
+    JsonValue* workspace_edit = json_new_object(arena);
+    json_object_set_object(workspace_edit, "changes", changes);
+    return workspace_edit;
 }
 
 internal usize lsp_code_action_line_start(string source, usize offset)
@@ -292,6 +335,384 @@ internal bool lsp_code_action_ast_default_record(Arena*       arena,
     sb_append_cstr(&sb, " }");
     *out_value = sb_to_string(&sb);
     return true;
+}
+
+//------------------------------------------------------------------------------
+// Import quick fixes
+
+internal bool lsp_code_action_symbol_token_at_offset(const Lexer* lexer,
+                                                     usize        offset,
+                                                     u32* out_token_index)
+{
+    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
+        const Token* token = &lexer->tokens[i];
+        if (token->kind != TK_Symbol) {
+            continue;
+        }
+
+        usize end = lex_token_end_offset(lexer, token);
+        if (offset >= token->offset && offset <= end) {
+            *out_token_index = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool lsp_code_action_symbol_ref_is_resolved(const LspDocument* doc,
+                                                     u32 token_index)
+{
+    if (!doc->bindings_ready) {
+        return false;
+    }
+
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_SymbolRef || node->token_index != token_index) {
+            continue;
+        }
+
+        u32 decl  = i < array_count(sema->node_decl_indices)
+                        ? sema->node_decl_indices[i]
+                        : sema_no_decl();
+        u32 local = i < array_count(sema->node_local_indices)
+                        ? sema->node_local_indices[i]
+                        : sema_no_local();
+        return decl != sema_no_decl() || local != sema_no_local();
+    }
+
+    return true;
+}
+
+internal bool lsp_code_action_module_path_seen(Array(string) paths, string path)
+{
+    for (u32 i = 0; i < array_count(paths); ++i) {
+        if (string_eq(paths[i], path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void lsp_code_action_add_module_path(Array(string) * paths,
+                                              Arena* arena,
+                                              string path)
+{
+    if (path.count == 0 || lsp_code_action_module_path_seen(*paths, path)) {
+        return;
+    }
+
+    array_push(*paths,
+               lsp_code_action_copy_string(arena, path.data, path.count));
+}
+
+internal string lsp_code_action_module_path_from_file(Arena* arena,
+                                                      cstr   root,
+                                                      cstr   path)
+{
+    usize root_len = strlen(root);
+    usize path_len = strlen(path);
+    if (path_len <= root_len || strncmp(root, path, root_len) != 0) {
+        return (string){0};
+    }
+
+    usize start = root_len;
+    while (path[start] == '/' || path[start] == '\\') {
+        start++;
+    }
+
+    usize end = path_len;
+    if (end >= 6 && strcmp(path + end - 6, "/mod.n") == 0) {
+        end -= 6;
+    } else if (end >= 6 && strcmp(path + end - 6, "\\mod.n") == 0) {
+        end -= 6;
+    } else if (end >= 2 && strcmp(path + end - 2, ".n") == 0) {
+        end -= 2;
+    } else {
+        return (string){0};
+    }
+
+    if (end <= start) {
+        return (string){0};
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (usize i = start; i < end; ++i) {
+        char c = path[i];
+        sb_append_char(&sb, c == '/' || c == '\\' ? '.' : c);
+    }
+    return sb_to_string(&sb);
+}
+
+internal bool lsp_code_action_ast_exports_symbol(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 string       symbol)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (!ast_node_is_binding_like(node) ||
+            !ast_has_flag(node, ANF_Public)) {
+            continue;
+        }
+
+        u32 node_symbol = ast_get_symbol(node);
+        if (node_symbol != U32_MAX &&
+            string_eq(lex_symbol(lexer, node_symbol), symbol)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool lsp_code_action_file_exports_symbol(cstr path, string symbol)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    Lexer lexer = {0};
+    Ast   ast   = {0};
+    bool  found = false;
+    if (lex((NerdSource){.source = source, .source_path = s(path)}, &lexer)) {
+        ast   = ast_parse(&lexer);
+        found = lsp_code_action_ast_exports_symbol(&lexer, &ast, symbol);
+    }
+
+    ast_done(&ast);
+    lex_done(&lexer);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    filemap_unload(&map);
+    return found;
+}
+
+internal void lsp_code_action_find_modules_exporting_symbol_in_dir(
+    Arena* arena, Array(string) * paths, cstr root, cstr dir, string symbol)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, dir)) {
+        return;
+    }
+
+    cstr path         = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, arena, &path, &is_directory)) {
+        string filename = path_filename(s(path));
+        if (filename.count == 0 || filename.data[0] == '.') {
+            continue;
+        }
+
+        if (is_directory) {
+            cstr mod_path = path_join(arena, path, "mod.n");
+            if (path_exists(mod_path) &&
+                lsp_code_action_file_exports_symbol(mod_path, symbol)) {
+                string module_path = lsp_code_action_module_path_from_file(
+                    arena, root, mod_path);
+                lsp_code_action_add_module_path(paths, arena, module_path);
+            }
+            lsp_code_action_find_modules_exporting_symbol_in_dir(
+                arena, paths, root, path, symbol);
+            continue;
+        }
+
+        if (!path_has_extension(s(path), ".n") ||
+            string_eq(filename, s("mod.n"))) {
+            continue;
+        }
+
+        if (lsp_code_action_file_exports_symbol(path, symbol)) {
+            string module_path =
+                lsp_code_action_module_path_from_file(arena, root, path);
+            lsp_code_action_add_module_path(paths, arena, module_path);
+        }
+    }
+
+    dir_iter_done(&iter);
+}
+
+internal void lsp_code_action_find_loaded_modules_exporting_symbol(
+    Arena* arena, Array(string) * paths, const LspDocument* doc, string symbol)
+{
+    cstr cwd_mods     = path_canonical(arena, "mods");
+    cstr exe_dir      = path_executable_dir(arena);
+    cstr exe_mods     = path_join(arena, exe_dir, "mods");
+
+    cstr current_root = NULL;
+    cstr current_path =
+        module_source_file_path(arena, doc->front_end.lexer.source);
+    if (current_path != NULL) {
+        current_root = path_dirname(arena, current_path);
+    }
+
+    cstr root_source_path =
+        module_source_file_path(arena, doc->program.root_source);
+    cstr program_root =
+        root_source_path != NULL ? path_dirname(arena, root_source_path) : NULL;
+
+    for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(&doc->program, i, &module) ||
+            module.info->resolved_path == NULL) {
+            continue;
+        }
+
+        for (u32 j = 0; j < lsp_module_export_count(&module); ++j) {
+            const SemaDecl* decl = NULL;
+            if (!lsp_module_export_decl(&module, j, &decl, NULL) ||
+                !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
+                           symbol)) {
+                continue;
+            }
+
+            string module_path = {0};
+            if (cwd_mods != NULL) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, cwd_mods, module.info->resolved_path);
+            }
+            if (module_path.count == 0 && path_exists(exe_mods)) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, exe_mods, module.info->resolved_path);
+            }
+            if (module_path.count == 0 && current_root != NULL) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, current_root, module.info->resolved_path);
+            }
+            if (module_path.count == 0 && program_root != NULL) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, program_root, module.info->resolved_path);
+            }
+            lsp_code_action_add_module_path(paths, arena, module_path);
+        }
+    }
+}
+
+internal void lsp_code_action_find_modules_exporting_symbol(
+    Arena* arena, Array(string) * paths, const LspDocument* doc, string symbol)
+{
+    lsp_code_action_find_loaded_modules_exporting_symbol(
+        arena, paths, doc, symbol);
+
+    cstr cwd_mods = path_canonical(arena, "mods");
+    if (cwd_mods != NULL && path_exists(cwd_mods) &&
+        path_is_directory(cwd_mods)) {
+        lsp_code_action_find_modules_exporting_symbol_in_dir(
+            arena, paths, cwd_mods, cwd_mods, symbol);
+    }
+
+    cstr exe_dir  = path_executable_dir(arena);
+    cstr mods_dir = path_join(arena, exe_dir, "mods");
+    if (path_exists(mods_dir) && path_is_directory(mods_dir)) {
+        lsp_code_action_find_modules_exporting_symbol_in_dir(
+            arena, paths, mods_dir, mods_dir, symbol);
+    }
+}
+
+internal usize lsp_code_action_use_insert_offset(string source)
+{
+    usize insert_offset = 0;
+    usize line_start    = 0;
+    bool  saw_use       = false;
+
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        usize i = line_start;
+        while (i < line_end &&
+               (source.data[i] == ' ' || source.data[i] == '\t')) {
+            i++;
+        }
+
+        bool blank  = i == line_end;
+        bool is_use = false;
+        if (i + 3 <= line_end && memcmp(source.data + i, "pub", 3) == 0 &&
+            (i + 3 == line_end ||
+             !lsp_code_action_is_ident_char(source.data[i + 3]))) {
+            i += 3;
+            while (i < line_end &&
+                   (source.data[i] == ' ' || source.data[i] == '\t')) {
+                i++;
+            }
+        }
+        if (i + 3 <= line_end && memcmp(source.data + i, "use", 3) == 0 &&
+            (i + 3 == line_end ||
+             !lsp_code_action_is_ident_char(source.data[i + 3]))) {
+            is_use = true;
+        }
+
+        if (is_use) {
+            saw_use       = true;
+            insert_offset = line_end + (line_end < source.count ? 1 : 0);
+        } else if (!blank || saw_use) {
+            break;
+        }
+
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+
+    return insert_offset;
+}
+
+internal void lsp_code_action_add_import_actions(Arena*             arena,
+                                                 JsonValue*         actions,
+                                                 string             uri,
+                                                 const LspDocument* doc,
+                                                 string             symbol)
+{
+    Array(string) module_paths = NULL;
+    lsp_code_action_find_modules_exporting_symbol(
+        arena, &module_paths, doc, symbol);
+
+    usize insert_offset = lsp_code_action_use_insert_offset(doc->source);
+    for (u32 i = 0; i < array_count(module_paths); ++i) {
+        string module_path = module_paths[i];
+
+        StringBuilder text = {0};
+        sb_init(&text, arena);
+        sb_append_cstr(&text, "use ");
+        sb_append_string(&text, module_path);
+        sb_append_char(&text, '\n');
+        if (insert_offset == 0 && doc->source.count > 0) {
+            sb_append_char(&text, '\n');
+        }
+
+        JsonValue* workspace_edit =
+            lsp_code_action_workspace_edit(arena,
+                                           uri,
+                                           doc->front_end.lexer.source,
+                                           insert_offset,
+                                           sb_to_string(&text));
+        if (workspace_edit == NULL) {
+            continue;
+        }
+
+        StringBuilder title = {0};
+        sb_init(&title, arena);
+        sb_append_cstr(&title, "Add use ");
+        sb_append_string(&title, module_path);
+
+        JsonValue* action = json_new_object(arena);
+        json_object_set_string(action, arena, "title", sb_to_string(&title));
+        json_object_set_string(action, arena, "kind", s("quickfix"));
+        json_object_set_object(action, "edit", workspace_edit);
+        json_array_push(actions, action);
+    }
+
+    array_free(module_paths);
 }
 
 internal bool lsp_code_action_ast_default_enum(const Ast*   ast,
@@ -930,17 +1351,37 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
 
+    LspSyntaxView syntax = {0};
+    if (!lsp_syntax_view(state, uri, &syntax)) {
+        json_object_set_array(response, "result", actions);
+        lsp_send_response(message->arena, response);
+        return;
+    }
+    const LspDocument* doc = syntax.doc;
+
+    usize offset      = lsp_offset_from_position(doc->source, line, character);
+    u32   token_index = U32_MAX;
+    if (lsp_code_action_symbol_token_at_offset(
+            &doc->front_end.lexer, offset, &token_index) &&
+        !lsp_code_action_symbol_ref_is_resolved(doc, token_index)) {
+        const Token* token = &doc->front_end.lexer.tokens[token_index];
+        usize        end   = lex_token_end_offset(&doc->front_end.lexer, token);
+        string       symbol =
+            string_from(doc->front_end.lexer.source.source.data + token->offset,
+                        end - token->offset);
+        lsp_code_action_add_import_actions(
+            message->arena, actions, uri, doc, symbol);
+    }
+
     LspTypeFactView view = {0};
     if (!lsp_type_fact_view(state, uri, &view)) {
         json_object_set_array(response, "result", actions);
         lsp_send_response(message->arena, response);
         return;
     }
-    const LspDocument* doc = view.doc;
 
-    usize offset      = lsp_offset_from_position(doc->source, line, character);
-    u32   close_token = U32_MAX;
-    u32   node_index =
+    u32 close_token = U32_MAX;
+    u32 node_index =
         lsp_code_action_find_plex_literal_at_offset(doc, offset, &close_token);
     if (node_index == U32_MAX || close_token == U32_MAX) {
         lsp_log("code action: no plex literal");

@@ -47,7 +47,9 @@ Cost :: Price
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

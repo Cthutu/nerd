@@ -76,7 +76,9 @@ main :: fn () {
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }
@@ -105,7 +107,7 @@ main :: fn () {
                 4,
                 3,
                 0,
-                0,
+                1,
                 0,
                 3,
                 1,
@@ -115,7 +117,7 @@ main :: fn () {
                 1,
                 2,
                 0,
-                0,
+                1,
                 2,
                 0,
                 5,

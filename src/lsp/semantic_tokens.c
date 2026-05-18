@@ -20,7 +20,12 @@ typedef struct {
     u32 start;
     u32 length;
     u32 type;
+    u32 modifiers;
 } LspSemanticToken;
+
+typedef enum {
+    LSP_SEMANTIC_MOD_UNNECESSARY = 1 << 0,
+} LspSemanticTokenModifier;
 
 typedef struct {
     usize start_offset;
@@ -282,6 +287,166 @@ internal bool lsp_semantic_is_test_keyword(const LspDeclarationView* view,
 }
 
 //------------------------------------------------------------------------------
+// Return the module index imported by one use statement.
+
+internal bool lsp_semantic_use_module_index(const LspDeclarationView* view,
+                                            u32                       use_index,
+                                            u32* out_module_index)
+{
+    if (use_index >= array_count(view->ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* use = &view->ast->nodes[use_index];
+    if (use->kind != AK_Use || use->a >= array_count(view->ast->nodes) ||
+        use->a >= array_count(view->sema->node_type_indices)) {
+        return false;
+    }
+
+    u32 module_type = view->sema->node_type_indices[use->a];
+    if (module_type == sema_no_type() ||
+        module_type >= array_count(view->sema->types)) {
+        return false;
+    }
+
+    const SemaType* type = &view->sema->types[module_type];
+    if (type->kind != STK_Module) {
+        return false;
+    }
+
+    *out_module_index = type->return_type;
+    return true;
+}
+
+//------------------------------------------------------------------------------
+// Return whether a use statement contributes a binding used in this document.
+
+internal bool lsp_semantic_use_is_used(const LspDeclarationView* view,
+                                       u32                       use_index)
+{
+    u32 module_index = U32_MAX;
+    if (!lsp_semantic_use_module_index(view, use_index, &module_index)) {
+        return true;
+    }
+
+    for (u32 i = 0; i < array_count(view->sema->node_decl_indices); ++i) {
+        u32 decl_index = view->sema->node_decl_indices[i];
+        if (decl_index == sema_no_decl() ||
+            decl_index >= array_count(view->sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl* decl = &view->sema->decls[decl_index];
+        if (decl->import_module_index == module_index) {
+            return true;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(view->sema->node_method_call_decl_indices);
+         ++i) {
+        u32 decl_index = view->sema->node_method_call_decl_indices[i];
+        if (decl_index == sema_no_decl() ||
+            decl_index >= array_count(view->sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl* decl = &view->sema->decls[decl_index];
+        if (decl->import_module_index == module_index) {
+            return true;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(view->sema->node_local_indices); ++i) {
+        u32 local_index = view->sema->node_local_indices[i];
+        if (local_index == sema_no_local() ||
+            local_index >= array_count(view->sema->locals)) {
+            continue;
+        }
+
+        const SemaLocal* local = &view->sema->locals[local_index];
+        if (local->decl_node_index == use_index) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Return whether a token is one of the module path symbols in one use
+// statement.
+
+internal bool lsp_semantic_token_in_use_module_path(
+    const LspDeclarationView* view, u32 use_index, u32 token_index)
+{
+    if (use_index >= array_count(view->ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* use = &view->ast->nodes[use_index];
+    if (use->kind != AK_Use || use->a >= array_count(view->ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* module = &view->ast->nodes[use->a];
+    if (module->kind != AK_ModRef ||
+        module->a >= array_count(view->ast->module_paths)) {
+        return false;
+    }
+
+    const AstModulePath* path         = &view->ast->module_paths[module->a];
+    u32                  symbols_seen = 0;
+    for (u32 i = module->token_index; i < array_count(view->lexer->tokens);
+         ++i) {
+        const Token* token = &view->lexer->tokens[i];
+        if (token->kind == TK_Symbol) {
+            if (i == token_index) {
+                return true;
+            }
+            symbols_seen++;
+            if (symbols_seen >= path->symbol_count) {
+                return false;
+            }
+            continue;
+        }
+
+        if (token->kind != TK_Dot) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Return semantic token modifiers for one token.
+
+internal u32 lsp_semantic_token_modifiers(const LspDeclarationView* view,
+                                          u32                       token_index)
+{
+    const Token* token = NULL;
+    if (!lsp_lexer_token(view->lexer, token_index, &token) ||
+        token->kind != TK_Symbol) {
+        return 0;
+    }
+
+    for (u32 i = 0; i < array_count(view->ast->nodes); ++i) {
+        const AstNode* node = &view->ast->nodes[i];
+        if (node->kind != AK_Use ||
+            !lsp_semantic_token_in_use_module_path(view, i, token_index)) {
+            continue;
+        }
+
+        if (!lsp_semantic_use_is_used(view, i)) {
+            return LSP_SEMANTIC_MOD_UNNECESSARY;
+        }
+        return 0;
+    }
+
+    return 0;
+}
+
+//------------------------------------------------------------------------------
 // Return whether a token kind should emit a semantic token.
 
 internal bool lsp_semantic_token_type(const LspDeclarationView* view,
@@ -383,7 +548,8 @@ internal void lsp_semantic_push_encoded(JsonValue* array,
                                         u32        line,
                                         u32        start,
                                         u32        length,
-                                        u32        type)
+                                        u32        type,
+                                        u32        modifiers)
 {
     u32 delta_line  = line - previous_line;
     u32 delta_start = delta_line == 0 ? start - previous_start : start;
@@ -392,7 +558,7 @@ internal void lsp_semantic_push_encoded(JsonValue* array,
     json_array_push(array, json_new_number(arena, delta_start));
     json_array_push(array, json_new_number(arena, length));
     json_array_push(array, json_new_number(arena, type));
-    json_array_push(array, json_new_number(arena, 0));
+    json_array_push(array, json_new_number(arena, modifiers));
 }
 
 //------------------------------------------------------------------------------
@@ -455,10 +621,18 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
             start -= visible.start_col;
         }
         line -= visible.start_line;
+        u32 modifiers = lsp_semantic_token_modifiers(&view, i);
 
         if (!have_previous) {
-            lsp_semantic_push_encoded(
-                data, message->arena, 0, 0, line, start, length, type);
+            lsp_semantic_push_encoded(data,
+                                      message->arena,
+                                      0,
+                                      0,
+                                      line,
+                                      start,
+                                      length,
+                                      type,
+                                      modifiers);
             have_previous = true;
         } else {
             lsp_semantic_push_encoded(data,
@@ -468,7 +642,8 @@ void lsp_handle_semantic_tokens_full(LspState* state, const LspMessage* message)
                                       line,
                                       start,
                                       length,
-                                      type);
+                                      type,
+                                      modifiers);
         }
 
         previous_line  = line;

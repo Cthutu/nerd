@@ -292,6 +292,7 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_array_push(token_types, json_new_string(arena, s("number")));
     json_array_push(token_types, json_new_string(arena, s("operator")));
     json_array_push(token_types, json_new_string(arena, s("string")));
+    json_array_push(token_modifiers, json_new_string(arena, s("unnecessary")));
     json_object_set_array(legend, "tokenTypes", token_types);
     json_object_set_array(legend, "tokenModifiers", token_modifiers);
     json_object_set_object(semantic_tokens, "legend", legend);

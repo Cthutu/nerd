@@ -76,7 +76,9 @@ main :: fn () => add(a = 20, b = 2)
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

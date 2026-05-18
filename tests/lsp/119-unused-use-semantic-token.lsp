@@ -1,6 +1,19 @@
-main :: fn () => answer
+use std.io
+
+main :: fn () => 0
 ¬
-[]
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "textDocument/semanticTokens/full",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            }
+        }
+    }
+]
 ¬
 [
     {
@@ -60,40 +73,64 @@ main :: fn () => answer
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 0,
-                            "character": 17
-                        },
-                        "end": {
-                            "line": 0,
-                            "character": 23
-                        }
-                    },
-                    "severity": 1,
-                    "source": "nerd",
-                    "message": "Unknown symbol `answer`",
-                    "relatedInformation": [
-                        {
-                            "location": {
-                                "uri": "file:///test.n",
-                                "range": {
-                                    "start": {
-                                        "line": 0,
-                                        "character": 17
-                                    },
-                                    "end": {
-                                        "line": 0,
-                                        "character": 23
-                                    }
-                                }
-                            },
-                            "message": "help: Add a binding for `answer` or fix the spelling."
-                        }
-                    ]
-                }
+            "diagnostics": []
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+            "data": [
+                0,
+                0,
+                3,
+                2,
+                0,
+                0,
+                4,
+                3,
+                0,
+                1,
+                0,
+                3,
+                1,
+                4,
+                0,
+                0,
+                1,
+                2,
+                0,
+                1,
+                2,
+                0,
+                4,
+                1,
+                0,
+                0,
+                5,
+                1,
+                4,
+                0,
+                0,
+                1,
+                1,
+                4,
+                0,
+                0,
+                2,
+                2,
+                2,
+                0,
+                0,
+                6,
+                2,
+                4,
+                0,
+                0,
+                3,
+                1,
+                3,
+                0
             ]
         }
     },

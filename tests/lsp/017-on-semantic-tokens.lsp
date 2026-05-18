@@ -58,7 +58,9 @@ main :: fn () => on enabled => 42 else 7
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

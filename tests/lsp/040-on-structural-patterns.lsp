@@ -79,7 +79,9 @@ main :: fn () => on Point { x: 3, y: 4 } {
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

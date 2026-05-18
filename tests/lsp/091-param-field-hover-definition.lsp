@@ -84,7 +84,9 @@ use_frame :: fn (fs: ^FrameSystem) {
                             "operator",
                             "string"
                         ],
-                        "tokenModifiers": []
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }

@@ -1,6 +1,32 @@
-main :: fn () => answer
+main :: fn () {
+    value := input()
+}
 ¬
-[]
+[
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "textDocument/codeAction",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "range": {
+                "start": {
+                    "line": 1,
+                    "character": 14
+                },
+                "end": {
+                    "line": 1,
+                    "character": 14
+                }
+            },
+            "context": {
+                "diagnostics": []
+            }
+        }
+    }
+]
 ¬
 [
     {
@@ -64,38 +90,67 @@ main :: fn () => answer
                 {
                     "range": {
                         "start": {
-                            "line": 0,
-                            "character": 17
+                            "line": 1,
+                            "character": 13
                         },
                         "end": {
-                            "line": 0,
-                            "character": 23
+                            "line": 1,
+                            "character": 18
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown symbol `answer`",
+                    "message": "Unknown symbol `input`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 0,
-                                        "character": 17
+                                        "line": 1,
+                                        "character": 13
                                     },
                                     "end": {
-                                        "line": 0,
-                                        "character": 23
+                                        "line": 1,
+                                        "character": 18
                                     }
                                 }
                             },
-                            "message": "help: Add a binding for `answer` or fix the spelling."
+                            "message": "help: Add a binding for `input` or fix the spelling."
                         }
                     ]
                 }
             ]
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": [
+            {
+                "title": "Add use std.io",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use std.io\n\n"
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
     },
     {
         "jsonrpc": "2.0",
