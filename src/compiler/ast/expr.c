@@ -148,6 +148,12 @@ internal bool ast_caret_is_postfix_deref(const AstParseState* state,
     if (token.token_index + 1 >= array_count(state->lexer->tokens)) {
         return true;
     }
+    if (state->stop_before_for_body) {
+        TokenKind next_kind = state->lexer->tokens[token.token_index + 1].kind;
+        if (next_kind == TK_LBrace || next_kind == TK_Dollar) {
+            return true;
+        }
+    }
     if (ast_token_has_newline_before(state, token.token_index + 1)) {
         return true;
     }
@@ -158,6 +164,12 @@ internal bool ast_consumed_caret_is_postfix_deref(const AstParseState* state)
 {
     if (state->token_index >= array_count(state->lexer->tokens)) {
         return true;
+    }
+    if (state->stop_before_for_body) {
+        TokenKind next_kind = state->lexer->tokens[state->token_index].kind;
+        if (next_kind == TK_LBrace || next_kind == TK_Dollar) {
+            return true;
+        }
     }
     if (ast_token_has_newline_before(state, state->token_index)) {
         return true;

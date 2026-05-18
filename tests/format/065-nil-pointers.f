@@ -12,7 +12,7 @@ main :: fn () -> i32 {
     value : i32  = 7
 
     ptr = ^value
-    ptr ^= 9
+    ptr^ = 9
     ptr = nil
     return value - 9
 }

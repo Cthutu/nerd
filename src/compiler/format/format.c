@@ -6964,6 +6964,14 @@ internal bool format_token_needs_space_between(TokenKind previous,
         return false;
     }
 
+    if (current == TK_LBrace && previous == TK_Caret) {
+        return true;
+    }
+
+    if (current == TK_FatArrow) {
+        return previous != TK_EOF;
+    }
+
     if (previous == TK_LParen || previous == TK_LBracket ||
         previous == TK_Dot || previous == TK_Dollar || previous == TK_At ||
         previous == TK_Hash || previous == TK_Caret) {
