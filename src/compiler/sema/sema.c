@@ -18978,6 +18978,10 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
+    if (!sema_collect_top_level_uses(lexer, ast, &effective_options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
     if (!sema_classify_type_aliases(lexer, ast, &sema)) {
         sema_done(&sema);
         return false;
@@ -19002,10 +19006,6 @@ bool sema_analyse(const Lexer*           lexer,
             sema_mark_type_expr_nodes(
                 ast, &sema, sema.decls[i].type_node_index);
         }
-    }
-    if (!sema_collect_top_level_uses(lexer, ast, &effective_options, &sema)) {
-        sema_done(&sema);
-        return false;
     }
     if (!sema_validate_trait_impls(lexer, ast, &sema)) {
         sema_done(&sema);
