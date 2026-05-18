@@ -40,6 +40,30 @@ internal bool lsp_code_action_is_ident_char(u8 c)
            (c >= '0' && c <= '9') || c == '_';
 }
 
+internal void
+lsp_code_action_skip_line_space(string source, usize line_end, usize* cursor)
+{
+    while (*cursor < line_end &&
+           (source.data[*cursor] == ' ' || source.data[*cursor] == '\t')) {
+        (*cursor)++;
+    }
+}
+
+internal bool lsp_code_action_match_keyword(string source,
+                                            usize  line_end,
+                                            usize  cursor,
+                                            cstr   keyword,
+                                            usize  keyword_count)
+{
+    if (cursor + keyword_count > line_end ||
+        memcmp(source.data + cursor, keyword, keyword_count) != 0) {
+        return false;
+    }
+
+    return cursor + keyword_count == line_end ||
+           !lsp_code_action_is_ident_char(source.data[cursor + keyword_count]);
+}
+
 internal string lsp_code_action_copy_string(Arena*    arena,
                                             const u8* data,
                                             usize     count)
@@ -648,50 +672,78 @@ internal void lsp_code_action_find_modules_exporting_symbol(
 
 internal usize lsp_code_action_use_insert_offset(string source)
 {
-    usize insert_offset = 0;
-    usize line_start    = 0;
-    bool  saw_use       = false;
+    usize insert_offset   = 0;
+    usize fallback_offset = 0;
+    usize line_start      = 0;
+    bool  in_header       = true;
+    bool  saw_header      = false;
+    bool  saw_use         = false;
 
     while (line_start < source.count) {
         usize line_end = line_start;
         while (line_end < source.count && source.data[line_end] != '\n') {
             line_end++;
         }
+        usize next_line = line_end + (line_end < source.count ? 1 : 0);
 
-        usize i = line_start;
-        while (i < line_end &&
-               (source.data[i] == ' ' || source.data[i] == '\t')) {
-            i++;
+        usize i         = line_start;
+        lsp_code_action_skip_line_space(source, line_end, &i);
+
+        bool blank     = i == line_end;
+        bool comment   = i + 2 <= line_end && source.data[i] == '-' &&
+                         source.data[i + 1] == '-';
+        bool top_level = i == line_start;
+        bool is_use    = false;
+
+        if (top_level &&
+            lsp_code_action_match_keyword(source, line_end, i, "pub", 3)) {
+            i += 3;
+            lsp_code_action_skip_line_space(source, line_end, &i);
         }
 
-        bool blank  = i == line_end;
-        bool is_use = false;
-        if (i + 3 <= line_end && memcmp(source.data + i, "pub", 3) == 0 &&
-            (i + 3 == line_end ||
-             !lsp_code_action_is_ident_char(source.data[i + 3]))) {
-            i += 3;
+        if (top_level &&
+            lsp_code_action_match_keyword(source, line_end, i, "use", 3)) {
+            is_use = true;
+        } else if (top_level && i < line_end &&
+                   lsp_code_action_is_ident_char(source.data[i])) {
             while (i < line_end &&
-                   (source.data[i] == ' ' || source.data[i] == '\t')) {
+                   lsp_code_action_is_ident_char(source.data[i])) {
                 i++;
             }
+            lsp_code_action_skip_line_space(source, line_end, &i);
+            if (i + 2 <= line_end && source.data[i] == ':' &&
+                source.data[i + 1] == ':') {
+                i += 2;
+                lsp_code_action_skip_line_space(source, line_end, &i);
+                is_use = lsp_code_action_match_keyword(
+                    source, line_end, i, "use", 3);
+            }
         }
-        if (i + 3 <= line_end && memcmp(source.data + i, "use", 3) == 0 &&
-            (i + 3 == line_end ||
-             !lsp_code_action_is_ident_char(source.data[i + 3]))) {
-            is_use = true;
+
+        if (in_header && !saw_use) {
+            if (comment) {
+                saw_header      = true;
+                fallback_offset = next_line;
+            } else if (blank) {
+                if (saw_header) {
+                    fallback_offset = next_line;
+                }
+            } else {
+                in_header = false;
+            }
         }
 
         if (is_use) {
             saw_use       = true;
-            insert_offset = line_end + (line_end < source.count ? 1 : 0);
-        } else if (!blank || saw_use) {
+            insert_offset = next_line;
+        } else if (saw_use && !blank && !comment) {
             break;
         }
 
-        line_start = line_end + (line_end < source.count ? 1 : 0);
+        line_start = next_line;
     }
 
-    return insert_offset;
+    return saw_use ? insert_offset : fallback_offset;
 }
 
 internal void lsp_code_action_add_import_actions(Arena*             arena,
@@ -713,7 +765,9 @@ internal void lsp_code_action_add_import_actions(Arena*             arena,
         sb_append_cstr(&text, "use ");
         sb_append_string(&text, module_path);
         sb_append_char(&text, '\n');
-        if (insert_offset == 0 && doc->source.count > 0) {
+        if (doc->source.count > 0 &&
+            (insert_offset == 0 || (insert_offset < doc->source.count &&
+                                    doc->source.data[insert_offset] != '\n'))) {
             sb_append_char(&text, '\n');
         }
 
