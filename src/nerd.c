@@ -6,10 +6,13 @@
 
 #include <cli/cli.h>
 #include <compiler/build/back/llvm_text.h>
+#include <compiler/build/front/front.h>
 #include <compiler/compiler.h>
 #include <compiler/error/error.h>
 #include <lsp/lsp.h>
 #include <table/table.h>
+
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
@@ -68,12 +71,81 @@ internal string nerd_cli_param_string(const JsonValue* cli_result,
                                       cstr             path,
                                       string           fallback);
 
+internal bool nerd_write_test_file(cstr path, cstr text)
+{
+    FILE* file = fopen(path, "wb");
+    if (!file) {
+        return false;
+    }
+    usize text_len = strlen(text);
+    usize written  = fwrite(text, 1, text_len, file);
+    bool  close_ok = fclose(file) == 0;
+    return written == text_len && close_ok;
+}
+
+internal int nerd_internal_module_filemap_test(void)
+{
+    cstr module_path = "maplockmod.n";
+    cstr root_path   = "_internal_maplock_root.n";
+    cstr module_text = "pub imported_value :: 0\n";
+    cstr root_text   = "maplockmod :: use maplockmod\n"
+                       "\n"
+                       "main :: fn () -> i32 {\n"
+                       "    return maplockmod.imported_value\n"
+                       "}\n";
+
+    remove(module_path);
+    remove(root_path);
+    if (!nerd_write_test_file(module_path, module_text) ||
+        !nerd_write_test_file(root_path, root_text)) {
+        remove(module_path);
+        remove(root_path);
+        eprn("Failed to write internal filemap test inputs");
+        return 1;
+    }
+
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {
+        .require_entry_point = true,
+        .skip_hir_generation = true,
+    };
+    bool ok = front_end_program(
+        (NerdSource){
+            .source      = s(root_text),
+            .source_path = s(root_path),
+        },
+        &options,
+        NULL,
+        &program);
+    if (!ok) {
+        program_info_done(&program);
+        remove(module_path);
+        remove(root_path);
+        eprn("Failed to analyse internal filemap test program");
+        return 1;
+    }
+
+    bool overwrite_ok =
+        nerd_write_test_file(module_path, "pub imported_value :: 1\n");
+    program_info_done(&program);
+    remove(module_path);
+    remove(root_path);
+    if (!overwrite_ok) {
+        eprn("Imported module remained locked while ProgramInfo was alive");
+        return 1;
+    }
+    return 0;
+}
+
 internal int nerd_internal_test(const JsonValue* cli_result)
 {
     string name =
         nerd_cli_param_string(cli_result, "command.params.name", (string){0});
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
+    }
+    if (string_eq_cstr(name, "module-filemap-release")) {
+        return nerd_internal_module_filemap_test();
     }
 
     eprn("Unknown internal test: " STRINGP, STRINGV(name));

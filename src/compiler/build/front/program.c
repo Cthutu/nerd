@@ -803,16 +803,18 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         .state          = MODULE_Loading,
     };
     array_push(program->modules, module);
-    u32 module_index    = (u32)array_count(program->modules) - 1;
+    u32 module_index       = (u32)array_count(program->modules) - 1;
 
-    ModuleInfo* current = &program->modules[module_index];
-    string      source_text =
-        filemap_load(current->resolved_path, &current->source_map);
-    if (source_text.data == NULL) {
+    ModuleInfo* current    = &program->modules[module_index];
+    FileMap     source_map = {0};
+    string mapped_source   = filemap_load(current->resolved_path, &source_map);
+    if (mapped_source.data == NULL) {
         current->state = MODULE_Failed;
         return error_runtime("Failed to load module source file: %s",
                              current->resolved_path);
     }
+    string source_text = program_copy_string(&program->arena, mapped_source);
+    filemap_unload(&source_map);
 
     NerdSource module_source = {
         .source      = source_text,
