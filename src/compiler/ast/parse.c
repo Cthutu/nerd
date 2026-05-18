@@ -490,6 +490,10 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     (*io_index)++;
     if (ast_kind_at_stream_index(state, *io_index) != TK_RParen) {
         for (;;) {
+            if (ast_kind_at_stream_index(state, *io_index) == TK_Symbol &&
+                ast_kind_at_stream_index(state, *io_index + 1) == TK_Colon) {
+                (*io_index) += 2;
+            }
             if (!ast_skip_type_tokens(state, io_index)) {
                 return false;
             }
@@ -506,7 +510,30 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
     (*io_index)++;
     if (ast_kind_at_stream_index(state, *io_index) == TK_ThinArrow) {
         (*io_index)++;
-        return ast_skip_type_tokens(state, io_index);
+        if (!ast_skip_type_tokens(state, io_index)) {
+            return false;
+        }
+    }
+
+    if (ast_kind_at_stream_index(state, *io_index) == TK_where) {
+        (*io_index)++;
+        for (;;) {
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
+                return false;
+            }
+            (*io_index)++;
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Colon) {
+                return false;
+            }
+            (*io_index)++;
+            if (!ast_skip_type_tokens(state, io_index)) {
+                return false;
+            }
+            if (ast_kind_at_stream_index(state, *io_index) != TK_Comma) {
+                break;
+            }
+            (*io_index)++;
+        }
     }
     return true;
 }
@@ -821,8 +848,18 @@ bool ast_parse_fn_signature(AstParseState* state,
                                .default_node_index = default_node,
                            });
             } else {
-                AstToken type_token = state->token;
-                u32      type_node  = 0;
+                AstToken type_token    = state->token;
+                u32      symbol_handle = U32_MAX;
+                if (state->token.kind == TK_Symbol &&
+                    ast_peek_kind_at(state, 0) == TK_Colon) {
+                    symbol_handle = state->token.value.symbol_handle;
+                    if (!ast_expect_token(state, TK_Colon) ||
+                        !ast_next_token(state)) {
+                        return false;
+                    }
+                    type_token = state->token;
+                }
+                u32 type_node = 0;
                 if (!ast_parse_type(state, &type_node)) {
                     return false;
                 }
@@ -830,7 +867,7 @@ bool ast_parse_fn_signature(AstParseState* state,
                 array_push(state->params,
                            (AstParam){
                                .token_index        = type_token.token_index,
-                               .symbol_handle      = U32_MAX,
+                               .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = U32_MAX,
                            });
@@ -3113,15 +3150,18 @@ internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
                     break;
                 case TK_yes:
                 case TK_no:
+                case TK_true:
+                case TK_false:
                     param.kind       = APPK_Bool;
-                    param.bool_value = state->token.kind == TK_yes;
+                    param.bool_value = state->token.kind == TK_yes ||
+                                       state->token.kind == TK_true;
                     break;
                 default:
                     return error_0204_unexpected_token(
                         state->lexer->source,
                         ast_token_span(state, &state->token),
                         state->token.kind,
-                        "Expected an integer, float, string, yes, or no pragma "
+                        "Expected an integer, float, string, or boolean pragma "
                         "parameter");
                 }
                 array_push(state->pragma_params, param);

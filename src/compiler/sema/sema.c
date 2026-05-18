@@ -8527,6 +8527,7 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     }
 
     if ((sema->types[expected_type].kind == STK_Pointer ||
+         sema->types[expected_type].kind == STK_Function ||
          sema->types[expected_type].kind == STK_Slice ||
          sema->types[expected_type].kind == STK_DynamicArray) &&
         sema->types[actual_type].kind == STK_Nil) {
@@ -13850,6 +13851,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_NilLiteral:
         if (expected_type != sema_no_type() &&
             (sema->types[expected_type].kind == STK_Pointer ||
+             sema->types[expected_type].kind == STK_Function ||
              sema->types[expected_type].kind == STK_Slice ||
              sema->types[expected_type].kind == STK_DynamicArray)) {
             type_index = expected_type;

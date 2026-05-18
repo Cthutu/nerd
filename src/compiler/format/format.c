@@ -6930,6 +6930,8 @@ internal bool format_token_kind_is_atom(TokenKind kind)
     case TK_Symbol:
     case TK_yes:
     case TK_no:
+    case TK_true:
+    case TK_false:
     case TK_nil:
     case TK_undefined:
         return true;

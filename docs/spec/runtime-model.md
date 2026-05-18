@@ -21,15 +21,15 @@ Zero initialisation follows the backend representation:
 | -------------------------- | -------------------------------------------- |
 | Numeric                    | `0` or `0.0`                                 |
 | `bool`                     | `no`                                         |
-| Pointer                    | nil pointer                                  |
+| Pointer/function           | nil pointer                                  |
 | Slice/string/dynamic array | zeroed pointer/count/capacity representation |
 | Tuple/plex/union/enum      | zeroed aggregate representation              |
 
 ## Nil
 
 `nil` materialises only when a destination type admits a nil value, currently
-pointers, slices, and dynamic arrays. Nil slices and dynamic arrays compare
-against `nil` by their runtime representation.
+pointers, function values, slices, and dynamic arrays. Nil slices and dynamic
+arrays compare against `nil` by their runtime representation.
 
 ## Strings And Slices
 

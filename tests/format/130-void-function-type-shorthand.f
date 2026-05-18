@@ -1,13 +1,13 @@
-Sink :: fn (i32)
+Sink :: fn (value: i32)
 
 App :: plex {
-    init fn (^App)
-    logic fn (^App, f32)
+    init fn (app:^App)
+    logic fn (app:^App, delta_time: f32)
 }
 ¬
-Sink :: fn (i32)
+Sink :: fn (value: i32)
 
 App :: plex {
-    init fn (^App)
-    logic fn (^App, f32)
+    init fn (app:^App)
+    logic fn (app:^App, delta_time: f32)
 }

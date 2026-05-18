@@ -144,7 +144,7 @@ Purpose: explain the core expression language.
 Concepts:
 
 - integer, float, bool, string, C string, and `void`
-- `yes` and `no`
+- `yes`/`no` and `true`/`false`
 - unary operators
 - arithmetic, comparison, logical, and bitwise operators
 - precedence and grouping
@@ -158,7 +158,7 @@ Concepts:
 Rules to teach:
 
 - Untyped numeric literals are resolved by context where possible.
-- Boolean values are `yes` and `no`.
+- Boolean values are `yes`/`no`; `true`/`false` are aliases.
 - Casts are explicit.
 - Pointer-to-slice casts require an explicit element type and count:
   `pointer.as([]T, count)`.

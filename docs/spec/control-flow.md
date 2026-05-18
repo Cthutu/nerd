@@ -67,7 +67,7 @@ value-on     ::= 'on' expression '{' { pattern-list [ 'as' IDENT ] [ 'on' expres
 
 Condition branches and guards must type as `bool`. Value-producing block-form
 `on` expressions must be exhaustive. Semantic analysis recognises exhaustive
-`else`, boolean coverage (`yes` and `no`), and enum variant coverage.
+`else`, boolean coverage (`yes`/`no` or `true`/`false`), and enum variant coverage.
 
 ## Branch Expressions
 

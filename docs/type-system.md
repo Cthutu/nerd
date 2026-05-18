@@ -110,8 +110,11 @@ reuse that same function type syntax:
 
 - `adder: fn (i32, i32) -> i32 = add`
 - `sink: fn (i32) = log_value`
+- `sink: fn (value: i32) = log_value`
 
 Omitting `-> Type` in a function type means the function returns `void`.
+Parameter names in function types are optional documentation and are not part of
+type identity.
 
 Explicit `^fn (...) -> ...` pointer syntax is deferred until the wider pointer
 type system is introduced.

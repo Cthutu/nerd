@@ -108,6 +108,13 @@ operation: fn (i32, i32) -> i32 = add  -- store a function value
 handler: fn (i32) = log_value           -- no return value
 ```
 
+Parameter names are allowed in function types for readability, but they are not
+part of the type:
+
+```nerd
+handler: fn (value: i32) = log_value
+```
+
 A function type describes a function value. This means a function can receive
 another function as an argument:
 

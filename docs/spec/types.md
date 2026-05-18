@@ -12,7 +12,7 @@ The semantic analyser recognises these built-in type families:
 | Type                               | Role                                                              |
 | ---------------------------------- | ----------------------------------------------------------------- |
 | `void`                             | No value. Used for statements and functions with no return value. |
-| `bool`                             | Boolean value, written with `yes` and `no`.                       |
+| `bool`                             | Boolean value, written with `yes`/`no` or `true`/`false`.         |
 | `string`                           | Runtime string slice with string-specific typing.                 |
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
@@ -58,9 +58,11 @@ type-list       ::= type { ',' type }
 function-type   ::= 'fn' generic-params? '(' type-list? ')' [ '->' type ]
 ```
 
-Function types use unnamed parameter types. A function type without `-> type`
-has return type `void`. Trait requirements reuse this syntax, for example
-`show :: fn (Self) -> string`. A trait may use
+Function types may use unnamed parameter types or named parameter types such as
+`fn (value: i32)`. Parameter names are documentation only and do not participate
+in type identity. A function type without `-> type` has return type `void`.
+Trait requirements reuse this syntax, for example `show :: fn (Self) -> string`.
+A trait may use
 `trait [Item] { next :: fn (Self) -> Item }` to declare generic parameters.
 Generic trait declarations, implementations, and constraints are semantic
 language features. A trait may use `trait for Value` to name the self type

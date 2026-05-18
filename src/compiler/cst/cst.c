@@ -222,6 +222,8 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
+    case TK_true:
+    case TK_false:
     case TK_nil:
     case TK_LBracket:
     case TK_LBrace:
@@ -1129,13 +1131,22 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                                .default_node_index = default_node,
                            });
             } else {
+                u32 symbol_handle = CST_NO_VALUE;
+                if (cst_current_token(state).kind == TK_Symbol &&
+                    cst_peek_kind_at(state, 1) == TK_Colon) {
+                    symbol_handle = cst_current_symbol_handle(state);
+                    cst_advance(state);
+                    if (!cst_consume(state, TK_Colon)) {
+                        return false;
+                    }
+                }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
                     return false;
                 }
                 array_push(state->cst.params,
                            (CstParam){
-                               .symbol_handle      = CST_NO_VALUE,
+                               .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = CST_NO_VALUE,
                            });
@@ -1892,14 +1903,17 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
     case TK_yes:
     case TK_no:
+    case TK_true:
+    case TK_false:
         cst_advance(state);
-        return cst_emit_node(state,
-                             (CstNode){
-                                 .kind        = CK_BoolLiteral,
-                                 .token_index = state->token_index - 1,
-                                 .a           = token.kind == TK_yes ? 1u : 0u,
-                             },
-                             out_node);
+        return cst_emit_node(
+            state,
+            (CstNode){
+                .kind        = CK_BoolLiteral,
+                .token_index = state->token_index - 1,
+                .a = (token.kind == TK_yes || token.kind == TK_true) ? 1u : 0u,
+            },
+            out_node);
     case TK_nil:
         cst_advance(state);
         return cst_emit_node(state,
@@ -5473,8 +5487,12 @@ internal bool cst_parse_pragma(CstParseState* state, u32* out_node)
                     break;
                 case TK_yes:
                 case TK_no:
-                    param.kind       = CPPK_Bool;
-                    param.bool_value = cst_current_token(state).kind == TK_yes;
+                case TK_true:
+                case TK_false:
+                    param.kind = CPPK_Bool;
+                    param.bool_value =
+                        cst_current_token(state).kind == TK_yes ||
+                        cst_current_token(state).kind == TK_true;
                     break;
                 default:
                     return false;

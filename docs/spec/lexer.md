@@ -154,5 +154,7 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_as`        | `as`            |                                |
 | `TK_yes`       | `yes`           | Boolean literal token.         |
 | `TK_no`        | `no`            | Boolean literal token.         |
+| `TK_true`      | `true`          | Alias for `yes`.               |
+| `TK_false`     | `false`         | Alias for `no`.                |
 | `TK_nil`       | `nil`           | Nil literal token.             |
 | `TK_undefined` | `undefined`     | Undefined-value literal token. |

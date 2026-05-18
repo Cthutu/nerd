@@ -33,6 +33,8 @@ Boolean literals are:
 ```nerd
 yes
 no
+true   -- alias for yes
+false  -- alias for no
 ```
 
 Use `bool` for answers to yes/no questions: comparisons, loop conditions,

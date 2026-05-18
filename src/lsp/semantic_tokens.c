@@ -492,6 +492,8 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_as:
     case TK_yes:
     case TK_no:
+    case TK_true:
+    case TK_false:
     case TK_nil:
     case TK_undefined:
         *out_type = LSP_SEMANTIC_KEYWORD;

@@ -476,7 +476,11 @@ enum-variant    ::= IDENT [ '(' type-list? ')' ] [ '=' expression ]
 enum-variant-list
                 ::= enum-variant { [ ',' ] enum-variant } [ ',' ]
 
-function-type   ::= 'fn' generic-params? '(' type-list? ')' [ '->' type ]
+function-type   ::= 'fn' generic-params? '(' function-type-param-list? ')' [ '->' type ]
+function-type-param
+                ::= [ IDENT ':' ] type
+function-type-param-list
+                ::= function-type-param { ',' function-type-param } [ ',' ]
 ```
 
 Plex field definitions use `field Type` with no colon. Colons are used in plex
