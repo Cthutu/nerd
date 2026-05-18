@@ -56,6 +56,7 @@ ext_name := "nerd-language-" + version
 src_dir  := "syntax/nerd-vscode"
 vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
+vscode_cli := if os_family() == "windows" { "code.cmd" } else { "code" }
 user_bin_dir := if os_family() == "windows" { replace(env_var("USERPROFILE"), "\\", "/") + "/.local/bin" } else { "~/.local/bin" }
 user_bin_nerd := user_bin_dir + "/nerd" + exe_suffix
 user_mods_dir := user_bin_dir + "/mods"
@@ -73,7 +74,7 @@ package: npm-install
     cd {{src_dir}} && npm run package
 
 uninstall:
-    -code --uninstall-extension {{ext_id}}
+    -{{vscode_cli}} --uninstall-extension {{ext_id}}
 
 install-nvim:
     mkdir -p {{nvim_plugin_dir}} {{nvim_ftdetect_dir}} {{nvim_indent_dir}} {{nvim_syntax_dir}}
@@ -93,7 +94,7 @@ install:
     just install-nvim
     just uninstall
     just package
-    code --install-extension {{src_dir}}/{{vsix}} --force
+    {{vscode_cli}} --install-extension {{src_dir}}/{{vsix}} --force
 
 test-install:
     just test
