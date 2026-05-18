@@ -177,7 +177,12 @@ internal bool cst_parse_plex_literal_field_value(CstParseState* state,
     cst_advance(state);
     if (cst_current_token(state).kind == TK_Colon) {
         cst_advance(state);
-        return cst_parse_expr_bp(state, 0, out_value);
+        bool previous_allow_statement_boundary =
+            state->allow_statement_boundary;
+        state->allow_statement_boundary = true;
+        bool parsed = cst_parse_expr_bp(state, 0, out_value);
+        state->allow_statement_boundary = previous_allow_statement_boundary;
+        return parsed;
     }
 
     return cst_emit_symbol_ref(state, field_token, field_symbol, out_value);
@@ -663,6 +668,10 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     (*io_index)++;
     if (cst_kind_at_stream_index(state, *io_index) != TK_RParen) {
         for (;;) {
+            if (cst_kind_at_stream_index(state, *io_index) == TK_Symbol &&
+                cst_kind_at_stream_index(state, *io_index + 1) == TK_Colon) {
+                *io_index += 2;
+            }
             if (!cst_skip_type_tokens(state, io_index)) {
                 return false;
             }
@@ -678,7 +687,7 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
     }
     (*io_index)++;
     if (cst_kind_at_stream_index(state, *io_index) != TK_ThinArrow) {
-        return false;
+        return true;
     }
     (*io_index)++;
     return cst_skip_type_tokens(state, io_index);

@@ -3692,6 +3692,11 @@ internal bool format_collect_aligned_statement(Arena*       arena,
                 cst->nodes[payload->a].kind == CK_TypeEnum) {
                 return false;
             }
+            if ((cst->nodes[payload->b].kind == CK_Plex ||
+                 cst->nodes[payload->b].kind == CK_PlexUpdate) &&
+                !format_node_is_single_line(cst, lexer, payload->b)) {
+                return false;
+            }
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
