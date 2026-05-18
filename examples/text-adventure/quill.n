@@ -31,7 +31,7 @@ show_exits :: fn (state: State) {
 
 init :: fn () -> State {
     return {
-        locations  : [
+        locations: [
             "I am in a Hall.  The Kitchen is to the East, the Bedroom to the "
                 +"West and the Lounge to the South.  Steps lead Down to the "
                 +"Cellar.",
@@ -45,7 +45,7 @@ init :: fn () -> State {
                 +"against the North wall.",
             "I am in the Cellar.  Steps lead Up to the Hall.",
         ]
-        exits      : [
+        exits: [
             [
                 ("E", 1),
                 ("W", 4),
@@ -67,7 +67,7 @@ init :: fn () -> State {
             [("E", 0)],
             [("U", 0)],
         ]
-        verbs      : [
+        verbs: [
             ["n", "north"],
             ["s", "south"],
             ["e", "east"],
@@ -80,7 +80,7 @@ init :: fn () -> State {
             ["get", "take"],
             ["drop"],
         ]
-        player_loc : 0
+        player_loc: 0
     }
 }
 
