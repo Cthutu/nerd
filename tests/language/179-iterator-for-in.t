@@ -46,13 +46,13 @@ main :: fn () -> i32 {
     }
 
     values: [3]i32 = [2, 3, 5]
-    for ^builtin in values[..] {
-        total += builtin
+    for builtin in values[..] {
+        total += builtin^
     }
 
     iter := PtrIter { data: values[..], index: 0 }
-    for ^value in iter {
-        total += value
+    for value in iter {
+        total += value^
     }
 
     prn($"total={total}")

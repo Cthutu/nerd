@@ -12597,23 +12597,6 @@ internal bool sema_infer_for_iterable_type(const Lexer*      lexer,
         }
     }
 
-    if (for_info->item_deref) {
-        u32 materialised = sema_materialise_type(sema, item_type);
-        if (materialised >= array_count(sema->types) ||
-            sema->types[materialised].kind != STK_Pointer) {
-            Arena temp_arena = {0};
-            arena_init(&temp_arena);
-            bool ok = error_0304_type_mismatch(
-                lexer->source,
-                sema_token_span(lexer, for_info->item_token_index),
-                s("pointer item for `for ^item in`"),
-                sema_type_name(lexer, sema, &temp_arena, item_type));
-            arena_done(&temp_arena);
-            return ok;
-        }
-        item_type = sema->types[materialised].first_param_type;
-    }
-
     if (for_scope != sema_no_scope()) {
         u32 local_index =
             sema_lookup_local(sema, for_scope, for_info->item_symbol);

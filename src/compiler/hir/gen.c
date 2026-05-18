@@ -2505,7 +2505,6 @@ internal u32 hir_lower_for(Hir*         hir,
         .item_symbol = for_info->item_symbol,
         .item_local_index =
             hir_find_scope_local(sema, for_scope, for_info->item_symbol),
-        .item_deref = for_info->item_deref,
         .iterator_next_decl_index =
             node_index < array_count(sema->node_method_call_decl_indices)
                 ? sema->node_method_call_decl_indices[node_index]

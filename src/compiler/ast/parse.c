@@ -2749,12 +2749,7 @@ internal bool ast_token_starts_for_in(const AstParseState* state)
     if (state->token.kind == TK_Symbol) {
         return ast_cursor_kind(state) == TK_in ||
                (ast_cursor_kind(state) == TK_Comma &&
-                (ast_peek_kind_at(state, 1) == TK_Symbol ||
-                 (ast_peek_kind_at(state, 1) == TK_Caret &&
-                  ast_peek_kind_at(state, 2) == TK_Symbol)));
-    }
-    if (state->token.kind == TK_Caret && ast_cursor_kind(state) == TK_Symbol) {
-        return ast_peek_kind_at(state, 1) == TK_in;
+                ast_peek_kind_at(state, 1) == TK_Symbol);
     }
     return false;
 }
@@ -2814,7 +2809,6 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
         .index_token_index    = U32_MAX,
         .item_symbol          = U32_MAX,
         .item_token_index     = U32_MAX,
-        .item_deref           = false,
         .label_symbol         = U32_MAX,
         .else_block_index     = U32_MAX,
     };
@@ -2836,7 +2830,7 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
     if (!ast_for_token_is_body_start(state->token.kind) &&
         ast_token_starts_for_in(state)) {
         for_info.mode = AFM_In;
-        ASSERT(state->token.kind == TK_Symbol || state->token.kind == TK_Caret,
+        ASSERT(state->token.kind == TK_Symbol,
                "Expected symbol token for for-in loop item");
         if (ast_cursor_kind(state) == TK_Comma) {
             for_info.index_symbol      = state->token.value.symbol_handle;
@@ -2849,32 +2843,12 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
                     TK_Symbol,
                     state->token.kind);
             }
-            if (state->token.kind == TK_Caret) {
-                for_info.item_deref = true;
-                if (!ast_next_token(state)) {
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_Symbol,
-                        TK_EOF);
-                }
-            }
             if (state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(
                     state->lexer->source,
                     ast_token_span(state, &state->token),
                     TK_Symbol,
                     state->token.kind);
-            }
-        }
-        if (state->token.kind == TK_Caret) {
-            for_info.item_deref = true;
-            if (!ast_next_token(state)) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_Symbol,
-                    TK_EOF);
             }
         }
         for_info.item_symbol      = state->token.value.symbol_handle;

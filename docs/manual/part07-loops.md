@@ -83,7 +83,7 @@ use std.io
 main :: fn () {
     words :: ["north", "south", "east"]
     for word in words {  -- bind each item to word in turn
-        prn(word)
+        prn(word^)
     }
 }
 ```
@@ -96,14 +96,13 @@ use std.io
 main :: fn () {
     words :: ["north", "south", "east"]
     for i, word in words {
-        prn($"{i}: {word}")
+        prn($"{i}: {word^}")
     }
 }
 ```
 
-The index binding has type `usize`. Collection items are pointers to elements.
-When the item type is a pointer, `for ^item in collection` dereferences each
-item before binding it.
+The index binding has type `usize`. Built-in collection items are pointers to
+elements; use `item^` when you want the pointed-to value.
 
 Integer ranges use bracketed `start..end` or `start..=end` forms:
 

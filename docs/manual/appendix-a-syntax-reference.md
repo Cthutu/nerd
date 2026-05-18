@@ -170,9 +170,7 @@ for { ... }
 for condition { ... }
 for init; condition; update { ... }
 for item in collection { ... }
-for ^item in collection { ... }
 for index, item in collection { ... }
-for index, ^item in collection { ... }
 for item in [start..end] { ... }
 for item in [start..=end] { ... }
 for index, item in [start..end] { ... }

@@ -145,6 +145,34 @@ main :: fn () {
 }
 ¬
 main :: fn () {
+    values: [3]i32 = [1, 2, 3]
+    for ^value in values {
+    }
+}
+¬
+{
+    "message": "Expected LeftBrace `{` but found Keyword `in`",
+    "source_file": "tests/errors/020-for-loops.e",
+    "primary_location": {
+        "line": 3,
+        "column": 16
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 16,
+            "length": 2,
+            "message": "Found Keyword `in` here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Check for a missing closing delimiter or misplaced operator"
+    ]
+}
+¬
+main :: fn () {
     again
 }
 ¬

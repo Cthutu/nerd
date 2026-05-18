@@ -70,7 +70,7 @@ main :: fn () {
     defer parts.free()              -- free it before leaving the scope
 
     for part in parts {
-        prn($"word: {part}")
+        prn($"word: {part^}")
     }
 }
 ```

@@ -134,8 +134,8 @@ intended exit code.
 - `for init; condition; update { ... }` supports C-style iteration.
 - `for item in collection { ... }` iterates built-in collections and
   `Iterator[Item]` values.
-- `for ^item in collection { ... }` requires pointer items and binds the
-  pointed-to value.
+- Built-in collection iteration binds pointers to elements; dereference
+  explicitly with `item^` when the pointed-to value is needed.
 - `for item in [start..end] { ... }` iterates integer values from `start` up to
   but not including `end`.
 - `for item in [start..=end] { ... }` iterates integer values from `start`

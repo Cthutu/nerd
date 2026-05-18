@@ -1123,9 +1123,6 @@ internal void format_emit_expr(StringBuilder* sb,
                                      lex_symbol(lexer, for_info->index_symbol));
                     sb_append_cstr(sb, ", ");
                 }
-                if (for_info->item_deref) {
-                    sb_append_char(sb, '^');
-                }
                 sb_append_string(sb, lex_symbol(lexer, for_info->item_symbol));
                 sb_append_cstr(sb, " in ");
                 format_emit_expr(
@@ -5910,9 +5907,6 @@ internal void format_emit_block_statement(StringBuilder* sb,
             if (for_info->index_symbol != U32_MAX) {
                 sb_append_string(sb, lex_symbol(lexer, for_info->index_symbol));
                 sb_append_cstr(sb, ", ");
-            }
-            if (for_info->item_deref) {
-                sb_append_char(sb, '^');
             }
             sb_append_string(sb, lex_symbol(lexer, for_info->item_symbol));
             sb_append_cstr(sb, " in ");

@@ -26,9 +26,7 @@ for-form      ::= /* empty */
 ```
 
 Every loop starts with `for`. Supported loop forms are infinite loops, condition
-loops, `for-in` loops, and C-style loops. `for-in` binders are identifiers, or
-`^` followed by an identifier when the iterated item type is a pointer and the
-loop should bind the pointed-to value.
+loops, `for-in` loops, and C-style loops. `for-in` binders are identifiers.
 
 Built-in collection iteration over arrays, slices, strings, and dynamic arrays
 binds pointer items. Range iteration binds integer values. User-defined

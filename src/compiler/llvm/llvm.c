@@ -7246,22 +7246,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         if (!payload.ok) {
                             return (LlvmValue){0};
                         }
-                        if (loop->item_deref) {
-                            string item_type_string =
-                                llvm_type_string(ctx, item_type);
-                            string loaded = llvm_temp(ctx);
-                            sb_format(ctx->sb,
-                                      "  " STRINGP " = load " STRINGP
-                                      ", ptr " STRINGP "\n",
-                                      STRINGV(loaded),
-                                      STRINGV(item_type_string),
-                                      STRINGV(payload.value));
-                            payload = (LlvmValue){
-                                .ok         = true,
-                                .type_index = item_type,
-                                .value      = loaded,
-                            };
-                        }
                         llvm_store_local_slot(ctx, item_slot, payload);
                     }
 
@@ -7598,16 +7582,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         .type_index = item_type,
                         .value      = item_ptr,
                     };
-                    if (loop->item_deref) {
-                        string loaded = llvm_temp(ctx);
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = load " STRINGP
-                                  ", ptr " STRINGP "\n",
-                                  STRINGV(loaded),
-                                  STRINGV(value_type_string),
-                                  STRINGV(item_ptr));
-                        item_value.value = loaded;
-                    }
                     llvm_store_local_slot(ctx, item_slot, item_value);
                 }
                 string old_break                = ctx->break_label;
