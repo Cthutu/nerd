@@ -98,6 +98,27 @@ binding, and assignment:
 Tuple and plex destructuring shape is checked against the source expression
 type. `_` ignores a value.
 
+## Assignment Targets
+
+Assignment and compound assignment require mutable storage. Valid targets
+include mutable locals, mutable module variables, fields or elements reached
+through mutable storage, indexes into slices and dynamic arrays, and explicit
+pointer dereferences.
+
+Function parameters are immutable bindings. Assigning to a parameter name is
+rejected, and assigning to fields or fixed-array elements stored directly inside
+a by-value parameter is also rejected. Passing a pointer parameter is the normal
+way to mutate caller-owned state:
+
+```nerd
+move :: fn (state: ^State) {
+    state.player_loc = 1  -- writes through the pointer
+}
+```
+
+The parameter binding itself remains immutable, so assigning a new pointer value
+to `state` is still rejected.
+
 ## Defer And Assert
 
 `defer` stores a statement to run when leaving the current scope. Deferred

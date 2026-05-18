@@ -22,8 +22,9 @@ random_step :: fn () -> u64 {
 }
 
 random_seed :: fn (seed: u64) {
-    on seed == 0 => seed = 0x9E3779B97F4A7C15
-    g_random_state = seed
+    actual_seed := seed
+    on actual_seed == 0 => actual_seed = 0x9E3779B97F4A7C15
+    g_random_state = actual_seed
 }
 
 pub random_u64 :: fn () -> u64 {

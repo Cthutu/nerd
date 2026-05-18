@@ -5863,6 +5863,7 @@ internal bool sema_resolve_destructure_assign_pattern(const Lexer* lexer,
     if (symbol != U32_MAX) {
         u32 local_index = sema_lookup_local(sema, scope_index, symbol);
         if (local_index == sema_no_local() ||
+            sema->locals[local_index].kind == SLK_Param ||
             sema->locals[local_index].kind == SLK_Binder ||
             !sema_local_is_runtime_value(&sema->locals[local_index])) {
             return error_0305_invalid_assignment_target(
@@ -6365,7 +6366,8 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             if (target->kind == AK_SymbolRef) {
                 u32 local_index = sema->node_local_indices[node->a];
                 if (local_index != sema_no_local()) {
-                    if (sema->locals[local_index].kind == SLK_Binder ||
+                    if (sema->locals[local_index].kind == SLK_Param ||
+                        sema->locals[local_index].kind == SLK_Binder ||
                         !sema_local_is_runtime_value(
                             &sema->locals[local_index])) {
                         return error_0305_invalid_assignment_target(
@@ -8975,6 +8977,63 @@ internal bool sema_node_can_mutate_dynarray(const Ast* ast, u32 node_index)
         return true;
     case AK_Expression:
         return sema_node_can_mutate_dynarray(ast, node->a);
+    default:
+        return false;
+    }
+}
+
+internal bool sema_assignment_target_writes_param_storage(const Ast*  ast,
+                                                          const Sema* sema,
+                                                          u32  node_index,
+                                                          u32* out_local_index,
+                                                          u32* out_root_node)
+{
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_SymbolRef:
+        {
+            u32 local_index = sema->node_local_indices[node_index];
+            if (local_index != sema_no_local() &&
+                sema->locals[local_index].kind == SLK_Param) {
+                *out_local_index = local_index;
+                *out_root_node   = node_index;
+                return true;
+            }
+            return false;
+        }
+    case AK_Expression:
+    case AK_Statement:
+        return sema_assignment_target_writes_param_storage(
+            ast, sema, node->a, out_local_index, out_root_node);
+    case AK_Deref:
+        return false;
+    case AK_Field:
+    case AK_TupleField:
+        {
+            u32 base_type = node->a < array_count(sema->node_type_indices)
+                                ? sema->node_type_indices[node->a]
+                                : sema_no_type();
+            if (base_type != sema_no_type() &&
+                sema->types[base_type].kind == STK_Pointer) {
+                return false;
+            }
+            return sema_assignment_target_writes_param_storage(
+                ast, sema, node->a, out_local_index, out_root_node);
+        }
+    case AK_Index:
+        {
+            u32 base_type = node->a < array_count(sema->node_type_indices)
+                                ? sema->node_type_indices[node->a]
+                                : sema_no_type();
+            if (base_type != sema_no_type() &&
+                (sema->types[base_type].kind == STK_Pointer ||
+                 sema->types[base_type].kind == STK_Slice ||
+                 sema->types[base_type].kind == STK_DynamicArray)) {
+                return false;
+            }
+            return sema_assignment_target_writes_param_storage(
+                ast, sema, node->a, out_local_index, out_root_node);
+        }
     default:
         return false;
     }
@@ -16687,6 +16746,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer->source,
                     sema_node_span(lexer, target),
                     s("expression"));
+            }
+
+            u32 param_local     = sema_no_local();
+            u32 param_root_node = U32_MAX;
+            if (sema_assignment_target_writes_param_storage(
+                    ast, sema, node->a, &param_local, &param_root_node)) {
+                const SemaLocal* local = &sema->locals[param_local];
+                return error_0305_invalid_assignment_target(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[param_root_node]),
+                    lex_symbol(lexer, local->symbol_handle));
             }
 
             if (!sema_infer_node_type(

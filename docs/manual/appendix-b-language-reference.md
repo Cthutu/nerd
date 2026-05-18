@@ -54,6 +54,8 @@ intended exit code.
 ## Functions
 
 - Function parameters are written as `name: Type`.
+- Function parameter bindings are immutable. Assigning to a parameter, or to
+  storage directly contained in a by-value parameter, is rejected.
 - Default parameters are written as `name: Type = expr`.
 - Defaulted parameters must be trailing parameters.
 - Default expressions are evaluated at the call site.

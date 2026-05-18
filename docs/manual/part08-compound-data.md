@@ -286,7 +286,9 @@ main :: fn () -> i32 {
 
 Use a pointer receiver, such as `^Counter`, when the method mutates the value.
 The call site still writes `counter.inc(7)`; the compiler passes the receiver
-as a pointer when the receiver parameter requires it.
+as a pointer when the receiver parameter requires it. Receiver parameters follow
+the same rule as other parameters: a value receiver such as `self: Counter`
+cannot be used to assign to `self.value`.
 
 Generic compound types can have generic impl blocks:
 

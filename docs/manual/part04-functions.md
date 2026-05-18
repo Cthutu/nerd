@@ -30,6 +30,28 @@ main :: fn () -> i32 {
 
 Here `20` becomes `left`, and `22` becomes `right`.
 
+Parameter bindings are immutable. A function cannot assign a new value to a
+parameter or assign to storage that belongs directly to a by-value parameter.
+Use a local variable when the function needs a scratch copy:
+
+```nerd
+normalise :: fn (seed: u64) -> u64 {
+    value := seed
+    on value == 0 => value = 7
+    return value
+}
+```
+
+Use a pointer parameter when the function needs to mutate caller-owned state.
+The pointer binding cannot be reassigned, but the value it points at can be
+updated:
+
+```nerd
+move :: fn (state: ^State) {
+    state.player_loc = 1
+}
+```
+
 ## Default Parameters
 
 Trailing parameters can have default values:

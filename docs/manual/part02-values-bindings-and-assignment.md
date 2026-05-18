@@ -142,9 +142,12 @@ main :: fn () -> i32 {
 }
 ```
 
-The left side must be something assignable. For now, that means a local variable.
-Later parts add more assignable targets, such as fields, indexes, and
-dereferences.
+The left side must be something assignable: a mutable local, a mutable module
+variable, a field or element reached through mutable storage, a slice or dynamic
+array element, or an explicit pointer dereference. Function parameters are
+immutable bindings. Assign to a local copy when the parameter value itself needs
+to change, or pass a pointer and assign through it when the function should
+mutate caller-owned state.
 
 The assigned value must match the target's type. Nerd is statically typed, so
 type mismatches are compile-time errors rather than surprises at runtime.
