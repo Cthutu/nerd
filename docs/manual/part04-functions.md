@@ -101,10 +101,11 @@ are useful for small helpers.
 
 ## Function Types
 
-Function types are written with parameter types and a return type:
+Function types are written with parameter types and an optional return type:
 
 ```nerd
 operation: fn (i32, i32) -> i32 = add  -- store a function value
+handler: fn (i32) = log_value           -- no return value
 ```
 
 A function type describes a function value. This means a function can receive

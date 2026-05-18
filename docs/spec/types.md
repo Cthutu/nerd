@@ -55,11 +55,12 @@ type            ::= type-name
 type-name       ::= IDENT { '.' IDENT } { '[' type-list? ']' }
 type-list       ::= type { ',' type }
 
-function-type   ::= 'fn' generic-params? '(' type-list? ')' '->' type
+function-type   ::= 'fn' generic-params? '(' type-list? ')' [ '->' type ]
 ```
 
-Function types use unnamed parameter types. Trait requirements reuse this
-syntax, for example `show :: fn (Self) -> string`. A trait may use
+Function types use unnamed parameter types. A function type without `-> type`
+has return type `void`. Trait requirements reuse this syntax, for example
+`show :: fn (Self) -> string`. A trait may use
 `trait [Item] { next :: fn (Self) -> Item }` to declare generic parameters.
 Generic trait declarations, implementations, and constraints are semantic
 language features. A trait may use `trait for Value` to name the self type

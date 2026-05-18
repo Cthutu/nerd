@@ -3469,24 +3469,27 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                 array_push(param_types, param_type);
             }
 
-            bool return_is_type = false;
-            u32  return_type    = sema_no_type();
-            if (!sema_try_classify_type_node(lexer,
-                                             ast,
-                                             sema,
-                                             owner_decl_index,
-                                             signature->return_type_node_index,
-                                             alias_states,
-                                             &return_is_type,
-                                             &return_type)) {
-                array_free(param_types);
-                return false;
-            }
-            if (!return_is_type) {
-                array_free(param_types);
-                *out_is_type    = false;
-                *out_type_index = sema_no_type();
-                return true;
+            u32 return_type = sema_builtin_type(sema, STK_Void);
+            if (signature->return_type_node_index != U32_MAX) {
+                bool return_is_type = false;
+                if (!sema_try_classify_type_node(
+                        lexer,
+                        ast,
+                        sema,
+                        owner_decl_index,
+                        signature->return_type_node_index,
+                        alias_states,
+                        &return_is_type,
+                        &return_type)) {
+                    array_free(param_types);
+                    return false;
+                }
+                if (!return_is_type) {
+                    array_free(param_types);
+                    *out_is_type    = false;
+                    *out_type_index = sema_no_type();
+                    return true;
+                }
             }
 
             *out_is_type = true;
@@ -8212,8 +8215,9 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                 array_push(param_types, param_type);
             }
 
-            u32 return_type = sema_no_type();
-            if (!sema_resolve_type_node_ex(lexer,
+            u32 return_type = sema_builtin_type(sema, STK_Void);
+            if (signature->return_type_node_index != U32_MAX &&
+                !sema_resolve_type_node_ex(lexer,
                                            ast,
                                            sema,
                                            signature->return_type_node_index,

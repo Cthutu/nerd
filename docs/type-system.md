@@ -109,6 +109,9 @@ At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
 
 - `adder: fn (i32, i32) -> i32 = add`
+- `sink: fn (i32) = log_value`
+
+Omitting `-> Type` in a function type means the function returns `void`.
 
 Explicit `^fn (...) -> ...` pointer syntax is deferred until the wider pointer
 type system is introduced.

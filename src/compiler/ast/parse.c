@@ -504,11 +504,11 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         }
     }
     (*io_index)++;
-    if (ast_kind_at_stream_index(state, *io_index) != TK_ThinArrow) {
-        return false;
+    if (ast_kind_at_stream_index(state, *io_index) == TK_ThinArrow) {
+        (*io_index)++;
+        return ast_skip_type_tokens(state, io_index);
     }
-    (*io_index)++;
-    return ast_skip_type_tokens(state, io_index);
+    return true;
 }
 
 bool ast_token_starts_type_syntax(const AstParseState* state, u32 token_index)
@@ -901,7 +901,7 @@ bool ast_parse_fn_signature(AstParseState* state,
 
 bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index)
 {
-    return ast_parse_fn_signature(state, false, true, out_signature_index);
+    return ast_parse_fn_signature(state, false, false, out_signature_index);
 }
 
 internal bool ast_reject_fn_definition_after_type_annotation(

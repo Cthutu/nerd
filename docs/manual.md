@@ -194,7 +194,8 @@ Concepts:
 
 Rules to teach:
 
-- Function types are written `fn (ParamTypes...) -> ReturnType`.
+- Function types are written `fn (ParamTypes...) -> ReturnType`, or
+  `fn (ParamTypes...)` for `void` returns.
 - Block functions use explicit `return` to produce a value.
 - Expression-bodied functions infer from the body expression.
 - Nested functions can capture only according to the currently implemented local

@@ -124,6 +124,7 @@ fn (a: Type, b: Type = expr) -> ReturnType { ... }
 fn (a: Type) => expr
 fn [T] (a: T) => expr
 fn (Type, Type) -> ReturnType
+fn (Type, Type)
 ```
 
 Trait member requirements use function type syntax, so their parameter list
@@ -193,6 +194,7 @@ f32 f64
 [N..]T
 (T1, T2)
 fn (T1, T2) -> R
+fn (T1, T2)
 plex { field Type }
 plex [T] { field T }
 plex #c { field Type }

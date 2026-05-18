@@ -984,7 +984,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
 internal bool cst_parse_type_signature(CstParseState* state,
                                        u32*           out_signature_index)
 {
-    return cst_parse_fn_signature(state, false, true, out_signature_index);
+    return cst_parse_fn_signature(state, false, false, out_signature_index);
 }
 
 internal bool cst_parse_fn_signature(CstParseState* state,
