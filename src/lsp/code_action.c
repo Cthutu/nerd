@@ -2159,7 +2159,13 @@ internal bool lsp_code_action_append_trait_member_stub(Arena*             arena,
     sb_append_cstr(sb, " {\n");
     if (signature->return_type_node_index != U32_MAX) {
         sb_append_string(sb, body_indent);
-        sb_append_cstr(sb, "return undefined\n");
+        sb_append_cstr(sb, "result: ");
+        sb_append_string(sb,
+                         lsp_code_action_type_node_source(
+                             doc, signature->return_type_node_index));
+        sb_append_char(sb, '\n');
+        sb_append_string(sb, body_indent);
+        sb_append_cstr(sb, "return result\n");
     }
     sb_append_string(sb, member_indent);
     sb_append_char(sb, '}');

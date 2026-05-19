@@ -168,7 +168,7 @@ impl Display for Point {
                                         "character": 0
                                     }
                                 },
-                                "newText": "    show :: fn (_self: Self) -> string {\n        return undefined\n    }\n\n    reset :: fn (_self: Self) {\n    }\n"
+                                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n\n    reset :: fn (_self: Self) {\n    }\n"
                             }
                         ]
                     }
