@@ -127,6 +127,12 @@ format_find_trailing_comment_index_after_offset_scan(NerdSource   source,
                                                      const Lexer* lexer,
                                                      usize        end_offset,
                                                      u32* out_comment_index);
+internal bool
+format_find_attached_next_line_comment_after_offset(NerdSource   source,
+                                                    const Lexer* lexer,
+                                                    usize        end_offset,
+                                                    usize        min_column,
+                                                    u32* out_comment_index);
 internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
                                                         string comment_text,
                                                         usize  comment_column,
@@ -2784,6 +2790,14 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
             has_comment = format_find_trailing_comment_index_after_offset(
                 lexer->source, lexer, value_end_offset, &comment_index);
         }
+        if (!has_comment) {
+            has_comment = format_find_attached_next_line_comment_after_offset(
+                lexer->source,
+                lexer,
+                value_end_offset,
+                field_indent_width + 1,
+                &comment_index);
+        }
         u32   first_trailing_comment_index = comment_index;
         usize group_end_offset             = value_end_offset;
         if (has_comment && comment_index < array_count(lexer->comments)) {
@@ -3326,6 +3340,14 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
         u32   comment_index = U32_MAX;
         bool  has_comment   = format_find_trailing_comment_index_after_offset(
             lexer->source, lexer, end_offset, &comment_index);
+        if (!has_comment) {
+            has_comment = format_find_attached_next_line_comment_after_offset(
+                lexer->source,
+                lexer,
+                end_offset,
+                (indent_level + 1) * 4 + 1,
+                &comment_index);
+        }
         array_push(variant_prefix_widths, prefix_width);
         array_push(variant_aligned_prefix_widths, prefix_width);
         array_push(variant_code_widths, 0);
@@ -3559,6 +3581,14 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         if (g_format_trivia == NULL) {
             has_comment = format_find_trailing_comment_index_after_offset(
                 lexer->source, lexer, type_end_offset, &comment_index);
+        }
+        if (!has_comment) {
+            has_comment = format_find_attached_next_line_comment_after_offset(
+                lexer->source,
+                lexer,
+                type_end_offset,
+                field_indent_width + 1,
+                &comment_index);
         }
         array_push(field_start_offsets,
                    lexer->tokens[field->token_index].offset);
@@ -5427,6 +5457,59 @@ format_find_trailing_comment_index_after_offset_scan(NerdSource   source,
     return false;
 }
 
+internal bool
+format_find_attached_next_line_comment_after_offset(NerdSource   source,
+                                                    const Lexer* lexer,
+                                                    usize        end_offset,
+                                                    usize        min_column,
+                                                    u32* out_comment_index)
+{
+    u32 end_line = 0;
+    u32 end_col  = 0;
+    if (!lex_offset_to_line_col(source, end_offset, &end_line, &end_col)) {
+        return false;
+    }
+    UNUSED(end_col);
+
+    for (u32 i = 0; i < array_count(lexer->comments); ++i) {
+        LexerComment comment = lexer->comments[i];
+        if (comment.offset <= end_offset) {
+            continue;
+        }
+
+        u32 comment_line = 0;
+        u32 comment_col  = 0;
+        if (!lex_offset_to_line_col(
+                source, comment.offset, &comment_line, &comment_col)) {
+            return false;
+        }
+        if (comment_line > end_line + 1) {
+            return false;
+        }
+        if (comment_line != end_line + 1 || comment_col <= min_column) {
+            continue;
+        }
+
+        bool  line_prefix_is_blank = true;
+        usize line_start           = comment.offset;
+        while (line_start > 0 && source.source.data[line_start - 1] != '\n') {
+            line_start--;
+        }
+        for (usize offset = line_start; offset < comment.offset; ++offset) {
+            if (source.source.data[offset] != ' ' &&
+                source.source.data[offset] != '\t') {
+                line_prefix_is_blank = false;
+                break;
+            }
+        }
+        if (line_prefix_is_blank) {
+            *out_comment_index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
                                                         string comment_text,
                                                         usize  comment_column,
@@ -5436,12 +5519,12 @@ internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
     if (comment_column <= current_column) {
         comment_column = current_column + 2;
     }
-    for (usize pad = current_column; pad < comment_column; ++pad) {
-        sb_append_char(sb, ' ');
-    }
-    sb_append_cstr(sb, "--");
 
     if (text.count == 0) {
+        for (usize pad = current_column; pad < comment_column; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+        sb_append_cstr(sb, "--");
         sb_append_char(sb, '\n');
         return;
     }
@@ -5456,6 +5539,19 @@ internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
         FORMAT_WRAP_WIDTH > continuation_prefix_width
             ? FORMAT_WRAP_WIDTH - continuation_prefix_width
             : 1;
+    bool comment_fits_on_first_line = text.count <= first_width;
+
+    if (comment_fits_on_first_line) {
+        for (usize pad = current_column; pad < comment_column; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+    } else {
+        sb_append_char(sb, '\n');
+        for (usize pad = 0; pad < comment_column; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+    }
+    sb_append_cstr(sb, "--");
 
     bool  first_line = true;
     usize cursor     = 0;

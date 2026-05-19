@@ -13,7 +13,8 @@ Value::union {
 ¬
 State :: enum {
     Idle                 -- no work pending
-    Running(i32)         -- active job identifier that is deliberately long
+    Running(i32)
+                         -- active job identifier that is deliberately long
                          --     enough to wrap onto another line while keeping
                          --     the marker aligned
     Failed(string, i32)  -- failure payload
