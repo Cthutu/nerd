@@ -83,6 +83,16 @@ made after that mark. `reset()` invalidates all allocations from the arena
 without releasing its reserved address range. `done()` releases the reserved
 range.
 
+## Tracked Memory
+
+The executable runtime exposes `nrt_mem_*` helpers for standard-library heap
+allocation wrappers. These helpers reserve a small header before each user
+allocation, record the source file and line supplied by the caller, and maintain
+process-wide heap statistics. Live, non-leaked allocations can be counted,
+totalled, and printed for leak diagnostics. Marking an allocation as leaked
+removes it from leak reports while preserving the header so a later free remains
+valid.
+
 ## Defer
 
 Deferred statements run when leaving the current scope, including exits through

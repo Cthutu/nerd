@@ -26,7 +26,40 @@ typedef struct {
     size_t increment;
 } NrtArena;
 
+typedef struct {
+    size_t heap_alloc_count;
+    size_t heap_realloc_count;
+    size_t heap_free_count;
+    size_t heap_bytes_allocated;
+    size_t heap_bytes_reallocated;
+    size_t heap_bytes_freed;
+    size_t heap_current_bytes;
+    size_t heap_peak_bytes;
+    size_t arena_init_count;
+    size_t arena_done_count;
+    size_t arena_alloc_count;
+    size_t arena_bytes_allocated;
+    size_t arena_commit_count;
+    size_t arena_bytes_committed;
+    size_t array_growth_count;
+    size_t array_bytes_allocated;
+} NrtMemoryStats;
+
+typedef struct NrtMemoryHeader_t {
+    size_t                    size;
+    char*                     file;
+    uint32_t                  line;
+    uint64_t                  index;
+    bool                      leaked;
+    struct NrtMemoryHeader_t* next;
+} NrtMemoryHeader;
+
 void string_builder_reset(void);
+
+static NrtMemoryHeader* g_nrt_memory_head        = NULL;
+static uint64_t         g_nrt_memory_index       = 0;
+static uint64_t         g_nrt_memory_break_index = 0;
+static NrtMemoryStats   g_nrt_memory_stats       = {0};
 
 static void nrt_eprintf(const char* format, ...)
 {
@@ -50,6 +83,336 @@ static void nrt_write_bytes(FILE* stream, const void* data, size_t count)
     if (data != NULL && count > 0) {
         fwrite(data, 1, count, stream);
     }
+}
+
+static char* nrt_memory_copy_file(const u8* file_data, size_t file_count)
+{
+    char* copy = (char*)malloc(file_count + 1);
+    if (copy == NULL) {
+        nrt_eprintfn("fatal: memory source path allocation failed");
+        abort();
+    }
+    if (file_data != NULL && file_count > 0) {
+        memcpy(copy, file_data, file_count);
+    }
+    copy[file_count] = '\0';
+    return copy;
+}
+
+static void nrt_memory_set_source(NrtMemoryHeader* header,
+                                  const u8*       file_data,
+                                  size_t          file_count,
+                                  uint32_t        line)
+{
+    free(header->file);
+    header->file = nrt_memory_copy_file(file_data, file_count);
+    header->line = line;
+}
+
+static void nrt_memory_add_heap_current(size_t size)
+{
+    g_nrt_memory_stats.heap_current_bytes += size;
+    if (g_nrt_memory_stats.heap_current_bytes >
+        g_nrt_memory_stats.heap_peak_bytes) {
+        g_nrt_memory_stats.heap_peak_bytes =
+            g_nrt_memory_stats.heap_current_bytes;
+    }
+}
+
+static void nrt_memory_sub_heap_current(size_t size)
+{
+    if (size > g_nrt_memory_stats.heap_current_bytes) {
+        g_nrt_memory_stats.heap_current_bytes = 0;
+        return;
+    }
+    g_nrt_memory_stats.heap_current_bytes -= size;
+}
+
+static void nrt_memory_link(NrtMemoryHeader* header)
+{
+    header->next      = g_nrt_memory_head;
+    g_nrt_memory_head = header;
+}
+
+static void nrt_memory_unlink(NrtMemoryHeader* header)
+{
+    if (header == NULL) {
+        return;
+    }
+    if (g_nrt_memory_head == header) {
+        g_nrt_memory_head = header->next;
+        header->next      = NULL;
+        return;
+    }
+
+    NrtMemoryHeader* current = g_nrt_memory_head;
+    while (current != NULL && current->next != header) {
+        current = current->next;
+    }
+    if (current != NULL) {
+        current->next = header->next;
+        header->next  = NULL;
+    }
+}
+
+void* nrt_mem_alloc(size_t      size,
+                    const u8*   file_data,
+                    size_t      file_count,
+                    uint32_t    line)
+{
+    NrtMemoryHeader* header =
+        (NrtMemoryHeader*)malloc(sizeof(NrtMemoryHeader) + size);
+    if (header == NULL) {
+        nrt_eprintfn("fatal: memory allocation failed");
+        abort();
+    }
+
+    header->size   = size;
+    header->file   = NULL;
+    header->line   = 0;
+    header->leaked = false;
+    header->index  = ++g_nrt_memory_index;
+    nrt_memory_set_source(header, file_data, file_count, line);
+
+    if (header->index == g_nrt_memory_break_index) {
+        nrt_eprintfn("std.mem: allocation break reached at index %llu",
+                     (unsigned long long)header->index);
+    }
+
+    nrt_memory_link(header);
+
+    g_nrt_memory_stats.heap_alloc_count++;
+    g_nrt_memory_stats.heap_bytes_allocated += size;
+    nrt_memory_add_heap_current(size);
+
+    return (void*)(header + 1);
+}
+
+void* nrt_mem_realloc(void*       ptr,
+                      size_t      size,
+                      const u8*   file_data,
+                      size_t      file_count,
+                      uint32_t    line)
+{
+    if (ptr == NULL) {
+        return nrt_mem_alloc(size, file_data, file_count, line);
+    }
+
+    NrtMemoryHeader* old_header = ((NrtMemoryHeader*)ptr) - 1;
+    size_t           old_size   = old_header->size;
+    bool             was_leaked = old_header->leaked;
+
+    if (!old_header->leaked) {
+        nrt_memory_unlink(old_header);
+    }
+
+    NrtMemoryHeader* header =
+        (NrtMemoryHeader*)realloc(old_header, sizeof(NrtMemoryHeader) + size);
+    if (header == NULL) {
+        nrt_eprintfn("fatal: memory reallocation failed");
+        abort();
+    }
+
+    header->size   = size;
+    header->leaked = was_leaked;
+    header->index  = ++g_nrt_memory_index;
+    nrt_memory_set_source(header, file_data, file_count, line);
+
+    if (header->index == g_nrt_memory_break_index) {
+        nrt_eprintfn("std.mem: allocation break reached at index %llu",
+                     (unsigned long long)header->index);
+    }
+
+    if (!header->leaked) {
+        nrt_memory_link(header);
+    }
+
+    g_nrt_memory_stats.heap_realloc_count++;
+    g_nrt_memory_stats.heap_bytes_reallocated += size;
+    if (size >= old_size) {
+        nrt_memory_add_heap_current(size - old_size);
+    } else {
+        nrt_memory_sub_heap_current(old_size - size);
+    }
+
+    return (void*)(header + 1);
+}
+
+void nrt_mem_free(void* ptr)
+{
+    if (ptr == NULL) {
+        return;
+    }
+
+    NrtMemoryHeader* header = ((NrtMemoryHeader*)ptr) - 1;
+
+    g_nrt_memory_stats.heap_free_count++;
+    g_nrt_memory_stats.heap_bytes_freed += header->size;
+    nrt_memory_sub_heap_current(header->size);
+
+    if (!header->leaked) {
+        nrt_memory_unlink(header);
+    }
+
+    free(header->file);
+    free(header);
+}
+
+size_t nrt_mem_size(const void* ptr)
+{
+    if (ptr == NULL) {
+        return 0;
+    }
+    const NrtMemoryHeader* header = ((const NrtMemoryHeader*)ptr) - 1;
+    return header->size;
+}
+
+void nrt_mem_leak(void* ptr)
+{
+    if (ptr == NULL) {
+        return;
+    }
+
+    NrtMemoryHeader* header = ((NrtMemoryHeader*)ptr) - 1;
+    if (header->leaked) {
+        return;
+    }
+    header->leaked = true;
+    nrt_memory_unlink(header);
+}
+
+void nrt_mem_break_on_alloc(uint64_t index)
+{
+    g_nrt_memory_break_index = index;
+}
+
+size_t nrt_mem_allocation_count(void)
+{
+    size_t           count   = 0;
+    NrtMemoryHeader* current = g_nrt_memory_head;
+    while (current != NULL) {
+        count++;
+        current = current->next;
+    }
+    return count;
+}
+
+size_t nrt_mem_total_allocated(void)
+{
+    size_t           total   = 0;
+    NrtMemoryHeader* current = g_nrt_memory_head;
+    while (current != NULL) {
+        total += current->size;
+        current = current->next;
+    }
+    return total;
+}
+
+void nrt_mem_print_leaks(void)
+{
+    if (g_nrt_memory_head == NULL) {
+        return;
+    }
+
+    size_t           leak_count   = 0;
+    size_t           total_leaked = 0;
+    NrtMemoryHeader* current      = g_nrt_memory_head;
+
+    nrt_eprintfn("std.mem: memory leaks detected");
+    while (current != NULL) {
+        nrt_eprintfn("  [%llu] %s:%u %zu bytes",
+                     (unsigned long long)current->index,
+                     current->file != NULL ? current->file : "",
+                     current->line,
+                     current->size);
+        leak_count++;
+        total_leaked += current->size;
+        current = current->next;
+    }
+    nrt_eprintfn("std.mem: total %zu leaks, %zu bytes",
+                 leak_count,
+                 total_leaked);
+}
+
+void nrt_mem_stats_snapshot(NrtMemoryStats* out)
+{
+    if (out != NULL) {
+        *out = g_nrt_memory_stats;
+    }
+}
+
+void nrt_mem_stats_delta(NrtMemoryStats*       out,
+                         const NrtMemoryStats* before,
+                         const NrtMemoryStats* after)
+{
+    if (out == NULL || before == NULL || after == NULL) {
+        return;
+    }
+
+    *out = (NrtMemoryStats){
+        .heap_alloc_count =
+            after->heap_alloc_count - before->heap_alloc_count,
+        .heap_realloc_count =
+            after->heap_realloc_count - before->heap_realloc_count,
+        .heap_free_count = after->heap_free_count - before->heap_free_count,
+        .heap_bytes_allocated =
+            after->heap_bytes_allocated - before->heap_bytes_allocated,
+        .heap_bytes_reallocated =
+            after->heap_bytes_reallocated - before->heap_bytes_reallocated,
+        .heap_bytes_freed =
+            after->heap_bytes_freed - before->heap_bytes_freed,
+        .heap_current_bytes =
+            after->heap_current_bytes >= before->heap_current_bytes
+                ? after->heap_current_bytes - before->heap_current_bytes
+                : 0,
+        .heap_peak_bytes = after->heap_peak_bytes,
+        .arena_init_count =
+            after->arena_init_count - before->arena_init_count,
+        .arena_done_count =
+            after->arena_done_count - before->arena_done_count,
+        .arena_alloc_count =
+            after->arena_alloc_count - before->arena_alloc_count,
+        .arena_bytes_allocated =
+            after->arena_bytes_allocated - before->arena_bytes_allocated,
+        .arena_commit_count =
+            after->arena_commit_count - before->arena_commit_count,
+        .arena_bytes_committed =
+            after->arena_bytes_committed - before->arena_bytes_committed,
+        .array_growth_count =
+            after->array_growth_count - before->array_growth_count,
+        .array_bytes_allocated =
+            after->array_bytes_allocated - before->array_bytes_allocated,
+    };
+}
+
+void nrt_mem_record_arena_init(size_t bytes_committed)
+{
+    g_nrt_memory_stats.arena_init_count++;
+    g_nrt_memory_stats.arena_commit_count++;
+    g_nrt_memory_stats.arena_bytes_committed += bytes_committed;
+}
+
+void nrt_mem_record_arena_done(void)
+{
+    g_nrt_memory_stats.arena_done_count++;
+}
+
+void nrt_mem_record_arena_commit(size_t bytes_committed)
+{
+    g_nrt_memory_stats.arena_commit_count++;
+    g_nrt_memory_stats.arena_bytes_committed += bytes_committed;
+}
+
+void nrt_mem_record_arena_alloc(size_t bytes_allocated)
+{
+    g_nrt_memory_stats.arena_alloc_count++;
+    g_nrt_memory_stats.arena_bytes_allocated += bytes_allocated;
+}
+
+void nrt_mem_record_array_growth(size_t bytes_allocated)
+{
+    g_nrt_memory_stats.array_growth_count++;
+    g_nrt_memory_stats.array_bytes_allocated += bytes_allocated;
 }
 
 void nrt_pr(const void* data, size_t count)
