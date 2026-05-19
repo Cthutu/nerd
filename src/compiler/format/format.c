@@ -395,6 +395,11 @@ internal bool format_parse_comment_line(string  line,
     return true;
 }
 
+internal bool format_comment_body_is_protected(string comment_body)
+{
+    return comment_body.count > 0 && comment_body.data[0] == '|';
+}
+
 //------------------------------------------------------------------------------
 // Append one wrapped comment paragraph.
 
@@ -7566,8 +7571,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
         }
 
         while (true) {
-            string body = format_trim_ascii(comment_body);
-            if (body.count == 0) {
+            if (format_comment_body_is_protected(comment_body)) {
                 if (paragraph.count > 0) {
                     format_emit_comment_paragraph(
                         &sb, indent, paragraph, wrap_width);
@@ -7575,16 +7579,30 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                 }
                 sb_append_string(&sb, indent);
                 sb_append_cstr(&sb, "--");
+                sb_append_string(&sb, comment_body);
                 sb_append_char(&sb, '\n');
                 just_emitted_blank_line = false;
-            } else if (paragraph.count == 0) {
-                paragraph =
-                    string_format(&paragraph_arena, STRINGP, STRINGV(body));
             } else {
-                paragraph = string_format(&paragraph_arena,
-                                          STRINGP " " STRINGP,
-                                          STRINGV(paragraph),
-                                          STRINGV(body));
+                string body = format_trim_ascii(comment_body);
+                if (body.count == 0) {
+                    if (paragraph.count > 0) {
+                        format_emit_comment_paragraph(
+                            &sb, indent, paragraph, wrap_width);
+                        paragraph = (string){0};
+                    }
+                    sb_append_string(&sb, indent);
+                    sb_append_cstr(&sb, "--");
+                    sb_append_char(&sb, '\n');
+                    just_emitted_blank_line = false;
+                } else if (paragraph.count == 0) {
+                    paragraph =
+                        string_format(&paragraph_arena, STRINGP, STRINGV(body));
+                } else {
+                    paragraph = string_format(&paragraph_arena,
+                                              STRINGP " " STRINGP,
+                                              STRINGV(paragraph),
+                                              STRINGV(body));
+                }
             }
 
             offset = has_newline ? line_end + 1 : line_end;
