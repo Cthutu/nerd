@@ -88,22 +88,6 @@ bool ast_token_starts_expression(TokenKind kind)
     }
 }
 
-internal u32 ast_push_generated_string_literal(Lexer* lexer, string value)
-{
-    if (lexer->string_arena.data == NULL) {
-        arena_init(&lexer->string_arena);
-    }
-
-    u8* buffer = (u8*)arena_alloc(&lexer->string_arena, value.count);
-    if (value.count > 0) {
-        memcpy(buffer, value.data, value.count);
-    }
-
-    u32 index = (u32)array_count(lexer->strings);
-    array_push(lexer->strings, string_from(buffer, value.count));
-    return index;
-}
-
 internal bool
 ast_parse_builtin_macro(AstParseState* state, AstToken token, u32* out_node)
 {
@@ -120,35 +104,14 @@ ast_parse_builtin_macro(AstParseState* state, AstToken token, u32* out_node)
                                          state->token.kind);
     }
 
-    string name = lex_symbol(state->lexer, state->token.value.symbol_handle);
-    if (string_eq_cstr(name, "file")) {
-        u32 string_index = ast_push_generated_string_literal(
-            state->lexer, state->lexer->source.source_path);
+    u32    symbol_handle = state->token.value.symbol_handle;
+    string name          = lex_symbol(state->lexer, symbol_handle);
+    if (string_eq_cstr(name, "file") || string_eq_cstr(name, "line")) {
         return ast_emit_node(state,
                              (AstNode){
-                                 .kind        = AK_StringLiteral,
+                                 .kind        = AK_BuiltinMacro,
                                  .token_index = token.token_index,
-                                 .a           = string_index,
-                             },
-                             out_node);
-    }
-
-    if (string_eq_cstr(name, "line")) {
-        u32 line = 0;
-        u32 col  = 0;
-        if (!lex_offset_to_line_col(
-                state->lexer->source, token.offset, &line, &col)) {
-            return false;
-        }
-        UNUSED(col);
-
-        u32 integer_index = (u32)array_count(state->lexer->integers);
-        array_push(state->lexer->integers, (u64)line + 1);
-        return ast_emit_node(state,
-                             (AstNode){
-                                 .kind        = AK_IntegerLiteral,
-                                 .token_index = token.token_index,
-                                 .a           = integer_index,
+                                 .a           = symbol_handle,
                              },
                              out_node);
     }

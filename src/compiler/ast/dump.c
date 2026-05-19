@@ -28,6 +28,8 @@ string ast_kind_to_string(AstKind kind)
         return s("InterpPartExpr");
     case AK_InterpolatedString:
         return s("InterpolatedString");
+    case AK_BuiltinMacro:
+        return s("BuiltinMacro");
     case AK_SymbolRef:
         return s("SymbolRef");
     case AK_LogicalNot:
@@ -236,6 +238,9 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_InterpolatedString:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "parts=%u..%u", node->a, node->b));
+            break;
+        case AK_BuiltinMacro:
+            row[3] = table_cell_string(lex_symbol(lexer, node->a));
             break;
         case AK_SymbolRef:
             row[3] = table_cell_string(lex_symbol(lexer, node->a));

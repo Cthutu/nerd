@@ -893,6 +893,16 @@ internal void llvm_append_assert_source_path_global_name(StringBuilder* sb,
     sb_format(sb, "@.assert.source_path.m%u.%u", module_index, stmt_index);
 }
 
+internal void llvm_append_builtin_module_file_global_name(StringBuilder* sb,
+                                                          const Hir*     hir)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.macro.file.m%u", module_index);
+}
+
 internal void llvm_append_assert_default_message_global_name(StringBuilder* sb,
                                                              const Hir*     hir)
 {
@@ -1532,6 +1542,27 @@ internal bool llvm_append_constant_expr_value(StringBuilder* sb,
     case HIR_EXPR_BoolLiteral:
         sb_append_cstr(sb, expr->boolean ? "1" : "0");
         return true;
+    case HIR_EXPR_BuiltinMacro:
+        {
+            string name = expr->symbol_handle != U32_MAX
+                              ? lex_symbol(lexer, expr->symbol_handle)
+                              : (string){0};
+            if (string_eq_cstr(name, "file")) {
+                StringBuilder global = {0};
+                sb_init(&global, arena);
+                llvm_append_builtin_module_file_global_name(&global, hir);
+                sb_format(sb,
+                          "{ ptr " STRINGP ", i64 %zu }",
+                          STRINGV(sb_to_string(&global)),
+                          lexer->source.source_path.count);
+                return true;
+            }
+            if (string_eq_cstr(name, "line")) {
+                sb_format(sb, "%u", expr->source_line);
+                return true;
+            }
+            return false;
+        }
     case HIR_EXPR_StringLiteral:
         if (expr->string_is_cstring &&
             llvm_type_kind(sema, type_index) == STK_Pointer) {
@@ -1613,6 +1644,7 @@ internal bool llvm_expr_is_constant_value(const Hir*   hir,
     case HIR_EXPR_IntegerLiteral:
     case HIR_EXPR_FloatLiteral:
     case HIR_EXPR_StringLiteral:
+    case HIR_EXPR_BuiltinMacro:
     case HIR_EXPR_BoolLiteral:
     case HIR_EXPR_NilLiteral:
         return true;
@@ -1716,6 +1748,9 @@ typedef struct {
     u32               break_defer_count;
     u32               continue_defer_count;
     u32               global_init_value_index;
+    string            macro_source_path;
+    u32               macro_source_line;
+    const Hir*        macro_source_hir;
     bool              discard_expr_value;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot) slots;
@@ -4854,6 +4889,42 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .type_index = expr->type_index,
                 .value      = result,
             };
+        }
+    case HIR_EXPR_BuiltinMacro:
+        {
+            string name = expr->symbol_handle != U32_MAX
+                              ? lex_symbol(ctx->lexer, expr->symbol_handle)
+                              : (string){0};
+            if (string_eq_cstr(name, "file")) {
+                string        path      = ctx->macro_source_path.count > 0
+                                              ? ctx->macro_source_path
+                                              : expr->source_path;
+                const Hir*    macro_hir = ctx->macro_source_hir != NULL
+                                              ? ctx->macro_source_hir
+                                              : ctx->hir;
+                StringBuilder sb        = {0};
+                sb_init(&sb, ctx->arena);
+                llvm_append_builtin_module_file_global_name(&sb, macro_hir);
+                string global = sb_to_string(&sb);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = string_format(ctx->arena,
+                                                "{ ptr " STRINGP ", i64 %zu }",
+                                                STRINGV(global),
+                                                path.count),
+                };
+            }
+            if (string_eq_cstr(name, "line")) {
+                u32 line = ctx->macro_source_line != 0 ? ctx->macro_source_line
+                                                       : expr->source_line;
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = string_format(ctx->arena, "%u", line),
+                };
+            }
+            return (LlvmValue){0};
         }
     case HIR_EXPR_BoolLiteral:
         return (LlvmValue){
@@ -8449,10 +8520,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         &callee_hir->params[callee_function->first_param + i];
                     LlvmValue context_value = {0};
                     if (param->default_expr_index != U32_MAX) {
+                        default_emit_ctx->macro_source_path = expr->source_path;
+                        default_emit_ctx->macro_source_line = expr->source_line;
+                        default_emit_ctx->macro_source_hir  = ctx->hir;
                         context_value =
                             llvm_emit_expr(default_emit_ctx,
                                            function,
                                            param->default_expr_index);
+                        default_emit_ctx->macro_source_path = (string){0};
+                        default_emit_ctx->macro_source_line = 0;
+                        default_emit_ctx->macro_source_hir  = NULL;
                         if (!context_value.ok) {
                             array_free(default_values);
                             array_free(args);
@@ -10606,6 +10683,18 @@ internal void llvm_render_string_literals(StringBuilder* sb,
     }
 }
 
+internal void llvm_render_builtin_macro_globals(StringBuilder* sb,
+                                                const Hir*     hir,
+                                                const Lexer*   lexer)
+{
+    llvm_append_builtin_module_file_global_name(sb, hir);
+    sb_format(sb,
+              " = private unnamed_addr constant [%zu x i8] c\"",
+              lexer->source.source_path.count + 1);
+    llvm_append_escaped_string_bytes(sb, lexer->source.source_path);
+    sb_append_cstr(sb, "\\00\"\n");
+}
+
 internal bool llvm_hir_uses_assert(const Hir* hir)
 {
     for (u32 i = 0; i < array_count(hir->stmts); ++i) {
@@ -10675,6 +10764,12 @@ internal bool llvm_eval_hir_string_constant(const Hir*   hir,
             return false;
         }
         *out = lexer->strings[expr->string_index];
+        return true;
+    }
+
+    if (expr->kind == HIR_EXPR_BuiltinMacro && expr->symbol_handle != U32_MAX &&
+        string_eq_cstr(lex_symbol(lexer, expr->symbol_handle), "file")) {
+        *out = lexer->source.source_path;
         return true;
     }
 
@@ -11387,19 +11482,17 @@ string llvm_render_hir(const Hir*   hir,
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
     sb_append_cstr(&sb, "; generated from HIR\n\n");
 
+    llvm_render_builtin_macro_globals(&sb, hir, lexer);
     if (array_count(lexer->strings) > 0) {
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
     }
-    bool rendered_const_slice_backing = llvm_render_const_slice_backing_values(
+    (void)llvm_render_const_slice_backing_values(
         &sb, hir, lexer, render_sema, arena);
     if (llvm_hir_uses_assert(hir)) {
         llvm_render_assert_globals(&sb, hir, lexer);
     }
-    if (array_count(lexer->strings) > 0 || rendered_const_slice_backing ||
-        llvm_hir_uses_assert(hir)) {
-        sb_append_char(&sb, '\n');
-    }
+    sb_append_char(&sb, '\n');
 
     bool uses_string_runtime = llvm_hir_uses_string_runtime(hir, render_sema);
     bool uses_assert_runtime = llvm_hir_uses_assert(hir);

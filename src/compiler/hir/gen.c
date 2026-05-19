@@ -295,6 +295,29 @@ internal u32 hir_add_expr(Hir* hir, HirExpr expr)
     return (u32)array_count(hir->exprs) - 1;
 }
 
+internal u32 hir_node_source_line(const Lexer* lexer,
+                                  const Ast*   ast,
+                                  u32          node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(lexer->source,
+                                lexer->tokens[node->token_index].offset,
+                                &line,
+                                &col)) {
+        return 0;
+    }
+    UNUSED(col);
+    return line + 1;
+}
+
 internal u32 hir_add_unsupported_expr(Hir*        hir,
                                       const Sema* sema,
                                       u32         node_index)
@@ -953,16 +976,19 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
         }
         array_free(lowered_args);
 
-        return hir_add_expr(hir,
-                            (HirExpr){
-                                .kind              = HIR_EXPR_Call,
-                                .type_index        = expected_type,
-                                .symbol_handle     = U32_MAX,
-                                .local_index       = sema_no_local(),
-                                .callee_expr_index = callee_expr_index,
-                                .first_arg         = first_arg,
-                                .arg_count         = call->arg_count,
-                            });
+        return hir_add_expr(
+            hir,
+            (HirExpr){
+                .kind              = HIR_EXPR_Call,
+                .type_index        = expected_type,
+                .symbol_handle     = U32_MAX,
+                .local_index       = sema_no_local(),
+                .callee_expr_index = callee_expr_index,
+                .first_arg         = first_arg,
+                .arg_count         = call->arg_count,
+                .source_line = hir_node_source_line(lexer, ast, node_index),
+                .source_path = lexer->source.source_path,
+            });
     }
 
     return hir_lower_expr(hir, lexer, ast, sema, node_index);
@@ -1285,6 +1311,27 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .string_is_cstring = token_kind == TK_CString,
                 });
         }
+    case AK_BuiltinMacro:
+        {
+            u32 line = 0;
+            u32 col  = 0;
+            if (node->token_index < array_count(lexer->tokens)) {
+                const Token* token = &lexer->tokens[node->token_index];
+                (void)lex_offset_to_line_col(
+                    lexer->source, token->offset, &line, &col);
+            }
+            UNUSED(col);
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind          = HIR_EXPR_BuiltinMacro,
+                    .type_index    = hir_node_type(sema, node_index),
+                    .symbol_handle = node->a,
+                    .local_index   = sema_no_local(),
+                    .source_line   = line + 1,
+                    .source_path   = lexer->source.source_path,
+                });
+        }
     case AK_StringConcat:
         return hir_add_expr(hir,
                             (HirExpr){
@@ -1573,6 +1620,9 @@ internal u32 hir_lower_expr(Hir*         hir,
                         .callee_expr_index = callee_expr_index,
                         .first_arg         = first_arg,
                         .arg_count         = arg_count,
+                        .source_line =
+                            hir_node_source_line(lexer, ast, node_index),
+                        .source_path = lexer->source.source_path,
                     });
             }
 
@@ -1620,6 +1670,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .callee_expr_index = callee_expr_index,
                     .first_arg         = first_arg,
                     .arg_count         = call->arg_count,
+                    .source_line = hir_node_source_line(lexer, ast, node_index),
+                    .source_path = lexer->source.source_path,
                 });
         }
     case AK_Cast:

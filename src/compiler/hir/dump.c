@@ -572,6 +572,14 @@ internal void hir_render_expr(StringBuilder* sb,
         }
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_BuiltinMacro:
+        sb_append_char(sb, '@');
+        if (expr->symbol_handle != U32_MAX) {
+            sb_append_string(sb, lex_symbol(lexer, expr->symbol_handle));
+        } else {
+            sb_append_cstr(sb, "<macro>");
+        }
+        break;
     case HIR_EXPR_BoolLiteral:
         sb_append_cstr(sb, expr->boolean ? "yes" : "no");
         break;

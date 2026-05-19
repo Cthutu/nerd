@@ -64,6 +64,7 @@ typedef enum : u8 {
     HIR_EXPR_StringLiteral,
     HIR_EXPR_StringConcat,
     HIR_EXPR_InterpolatedString,
+    HIR_EXPR_BuiltinMacro,
     HIR_EXPR_BoolLiteral,
     HIR_EXPR_NilLiteral,
     HIR_EXPR_FunctionRef,
@@ -249,6 +250,8 @@ typedef struct {
     u32         callee_expr_index;
     u32         first_arg;
     u32         arg_count;
+    u32         source_line;
+    string      source_path;
     u32         body_block_index;
     u32         first_branch;
     u32         branch_count;

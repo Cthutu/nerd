@@ -1928,6 +1928,7 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
     case AK_StringLiteral:
+    case AK_BuiltinMacro:
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_EnumVariant:
@@ -6818,6 +6819,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
     case AK_StringLiteral:
+    case AK_BuiltinMacro:
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_EnumVariant:
@@ -7600,6 +7602,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
     case AK_StringLiteral:
+    case AK_BuiltinMacro:
     case AK_BoolLiteral:
     case AK_NilLiteral:
         return;
@@ -14518,6 +14521,26 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         }
         break;
 
+    case AK_BuiltinMacro:
+        {
+            string name = lex_symbol(lexer, node->a);
+            if (string_eq_cstr(name, "file")) {
+                type_index = sema_builtin_type(sema, STK_String);
+            } else if (string_eq_cstr(name, "line")) {
+                type_index = sema_type_is_concrete_integer(sema, expected_type)
+                                 ? expected_type
+                                 : sema_builtin_type(sema, STK_UntypedInteger);
+            } else {
+                return error_0204_unexpected_token_here(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    lexer->tokens[node->token_index].kind,
+                    "unknown built-in macro",
+                    "Use `@file` or `@line`");
+            }
+        }
+        break;
+
     case AK_EnumVariant:
         if (expected_type == sema_no_type() ||
             sema->types[expected_type].kind != STK_Enum) {
@@ -17697,6 +17720,7 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
     case AK_StringLiteral:
     case AK_InterpPartExpr:
     case AK_InterpolatedString:
+    case AK_BuiltinMacro:
         ok = false;
         break;
     case AK_StringConcat:
@@ -18267,6 +18291,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
     case AK_StringLiteral:
+    case AK_BuiltinMacro:
     case AK_BoolLiteral:
     case AK_NilLiteral:
     case AK_EnumVariant:
