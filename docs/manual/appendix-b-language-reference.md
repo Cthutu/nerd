@@ -59,6 +59,8 @@ intended exit code.
 - Default parameters are written as `name: Type = expr`.
 - Defaulted parameters must be trailing parameters.
 - Default expressions are evaluated at the call site.
+- `@file` and `@line` inside default parameter expressions therefore expand to
+  the caller's source filename and line number.
 - A default expression can reference earlier parameters, but not itself or later
   parameters.
 - Function types do not include defaults. A direct function-value alias can use

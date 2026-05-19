@@ -116,3 +116,6 @@ built-in-macro ::= '@file' | '@line'
 `@file` expands to a `string` literal containing the current source filename.
 `@line` expands to an untyped integer literal containing the current source line
 number. Line numbers are 1-based.
+
+When a built-in macro appears in a default parameter expression, it is evaluated
+at the call site where that default argument is inserted.
