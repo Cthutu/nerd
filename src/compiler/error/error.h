@@ -365,6 +365,11 @@ bool error_0349_unqualified_trait_member_call(NerdSource source,
                                               string     trait);
 bool error_0350_unexpected_return_value(NerdSource source, ErrorSpan span);
 bool error_0351_loop_else_on_infinite_loop(NerdSource source, ErrorSpan span);
+bool error_0352_missing_trait_impl_members(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     trait,
+                                           string     missing_members,
+                                           u32        missing_member_count);
 
 //------------------------------------------------------------------------------
 // Low-level error system

@@ -4457,6 +4457,12 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
     }
     const AstNode* trait_body = &ast->nodes[trait->body_node_index];
     const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
+
+    Arena temp_arena          = {0};
+    arena_init(&temp_arena);
+    StringBuilder missing = {0};
+    sb_init(&missing, &temp_arena);
+    u32 missing_count = 0;
     for (u32 i = trait_body->a; i < trait_body->b; ++i) {
         const AstNode* required = &ast->nodes[i];
         if (required->kind != AK_Bind) {
@@ -4466,10 +4472,39 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
         u32 member_index    = U32_MAX;
         if (!sema_impl_has_member(
                 ast, impl_body, required_symbol, &member_index)) {
-            return error_0304_type_mismatch(lexer->source,
-                                            sema_node_span(lexer, impl_node),
-                                            s("trait member"),
-                                            lex_symbol(lexer, required_symbol));
+            if (missing_count > 0) {
+                sb_append_cstr(&missing, ", ");
+            }
+            sb_append_char(&missing, '`');
+            sb_append_string(&missing, lex_symbol(lexer, required_symbol));
+            sb_append_char(&missing, '`');
+            missing_count++;
+        }
+    }
+
+    if (missing_count > 0) {
+        bool ok = error_0352_missing_trait_impl_members(
+            lexer->source,
+            sema_node_span(lexer, impl_node),
+            lex_symbol(lexer, trait_symbol),
+            sb_to_string(&missing),
+            missing_count);
+        arena_done(&temp_arena);
+        return ok;
+    }
+
+    arena_done(&temp_arena);
+
+    for (u32 i = trait_body->a; i < trait_body->b; ++i) {
+        const AstNode* required = &ast->nodes[i];
+        if (required->kind != AK_Bind) {
+            continue;
+        }
+        u32 required_symbol = ast_get_symbol(required);
+        u32 member_index    = U32_MAX;
+        if (!sema_impl_has_member(
+                ast, impl_body, required_symbol, &member_index)) {
+            continue;
         }
 
         const AstNode* value =

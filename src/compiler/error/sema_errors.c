@@ -1420,3 +1420,35 @@ bool error_0351_loop_else_on_infinite_loop(NerdSource source, ErrorSpan span)
 }
 
 //------------------------------------------------------------------------------
+// Report a trait implementation that omits required members.
+
+bool error_0352_missing_trait_impl_members(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     trait,
+                                           string     missing_members,
+                                           u32        missing_member_count)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Trait implementation is missing required member%s",
+                   missing_member_count == 1 ? "" : "s");
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "This implementation does not define every member required by `" STRINGP
+        "`",
+        STRINGV(trait));
+    error_add_note(&error,
+                   "Missing member%s: " STRINGP,
+                   missing_member_count == 1 ? "" : "s",
+                   STRINGV(missing_members));
+    error_add_help(&error,
+                   "Add the missing member%s to this `impl` block.",
+                   missing_member_count == 1 ? "" : "s");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

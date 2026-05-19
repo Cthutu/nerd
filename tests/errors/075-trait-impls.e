@@ -1,5 +1,6 @@
 Display :: trait {
     show :: fn (Self) -> string
+    describe :: fn (Self) -> string
 }
 
 Point :: plex {
@@ -13,23 +14,25 @@ impl Display for Point {
 main :: fn () => 0
 ¬
 {
-    "message": "Type mismatch: expected `trait member`, found `show`",
+    "message": "Trait implementation is missing required members",
     "source_file": "tests/errors/075-trait-impls.e",
     "primary_location": {
-        "line": 10,
+        "line": 11,
         "column": 1
     },
     "references": [
         {
             "kind": "primary",
-            "line": 10,
+            "line": 11,
             "column": 1,
             "length": 4,
-            "message": "This expression has type `show`"
+            "message": "This implementation does not define every member required by `Display`"
         }
     ],
-    "notes": [],
+    "notes": [
+        "Missing members: `show`, `describe`"
+    ],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Add the missing members to this `impl` block."
     ]
 }
