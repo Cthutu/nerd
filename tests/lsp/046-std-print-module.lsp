@@ -151,11 +151,11 @@ main :: fn () {
             "uri": "file:///home/matt/nerd/mods/core.n",
             "range": {
                 "start": {
-                    "line": 45,
+                    "line": 47,
                     "character": 4
                 },
                 "end": {
-                    "line": 45,
+                    "line": 47,
                     "character": 7
                 }
             }

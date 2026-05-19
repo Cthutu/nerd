@@ -6,25 +6,57 @@
 -- owned by the standard library and uses native operating-system memory APIs
 -- rather than the Nerd language runtime or the C library allocator.
 
--- Imports the Linux platform calls required by the memory allocator.
-ffi "c" {
-    mem_mmap    :: mmap (addr   : ^void,
-                         len    : usize,
-                         prot   : i32,
-                         flags  : i32,
-                         fd     : i32,
-                         offset : usize) -> ^u8
-    mem_munmap  :: munmap (addr: ^void, len: usize) -> i32
-    mem_sysconf :: sysconf (name: i32) -> i64
+on "linux" {
+
+    -- Imports the Linux platform calls required by the memory allocator.
+    ffi "c" {
+        mem_mmap    :: mmap (addr   : ^void,
+                             len    : usize,
+                             prot   : i32,
+                             flags  : i32,
+                             fd     : i32,
+                             offset : usize) -> ^u8
+        mem_munmap  :: munmap (addr: ^void, len: usize) -> i32
+        mem_sysconf :: sysconf (name: i32) -> i64
+    }
+
+    PROT_READ  :: 1
+    PROT_WRITE :: 2
+
+    MAP_PRIVATE   :: 0x02
+    MAP_ANONYMOUS :: 0x20
+
+    _SC_PAGESIZE :: 30
+
+    -- Returns the page size used by Linux memory mappings.
+    page_size :: fn () -> usize {
+        value := mem_sysconf(_SC_PAGESIZE)
+        on value <= 0 => return 4096
+        return value.as(usize)
+    }
+
+    -- Reserves read-write bytes directly from the operating system.
+    raw_alloc :: fn (bytes: usize) -> ^u8 {
+        mapping_size := align_up(bytes, page_size())
+        memory := mem_mmap(nil,
+                           mapping_size,
+                           PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | MAP_ANONYMOUS,
+                           -1,
+                           0)
+        on memory == nil => {
+            memory_abort("memory allocation failed")
+        }
+        return memory
+    }
+
+    -- Releases bytes previously reserved by `raw_alloc`.
+    raw_free :: fn (memory: ^u8, mapping_size: usize) {
+        on memory == nil => return
+        _ := mem_munmap(memory, mapping_size)
+    }
+
 }
-
-PROT_READ  :: 1
-PROT_WRITE :: 2
-
-MAP_PRIVATE   :: 0x02
-MAP_ANONYMOUS :: 0x20
-
-_SC_PAGESIZE :: 30
 
 -- Stores metadata immediately before each user allocation.
 MemoryHeader :: plex {
@@ -34,8 +66,7 @@ MemoryHeader :: plex {
     index          u64           -- Process-local allocation sequence number.
     next           ^MemoryHeader -- Next live, reportable allocation.
     line           u32           -- Source line that requested the allocation.
-    leaked         bool          -- Whether leak reporting ignores this
-                                 --     allocation.
+    leaked         bool          -- Whether reports ignore this allocation.
 }
 
 -- Captures heap and future allocator-family counters.
@@ -62,13 +93,6 @@ g_memory_head        : ^MemoryHeader
 g_memory_index       : u64           = 0
 g_memory_break_index : u64           = 0
 g_memory_stats       : MemoryStats   = MemoryStats { ... }
-
--- Returns the page size used by Linux memory mappings.
-page_size :: fn () -> usize {
-    value := mem_sysconf(_SC_PAGESIZE)
-    on value <= 0 => return 4096
-    return value.as(usize)
-}
 
 -- Updates current and peak live heap byte counters.
 stats_add_heap_current :: fn (bytes: usize) {
@@ -116,27 +140,6 @@ unlink_header :: fn (header: ^MemoryHeader) {
 -- Stops the process after a fatal memory error.
 memory_abort :: fn (message: string) {
     assert no, message
-}
-
--- Reserves read-write bytes directly from the operating system.
-raw_alloc :: fn (bytes: usize) -> ^u8 {
-    mapping_size := align_up(bytes, page_size())
-    memory := mem_mmap(nil,
-                       mapping_size,
-                       PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS,
-                       -1,
-                       0)
-    on memory == nil => {
-        memory_abort("memory allocation failed")
-    }
-    return memory
-}
-
--- Releases bytes previously reserved by `raw_alloc`.
-raw_free :: fn (memory: ^u8, mapping_size: usize) {
-    on memory == nil => return
-    _ := mem_munmap(memory, mapping_size)
 }
 
 -- Copies bytes from one allocation to another.

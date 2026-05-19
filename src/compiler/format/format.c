@@ -3847,6 +3847,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
                 cst->top_ons[owner->a].body_node_index == node_index) {
                 return true;
             }
+            if (owner->kind == CK_Test && owner->b == node_index) {
+                return true;
+            }
             if (owner->kind == CK_Bind) {
                 u32 value_node_index = owner->b;
                 if (cst->nodes[value_node_index].kind == CK_AnnotatedValue) {
@@ -3945,6 +3948,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
                 cst->top_ons[owner->a].body_node_index == i) {
                 return true;
             }
+            if (owner->kind == CK_Test && owner->b == i) {
+                return true;
+            }
             if (owner->kind == CK_Bind) {
                 u32 value_node_index = owner->b;
                 if (cst->nodes[value_node_index].kind == CK_AnnotatedValue) {
@@ -3995,6 +4001,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
         }
         if (node->kind == CK_TopOn &&
             cst->top_ons[node->a].body_node_index == node_index) {
+            return true;
+        }
+        if (node->kind == CK_Test && node->b == node_index) {
             return true;
         }
         if (node->kind == CK_Call) {

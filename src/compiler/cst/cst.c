@@ -5826,7 +5826,8 @@ u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)
         return cst->nodes[cst->top_ons[node->a].body_node_index].b;
     }
     if (node->kind == CK_Test) {
-        return cst->nodes[node->b].b;
+        u32 end = cst->nodes[node->b].b;
+        return end > node_index + 1 ? end : node_index + 1;
     }
     if (node->kind == CK_Defer) {
         u32 end = cst_block_statement_end_exclusive(cst, node->a);
