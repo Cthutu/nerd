@@ -1,5 +1,7 @@
 -- Nerd Standard Library (NSL)
 --
+-- Copyright (c) 2026 Matt Davies
+--
 -- Provides tracked byte-slice memory allocation helpers. The implementation is
 -- owned by the standard library and uses native operating-system memory APIs
 -- rather than the Nerd language runtime or the C library allocator.

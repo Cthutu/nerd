@@ -1,5 +1,7 @@
 -- Nerd Standard Library (NSL)
 --
+-- Copyright (c) 2026 Matt Davies
+--
 -- Provides core language-adjacent helpers that every Nerd module can rely on.
 -- This module owns basic printing, arena methods, canonical traits, and core
 -- result-style types.

@@ -1,5 +1,7 @@
 -- Nerd Standard Library (NSL)
 --
+-- Copyright (c) 2026 Matt Davies
+--
 -- Provides Linux operating-system bindings used by higher-level NSL modules.
 -- This file currently exposes C-library backed declarations while the library
 -- moves towards direct operating-system APIs.
