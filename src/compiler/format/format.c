@@ -4525,8 +4525,8 @@ internal void format_emit_fn_signature(StringBuilder* sb,
 }
 
 typedef struct {
-    usize name_width;
     usize bind_prefix_width;
+    usize foreign_name_width;
 } FormatFfiEntryWidths;
 
 internal usize format_ffi_entry_bind_prefix_width(const Cst*   cst,
@@ -4552,8 +4552,9 @@ internal void format_emit_ffi_entry_prefix(StringBuilder*       sb,
 {
     const CstFfiInfo* ffi  = &cst->ffi_infos[ffi_info_index];
     string            name = lex_symbol(lexer, ffi->symbol_handle);
-    bool  is_renamed       = ffi->foreign_symbol_handle != ffi->symbol_handle;
-    usize prefix_width     = name.count;
+    string foreign_name    = lex_symbol(lexer, ffi->foreign_symbol_handle);
+    bool   is_renamed      = ffi->foreign_symbol_handle != ffi->symbol_handle;
+    usize  prefix_width    = name.count;
     if (ffi->flags & CNF_Public) {
         sb_append_cstr(sb, "pub ");
         prefix_width += 4;
@@ -4564,12 +4565,11 @@ internal void format_emit_ffi_entry_prefix(StringBuilder*       sb,
             sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, ":: ");
-        sb_append_string(sb, lex_symbol(lexer, ffi->foreign_symbol_handle));
+        sb_append_string(sb, foreign_name);
+    }
+    for (usize pad = foreign_name.count; pad <= widths.foreign_name_width;
+         ++pad) {
         sb_append_char(sb, ' ');
-    } else {
-        for (usize pad = name.count; pad <= widths.name_width; ++pad) {
-            sb_append_char(sb, ' ');
-        }
     }
     sb_append_char(sb, '(');
 }
@@ -4708,9 +4708,10 @@ internal void format_emit_ffi_def(StringBuilder* sb,
         lexer,
         ffi_info_index,
         (FormatFfiEntryWidths){
-            .name_width = lex_symbol(lexer, ffi->symbol_handle).count,
             .bind_prefix_width =
                 format_ffi_entry_bind_prefix_width(cst, lexer, ffi_info_index),
+            .foreign_name_width =
+                lex_symbol(lexer, ffi->foreign_symbol_handle).count,
         });
 }
 
@@ -4747,19 +4748,19 @@ internal FormatFfiEntryWidths format_ffi_block_group_entry_widths(
     const Cst* cst, const Lexer* lexer, u32 first_ffi_info, u32 end_ffi_info)
 {
     FormatFfiEntryWidths widths = {
-        .name_width        = 0,
-        .bind_prefix_width = 0,
+        .bind_prefix_width  = 0,
+        .foreign_name_width = 0,
     };
     for (u32 i = first_ffi_info; i < end_ffi_info; ++i) {
-        usize name_width =
-            lex_symbol(lexer, cst->ffi_infos[i].symbol_handle).count;
-        if (name_width > widths.name_width) {
-            widths.name_width = name_width;
-        }
         usize bind_prefix_width =
             format_ffi_entry_bind_prefix_width(cst, lexer, i);
         if (bind_prefix_width > widths.bind_prefix_width) {
             widths.bind_prefix_width = bind_prefix_width;
+        }
+        usize foreign_name_width =
+            lex_symbol(lexer, cst->ffi_infos[i].foreign_symbol_handle).count;
+        if (foreign_name_width > widths.foreign_name_width) {
+            widths.foreign_name_width = foreign_name_width;
         }
     }
     return widths;
