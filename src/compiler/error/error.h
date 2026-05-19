@@ -213,6 +213,10 @@ bool error_0304_address_of_constant_binding(NerdSource source,
                                             ErrorSpan  span,
                                             string     actual_type,
                                             string     symbol);
+bool error_0304_integer_used_as_pointer(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type);
 bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,

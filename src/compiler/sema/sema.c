@@ -8743,6 +8743,20 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
            sema->types[actual_type].kind == STK_UntypedFloat;
 }
 
+internal bool sema_type_is_pointer_integer_mismatch(const Sema* sema,
+                                                    u32         expected_type,
+                                                    u32         actual_type)
+{
+    if (expected_type == sema_no_type() || actual_type == sema_no_type()) {
+        return false;
+    }
+
+    expected_type = sema_materialise_type(sema, expected_type);
+    actual_type   = sema_materialise_type(sema, actual_type);
+    return sema->types[expected_type].kind == STK_Pointer &&
+           sema_type_is_integer(sema, actual_type);
+}
+
 internal u32 sema_enum_variant_index(const Sema* sema,
                                      u32         enum_type,
                                      u32         symbol_handle)
@@ -17463,6 +17477,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     if (expected_type != sema_no_type() &&
         !sema_type_matches(sema, expected_type, type_index)) {
+        if (sema_type_is_pointer_integer_mismatch(
+                sema, expected_type, type_index)) {
+            return error_0304_integer_used_as_pointer(
+                lexer->source,
+                sema_node_span(lexer, node),
+                sema_type_name(lexer, sema, &temp_arena, expected_type),
+                sema_type_name(lexer, sema, &temp_arena, type_index));
+        }
         return error_0304_type_mismatch(
             lexer->source,
             sema_node_span(lexer, node),

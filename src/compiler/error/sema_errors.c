@@ -180,6 +180,28 @@ bool error_0304_address_of_constant_binding(NerdSource source,
     return false;
 }
 
+bool error_0304_integer_used_as_pointer(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Type mismatch: expected `" STRINGP "`, found `" STRINGP "`",
+                   STRINGV(expected_type),
+                   STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This integer cannot be used directly as a pointer");
+    error_add_help(&error,
+                   "Use `nil` for a null pointer, or use `.as(^T)` when an "
+                   "integer address is intentional.");
+    error_render(&error);
+    return false;
+}
+
 bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,

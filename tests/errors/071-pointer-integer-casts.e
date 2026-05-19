@@ -15,12 +15,94 @@ main :: fn () {
             "line": 2,
             "column": 16,
             "length": 1,
-            "message": "This expression has type `untyped integer`"
+            "message": "This integer cannot be used directly as a pointer"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Use `nil` for a null pointer, or use `.as(^T)` when an integer address is intentional."
+    ]
+}
+¬
+main :: fn () {
+    ptr: ^u8 = 0.as(usize)
+}
+¬
+{
+    "message": "Type mismatch: expected `^u8`, found `usize`",
+    "source_file": "tests/errors/071-pointer-integer-casts.e",
+    "primary_location": {
+        "line": 2,
+        "column": 17
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 17,
+            "length": 1,
+            "message": "This integer cannot be used directly as a pointer"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `nil` for a null pointer, or use `.as(^T)` when an integer address is intentional."
+    ]
+}
+¬
+take :: fn (ptr: ^u8) {}
+
+main :: fn () {
+    take(0)
+}
+¬
+{
+    "message": "Type mismatch: expected `^u8`, found `untyped integer`",
+    "source_file": "tests/errors/071-pointer-integer-casts.e",
+    "primary_location": {
+        "line": 4,
+        "column": 10
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 10,
+            "length": 1,
+            "message": "This integer cannot be used directly as a pointer"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `nil` for a null pointer, or use `.as(^T)` when an integer address is intentional."
+    ]
+}
+¬
+make :: fn () -> ^u8 {
+    return 0
+}
+
+main :: fn () {}
+¬
+{
+    "message": "Type mismatch: expected `^u8`, found `untyped integer`",
+    "source_file": "tests/errors/071-pointer-integer-casts.e",
+    "primary_location": {
+        "line": 2,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 12,
+            "length": 1,
+            "message": "This integer cannot be used directly as a pointer"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `nil` for a null pointer, or use `.as(^T)` when an integer address is intentional."
     ]
 }
 ¬
