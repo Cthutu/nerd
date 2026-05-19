@@ -244,23 +244,12 @@ static void nrt_heap_unlink(NrtHeapDebugHeader* header)
 }
 #endif
 
-void nrt_mem_print_leaks(void)
+void* nrt_mem_live_head(void)
 {
 #ifndef NDEBUG
-    if (g_nrt_heap_head == NULL) {
-        return;
-    }
-
-    fflush(stdout);
-    size_t count = 0;
-    size_t total = 0;
-    nrt_eprintfn("nrt: memory leaks detected");
-    for (NrtHeapDebugHeader* current = g_nrt_heap_head; current != NULL;
-         current                     = current->next) {
-        count++;
-        total += current->requested_size;
-    }
-    nrt_eprintfn("nrt: total %zu leaks, %zu bytes", count, total);
+    return g_nrt_heap_head;
+#else
+    return NULL;
 #endif
 }
 

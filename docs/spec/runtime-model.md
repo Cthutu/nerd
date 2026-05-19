@@ -100,6 +100,7 @@ wrappers:
 - `nrt_mem_free(memory)`
 - `nrt_mem_size(memory)`
 - `nrt_mem_leak(memory)`
+- `nrt_mem_live_head()`
 
 Every heap allocation stores a release header immediately before the returned
 pointer. The final word before the returned pointer is the requested size, so
@@ -127,7 +128,8 @@ results.
 `std.mem` is the public standard-library facade over this runtime foundation.
 It owns the source-level API, statistics presentation, and leak-reporting
 commands, while compiler-generated dynamic-array and arena operations use the
-same low-level allocation substrate.
+same low-level allocation substrate. The runtime exposes its debug allocation
+list to `std.mem`; it does not format or print leak reports itself.
 
 ## Defer
 
