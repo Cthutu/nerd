@@ -41,6 +41,7 @@ typedef struct NrtHeapDebugHeader {
 
 static NrtHeapDebugHeader* g_nrt_heap_head       = NULL;
 static uint64_t            g_nrt_heap_next_index = 0;
+static uint64_t            g_nrt_heap_break_index = 0;
 #endif
 
 void string_builder_reset(void);
@@ -286,6 +287,10 @@ void* nrt_mem_alloc(size_t size,
     debug->next               = g_nrt_heap_head;
     debug->requested_size     = size;
     debug->index              = ++g_nrt_heap_next_index;
+    if (debug->index == g_nrt_heap_break_index) {
+        nrt_eprintfn("nrt: allocation break reached at index %llu",
+                     (unsigned long long)debug->index);
+    }
     if (g_nrt_heap_head != NULL) {
         g_nrt_heap_head->prev = debug;
     }
@@ -342,6 +347,15 @@ void nrt_mem_leak(void* memory)
     nrt_heap_unlink(nrt_heap_debug_from_user(memory));
 #else
     (void)memory;
+#endif
+}
+
+void nrt_mem_break_on_alloc(uint64_t index)
+{
+#ifndef NDEBUG
+    g_nrt_heap_break_index = index;
+#else
+    (void)index;
 #endif
 }
 
