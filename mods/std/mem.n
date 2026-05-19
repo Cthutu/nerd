@@ -153,3 +153,61 @@ pub record_arena_alloc :: fn (bytes_allocated: usize) {
 pub record_array_growth :: fn (bytes_allocated: usize) {
     nrt_mem_record_array_growth(bytes_allocated)
 }
+
+test "alloc returns tracked byte slice" {
+    bytes := alloc(8)
+    defer free(bytes)
+
+    assert bytes.count == 8
+    assert size(bytes) == 8
+}
+
+test "realloc updates tracked size" {
+    bytes := alloc(4)
+    resized := realloc(bytes, 12)
+    defer free(resized)
+
+    assert resized.count == 12
+    assert size(resized) == 12
+}
+
+test "free restores live allocation counters" {
+    before_count := allocation_count()
+    before_bytes := total_allocated()
+    bytes := alloc(5)
+
+    assert allocation_count() == before_count + 1
+    assert total_allocated() == before_bytes + 5
+
+    free(bytes)
+
+    assert allocation_count() == before_count
+    assert total_allocated() == before_bytes
+}
+
+test "stats delta tracks allocation and free" {
+    before := stats_snapshot()
+    bytes := alloc(6)
+    free(bytes)
+    after := stats_snapshot()
+    delta := stats_delta(before, after)
+
+    assert delta.heap_alloc_count == 1
+    assert delta.heap_free_count == 1
+    assert delta.heap_bytes_allocated == 6
+    assert delta.heap_bytes_freed == 6
+    assert after.heap_current_bytes == before.heap_current_bytes
+}
+
+test "leak excludes allocation from reports" {
+    before_count := allocation_count()
+    before_bytes := total_allocated()
+    bytes := alloc(7)
+
+    leak(bytes)
+
+    assert allocation_count() == before_count
+    assert total_allocated() == before_bytes
+
+    free(bytes)
+}
