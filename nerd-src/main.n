@@ -1,11 +1,11 @@
-arena :: use std.arena
-
-print :: use std.io
+use core
 
 main :: fn () {
-    a := arena.arena_new(1024)
+    a : arena
+    a = arena(1024)
 
-    print.prn($"Arena capacity: {arena.arena_capacity(^a)}")
+    block := a.alloc_bytes(1024)
+    prn($"Arena capacity: {block.count}")
 
-    arena.arena_free(^a)
+    a.done()
 }

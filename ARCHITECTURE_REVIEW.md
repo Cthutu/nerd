@@ -806,7 +806,7 @@ The C implementation already uses three main strategies:
 The language standard library mirrors this split:
 
 - `std.mem` wraps raw C allocation.
-- `std.arena` provides heap and mmap-style arena helpers.
+- `core` provides heap and mmap-style arena helpers.
 - dynamic arrays own growable storage and require `.free()`.
 - slices borrow storage and do not own memory.
 

@@ -29,8 +29,6 @@ library is moving toward three layers:
   Basic input helpers.
 - `std.mem`
   Low-level allocation wrappers.
-- `std.arena`
-  Arena allocation helpers.
 - `std.string`
   String utilities.
 - `std.traits`
@@ -76,13 +74,6 @@ This inventory is intentionally brief until the standard library settles.
 Low-level allocation helpers backed by C allocation functions. These APIs should
 be documented with exact ownership and lifetime rules before being presented as
 stable user-facing library functions.
-
-### `std.arena`
-
-Arena helpers built on top of `std.mem`.
-
-This module remains as a compatibility/reference implementation. New code
-should prefer the built-in `arena` type exposed through `core`.
 
 ### `core`
 

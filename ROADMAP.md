@@ -432,7 +432,7 @@ library layering are in place.
   - [x] move low-level Linux bindings out of `std` and into `sys.linux` or
     related `sys.*` modules
   - [x] move X11 bindings into `sys.x11`
-  - [x] decide whether the current `std.arena` implementation becomes a
+  - [x] decide whether the old `std.arena` implementation becomes a
     reference, a compatibility wrapper, or is replaced by the built-in arena
   - [x] update imports in tests, examples, and docs after module moves
 - [x] Parser and semantic work:
