@@ -5210,7 +5210,7 @@ internal u32 cst_impl_generic_params_index(CstParseState* state,
     return index;
 }
 
-internal bool cst_parse_impl(CstParseState* state, u32* out_node)
+internal bool cst_parse_impl(CstParseState* state, u32* out_node, u32 flags)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
@@ -5280,6 +5280,7 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node)
                    .generic_params_index   = generic_params_index,
                    .first_constraint       = first_constraint,
                    .constraint_count       = constraint_count,
+                   .flags                  = flags,
                });
     state->cst.nodes[impl_node].a  = impl_index;
     state->cst.nodes[block_node].a = first_item;
@@ -5558,10 +5559,7 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
     }
 
     if (cst_current_token(state).kind == TK_impl) {
-        if (is_public) {
-            return false;
-        }
-        return cst_parse_impl(state, out_node);
+        return cst_parse_impl(state, out_node, is_public ? CNF_Public : 0);
     }
 
     if (cst_current_symbol_is_cstr(state, "test") &&

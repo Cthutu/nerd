@@ -3935,7 +3935,8 @@ ast_impl_member_looks_like_top_level_type_decl(const AstParseState* state)
            value_kind == TK_union || value_kind == TK_enum;
 }
 
-internal bool ast_parse_impl(AstParseState* state, u32* out_node)
+internal bool
+ast_parse_impl(AstParseState* state, u32* out_node, AstNodeFlag flags)
 {
     ASSERT(state->token.kind == TK_impl, "Expected 'impl' token");
     AstToken impl_token = state->token;
@@ -3981,6 +3982,7 @@ internal bool ast_parse_impl(AstParseState* state, u32* out_node)
     if (!ast_emit_node(state,
                        (AstNode){
                            .kind        = AK_Impl,
+                           .flags       = (u8)flags,
                            .token_index = impl_token.token_index,
                        },
                        &impl_node)) {
@@ -4165,14 +4167,7 @@ internal bool ast_parse_top_level_item(AstParseState* state)
         }
         return ast_parse_pragma(state, NULL);
     case TK_impl:
-        if (is_public) {
-            return error_0204_unexpected_token(
-                state->lexer->source,
-                ast_token_span(state, &state->token),
-                state->token.kind,
-                "Expected a symbol to start a public binding");
-        }
-        return ast_parse_impl(state, NULL);
+        return ast_parse_impl(state, NULL, is_public ? ANF_Public : ANF_None);
     case TK_Symbol:
         if (ast_current_symbol_is_cstr(state, "test") &&
             ast_peek_kind_at(state, 0) != TK_Colon) {

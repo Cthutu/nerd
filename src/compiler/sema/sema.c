@@ -4853,6 +4853,7 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
         if (node->kind == AK_Impl) {
             const AstImplInfo* impl = &ast->impls[node->a];
             const AstNode*     body = &ast->nodes[impl->body_node_index];
+            bool               impl_is_public = ast_has_flag(node, ANF_Public);
             for (u32 method_node_index = body->a; method_node_index < body->b;
                  ++method_node_index) {
                 const AstNode* method_node = &ast->nodes[method_node_index];
@@ -4963,7 +4964,8 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                         .impl_node_index        = i,
                         .target_type_node_index = impl->target_type_node_index,
                         .generic_params_index   = impl->generic_params_index,
-                        .is_public = ast_has_flag(method_node, ANF_Public),
+                        .is_public = impl_is_public ||
+                                     ast_has_flag(method_node, ANF_Public),
                         .is_associated =
                             returns_self && !first_param_is_receiver,
                         .first_param_is_receiver = first_param_is_receiver,

@@ -180,6 +180,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "public_impl",
+                "kind": 9
+            },
+            {
                 "label": "reexport",
                 "kind": 9
             },

@@ -1,0 +1,17 @@
+pub Box :: plex {
+    value usize
+}
+
+pub impl Box {
+    bump :: fn (box: ^Self, amount: usize) {
+        box.value += amount
+    }
+
+    get :: fn (box: Self) -> usize {
+        return box.value
+    }
+}
+
+pub make_box :: fn (value: usize) -> Box {
+    return Box { value: value }
+}

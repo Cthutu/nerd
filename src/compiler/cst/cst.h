@@ -431,6 +431,7 @@ typedef struct {
     u32 generic_params_index;
     u32 first_constraint;
     u32 constraint_count;
+    u32 flags;
 } CstImplInfo;
 
 typedef enum : u32 {

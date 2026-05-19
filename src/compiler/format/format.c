@@ -5046,6 +5046,9 @@ internal void format_emit_impl(StringBuilder* sb,
     const CstImplInfo* impl = &cst->impls[impl_index];
 
     format_emit_indent(sb, indent_level);
+    if (impl->flags & CNF_Public) {
+        sb_append_cstr(sb, "pub ");
+    }
     sb_append_cstr(sb, "impl ");
     if (impl->trait_type_node_index != U32_MAX) {
         format_emit_expr(sb, cst, lexer, impl->trait_type_node_index, 0);
