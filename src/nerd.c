@@ -12,7 +12,16 @@
 #include <lsp/lsp.h>
 #include <table/table.h>
 
+#include <errno.h>
 #include <stdio.h>
+
+#if OS_WINDOWS
+#    include <direct.h>
+#else
+#    include <sys/stat.h>
+#    include <sys/types.h>
+#    include <unistd.h>
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -137,6 +146,73 @@ internal int nerd_internal_module_filemap_test(void)
     return 0;
 }
 
+internal bool nerd_make_test_dir(cstr path)
+{
+#if OS_WINDOWS
+    return _mkdir(path) == 0 || errno == EEXIST;
+#else
+    return mkdir(path, 0777) == 0 || errno == EEXIST;
+#endif
+}
+
+internal bool nerd_remove_test_dir(cstr path)
+{
+#if OS_WINDOWS
+    return _rmdir(path) == 0;
+#else
+    return rmdir(path) == 0;
+#endif
+}
+
+internal int nerd_internal_module_cwd_root_test(void)
+{
+    cstr module_path = "_internal_cwdmod.n";
+    cstr root_dir    = "_internal_cwd_root";
+    cstr root_path   = "_internal_cwd_root/root.n";
+    cstr module_text = "pub imported_value :: 0\n";
+    cstr root_text   = "cwdmod :: use _internal_cwdmod\n"
+                       "\n"
+                       "main :: fn () -> i32 {\n"
+                       "    return cwdmod.imported_value\n"
+                       "}\n";
+
+    remove(module_path);
+    remove(root_path);
+    nerd_remove_test_dir(root_dir);
+    if (!nerd_make_test_dir(root_dir) ||
+        !nerd_write_test_file(module_path, module_text) ||
+        !nerd_write_test_file(root_path, root_text)) {
+        remove(module_path);
+        remove(root_path);
+        nerd_remove_test_dir(root_dir);
+        eprn("Failed to write internal cwd module root test inputs");
+        return 1;
+    }
+
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {
+        .require_entry_point = true,
+        .skip_hir_generation = true,
+    };
+    bool ok = front_end_program(
+        (NerdSource){
+            .source      = s(root_text),
+            .source_path = s(root_path),
+        },
+        &options,
+        NULL,
+        &program);
+    program_info_done(&program);
+    remove(module_path);
+    remove(root_path);
+    nerd_remove_test_dir(root_dir);
+    if (!ok) {
+        eprn("Failed to resolve module from current working directory");
+        return 1;
+    }
+    return 0;
+}
+
 internal int nerd_internal_test(const JsonValue* cli_result)
 {
     string name =
@@ -146,6 +222,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     }
     if (string_eq_cstr(name, "module-filemap-release")) {
         return nerd_internal_module_filemap_test();
+    }
+    if (string_eq_cstr(name, "module-cwd-root")) {
+        return nerd_internal_module_cwd_root_test();
     }
 
     eprn("Unknown internal test: " STRINGP, STRINGV(name));

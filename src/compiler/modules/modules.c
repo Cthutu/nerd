@@ -342,6 +342,12 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_Found;
     }
 
+    cstr cwd = path_canonical(arena, ".");
+    if (cwd != NULL &&
+        module_path_exists_in_root(arena, lexer, ast, path, cwd, out_result)) {
+        return MRS_Found;
+    }
+
     cstr lib_path = getenv("NERD_LIB_PATH");
     if (module_path_exists_in_env_roots(
             arena, lexer, ast, path, lib_path, out_result)) {
@@ -390,6 +396,12 @@ ModuleResolveStatus module_resolve_qualified(Arena*     arena,
     cstr root_dir = path_dirname(arena, root_path);
     if (module_qualified_exists_in_root(
             arena, qualified_name, root_dir, out_result)) {
+        return MRS_Found;
+    }
+
+    cstr cwd = path_canonical(arena, ".");
+    if (cwd != NULL && module_qualified_exists_in_root(
+                           arena, qualified_name, cwd, out_result)) {
         return MRS_Found;
     }
 
