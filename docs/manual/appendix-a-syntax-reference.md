@@ -229,6 +229,8 @@ Type.size
 | `"string"` | `string` |
 | `c"c string"` | `^i8` to null-terminated bytes |
 | `$"interpolated {value}"`, `$"literal \{brace\}"` | `string` |
+| `@file` | `string`; current source filename |
+| `@line` | `untyped integer`; current 1-based source line |
 | `[1, 2, 3]` | `[3]i32` |
 | `[start..end]`, `[start..=end]` | integer range usable by `for in` |
 | `(1, "two")` | `(i32, string)` |

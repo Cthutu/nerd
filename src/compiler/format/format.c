@@ -966,6 +966,10 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_SymbolRef:
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(node)));
         break;
+    case CK_MacroRef:
+        sb_append_char(sb, '@');
+        sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(node)));
+        break;
     case CK_Group:
         sb_append_char(sb, '(');
         format_emit_expr(sb, cst, lexer, node->a, 0);
@@ -2204,6 +2208,8 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_NilLiteral:
     case CK_SymbolRef:
         return node->token_index;
+    case CK_MacroRef:
+        return node->token_index + 1;
     case CK_InterpolatedString:
         return format_find_interpolated_string_end_token_index(
             lexer, node->token_index);

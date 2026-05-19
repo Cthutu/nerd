@@ -241,6 +241,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_on:
     case TK_for:
     case TK_Dollar:
+    case TK_At:
         return true;
     default:
         return false;
@@ -1947,6 +1948,27 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                                  (CstNode){
                                      .kind        = CK_SymbolRef,
                                      .token_index = state->token_index - 1,
+                                     .a           = symbol_handle,
+                                 },
+                                 out_node);
+        }
+
+    case TK_At:
+        {
+            u32 token_index = state->token_index;
+            cst_advance(state);
+            if (cst_current_token(state).kind != TK_Symbol) {
+                return false;
+            }
+            u32 symbol_handle = cst_current_symbol_handle(state);
+            if (symbol_handle == CST_NO_VALUE) {
+                return false;
+            }
+            cst_advance(state);
+            return cst_emit_node(state,
+                                 (CstNode){
+                                     .kind        = CK_MacroRef,
+                                     .token_index = token_index,
                                      .a           = symbol_handle,
                                  },
                                  out_node);
@@ -5762,8 +5784,8 @@ f64 cst_get_float(const Cst* cst, const CstNode* node)
 
 u32 cst_get_symbol(const CstNode* node)
 {
-    ASSERT(node->kind == CK_SymbolRef || node->kind == CK_Bind ||
-               node->kind == CK_Variable,
+    ASSERT(node->kind == CK_SymbolRef || node->kind == CK_MacroRef ||
+               node->kind == CK_Bind || node->kind == CK_Variable,
            "Expected symbol-bearing CST node");
     return node->a;
 }

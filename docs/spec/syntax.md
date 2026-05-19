@@ -206,6 +206,18 @@ label           ::= '$' IDENT
 
 `again` resumes loop execution at the next iteration.
 
+## Built-In Macros
+
+Built-in macro expressions start with `@`.
+
+```bnf
+built-in-macro ::= '@file' | '@line'
+```
+
+`@file` expands to a `string` literal containing the current source filename.
+`@line` expands to an untyped integer literal containing the current source line
+number. Line numbers are 1-based.
+
 ## Destructuring
 
 ```bnf
@@ -289,6 +301,7 @@ primary         ::= INT
                   | 'yes'
                   | 'no'
                   | 'nil'
+                  | built-in-macro
                   | IDENT
                   | '$' IDENT
                   | tuple-or-group

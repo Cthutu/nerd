@@ -22,6 +22,7 @@
 // | CK_InterpPartExpr  | Expr node index       | 0                     |
 // | CK_InterpolatedString | First part index    | End-exclusive index   |
 // | CK_SymbolRef       | Symbol handle         | 0                     |
+// | CK_MacroRef        | Symbol handle         | 0                     |
 // | CK_Group           | Inner node index      | 0                     |
 // | CK_LogicalNot      | Operand node index    | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
@@ -110,6 +111,7 @@ typedef enum {
     CK_InterpPartExpr,
     CK_InterpolatedString,
     CK_SymbolRef,
+    CK_MacroRef,
     CK_EnumVariant,
     CK_Group,
     CK_LogicalNot,

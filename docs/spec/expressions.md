@@ -11,6 +11,7 @@ arrays, blocks, function values, `on`, `for`, and interpolated strings.
 ```bnf
 primary ::= INT | FLOAT | STRING | CSTRING | interpolated-string
           | 'yes' | 'no' | 'nil'
+          | built-in-macro
           | IDENT | '$' IDENT
           | '(' expression ')' | tuple
           | array-literal | range-literal
@@ -103,3 +104,15 @@ Primitive values and built-in aggregate values have structural formatting. Other
 values may be interpolated when their type implements the canonical
 `core.Display` trait; interpolation calls `Display.show(value)` and inserts the
 returned string.
+
+## Built-In Macros
+
+Built-in macro expressions start with `@`.
+
+```bnf
+built-in-macro ::= '@file' | '@line'
+```
+
+`@file` expands to a `string` literal containing the current source filename.
+`@line` expands to an untyped integer literal containing the current source line
+number. Line numbers are 1-based.

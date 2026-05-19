@@ -73,7 +73,7 @@
 @
 ¬
 {
-    "message": "Unexpected At `@`",
+    "message": "Expected Symbol but found EOF",
     "source_file": "tests/errors/002-missing-values.e",
     "primary_location": {
         "line": 1,
@@ -85,11 +85,11 @@
             "line": 1,
             "column": 1,
             "length": 1,
-            "message": "At `@` cannot appear here"
+            "message": "Found EOF here"
         }
     ],
     "notes": [],
     "help": [
-        "Remove `@` or replace it with a valid declaration or expression"
+        "Check for a missing closing delimiter or misplaced operator"
     ]
 }

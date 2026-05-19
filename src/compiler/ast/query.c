@@ -18,9 +18,6 @@ u64 ast_get_integer(const Lexer* lexer, const AstNode* node)
     if (integer_index >= array_count(lexer->integers)) {
         error_ice("Integer index out of bounds");
     }
-    if (lexer->tokens[node->token_index].kind != TK_Integer) {
-        error_ice("Token is not an integer");
-    }
     return lexer->integers[integer_index];
 }
 
@@ -50,10 +47,6 @@ string ast_get_string(const Lexer* lexer, const AstNode* node)
     usize string_index = node->a;
     if (string_index >= array_count(lexer->strings)) {
         error_ice("String index out of bounds");
-    }
-    if (lexer->tokens[node->token_index].kind != TK_String &&
-        lexer->tokens[node->token_index].kind != TK_CString) {
-        error_ice("Token is not a string");
     }
     return lexer->strings[string_index];
 }

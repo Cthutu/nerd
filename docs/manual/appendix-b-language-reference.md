@@ -94,6 +94,8 @@ intended exit code.
   counts.
 - Dot access automatically dereferences pointers when the pointee provides the
   requested tuple, collection, plex, or union member.
+- `@file` expands to the current source filename as a `string`.
+- `@line` expands to the current 1-based source line as an untyped integer.
 
 ## Control Flow
 
