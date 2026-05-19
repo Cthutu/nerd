@@ -8445,6 +8445,79 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
+            if (llvm_type_kind(ctx->sema, operand.type_index) ==
+                    STK_DynamicArray &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_String) {
+                string result_ptr = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca { ptr, i64 }\n",
+                          STRINGV(result_ptr));
+
+                string is_null = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp eq ptr " STRINGP ", null\n",
+                          STRINGV(is_null),
+                          STRINGV(operand.value));
+                string empty_label = llvm_label(ctx, "dynarray.string.empty");
+                string load_label  = llvm_label(ctx, "dynarray.string.load");
+                string done_label  = llvm_label(ctx, "dynarray.string.done");
+                sb_format(ctx->sb,
+                          "  br i1 " STRINGP ", label %%" STRINGP
+                          ", label %%" STRINGP "\n",
+                          STRINGV(is_null),
+                          STRINGV(empty_label),
+                          STRINGV(load_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(empty_label));
+                sb_format(
+                    ctx->sb,
+                    "  store { ptr, i64 } { ptr null, i64 0 }, ptr " STRINGP
+                    "\n"
+                    "  br label %%" STRINGP "\n",
+                    STRINGV(result_ptr),
+                    STRINGV(done_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(load_label));
+                string data = llvm_dynamic_array_load_header_field(
+                    ctx, operand.value, 0, s("ptr"));
+                string count = llvm_dynamic_array_load_header_field(
+                    ctx, operand.value, 1, s("i64"));
+                string string0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr " STRINGP
+                          ", 0\n",
+                          STRINGV(string0),
+                          STRINGV(data));
+                string string1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                          ", i64 " STRINGP ", 1\n",
+                          STRINGV(string1),
+                          STRINGV(string0),
+                          STRINGV(count));
+                sb_format(ctx->sb,
+                          "  store { ptr, i64 } " STRINGP ", ptr " STRINGP "\n"
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(string1),
+                          STRINGV(result_ptr),
+                          STRINGV(done_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(done_label));
+                string result = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load { ptr, i64 }, ptr " STRINGP
+                          "\n",
+                          STRINGV(result),
+                          STRINGV(result_ptr));
+                ctx->block_terminated = false;
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = result,
+                };
+            }
+
             string instr = llvm_cast_instruction(
                 ctx, operand.type_index, expr->type_index);
             if (instr.count == 0) {
