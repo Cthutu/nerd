@@ -4280,6 +4280,162 @@ internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
         return true;
     }
 
+    if (kind == STK_DynamicArray) {
+        llvm_emit_append_byte(ctx, '[');
+
+        string data_ptr  = llvm_temp(ctx);
+        string count_ptr = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca ptr\n"
+                  "  " STRINGP " = alloca i64\n",
+                  STRINGV(data_ptr),
+                  STRINGV(count_ptr));
+
+        string is_null = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp eq ptr " STRINGP ", null\n",
+                  STRINGV(is_null),
+                  STRINGV(value.value));
+        string empty_label = llvm_label(ctx, "dynarray.string.empty");
+        string load_label  = llvm_label(ctx, "dynarray.string.load");
+        string ready_label = llvm_label(ctx, "dynarray.string.ready");
+        sb_format(ctx->sb,
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+                  "\n",
+                  STRINGV(is_null),
+                  STRINGV(empty_label),
+                  STRINGV(load_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(empty_label));
+        sb_format(ctx->sb,
+                  "  store ptr null, ptr " STRINGP "\n"
+                  "  store i64 0, ptr " STRINGP "\n"
+                  "  br label %%" STRINGP "\n",
+                  STRINGV(data_ptr),
+                  STRINGV(count_ptr),
+                  STRINGV(ready_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(load_label));
+        string loaded_data =
+            llvm_dynamic_array_load_header_field(ctx, value.value, 0, s("ptr"));
+        string loaded_count =
+            llvm_dynamic_array_load_header_field(ctx, value.value, 1, s("i64"));
+        sb_format(ctx->sb,
+                  "  store ptr " STRINGP ", ptr " STRINGP "\n"
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n"
+                  "  br label %%" STRINGP "\n",
+                  STRINGV(loaded_data),
+                  STRINGV(data_ptr),
+                  STRINGV(loaded_count),
+                  STRINGV(count_ptr),
+                  STRINGV(ready_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(ready_label));
+        string data  = llvm_temp(ctx);
+        string count = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load ptr, ptr " STRINGP "\n"
+                  "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                  STRINGV(data),
+                  STRINGV(data_ptr),
+                  STRINGV(count),
+                  STRINGV(count_ptr));
+
+        string index_ptr = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca i64\n"
+                  "  store i64 0, ptr " STRINGP "\n",
+                  STRINGV(index_ptr),
+                  STRINGV(index_ptr));
+
+        string cond_label = llvm_label(ctx, "dynarray.string.cond");
+        string body_label = llvm_label(ctx, "dynarray.string.body");
+        string sep_label  = llvm_label(ctx, "dynarray.string.sep");
+        string item_label = llvm_label(ctx, "dynarray.string.item");
+        string end_label  = llvm_label(ctx, "dynarray.string.end");
+
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(cond_label));
+        string index = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                  STRINGV(index),
+                  STRINGV(index_ptr));
+        string more = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp ult i64 " STRINGP ", " STRINGP "\n",
+                  STRINGV(more),
+                  STRINGV(index),
+                  STRINGV(count));
+        sb_format(ctx->sb,
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+                  "\n",
+                  STRINGV(more),
+                  STRINGV(body_label),
+                  STRINGV(end_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+        string needs_sep = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp ne i64 " STRINGP ", 0\n",
+                  STRINGV(needs_sep),
+                  STRINGV(index));
+        sb_format(ctx->sb,
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+                  "\n",
+                  STRINGV(needs_sep),
+                  STRINGV(sep_label),
+                  STRINGV(item_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(sep_label));
+        llvm_emit_append_byte(ctx, ',');
+        llvm_emit_append_byte(ctx, ' ');
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(item_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(item_label));
+        u32 item_type = llvm_collection_item_type(ctx->sema, value.type_index);
+        if (item_type == sema_no_type()) {
+            return false;
+        }
+        string item_type_string = llvm_type_string(ctx, item_type);
+        string item_ptr         = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 " STRINGP "\n",
+                  STRINGV(item_ptr),
+                  STRINGV(item_type_string),
+                  STRINGV(data),
+                  STRINGV(index));
+        string item = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(item),
+                  STRINGV(item_type_string),
+                  STRINGV(item_ptr));
+        if (!llvm_emit_append_string_value(ctx,
+                                           (LlvmValue){
+                                               .ok         = true,
+                                               .type_index = item_type,
+                                               .value      = item,
+                                           })) {
+            return false;
+        }
+        string next = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = add i64 " STRINGP ", 1\n",
+                  STRINGV(next),
+                  STRINGV(index));
+        sb_format(ctx->sb,
+                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(next),
+                  STRINGV(index_ptr));
+        sb_format(ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
+
+        sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+        llvm_emit_append_byte(ctx, ']');
+        return true;
+    }
+
     string suffix = llvm_string_helper_suffix(ctx->sema, value.type_index);
     if (suffix.count == 0) {
         return false;
