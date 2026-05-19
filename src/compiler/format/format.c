@@ -638,6 +638,11 @@ internal void   format_emit_fn_signature(StringBuilder* sb,
                                          const Lexer*   lexer,
                                          u32            signature_index,
                                          bool           include_return_type);
+internal void   format_emit_fn_signature_multiline(StringBuilder* sb,
+                                                   const Cst*     cst,
+                                                   const Lexer*   lexer,
+                                                   u32            signature_index,
+                                                   bool include_return_type);
 internal void   format_emit_ffi_def(StringBuilder* sb,
                                     const Cst*     cst,
                                     const Lexer*   lexer,
@@ -1993,6 +1998,7 @@ internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
 
 typedef struct {
     u32    node_index;
+    u32    value_node_index;
     string symbol;
     string type;
     string op;
@@ -3713,13 +3719,14 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .node_index = node_index,
-            .symbol     = lex_symbol(lexer, cst_get_symbol(node)),
-            .type       = type,
-            .value      = value,
-            .is_bind    = false,
-            .has_value  = payload->kind != CK_ZeroInit,
-            .is_public  = (node->flags & CNF_Public) != 0,
+            .node_index       = node_index,
+            .value_node_index = U32_MAX,
+            .symbol           = lex_symbol(lexer, cst_get_symbol(node)),
+            .type             = type,
+            .value            = value,
+            .is_bind          = false,
+            .has_value        = payload->kind != CK_ZeroInit,
+            .is_public        = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
                                          payload->kind != CK_ZeroInit &&
                                          payload->kind != CK_Undefined,
@@ -3764,13 +3771,14 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .node_index = node_index,
-            .symbol     = lex_symbol(lexer, cst_get_symbol(node)),
-            .type       = type,
-            .value      = value,
-            .is_bind    = true,
-            .has_value  = true,
-            .is_public  = (node->flags & CNF_Public) != 0,
+            .node_index       = node_index,
+            .value_node_index = (u32)(value_payload - cst->nodes),
+            .symbol           = lex_symbol(lexer, cst_get_symbol(node)),
+            .type             = type,
+            .value            = value,
+            .is_bind          = true,
+            .has_value        = true,
+            .is_public        = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = false,
         };
         return true;
@@ -3782,7 +3790,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         }
 
         *out_stmt = (FormatAlignedStatement){
-            .node_index = node_index,
+            .node_index       = node_index,
+            .value_node_index = U32_MAX,
             .symbol = format_render_expr_to_string(arena, cst, lexer, node->a),
             .op     = format_assignment_operator(lexer, node),
             .value  = format_render_expr_to_string(arena, cst, lexer, node->b),
@@ -4154,6 +4163,42 @@ internal bool format_emit_wrapped_infix_value(StringBuilder* sb,
     return true;
 }
 
+internal bool format_aligned_statement_node_value_prefers_multiline(
+    const Cst* cst, const FormatAlignedStatement* stmt)
+{
+    if (stmt->value_node_index >= array_count(cst->nodes) ||
+        cst->nodes[stmt->value_node_index].kind != CK_TypeFn) {
+        return false;
+    }
+
+    u32 signature_index = cst->nodes[stmt->value_node_index].a;
+    return signature_index < array_count(cst->fn_signatures) &&
+           cst->fn_signatures[signature_index].param_count >= 4;
+}
+
+internal bool
+format_emit_aligned_statement_node_value(StringBuilder*                sb,
+                                         const Cst*                    cst,
+                                         const Lexer*                  lexer,
+                                         const FormatAlignedStatement* stmt,
+                                         usize* out_current_column)
+{
+    if (stmt->value_node_index >= array_count(cst->nodes) ||
+        cst->nodes[stmt->value_node_index].kind != CK_TypeFn) {
+        return false;
+    }
+
+    u32 signature_index = cst->nodes[stmt->value_node_index].a;
+    if (format_aligned_statement_node_value_prefers_multiline(cst, stmt)) {
+        format_emit_fn_signature_multiline(
+            sb, cst, lexer, signature_index, true);
+    } else {
+        format_emit_expr(sb, cst, lexer, stmt->value_node_index, 0);
+    }
+    *out_current_column = format_sb_current_column(sb);
+    return true;
+}
+
 internal void
 format_emit_aligned_statement_group(StringBuilder*                sb,
                                     const Cst*                    cst,
@@ -4201,8 +4246,12 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             if (stmts[i].is_bind) {
                 usize value_start_width =
                     (usize)indent_level * 4 + max_symbol_width + 4;
-                if (value_start_width + stmts[i].value.count <=
-                    FORMAT_WRAP_WIDTH) {
+                bool force_multiline =
+                    format_aligned_statement_node_value_prefers_multiline(
+                        cst, &stmts[i]);
+                if (!force_multiline &&
+                    value_start_width + stmts[i].value.count <=
+                        FORMAT_WRAP_WIDTH) {
                     sb_append_cstr(sb, " :: ");
                     sb_append_string(sb, stmts[i].value);
                     current_column = value_start_width + stmts[i].value.count;
@@ -4210,10 +4259,13 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                     sb_append_cstr(sb, " ::");
                     sb_append_char(sb, '\n');
                     format_emit_spaces(sb, value_start_width);
-                    sb_append_string(sb, stmts[i].value);
-                    current_column =
-                        value_start_width +
-                        format_string_last_line_width(stmts[i].value);
+                    if (!format_emit_aligned_statement_node_value(
+                            sb, cst, lexer, &stmts[i], &current_column)) {
+                        sb_append_string(sb, stmts[i].value);
+                        current_column =
+                            value_start_width +
+                            format_string_last_line_width(stmts[i].value);
+                    }
                 }
             } else {
                 sb_append_cstr(sb, " := ");
@@ -4234,7 +4286,11 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             current_column += 3 + max_type_width + 1;
             usize value_start_width =
                 (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
-            if (!format_string_has_newline(stmts[i].value) &&
+            bool force_multiline =
+                format_aligned_statement_node_value_prefers_multiline(
+                    cst, &stmts[i]);
+            if (!force_multiline &&
+                !format_string_has_newline(stmts[i].value) &&
                 value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 sb_append_char(sb, ' ');
@@ -4260,10 +4316,13 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 } else {
                     sb_append_char(sb, '\n');
                     format_emit_spaces(sb, value_start_width);
-                    sb_append_string(sb, stmts[i].value);
-                    current_column =
-                        value_start_width +
-                        format_string_last_line_width(stmts[i].value);
+                    if (!format_emit_aligned_statement_node_value(
+                            sb, cst, lexer, &stmts[i], &current_column)) {
+                        sb_append_string(sb, stmts[i].value);
+                        current_column =
+                            value_start_width +
+                            format_string_last_line_width(stmts[i].value);
+                    }
                 }
             }
         }
@@ -4522,6 +4581,49 @@ internal void format_emit_fn_signature(StringBuilder* sb,
                                             start_indent);
 
     arena_done(&temp_arena);
+}
+
+internal void format_emit_fn_signature_multiline(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            signature_index,
+                                                 bool include_return_type)
+{
+    const CstFnSignature* signature    = &cst->fn_signatures[signature_index];
+    usize                 start_indent = format_sb_current_line_indent(sb);
+
+    format_emit_fn_signature_prefix(sb, cst, lexer, signature);
+    sb_append_cstr(sb, " (");
+    usize param_column = format_sb_current_column(sb);
+    usize name_width =
+        format_fn_signature_param_name_width(cst, lexer, signature);
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        const CstParam* param = &cst->params[signature->first_param + i];
+        format_emit_fn_param_aligned(sb, cst, lexer, param, name_width);
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ",\n");
+            format_emit_spaces(sb, param_column);
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_char(sb, ')');
+
+    if (include_return_type && signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        format_emit_expr(sb, cst, lexer, signature->return_type_node_index, 0);
+    }
+    format_emit_where_constraints_at_indent(sb,
+                                            cst,
+                                            lexer,
+                                            signature->first_constraint,
+                                            signature->constraint_count,
+                                            start_indent);
 }
 
 typedef struct {
