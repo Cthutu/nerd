@@ -4559,21 +4559,23 @@ internal void format_emit_ffi_entry_prefix(StringBuilder*       sb,
         sb_append_cstr(sb, "pub ");
         prefix_width += 4;
     }
-    sb_append_string(sb, name);
     if (is_renamed) {
+        sb_append_string(sb, name);
         for (usize pad = prefix_width; pad <= widths.bind_prefix_width; ++pad) {
             sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, ":: ");
         sb_append_string(sb, foreign_name);
     } else if (widths.bind_prefix_width > 0) {
-        usize aligned_prefix_width =
-            max(prefix_width, widths.bind_prefix_width);
-        for (usize pad = prefix_width; pad <= aligned_prefix_width; ++pad) {
+        usize public_prefix_width = (ffi->flags & CNF_Public) ? 4 : 0;
+        for (usize pad = public_prefix_width; pad <= widths.bind_prefix_width;
+             ++pad) {
             sb_append_char(sb, ' ');
         }
         format_emit_spaces(sb, 3);
-        foreign_name = (string){0};
+        sb_append_string(sb, foreign_name);
+    } else {
+        sb_append_string(sb, name);
     }
     for (usize pad = foreign_name.count; pad <= widths.foreign_name_width;
          ++pad) {
