@@ -1,0 +1,120 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides monotonic time helpers and duration conversion utilities. This
+-- module represents instants and durations as nanosecond counts.
+
+-- Represents a monotonic timestamp in nanoseconds.
+pub Instant :: u64
+
+-- Represents a duration in nanoseconds.
+pub Duration :: u64
+
+-- Returns the duration between two monotonic timestamps.
+pub elapsed :: fn (start: Instant, finish: Instant) -> Duration {
+    on finish < start => {
+        assert no, "elapsed: finish must be greater than or equal to start"
+    }
+    return (finish - start).as(Duration)
+}
+
+-- Adds a duration to a monotonic timestamp.
+pub add_duration :: fn (time: Instant, duration: Duration) -> Instant {
+    return (time + duration).as(Instant)
+}
+
+-- Converts a duration to whole seconds.
+pub duration_to_secs :: fn (duration: Duration) -> u64 {
+    return duration / 1_000_000_000
+}
+
+-- Converts a duration to whole milliseconds.
+pub duration_to_ms :: fn (duration: Duration) -> u64 {
+    return duration / 1_000_000
+}
+
+-- Converts a duration to whole microseconds.
+pub duration_to_us :: fn (duration: Duration) -> u64 {
+    return duration / 1_000
+}
+
+-- Converts a duration to whole nanoseconds.
+pub duration_to_ns :: fn (duration: Duration) -> u64 {
+    return duration
+}
+
+-- Converts a duration to fractional seconds.
+pub secs :: fn (duration: Duration) -> f64 {
+    return duration.as(f64) / 1_000_000_000.0
+}
+
+-- Creates a duration from seconds.
+pub from_secs :: fn (seconds: u64) -> Duration {
+    return seconds * 1_000_000_000
+}
+
+-- Creates a duration from milliseconds.
+pub from_ms :: fn (milliseconds: u64) -> Duration {
+    return milliseconds * 1_000_000
+}
+
+-- Creates a duration from microseconds.
+pub from_us :: fn (microseconds: u64) -> Duration {
+    return microseconds * 1_000
+}
+
+-- Creates a duration from nanoseconds.
+pub from_ns :: fn (nanoseconds: u64) -> Duration {
+    return nanoseconds
+}
+
+on "linux" {
+
+    use os.linux
+
+    -- Returns the current monotonic timestamp.
+    pub now :: fn () -> Instant {
+        time : TimeSpec
+        _ := sys_clock_gettime(CLOCK_MONOTONIC, ^time)
+        return (time.tv_sec.as(u64) * 1_000_000_000) + time.tv_nsec.as(u64)
+    }
+
+    -- Suspends execution for at least the requested number of milliseconds.
+    pub sleep_ms :: fn (milliseconds: u64) {
+        time : TimeSpec
+        time.tv_sec = (milliseconds / 1000).as(i64)
+        time.tv_nsec = ((milliseconds % 1000) * 1_000_000).as(i64)
+        _ := sys_nanosleep(^time, nil)
+    }
+
+}
+
+test "duration constructors create nanosecond counts" {
+    assert from_secs(2) == 2_000_000_000
+    assert from_ms(2) == 2_000_000
+    assert from_us(2) == 2_000
+    assert from_ns(2) == 2
+}
+
+test "duration converters return whole units" {
+    duration := from_secs(2) + from_ms(500)
+
+    assert duration_to_secs(duration) == 2
+    assert duration_to_ms(duration) == 2500
+    assert duration_to_us(duration) == 2_500_000
+    assert duration_to_ns(duration) == 2_500_000_000
+}
+
+test "elapsed returns finish minus start" {
+    start := 10.as(Instant)
+    finish := 25.as(Instant)
+
+    assert elapsed(start, finish) == 15
+}
+
+test "add_duration returns shifted instant" {
+    start := 10.as(Instant)
+
+    assert add_duration(start, 15.as(Duration)) == 25
+}

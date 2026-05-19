@@ -1,0 +1,99 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides string utilities for splitting and trimming text. These helpers
+-- return views into existing string storage unless they explicitly document an
+-- owned result.
+
+impl string {
+
+    -- Splits a string around every occurrence of `separator`.
+    pub split :: fn (text: Self, separator: string) -> [..]string {
+        parts : [..]string
+
+        on separator.count == 0 => {
+            parts.push(text)
+            return parts
+        }
+
+        start : usize = 0
+        index : usize = 0
+
+        for index + separator.count <= text.count {
+            matched := yes
+            for separator_index: usize = 0; matched && separator_index < separator.count; separator_index += 1 {
+                on text.data[index + separator_index] != separator.data[separator_index] => matched = no
+            }
+
+            on matched => {
+                parts.push(text[start..index])
+                index += separator.count
+                start = index
+            } else {
+                index += 1
+            }
+        }
+
+        parts.push(text[start..])
+        return parts
+    }
+
+    -- Returns a view with leading and trailing ASCII spaces and tabs removed.
+    pub trim_whitespace :: fn (text: Self) -> string {
+        start : usize = 0
+        end   : usize = text.count
+
+        for start < end && (text.data[start] == ' ' || text.data[start] == '\t') {
+            start += 1
+        }
+
+        for end > start && (text.data[end - 1] == ' ' || text.data[end - 1] == '\t') {
+            end -= 1
+        }
+
+        return text[start..end]
+    }
+
+}
+
+test "split returns original text for empty separator" {
+    parts := "north".split("")
+    defer parts.free()
+
+    assert parts.count == 1
+    assert parts[0] == "north"
+}
+
+test "split separates text by separator" {
+    parts := "look around room".split(" ")
+    defer parts.free()
+
+    assert parts.count == 3
+    assert parts[0] == "look"
+    assert parts[1] == "around"
+    assert parts[2] == "room"
+}
+
+test "split keeps empty parts around repeated separators" {
+    parts := "a,,b,".split(",")
+    defer parts.free()
+
+    assert parts.count == 4
+    assert parts[0] == "a"
+    assert parts[1] == ""
+    assert parts[2] == "b"
+    assert parts[3] == ""
+}
+
+test "trim_whitespace removes leading and trailing spaces and tabs" {
+    trimmed := " \t clean \t ".trim_whitespace()
+
+    assert trimmed == "clean"
+}
+
+test "trim_whitespace returns empty string for all whitespace" {
+    trimmed := "\t  \t".trim_whitespace()
+
+    assert trimmed == ""
+}

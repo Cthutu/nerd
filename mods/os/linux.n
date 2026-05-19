@@ -20,6 +20,21 @@ pub SYS_READ :: 0
 -- Linux syscall number for `write`.
 pub SYS_WRITE :: 1
 
+-- Linux syscall number for `nanosleep`.
+pub SYS_NANOSLEEP :: 35
+
+-- Linux syscall number for `clock_gettime`.
+pub SYS_CLOCK_GETTIME :: 228
+
+-- Linux clock identifier for monotonic time.
+pub CLOCK_MONOTONIC :: 1
+
+-- Represents the Linux `timespec` structure.
+pub TimeSpec :: plex #c {
+    tv_sec  i64  -- Whole seconds.
+    tv_nsec i64  -- Additional nanoseconds.
+}
+
 -- Reads bytes from a file descriptor using the Linux `read` syscall.
 pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
@@ -28,4 +43,14 @@ pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
 -- Writes bytes to a file descriptor using the Linux `write` syscall.
 pub sys_write :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+}
+
+-- Reads a Linux clock into a `TimeSpec`.
+pub sys_clock_gettime :: fn (clock_id: i32, time: ^TimeSpec) -> i32 {
+    return syscall(SYS_CLOCK_GETTIME, clock_id.as(u64), time.as(usize).as(u64), 0, 0, 0, 0).as(i32)
+}
+
+-- Suspends execution for a requested duration.
+pub sys_nanosleep :: fn (request: ^TimeSpec, remaining: ^TimeSpec) -> i32 {
+    return syscall(SYS_NANOSLEEP, request.as(usize).as(u64), remaining.as(usize).as(u64), 0, 0, 0, 0).as(i32)
 }

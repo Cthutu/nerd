@@ -139,6 +139,16 @@ pub leak :: fn (allocation: []u8) {
 
 on "debug" {
 
+    ANSI_RESET :: "\x1b[0m"
+
+    ANSI_BOLD_RED :: "\x1b[1;31m"
+
+    ANSI_BOLD_YELLOW :: "\x1b[1;33m"
+
+    ANSI_BOLD_CYAN :: "\x1b[1;36m"
+
+    ANSI_DIM :: "\x1b[2m"
+
     -- Prints reportable live runtime allocations to stderr.
     pub print_leaks :: fn () {
         heap_current := nrt_mem_live_head()
@@ -150,20 +160,20 @@ on "debug" {
         arena_count     : usize
         arena_committed : usize
 
-        eprn("std.mem: memory leaks detected")
+        eprn($"{ANSI_BOLD_RED}std.mem: memory leaks detected{ANSI_RESET}")
         for heap_current != nil {
-            eprn($"  heap [{heap_current.index}] {heap_current.source_path}:{heap_current.line} {heap_current.requested_size} bytes")
+            eprn($"  {ANSI_BOLD_YELLOW}heap{ANSI_RESET} {ANSI_DIM}#{heap_current.index}{ANSI_RESET} {heap_current.source_path}:{heap_current.line} {ANSI_BOLD_YELLOW}{heap_current.requested_size} bytes{ANSI_RESET}")
             heap_count   += 1
             heap_leaked  += heap_current.requested_size
             heap_current = heap_current.next
         }
         for arena_current != nil {
-            eprn($"  arena [{arena_current.index}] {arena_current.source_path}:{arena_current.line} {arena_current.used_size} bytes used, {arena_current.committed_size} bytes committed")
+            eprn($"  {ANSI_BOLD_CYAN}arena{ANSI_RESET} {ANSI_DIM}#{arena_current.index}{ANSI_RESET} {arena_current.source_path}:{arena_current.line} {ANSI_BOLD_CYAN}{arena_current.used_size} bytes used{ANSI_RESET}, {arena_current.committed_size} bytes committed")
             arena_count     += 1
             arena_committed += arena_current.committed_size
             arena_current   = arena_current.next
         }
-        eprn($"std.mem: total {heap_count} heap leaks, {heap_leaked} bytes; {arena_count} arena leaks, {arena_committed} bytes committed")
+        eprn($"{ANSI_BOLD_RED}std.mem:{ANSI_RESET} total {ANSI_BOLD_YELLOW}{heap_count} heap leaks, {heap_leaked} bytes{ANSI_RESET}; {ANSI_BOLD_CYAN}{arena_count} arena leaks, {arena_committed} bytes committed{ANSI_RESET}")
     }
 
 }

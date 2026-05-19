@@ -1,0 +1,96 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides small pseudo-random number helpers. This module owns process-local
+-- random state and supports explicit seeding for deterministic tests.
+
+use std.time
+
+DEFAULT_RANDOM_SEED :: (0x9E3779B9.as(u64) << 32) | 0x7F4A7C15
+
+RANDOM_MULTIPLIER :: (0x2545F491.as(u64) << 32) | 0x4F6CDD1D
+
+random_state: u64
+
+-- Advances the process-local pseudo-random state.
+random_step :: fn () -> u64 {
+    on random_state == 0 => {
+        random_state = now() | 1
+    }
+
+    value := random_state
+    value        ^= value >> 12
+    value        ^= value << 25
+    value        ^= value >> 27
+    random_state = value
+    return value * RANDOM_MULTIPLIER
+}
+
+-- Sets the process-local pseudo-random seed.
+pub random_seed :: fn (seed: u64) {
+    actual_seed := seed
+    on actual_seed == 0 => actual_seed = DEFAULT_RANDOM_SEED
+    random_state = actual_seed
+}
+
+-- Returns a pseudo-random unsigned 64-bit integer.
+pub random_u64 :: fn () -> u64 {
+    return random_step()
+}
+
+-- Returns a pseudo-random unsigned 64-bit integer in the inclusive range.
+pub random_range_u64 :: fn (min: u64, max: u64) -> u64 {
+    on min > max => {
+        assert no, "random_range_u64: min must be less than or equal to max"
+    }
+
+    span := max - min + 1
+    return min + (random_step() % span)
+}
+
+-- Returns a pseudo-random signed 64-bit integer in the inclusive range.
+pub random_range_i64 :: fn (min: i64, max: i64) -> i64 {
+    on min > max => {
+        assert no, "random_range_i64: min must be less than or equal to max"
+    }
+
+    span := (max - min + 1).as(u64)
+    return min + (random_step() % span).as(i64)
+}
+
+test "random_seed makes random_u64 deterministic" {
+    random_seed(123)
+    first := random_u64()
+    second := random_u64()
+
+    random_seed(123)
+
+    assert random_u64() == first
+    assert random_u64() == second
+}
+
+test "random_seed treats zero as the default seed" {
+    random_seed(0)
+    from_zero := random_u64()
+
+    random_seed(DEFAULT_RANDOM_SEED)
+
+    assert random_u64() == from_zero
+}
+
+test "random_range_u64 returns values inside the inclusive range" {
+    random_seed(42)
+    value := random_range_u64(10, 20)
+
+    assert value >= 10
+    assert value <= 20
+}
+
+test "random_range_i64 returns values inside the inclusive range" {
+    random_seed(42)
+    value := random_range_i64(-10, 10)
+
+    assert value >= -10
+    assert value <= 10
+}
