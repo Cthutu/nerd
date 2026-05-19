@@ -1,0 +1,97 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides standard input and output helpers. This module owns interactive
+-- console routines and returns owned buffers when reading caller-controlled
+-- input.
+
+INPUT_CHUNK_SIZE :: 4096
+
+-- Imports runtime arena support used for temporary read buffers.
+ffi "nrt" {
+    nrt_arena_mark (arena: ^arena) -> u32
+
+    nrt_arena_restore (arena: ^arena, mark: u32)
+
+    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
+
+    nrt_temp_arena () -> ^arena
+}
+
+-- Appends bytes from one read chunk until an enter key terminator appears.
+append_chunk_until_enter :: fn (line: ^[..]u8, chunk: []u8) -> bool {
+    i : usize = 0
+    done := no
+    for i < chunk.count && !done {
+        byte := chunk[i]
+        on byte == 10 || byte == 13 => {
+            done = yes
+        } else {
+            line^.push(byte)
+            i += 1
+        }
+    }
+    return done
+}
+
+on "linux" {
+
+    use os.linux
+
+    -- Writes all bytes in `text` to a file descriptor unless the OS fails.
+    write_all :: fn (fd: i32, text: string) {
+        _ := sys_write(fd, text.data.as(^void), text.count)
+    }
+
+    -- Prints a prompt, reads standard input, and returns owned bytes before enter.
+    pub input :: fn (prompt: string) -> [..]u8 {
+        write_all(STDOUT_FILENO, prompt)
+
+        temp_arena := nrt_temp_arena()
+        mark := nrt_arena_mark(temp_arena)
+        defer nrt_arena_restore(temp_arena, mark)
+
+        line : [..]u8
+        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1).as(^u8)
+        buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
+
+        for {
+            bytes_read := sys_read(STDIN_FILENO,
+                                   buffer.data.as(^void),
+                                   buffer.count)
+            on bytes_read <= 0 => return line
+
+            done := append_chunk_until_enter(^line,
+                                             buffer[0..bytes_read.as(usize)])
+            on done => return line
+        }
+        return line
+    }
+
+}
+
+test "read chunk appends bytes before newline" {
+    line : [..]u8
+    bytes := ['O', 'K', 10, '!']
+    done := append_chunk_until_enter(^line, bytes[..])
+    defer line.free()
+
+    assert done
+    assert line.count == 2
+    assert line[0] == 'O'
+    assert line[1] == 'K'
+}
+
+test "read chunk appends whole chunk without newline" {
+    line : [..]u8
+    bytes := ['N', 'S', 'L']
+    done := append_chunk_until_enter(^line, bytes[..])
+    defer line.free()
+
+    assert !done
+    assert line.count == 3
+    assert line[0] == 'N'
+    assert line[1] == 'S'
+    assert line[2] == 'L'
+}

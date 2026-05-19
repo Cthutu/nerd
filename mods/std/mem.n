@@ -1,0 +1,227 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides memory allocation helpers backed by the Nerd runtime allocator. This
+-- module is the public standard-library facade for heap allocation, explicit
+-- process-lived allocations, and leak reporting.
+
+RUNTIME_HEAP_ALIGNMENT :: 16
+
+-- Imports the runtime heap allocation and tracking API.
+ffi "nrt" {
+    nrt_mem_alloc (size: usize, alignment: usize, file: ^u8, line: u32) -> ^u8
+
+    nrt_mem_realloc (memory    : ^void,
+                     size      : usize,
+                     alignment : usize,
+                     file      : ^u8,
+                     line      : u32) -> ^u8
+
+    nrt_mem_free (memory: ^void)
+
+    nrt_mem_size (memory: ^void) -> usize
+
+    nrt_mem_leak (memory: ^void)
+
+    nrt_mem_break_on_alloc (index: u64)
+}
+
+-- Converts kibibytes to bytes.
+pub kb :: fn (n: usize) -> usize {
+    return n * 1024
+}
+
+-- Converts mebibytes to bytes.
+pub mb :: fn (n: usize) -> usize {
+    return kb(n) * 1024
+}
+
+-- Converts gibibytes to bytes.
+pub gb :: fn (n: usize) -> usize {
+    return mb(n) * 1024
+}
+
+-- Rounds `value` up to the next multiple of `alignment`.
+pub align_up :: fn (value: usize, alignment: usize) -> usize {
+    remainder := value % alignment
+    on remainder == 0 => return value
+    return value + alignment - remainder
+}
+
+on "debug" {
+
+    -- Mirrors the runtime heap debug header used by tracked allocations.
+    NrtHeapDebugHeader :: plex #c {
+        prev           ^NrtHeapDebugHeader  -- Previous live runtime allocation.
+        next           ^NrtHeapDebugHeader  -- Next live runtime allocation.
+        source_path    string
+                                            -- Source file that requested
+                                            --     allocation.
+        requested_size usize                -- Number of bytes requested.
+        index          u64                  -- Process-local allocation index.
+        line           u32
+                                            -- Source line that requested
+                                            --     allocation.
+    }
+
+    -- Imports the runtime debug allocation list head.
+    ffi "nrt" {
+        nrt_mem_live_head () -> ^NrtHeapDebugHeader
+    }
+
+    -- Mirrors the runtime arena debug node used by tracked arenas.
+    NrtArenaDebugNode :: plex #c {
+        prev           ^NrtArenaDebugNode  -- Previous live runtime arena.
+        next           ^NrtArenaDebugNode  -- Next live runtime arena.
+        base           ^void               -- Reserved arena base address.
+        reserved_size  usize               -- Number of bytes reserved.
+        committed_size usize               -- Number of bytes committed.
+        used_size      usize               -- Number of bytes currently used.
+        source_path    string
+                                           -- Source file that created this
+                                           --     arena.
+        index          u64                 -- Process-local arena index.
+        line           u32
+                                           -- Source line that created this
+                                           --     arena.
+        mapping_size   usize
+                                           -- Number of bytes reserved for this
+                                           --     node.
+    }
+
+    -- Imports the runtime debug arena list head.
+    ffi "nrt" {
+        nrt_arena_live_head () -> ^NrtArenaDebugNode
+    }
+
+}
+
+-- Allocates `size` bytes and returns them as a mutable byte slice.
+pub alloc :: fn (size: usize, file: string = @file, line: u32 = @line) -> []u8 {
+    data := nrt_mem_alloc(size, RUNTIME_HEAP_ALIGNMENT, file.data, line)
+    return data.as([]u8, size)
+}
+
+-- Resizes a byte slice allocation and returns the new byte slice view.
+pub realloc :: fn (allocation : []u8,
+                   new_size   : usize,
+                   file       : string = @file,
+                   line       : u32 = @line) -> []u8 {
+    data := nrt_mem_realloc(allocation.data.as(^void),
+                            new_size,
+                            RUNTIME_HEAP_ALIGNMENT,
+                            file.data,
+                            line)
+    return data.as([]u8, new_size)
+}
+
+-- Releases a byte slice allocation returned by `alloc` or `realloc`.
+pub free :: fn (allocation: []u8) {
+    nrt_mem_free(allocation.data.as(^void))
+}
+
+-- Returns the runtime-tracked size for an allocation, or zero for nil.
+pub alloc_size :: fn (allocation: []u8) -> usize {
+    return nrt_mem_size(allocation.data.as(^void))
+}
+
+-- Records the runtime allocation index that should trigger a diagnostic
+-- message.
+pub break_on_alloc :: fn (index: u64) {
+    nrt_mem_break_on_alloc(index)
+}
+
+-- Marks an allocation as intentionally process-lived for leak reporting.
+pub leak :: fn (allocation: []u8) {
+    nrt_mem_leak(allocation.data.as(^void))
+}
+
+on "debug" {
+
+    -- Prints reportable live runtime allocations to stderr.
+    pub print_leaks :: fn () {
+        heap_current := nrt_mem_live_head()
+        arena_current := nrt_arena_live_head()
+        on heap_current == nil && arena_current == nil => return
+
+        heap_count      : usize
+        heap_leaked     : usize
+        arena_count     : usize
+        arena_committed : usize
+
+        eprn("std.mem: memory leaks detected")
+        for heap_current != nil {
+            eprn($"  heap [{heap_current.index}] {heap_current.source_path}:{heap_current.line} {heap_current.requested_size} bytes")
+            heap_count   += 1
+            heap_leaked  += heap_current.requested_size
+            heap_current = heap_current.next
+        }
+        for arena_current != nil {
+            eprn($"  arena [{arena_current.index}] {arena_current.source_path}:{arena_current.line} {arena_current.used_size} bytes used, {arena_current.committed_size} bytes committed")
+            arena_count     += 1
+            arena_committed += arena_current.committed_size
+            arena_current   = arena_current.next
+        }
+        eprn($"std.mem: total {heap_count} heap leaks, {heap_leaked} bytes; {arena_count} arena leaks, {arena_committed} bytes committed")
+    }
+
+}
+
+on "release" {
+
+    -- Prints reportable live runtime allocations to stderr.
+    pub print_leaks :: fn () {
+    }
+
+}
+
+test "alloc returns runtime-backed byte slice" {
+    bytes := alloc(8)
+    defer free(bytes)
+
+    assert bytes.count == 8
+    assert alloc_size(bytes) == 8
+}
+
+test "alloc_size returns zero for nil allocation" {
+    bytes : []u8 = nil
+
+    assert alloc_size(bytes) == 0
+}
+
+test "byte unit helpers return byte counts" {
+    assert kb(2) == 2048
+    assert mb(2) == 2_097_152
+    assert gb(1) == 1_073_741_824
+}
+
+test "align_up rounds to the next multiple" {
+    assert align_up(16, 8) == 16
+    assert align_up(17, 8) == 24
+}
+
+test "realloc updates runtime-tracked size" {
+    bytes := alloc(4)
+    bytes[0] = 42
+
+    resized := realloc(bytes, 12)
+    defer free(resized)
+
+    assert resized.count == 12
+    assert alloc_size(resized) == 12
+    assert resized[0] == 42
+}
+
+test "free accepts nil allocation" {
+    bytes : []u8 = nil
+
+    free(bytes)
+}
+
+test "leak excludes allocation from reports while remaining freeable" {
+    bytes := alloc(7)
+
+    leak(bytes)
+    free(bytes)
+}

@@ -1,11 +1,11 @@
 -- test-platform: linux
 use std.io
-use sys.linux
+use os.linux
 
 main :: fn () -> i32 {
-    page := sysconf(_SC_PAGESIZE)
-    prn($"page={page > 0}")
-    return on page > 0 {
+    message := "page=yes\n"
+    written := sys_write(STDOUT_FILENO, message.data.as(^void), message.count)
+    return on written == message.count.as(isize) {
         yes  => 0
         else => 1
     }

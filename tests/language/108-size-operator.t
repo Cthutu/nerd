@@ -32,8 +32,8 @@ i32=4 literal=4 array=12 slice=16 string=16 ptr=8 nil=0 fn=8 void=0
 hir 0
 module module.0(108-size-operator.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind helper = fn.0
@@ -63,6 +63,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [57 x i8] c"tests/language/108-size-operator.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"hi\00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"i32=\00"
 @.str.m0.2 = private unnamed_addr constant [10 x i8] c" literal=\00"
@@ -96,7 +97,7 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   ret i32 0

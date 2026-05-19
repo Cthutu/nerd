@@ -69,8 +69,8 @@ string
 hir 0
 module module.0(077-enum-discriminants.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Direction = type.0
@@ -152,6 +152,7 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [62 x i8] c"tests/language/077-enum-discriminants.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"0\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"1\00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c"2\00"
@@ -175,7 +176,7 @@ func fn.2() -> i32 {
 @.str.m0.20 = private unnamed_addr constant [7 x i8] c"string\00"
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 @$labels = internal global [12 x { ptr, i64 }] zeroinitializer
 

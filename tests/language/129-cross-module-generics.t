@@ -21,14 +21,14 @@ main :: fn () {
 hir 0
 module module.0(129-cross-module-generics.input)
 import module.1(std.io)
-import module.3(test.generics)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
-import import.2 Stack from module.3(test.generics).decl.0: <unknown>
-import import.3 stack_push from module.3(test.generics).decl.1: <unknown>
-import import.4 stack_pop from module.3(test.generics).decl.2: <unknown>
-import import.5 Box from module.3(test.generics).decl.3: <unknown>
-import import.6 make_box from module.3(test.generics).decl.4: <unknown>
+import module.4(test.generics)
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+import import.2 Stack from module.4(test.generics).decl.0: <unknown>
+import import.3 stack_push from module.4(test.generics).decl.1: <unknown>
+import import.4 stack_pop from module.4(test.generics).decl.2: <unknown>
+import import.5 Box from module.4(test.generics).decl.3: <unknown>
+import import.6 make_box from module.4(test.generics).decl.4: <unknown>
 bind prn = import.0
 bind input = import.1
 bind Stack = import.2
@@ -55,6 +55,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [65 x i8] c"tests/language/129-cross-module-generics.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"ok\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -81,19 +82,19 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
-declare void @m3.fn.0(ptr %stack, i32 %elem)
-declare i32 @m3.fn.1(ptr %stack)
-declare { { ptr, i64 } } @m3.fn.2({ ptr, i64 } %value)
+declare ptr @$input({ ptr, i64 })
+declare void @m4.fn.0(ptr %stack, i32 %elem)
+declare i32 @m4.fn.1(ptr %stack)
+declare { { ptr, i64 } } @m4.fn.2({ ptr, i64 } %value)
 
 define internal void @fn.0() {
   %local.0 = alloca { ptr }
   store { ptr } zeroinitializer, ptr %local.0
-  call void @m3.fn.0(ptr %local.0, i32 42)
-  call void @m3.fn.0(ptr %local.0, i32 13)
-  %t0 = call i32 @m3.fn.1(ptr %local.0)
-  %t1 = call i32 @m3.fn.1(ptr %local.0)
-  %t2 = call { { ptr, i64 } } @m3.fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
+  call void @m4.fn.0(ptr %local.0, i32 42)
+  call void @m4.fn.0(ptr %local.0, i32 13)
+  %t0 = call i32 @m4.fn.1(ptr %local.0)
+  %t1 = call i32 @m4.fn.1(ptr %local.0)
+  %t2 = call { { ptr, i64 } } @m4.fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
   %t3 = call i64 @string_builder_mark()
   %t4 = alloca { ptr, i64 }
   call void @to_string$i32(ptr %t4, i32 %t0)

@@ -2,7 +2,7 @@ io :: use std.io
 
 main :: fn () {
     line := io.input("name: ")
-    prn(line)
+    prn(line.as(string))
 }
 ¬
 [

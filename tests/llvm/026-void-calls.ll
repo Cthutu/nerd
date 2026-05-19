@@ -7,10 +7,11 @@ main :: fn() {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [50 x i8] c"tests/llvm/026-void-calls.input.n\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"Hello\00"
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
   call void @$prn({ ptr, i64 } { ptr @.str.m0.0, i64 5 })

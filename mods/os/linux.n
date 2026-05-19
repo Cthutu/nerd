@@ -1,0 +1,31 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides Linux operating-system bindings used by higher-level NSL modules.
+-- This module exposes direct Linux syscall APIs without C-library wrappers.
+
+-- Invokes a Linux syscall by number with up to six integer arguments.
+pub syscall :: intrinsic "syscall" (number: u64, a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> i64
+
+-- File descriptor for standard input.
+pub STDIN_FILENO :: 0
+
+-- File descriptor for standard output.
+pub STDOUT_FILENO :: 1
+
+-- Linux syscall number for `read`.
+pub SYS_READ :: 0
+
+-- Linux syscall number for `write`.
+pub SYS_WRITE :: 1
+
+-- Reads bytes from a file descriptor using the Linux `read` syscall.
+pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
+    return syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+}
+
+-- Writes bytes to a file descriptor using the Linux `write` syscall.
+pub sys_write :: fn (fd: i32, buf: ^void, count: usize) -> isize {
+    return syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+}

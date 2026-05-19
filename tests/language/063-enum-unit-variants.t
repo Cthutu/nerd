@@ -42,8 +42,8 @@ total 60
 hir 0
 module module.0(063-enum-unit-variants.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Colour = type.0
@@ -84,6 +84,7 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [62 x i8] c"tests/language/063-enum-unit-variants.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"red \00"
 @.str.m0.1 = private unnamed_addr constant [7 x i8] c"green \00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"blue \00"
@@ -112,7 +113,7 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i64 } %colour) {
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0

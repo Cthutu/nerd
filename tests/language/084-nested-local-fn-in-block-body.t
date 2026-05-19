@@ -28,8 +28,8 @@ main :: fn () {
 hir 0
 module module.0(084-nested-local-fn-in-block-body.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind lowercase_first = fn.0
@@ -61,6 +61,7 @@ func fn.2() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [73 x i8] c"tests/language/084-nested-local-fn-in-block-body.t\00"
 @.str.m0.0 = private unnamed_addr constant [4 x i8] c"ABC\00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -85,7 +86,7 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {
   %t0 = extractvalue { ptr, i64 } %text, 0

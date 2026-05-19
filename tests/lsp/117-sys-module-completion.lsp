@@ -1,4 +1,4 @@
-use sys.
+use os.
 
 main :: fn () {}
 ¬
@@ -13,7 +13,7 @@ main :: fn () {}
             },
             "position": {
                 "line": 0,
-                "character": 8
+                "character": 7
             }
         }
     }

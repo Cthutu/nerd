@@ -26,7 +26,7 @@ main :: fn () -> i32 {
 hir 0
 module module.0(075-packed-integer-literals.input)
 import module.1(std.io)
-import import.0 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind input = import.0
 bind a = value.0
 bind ab = value.1
@@ -68,7 +68,9 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-declare { ptr, i64 } @$input({ ptr, i64 })
+@.macro.file.m0 = private unnamed_addr constant [67 x i8] c"tests/language/075-packed-integer-literals.t\00"
+
+declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %t0 = icmp eq i8 97, 97

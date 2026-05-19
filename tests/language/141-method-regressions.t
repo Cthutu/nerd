@@ -39,8 +39,8 @@ area 25
 hir 0
 module module.0(141-method-regressions.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Rect = type.0
@@ -72,6 +72,7 @@ func fn.3() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [62 x i8] c"tests/language/141-method-regressions.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"area \00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -96,7 +97,7 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i32, i32 } %self) {
   %t0 = extractvalue { i32, i32 } %self, 0

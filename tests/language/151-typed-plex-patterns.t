@@ -40,8 +40,8 @@ typed plex patterns 1 2 0
 hir 0
 module module.0(151-typed-plex-patterns.input)
 import module.1(std.io)
-import import.0 prn from module.2(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 prn from module.3(core).decl.13: fn (string) -> void
+import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Event = type.0
@@ -76,6 +76,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [63 x i8] c"tests/language/151-typed-plex-patterns.t\00"
 @.str.m0.0 = private unnamed_addr constant [21 x i8] c"typed plex patterns \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -102,7 +103,7 @@ declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i192 } %event) {
   %t0 = extractvalue { i64, i192 } %event, 0

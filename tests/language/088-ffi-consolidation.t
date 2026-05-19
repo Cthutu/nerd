@@ -37,7 +37,7 @@ ffi ok
 hir 0
 module module.0(088-ffi-consolidation.input)
 import module.1(std.io)
-import import.0 input from module.1(std.io).decl.5: fn (string) -> string
+import import.0 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 extern extern.0 srand from "c": fn (u32) -> void
 extern extern.1 puts from "c": fn (^i8^i8) ->
 extern extern.2 accept_point from "c": fn (Point) -> void
@@ -71,11 +71,12 @@ func fn.5() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [61 x i8] c"tests/language/088-ffi-consolidation.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.2 = private unnamed_addr constant [7 x i8] c"ffi ok\00"
 
-declare { ptr, i64 } @$input({ ptr, i64 })
+declare ptr @$input({ ptr, i64 })
 
 declare void @srand(i32)
 

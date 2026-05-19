@@ -1,5 +1,4 @@
 use std.io
-use std.string
 use term
 
 main :: fn () {
@@ -9,7 +8,9 @@ main :: fn () {
 
     for {
         player_input := input("> ")
-        input_parts := player_input.split(" ")
+        defer player_input.free()
+
+        input_parts := player_input.as(string).split(" ")
         defer input_parts.free()
 
         verb: string
@@ -49,6 +50,43 @@ main :: fn () {
     }
 }
 
+impl string {
+
+    split :: fn (s: Self, sep: string) -> [..]string {
+        parts: [..]string
+
+        on sep.count == 0 => {
+            parts.push(s)
+            return parts
+        }
+
+        start: usize = 0
+        i: usize = 0
+
+        for i + sep.count <= s.count {
+            matched := yes
+            for j: usize = 0;
+            matched && j < sep.count;
+            j += 1 {
+                on s.data[i + j] != sep.data[j] => matched = no
+            }
+
+            on matched => {
+                parts.push(s[start .. i])
+                i += sep.count
+                start = i
+            }
+            else {
+                i += 1
+            }
+        }
+
+        parts.push(s[start ..])
+        return parts
+    }
+
+}
+
 show_location :: fn (state: ^State) {
     prn_wrap($"{state.locations[state.player_loc]}")
     prn()
@@ -70,9 +108,9 @@ move :: fn (state: ^State, direction: string) {
 
 State :: plex {
     -- Database
-    locations []string -- location descriptions
+    locations []string  -- location descriptions
     exits [][](string, usize)
-    verbs [][]string -- verbs and their synonyms
+    verbs [][]string  -- verbs and their synonyms
 
     -- Game state
     player_loc usize
