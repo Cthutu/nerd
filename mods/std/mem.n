@@ -81,6 +81,28 @@ pub stats_delta :: fn (before: MemoryStats, after: MemoryStats) -> MemoryStats {
     return stats
 }
 
+-- Converts kibibytes to bytes.
+pub kb :: fn (n: usize) -> usize {
+    return n * 1024
+}
+
+-- Converts mebibytes to bytes.
+pub mb :: fn (n: usize) -> usize {
+    return kb(n) * 1024
+}
+
+-- Converts gibibytes to bytes.
+pub gb :: fn (n: usize) -> usize {
+    return mb(n) * 1024
+}
+
+-- Rounds `value` up to the next multiple of `alignment`.
+pub align_up :: fn (value: usize, alignment: usize) -> usize {
+    remainder := value % alignment
+    on remainder == 0 => return value
+    return value + alignment - remainder
+}
+
 -- Allocates `size` bytes and returns them as a mutable byte slice.
 pub alloc :: fn (size: usize, file: string = @file, line: u32 = @line) -> []u8 {
     return nrt_mem_alloc(size, file.data, file.count, line).as([]u8, size)
@@ -160,6 +182,17 @@ test "alloc returns tracked byte slice" {
 
     assert bytes.count == 8
     assert size(bytes) == 8
+}
+
+test "byte unit helpers return byte counts" {
+    assert kb(2) == 2048
+    assert mb(2) == 2_097_152
+    assert gb(1) == 1_073_741_824
+}
+
+test "align_up rounds to the next multiple" {
+    assert align_up(16, 8) == 16
+    assert align_up(17, 8) == 24
 }
 
 test "realloc updates tracked size" {
