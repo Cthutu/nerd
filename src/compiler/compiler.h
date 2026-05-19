@@ -33,6 +33,7 @@ typedef struct {
     bool               require_entry_point;
     bool               skip_hir_generation;
     bool               keep_partial_results;
+    string             module_root_source_path;
     const ProgramInfo* program;
     u32                current_module_index;
     Array(string) keywords;

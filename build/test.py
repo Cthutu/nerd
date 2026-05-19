@@ -542,12 +542,17 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     if match:
         uri = normalize_repo_uris(match.group(1))
         source = source[match.end():]
+    root_uri = None
+    match = re.match(r"\s*--\s*lsp-root-uri:\s*(\S+)\s*\n", source)
+    if match:
+        root_uri = normalize_repo_uris(match.group(1))
+        source = source[match.end():]
     messages = [
         {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
-            "params": {"rootUri": None, "capabilities": {}},
+            "params": {"rootUri": root_uri, "capabilities": {}},
         },
         {
             "jsonrpc": "2.0",

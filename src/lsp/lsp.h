@@ -43,7 +43,9 @@ DEF_MAP(LspDocumentMap,
         LspDocument); // Map of document URI to internal document representation
 
 typedef struct {
+    Arena          arena;
     LspDocumentMap documents;
+    string         workspace_root_source_path;
 } LspState;
 
 typedef struct {

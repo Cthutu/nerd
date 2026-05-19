@@ -66,7 +66,11 @@ JsonValue* lsp_read_message(Arena* arena)
 
 //------------------------------------------------------------------------------
 
-void lsp_init(LspState* state) { LspDocumentMap_init(&state->documents, 16); }
+void lsp_init(LspState* state)
+{
+    arena_init(&state->arena);
+    LspDocumentMap_init(&state->documents, 16);
+}
 
 void lsp_done(LspState* state)
 {
@@ -79,6 +83,7 @@ void lsp_done(LspState* state)
     }
 
     LspDocumentMap_done(&state->documents);
+    arena_done(&state->arena);
 }
 
 //------------------------------------------------------------------------------
@@ -215,8 +220,6 @@ int lsp_run(void)
 
 void lsp_handle_initialise(LspState* state, const LspMessage* message)
 {
-    UNUSED(state);
-
     JsonValue* response = lsp_prepare_response(message);
     JsonValue* result   = json_new_object(message->arena);
 
@@ -231,6 +234,30 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
         lsp_log("Connected to: " STRINGP " (" STRINGP ")",
                 STRINGV(json_string(client_name)),
                 STRINGV(version));
+    }
+
+    JsonValue* root_uri = json_get_cstr(message->message, "params.rootUri");
+    if ((!root_uri || root_uri->kind != JSON_STRING) &&
+        (root_uri =
+             json_get_cstr(message->message, "params.workspaceFolders")) &&
+        root_uri->kind == JSON_ARRAY &&
+        array_count(root_uri->array.values) > 0) {
+        root_uri = json_get_cstr(root_uri->array.values[0], "uri");
+    }
+    if (root_uri && root_uri->kind == JSON_STRING) {
+        string uri = json_string(root_uri);
+        if (uri.count > 0) {
+            StringBuilder sb = {0};
+            sb_init(&sb, &state->arena);
+            sb_append_string(&sb, uri);
+            if (uri.data[uri.count - 1] != '/' &&
+                uri.data[uri.count - 1] != '\\') {
+                sb_append_char(&sb, '/');
+            }
+            sb_append_cstr(&sb, "__workspace__.n");
+            state->workspace_root_source_path = sb_to_string(&sb);
+            lsp_log("Workspace root: " STRINGP, STRINGV(uri));
+        }
     }
 
     Arena*     arena       = message->arena;

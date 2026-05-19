@@ -1042,8 +1042,12 @@ bool front_end_program(NerdSource             source,
         program_info_done(&program);
         return false;
     }
-    source                 = effective_source;
-    program.root_source    = source;
+    source              = effective_source;
+    program.root_source = source;
+    if (effective_options.module_root_source_path.count > 0) {
+        program.root_source.source_path =
+            effective_options.module_root_source_path;
+    }
 
     ModuleInfo root_module = {
         .qualified_name =

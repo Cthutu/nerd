@@ -507,8 +507,10 @@ internal void lsp_document_set_source(LspDocument* doc, string content)
     doc->source_ready = true;
 }
 
-internal bool
-lsp_stage_document(LspDocument* staged, string uri, string content)
+internal bool lsp_stage_document(LspState*    state,
+                                 LspDocument* staged,
+                                 string       uri,
+                                 string       content)
 {
     *staged = (LspDocument){0};
     arena_init(&staged->arena);
@@ -541,6 +543,8 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
         .require_entry_point  = false,
         .skip_hir_generation  = true,
         .keep_partial_results = true,
+        .module_root_source_path =
+            state != NULL ? state->workspace_root_source_path : (string){0},
     };
     bool ok = lsp_front_end_document(
         (NerdSource){
@@ -601,11 +605,12 @@ lsp_stage_document(LspDocument* staged, string uri, string content)
     return true;
 }
 
-internal bool lsp_analyse_document(LspDocument* doc, string uri)
+internal bool
+lsp_analyse_document(LspState* state, LspDocument* doc, string uri)
 {
     MemoryStats memory_before = compiler_memory_profile_begin();
     LspDocument staged        = {0};
-    if (!lsp_stage_document(&staged, uri, doc->source)) {
+    if (!lsp_stage_document(state, &staged, uri, doc->source)) {
         lsp_document_reset_runtime(&staged);
         compiler_memory_profile_end(
             COMPILER_STAGE_LSP, COMPILER_PHASE_LSP_ANALYSE, memory_before);
@@ -842,7 +847,7 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     }
 
     lsp_document_set_source(doc, text);
-    bool       ok          = lsp_analyse_document(doc, uri);
+    bool       ok          = lsp_analyse_document(state, doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
     lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
@@ -882,7 +887,7 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
         }
     }
 
-    bool       ok          = lsp_analyse_document(doc, uri);
+    bool       ok          = lsp_analyse_document(state, doc, uri);
     JsonValue* diagnostics = ok ? json_new_array(message->arena)
                                 : lsp_parse_last_diagnostics(message->arena);
     lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
