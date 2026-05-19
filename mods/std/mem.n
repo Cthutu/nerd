@@ -1,31 +1,155 @@
--- Basic memory utilities that wrap libc's malloc functions.
+-- Nerd Standard Library (NSL)
+--
+-- Provides tracked byte-slice memory allocation helpers. The implementation
+-- delegates to the Nerd runtime memory manager, which stores allocation
+-- metadata for size queries, leak reporting, and heap statistics.
 
-c_malloc :: ffi "c" malloc (size: usize) -> ^void
+ffi "nrt" {
+    nrt_mem_alloc (size       : usize,
+                   file_data  : ^u8,
+                   file_count : usize,
+                   line       : u32) -> ^void
 
-c_realloc :: ffi "c" realloc (ptr: ^void, size: usize) -> ^void
+    nrt_mem_realloc (ptr        : ^void,
+                     size       : usize,
+                     file_data  : ^u8,
+                     file_count : usize,
+                     line       : u32) -> ^void
 
-c_free :: ffi "c" free (ptr: ^void)
+    nrt_mem_free (ptr: ^void)
 
-pub alloc :: fn (size: usize) -> []u8 {
-    return c_malloc(size).as([]u8, size)
+    nrt_mem_size (ptr: ^void) -> usize
+
+    nrt_mem_leak (ptr: ^void)
+
+    nrt_mem_break_on_alloc (index: u64)
+
+    nrt_mem_allocation_count () -> usize
+
+    nrt_mem_total_allocated () -> usize
+
+    nrt_mem_print_leaks ()
+
+    nrt_mem_stats_snapshot (out: ^MemoryStats)
+
+    nrt_mem_stats_delta (out    : ^MemoryStats,
+                         before : ^MemoryStats,
+                         after  : ^MemoryStats)
+
+    nrt_mem_record_arena_init (bytes_committed: usize)
+
+    nrt_mem_record_arena_done ()
+
+    nrt_mem_record_arena_commit (bytes_committed: usize)
+
+    nrt_mem_record_arena_alloc (bytes_allocated: usize)
+
+    nrt_mem_record_array_growth (bytes_allocated: usize)
 }
 
-pub realloc :: fn (ptr: []u8, new_size: usize) -> []u8 {
-    return c_realloc(ptr.data, new_size).as([]u8, new_size)
+-- Captures heap and future allocator-family counters.
+pub MemoryStats :: plex #c {
+    heap_alloc_count       usize -- Number of heap allocation calls.
+    heap_realloc_count     usize -- Number of heap reallocation calls.
+    heap_free_count        usize -- Number of heap free calls.
+    heap_bytes_allocated   usize -- Total bytes requested by heap allocations.
+    heap_bytes_reallocated usize -- Total bytes requested by heap reallocations.
+    heap_bytes_freed       usize -- Total bytes released by heap frees.
+    heap_current_bytes     usize -- Current live heap byte count.
+    heap_peak_bytes        usize -- Highest live heap byte count observed.
+    arena_init_count       usize -- Number of arena initialisations recorded.
+    arena_done_count       usize -- Number of arena completions recorded.
+    arena_alloc_count      usize -- Number of arena allocations recorded.
+    arena_bytes_allocated  usize -- Total bytes requested from arenas.
+    arena_commit_count     usize -- Number of arena commits recorded.
+    arena_bytes_committed  usize -- Total bytes committed for arenas.
+    array_growth_count     usize -- Number of dynamic array growths recorded.
+    array_bytes_allocated  usize -- Total bytes requested by array growths.
 }
 
-pub free :: fn (ptr: []u8) {
-    c_free(ptr.data)
+-- Returns the current memory statistics.
+pub stats_snapshot :: fn () -> MemoryStats {
+    stats : MemoryStats
+    nrt_mem_stats_snapshot(^stats)
+    return stats
 }
 
-pub kb :: fn (n: usize) => n * 1024
+-- Returns the difference between two memory statistics snapshots.
+pub stats_delta :: fn (before: MemoryStats, after: MemoryStats) -> MemoryStats {
+    stats : MemoryStats
+    nrt_mem_stats_delta(^stats, ^before, ^after)
+    return stats
+}
 
-pub mb :: fn (n: usize) => kb(n) * 1024
+-- Allocates `size` bytes and returns them as a mutable byte slice.
+pub alloc :: fn (size: usize, file: string = @file, line: u32 = @line) -> []u8 {
+    return nrt_mem_alloc(size, file.data, file.count, line).as([]u8, size)
+}
 
-pub gb :: fn (n: usize) => mb(n) * 1024
+-- Resizes a byte slice allocation and returns the new byte slice view.
+pub realloc :: fn (allocation : []u8,
+                   new_size   : usize,
+                   file       : string = @file,
+                   line       : u32 = @line) -> []u8 {
+    return nrt_mem_realloc(allocation.data, new_size, file.data, file.count, line).as([]u8, new_size)
+}
 
-pub align_up :: fn (value: usize, alignment: usize) -> usize {
-    remainder := value % alignment
-    on remainder == 0 => return value
-    return value + alignment - remainder
+-- Releases a byte slice allocation returned by `alloc` or `realloc`.
+pub free :: fn (allocation: []u8) {
+    nrt_mem_free(allocation.data)
+}
+
+-- Returns the tracked size for an allocation, or zero for nil.
+pub size :: fn (allocation: []u8) -> usize {
+    return nrt_mem_size(allocation.data)
+}
+
+-- Marks an allocation as intentionally process-lived for leak reporting.
+pub leak :: fn (allocation: []u8) {
+    nrt_mem_leak(allocation.data)
+}
+
+-- Records the allocation index that should trigger a diagnostic message.
+pub break_on_alloc :: fn (index: u64) {
+    nrt_mem_break_on_alloc(index)
+}
+
+-- Returns the number of live allocations reportable as leaks.
+pub allocation_count :: fn () -> usize {
+    return nrt_mem_allocation_count()
+}
+
+-- Returns the total live bytes reportable as leaks.
+pub total_allocated :: fn () -> usize {
+    return nrt_mem_total_allocated()
+}
+
+-- Prints reportable live allocations to stderr.
+pub print_leaks :: fn () {
+    nrt_mem_print_leaks()
+}
+
+-- Records an arena initialisation in the memory statistics.
+pub record_arena_init :: fn (bytes_committed: usize) {
+    nrt_mem_record_arena_init(bytes_committed)
+}
+
+-- Records an arena completion in the memory statistics.
+pub record_arena_done :: fn () {
+    nrt_mem_record_arena_done()
+}
+
+-- Records an arena commit in the memory statistics.
+pub record_arena_commit :: fn (bytes_committed: usize) {
+    nrt_mem_record_arena_commit(bytes_committed)
+}
+
+-- Records an arena allocation in the memory statistics.
+pub record_arena_alloc :: fn (bytes_allocated: usize) {
+    nrt_mem_record_arena_alloc(bytes_allocated)
+}
+
+-- Records dynamic array growth in the memory statistics.
+pub record_array_growth :: fn (bytes_allocated: usize) {
+    nrt_mem_record_array_growth(bytes_allocated)
 }
