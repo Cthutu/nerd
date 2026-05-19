@@ -40,6 +40,26 @@ internal bool lsp_code_action_is_ident_char(u8 c)
            (c >= '0' && c <= '9') || c == '_';
 }
 
+internal bool lsp_code_action_string_starts_with(string value, cstr prefix)
+{
+    string prefix_string = s(prefix);
+    return value.count >= prefix_string.count &&
+           memcmp(value.data, prefix_string.data, prefix_string.count) == 0;
+}
+
+internal bool lsp_code_action_string_contains(string haystack, string needle)
+{
+    if (needle.count == 0 || needle.count > haystack.count) {
+        return false;
+    }
+    for (usize i = 0; i + needle.count <= haystack.count; ++i) {
+        if (memcmp(haystack.data + i, needle.data, needle.count) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void
 lsp_code_action_skip_line_space(string source, usize line_end, usize* cursor)
 {
@@ -377,6 +397,344 @@ internal bool lsp_code_action_symbol_token_at_offset(const Lexer* lexer,
         usize end = lex_token_end_offset(lexer, token);
         if (offset >= token->offset && offset <= end) {
             *out_token_index = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal void lsp_code_action_add_token(Array(u32) * tokens, u32 token_index)
+{
+    if (token_index == U32_MAX) {
+        return;
+    }
+    for (u32 i = 0; i < array_count(*tokens); ++i) {
+        if ((*tokens)[i] == token_index) {
+            return;
+        }
+    }
+
+    u32 insert_at = (u32)array_count(*tokens);
+    while (insert_at > 0 && (*tokens)[insert_at - 1] > token_index) {
+        insert_at--;
+    }
+    array_push(*tokens, token_index);
+    for (u32 i = (u32)array_count(*tokens) - 1; i > insert_at; --i) {
+        (*tokens)[i] = (*tokens)[i - 1];
+    }
+    (*tokens)[insert_at] = token_index;
+}
+
+internal bool lsp_code_action_local_at_token(const LspDocument* doc,
+                                             u32                token_index,
+                                             u32*               out_local_index)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        if (sema->locals[i].decl_token_index == token_index) {
+            *out_local_index = i;
+            return true;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        if (ast->nodes[i].token_index != token_index) {
+            continue;
+        }
+        u32 local_index = sema_no_local();
+        if (lsp_sema_node_local(sema, i, &local_index)) {
+            *out_local_index = local_index;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal Array(u32)
+    lsp_code_action_local_tokens(const LspDocument* doc, u32 local_index)
+{
+    Array(u32) tokens      = NULL;
+    const Ast*  ast        = &doc->front_end.ast;
+    const Sema* sema       = &doc->front_end.sema;
+
+    const SemaLocal* local = NULL;
+    if (!lsp_sema_local(sema, local_index, &local)) {
+        return tokens;
+    }
+
+    lsp_code_action_add_token(&tokens, local->decl_token_index);
+    if (local->decl_node_index < array_count(ast->nodes)) {
+        lsp_code_action_add_token(
+            &tokens, ast->nodes[local->decl_node_index].token_index);
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        u32 node_local = sema_no_local();
+        if (lsp_sema_node_local(sema, i, &node_local) &&
+            node_local == local_index) {
+            lsp_code_action_add_token(&tokens, ast->nodes[i].token_index);
+        }
+    }
+
+    return tokens;
+}
+
+internal JsonValue* lsp_code_action_rename_tokens_edit(Arena*             arena,
+                                                       string             uri,
+                                                       const LspDocument* doc,
+                                                       Array(u32) tokens,
+                                                       string new_name)
+{
+    if (array_count(tokens) == 0) {
+        return NULL;
+    }
+
+    JsonValue*   edits        = json_new_array(arena);
+    const Lexer* lexer        = &doc->front_end.lexer;
+    u32          pushed_count = 0;
+    for (u32 i = 0; i < array_count(tokens); ++i) {
+        u32 token_index = tokens[i];
+        if (token_index >= array_count(lexer->tokens)) {
+            continue;
+        }
+
+        const Token* token = &lexer->tokens[token_index];
+        usize        end   = lex_token_end_offset(lexer, token);
+        JsonValue*   range =
+            lsp_code_action_range(arena, lexer->source, token->offset, end);
+        if (range == NULL) {
+            continue;
+        }
+
+        JsonValue* edit = json_new_object(arena);
+        json_object_set_object(edit, "range", range);
+        json_object_set_string(edit, arena, "newText", new_name);
+        json_array_push(edits, edit);
+        pushed_count++;
+    }
+
+    if (pushed_count == 0) {
+        return NULL;
+    }
+
+    JsonValue* changes = json_new_object(arena);
+    json_object_set_array(changes, lsp_code_action_cstr(arena, uri), edits);
+
+    JsonValue* workspace_edit = json_new_object(arena);
+    json_object_set_object(workspace_edit, "changes", changes);
+    return workspace_edit;
+}
+
+internal JsonValue* lsp_code_action_rename_local_edit(Arena*             arena,
+                                                      string             uri,
+                                                      const LspDocument* doc,
+                                                      u32    local_index,
+                                                      string new_name)
+{
+    Array(u32) tokens = lsp_code_action_local_tokens(doc, local_index);
+    JsonValue* edit =
+        lsp_code_action_rename_tokens_edit(arena, uri, doc, tokens, new_name);
+    array_free(tokens);
+    return edit;
+}
+
+internal u32 lsp_code_action_symbol_at_token(const LspDocument* doc,
+                                             u32                token_index)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->token_index != token_index) {
+            continue;
+        }
+        switch (node->kind) {
+        case AK_Bind:
+        case AK_Variable:
+        case AK_SymbolRef:
+            return node->a;
+        default:
+            break;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->params); ++i) {
+        const AstParam* param = &ast->params[i];
+        if (param->token_index == token_index) {
+            return param->symbol_handle;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        const AstPattern* pattern = &ast->patterns[i];
+        if (pattern->kind == APK_Bind && pattern->token_index == token_index) {
+            return pattern->a;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->fors); ++i) {
+        const AstForInfo* for_info = &ast->fors[i];
+        if (for_info->index_token_index == token_index) {
+            return for_info->index_symbol;
+        }
+        if (for_info->item_token_index == token_index) {
+            return for_info->item_symbol;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+        const AstOnBranch* branch = &ast->on_branches[i];
+        if (branch->binder_token_index == token_index) {
+            return branch->binder_symbol_handle;
+        }
+    }
+
+    return U32_MAX;
+}
+
+internal Array(u32)
+    lsp_code_action_symbol_tokens(const LspDocument* doc, u32 symbol)
+{
+    Array(u32) tokens = NULL;
+    const Ast* ast    = &doc->front_end.ast;
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        switch (node->kind) {
+        case AK_Bind:
+        case AK_Variable:
+        case AK_SymbolRef:
+            if (node->a == symbol) {
+                lsp_code_action_add_token(&tokens, node->token_index);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->params); ++i) {
+        const AstParam* param = &ast->params[i];
+        if (param->symbol_handle == symbol) {
+            lsp_code_action_add_token(&tokens, param->token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        const AstPattern* pattern = &ast->patterns[i];
+        if (pattern->kind == APK_Bind && pattern->a == symbol) {
+            lsp_code_action_add_token(&tokens, pattern->token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->fors); ++i) {
+        const AstForInfo* for_info = &ast->fors[i];
+        if (for_info->index_symbol == symbol) {
+            lsp_code_action_add_token(&tokens, for_info->index_token_index);
+        }
+        if (for_info->item_symbol == symbol) {
+            lsp_code_action_add_token(&tokens, for_info->item_token_index);
+        }
+    }
+
+    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+        const AstOnBranch* branch = &ast->on_branches[i];
+        if (branch->binder_symbol_handle == symbol) {
+            lsp_code_action_add_token(&tokens, branch->binder_token_index);
+        }
+    }
+
+    return tokens;
+}
+
+internal void lsp_code_action_add_unused_local_rename(Arena*     arena,
+                                                      JsonValue* actions,
+                                                      string     uri,
+                                                      const LspDocument* doc,
+                                                      u32 token_index)
+{
+    u32    symbol = lsp_code_action_symbol_at_token(doc, token_index);
+    string name = symbol != U32_MAX ? lex_symbol(&doc->front_end.lexer, symbol)
+                                    : (string){0};
+    if (name.count == 0) {
+        return;
+    }
+
+    string new_name = {0};
+    if (name.data[0] == '_') {
+        if (name.count == 1) {
+            return;
+        }
+        new_name = string_from(name.data + 1, name.count - 1);
+    } else {
+        StringBuilder sb = {0};
+        sb_init(&sb, arena);
+        sb_append_char(&sb, '_');
+        sb_append_string(&sb, name);
+        new_name = sb_to_string(&sb);
+    }
+
+    JsonValue* workspace_edit = NULL;
+    u32        local_index    = sema_no_local();
+    if (lsp_code_action_local_at_token(doc, token_index, &local_index)) {
+        workspace_edit = lsp_code_action_rename_local_edit(
+            arena, uri, doc, local_index, new_name);
+    }
+    if (workspace_edit == NULL) {
+        Array(u32) tokens = lsp_code_action_symbol_tokens(doc, symbol);
+        workspace_edit    = lsp_code_action_rename_tokens_edit(
+            arena, uri, doc, tokens, new_name);
+        array_free(tokens);
+    }
+    if (workspace_edit == NULL) {
+        return;
+    }
+
+    StringBuilder title = {0};
+    sb_init(&title, arena);
+    sb_append_cstr(&title, "Rename to ");
+    sb_append_string(&title, new_name);
+
+    JsonValue* action = json_new_object(arena);
+    json_object_set_string(action, arena, "title", sb_to_string(&title));
+    json_object_set_string(action, arena, "kind", s("quickfix"));
+    json_object_set_object(action, "edit", workspace_edit);
+    json_array_push(actions, action);
+}
+
+internal bool lsp_code_action_has_unused_local_diagnostic(
+    Arena* arena, const LspMessage* message, string name)
+{
+    JsonValue* diagnostics =
+        json_get_cstr(message->message, "params.context.diagnostics");
+    if (diagnostics == NULL || diagnostics->kind != JSON_ARRAY) {
+        return false;
+    }
+
+    StringBuilder quoted_name = {0};
+    sb_init(&quoted_name, arena);
+    sb_append_char(&quoted_name, '`');
+    sb_append_string(&quoted_name, name);
+    sb_append_char(&quoted_name, '`');
+    string quoted = sb_to_string(&quoted_name);
+
+    for (u32 i = 0; i < array_count(diagnostics->array.values); ++i) {
+        JsonValue* diagnostic    = diagnostics->array.values[i];
+        JsonValue* message_value = json_get_cstr(diagnostic, "message");
+        if (message_value == NULL || message_value->kind != JSON_STRING) {
+            continue;
+        }
+
+        string text      = message_value->string;
+        bool   is_unused = lsp_code_action_string_starts_with(text, "Unused ");
+        bool   is_used_underscore =
+            lsp_code_action_string_starts_with(text, "Used ") &&
+            lsp_code_action_string_contains(text, s(" marked as unused"));
+        if ((is_unused || is_used_underscore) &&
+            lsp_code_action_string_contains(text, quoted)) {
             return true;
         }
     }
@@ -1530,16 +1888,24 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
 
     usize offset      = lsp_offset_from_position(doc->source, line, character);
     u32   token_index = U32_MAX;
-    if (lsp_code_action_symbol_token_at_offset(
-            &doc->front_end.lexer, offset, &token_index) &&
-        lsp_code_action_symbol_needs_import(doc, token_index)) {
+    bool  has_symbol_token = lsp_code_action_symbol_token_at_offset(
+        &doc->front_end.lexer, offset, &token_index);
+    if (has_symbol_token) {
         const Token* token = &doc->front_end.lexer.tokens[token_index];
         usize        end   = lex_token_end_offset(&doc->front_end.lexer, token);
         string       symbol =
             string_from(doc->front_end.lexer.source.source.data + token->offset,
                         end - token->offset);
-        lsp_code_action_add_import_actions(
-            message->arena, actions, uri, doc, symbol);
+        if (lsp_code_action_has_unused_local_diagnostic(
+                message->arena, message, symbol)) {
+            lsp_code_action_add_unused_local_rename(
+                message->arena, actions, uri, doc, token_index);
+        }
+
+        if (lsp_code_action_symbol_needs_import(doc, token_index)) {
+            lsp_code_action_add_import_actions(
+                message->arena, actions, uri, doc, symbol);
+        }
     }
 
     LspTypeFactView view = {0};
