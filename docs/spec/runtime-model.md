@@ -113,7 +113,9 @@ that release header when debug tracking is enabled.
 Debug tracking maintains a linked list of live heap allocations. Marking an
 allocation as leaked removes it from the live list; it does not require a
 persistent leaked flag. This makes process-lifetime allocations invisible to
-leak reporting while keeping later `nrt_mem_free` valid.
+leak reporting while keeping later `nrt_mem_free` valid. Debug heap records
+also store the source file and line supplied to `nrt_mem_alloc` or
+`nrt_mem_realloc`.
 
 `nrt_mem_break_on_alloc(index)` records a debug allocation index that should
 emit a diagnostic when that allocation is reached. It uses the runtime's heap
@@ -131,7 +133,8 @@ they are invalidated in bulk by `restore`, `reset`, or `done`. Debug tracking fo
 arena ownership is represented by separate runtime tracking nodes keyed by the
 arena reservation base address rather than by hidden headers before arena
 results. `nrt_arena_live_head()` exposes the debug list head to leak reporting
-code outside the runtime.
+code outside the runtime. Arena debug nodes store the source file and line
+supplied to `nrt_arena_init`.
 
 `std.mem` is the public standard-library facade over this runtime foundation.
 It owns the source-level API, statistics presentation, and leak-reporting

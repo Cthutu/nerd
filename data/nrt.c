@@ -35,8 +35,10 @@ typedef struct NrtHeapFooter {
 typedef struct NrtHeapDebugHeader {
     struct NrtHeapDebugHeader* prev;
     struct NrtHeapDebugHeader* next;
+    NerdString                 source_path;
     size_t                     requested_size;
     uint64_t                   index;
+    uint32_t                   line;
 } NrtHeapDebugHeader;
 
 typedef struct NrtArenaDebugNode {
@@ -46,7 +48,9 @@ typedef struct NrtArenaDebugNode {
     size_t                    reserved_size;
     size_t                    committed_size;
     size_t                    used_size;
+    NerdString                source_path;
     uint64_t                  index;
+    uint32_t                  line;
     size_t                    mapping_size;
 } NrtArenaDebugNode;
 
@@ -282,8 +286,6 @@ void* nrt_mem_alloc(size_t size,
                     const char* source_path,
                     uint32_t    line)
 {
-    (void)source_path;
-    (void)line;
     if (alignment < 16) {
         alignment = 16;
     }
@@ -308,8 +310,13 @@ void* nrt_mem_alloc(size_t size,
     NrtHeapDebugHeader* debug = (NrtHeapDebugHeader*)mapping;
     debug->prev               = NULL;
     debug->next               = g_nrt_heap_head;
+    debug->source_path        = (NerdString){
+        .data  = (u8*)source_path,
+        .count = source_path != NULL ? strlen(source_path) : 0,
+    };
     debug->requested_size     = size;
     debug->index              = ++g_nrt_heap_next_index;
+    debug->line               = line;
     if (debug->index == g_nrt_heap_break_index) {
         nrt_eprintfn("nrt: allocation break reached at index %llu",
                      (unsigned long long)debug->index);
@@ -427,7 +434,9 @@ static void nrt_arena_debug_release(NrtArenaDebugNode* node)
     nrt_mem_release(node, mapping_size);
 }
 
-static void nrt_arena_debug_track(NrtArena* arena)
+static void nrt_arena_debug_track(NrtArena*   arena,
+                                  const char* source_path,
+                                  uint32_t    line)
 {
     if (arena == NULL || arena->base == NULL || arena == nrt_temp_arena()) {
         return;
@@ -448,7 +457,12 @@ static void nrt_arena_debug_track(NrtArena* arena)
         .reserved_size  = NRT_ARENA_RESERVE_SIZE,
         .committed_size = arena->committed_size,
         .used_size      = (size_t)(arena->current - arena->base),
+        .source_path    = (NerdString){
+               .data  = (u8*)source_path,
+               .count = source_path != NULL ? strlen(source_path) : 0,
+        },
         .index          = ++g_nrt_arena_next_index,
+        .line           = line,
         .mapping_size   = mapping_size,
     };
     if (g_nrt_arena_head != NULL) {
@@ -480,7 +494,11 @@ static void nrt_arena_debug_done(NrtArena* arena)
 }
 #endif
 
-void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
+void nrt_arena_init(NrtArena*   arena,
+                    size_t      initial_size,
+                    size_t      increment,
+                    const char* source_path,
+                    uint32_t    line)
 {
     if (arena == NULL) {
         return;
@@ -516,7 +534,7 @@ void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
     arena->committed_size = initial_size;
     arena->increment      = increment;
 #ifndef NDEBUG
-    nrt_arena_debug_track(arena);
+    nrt_arena_debug_track(arena, source_path, line);
 #endif
 }
 
@@ -572,7 +590,7 @@ void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
         return NULL;
     }
     if (arena->base == NULL) {
-        nrt_arena_init(arena, 0, 0);
+        nrt_arena_init(arena, 0, 0, NULL, 0);
     }
     if (alignment == 0) {
         alignment = sizeof(void*);
