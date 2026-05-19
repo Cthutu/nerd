@@ -108,3 +108,8 @@ do:
     just test
     just test-release
     just install
+
+run-example:
+    cd examples/text-adventure && nerd run quill.n
+
+alias re := run-example

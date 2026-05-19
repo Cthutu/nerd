@@ -6,7 +6,7 @@
             "type": "process",
             "command": "just",
             "args": [
-                "test-install"
+                "run-example"
             ],
             "group": {
                 "kind": "build",

@@ -1,25 +1,84 @@
+use std.io
+use std.string
 use term
 
 main :: fn () {
     state := init()
 
+    show_location(^state)
+
+    for {
+        player_input := input("> ")
+        input_parts := player_input.split(" ")
+        defer input_parts.free()
+
+        verb: string
+        _nouns: []string
+
+        on input_parts.count {
+            0 => {
+                prn("Please enter a command.")
+                again
+            }
+            1 => {
+                verb = input_parts[0]
+            }
+            else => {
+                verb = input_parts[0]
+                _nouns = input_parts[1 ..]
+            }
+        }
+
+        -- Normalise verb
+        for i, verb_group in state.verbs {
+            for verb_synonym in verb_group^ {
+                on verb == verb_synonym^ => verb = state.verbs[i][0]
+            }
+        }
+
+        on verb {
+            "q", "quit" => {
+                prn("Goodbye!")
+                break
+            }
+            "n", "s", "e", "w", "u", "d" => move(^state, verb)
+            else => {
+                prn("I don't understand that command.")
+            }
+        }
+    }
+}
+
+show_location :: fn (state: ^State) {
     prn_wrap($"{state.locations[state.player_loc]}")
     prn()
-
     show_exits(state)
+}
+
+move :: fn (state: ^State, direction: string) {
+    for exit in state.exits[state.player_loc] {
+        on exit.0 == direction => {
+            state.player_loc = exit.1
+            show_location(state)
+            break
+        }
+    }
+    else {
+        prn("You can't go that way.")
+    }
 }
 
 State :: plex {
     -- Database
-    locations  []string            -- location descriptions
-    exits      [][](string, usize) -- exits per location
-    verbs      [][]string          -- verbs and their synonyms
+    locations []string -- location descriptions
+    exits [][](string, usize)
+    verbs [][]string -- verbs and their synonyms
 
     -- Game state
     player_loc usize
 }
 
-show_exits :: fn (state: State) {
+show_exits :: fn (state: ^State) {
     pr("Exits: ")
     for i, exit in state.exits[state.player_loc] {
         pr($"{exit_strings(exit.0)}")
@@ -47,38 +106,43 @@ init :: fn () -> State {
         ]
         exits: [
             [
-                ("E", 1),
-                ("W", 4),
-                ("S", 3),
-                ("D", 5),
+                ("e", 1),
+                ("w", 4),
+                ("s", 3),
+                ("d", 5),
             ],
             [
-                ("W", 0),
-                ("S", 2),
+                ("w", 0),
+                ("s", 2),
             ],
             [
-                ("N", 1),
-                ("W", 3),
+                ("n", 1),
+                ("w", 3),
             ],
             [
-                ("N", 0),
-                ("E", 2),
+                ("n", 0),
+                ("e", 2),
             ],
-            [("E", 0)],
-            [("U", 0)],
+            [
+                ("e", 0),
+            ],
+            [
+                ("u", 0),
+            ],
         ]
         verbs: [
-            ["n", "north"],
-            ["s", "south"],
-            ["e", "east"],
-            ["w", "west"],
-            ["u", "up"],
-            ["d", "down"],
-            ["look", "l"],
-            ["quit", "q"],
-            ["i", "inv", "inventory"],
-            ["get", "take"],
-            ["drop"],
+            ["n", "north"
+        ],
+        ["s", "south"],
+        ["e", "east"],
+        ["w", "west"],
+        ["u", "up"],
+        ["d", "down"],
+        ["look", "l"],
+        ["quit", "q"],
+        ["i", "inv", "inventory"],
+        ["get", "take"],
+        ["drop"],
         ]
         player_loc: 0
     }
@@ -86,12 +150,12 @@ init :: fn () -> State {
 
 exit_strings :: fn (exit: string) -> string {
     return on exit {
-        "N" => "North"
-        "S" => "South"
-        "E" => "East"
-        "W" => "West"
-        "U" => "Up"
-        "D" => "Down"
+        "n" => "North"
+        "s" => "South"
+        "e" => "East"
+        "w" => "West"
+        "u" => "Up"
+        "d" => "Down"
         else => exit
     }
 }

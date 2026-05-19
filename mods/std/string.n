@@ -4,46 +4,51 @@
 -- Copyright (C)2026 Matt Davies, all rights reserved.
 --
 
-pub split :: fn (s: string, sep: string) -> [..]string {
-    parts: [..]string
+impl string {
 
-    on sep.count == 0 => {
-        parts.push(s)
+    pub split :: fn (s: Self, sep: string) -> [..]string {
+        parts : [..]string
+
+        on sep.count == 0 => {
+            parts.push(s)
+            return parts
+        }
+
+        start : usize = 0
+        i     : usize = 0
+
+        for i + sep.count <= s.count {
+            matched := yes
+            for j: usize = 0; matched && j < sep.count; j += 1 {
+                on s.data[i + j] != sep.data[j] => matched = no
+            }
+
+            on matched => {
+                parts.push(s[start..i])
+                i     += sep.count
+                start = i
+            } else {
+                i += 1
+            }
+        }
+
+        parts.push(s[start..])
         return parts
     }
 
-    start: usize = 0
-    i: usize = 0
-    for i + sep.count <= s.count {
-        matched := yes
-        for j: usize = 0; matched && j < sep.count; j += 1 {
-            on s.data[i + j] != sep.data[j] => matched = no
+    pub trim_whitespace :: fn (s: Self) -> string {
+        start : usize = 0
+        end   : usize = s.count
+
+        for start < end && (s.data[start] == ' ' || s.data[start] == '\t') {
+            start += 1
         }
 
-        on matched => {
-            parts.push(s[start .. i])
-            i += sep.count
-            start = i
-        } else {
-            i += 1
+        for end > start && (s.data[end - 1] == ' ' || s.data[end - 1] == '\t') {
+            end -= 1
         }
+
+        return s[start..end]
     }
 
-    parts.push(s[start ..])
-    return parts
-}
-
-pub trim_whitespace :: fn (s: string) -> string {
-    start: usize = 0
-    end: usize = s.count
-
-    for start < end && (s.data[start] == ' ' || s.data[start] == '\t') {
-        start += 1
-    }
-
-    for end > start && (s.data[end - 1] == ' ' || s.data[end - 1] == '\t') {
-        end -= 1
-    }
-
-    return s[start .. end]
 }
