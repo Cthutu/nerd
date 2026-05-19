@@ -11523,6 +11523,95 @@ internal bool sema_record_member_type(const Sema* sema,
     return false;
 }
 
+internal bool
+sema_method_target_matches_receiver(const Lexer*      lexer,
+                                    Sema*             sema,
+                                    const Lexer*      source_lexer,
+                                    const Ast*        source_ast,
+                                    Sema*             source_sema,
+                                    const SemaMethod* source_method,
+                                    u32               receiver_type,
+                                    bool              imported)
+{
+    u32 source_target_type = sema_no_type();
+    if (!sema_resolve_type_node(source_lexer,
+                                source_ast,
+                                source_sema,
+                                source_method->target_type_node_index,
+                                &source_target_type)) {
+        return false;
+    }
+
+    u32  target_type = imported ? sema_import_type((Lexer*)lexer,
+                                                   sema,
+                                                   source_lexer,
+                                                   source_sema,
+                                                   source_target_type)
+                                : source_target_type;
+    bool matches     = sema_type_matches(sema, target_type, receiver_type);
+    if (!matches && receiver_type != sema_no_type() &&
+        receiver_type < array_count(sema->types) &&
+        sema->types[receiver_type].kind == STK_Pointer) {
+        matches = sema_type_matches(
+            sema, target_type, sema->types[receiver_type].first_param_type);
+    }
+    return matches;
+}
+
+internal bool sema_find_private_method_member(const Lexer* lexer,
+                                              const Ast*   ast,
+                                              Sema*        sema,
+                                              u32          receiver_type,
+                                              u32          member_symbol,
+                                              string*      out_module)
+{
+    (void)ast;
+
+    if (sema->program == NULL) {
+        return false;
+    }
+
+    string member = lex_symbol(lexer, member_symbol);
+    for (u32 module_index = 0;
+         module_index < array_count(sema->program->modules);
+         ++module_index) {
+        if (module_index == sema->current_module_index) {
+            continue;
+        }
+
+        const ModuleInfo* module       = &sema->program->modules[module_index];
+        const Lexer*      source_lexer = &module->front_end.lexer;
+        const Ast*        source_ast   = &module->front_end.ast;
+        Sema*             source_sema  = (Sema*)&module->front_end.sema;
+        for (u32 i = 0; i < array_count(source_sema->methods); ++i) {
+            const SemaMethod* source_method = &source_sema->methods[i];
+            if (source_method->is_public ||
+                !source_method->first_param_is_receiver ||
+                !string_eq(
+                    lex_symbol(source_lexer, source_method->symbol_handle),
+                    member)) {
+                continue;
+            }
+
+            if (!sema_method_target_matches_receiver(lexer,
+                                                     sema,
+                                                     source_lexer,
+                                                     source_ast,
+                                                     source_sema,
+                                                     source_method,
+                                                     receiver_type,
+                                                     true)) {
+                continue;
+            }
+
+            *out_module = module->qualified_name;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 internal void sema_consider_method_member_suggestions(const Lexer* lexer,
                                                       const Ast*   ast,
                                                       Sema*        sema,
@@ -11562,28 +11651,14 @@ internal void sema_consider_method_member_suggestions(const Lexer* lexer,
             }
         }
 
-        u32 source_target_type = sema_no_type();
-        if (!sema_resolve_type_node(source_lexer,
-                                    source_ast,
-                                    source_sema,
-                                    source_method->target_type_node_index,
-                                    &source_target_type)) {
-            continue;
-        }
-        u32  target_type = imported ? sema_import_type((Lexer*)lexer,
-                                                       sema,
-                                                       source_lexer,
-                                                       source_sema,
-                                                       source_target_type)
-                                    : source_target_type;
-        bool matches     = sema_type_matches(sema, target_type, receiver_type);
-        if (!matches && receiver_type != sema_no_type() &&
-            receiver_type < array_count(sema->types) &&
-            sema->types[receiver_type].kind == STK_Pointer) {
-            matches = sema_type_matches(
-                sema, target_type, sema->types[receiver_type].first_param_type);
-        }
-        if (!matches) {
+        if (!sema_method_target_matches_receiver(lexer,
+                                                 sema,
+                                                 source_lexer,
+                                                 source_ast,
+                                                 source_sema,
+                                                 source_method,
+                                                 receiver_type,
+                                                 imported)) {
             continue;
         }
 
@@ -11615,29 +11690,14 @@ internal void sema_consider_method_member_suggestions(const Lexer* lexer,
                 continue;
             }
 
-            u32 source_target_type = sema_no_type();
-            if (!sema_resolve_type_node(source_lexer,
-                                        source_ast,
-                                        source_sema,
-                                        source_method->target_type_node_index,
-                                        &source_target_type)) {
-                continue;
-            }
-            u32  target_type = sema_import_type((Lexer*)lexer,
-                                                sema,
-                                                source_lexer,
-                                                source_sema,
-                                                source_target_type);
-            bool matches = sema_type_matches(sema, target_type, receiver_type);
-            if (!matches && receiver_type != sema_no_type() &&
-                receiver_type < array_count(sema->types) &&
-                sema->types[receiver_type].kind == STK_Pointer) {
-                matches = sema_type_matches(
-                    sema,
-                    target_type,
-                    sema->types[receiver_type].first_param_type);
-            }
-            if (!matches) {
+            if (!sema_method_target_matches_receiver(lexer,
+                                                     sema,
+                                                     source_lexer,
+                                                     source_ast,
+                                                     source_sema,
+                                                     source_method,
+                                                     receiver_type,
+                                                     true)) {
                 continue;
             }
 
@@ -11700,6 +11760,16 @@ internal bool sema_error_unknown_member(const Lexer*   lexer,
                                         u32            member_symbol)
 {
     string receiver = sema_type_name(lexer, sema, &temp_arena, receiver_type);
+    string private_module = {0};
+    if (sema_find_private_method_member(
+            lexer, ast, sema, receiver_type, member_symbol, &private_module)) {
+        return error_0354_private_method(lexer->source,
+                                         sema_node_span(lexer, member_node),
+                                         lex_symbol(lexer, member_symbol),
+                                         receiver,
+                                         private_module);
+    }
+
     string suggestion =
         sema_member_suggestion(lexer, ast, sema, receiver_type, member_symbol);
     return error_0353_unknown_member(lexer->source,

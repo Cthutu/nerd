@@ -375,6 +375,11 @@ bool error_0353_unknown_member(NerdSource source,
                                string     member,
                                string     receiver_type,
                                string     suggestion);
+bool error_0354_private_method(NerdSource source,
+                               ErrorSpan  span,
+                               string     method,
+                               string     receiver_type,
+                               string     module);
 
 //------------------------------------------------------------------------------
 // Low-level error system

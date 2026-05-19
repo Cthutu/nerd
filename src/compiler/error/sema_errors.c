@@ -1482,4 +1482,35 @@ bool error_0353_unknown_member(NerdSource source,
     return false;
 }
 
+bool error_0354_private_method(NerdSource source,
+                               ErrorSpan  span,
+                               string     method,
+                               string     receiver_type,
+                               string     module)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Method `" STRINGP "` for `" STRINGP "` is private",
+                   STRINGV(method),
+                   STRINGV(receiver_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` exists for `" STRINGP
+                        "`, but it is not visible from this module",
+                        STRINGV(method),
+                        STRINGV(receiver_type));
+    error_add_note(&error,
+                   "The method is defined in module `" STRINGP "`.",
+                   STRINGV(module));
+    error_add_help(&error,
+                   "Mark `" STRINGP
+                   "` as `pub` in that module, or call it from inside the "
+                   "module.",
+                   STRINGV(method));
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

@@ -176,6 +176,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "private_method",
+                "kind": 9
+            },
+            {
                 "label": "reexport",
                 "kind": 9
             },
