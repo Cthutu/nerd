@@ -146,11 +146,11 @@ main :: fn () {
             "uri": "__REPO_URI__/mods/core.n",
             "range": {
                 "start": {
-                    "line": 29,
+                    "line": 45,
                     "character": 4
                 },
                 "end": {
-                    "line": 29,
+                    "line": 45,
                     "character": 7
                 }
             }

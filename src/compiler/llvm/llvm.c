@@ -3699,6 +3699,105 @@ internal string llvm_float_binary_instruction(HirBinaryOp op)
     }
 }
 
+internal bool llvm_emit_pointer_arithmetic(LlvmFunctionContext* ctx,
+                                           LlvmValue            lhs,
+                                           LlvmValue            rhs,
+                                           HirBinaryOp          op,
+                                           u32                  result_type,
+                                           LlvmValue*           out)
+{
+    SemaTypeKind lhs_kind = llvm_type_kind(ctx->sema, lhs.type_index);
+    SemaTypeKind rhs_kind = llvm_type_kind(ctx->sema, rhs.type_index);
+    bool         lhs_ptr  = lhs_kind == STK_Pointer;
+    bool         rhs_ptr  = rhs_kind == STK_Pointer;
+    bool         lhs_int  = llvm_integer_bits(ctx->sema, lhs.type_index) > 0;
+    bool         rhs_int  = llvm_integer_bits(ctx->sema, rhs.type_index) > 0;
+
+    if (op == HIR_BINARY_Add &&
+        ((lhs_ptr && rhs_int) || (lhs_int && rhs_ptr))) {
+        LlvmValue pointer = lhs_ptr ? lhs : rhs;
+        LlvmValue offset  = lhs_ptr ? rhs : lhs;
+        u32       pointee = llvm_pointee_type(ctx->sema, pointer.type_index);
+        string    pointee_type = llvm_type_string(ctx, pointee);
+        string    offset_type  = llvm_type_string(ctx, offset.type_index);
+        string    temp         = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(pointee_type),
+                  STRINGV(pointer.value),
+                  STRINGV(offset_type),
+                  STRINGV(offset.value));
+        *out = (LlvmValue){
+            .ok         = true,
+            .type_index = result_type,
+            .value      = temp,
+        };
+        return true;
+    }
+
+    if (op == HIR_BINARY_Subtract && lhs_ptr && rhs_int) {
+        u32    pointee      = llvm_pointee_type(ctx->sema, lhs.type_index);
+        string pointee_type = llvm_type_string(ctx, pointee);
+        string offset_type  = llvm_type_string(ctx, rhs.type_index);
+        string negative     = llvm_temp(ctx);
+        string temp         = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = sub " STRINGP " 0, " STRINGP "\n",
+                  STRINGV(negative),
+                  STRINGV(offset_type),
+                  STRINGV(rhs.value));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", " STRINGP " " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(pointee_type),
+                  STRINGV(lhs.value),
+                  STRINGV(offset_type),
+                  STRINGV(negative));
+        *out = (LlvmValue){
+            .ok         = true,
+            .type_index = result_type,
+            .value      = temp,
+        };
+        return true;
+    }
+
+    if (op == HIR_BINARY_Subtract && lhs_ptr && rhs_ptr) {
+        u32    pointee       = llvm_pointee_type(ctx->sema, lhs.type_index);
+        u64    element_size  = llvm_type_sizeof_bytes(ctx->sema, pointee);
+        string lhs_int_value = llvm_temp(ctx);
+        string rhs_int_value = llvm_temp(ctx);
+        string byte_delta    = llvm_temp(ctx);
+        string element_delta = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = ptrtoint ptr " STRINGP " to i64\n"
+                  "  " STRINGP " = ptrtoint ptr " STRINGP " to i64\n"
+                  "  " STRINGP " = sub i64 " STRINGP ", " STRINGP "\n",
+                  STRINGV(lhs_int_value),
+                  STRINGV(lhs.value),
+                  STRINGV(rhs_int_value),
+                  STRINGV(rhs.value),
+                  STRINGV(byte_delta),
+                  STRINGV(lhs_int_value),
+                  STRINGV(rhs_int_value));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = sdiv i64 " STRINGP ", %llu\n",
+                  STRINGV(element_delta),
+                  STRINGV(byte_delta),
+                  (unsigned long long)(element_size == 0 ? 1 : element_size));
+        *out = (LlvmValue){
+            .ok         = true,
+            .type_index = result_type,
+            .value      = element_delta,
+        };
+        return true;
+    }
+
+    return false;
+}
+
 internal string llvm_compare_instruction(HirBinaryOp op)
 {
     switch (op) {
@@ -5420,6 +5519,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             LlvmValue rhs = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
             if (!lhs.ok || !rhs.ok) {
                 return (LlvmValue){0};
+            }
+
+            LlvmValue pointer_arithmetic = {0};
+            if (llvm_emit_pointer_arithmetic(ctx,
+                                             lhs,
+                                             rhs,
+                                             expr->binary_op,
+                                             expr->type_index,
+                                             &pointer_arithmetic)) {
+                return pointer_arithmetic;
             }
 
             u32 result_type = expr->type_index;

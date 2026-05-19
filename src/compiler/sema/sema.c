@@ -9262,6 +9262,49 @@ internal bool sema_pointer_types_are_equality_comparable(const Sema* sema,
            sema->types[rhs_pointee].kind == STK_Void;
 }
 
+internal bool sema_pointer_arithmetic_result_type(
+    Sema* sema, AstKind op, u32 lhs_type, u32 rhs_type, u32* out_type)
+{
+    lhs_type = sema_materialise_type(sema, lhs_type);
+    rhs_type = sema_materialise_type(sema, rhs_type);
+    bool lhs_pointer =
+        lhs_type != sema_no_type() && sema->types[lhs_type].kind == STK_Pointer;
+    bool rhs_pointer =
+        rhs_type != sema_no_type() && sema->types[rhs_type].kind == STK_Pointer;
+    bool lhs_integer = sema_type_is_integer(sema, lhs_type);
+    bool rhs_integer = sema_type_is_integer(sema, rhs_type);
+    bool lhs_pointer_sized =
+        lhs_pointer &&
+        sema->types[sema->types[lhs_type].first_param_type].kind != STK_Void;
+    bool rhs_pointer_sized =
+        rhs_pointer &&
+        sema->types[sema->types[rhs_type].first_param_type].kind != STK_Void;
+
+    if (op == AK_IntegerPlus) {
+        if (lhs_pointer_sized && rhs_integer) {
+            *out_type = lhs_type;
+            return true;
+        }
+        if (lhs_integer && rhs_pointer_sized) {
+            *out_type = rhs_type;
+            return true;
+        }
+    }
+    if (op == AK_IntegerMinus) {
+        if (lhs_pointer_sized && rhs_integer) {
+            *out_type = lhs_type;
+            return true;
+        }
+        if (lhs_pointer_sized && rhs_pointer_sized &&
+            sema_pointer_types_are_equality_comparable(
+                sema, lhs_type, rhs_type)) {
+            *out_type = sema_builtin_type(sema, STK_Isize);
+            return true;
+        }
+    }
+    return false;
+}
+
 internal u32 sema_find_core_eq_method_decl(
     const Lexer* lexer, const Ast* ast, Sema* sema, u32 lhs_type, u32 rhs_type)
 {
@@ -16066,8 +16109,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                           &lhs_type)) {
                     return false;
                 }
-                u32 rhs_expected = lhs_type;
-                if (sema_type_is_numeric(sema, lhs_type)) {
+                u32  rhs_expected = lhs_type;
+                bool lhs_pointer =
+                    lhs_type != sema_no_type() &&
+                    sema->types[sema_materialise_type(sema, lhs_type)].kind ==
+                        STK_Pointer;
+                bool lhs_untyped_integer =
+                    lhs_type != sema_no_type() &&
+                    sema->types[lhs_type].kind == STK_UntypedInteger;
+                if (lhs_pointer ||
+                    (node->kind == AK_IntegerPlus && lhs_untyped_integer)) {
+                    rhs_expected = sema_no_type();
+                } else if (sema_type_is_numeric(sema, lhs_type)) {
                     rhs_expected = sema_expected_numeric_type(sema, lhs_type);
                 }
                 if (!sema_infer_node_type(
@@ -16078,7 +16131,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
             if ((node->kind == AK_Equal || node->kind == AK_NotEqual) &&
                 ast->nodes[node->b].kind == AK_NilLiteral &&
-                rhs_type == sema_no_type()) {
+                (rhs_type == sema_no_type() ||
+                 sema->types[rhs_type].kind == STK_Nil)) {
                 if (!sema_infer_node_type(
                         lexer, ast, sema, node->b, lhs_type, &rhs_type)) {
                     return false;
@@ -16103,11 +16157,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 lhs_type = rhs_type;
             }
 
+            u32  pointer_arithmetic_type = sema_no_type();
+            bool pointer_arithmetic      = sema_pointer_arithmetic_result_type(
+                sema, node->kind, lhs_type, rhs_type, &pointer_arithmetic_type);
             bool pointer_equality =
                 (node->kind == AK_Equal || node->kind == AK_NotEqual) &&
                 sema_pointer_types_are_equality_comparable(
                     sema, lhs_type, rhs_type);
-            if (lhs_type != rhs_type && !pointer_equality) {
+            if (lhs_type != rhs_type && !pointer_equality &&
+                !pointer_arithmetic) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -16118,6 +16176,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             switch (node->kind) {
             case AK_IntegerPlus:
             case AK_IntegerMinus:
+                if (pointer_arithmetic) {
+                    type_index = pointer_arithmetic_type;
+                    break;
+                }
+                // fallthrough
             case AK_IntegerMultiply:
             case AK_IntegerDivide:
                 if (!sema_type_is_numeric(sema, lhs_type)) {

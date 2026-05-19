@@ -106,6 +106,18 @@ device := 0x1000.as(^void)
 Use this for FFI and platform APIs that deal in addresses. Ordinary concrete
 integer values are not pointer-compatible.
 
+Pointers to sized values support C-style element arithmetic:
+
+```nerd
+first := ^values[0]
+third := first + 2
+second := third - 1
+distance: isize = third - first
+```
+
+Offsets are counted in elements of the pointer's pointee type, not bytes.
+Arithmetic on `^void` is rejected because `void` has no element size.
+
 ## Strings And String Slices
 
 `string` is distinct from `[]u8`, but it uses the same data/count shape.

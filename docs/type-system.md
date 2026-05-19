@@ -460,6 +460,12 @@ Pointer indexing uses the same `value[index]` syntax as fixed arrays:
 The index expression must be an integer type. Raw pointer indexing has no known
 length in the type system, so the backend does not emit bounds checks for it.
 
+Pointer arithmetic follows C-style element offsets for sized pointee types.
+`ptr + n`, `n + ptr`, and `ptr - n` return the same pointer type and move by
+`n` elements, not by raw bytes. Subtracting two compatible pointers returns an
+`isize` element distance. Arithmetic on `^void` is rejected because `void` has no
+element size.
+
 Local variables are resolved through semantic scope rows, not through AST node
 payloads. A function body creates a root scope, and each nested block statement
 creates a child scope. Locals enter their scope after their initializer has been

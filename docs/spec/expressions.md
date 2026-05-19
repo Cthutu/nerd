@@ -75,9 +75,12 @@ slice ::= expression '[' [ expression ] '..' [ expression ] ']'
 ```
 
 Indexing is supported for arrays, slices, dynamic arrays, strings, and pointers.
-Slicing with `..` is parser-supported. Inclusive `..=` range syntax is used in
-array range literals and patterns, but slice postfix parsing currently accepts
-only `..`.
+Pointer arithmetic supports `ptr + integer`, `integer + ptr`, `ptr - integer`,
+and compatible `ptr - ptr`. Pointer offsets are measured in elements of the
+pointee type; `ptr - ptr` returns an `isize` element distance. Arithmetic on
+`^void` is invalid because `void` has no element size. Slicing with `..` is
+parser-supported. Inclusive `..=` range syntax is used in array range literals
+and patterns, but slice postfix parsing currently accepts only `..`.
 
 ## Aggregate Expressions
 
