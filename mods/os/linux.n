@@ -6,10 +6,6 @@
 
 -- Imports Linux C-library functions used by current platform bindings.
 pub ffi "c" {
-    abort ()
-
-    exit (status: i32)
-
     fcntl (fd: i32, cmd: i32, ...) -> i32
 
     ioctl (fd: i32, request: i32, ...) -> i32

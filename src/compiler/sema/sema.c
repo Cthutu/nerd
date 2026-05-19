@@ -8725,11 +8725,6 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     }
 
     if (sema->types[expected_type].kind == STK_Pointer &&
-        sema->types[actual_type].kind == STK_UntypedInteger) {
-        return true;
-    }
-
-    if (sema->types[expected_type].kind == STK_Pointer &&
         sema->types[actual_type].kind == STK_Pointer &&
         sema->types[sema->types[expected_type].first_param_type].kind ==
             STK_Void) {
@@ -14464,10 +14459,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     switch (node->kind) {
     case AK_IntegerLiteral:
-        if (expected_type != sema_no_type() &&
-            sema->types[expected_type].kind == STK_Pointer) {
-            type_index = expected_type;
-        } else if (sema_integer_literal_is_packed(lexer, node)) {
+        if (sema_integer_literal_is_packed(lexer, node)) {
             type_index =
                 sema_type_is_concrete_integer(sema, expected_type)
                     ? expected_type
@@ -15634,11 +15626,6 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 lexer, sema, &temp_arena, expected_type));
                     }
                 }
-                type_index = expected_type;
-            } else if (expected_type != sema_no_type() &&
-                       sema->types[expected_type].kind == STK_Pointer &&
-                       type_index != sema_no_type() &&
-                       sema->types[type_index].kind == STK_UntypedInteger) {
                 type_index = expected_type;
             } else if (sema_type_is_concrete_float(sema, expected_type) &&
                        type_index != sema_no_type() &&

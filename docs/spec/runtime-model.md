@@ -85,13 +85,16 @@ range.
 
 ## Tracked Memory
 
-The executable runtime exposes `nrt_mem_*` helpers for standard-library heap
-allocation wrappers. These helpers reserve a small header before each user
-allocation, record the source file and line supplied by the caller, and maintain
-process-wide heap statistics. Live, non-leaked allocations can be counted,
-totalled, and printed for leak diagnostics. Marking an allocation as leaked
-removes it from leak reports while preserving the header so a later free remains
-valid.
+Tracked heap allocation is a standard-library responsibility owned by
+`std.mem`. The executable runtime does not provide `nrt_mem_*` heap wrappers;
+it stays focused on language services such as arenas, assertions, printing, and
+string interpolation support.
+
+`std.mem` reserves a small header before each user allocation, records the
+source file and line supplied by the caller, and maintains process-wide heap
+statistics. Live, non-leaked allocations can be counted, totalled, and printed
+for leak diagnostics. Marking an allocation as leaked removes it from leak
+reports while preserving the header so a later free remains valid.
 
 ## Defer
 

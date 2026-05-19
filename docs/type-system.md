@@ -219,11 +219,10 @@ delay commitment until surrounding context is known.
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
 
-An untyped integer can also adopt a pointer destination type. This supports
-address constants at FFI boundaries:
+Use `nil` for null pointers. Integer address constants must be explicitly cast:
 
 ```nerd
-base: ^void = 0x1000
+base: ^void = nil
 same := 0x1000.as(^void)
 ```
 
@@ -513,8 +512,8 @@ Cast validity is semantic and table-driven. The parser only records a cast node
 with a source expression and a target type expression.
 
 The current milestone allows explicit casts across compatible primitive
-numeric/bool types, from untyped integer constants to pointers, and rejects
-unsupported casts such as `string.as(u8)` with structured semantic diagnostics.
+numeric/bool types, from integers to pointers, and rejects unsupported casts
+such as `string.as(u8)` with structured semantic diagnostics.
 
 ## Primitive Operators
 

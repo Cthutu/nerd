@@ -85,8 +85,8 @@ intended exit code.
 
 - Use `.as(Type)` for explicit casts.
 - Use `p.as([]T, count)` to make a slice view from a pointer and count.
-- Untyped integer constants may be used as pointer address constants when the
-  destination pointer type is explicit.
+- Untyped integer address constants must use explicit pointer casts such as
+  `n.as(^T)`.
 - `usize` and `isize` values may be explicitly cast to pointer types at FFI or
   platform boundaries.
 - Casts do not imply ownership transfer.

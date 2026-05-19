@@ -95,16 +95,15 @@ view := pointer.as([]u8, count)  -- pointer plus count becomes a slice
 The cast requires the element type and count. The resulting slice borrows the
 memory behind the pointer.
 
-Untyped integer constants can be written as raw pointer address constants when a
-pointer type is explicit:
+Use `nil` for null pointers. Integer address constants must use explicit casts:
 
 ```nerd
-null: ^u8 = 0
+null: ^u8 = nil
 device := 0x1000.as(^void)
 ```
 
-Use this for FFI and platform APIs that deal in addresses. Ordinary concrete
-integer values are not pointer-compatible.
+Use this for FFI and platform APIs that deal in addresses. Ordinary integer
+values are not pointer-compatible.
 
 Pointers to sized values support C-style element arithmetic:
 

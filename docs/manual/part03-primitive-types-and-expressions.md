@@ -164,11 +164,11 @@ Numeric values can be cast between concrete numeric types, such as `usize` to
 `i32` or `f64` to `f32`. Pointer and slice casts are more restricted and are
 introduced below, then covered again in Part 8.
 
-Untyped integer constants can be used as pointer address constants when a pointer
-type is explicit:
+Use `nil` for null pointers. Integer address constants must be written with an
+explicit pointer cast:
 
 ```nerd
-base: ^void = 0x1000
+base: ^void = nil
 same := 0x1000.as(^void)
 ```
 
