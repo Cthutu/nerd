@@ -7,6 +7,7 @@
 #include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
 #include <compiler/internal.h>
+#include <compiler/modules/modules.h>
 #include <lsp/lsp.h>
 
 //------------------------------------------------------------------------------
@@ -459,6 +460,30 @@ internal bool lsp_front_end_document(NerdSource             source,
     return ok;
 }
 
+internal bool lsp_load_open_module_source(void*   user_data,
+                                          cstr    resolved_path,
+                                          string* out_source)
+{
+    LspState* state = user_data;
+    if (state == NULL || resolved_path == NULL) {
+        return false;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    string uri       = lsp_path_string_to_uri(&temp, s(resolved_path));
+
+    LspDocument* doc = LspDocumentMap_find(&state->documents, uri);
+    if (doc != NULL && doc->source_ready) {
+        *out_source = doc->source;
+        arena_done(&temp);
+        return true;
+    }
+
+    arena_done(&temp);
+    return false;
+}
+
 internal void lsp_document_reset_runtime(LspDocument* doc)
 {
     cst_done(&doc->cst);
@@ -545,6 +570,8 @@ internal bool lsp_stage_document(LspState*    state,
         .keep_partial_results = true,
         .module_root_source_path =
             state != NULL ? state->workspace_root_source_path : (string){0},
+        .module_source_loader      = lsp_load_open_module_source,
+        .module_source_loader_data = state,
     };
     bool ok = lsp_front_end_document(
         (NerdSource){
@@ -633,6 +660,57 @@ lsp_analyse_document(LspState* state, LspDocument* doc, string uri)
     compiler_memory_profile_end(
         COMPILER_STAGE_LSP, COMPILER_PHASE_LSP_ANALYSE, memory_before);
     return staged.analysis_ok;
+}
+
+internal void lsp_publish_document_diagnostics(Arena*       arena,
+                                               LspState*    state,
+                                               LspDocument* doc,
+                                               string       uri)
+{
+    bool       ok = lsp_analyse_document(state, doc, uri);
+    JsonValue* diagnostics =
+        ok ? json_new_array(arena) : lsp_parse_last_diagnostics(arena);
+    lsp_add_unused_use_diagnostics(arena, doc, diagnostics);
+    lsp_publish_grouped_diagnostics(arena, uri, diagnostics);
+}
+
+internal bool lsp_document_loaded_module_path(const LspDocument* doc, cstr path)
+{
+    if (path == NULL) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+        const ModuleInfo* module = &doc->program.modules[i];
+        if (module->resolved_path != NULL &&
+            strcmp(module->resolved_path, path) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void
+lsp_reanalyse_open_documents(Arena* arena, LspState* state, string changed_uri)
+{
+    cstr changed_path = module_source_file_path(arena,
+                                                (NerdSource){
+                                                    .source_path = changed_uri,
+                                                });
+    if (changed_path != NULL && path_exists(changed_path)) {
+        changed_path = path_canonical(arena, changed_path);
+    }
+
+    MapIter      iter = LspDocumentMap_iter();
+    string       uri  = {0};
+    LspDocument* doc  = NULL;
+    while (LspDocumentMap_next(&state->documents, &iter, &uri, &doc)) {
+        if (string_eq(uri, changed_uri) || !doc->source_ready ||
+            !lsp_document_loaded_module_path(doc, changed_path)) {
+            continue;
+        }
+        lsp_publish_document_diagnostics(arena, state, doc, uri);
+    }
 }
 
 bool lsp_source_view(LspState* state, string uri, LspSourceView* out_view)
@@ -847,11 +925,8 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message)
     }
 
     lsp_document_set_source(doc, text);
-    bool       ok          = lsp_analyse_document(state, doc, uri);
-    JsonValue* diagnostics = ok ? json_new_array(message->arena)
-                                : lsp_parse_last_diagnostics(message->arena);
-    lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
-    lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
+    lsp_publish_document_diagnostics(message->arena, state, doc, uri);
+    lsp_reanalyse_open_documents(message->arena, state, uri);
 }
 
 void lsp_handle_did_change(LspState* state, const LspMessage* message)
@@ -887,11 +962,8 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message)
         }
     }
 
-    bool       ok          = lsp_analyse_document(state, doc, uri);
-    JsonValue* diagnostics = ok ? json_new_array(message->arena)
-                                : lsp_parse_last_diagnostics(message->arena);
-    lsp_add_unused_use_diagnostics(message->arena, doc, diagnostics);
-    lsp_publish_grouped_diagnostics(message->arena, uri, diagnostics);
+    lsp_publish_document_diagnostics(message->arena, state, doc, uri);
+    lsp_reanalyse_open_documents(message->arena, state, uri);
 }
 
 void lsp_document_done(LspDocument* doc)

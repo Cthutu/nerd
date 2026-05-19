@@ -27,15 +27,21 @@ typedef struct {
     Array(NerdSourceFragment) fragments;
 } NerdSource;
 
+typedef bool (*NerdModuleSourceLoader)(void*   user_data,
+                                       cstr    resolved_path,
+                                       string* out_source);
+
 typedef struct {
-    bool               verbose;
-    bool               release;
-    bool               require_entry_point;
-    bool               skip_hir_generation;
-    bool               keep_partial_results;
-    string             module_root_source_path;
-    const ProgramInfo* program;
-    u32                current_module_index;
+    bool                   verbose;
+    bool                   release;
+    bool                   require_entry_point;
+    bool                   skip_hir_generation;
+    bool                   keep_partial_results;
+    string                 module_root_source_path;
+    NerdModuleSourceLoader module_source_loader;
+    void*                  module_source_loader_data;
+    const ProgramInfo*     program;
+    u32                    current_module_index;
     Array(string) keywords;
 } FrontEndOptions;
 

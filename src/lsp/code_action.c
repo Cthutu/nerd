@@ -1210,6 +1210,33 @@ internal usize lsp_code_action_use_insert_offset(string source)
     return saw_use ? insert_offset : fallback_offset;
 }
 
+internal bool lsp_code_action_doc_has_use(Arena*             arena,
+                                          const LspDocument* doc,
+                                          string             module_path)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* use = &ast->nodes[i];
+        if (use->kind != AK_Use || use->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* path_node = &ast->nodes[use->a];
+        if (path_node->kind != AK_ModRef ||
+            path_node->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        cstr existing = module_path_to_qualified_name(
+            arena, lexer, ast, &ast->module_paths[path_node->a]);
+        if (existing != NULL && string_eq(s(existing), module_path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void lsp_code_action_add_import_actions(Arena*             arena,
                                                  JsonValue*         actions,
                                                  string             uri,
@@ -1223,6 +1250,9 @@ internal void lsp_code_action_add_import_actions(Arena*             arena,
     usize insert_offset = lsp_code_action_use_insert_offset(doc->source);
     for (u32 i = 0; i < array_count(module_paths); ++i) {
         string module_path = module_paths[i];
+        if (lsp_code_action_doc_has_use(arena, doc, module_path)) {
+            continue;
+        }
 
         StringBuilder text = {0};
         sb_init(&text, arena);

@@ -37,10 +37,15 @@ the compiler front end directly.
 2. re-run front-end analysis
 3. attempt CST parsing
 4. publish diagnostics
+5. re-run analysis for the other open documents
 
 The server advertises incremental document sync and applies LSP range edits to
 the stored buffer. Analysis is still whole-document: each accepted edit reruns
 the existing front end until a real incremental lexer/parser/sema design lands.
+When analysis loads an imported module, the LSP first checks whether that module
+is already open in the editor and uses the open buffer text before falling back
+to the file on disk. This keeps diagnostics and quick fixes responsive when one
+open module starts exporting a type that another open module already imports.
 
 `didClose` clears the stored document and publishes an empty diagnostic set.
 
@@ -169,7 +174,9 @@ The server also offers import quick fixes for unresolved symbols. It searches
 loaded modules, sibling modules beside the active/root document, and the
 available `mods` tree for public exports with the missing name, then inserts
 `use module.path` either at the top of the file or after the first leading group
-of `use` statements.
+of `use` statements. Existing imports are filtered out before actions are
+returned, so a stale unresolved-symbol diagnostic cannot offer a duplicate
+`use`.
 
 ## CST Usage
 

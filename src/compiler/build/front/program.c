@@ -803,21 +803,32 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         .state          = MODULE_Loading,
     };
     array_push(program->modules, module);
-    u32 module_index       = (u32)array_count(program->modules) - 1;
+    u32 module_index    = (u32)array_count(program->modules) - 1;
 
-    ModuleInfo* current    = &program->modules[module_index];
-    FileMap     source_map = {0};
-    string mapped_source   = filemap_load(current->resolved_path, &source_map);
-    if (mapped_source.data == NULL) {
-        current->state = MODULE_Failed;
-        return error_runtime("Failed to load module source file: %s",
-                             current->resolved_path);
+    ModuleInfo* current = &program->modules[module_index];
+    string      source  = {0};
+    if (options != NULL && options->module_source_loader != NULL) {
+        options->module_source_loader(options->module_source_loader_data,
+                                      current->resolved_path,
+                                      &source);
     }
-    string source_text = program_copy_string(&program->arena, mapped_source);
-    filemap_unload(&source_map);
+    if (source.data == NULL) {
+        FileMap source_map = {0};
+        source             = filemap_load(current->resolved_path, &source_map);
+        if (source.data == NULL) {
+            current->state = MODULE_Failed;
+            return error_runtime("Failed to load module source file: %s",
+                                 current->resolved_path);
+        }
+        string source_text = program_copy_string(&program->arena, source);
+        filemap_unload(&source_map);
+        source = source_text;
+    } else {
+        source = program_copy_string(&program->arena, source);
+    }
 
     NerdSource module_source = {
-        .source      = source_text,
+        .source      = source,
         .source_path = s(current->resolved_path),
     };
     FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
