@@ -162,6 +162,24 @@ internal string lsp_code_action_line_indent(Arena* arena,
     return (string){.data = data, .count = end - start};
 }
 
+internal string lsp_code_action_trim_source(const LspDocument* doc,
+                                            usize              start,
+                                            usize              end)
+{
+    const string source = doc->front_end.lexer.source.source;
+    while (start < end &&
+           (source.data[start] == ' ' || source.data[start] == '\t' ||
+            source.data[start] == '\n' || source.data[start] == '\r')) {
+        start++;
+    }
+    while (end > start &&
+           (source.data[end - 1] == ' ' || source.data[end - 1] == '\t' ||
+            source.data[end - 1] == '\n' || source.data[end - 1] == '\r')) {
+        end--;
+    }
+    return (string){.data = source.data + start, .count = end - start};
+}
+
 internal void lsp_code_action_append_spaces(StringBuilder* sb, usize count)
 {
     for (usize i = 0; i < count; ++i) {
@@ -1242,6 +1260,104 @@ internal void lsp_code_action_add_import_actions(Arena*             arena,
     array_free(module_paths);
 }
 
+internal usize lsp_code_action_type_node_end_offset(const LspDocument* doc,
+                                                    u32 type_node_index)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+
+    const AstNode* node = &ast->nodes[type_node_index];
+    if (node->token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+
+    switch (node->kind) {
+    case AK_Expression:
+    case AK_Statement:
+    case AK_TypePointer:
+    case AK_TypeSlice:
+        {
+            usize end = lsp_code_action_type_node_end_offset(doc, node->a);
+            return end != 0 ? end
+                            : lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeArray:
+    case AK_TypeDynamicArray:
+        {
+            usize end = lsp_code_action_type_node_end_offset(doc, node->b);
+            return end != 0 ? end
+                            : lex_token_end_offset(
+                                  lexer, &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeTuple:
+        {
+            if (node->b != 0) {
+                u32 last_item = node->a + node->b - 1;
+                if (last_item < array_count(ast->tuple_items)) {
+                    usize end = lsp_code_action_type_node_end_offset(
+                        doc, ast->tuple_items[last_item]);
+                    if (end != 0) {
+                        return end;
+                    }
+                }
+            }
+            return lex_token_end_offset(lexer,
+                                        &lexer->tokens[node->token_index]);
+        }
+    case AK_TypeApply:
+        {
+            if (node->a < array_count(ast->type_applications)) {
+                const AstTypeApplyInfo* apply =
+                    &ast->type_applications[node->a];
+                if (apply->arg_count != 0) {
+                    u32 last_arg = apply->first_arg + apply->arg_count - 1;
+                    if (last_arg < array_count(ast->tuple_items)) {
+                        usize end = lsp_code_action_type_node_end_offset(
+                            doc, ast->tuple_items[last_arg]);
+                        if (end != 0) {
+                            return end;
+                        }
+                    }
+                }
+                usize end = lsp_code_action_type_node_end_offset(
+                    doc, apply->target_node_index);
+                if (end != 0) {
+                    return end;
+                }
+            }
+            return lex_token_end_offset(lexer,
+                                        &lexer->tokens[node->token_index]);
+        }
+    default:
+        return lex_token_end_offset(lexer, &lexer->tokens[node->token_index]);
+    }
+}
+
+internal string lsp_code_action_type_node_source(const LspDocument* doc,
+                                                 u32 type_node_index)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return s("<unknown>");
+    }
+    const AstNode* node = &ast->nodes[type_node_index];
+    if (node->token_index >= array_count(lexer->tokens)) {
+        return s("<unknown>");
+    }
+
+    usize start = lexer->tokens[node->token_index].offset;
+    usize end   = lsp_code_action_type_node_end_offset(doc, type_node_index);
+    if (end <= start || end > lexer->source.source.count) {
+        return s("<unknown>");
+    }
+    return lsp_code_action_trim_source(doc, start, end);
+}
+
 internal bool lsp_code_action_ast_default_enum(const Ast*   ast,
                                                const Lexer* lexer,
                                                u32          enum_index,
@@ -1861,6 +1977,334 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
     return false;
 }
 
+internal bool lsp_code_action_impl_has_member(const Ast*     ast,
+                                              const AstNode* impl_body,
+                                              u32            symbol)
+{
+    if (impl_body->kind != AK_Block) {
+        return false;
+    }
+
+    for (u32 i = impl_body->a; i < impl_body->b; ++i) {
+        const AstNode* member = &ast->nodes[i];
+        if (ast_node_is_binding_like(member) &&
+            ast_get_symbol(member) == symbol) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal u32 lsp_code_action_find_trait_impl_at_offset(
+    const LspDocument* doc, usize offset, u32* out_close_token_index)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+
+    u32   best_node    = U32_MAX;
+    usize best_span    = (usize)-1;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Impl || node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        const AstImplInfo* impl = &ast->impls[node->a];
+        if (impl->trait_type_node_index == U32_MAX ||
+            impl->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* body = &ast->nodes[impl->body_node_index];
+        if (body->kind != AK_Block) {
+            continue;
+        }
+
+        u32 close_token = U32_MAX;
+        if (!lsp_code_action_matching_close(
+                lexer, body->token_index, &close_token)) {
+            continue;
+        }
+
+        usize start = lexer->tokens[node->token_index].offset;
+        usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
+        if (offset < start || offset > end) {
+            continue;
+        }
+
+        usize span = end - start;
+        if (span < best_span) {
+            best_node              = i;
+            best_span              = span;
+            *out_close_token_index = close_token;
+        }
+    }
+
+    return best_node;
+}
+
+internal bool lsp_code_action_trait_node_for_impl(const LspDocument* doc,
+                                                  const AstImplInfo* impl,
+                                                  u32* out_trait_node_index)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    if (impl->trait_type_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* trait_type = &ast->nodes[impl->trait_type_node_index];
+    if (trait_type->kind == AK_SymbolRef) {
+        for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+            const AstNode* candidate = &ast->nodes[i];
+            if (candidate->kind != AK_Bind || candidate->a != trait_type->a ||
+                candidate->b >= array_count(ast->nodes)) {
+                continue;
+            }
+
+            if (ast->nodes[candidate->b].kind == AK_Trait) {
+                *out_trait_node_index = candidate->b;
+                return true;
+            }
+        }
+    }
+
+    u32 decl_index = sema_no_decl();
+    if (!lsp_sema_node_decl(sema, impl->trait_type_node_index, &decl_index)) {
+        if (trait_type->kind != AK_SymbolRef) {
+            return false;
+        }
+        decl_index = lsp_code_action_find_decl(sema, trait_type->a);
+    }
+
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(sema, decl_index, &decl) || decl->kind != SK_Trait ||
+        decl->import_module_index != sema_no_decl() ||
+        decl->value_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    *out_trait_node_index = decl->value_node_index;
+    return true;
+}
+
+internal void lsp_code_action_append_param_stub_name(Arena*          arena,
+                                                     StringBuilder*  sb,
+                                                     const Lexer*    lexer,
+                                                     const AstParam* param,
+                                                     u32             index)
+{
+    sb_append_char(sb, '_');
+    if (param->symbol_handle != U32_MAX) {
+        string name = lex_symbol(lexer, param->symbol_handle);
+        if (name.count > 0 && name.data[0] == '_') {
+            name = string_from(name.data + 1, name.count - 1);
+        }
+        if (name.count > 0) {
+            sb_append_string(sb, name);
+            return;
+        }
+    }
+
+    sb_append_string(
+        sb, index == 0 ? s("self") : string_format(arena, "param%u", index));
+}
+
+internal bool lsp_code_action_append_trait_member_stub(Arena*             arena,
+                                                       StringBuilder*     sb,
+                                                       const LspDocument* doc,
+                                                       const AstNode* required,
+                                                       string member_indent,
+                                                       string body_indent)
+{
+    const Ast* ast = &doc->front_end.ast;
+    if (required->kind != AK_Bind || required->b >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* value = &ast->nodes[required->b];
+    if (value->kind != AK_TypeFn ||
+        value->a >= array_count(ast->fn_signatures)) {
+        return false;
+    }
+
+    const Lexer*          lexer     = &doc->front_end.lexer;
+    const AstFnSignature* signature = &ast->fn_signatures[value->a];
+    sb_append_string(sb, member_indent);
+    sb_append_string(sb, lex_symbol(lexer, ast_get_symbol(required)));
+    sb_append_cstr(sb, " :: fn (");
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        const AstParam* param = &ast->params[signature->first_param + i];
+        lsp_code_action_append_param_stub_name(arena, sb, lexer, param, i);
+        sb_append_cstr(sb, ": ");
+        sb_append_string(
+            sb, lsp_code_action_type_node_source(doc, param->type_node_index));
+    }
+    if (signature->is_varargs) {
+        if (signature->param_count > 0) {
+            sb_append_cstr(sb, ", ");
+        }
+        sb_append_cstr(sb, "...");
+    }
+    sb_append_char(sb, ')');
+    if (signature->return_type_node_index != U32_MAX) {
+        sb_append_cstr(sb, " -> ");
+        sb_append_string(sb,
+                         lsp_code_action_type_node_source(
+                             doc, signature->return_type_node_index));
+    }
+    sb_append_cstr(sb, " {\n");
+    if (signature->return_type_node_index != U32_MAX) {
+        sb_append_string(sb, body_indent);
+        sb_append_cstr(sb, "return undefined\n");
+    }
+    sb_append_string(sb, member_indent);
+    sb_append_char(sb, '}');
+    return true;
+}
+
+internal bool
+lsp_code_action_missing_trait_impl_members(Arena*             arena,
+                                           const LspDocument* doc,
+                                           u32                impl_node_index,
+                                           usize              insert_offset,
+                                           string*            out_insert_text)
+{
+    const Ast* ast = &doc->front_end.ast;
+    if (impl_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* impl_node = &ast->nodes[impl_node_index];
+    if (impl_node->kind != AK_Impl || impl_node->a >= array_count(ast->impls)) {
+        return false;
+    }
+
+    const AstImplInfo* impl = &ast->impls[impl_node->a];
+    if (impl->body_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* impl_body = &ast->nodes[impl->body_node_index];
+    if (impl_body->kind != AK_Block) {
+        return false;
+    }
+
+    u32 trait_node_index = U32_MAX;
+    if (!lsp_code_action_trait_node_for_impl(doc, impl, &trait_node_index)) {
+        return false;
+    }
+
+    const AstNode* trait_node = &ast->nodes[trait_node_index];
+    if (trait_node->kind != AK_Trait ||
+        trait_node->a >= array_count(ast->trait_infos)) {
+        return false;
+    }
+
+    const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
+    if (trait->body_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* trait_body = &ast->nodes[trait->body_node_index];
+    if (trait_body->kind != AK_Block) {
+        return false;
+    }
+
+    string base_indent = lsp_code_action_line_indent(
+        arena,
+        doc->source,
+        doc->front_end.lexer.tokens[impl_node->token_index].offset);
+    StringBuilder member_indent = {0};
+    sb_init(&member_indent, arena);
+    sb_append_string(&member_indent, base_indent);
+    sb_append_cstr(&member_indent, "    ");
+
+    StringBuilder body_indent = {0};
+    sb_init(&body_indent, arena);
+    sb_append_string(&body_indent, sb_to_string(&member_indent));
+    sb_append_cstr(&body_indent, "    ");
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    if (insert_offset > 0 && doc->source.data[insert_offset - 1] != '\n') {
+        sb_append_char(&sb, '\n');
+    } else if (impl_body->a != impl_body->b) {
+        sb_append_char(&sb, '\n');
+    }
+
+    u32 missing_count = 0;
+    for (u32 i = trait_body->a; i < trait_body->b; ++i) {
+        const AstNode* required = &ast->nodes[i];
+        if (required->kind != AK_Bind) {
+            continue;
+        }
+
+        if (lsp_code_action_impl_has_member(
+                ast, impl_body, ast_get_symbol(required))) {
+            continue;
+        }
+
+        if (missing_count > 0) {
+            sb_append_cstr(&sb, "\n\n");
+        }
+        if (lsp_code_action_append_trait_member_stub(
+                arena,
+                &sb,
+                doc,
+                required,
+                sb_to_string(&member_indent),
+                sb_to_string(&body_indent))) {
+            missing_count++;
+        }
+    }
+
+    if (missing_count == 0) {
+        return false;
+    }
+
+    sb_append_char(&sb, '\n');
+    sb_append_string(&sb, base_indent);
+    *out_insert_text = sb_to_string(&sb);
+    return true;
+}
+
+internal void lsp_code_action_add_trait_impl_stub_action(Arena*     arena,
+                                                         JsonValue* actions,
+                                                         string     uri,
+                                                         const LspDocument* doc,
+                                                         usize offset)
+{
+    u32 close_token = U32_MAX;
+    u32 impl_node_index =
+        lsp_code_action_find_trait_impl_at_offset(doc, offset, &close_token);
+    if (impl_node_index == U32_MAX || close_token == U32_MAX) {
+        return;
+    }
+
+    usize  insert_offset = doc->front_end.lexer.tokens[close_token].offset;
+    string insert_text   = {0};
+    if (!lsp_code_action_missing_trait_impl_members(
+            arena, doc, impl_node_index, insert_offset, &insert_text)) {
+        return;
+    }
+
+    JsonValue* workspace_edit = lsp_code_action_workspace_edit(
+        arena, uri, doc->front_end.lexer.source, insert_offset, insert_text);
+    if (workspace_edit == NULL) {
+        return;
+    }
+
+    JsonValue* action = json_new_object(arena);
+    json_object_set_string(
+        action, arena, "title", s("Stub missing trait members"));
+    json_object_set_string(action, arena, "kind", s("quickfix"));
+    json_object_set_object(action, "edit", workspace_edit);
+    json_array_push(actions, action);
+}
+
 void lsp_handle_code_action(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -1914,6 +2358,9 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         lsp_send_response(message->arena, response);
         return;
     }
+
+    lsp_code_action_add_trait_impl_stub_action(
+        message->arena, actions, uri, doc, offset);
 
     u32 close_token = U32_MAX;
     u32 node_index =
