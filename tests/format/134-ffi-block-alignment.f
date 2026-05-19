@@ -12,7 +12,7 @@ ffi "user32" {
                                              msg    : u32,
                                              wParam : WPARAM,
                                              lParam : LPARAM) -> LRESULT
-    pub PostQuitMessage  (exit_code: i32)
+    pub PostQuitMessage                     (exit_code: i32)
     pub CreateWindowEx  :: CreateWindowExA  (ex_style    : u32,
                                              class_name  : LPCSTR,
                                              window_name : LPCSTR,

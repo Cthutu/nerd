@@ -25,7 +25,7 @@ libc :: "c"
 ffi libc abs (i32) -> i32
 
 ffi "c" {
-    strlen (^u8) -> usize
+    strlen                 (^u8) -> usize
     write_line   :: puts   (^u8) -> i32
     pub seed_rng :: srand  (u32)
 

@@ -4566,6 +4566,14 @@ internal void format_emit_ffi_entry_prefix(StringBuilder*       sb,
         }
         sb_append_cstr(sb, ":: ");
         sb_append_string(sb, foreign_name);
+    } else if (widths.bind_prefix_width > 0) {
+        usize aligned_prefix_width =
+            max(prefix_width, widths.bind_prefix_width);
+        for (usize pad = prefix_width; pad <= aligned_prefix_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+        format_emit_spaces(sb, 3);
+        foreign_name = (string){0};
     }
     for (usize pad = foreign_name.count; pad <= widths.foreign_name_width;
          ++pad) {
