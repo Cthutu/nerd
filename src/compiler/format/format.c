@@ -2721,8 +2721,8 @@ format_plan_trailing_comment_columns(const Lexer* lexer,
                 break;
             }
             if (item_has_comments[i] &&
-                item_code_widths[i] + 1 > comment_column) {
-                comment_column = item_code_widths[i] + 1;
+                item_code_widths[i] + 2 > comment_column) {
+                comment_column = item_code_widths[i] + 2;
             }
             previous_end = item_end_offsets[i];
             if (item_has_comments[i]) {
@@ -3401,8 +3401,8 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                 break;
             }
             if (variant_has_comments[i] &&
-                variant_code_widths[i] + 1 > comment_column) {
-                comment_column = variant_code_widths[i] + 1;
+                variant_code_widths[i] + 2 > comment_column) {
+                comment_column = variant_code_widths[i] + 2;
             }
             previous_end = format_enum_variant_end_offset(cst, lexer, variant);
             if (variant_has_comments[i]) {
@@ -4375,7 +4375,7 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             trailing_comment_index >= *comment_index) {
             LexerComment comment = lexer->comments[trailing_comment_index];
             format_emit_trailing_comment_text_aligned(
-                sb, comment.text, current_column + 1, current_column);
+                sb, comment.text, current_column + 2, current_column);
             *comment_index = trailing_comment_index + 1;
         } else {
             sb_append_char(sb, '\n');
@@ -5324,8 +5324,9 @@ internal bool format_emit_trailing_comment_by_index(StringBuilder* sb,
     LexerComment comment = lexer->comments[comment_index];
     if (sb->size > 0 && sb->data[sb->size - 1] == '\n') {
         sb->data[sb->size - 1] = ' ';
-    } else {
         sb_append_char(sb, ' ');
+    } else {
+        sb_append_cstr(sb, "  ");
     }
     sb_append_cstr(sb, "--");
     sb_append_string(sb, comment.text);
@@ -5433,7 +5434,7 @@ internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
 {
     string text = format_trim_ascii(comment_text);
     if (comment_column <= current_column) {
-        comment_column = current_column + 1;
+        comment_column = current_column + 2;
     }
     for (usize pad = current_column; pad < comment_column; ++pad) {
         sb_append_char(sb, ' ');
@@ -5563,7 +5564,8 @@ internal string format_merged_trailing_comment_text(const Lexer* lexer,
             break;
         }
         string raw_text = comment.text;
-        if (line != previous_line + 1 || col != comment_column ||
+        if (line != previous_line + 1 ||
+            (col != comment_column && col + 1 != comment_column) ||
             raw_text.count < 4 || raw_text.data[0] != ' ' ||
             raw_text.data[1] != ' ' || raw_text.data[2] != ' ' ||
             raw_text.data[3] != ' ') {

@@ -11,10 +11,10 @@ pub Frame::plex {
 ¬
 pub Frame :: plex {
     -- first field lead
-    handle u64          -- native handle
+    handle u64           -- native handle
     -- standalone after trailing
-    system ^FrameSystem -- owning system comment wrapped continuation
+    system ^FrameSystem  -- owning system comment wrapped continuation
     -- standalone before title
-    title  string       -- visible title
+    title  string        -- visible title
     -- final standalone
 }

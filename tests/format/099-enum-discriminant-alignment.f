@@ -10,12 +10,12 @@ Token::enum {
 }
 ¬
 Token :: enum {
-    EOF         = 0  -- end marker
+    EOF         = 0   -- end marker
     Whitespace
-    Identifier  = 1  -- symbol text
-    Number(i32) = 10 -- numeric payload
+    Identifier  = 1   -- symbol text
+    Number(i32) = 10  -- numeric payload
 
-    Text       = 100 -- string-like token
+    Text       = 100  -- string-like token
     Comment
-    DoneLonger = 101 -- finished
+    DoneLonger = 101  -- finished
 }
