@@ -11,7 +11,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Type mismatch: expected `known plex field`, found `z`",
+    "message": "Unknown member `z` for `Point`",
     "source_file": "tests/errors/028-plexes.e",
     "primary_location": {
         "line": 10,
@@ -23,12 +23,12 @@ main :: fn () {
             "line": 10,
             "column": 14,
             "length": 1,
-            "message": "This expression has type `z`"
+            "message": "`Point` has no field or method named `z`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Did you mean `.x`?"
     ]
 }
 ¬

@@ -1451,4 +1451,35 @@ bool error_0352_missing_trait_impl_members(NerdSource source,
     return false;
 }
 
+bool error_0353_unknown_member(NerdSource source,
+                               ErrorSpan  span,
+                               string     member,
+                               string     receiver_type,
+                               string     suggestion)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Unknown member `" STRINGP "` for `" STRINGP "`",
+                   STRINGV(member),
+                   STRINGV(receiver_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` has no field or method named `" STRINGP
+                        "`",
+                        STRINGV(receiver_type),
+                        STRINGV(member));
+    if (suggestion.count > 0) {
+        error_add_help(
+            &error, "Did you mean `." STRINGP "`?", STRINGV(suggestion));
+    } else {
+        error_add_help(&error,
+                       "Use a field or method that exists on `" STRINGP "`.",
+                       STRINGV(receiver_type));
+    }
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

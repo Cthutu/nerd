@@ -11437,6 +11437,278 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
     return true;
 }
 
+internal u32 sema_string_edit_distance(string left, string right)
+{
+    Array(u32) previous = NULL;
+    Array(u32) current  = NULL;
+    for (u32 i = 0; i <= right.count; ++i) {
+        array_push(previous, i);
+        array_push(current, 0);
+    }
+
+    for (u32 i = 1; i <= left.count; ++i) {
+        current[0] = i;
+        for (u32 j = 1; j <= right.count; ++j) {
+            u32 substitution = previous[j - 1] +
+                               (left.data[i - 1] == right.data[j - 1] ? 0 : 1);
+            u32 insertion    = current[j - 1] + 1;
+            u32 deletion     = previous[j] + 1;
+            u32 best   = substitution < insertion ? substitution : insertion;
+            current[j] = best < deletion ? best : deletion;
+        }
+        for (u32 j = 0; j <= right.count; ++j) {
+            previous[j] = current[j];
+        }
+    }
+
+    u32 result = previous[right.count];
+    array_free(previous);
+    array_free(current);
+    return result;
+}
+
+internal bool sema_member_suggestion_is_close(string misspelled,
+                                              string candidate,
+                                              u32    distance)
+{
+    if (candidate.count == 0) {
+        return false;
+    }
+
+    usize longer =
+        misspelled.count > candidate.count ? misspelled.count : candidate.count;
+    return distance <= 2 || distance * 3 <= longer;
+}
+
+internal void sema_consider_member_suggestion(string  misspelled,
+                                              string  candidate,
+                                              string* best,
+                                              u32*    best_distance)
+{
+    u32 distance = sema_string_edit_distance(misspelled, candidate);
+    if (!sema_member_suggestion_is_close(misspelled, candidate, distance)) {
+        return;
+    }
+    if (best->count == 0 || distance < *best_distance ||
+        (distance == *best_distance && candidate.count < best->count)) {
+        *best          = candidate;
+        *best_distance = distance;
+    }
+}
+
+internal bool sema_record_member_type(const Sema* sema,
+                                      u32         record_type,
+                                      u32         member_symbol,
+                                      u32*        out_type)
+{
+    if (record_type == sema_no_type() ||
+        record_type >= array_count(sema->types)) {
+        return false;
+    }
+
+    const SemaType* record = &sema->types[record_type];
+    if (record->kind != STK_Plex && record->kind != STK_Union) {
+        return false;
+    }
+    for (u32 i = 0; i < record->param_count; ++i) {
+        if (sema->type_param_symbols[record->first_param_type + i] ==
+            member_symbol) {
+            if (out_type != NULL) {
+                *out_type =
+                    sema->type_param_types[record->first_param_type + i];
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void sema_consider_method_member_suggestions(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      Sema*        sema,
+                                                      u32     receiver_type,
+                                                      string  member,
+                                                      string* best,
+                                                      u32*    best_distance)
+{
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (!method->first_param_is_receiver ||
+            method->decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+
+        const SemaDecl*   decl              = &sema->decls[method->decl_index];
+        const Lexer*      source_lexer      = lexer;
+        const Ast*        source_ast        = ast;
+        Sema*             source_sema       = sema;
+        u32               source_decl_index = method->decl_index;
+        const SemaMethod* source_method     = method;
+        bool imported = decl->import_module_index != sema_no_decl();
+        if (imported) {
+            if (!sema_imported_decl_source(sema,
+                                           decl,
+                                           &source_lexer,
+                                           &source_ast,
+                                           &source_sema,
+                                           &source_decl_index)) {
+                continue;
+            }
+            source_method =
+                sema_find_method_for_decl(source_sema, source_decl_index);
+            if (source_method == NULL ||
+                !source_method->first_param_is_receiver) {
+                continue;
+            }
+        }
+
+        u32 source_target_type = sema_no_type();
+        if (!sema_resolve_type_node(source_lexer,
+                                    source_ast,
+                                    source_sema,
+                                    source_method->target_type_node_index,
+                                    &source_target_type)) {
+            continue;
+        }
+        u32  target_type = imported ? sema_import_type((Lexer*)lexer,
+                                                       sema,
+                                                       source_lexer,
+                                                       source_sema,
+                                                       source_target_type)
+                                    : source_target_type;
+        bool matches     = sema_type_matches(sema, target_type, receiver_type);
+        if (!matches && receiver_type != sema_no_type() &&
+            receiver_type < array_count(sema->types) &&
+            sema->types[receiver_type].kind == STK_Pointer) {
+            matches = sema_type_matches(
+                sema, target_type, sema->types[receiver_type].first_param_type);
+        }
+        if (!matches) {
+            continue;
+        }
+
+        sema_consider_member_suggestion(
+            member,
+            lex_symbol(source_lexer, source_method->symbol_handle),
+            best,
+            best_distance);
+    }
+
+    if (sema->program == NULL) {
+        return;
+    }
+
+    for (u32 module_index = 0;
+         module_index < array_count(sema->program->modules);
+         ++module_index) {
+        if (module_index == sema->current_module_index) {
+            continue;
+        }
+
+        const ModuleInfo* module       = &sema->program->modules[module_index];
+        const Lexer*      source_lexer = &module->front_end.lexer;
+        const Ast*        source_ast   = &module->front_end.ast;
+        Sema*             source_sema  = (Sema*)&module->front_end.sema;
+        for (u32 i = 0; i < array_count(source_sema->methods); ++i) {
+            const SemaMethod* source_method = &source_sema->methods[i];
+            if (!source_method->first_param_is_receiver) {
+                continue;
+            }
+
+            u32 source_target_type = sema_no_type();
+            if (!sema_resolve_type_node(source_lexer,
+                                        source_ast,
+                                        source_sema,
+                                        source_method->target_type_node_index,
+                                        &source_target_type)) {
+                continue;
+            }
+            u32  target_type = sema_import_type((Lexer*)lexer,
+                                                sema,
+                                                source_lexer,
+                                                source_sema,
+                                                source_target_type);
+            bool matches = sema_type_matches(sema, target_type, receiver_type);
+            if (!matches && receiver_type != sema_no_type() &&
+                receiver_type < array_count(sema->types) &&
+                sema->types[receiver_type].kind == STK_Pointer) {
+                matches = sema_type_matches(
+                    sema,
+                    target_type,
+                    sema->types[receiver_type].first_param_type);
+            }
+            if (!matches) {
+                continue;
+            }
+
+            sema_consider_member_suggestion(
+                member,
+                lex_symbol(source_lexer, source_method->symbol_handle),
+                best,
+                best_distance);
+        }
+    }
+}
+
+internal string sema_member_suggestion(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       Sema*        sema,
+                                       u32          receiver_type,
+                                       u32          member_symbol)
+{
+    string member          = lex_symbol(lexer, member_symbol);
+    string best            = {0};
+    u32    best_distance   = U32_MAX;
+
+    u32 member_target_type = sema_member_target_type(sema, receiver_type);
+    if (member_target_type != sema_no_type() &&
+        member_target_type < array_count(sema->types)) {
+        const SemaType* type = &sema->types[member_target_type];
+        if (type->kind == STK_Plex || type->kind == STK_Union) {
+            for (u32 i = 0; i < type->param_count; ++i) {
+                sema_consider_member_suggestion(
+                    member,
+                    lex_symbol(
+                        lexer,
+                        sema->type_param_symbols[type->first_param_type + i]),
+                    &best,
+                    &best_distance);
+            }
+        } else if (type->kind == STK_String || type->kind == STK_Slice ||
+                   type->kind == STK_Array || type->kind == STK_DynamicArray) {
+            sema_consider_member_suggestion(
+                member, s("data"), &best, &best_distance);
+            sema_consider_member_suggestion(
+                member, s("count"), &best, &best_distance);
+            if (type->kind == STK_DynamicArray) {
+                sema_consider_member_suggestion(
+                    member, s("capacity"), &best, &best_distance);
+            }
+        }
+    }
+
+    sema_consider_method_member_suggestions(
+        lexer, ast, sema, receiver_type, member, &best, &best_distance);
+    return best;
+}
+
+internal bool sema_error_unknown_member(const Lexer*   lexer,
+                                        const Ast*     ast,
+                                        Sema*          sema,
+                                        const AstNode* member_node,
+                                        u32            receiver_type,
+                                        u32            member_symbol)
+{
+    string receiver = sema_type_name(lexer, sema, &temp_arena, receiver_type);
+    string suggestion =
+        sema_member_suggestion(lexer, ast, sema, receiver_type, member_symbol);
+    return error_0353_unknown_member(lexer->source,
+                                     sema_node_span(lexer, member_node),
+                                     lex_symbol(lexer, member_symbol),
+                                     receiver,
+                                     suggestion);
+}
+
 internal bool sema_try_resolve_associated_call(const Lexer* lexer,
                                                const Ast*   ast,
                                                Sema*        sema,
@@ -14496,24 +14768,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (field_target_type != sema_no_type() &&
                 (sema->types[field_target_type].kind == STK_Plex ||
                  sema->types[field_target_type].kind == STK_Union)) {
-                const SemaType* record = &sema->types[field_target_type];
-                for (u32 i = 0; i < record->param_count; ++i) {
-                    if (sema->type_param_symbols[record->first_param_type +
-                                                 i] == node->b) {
-                        type_index =
-                            sema->type_param_types[record->first_param_type +
-                                                   i];
-                        break;
-                    }
-                }
+                sema_record_member_type(
+                    sema, field_target_type, node->b, &type_index);
                 if (type_index == sema_no_type()) {
                     if (!string_eq(field, s("size"))) {
-                        return error_0304_type_mismatch(
-                            lexer->source,
-                            sema_node_span(lexer, node),
-                            record->kind == STK_Union ? s("known union field")
-                                                      : s("known plex field"),
-                            lex_symbol(lexer, node->b));
+                        return sema_error_unknown_member(
+                            lexer, ast, sema, node, target_type, node->b);
                     }
                 } else {
                     break;
@@ -16330,6 +16590,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     type_index =
                         sema->types[method_call.fn_type_index].return_type;
                     break;
+                }
+                u32 member_target_type =
+                    sema_member_target_type(sema, receiver_type);
+                u32 member_type = sema_no_type();
+                if (member_target_type != sema_no_type() &&
+                    member_target_type < array_count(sema->types) &&
+                    (sema->types[member_target_type].kind == STK_Plex ||
+                     sema->types[member_target_type].kind == STK_Union) &&
+                    !sema_record_member_type(sema,
+                                             member_target_type,
+                                             field_callee->b,
+                                             &member_type)) {
+                    return sema_error_unknown_member(lexer,
+                                                     ast,
+                                                     sema,
+                                                     field_callee,
+                                                     receiver_type,
+                                                     field_callee->b);
                 }
             }
             u32 enum_context = sema_no_type();

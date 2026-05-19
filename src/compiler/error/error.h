@@ -370,6 +370,11 @@ bool error_0352_missing_trait_impl_members(NerdSource source,
                                            string     trait,
                                            string     missing_members,
                                            u32        missing_member_count);
+bool error_0353_unknown_member(NerdSource source,
+                               ErrorSpan  span,
+                               string     member,
+                               string     receiver_type,
+                               string     suggestion);
 
 //------------------------------------------------------------------------------
 // Low-level error system
