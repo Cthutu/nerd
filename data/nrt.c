@@ -39,15 +39,29 @@ typedef struct NrtHeapDebugHeader {
     uint64_t                   index;
 } NrtHeapDebugHeader;
 
-static NrtHeapDebugHeader* g_nrt_heap_head       = NULL;
-static uint64_t            g_nrt_heap_next_index = 0;
+typedef struct NrtArenaDebugNode {
+    struct NrtArenaDebugNode* prev;
+    struct NrtArenaDebugNode* next;
+    void*                     base;
+    size_t                    reserved_size;
+    size_t                    committed_size;
+    size_t                    used_size;
+    uint64_t                  index;
+    size_t                    mapping_size;
+} NrtArenaDebugNode;
+
+static NrtHeapDebugHeader* g_nrt_heap_head        = NULL;
+static NrtArenaDebugNode*  g_nrt_arena_head       = NULL;
+static uint64_t            g_nrt_heap_next_index  = 0;
 static uint64_t            g_nrt_heap_break_index = 0;
+static uint64_t            g_nrt_arena_next_index = 0;
 #endif
 
 void string_builder_reset(void);
 void nrt_mem_free(void* memory);
 size_t nrt_mem_size(void* memory);
 void nrt_mem_leak(void* memory);
+NrtArena* nrt_temp_arena(void);
 
 static void nrt_eprintf(const char* format, ...)
 {
@@ -254,6 +268,15 @@ void* nrt_mem_live_head(void)
 #endif
 }
 
+void* nrt_arena_live_head(void)
+{
+#ifndef NDEBUG
+    return g_nrt_arena_head;
+#else
+    return NULL;
+#endif
+}
+
 void* nrt_mem_alloc(size_t size,
                     size_t alignment,
                     const char* source_path,
@@ -359,6 +382,104 @@ void nrt_mem_break_on_alloc(uint64_t index)
 #endif
 }
 
+#ifndef NDEBUG
+static NrtArenaDebugNode* nrt_arena_debug_find(void* base)
+{
+    if (base == NULL) {
+        return NULL;
+    }
+
+    for (NrtArenaDebugNode* node = g_nrt_arena_head; node != NULL;
+         node                    = node->next) {
+        if (node->base == base) {
+            return node;
+        }
+    }
+    return NULL;
+}
+
+static void nrt_arena_debug_unlink(NrtArenaDebugNode* node)
+{
+    if (node == NULL) {
+        return;
+    }
+
+    if (node->prev != NULL) {
+        node->prev->next = node->next;
+    } else if (g_nrt_arena_head == node) {
+        g_nrt_arena_head = node->next;
+    }
+    if (node->next != NULL) {
+        node->next->prev = node->prev;
+    }
+    node->prev = NULL;
+    node->next = NULL;
+}
+
+static void nrt_arena_debug_release(NrtArenaDebugNode* node)
+{
+    if (node == NULL) {
+        return;
+    }
+
+    size_t mapping_size = node->mapping_size;
+    nrt_arena_debug_unlink(node);
+    nrt_mem_release(node, mapping_size);
+}
+
+static void nrt_arena_debug_track(NrtArena* arena)
+{
+    if (arena == NULL || arena->base == NULL || arena == nrt_temp_arena()) {
+        return;
+    }
+
+    size_t mapping_size =
+        nrt_align_up(sizeof(NrtArenaDebugNode), nrt_page_size());
+    NrtArenaDebugNode* node =
+        (NrtArenaDebugNode*)nrt_mem_reserve(mapping_size, true);
+    if (node == NULL) {
+        nrt_arena_abort("arena debug tracking allocation failed");
+    }
+
+    *node = (NrtArenaDebugNode){
+        .prev           = NULL,
+        .next           = g_nrt_arena_head,
+        .base           = arena->base,
+        .reserved_size  = NRT_ARENA_RESERVE_SIZE,
+        .committed_size = arena->committed_size,
+        .used_size      = (size_t)(arena->current - arena->base),
+        .index          = ++g_nrt_arena_next_index,
+        .mapping_size   = mapping_size,
+    };
+    if (g_nrt_arena_head != NULL) {
+        g_nrt_arena_head->prev = node;
+    }
+    g_nrt_arena_head = node;
+}
+
+static void nrt_arena_debug_update(NrtArena* arena)
+{
+    if (arena == NULL || arena->base == NULL) {
+        return;
+    }
+
+    NrtArenaDebugNode* node = nrt_arena_debug_find(arena->base);
+    if (node == NULL) {
+        return;
+    }
+    node->committed_size = arena->committed_size;
+    node->used_size      = (size_t)(arena->current - arena->base);
+}
+
+static void nrt_arena_debug_done(NrtArena* arena)
+{
+    if (arena == NULL || arena->base == NULL) {
+        return;
+    }
+    nrt_arena_debug_release(nrt_arena_debug_find(arena->base));
+}
+#endif
+
 void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
 {
     if (arena == NULL) {
@@ -394,6 +515,9 @@ void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
     arena->current        = memory;
     arena->committed_size = initial_size;
     arena->increment      = increment;
+#ifndef NDEBUG
+    nrt_arena_debug_track(arena);
+#endif
 }
 
 void nrt_arena_done(NrtArena* arena)
@@ -401,6 +525,9 @@ void nrt_arena_done(NrtArena* arena)
     if (arena == NULL) {
         return;
     }
+#ifndef NDEBUG
+    nrt_arena_debug_done(arena);
+#endif
     nrt_mem_release(arena->base, NRT_ARENA_RESERVE_SIZE);
     *arena = (NrtArena){0};
 }
@@ -411,6 +538,9 @@ void nrt_arena_reset(NrtArena* arena)
         return;
     }
     arena->current = arena->base;
+#ifndef NDEBUG
+    nrt_arena_debug_update(arena);
+#endif
 }
 
 uint32_t nrt_arena_mark(NrtArena* arena)
@@ -431,6 +561,9 @@ void nrt_arena_restore(NrtArena* arena, uint32_t mark)
         nrt_arena_abort("invalid arena restore mark");
     }
     arena->current = arena->base + cursor;
+#ifndef NDEBUG
+    nrt_arena_debug_update(arena);
+#endif
 }
 
 void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
@@ -468,12 +601,13 @@ void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
     }
 
     arena->current = arena->base + end;
+#ifndef NDEBUG
+    nrt_arena_debug_update(arena);
+#endif
     return (void*)(arena->base + start);
 }
 
 void nrt_temp_arena_reset(void) { string_builder_reset(); }
-
-NrtArena* nrt_temp_arena(void);
 
 static bool string_is_utf8_boundary(const NerdString* value, size_t index)
 {

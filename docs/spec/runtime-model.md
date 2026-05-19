@@ -102,6 +102,7 @@ wrappers:
 - `nrt_mem_leak(memory)`
 - `nrt_mem_break_on_alloc(index)`
 - `nrt_mem_live_head()`
+- `nrt_arena_live_head()`
 
 Every heap allocation stores a release header immediately before the returned
 pointer. The final word before the returned pointer is the requested size, so
@@ -127,9 +128,10 @@ Arenas remain runtime-owned language facilities. They reserve one stable virtual
 address range and commit pages on demand through the same operating-system
 memory layer. Arena allocations do not have per-allocation heap headers because
 they are invalidated in bulk by `restore`, `reset`, or `done`. Debug tracking for
-arena ownership should therefore be represented by separate runtime tracking
-nodes associated with arena handles rather than by hidden headers before arena
-results.
+arena ownership is represented by separate runtime tracking nodes keyed by the
+arena reservation base address rather than by hidden headers before arena
+results. `nrt_arena_live_head()` exposes the debug list head to leak reporting
+code outside the runtime.
 
 `std.mem` is the public standard-library facade over this runtime foundation.
 It owns the source-level API, statistics presentation, and leak-reporting
