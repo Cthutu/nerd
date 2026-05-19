@@ -5268,7 +5268,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string header    = llvm_temp(ctx);
                 u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
                 sb_format(ctx->sb,
-                          "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+                          "  " STRINGP
+                          " = call ptr @nrt_mem_alloc(i64 %llu, i64 16, ptr "
+                          "null, i32 0)\n",
                           STRINGV(header),
                           (unsigned long long)header_bytes);
                 string data_ptr_ptr =
@@ -5302,8 +5304,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     }
                     data = llvm_temp(ctx);
                     sb_format(ctx->sb,
-                              "  " STRINGP " = call ptr @malloc(i64 " STRINGP
-                              ")\n",
+                              "  " STRINGP
+                              " = call ptr @nrt_mem_alloc(i64 " STRINGP
+                              ", i64 16, ptr null, i32 0)\n",
                               STRINGV(data),
                               STRINGV(data_bytes));
 
@@ -9777,7 +9780,8 @@ internal bool llvm_dynamic_array_ensure_header(LlvmFunctionContext* ctx,
     string allocated    = llvm_temp(ctx);
     u64    header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
     sb_format(ctx->sb,
-              "  " STRINGP " = call ptr @malloc(i64 %llu)\n",
+              "  " STRINGP
+              " = call ptr @nrt_mem_alloc(i64 %llu, i64 16, ptr null, i32 0)\n",
               STRINGV(allocated),
               (unsigned long long)header_bytes);
     string data_ptr  = llvm_dynamic_array_header_field_ptr(ctx, allocated, 0);
@@ -10005,8 +10009,8 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
     string grown_data = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
-              "  " STRINGP " = call ptr @realloc(ptr " STRINGP ", i64 " STRINGP
-              ")\n"
+              "  " STRINGP " = call ptr @nrt_mem_realloc(ptr " STRINGP
+              ", i64 " STRINGP ", i64 16, ptr null, i32 0)\n"
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
               "  br label %%" STRINGP "\n",
@@ -10143,8 +10147,8 @@ internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
     string new_data  = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
-              "  " STRINGP " = call ptr @realloc(ptr " STRINGP ", i64 " STRINGP
-              ")\n"
+              "  " STRINGP " = call ptr @nrt_mem_realloc(ptr " STRINGP
+              ", i64 " STRINGP ", i64 16, ptr null, i32 0)\n"
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
               "  br label %%" STRINGP "\n",
@@ -10254,8 +10258,8 @@ internal LlvmValue llvm_emit_dynamic_array_free(LlvmFunctionContext* ctx,
     string data =
         llvm_dynamic_array_load_header_field(ctx, header, 0, s("ptr"));
     sb_format(ctx->sb,
-              "  call void @free(ptr " STRINGP ")\n"
-              "  call void @free(ptr " STRINGP ")\n"
+              "  call void @nrt_mem_free(ptr " STRINGP ")\n"
+              "  call void @nrt_mem_free(ptr " STRINGP ")\n"
               "  store ptr null, ptr " STRINGP "\n"
               "  br label %%" STRINGP "\n",
               STRINGV(data),
@@ -10578,8 +10582,8 @@ internal LlvmValue llvm_emit_dynamic_array_append(LlvmFunctionContext* ctx,
     string new_data  = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
-              "  " STRINGP " = call ptr @realloc(ptr " STRINGP ", i64 " STRINGP
-              ")\n"
+              "  " STRINGP " = call ptr @nrt_mem_realloc(ptr " STRINGP
+              ", i64 " STRINGP ", i64 16, ptr null, i32 0)\n"
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
               "  br label %%" STRINGP "\n",
@@ -10774,8 +10778,8 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
     string new_data  = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
-              "  " STRINGP " = call ptr @realloc(ptr " STRINGP ", i64 " STRINGP
-              ")\n"
+              "  " STRINGP " = call ptr @nrt_mem_realloc(ptr " STRINGP
+              ", i64 " STRINGP ", i64 16, ptr null, i32 0)\n"
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
               "  br label %%" STRINGP "\n",
@@ -11169,9 +11173,9 @@ internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
 internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
-        {"ptr", "malloc", "i64"},
-        {"ptr", "realloc", "ptr, i64"},
-        {"void", "free", "ptr"},
+        {"ptr", "nrt_mem_alloc", "i64, i64, ptr, i32"},
+        {"ptr", "nrt_mem_realloc", "ptr, i64, i64, ptr, i32"},
+        {"void", "nrt_mem_free", "ptr"},
     };
     llvm_render_runtime_declarations(
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));

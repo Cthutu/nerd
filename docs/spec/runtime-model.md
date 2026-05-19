@@ -83,18 +83,51 @@ made after that mark. `reset()` invalidates all allocations from the arena
 without releasing its reserved address range. `done()` releases the reserved
 range.
 
-## Tracked Memory
+## Runtime Memory Foundation
 
-Tracked heap allocation is a standard-library responsibility owned by
-`std.mem`. The executable runtime does not provide `nrt_mem_*` heap wrappers;
-it stays focused on language services such as arenas, assertions, printing, and
-string interpolation support.
+Language-generated allocations use the executable runtime's low-level memory
+foundation rather than the C allocator. The foundation talks directly to the
+operating system:
 
-`std.mem` reserves a small header before each user allocation, records the
-source file and line supplied by the caller, and maintains process-wide heap
-statistics. Live, non-leaked allocations can be counted, totalled, and printed
-for leak diagnostics. Marking an allocation as leaked removes it from leak
-reports while preserving the header so a later free remains valid.
+- Linux reserves and releases memory with `mmap`, `mprotect`, and `munmap`.
+- Windows reserves and releases memory with `VirtualAlloc` and `VirtualFree`.
+
+The runtime exposes heap routines for generated code and standard-library
+wrappers:
+
+- `nrt_mem_alloc(size, alignment, file, line)`
+- `nrt_mem_realloc(memory, size, alignment, file, line)`
+- `nrt_mem_free(memory)`
+- `nrt_mem_size(memory)`
+- `nrt_mem_leak(memory)`
+
+Every heap allocation stores a release header immediately before the returned
+pointer. The final word before the returned pointer is the requested size, so
+the runtime can expose allocation sizing even in release-oriented builds. Extra
+debug metadata, such as linked-list pointers and allocation index, lives before
+that release header when debug tracking is enabled.
+
+Debug tracking maintains a linked list of live heap allocations. Marking an
+allocation as leaked removes it from the live list; it does not require a
+persistent leaked flag. This makes process-lifetime allocations invisible to
+leak reporting while keeping later `nrt_mem_free` valid.
+
+Dynamic arrays allocate their header and backing storage through `nrt_mem_*`.
+The public `.free()` method releases both pieces of storage through the same
+foundation.
+
+Arenas remain runtime-owned language facilities. They reserve one stable virtual
+address range and commit pages on demand through the same operating-system
+memory layer. Arena allocations do not have per-allocation heap headers because
+they are invalidated in bulk by `restore`, `reset`, or `done`. Debug tracking for
+arena ownership should therefore be represented by separate runtime tracking
+nodes associated with arena handles rather than by hidden headers before arena
+results.
+
+`std.mem` is the public standard-library facade over this runtime foundation.
+It owns the source-level API, statistics presentation, and leak-reporting
+commands, while compiler-generated dynamic-array and arena operations use the
+same low-level allocation substrate.
 
 ## Defer
 

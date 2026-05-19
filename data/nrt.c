@@ -26,7 +26,27 @@ typedef struct {
     size_t increment;
 } NrtArena;
 
+typedef struct NrtHeapFooter {
+    size_t mapping_size;
+    size_t requested_size;
+} NrtHeapFooter;
+
+#ifndef NDEBUG
+typedef struct NrtHeapDebugHeader {
+    struct NrtHeapDebugHeader* prev;
+    struct NrtHeapDebugHeader* next;
+    size_t                     requested_size;
+    uint64_t                   index;
+} NrtHeapDebugHeader;
+
+static NrtHeapDebugHeader* g_nrt_heap_head       = NULL;
+static uint64_t            g_nrt_heap_next_index = 0;
+#endif
+
 void string_builder_reset(void);
+void nrt_mem_free(void* memory);
+size_t nrt_mem_size(void* memory);
+void nrt_mem_leak(void* memory);
 
 static void nrt_eprintf(const char* format, ...)
 {
@@ -134,13 +154,16 @@ static void nrt_arena_abort(const char* message)
     exit(127);
 }
 
-static void* nrt_arena_reserve(size_t size)
+static void* nrt_mem_reserve(size_t size, bool writable)
 {
 #if defined(_WIN32)
-    return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_READWRITE);
+    DWORD protect = writable ? PAGE_READWRITE : PAGE_NOACCESS;
+    DWORD type    = writable ? MEM_RESERVE | MEM_COMMIT : MEM_RESERVE;
+    return VirtualAlloc(NULL, size, type, protect);
 #else
+    int prot = writable ? PROT_READ | PROT_WRITE : PROT_NONE;
     void* memory =
-        mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        mmap(NULL, size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     return memory == MAP_FAILED ? NULL : memory;
 #endif
 }
@@ -157,7 +180,7 @@ static bool nrt_arena_commit(u8* memory, size_t size)
 #endif
 }
 
-static void nrt_arena_release(u8* memory, size_t size)
+static void nrt_mem_release(void* memory, size_t size)
 {
     if (memory == NULL) {
         return;
@@ -167,6 +190,169 @@ static void nrt_arena_release(u8* memory, size_t size)
     VirtualFree(memory, 0, MEM_RELEASE);
 #else
     munmap(memory, size);
+#endif
+}
+
+static void nrt_heap_abort(const char* message)
+{
+    nrt_eprintfn("fatal: %s", message);
+    exit(127);
+}
+
+static size_t nrt_heap_prefix_size(size_t alignment)
+{
+    size_t prefix = sizeof(NrtHeapFooter);
+#ifndef NDEBUG
+    prefix += sizeof(NrtHeapDebugHeader);
+#endif
+    return nrt_align_up(prefix, alignment);
+}
+
+static NrtHeapFooter* nrt_heap_footer_from_user(void* memory)
+{
+    return memory == NULL ? NULL
+                          : (NrtHeapFooter*)((u8*)memory -
+                                             sizeof(NrtHeapFooter));
+}
+
+#ifndef NDEBUG
+static NrtHeapDebugHeader* nrt_heap_debug_from_user(void* memory)
+{
+    if (memory == NULL) {
+        return NULL;
+    }
+    size_t    page    = nrt_page_size();
+    uintptr_t address = (uintptr_t)memory;
+    return (NrtHeapDebugHeader*)(address - (address % page));
+}
+
+static void nrt_heap_unlink(NrtHeapDebugHeader* header)
+{
+    if (header == NULL) {
+        return;
+    }
+    if (header->prev != NULL) {
+        header->prev->next = header->next;
+    } else if (g_nrt_heap_head == header) {
+        g_nrt_heap_head = header->next;
+    }
+    if (header->next != NULL) {
+        header->next->prev = header->prev;
+    }
+    header->prev = NULL;
+    header->next = NULL;
+}
+#endif
+
+void nrt_mem_print_leaks(void)
+{
+#ifndef NDEBUG
+    if (g_nrt_heap_head == NULL) {
+        return;
+    }
+
+    fflush(stdout);
+    size_t count = 0;
+    size_t total = 0;
+    nrt_eprintfn("nrt: memory leaks detected");
+    for (NrtHeapDebugHeader* current = g_nrt_heap_head; current != NULL;
+         current                     = current->next) {
+        count++;
+        total += current->requested_size;
+    }
+    nrt_eprintfn("nrt: total %zu leaks, %zu bytes", count, total);
+#endif
+}
+
+void* nrt_mem_alloc(size_t size,
+                    size_t alignment,
+                    const char* source_path,
+                    uint32_t    line)
+{
+    (void)source_path;
+    (void)line;
+    if (alignment < 16) {
+        alignment = 16;
+    }
+
+    size_t prefix = nrt_heap_prefix_size(alignment);
+    size_t page   = nrt_page_size();
+    if (size > SIZE_MAX - prefix) {
+        nrt_heap_abort("heap allocation size overflow");
+    }
+    size_t mapping_size = nrt_align_up(prefix + size, page);
+    void*  mapping      = nrt_mem_reserve(mapping_size, true);
+    if (mapping == NULL) {
+        nrt_heap_abort("heap allocation failed");
+    }
+
+    u8*            user   = (u8*)mapping + prefix;
+    NrtHeapFooter* footer = nrt_heap_footer_from_user(user);
+    footer->mapping_size  = mapping_size;
+    footer->requested_size = size;
+
+#ifndef NDEBUG
+    NrtHeapDebugHeader* debug = (NrtHeapDebugHeader*)mapping;
+    debug->prev               = NULL;
+    debug->next               = g_nrt_heap_head;
+    debug->requested_size     = size;
+    debug->index              = ++g_nrt_heap_next_index;
+    if (g_nrt_heap_head != NULL) {
+        g_nrt_heap_head->prev = debug;
+    }
+    g_nrt_heap_head = debug;
+#endif
+
+    return user;
+}
+
+void* nrt_mem_realloc(void*       memory,
+                      size_t      size,
+                      size_t      alignment,
+                      const char* source_path,
+                      uint32_t    line)
+{
+    if (memory == NULL) {
+        return nrt_mem_alloc(size, alignment, source_path, line);
+    }
+
+    size_t old_size = nrt_mem_size(memory);
+    void*  result   = nrt_mem_alloc(size, alignment, source_path, line);
+    if (result != NULL && old_size > 0 && size > 0) {
+        memcpy(result, memory, old_size < size ? old_size : size);
+    }
+    nrt_mem_free(memory);
+    return result;
+}
+
+void nrt_mem_free(void* memory)
+{
+    if (memory == NULL) {
+        return;
+    }
+    NrtHeapFooter* footer = nrt_heap_footer_from_user(memory);
+#ifndef NDEBUG
+    nrt_heap_unlink(nrt_heap_debug_from_user(memory));
+#endif
+    size_t mapping_size = footer->mapping_size;
+    size_t    page        = nrt_page_size();
+    uintptr_t address     = (uintptr_t)memory;
+    void*     mapping     = (void*)(address - (address % page));
+    nrt_mem_release(mapping, mapping_size);
+}
+
+size_t nrt_mem_size(void* memory)
+{
+    NrtHeapFooter* footer = nrt_heap_footer_from_user(memory);
+    return footer == NULL ? 0 : footer->requested_size;
+}
+
+void nrt_mem_leak(void* memory)
+{
+#ifndef NDEBUG
+    nrt_heap_unlink(nrt_heap_debug_from_user(memory));
+#else
+    (void)memory;
 #endif
 }
 
@@ -192,12 +378,12 @@ void nrt_arena_init(NrtArena* arena, size_t initial_size, size_t increment)
         nrt_arena_abort("arena growth increment exceeds 4 GiB");
     }
 
-    u8* memory = (u8*)nrt_arena_reserve(NRT_ARENA_RESERVE_SIZE);
+    u8* memory = (u8*)nrt_mem_reserve(NRT_ARENA_RESERVE_SIZE, false);
     if (memory == NULL) {
         nrt_arena_abort("arena address reservation failed");
     }
     if (!nrt_arena_commit(memory, initial_size)) {
-        nrt_arena_release(memory, NRT_ARENA_RESERVE_SIZE);
+        nrt_mem_release(memory, NRT_ARENA_RESERVE_SIZE);
         nrt_arena_abort("arena initial commit failed");
     }
 
@@ -212,7 +398,7 @@ void nrt_arena_done(NrtArena* arena)
     if (arena == NULL) {
         return;
     }
-    nrt_arena_release(arena->base, NRT_ARENA_RESERVE_SIZE);
+    nrt_mem_release(arena->base, NRT_ARENA_RESERVE_SIZE);
     *arena = (NrtArena){0};
 }
 
@@ -335,11 +521,12 @@ static void string_builder_ensure_capacity(size_t needed)
         capacity *= 2;
     }
 
-    u8* data = (u8*)realloc(g_string_builder_data, capacity);
+    u8* data = (u8*)nrt_mem_realloc(g_string_builder_data, capacity, 16, NULL, 0);
     if (data == NULL) {
         nrt_eprintfn("fatal: string builder allocation failed");
         abort();
     }
+    nrt_mem_leak(data);
     g_string_builder_data     = data;
     g_string_builder_capacity = capacity;
 }
