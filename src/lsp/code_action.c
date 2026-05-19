@@ -135,6 +135,30 @@ internal JsonValue* lsp_code_action_workspace_edit(Arena*     arena,
     return workspace_edit;
 }
 
+internal JsonValue* lsp_code_action_workspace_range_edit(Arena*     arena,
+                                                         string     uri,
+                                                         JsonValue* range,
+                                                         string     new_text)
+{
+    if (range == NULL || range->kind != JSON_OBJECT) {
+        return NULL;
+    }
+
+    JsonValue* edit = json_new_object(arena);
+    json_object_set_object(edit, "range", range);
+    json_object_set_string(edit, arena, "newText", new_text);
+
+    JsonValue* edits = json_new_array(arena);
+    json_array_push(edits, edit);
+
+    JsonValue* changes = json_new_object(arena);
+    json_object_set_array(changes, lsp_code_action_cstr(arena, uri), edits);
+
+    JsonValue* workspace_edit = json_new_object(arena);
+    json_object_set_object(workspace_edit, "changes", changes);
+    return workspace_edit;
+}
+
 internal usize lsp_code_action_line_start(string source, usize offset)
 {
     if (offset > source.count) {
@@ -758,6 +782,91 @@ internal bool lsp_code_action_has_unused_local_diagnostic(
     }
 
     return false;
+}
+
+internal bool lsp_code_action_parse_member_suggestion(string  help,
+                                                      string* out_suggestion)
+{
+    string prefix = s("help: Did you mean `.");
+    string suffix = s("`?");
+    if (help.count < prefix.count + suffix.count ||
+        memcmp(help.data, prefix.data, prefix.count) != 0 ||
+        memcmp(help.data + help.count - suffix.count,
+               suffix.data,
+               suffix.count) != 0) {
+        return false;
+    }
+
+    *out_suggestion = string_from(help.data + prefix.count,
+                                  help.count - prefix.count - suffix.count);
+    return out_suggestion->count > 0;
+}
+
+internal bool lsp_code_action_unknown_member_suggestion(JsonValue* diagnostic,
+                                                        string* out_suggestion)
+{
+    JsonValue* message = json_get_cstr(diagnostic, "message");
+    if (message == NULL || message->kind != JSON_STRING ||
+        !lsp_code_action_string_starts_with(message->string,
+                                            "Unknown member `")) {
+        return false;
+    }
+
+    JsonValue* related = json_get_cstr(diagnostic, "relatedInformation");
+    if (related == NULL || related->kind != JSON_ARRAY) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(related->array.values); ++i) {
+        JsonValue* info         = related->array.values[i];
+        JsonValue* help_message = json_get_cstr(info, "message");
+        if (help_message == NULL || help_message->kind != JSON_STRING) {
+            continue;
+        }
+        if (lsp_code_action_parse_member_suggestion(help_message->string,
+                                                    out_suggestion)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal void lsp_code_action_add_unknown_member_suggestions(
+    Arena* arena, JsonValue* actions, string uri, const LspMessage* message)
+{
+    JsonValue* diagnostics =
+        json_get_cstr(message->message, "params.context.diagnostics");
+    if (diagnostics == NULL || diagnostics->kind != JSON_ARRAY) {
+        return;
+    }
+
+    for (u32 i = 0; i < array_count(diagnostics->array.values); ++i) {
+        JsonValue* diagnostic = diagnostics->array.values[i];
+        string     suggestion = {0};
+        if (!lsp_code_action_unknown_member_suggestion(diagnostic,
+                                                       &suggestion)) {
+            continue;
+        }
+
+        JsonValue* range = json_get_cstr(diagnostic, "range");
+        JsonValue* workspace_edit =
+            lsp_code_action_workspace_range_edit(arena, uri, range, suggestion);
+        if (workspace_edit == NULL) {
+            continue;
+        }
+
+        StringBuilder title = {0};
+        sb_init(&title, arena);
+        sb_append_cstr(&title, "Change to ");
+        sb_append_string(&title, suggestion);
+
+        JsonValue* action = json_new_object(arena);
+        json_object_set_string(action, arena, "title", sb_to_string(&title));
+        json_object_set_string(action, arena, "kind", s("quickfix"));
+        json_object_set_object(action, "edit", workspace_edit);
+        json_array_push(actions, action);
+    }
 }
 
 internal bool lsp_code_action_symbol_ref_is_resolved(const LspDocument* doc,
@@ -2365,6 +2474,9 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
     const LspDocument* doc = syntax.doc;
+
+    lsp_code_action_add_unknown_member_suggestions(
+        message->arena, actions, uri, message);
 
     usize offset      = lsp_offset_from_position(doc->source, line, character);
     u32   token_index = U32_MAX;
