@@ -1,10 +1,10 @@
 main :: fn () {
-    value: usize = 4096
+    value: i32 = 4096
     ptr := value.as(^u8)
 }
 ¬
 {
-    "message": "Cannot cast `usize` to `^u8`",
+    "message": "Cannot cast `i32` to `^u8`",
     "source_file": "tests/errors/071-pointer-integer-casts.e",
     "primary_location": {
         "line": 3,

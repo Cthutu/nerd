@@ -227,8 +227,9 @@ base: ^void = 0x1000
 same := 0x1000.as(^void)
 ```
 
-Concrete integer values do not implicitly become pointers; cast only untyped
-integer constants when an address literal is intended.
+Concrete integer values do not implicitly become pointers. A concrete `usize`
+or `isize` can be explicitly cast to a pointer when platform APIs encode an
+address or resource identifier as a pointer-sized integer.
 
 ## Untyped Floats
 

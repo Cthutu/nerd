@@ -743,6 +743,16 @@ bool sema_type_is_concrete_integer(const Sema* sema, u32 type_index)
            sema->types[type_index].kind != STK_UntypedInteger;
 }
 
+internal bool sema_type_is_pointer_sized_integer(const Sema* sema,
+                                                 u32         type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+    return sema->types[type_index].kind == STK_Usize ||
+           sema->types[type_index].kind == STK_Isize;
+}
+
 internal bool sema_type_kind_is_float(SemaTypeKind kind)
 {
     return kind == STK_UntypedFloat || kind == STK_F32 || kind == STK_F64;
@@ -15353,6 +15363,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema->types[source_type].kind == STK_UntypedInteger &&
                 sema->types[target_type].kind == STK_Pointer;
 
+            bool pointer_sized_integer_pointer_cast =
+                source_type != sema_no_type() &&
+                target_type != sema_no_type() &&
+                sema_type_is_pointer_sized_integer(sema, source_type) &&
+                sema->types[target_type].kind == STK_Pointer;
+
             bool void_pointer_cast =
                 source_type != sema_no_type() &&
                 target_type != sema_no_type() &&
@@ -15364,7 +15380,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                      STK_Void);
 
             if (!(primitive_cast || string_slice_cast ||
-                  untyped_integer_pointer_cast || void_pointer_cast)) {
+                  untyped_integer_pointer_cast ||
+                  pointer_sized_integer_pointer_cast || void_pointer_cast)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),

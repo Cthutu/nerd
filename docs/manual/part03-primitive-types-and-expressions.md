@@ -172,8 +172,17 @@ base: ^void = 0x1000
 same := 0x1000.as(^void)
 ```
 
-Concrete integer variables do not silently become pointers. Keep these casts at
-FFI or platform boundaries where raw addresses are part of the interface.
+Concrete integer variables do not silently become pointers. Pointer-sized
+integers can be cast explicitly when an API represents a pointer-sized address
+or resource ID as `usize` or `isize`:
+
+```nerd
+resource: usize = 32512
+cursor_name := resource.as(^u8)
+```
+
+Keep these casts at FFI or platform boundaries where raw addresses are part of
+the interface.
 
 Casts between integers and floats are explicit because they can change the
 value. Integer-to-float casts produce the nearest representable floating-point

@@ -85,6 +85,8 @@ intended exit code.
 - Use `p.as([]T, count)` to make a slice view from a pointer and count.
 - Untyped integer constants may be used as pointer address constants when the
   destination pointer type is explicit.
+- `usize` and `isize` values may be explicitly cast to pointer types at FFI or
+  platform boundaries.
 - Casts do not imply ownership transfer.
 - Use `.size` for the runtime byte size of a type or value. It returns `usize`.
 - Strings, slices, and dynamic arrays report the size of their value header.
