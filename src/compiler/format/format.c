@@ -4254,9 +4254,16 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 bool force_multiline =
                     format_aligned_statement_node_value_prefers_multiline(
                         cst, &stmts[i]);
-                if (!force_multiline &&
-                    value_start_width + stmts[i].value.count <=
-                        FORMAT_WRAP_WIDTH) {
+                if (force_multiline) {
+                    sb_append_cstr(sb, " :: ");
+                    if (!format_emit_aligned_statement_node_value(
+                            sb, cst, lexer, &stmts[i], &current_column)) {
+                        sb_append_string(sb, stmts[i].value);
+                        current_column =
+                            value_start_width + stmts[i].value.count;
+                    }
+                } else if (value_start_width + stmts[i].value.count <=
+                           FORMAT_WRAP_WIDTH) {
                     sb_append_cstr(sb, " :: ");
                     sb_append_string(sb, stmts[i].value);
                     current_column = value_start_width + stmts[i].value.count;
@@ -4294,9 +4301,17 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             bool force_multiline =
                 format_aligned_statement_node_value_prefers_multiline(
                     cst, &stmts[i]);
-            if (!force_multiline &&
-                !format_string_has_newline(stmts[i].value) &&
-                value_start_width + stmts[i].value.count <= FORMAT_WRAP_WIDTH) {
+            if (force_multiline) {
+                sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
+                sb_append_char(sb, ' ');
+                if (!format_emit_aligned_statement_node_value(
+                        sb, cst, lexer, &stmts[i], &current_column)) {
+                    sb_append_string(sb, stmts[i].value);
+                    current_column = value_start_width + stmts[i].value.count;
+                }
+            } else if (!format_string_has_newline(stmts[i].value) &&
+                       value_start_width + stmts[i].value.count <=
+                           FORMAT_WRAP_WIDTH) {
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 sb_append_char(sb, ' ');
                 sb_append_string(sb, stmts[i].value);
