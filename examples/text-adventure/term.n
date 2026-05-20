@@ -76,6 +76,8 @@ on "windows" {
 
 pub prn_wrap :: fn (s: string) {
     lines := wrap(s, term_get_size().1)
+    defer lines.free()
+
     for line in lines {
         prn(line^)
     }

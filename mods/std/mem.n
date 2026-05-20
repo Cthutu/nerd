@@ -139,21 +139,24 @@ pub leak :: fn (allocation: []u8) {
 
 on "debug" {
 
-    ANSI_RESET :: "\x1b[0m"
-
-    ANSI_BOLD_RED :: "\x1b[1;31m"
-
-    ANSI_BOLD_YELLOW :: "\x1b[1;33m"
-
-    ANSI_BOLD_CYAN :: "\x1b[1;36m"
-
-    ANSI_DIM :: "\x1b[2m"
+    ANSI_RESET        :: "\x1b[0m"
+    ANSI_BOLD_RED     :: "\x1b[1;31m"
+    ANSI_BOLD_GREEN   :: "\x1b[1;32m"
+    ANSI_BOLD_YELLOW  :: "\x1b[1;33m"
+    ANSI_BOLD_BLUE    :: "\x1b[1;34m"
+    ANSI_BOLD_MAGENTA :: "\x1b[1;35m"
+    ANSI_BOLD_CYAN    :: "\x1b[1;36m"
+    ANSI_BOLD_WHITE   :: "\x1b[1;37m"
+    ANSI_DIM          :: "\x1b[2m"
 
     -- Prints reportable live runtime allocations to stderr.
-    pub print_leaks :: fn () {
+    pub print_leaks :: fn (show_message_on_no_leaks: bool = no) {
         heap_current := nrt_mem_live_head()
         arena_current := nrt_arena_live_head()
-        on heap_current == nil && arena_current == nil => return
+        on heap_current == nil && arena_current == nil => {
+            on show_message_on_no_leaks => eprn($"{ANSI_BOLD_GREEN}std.mem: no memory leaks detected{ANSI_RESET}")
+            return
+        }
 
         heap_count      : usize
         heap_leaked     : usize

@@ -110,6 +110,6 @@ do:
     just install
 
 run-example:
-    cd examples/text-adventure && nerd run quill.n
+    cd examples/dungeon && nerd run dungeon.n
 
 alias re := run-example
