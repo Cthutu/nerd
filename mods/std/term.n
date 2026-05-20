@@ -9,7 +9,7 @@
 -- Represents terminal key codes, using ASCII values for byte-sized input and
 -- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
-    None         = 0
+    Nul          = 0
     Backspace    = 8
     Tab          = 9
     LineFeed     = 10
@@ -218,8 +218,8 @@ on "linux" {
         _ := sys_write(STDOUT_FILENO, text.data.as(^void), text.count)
     }
 
-    -- Reads one key byte from terminal input, returning `0` on EOF or error.
-    term_get_key_byte :: fn () -> u8 {
+    -- Reads one byte from terminal input, returning `0` on EOF or error.
+    term_read_byte :: fn () -> u8 {
         key : [1]u8
         bytes_read := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
         on bytes_read <= 0 => return 0
@@ -294,8 +294,8 @@ on "windows" {
         _ := sys_write(output, text.data.as(^void), text.count)
     }
 
-    -- Reads one key byte from terminal input, returning `0` on EOF or error.
-    term_get_key_byte :: fn () -> u8 {
+    -- Reads one byte from terminal input, returning `0` on EOF or error.
+    term_read_byte :: fn () -> u8 {
         input := sys_std_input()
         key : [1]u8
         bytes_read := sys_read(input, key[..].data.as(^void), 1)
@@ -305,9 +305,89 @@ on "windows" {
 
 }
 
--- Reads one key from terminal input, returning `None` on EOF or error.
-pub term_get_key :: fn () -> KeyCode {
-    return term_get_key_byte().as(KeyCode)
+term_csi_final_key :: fn (final: u8) -> Option[KeyCode] {
+    return on final {
+        'A' => Some(ArrowUp)
+        'B' => Some(ArrowDown)
+        'C' => Some(ArrowRight)
+        'D' => Some(ArrowLeft)
+        'F' => Some(End)
+        'H' => Some(Home)
+        else => None
+    }
+}
+
+term_csi_tilde_key :: fn (number: u32) -> Option[KeyCode] {
+    return on number {
+        1 => Some(Home)
+        2 => Some(Insert)
+        3 => Some(Delete)
+        4 => Some(End)
+        5 => Some(PageUp)
+        6 => Some(PageDown)
+        15 => Some(F5)
+        17 => Some(F6)
+        18 => Some(F7)
+        19 => Some(F8)
+        20 => Some(F9)
+        21 => Some(F10)
+        23 => Some(F11)
+        24 => Some(F12)
+        else => None
+    }
+}
+
+term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> Option[KeyCode] {
+    number := first.as(u32) - 48
+    two_digit_number := number * 10 + second.as(u32) - 48
+    return on second == '~' => term_csi_tilde_key(number) else on (second >= '0' && second <= '9' && third == '~') => term_csi_tilde_key(two_digit_number) else None
+}
+
+term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
+    return on final {
+        'F' => Some(End)
+        'H' => Some(Home)
+        'P' => Some(F1)
+        'Q' => Some(F2)
+        'R' => Some(F3)
+        'S' => Some(F4)
+        else => None
+    }
+}
+
+term_read_csi_sequence :: fn () -> Option[KeyCode] {
+    final := term_read_byte()
+    on final == 0 => return None
+
+    on final >= '0' && final <= '9' => {
+        next := term_read_byte()
+        on next == 0 => return None
+        terminator : u8 = 0
+        on next >= '0' && next <= '9' => {
+            terminator = term_read_byte()
+        }
+        return term_csi_digit_key(final, next, terminator)
+    }
+
+    return term_csi_final_key(final)
+}
+
+term_read_ss3_sequence :: fn () -> Option[KeyCode] {
+    final := term_read_byte()
+    on final == 0 => return None
+    return term_ss3_key(final)
+}
+
+term_read_escape_sequence :: fn () -> Option[KeyCode] {
+    second := term_read_byte()
+    return on second == 0 => Some(Escape) else on (second == '[') => term_read_csi_sequence() else on (second == 'O') => term_read_ss3_sequence() else Some(Escape)
+}
+
+-- Reads one translated terminal key, or `None` on EOF/error or an incomplete
+-- escape sequence.
+pub term_get_key :: fn () -> Option[KeyCode] {
+    first := term_read_byte()
+    return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
 }
 
 -- Enables or disables the terminal alternate screen buffer.
@@ -352,14 +432,30 @@ test "term_get_size returns a column and row tuple" {
 }
 
 test "terminal key bytes map to key codes" {
-    none := 0.as(KeyCode)
+    nul := 0.as(KeyCode)
     enter := 13.as(KeyCode)
     escape := 27.as(KeyCode)
     lower_x := 'x'.as(KeyCode)
 
-    assert none == None
+    assert nul == Nul
     assert enter == Enter
     assert escape == Escape
     assert lower_x == LowerX
     assert KeyCode.LowerX.as(u8) == 'x'
+}
+
+test "terminal escape sequences map to key codes" {
+    assert term_csi_final_key('A') == Some(ArrowUp)
+    assert term_csi_final_key('B') == Some(ArrowDown)
+    assert term_csi_final_key('C') == Some(ArrowRight)
+    assert term_csi_final_key('D') == Some(ArrowLeft)
+    assert term_csi_final_key('H') == Some(Home)
+    assert term_csi_final_key('F') == Some(End)
+    assert term_csi_tilde_key(2) == Some(Insert)
+    assert term_csi_tilde_key(3) == Some(Delete)
+    assert term_csi_tilde_key(5) == Some(PageUp)
+    assert term_csi_tilde_key(6) == Some(PageDown)
+    assert term_csi_tilde_key(24) == Some(F12)
+    assert term_ss3_key('P') == Some(F1)
+    assert term_ss3_key('S') == Some(F4)
 }
