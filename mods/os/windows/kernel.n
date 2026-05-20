@@ -2,293 +2,244 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Provides Windows Kernel API bindings used by higher-level NSL modules. This
--- module exposes raw operating-system handles, console calls, file I/O calls,
--- and timing calls through small Nerd wrappers.
+-- Provides Windows Kernel API bindings used by higher-level NSL modules. The
+-- exported names intentionally mirror Win32 API names and casing.
 
--- Opaque Windows object handle.
-pub HANDLE :: ^void
-
--- Windows Boolean result value.
-pub BOOL :: i32
-
--- Windows unsigned 32-bit integer used by many Kernel APIs.
-pub DWORD :: u32
-
--- Windows signed 64-bit integer used by performance-counter APIs.
+pub HANDLE        :: ^void
+pub BOOL          :: i32
+pub DWORD         :: u32
 pub LARGE_INTEGER :: i64
 
-pub STD_INPUT_HANDLE : DWORD : 0xfffffff6
-                                            -- Pseudo-handle identifier for
-                                            -- standard input.
+pub STD_INPUT_HANDLE  : DWORD : 0xfffffff6
 pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
-                                            -- Pseudo-handle identifier for
-                                            -- standard output.
-pub STD_ERROR_HANDLE : DWORD : 0xfffffff4
-                                            -- Pseudo-handle identifier for
-                                            -- standard error.
-
-pub ENABLE_PROCESSED_INPUT :: 0x0001
-                                                  -- Input mode flag enabling
-                                                  -- processed Ctrl+C and line
-                                                  -- editing control handling.
-pub ENABLE_LINE_INPUT :: 0x0002
-                                                  -- Input mode flag enabling
-                                                  -- line-buffered console
-                                                  -- input.
-pub ENABLE_ECHO_INPUT :: 0x0004
-                                                  -- Input mode flag echoing
-                                                  -- typed characters.
-pub ENABLE_WINDOW_INPUT :: 0x0008
-                                                  -- Input mode flag enabling
-                                                  -- window-buffer-size input
-                                                  -- events.
-pub ENABLE_MOUSE_INPUT :: 0x0010
-                                                  -- Input mode flag enabling
-                                                  -- mouse input events.
-pub ENABLE_VIRTUAL_TERMINAL_INPUT :: 0x0200
-                                                  -- Input mode flag enabling
-                                                  -- terminal escape sequences
-                                                  -- in console input.
-pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
-                                                  -- Output mode flag enabling
-                                                  -- terminal escape sequences
-                                                  -- in console output.
-
-pub WAIT_OBJECT_0 :: 0x00000000
-                                 -- Wait result indicating the handle is
-                                 -- signalled.
-pub WAIT_TIMEOUT :: 0x00000102  -- Wait result indicating the timeout elapsed.
-
-pub KEY_EVENT :: 0x0001  -- Console input-record type for keyboard events.
-
-pub VK_BACK   :: 0x08  -- Virtual-key code for Backspace.
-pub VK_TAB    :: 0x09  -- Virtual-key code for Tab.
-pub VK_RETURN :: 0x0d  -- Virtual-key code for Enter.
-pub VK_ESCAPE :: 0x1b  -- Virtual-key code for Escape.
-pub VK_SPACE  :: 0x20  -- Virtual-key code for Space.
-pub VK_PRIOR  :: 0x21  -- Virtual-key code for PageUp.
-pub VK_NEXT   :: 0x22  -- Virtual-key code for PageDown.
-pub VK_END    :: 0x23  -- Virtual-key code for End.
-pub VK_HOME   :: 0x24  -- Virtual-key code for Home.
-pub VK_LEFT   :: 0x25  -- Virtual-key code for Left Arrow.
-pub VK_UP     :: 0x26  -- Virtual-key code for Up Arrow.
-pub VK_RIGHT  :: 0x27  -- Virtual-key code for Right Arrow.
-pub VK_DOWN   :: 0x28  -- Virtual-key code for Down Arrow.
-pub VK_INSERT :: 0x2d  -- Virtual-key code for Insert.
-pub VK_DELETE :: 0x2e  -- Virtual-key code for Delete.
-pub VK_F1     :: 0x70  -- Virtual-key code for F1.
-pub VK_F2     :: 0x71  -- Virtual-key code for F2.
-pub VK_F3     :: 0x72  -- Virtual-key code for F3.
-pub VK_F4     :: 0x73  -- Virtual-key code for F4.
-pub VK_F5     :: 0x74  -- Virtual-key code for F5.
-pub VK_F6     :: 0x75  -- Virtual-key code for F6.
-pub VK_F7     :: 0x76  -- Virtual-key code for F7.
-pub VK_F8     :: 0x77  -- Virtual-key code for F8.
-pub VK_F9     :: 0x78  -- Virtual-key code for F9.
-pub VK_F10    :: 0x79  -- Virtual-key code for F10.
-pub VK_F11    :: 0x7a  -- Virtual-key code for F11.
-pub VK_F12    :: 0x7b  -- Virtual-key code for F12.
+pub STD_ERROR_HANDLE  : DWORD : 0xfffffff4
 
 pub INVALID_HANDLE_VALUE  :: 0xffffffffffffffff
-pub FILE_APPEND_DATA      :: 0x00000004  -- File access right for append writes.
-pub FILE_SHARE_READ       :: 0x00000001  -- File share mode allowing readers.
-pub FILE_SHARE_WRITE      :: 0x00000002  -- File share mode allowing writers.
-pub CREATE_ALWAYS         :: 2  -- File creation mode: overwrite.
-pub OPEN_EXISTING         :: 3  -- File creation mode: open existing.
-pub OPEN_ALWAYS           :: 4  -- File creation mode: open or create.
-pub FILE_ATTRIBUTE_NORMAL :: 0x00000080  -- Normal file attribute.
+pub FILE_APPEND_DATA      :: 0x00000004
+pub FILE_SHARE_READ       :: 0x00000001
+pub FILE_SHARE_WRITE      :: 0x00000002
+pub CREATE_ALWAYS         :: 2
+pub OPEN_EXISTING         :: 3
+pub OPEN_ALWAYS           :: 4
+pub FILE_ATTRIBUTE_NORMAL :: 0x00000080
 
--- Two-dimensional console coordinate.
-pub Coord :: plex #c {
-    x i16  -- Horizontal coordinate.
-    y i16  -- Vertical coordinate.
+pub ENABLE_PROCESSED_INPUT             :: 0x0001
+pub ENABLE_LINE_INPUT                  :: 0x0002
+pub ENABLE_ECHO_INPUT                  :: 0x0004
+pub ENABLE_WINDOW_INPUT                :: 0x0008
+pub ENABLE_MOUSE_INPUT                 :: 0x0010
+pub ENABLE_VIRTUAL_TERMINAL_INPUT      :: 0x0200
+pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
+
+pub WAIT_OBJECT_0 :: 0x00000000
+pub WAIT_TIMEOUT  :: 0x00000102
+
+pub KEY_EVENT :: 0x0001
+
+pub VK_BACK   :: 0x08
+pub VK_TAB    :: 0x09
+pub VK_RETURN :: 0x0d
+pub VK_ESCAPE :: 0x1b
+pub VK_SPACE  :: 0x20
+pub VK_PRIOR  :: 0x21
+pub VK_NEXT   :: 0x22
+pub VK_END    :: 0x23
+pub VK_HOME   :: 0x24
+pub VK_LEFT   :: 0x25
+pub VK_UP     :: 0x26
+pub VK_RIGHT  :: 0x27
+pub VK_DOWN   :: 0x28
+pub VK_INSERT :: 0x2d
+pub VK_DELETE :: 0x2e
+pub VK_F1     :: 0x70
+pub VK_F2     :: 0x71
+pub VK_F3     :: 0x72
+pub VK_F4     :: 0x73
+pub VK_F5     :: 0x74
+pub VK_F6     :: 0x75
+pub VK_F7     :: 0x76
+pub VK_F8     :: 0x77
+pub VK_F9     :: 0x78
+pub VK_F10    :: 0x79
+pub VK_F11    :: 0x7a
+pub VK_F12    :: 0x7b
+
+pub COORD :: plex #c {
+    X i16
+    Y i16
 }
 
--- Inclusive console rectangle.
-pub SmallRect :: plex #c {
-    left   i16  -- Left edge.
-    top    i16  -- Top edge.
-    right  i16  -- Right edge.
-    bottom i16  -- Bottom edge.
+pub SMALL_RECT :: plex #c {
+    Left   i16
+    Top    i16
+    Right  i16
+    Bottom i16
 }
 
--- Console screen-buffer state returned by `GetConsoleScreenBufferInfo`.
-pub ConsoleScreenBufferInfo :: plex #c {
-    size                Coord      -- Buffer dimensions.
-    cursor_position     Coord      -- Current cursor position.
-    attributes          u16        -- Current text attributes.
-    window              SmallRect  -- Visible window rectangle.
-    maximum_window_size Coord      -- Largest possible window dimensions.
+pub CONSOLE_SCREEN_BUFFER_INFO :: plex #c {
+    dwSize              COORD
+    dwCursorPosition    COORD
+    wAttributes         u16
+    srWindow            SMALL_RECT
+    dwMaximumWindowSize COORD
 }
 
--- Console keyboard input record. This mirrors `INPUT_RECORD` for key events.
-pub InputRecord :: plex #c {
-    event_type       u16
-    _padding         u16
-    key_down         BOOL
-    repeat_count     u16
-    virtual_key_code u16
-    virtual_scan     u16
-    unicode_char     u16
-    control_state    DWORD
+pub INPUT_RECORD :: plex #c {
+    EventType         u16
+    _padding          u16
+    bKeyDown          BOOL
+    wRepeatCount      u16
+    wVirtualKeyCode   u16
+    wVirtualScanCode  u16
+    UnicodeChar       u16
+    dwControlKeyState DWORD
 }
 
 ffi "kernel32" {
-    get_std_handle :: GetStdHandle (std_handle: DWORD) -> HANDLE
+    c_GetStdHandle :: GetStdHandle (nStdHandle: DWORD) -> HANDLE
 
-    create_file2 :: CreateFile2 (file_name            : ^void,
-                                 desired_access       : DWORD,
-                                 share_mode           : DWORD,
-                                 creation_disposition : DWORD,
-                                 extended_parameters  : ^void) -> HANDLE
+    c_CreateFile :: CreateFileA (lpFileName            : ^i8,
+                                 dwDesiredAccess       : DWORD,
+                                 dwShareMode           : DWORD,
+                                 lpSecurityAttributes  : ^void,
+                                 dwCreationDisposition : DWORD,
+                                 dwFlagsAndAttributes  : DWORD,
+                                 hTemplateFile         : HANDLE) -> HANDLE
 
-    close_handle :: CloseHandle (handle: HANDLE) -> BOOL
+    c_CloseHandle :: CloseHandle (hObject: HANDLE) -> BOOL
 
-    read_file :: ReadFile (file          : HANDLE,
-                           buffer        : ^void,
-                           bytes_to_read : DWORD,
-                           bytes_read    : ^DWORD,
-                           overlapped    : ^void) -> BOOL
+    c_ReadFile :: ReadFile (hFile                : HANDLE,
+                            lpBuffer             : ^void,
+                            nNumberOfBytesToRead : DWORD,
+                            lpNumberOfBytesRead  : ^DWORD,
+                            lpOverlapped         : ^void) -> BOOL
 
-    write_file :: WriteFile (file           : HANDLE,
-                             buffer         : ^void,
-                             bytes_to_write : DWORD,
-                             bytes_written  : ^DWORD,
-                             overlapped     : ^void) -> BOOL
+    c_WriteFile :: WriteFile (hFile                  : HANDLE,
+                              lpBuffer               : ^void,
+                              nNumberOfBytesToWrite  : DWORD,
+                              lpNumberOfBytesWritten : ^DWORD,
+                              lpOverlapped           : ^void) -> BOOL
 
-    read_console_input :: ReadConsoleInputW (console_input : HANDLE,
-                                             buffer        : ^InputRecord,
-                                             length        : DWORD,
-                                             events_read   : ^DWORD) -> BOOL
+    c_ReadConsoleInput :: ReadConsoleInputW (hConsoleInput        : HANDLE,
+                                             lpBuffer             : ^INPUT_RECORD,
+                                             nLength              : DWORD,
+                                             lpNumberOfEventsRead : ^DWORD) -> BOOL
 
-    flush_console_input_buffer :: FlushConsoleInputBuffer (console_input : HANDLE) -> BOOL
+    c_FlushConsoleInputBuffer :: FlushConsoleInputBuffer (hConsoleInput : HANDLE) -> BOOL
 
-    get_console_screen_buffer_info :: GetConsoleScreenBufferInfo (console_output : HANDLE,
-                                                                  buffer_info    : ^ConsoleScreenBufferInfo) -> BOOL
+    c_GetConsoleScreenBufferInfo :: GetConsoleScreenBufferInfo (hConsoleOutput            : HANDLE,
+                                                                lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL
 
-    get_console_mode :: GetConsoleMode (console_handle : HANDLE,
-                                        mode           : ^DWORD) -> BOOL
+    c_GetConsoleMode :: GetConsoleMode (hConsoleHandle : HANDLE,
+                                        lpMode         : ^DWORD) -> BOOL
 
-    set_console_mode :: SetConsoleMode (console_handle : HANDLE,
-                                        mode           : DWORD) -> BOOL
+    c_SetConsoleMode :: SetConsoleMode (hConsoleHandle : HANDLE,
+                                        dwMode         : DWORD) -> BOOL
 
-    get_last_error :: GetLastError () -> DWORD
+    c_GetLastError :: GetLastError () -> DWORD
 
-    wait_for_single_object :: WaitForSingleObject (handle       : HANDLE,
-                                                   milliseconds : DWORD) -> DWORD
+    c_WaitForSingleObject :: WaitForSingleObject (hHandle        : HANDLE,
+                                                  dwMilliseconds : DWORD) -> DWORD
 
-    query_performance_counter :: QueryPerformanceCounter (counter : ^LARGE_INTEGER) -> BOOL
+    c_QueryPerformanceCounter :: QueryPerformanceCounter (lpPerformanceCount : ^LARGE_INTEGER) -> BOOL
 
-    query_performance_frequency :: QueryPerformanceFrequency (frequency : ^LARGE_INTEGER) -> BOOL
+    c_QueryPerformanceFrequency :: QueryPerformanceFrequency (lpFrequency : ^LARGE_INTEGER) -> BOOL
 
-    sleep :: Sleep (milliseconds: DWORD)
+    c_Sleep :: Sleep (dwMilliseconds: DWORD)
 }
 
--- Returns a handle for one of the standard streams.
-pub sys_get_std_handle :: fn (std_handle: DWORD) -> HANDLE {
-    return get_std_handle(std_handle)
+pub GetStdHandle :: fn (nStdHandle: DWORD) -> HANDLE {
+    return c_GetStdHandle(nStdHandle)
 }
 
--- Opens or creates a file using `CreateFile2`.
-pub sys_create_file2 :: fn (file_name            : ^void,
-                            desired_access       : DWORD,
-                            share_mode           : DWORD,
-                            creation_disposition : DWORD) -> HANDLE {
-    return create_file2(file_name,
-                        desired_access,
-                        share_mode,
-                        creation_disposition,
-                        nil)
+pub CreateFile :: fn (lpFileName            : ^i8,
+                      dwDesiredAccess       : DWORD,
+                      dwShareMode           : DWORD,
+                      lpSecurityAttributes  : ^void,
+                      dwCreationDisposition : DWORD,
+                      dwFlagsAndAttributes  : DWORD,
+                      hTemplateFile         : HANDLE) -> HANDLE {
+    return c_CreateFile(lpFileName,
+                        dwDesiredAccess,
+                        dwShareMode,
+                        lpSecurityAttributes,
+                        dwCreationDisposition,
+                        dwFlagsAndAttributes,
+                        hTemplateFile)
 }
 
--- Closes a Windows object handle.
-pub sys_close_handle :: fn (handle: HANDLE) -> BOOL {
-    return close_handle(handle)
+pub CloseHandle :: fn (hObject: HANDLE) -> BOOL {
+    return c_CloseHandle(hObject)
 }
 
--- Returns the process standard-input handle.
-pub sys_std_input :: fn () -> HANDLE {
-    return get_std_handle(STD_INPUT_HANDLE)
+pub ReadFile :: fn (hFile                : HANDLE,
+                    lpBuffer             : ^void,
+                    nNumberOfBytesToRead : DWORD,
+                    lpNumberOfBytesRead  : ^DWORD,
+                    lpOverlapped         : ^void) -> BOOL {
+    return c_ReadFile(hFile,
+                      lpBuffer,
+                      nNumberOfBytesToRead,
+                      lpNumberOfBytesRead,
+                      lpOverlapped)
 }
 
--- Returns the process standard-output handle.
-pub sys_std_output :: fn () -> HANDLE {
-    return get_std_handle(STD_OUTPUT_HANDLE)
+pub WriteFile :: fn (hFile                  : HANDLE,
+                     lpBuffer               : ^void,
+                     nNumberOfBytesToWrite  : DWORD,
+                     lpNumberOfBytesWritten : ^DWORD,
+                     lpOverlapped           : ^void) -> BOOL {
+    return c_WriteFile(hFile,
+                       lpBuffer,
+                       nNumberOfBytesToWrite,
+                       lpNumberOfBytesWritten,
+                       lpOverlapped)
 }
 
--- Returns the process standard-error handle.
-pub sys_std_error :: fn () -> HANDLE {
-    return get_std_handle(STD_ERROR_HANDLE)
+pub ReadConsoleInput :: fn (hConsoleInput        : HANDLE,
+                            lpBuffer             : ^INPUT_RECORD,
+                            nLength              : DWORD,
+                            lpNumberOfEventsRead : ^DWORD) -> BOOL {
+    return c_ReadConsoleInput(hConsoleInput,
+                              lpBuffer,
+                              nLength,
+                              lpNumberOfEventsRead)
 }
 
--- Reads bytes from a Windows file or console handle.
-pub sys_read :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
-    bytes_read : DWORD
-    ok := read_file(handle, buffer, count.as(DWORD), ^bytes_read, nil)
-    on ok == 0 => return -1
-    return bytes_read.as(isize)
+pub FlushConsoleInputBuffer :: fn (hConsoleInput: HANDLE) -> BOOL {
+    return c_FlushConsoleInputBuffer(hConsoleInput)
 }
 
--- Writes bytes to a Windows file or console handle.
-pub sys_write :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
-    bytes_written : DWORD
-    ok := write_file(handle, buffer, count.as(DWORD), ^bytes_written, nil)
-    on ok == 0 => return -1
-    return bytes_written.as(isize)
+pub GetConsoleScreenBufferInfo :: fn (hConsoleOutput            : HANDLE,
+                                      lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL {
+    return c_GetConsoleScreenBufferInfo(hConsoleOutput,
+                                        lpConsoleScreenBufferInfo)
 }
 
--- Reads one Windows console input record.
-pub sys_read_console_input :: fn (handle: HANDLE, record: ^InputRecord) -> isize {
-    events_read : DWORD
-    ok := read_console_input(handle, record, 1, ^events_read)
-    on ok == 0 => return -1
-    return events_read.as(isize)
+pub GetConsoleMode :: fn (hConsoleHandle: HANDLE, lpMode: ^DWORD) -> BOOL {
+    return c_GetConsoleMode(hConsoleHandle, lpMode)
 }
 
--- Clears pending console input records from a Windows console handle.
-pub sys_flush_console_input_buffer :: fn (handle: HANDLE) -> BOOL {
-    return flush_console_input_buffer(handle)
+pub SetConsoleMode :: fn (hConsoleHandle: HANDLE, dwMode: DWORD) -> BOOL {
+    return c_SetConsoleMode(hConsoleHandle, dwMode)
 }
 
--- Reads the current console screen-buffer state.
-pub sys_get_console_screen_buffer_info :: fn (handle : HANDLE,
-                                              info   : ^ConsoleScreenBufferInfo) -> BOOL {
-    return get_console_screen_buffer_info(handle, info)
+pub GetLastError :: fn () -> DWORD {
+    return c_GetLastError()
 }
 
--- Reads a console handle's current mode flags.
-pub sys_get_console_mode :: fn (handle: HANDLE, mode: ^DWORD) -> BOOL {
-    return get_console_mode(handle, mode)
+pub WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD {
+    return c_WaitForSingleObject(hHandle, dwMilliseconds)
 }
 
--- Writes a console handle's mode flags.
-pub sys_set_console_mode :: fn (handle: HANDLE, mode: DWORD) -> BOOL {
-    return set_console_mode(handle, mode)
+pub QueryPerformanceCounter :: fn (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL {
+    return c_QueryPerformanceCounter(lpPerformanceCount)
 }
 
--- Reads the calling thread's last Windows error code.
-pub sys_get_last_error :: fn () -> DWORD {
-    return get_last_error()
+pub QueryPerformanceFrequency :: fn (lpFrequency: ^LARGE_INTEGER) -> BOOL {
+    return c_QueryPerformanceFrequency(lpFrequency)
 }
 
--- Waits for a Windows handle to become signalled.
-pub sys_wait_for_single_object :: fn (handle       : HANDLE,
-                                      milliseconds : DWORD) -> DWORD {
-    return wait_for_single_object(handle, milliseconds)
-}
-
--- Reads the current high-resolution performance counter.
-pub sys_query_performance_counter :: fn (counter: ^LARGE_INTEGER) -> BOOL {
-    return query_performance_counter(counter)
-}
-
--- Reads the high-resolution performance-counter frequency.
-pub sys_query_performance_frequency :: fn (frequency: ^LARGE_INTEGER) -> BOOL {
-    return query_performance_frequency(frequency)
-}
-
--- Suspends the current thread for at least the requested milliseconds.
-pub sys_sleep :: fn (milliseconds: DWORD) {
-    sleep(milliseconds)
+pub Sleep :: fn (dwMilliseconds: DWORD) {
+    c_Sleep(dwMilliseconds)
 }

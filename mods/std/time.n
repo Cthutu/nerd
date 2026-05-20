@@ -99,8 +99,8 @@ on "windows" {
         counter   : LARGE_INTEGER
         frequency : LARGE_INTEGER
 
-        counter_ok := sys_query_performance_counter(^counter)
-        frequency_ok := sys_query_performance_frequency(^frequency)
+        counter_ok := QueryPerformanceCounter(^counter)
+        frequency_ok := QueryPerformanceFrequency(^frequency)
         on counter_ok == 0 || frequency_ok == 0 || frequency <= 0 => return 0
 
         seconds := (counter / frequency).as(u64)
@@ -111,7 +111,7 @@ on "windows" {
 
     -- Suspends execution for at least the requested number of milliseconds.
     pub sleep_ms :: fn (milliseconds: u64) {
-        sys_sleep(milliseconds.as(DWORD))
+        Sleep(milliseconds.as(DWORD))
     }
 
 }

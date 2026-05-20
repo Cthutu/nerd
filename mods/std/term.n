@@ -253,14 +253,14 @@ on "windows" {
 
     -- Applies raw terminal input mode and saves the original Windows console modes.
     term_raw_mode_enable_impl :: fn () {
-        input := sys_std_input()
-        output := sys_std_output()
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
 
         input_mode  : DWORD
         output_mode : DWORD
 
-        _ := sys_get_console_mode(input, ^input_mode)
-        _ := sys_get_console_mode(output, ^output_mode)
+        _ := GetConsoleMode(input, ^input_mode)
+        _ := GetConsoleMode(output, ^output_mode)
         term_original_input_mode  = input_mode
         term_original_output_mode = output_mode
         term_original_mode_saved  = yes
@@ -270,17 +270,17 @@ on "windows" {
         input_mode  &= ~input_mask
         output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
 
-        _ := sys_set_console_mode(input, input_mode)
-        _ := sys_set_console_mode(output, output_mode)
+        _ := SetConsoleMode(input, input_mode)
+        _ := SetConsoleMode(output, output_mode)
     }
 
     -- Restores the saved Windows console modes.
     term_raw_mode_disable_impl :: fn () {
-        input := sys_std_input()
-        output := sys_std_output()
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
 
-        _ := sys_set_console_mode(input, term_original_input_mode)
-        _ := sys_set_console_mode(output, term_original_output_mode)
+        _ := SetConsoleMode(input, term_original_input_mode)
+        _ := SetConsoleMode(output, term_original_output_mode)
         term_original_mode_saved = no
     }
 
@@ -292,35 +292,42 @@ on "windows" {
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
     -- size cannot be read.
     pub term_get_size :: fn () -> (u32, u32) {
-        output := sys_std_output()
-        info : ConsoleScreenBufferInfo
-        result := sys_get_console_screen_buffer_info(output, ^info)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+        info : CONSOLE_SCREEN_BUFFER_INFO
+        result := GetConsoleScreenBufferInfo(output, ^info)
         on result == 0 => return (0, 0)
 
-        columns := info.window.right - info.window.left + 1
-        rows := info.window.bottom - info.window.top + 1
+        columns := info.srWindow.Right - info.srWindow.Left + 1
+        rows := info.srWindow.Bottom - info.srWindow.Top + 1
         return (columns.as(u32), rows.as(u32))
     }
 
     -- Writes text directly to the terminal output stream.
     pub term_print :: fn (text: string) {
-        output := sys_std_output()
-        _ := sys_write(output, text.data.as(^void), text.count)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+        bytes_written : DWORD
+        _ := WriteFile(output,
+                       text.data.as(^void),
+                       text.count.as(DWORD),
+                       ^bytes_written,
+                       nil)
     }
 
     -- Reads one byte from terminal input, returning `0` on EOF or error.
     term_read_byte :: fn () -> u8 {
-        input := sys_std_input()
-        key : [1]u8
-        bytes_read := sys_read(input, key[..].data.as(^void), 1)
-        on bytes_read <= 0 => return 0
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        key        : [1]u8
+        bytes_read : DWORD
+
+        ok := ReadFile(input, key[..].data.as(^void), 1, ^bytes_read, nil)
+        on ok == 0 || bytes_read == 0 => return 0
         return key[0]
     }
 
     -- Reads one byte from terminal input, returning `0` when the timeout elapses.
     term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
-        input := sys_std_input()
-        wait_result := sys_wait_for_single_object(input, timeout_ms.as(DWORD))
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        wait_result := WaitForSingleObject(input, timeout_ms.as(DWORD))
         on wait_result != WAIT_OBJECT_0 => return 0
         return term_read_byte()
     }
@@ -358,24 +365,26 @@ on "windows" {
         }
     }
 
-    term_windows_input_record_key :: fn (record: InputRecord) -> Option[KeyCode] {
-        on record.event_type != KEY_EVENT || record.key_down == 0 => return None
-        on record.unicode_char > 0 && record.unicode_char <= 127 => {
-            return Some(record.unicode_char.as(u8).as(KeyCode))
+    term_windows_input_record_key :: fn (record : INPUT_RECORD) -> Option[KeyCode] {
+        on record.EventType != KEY_EVENT || record.bKeyDown == 0 => return None
+        on record.UnicodeChar > 0 && record.UnicodeChar <= 127 => {
+            return Some(record.UnicodeChar.as(u8).as(KeyCode))
         }
-        return term_windows_virtual_key(record.virtual_key_code)
+        return term_windows_virtual_key(record.wVirtualKeyCode)
     }
 
     term_windows_console_key :: fn () -> Option[KeyCode] {
-        input := sys_std_input()
+        input := GetStdHandle(STD_INPUT_HANDLE)
         mode : DWORD
-        is_console := sys_get_console_mode(input, ^mode)
+        is_console := GetConsoleMode(input, ^mode)
         on is_console == 0 => return None
 
         for {
-            record : InputRecord
-            records_read := sys_read_console_input(input, ^record)
-            on records_read <= 0 => return None
+            record       : INPUT_RECORD
+            records_read : DWORD
+
+            ok := ReadConsoleInput(input, ^record, 1, ^records_read)
+            on ok == 0 || records_read == 0 => return None
 
             key := term_windows_input_record_key(record)
             on key {

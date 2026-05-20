@@ -13,34 +13,40 @@ pub STDOUT_FILENO :: 1  -- File descriptor for standard output.
 
 pub SYS_READ          :: 0  -- Linux syscall number for `read`.
 pub SYS_WRITE         :: 1  -- Linux syscall number for `write`.
+pub SYS_OPEN          :: 2  -- Linux syscall number for `open`.
+pub SYS_CLOSE         :: 3  -- Linux syscall number for `close`.
 pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
 pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
 pub SYS_CLOCK_GETTIME :: 228  -- Linux syscall number for `clock_gettime`.
+
+pub O_WRONLY :: 0x0001
+pub O_CREAT  :: 0x0040
+pub O_APPEND :: 0x0400
 
 pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
 
 pub TIOCGWINSZ :: 0x5413
                           -- Linux terminal request for reading window
-                          --     dimensions.
-pub TCGETS     :: 0x5401
+                          -- dimensions.
+pub TCGETS :: 0x5401
                           -- Linux terminal request for reading terminal
-                          --     attributes.
-pub TCSETS     :: 0x5402
+                          -- attributes.
+pub TCSETS :: 0x5402
                           -- Linux terminal request for writing terminal
-                          --     attributes immediately.
+                          -- attributes immediately.
 
 pub ICANON :: 0x0002  -- Local terminal mode flag for canonical input.
 pub ECHO   :: 0x0008  -- Local terminal mode flag for echoing input.
 pub ISIG   :: 0x0001
                       -- Local terminal mode flag for signal-generating
-                      --     characters.
+                      -- characters.
 pub IEXTEN :: 0x8000
                       -- Local terminal mode flag for implementation-defined
-                      --     input processing.
+                      -- input processing.
 
-pub ICRNL  :: 0x0100
+pub ICRNL :: 0x0100
                       -- Input terminal mode flag for converting carriage return
-                      --     to newline.
+                      -- to newline.
 pub IXON   :: 0x0400  -- Input terminal mode flag for XON/XOFF flow control.
 pub BRKINT :: 0x0002  -- Input terminal mode flag for break interrupt handling.
 pub INPCK  :: 0x0010  -- Input terminal mode flag for parity checking.
@@ -87,6 +93,16 @@ pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
 -- Writes bytes to a file descriptor using the Linux `write` syscall.
 pub sys_write :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+}
+
+-- Opens a path using the Linux `open` syscall.
+pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) -> i32 {
+    return syscall(SYS_OPEN, path.as(usize).as(u64), flags.as(u64), mode.as(u64), 0, 0, 0).as(i32)
+}
+
+-- Closes a file descriptor using the Linux `close` syscall.
+pub sys_close :: fn (fd: i32) -> i32 {
+    return syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
 }
 
 -- Applies a Linux `ioctl` request with a pointer argument.

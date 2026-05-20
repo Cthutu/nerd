@@ -1,0 +1,120 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides a tiny append-only text log API over platform file primitives.
+
+ffi "nrt" {
+    nrt_arena_mark (arena: ^arena) -> u32
+
+    nrt_arena_restore (arena: ^arena, mark: u32)
+
+    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
+
+    nrt_temp_arena () -> ^arena
+}
+
+c_string_temp :: fn (text: string) -> ^i8 {
+    temp_arena := nrt_temp_arena()
+    data := nrt_arena_alloc(temp_arena, text.count + 1, 1).as(^u8)
+    for i: usize = 0; i < text.count; i += 1 {
+        data[i] = text.data[i]
+    }
+    data[text.count] = 0
+    return data.as(^void).as(^i8)
+}
+
+on "linux" {
+
+    use os.linux
+
+    pub LogFile :: plex {
+        fd i32
+    }
+
+    pub log_create :: fn (path: string) -> LogFile {
+        temp_arena := nrt_temp_arena()
+        mark := nrt_arena_mark(temp_arena)
+        defer nrt_arena_restore(temp_arena, mark)
+
+        flags := O_WRONLY | O_CREAT | O_APPEND
+        c_path := c_string_temp(path)
+        fd := sys_open(c_path, flags, 438)
+        log : LogFile
+        log.fd = fd
+        return log
+    }
+
+    pub log_valid :: fn (log: LogFile) -> bool {
+        return log.fd >= 0
+    }
+
+    pub log_append :: fn (log: LogFile, text: string) -> bool {
+        on !log_valid(log) => return no
+        written := sys_write(log.fd, text.data.as(^void), text.count)
+        return written == text.count.as(isize)
+    }
+
+    pub log_append_line :: fn (log: LogFile, text: string) -> bool {
+        return log_append(log, text) && log_append(log, "\n")
+    }
+
+    pub log_close :: fn (log: LogFile) -> bool {
+        on !log_valid(log) => return no
+        return sys_close(log.fd) == 0
+    }
+
+}
+
+on "windows" {
+
+    use os.windows
+
+    pub LogFile :: plex {
+        handle HANDLE
+    }
+
+    pub log_create :: fn (path: string) -> LogFile {
+        temp_arena := nrt_temp_arena()
+        mark := nrt_arena_mark(temp_arena)
+        defer nrt_arena_restore(temp_arena, mark)
+
+        c_path := c_string_temp(path)
+        handle := CreateFile(c_path,
+                             FILE_APPEND_DATA,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             nil,
+                             OPEN_ALWAYS,
+                             FILE_ATTRIBUTE_NORMAL,
+                             nil)
+        log : LogFile
+        log.handle = handle
+        return log
+    }
+
+    pub log_valid :: fn (log: LogFile) -> bool {
+        handle := log.handle.as(usize)
+        return handle != INVALID_HANDLE_VALUE
+    }
+
+    pub log_append :: fn (log: LogFile, text: string) -> bool {
+        on !log_valid(log) => return no
+        bytes_written : DWORD
+        ok := WriteFile(log.handle,
+                        text.data.as(^void),
+                        text.count.as(DWORD),
+                        ^bytes_written,
+                        nil)
+        return ok != 0 && bytes_written == text.count.as(DWORD)
+    }
+
+    pub log_append_line :: fn (log: LogFile, text: string) -> bool {
+        return log_append(log, text) && log_append(log, "\n")
+    }
+
+    pub log_close :: fn (log: LogFile) -> bool {
+        on !log_valid(log) => return no
+        return CloseHandle(log.handle) != 0
+    }
+
+}

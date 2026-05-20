@@ -1,95 +1,5 @@
 use std.term
 
-on "windows" {
-
-    use os.windows
-
-    debug_log_to_path :: fn (path: []u16, text: string) -> bool {
-        log := sys_create_file2(path.data.as(^void),
-                                FILE_APPEND_DATA,
-                                FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                OPEN_ALWAYS)
-        log_value := log.as(usize)
-        on log_value == 0xffffffffffffffff => return no
-
-        _written := sys_write(log, text.data.as(^void), text.count)
-        _newline := sys_write(log, "\n".data.as(^void), 1)
-        _closed := sys_close_handle(log)
-        return yes
-    }
-
-    debug_log :: fn (text: string) {
-        repo_path := [
-            'e'.as(u16),
-            'x'.as(u16),
-            'a'.as(u16),
-            'm'.as(u16),
-            'p'.as(u16),
-            'l'.as(u16),
-            'e'.as(u16),
-            's'.as(u16),
-            '/'.as(u16),
-            'd'.as(u16),
-            'u'.as(u16),
-            'n'.as(u16),
-            'g'.as(u16),
-            'e'.as(u16),
-            'o'.as(u16),
-            'n'.as(u16),
-            '/'.as(u16),
-            'd'.as(u16),
-            'u'.as(u16),
-            'n'.as(u16),
-            'g'.as(u16),
-            'e'.as(u16),
-            'o'.as(u16),
-            'n'.as(u16),
-            '-'.as(u16),
-            'i'.as(u16),
-            'n'.as(u16),
-            'p'.as(u16),
-            'u'.as(u16),
-            't'.as(u16),
-            '.'.as(u16),
-            'l'.as(u16),
-            'o'.as(u16),
-            'g'.as(u16),
-            0.as(u16),
-        ]
-        on debug_log_to_path(repo_path[..], text) => return
-
-        local_path := [
-            'd'.as(u16),
-            'u'.as(u16),
-            'n'.as(u16),
-            'g'.as(u16),
-            'e'.as(u16),
-            'o'.as(u16),
-            'n'.as(u16),
-            '-'.as(u16),
-            'i'.as(u16),
-            'n'.as(u16),
-            'p'.as(u16),
-            'u'.as(u16),
-            't'.as(u16),
-            '.'.as(u16),
-            'l'.as(u16),
-            'o'.as(u16),
-            'g'.as(u16),
-            0.as(u16),
-        ]
-        _ := debug_log_to_path(local_path[..], text)
-    }
-
-}
-
-on "linux" {
-
-    debug_log :: fn (text: string) {
-    }
-
-}
-
 key_name :: fn (key: KeyCode) -> string {
     return on key {
         ArrowUp => "ArrowUp"
@@ -145,7 +55,6 @@ main :: fn () {
     defer term_raw_mode_enable(no)
 
     last_key := "none"
-    debug_log("dungeon-start")
     draw(last_key)
 
     for {
@@ -157,7 +66,6 @@ main :: fn () {
             Some(as code) => {
                 key_code : KeyCode = code
                 last_key = key_name(key_code)
-                debug_log($"term_get_key={last_key} code={key_code.as(u32)}")
                 draw(last_key)
 
                 on key_code == LowerQ || key_code == Q || key_code == Escape => break

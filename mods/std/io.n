@@ -71,10 +71,15 @@ on "windows" {
 
     -- Prints a prompt, reads standard input, and returns owned bytes before enter.
     pub input :: fn (prompt: string) -> [..]u8 {
-        output := sys_std_output()
-        input_handle := sys_std_input()
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+        input_handle := GetStdHandle(STD_INPUT_HANDLE)
 
-        _ := sys_write(output, prompt.data.as(^void), prompt.count)
+        bytes_written : DWORD
+        _ := WriteFile(output,
+                       prompt.data.as(^void),
+                       prompt.count.as(DWORD),
+                       ^bytes_written,
+                       nil)
 
         temp_arena := nrt_temp_arena()
         mark := nrt_arena_mark(temp_arena)
@@ -85,10 +90,13 @@ on "windows" {
         buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
 
         for {
-            bytes_read := sys_read(input_handle,
-                                   buffer.data.as(^void),
-                                   buffer.count)
-            on bytes_read <= 0 => return line
+            bytes_read : DWORD
+            ok := ReadFile(input_handle,
+                           buffer.data.as(^void),
+                           buffer.count.as(DWORD),
+                           ^bytes_read,
+                           nil)
+            on ok == 0 || bytes_read == 0 => return line
 
             done := append_chunk_until_enter(^line,
                                              buffer[0..bytes_read.as(usize)])

@@ -3,24 +3,23 @@
 -- Copyright (c) 2026 Matt Davies
 --
 -- Provides Windows User API bindings used by higher-level NSL modules and
--- examples.
+-- examples. The exported names intentionally mirror Win32 API names and casing.
 
--- Opaque Windows window handle.
 pub HWND :: ^void
-
--- Windows unsigned integer used by User APIs.
 pub UINT :: u32
 
-pub MB_OK :: 0x00000000  -- Message box with a single OK button.
+pub MB_OK :: 0x00000000
 
 ffi "user32" {
-    message_box :: MessageBoxA (window : HWND,
-                                text   : ^u8,
-                                title  : ^u8,
-                                style  : UINT) -> i32
+    c_MessageBox :: MessageBoxA (hWnd      : HWND,
+                                 lpText    : ^u8,
+                                 lpCaption : ^u8,
+                                 uType     : UINT) -> i32
 }
 
--- Shows a native Windows message box.
-pub sys_message_box :: fn (text: string, title: string = "Nerd") -> i32 {
-    return message_box(nil, text.data, title.data, MB_OK.as(UINT))
+pub MessageBox :: fn (hWnd      : HWND,
+                      lpText    : ^u8,
+                      lpCaption : ^u8,
+                      uType     : UINT) -> i32 {
+    return c_MessageBox(hWnd, lpText, lpCaption, uType)
 }
