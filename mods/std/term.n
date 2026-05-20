@@ -6,6 +6,33 @@
 -- exposes portable terminal concepts while using platform-specific OS calls
 -- underneath.
 
+-- Represents one terminal key byte as a named control key or raw character.
+pub KeyCode :: enum {
+    None
+    Backspace
+    Tab
+    Enter
+    Escape
+    Space
+    Delete
+    Char(u8)
+}
+
+-- Converts a raw terminal input byte into a key code.
+term_key_from_byte :: fn (byte: u8) -> KeyCode {
+    return on byte {
+        0 => None
+        8 => Backspace
+        9 => Tab
+        10 => Enter
+        13 => Enter
+        27 => Escape
+        32 => Space
+        127 => Delete
+        else => Char(byte)
+    }
+}
+
 on "linux" {
 
     use os.linux
@@ -64,12 +91,12 @@ on "linux" {
         _ := sys_write(STDOUT_FILENO, text.data.as(^void), text.count)
     }
 
-    -- Reads one byte from terminal input, returning `0` on EOF or error.
-    pub term_get_key :: fn () -> u8 {
+    -- Reads one key byte from terminal input, returning `None` on EOF or error.
+    pub term_get_key :: fn () -> KeyCode {
         key : [1]u8
         bytes_read := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
-        on bytes_read <= 0 => return 0
-        return key[0]
+        on bytes_read <= 0 => return None
+        return term_key_from_byte(key[0])
     }
 
 }
@@ -140,13 +167,13 @@ on "windows" {
         _ := sys_write(output, text.data.as(^void), text.count)
     }
 
-    -- Reads one byte from terminal input, returning `0` on EOF or error.
-    pub term_get_key :: fn () -> u8 {
+    -- Reads one key byte from terminal input, returning `None` on EOF or error.
+    pub term_get_key :: fn () -> KeyCode {
         input := sys_std_input()
         key : [1]u8
         bytes_read := sys_read(input, key[..].data.as(^void), 1)
-        on bytes_read <= 0 => return 0
-        return key[0]
+        on bytes_read <= 0 => return None
+        return term_key_from_byte(key[0])
     }
 
 }
@@ -190,4 +217,11 @@ test "term_get_size returns a column and row tuple" {
 
     assert size.0 >= 0
     assert size.1 >= 0
+}
+
+test "terminal key bytes map to key codes" {
+    assert term_key_from_byte(0) == None
+    assert term_key_from_byte(13) == Enter
+    assert term_key_from_byte(27) == Escape
+    assert term_key_from_byte('x') == Char('x')
 }
