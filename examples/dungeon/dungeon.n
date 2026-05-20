@@ -16,11 +16,11 @@ on "windows" {
         input := sys_std_input()
         mode : DWORD
         mode_ok := sys_get_console_mode(input, ^mode)
-        debug_message($"Windows input probe. GetConsoleMode={mode_ok} mode={mode}. After pressing OK, click the terminal and press q, Q, Escape, or an arrow key.")
+        debug_message($"Windows input probe. GetConsoleMode={mode_ok} mode={mode}. After pressing OK, press q, Q, Escape, or an arrow key. Do not click the terminal.")
 
         for {
-            debug_message("Waiting for one ReadConsoleInputW record. Click the terminal, "
-                +"then press a key.")
+            debug_message("Waiting for one ReadConsoleInputW record. Press a key now; do "
+                +"not click the terminal.")
 
             record : InputRecord
             records_read := sys_read_console_input(input, ^record)
@@ -31,6 +31,7 @@ on "windows" {
 
             debug_message(debug_windows_record(record))
 
+            on record.event_type != KEY_EVENT => again
             on record.event_type == KEY_EVENT && record.key_down != 0 => {
                 on record.unicode_char == 'q'.as(u16) || record.unicode_char == 'Q'.as(u16) || record.virtual_key_code == VK_ESCAPE => return yes
             }

@@ -265,7 +265,7 @@ on "windows" {
         term_original_output_mode = output_mode
         term_original_mode_saved  = yes
 
-        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT).as(DWORD)
+        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT).as(DWORD)
 
         input_mode  &= ~input_mask
         output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)

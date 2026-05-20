@@ -39,6 +39,13 @@ pub ENABLE_LINE_INPUT :: 0x0002
 pub ENABLE_ECHO_INPUT :: 0x0004
                                                   -- Input mode flag echoing
                                                   -- typed characters.
+pub ENABLE_WINDOW_INPUT :: 0x0008
+                                                  -- Input mode flag enabling
+                                                  -- window-buffer-size input
+                                                  -- events.
+pub ENABLE_MOUSE_INPUT :: 0x0010
+                                                  -- Input mode flag enabling
+                                                  -- mouse input events.
 pub ENABLE_VIRTUAL_TERMINAL_INPUT :: 0x0200
                                                   -- Input mode flag enabling
                                                   -- terminal escape sequences
