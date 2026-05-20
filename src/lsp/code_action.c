@@ -1095,6 +1095,17 @@ internal bool lsp_code_action_file_exports_symbol(cstr path, string symbol)
     return found;
 }
 
+internal bool lsp_code_action_should_descend_module_dir(cstr root,
+                                                        cstr dir,
+                                                        string filename)
+{
+    if (root == NULL || dir == NULL || strcmp(root, dir) == 0) {
+        return true;
+    }
+
+    return !string_eq_cstr(filename, "mods") && !string_eq_cstr(filename, "_bin");
+}
+
 internal void lsp_code_action_find_modules_exporting_symbol_in_dir(
     Arena* arena, Array(string) * paths, cstr root, cstr dir, string symbol)
 {
@@ -1112,6 +1123,11 @@ internal void lsp_code_action_find_modules_exporting_symbol_in_dir(
         }
 
         if (is_directory) {
+            if (!lsp_code_action_should_descend_module_dir(
+                    root, path, filename)) {
+                continue;
+            }
+
             cstr mod_path = path_join(arena, path, "mod.n");
             if (path_exists(mod_path) &&
                 lsp_code_action_file_exports_symbol(mod_path, symbol)) {
@@ -1164,6 +1180,12 @@ internal void lsp_code_action_find_loaded_modules_exporting_symbol(
         module_source_file_path(arena, doc->program.root_source);
     cstr program_root =
         root_source_path != NULL ? path_dirname(arena, root_source_path) : NULL;
+    cstr current_mods = current_root != NULL
+                            ? path_join(arena, current_root, "mods")
+                            : NULL;
+    cstr program_mods = program_root != NULL
+                            ? path_join(arena, program_root, "mods")
+                            : NULL;
 
     for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
         LspModuleView module = {0};
@@ -1188,6 +1210,16 @@ internal void lsp_code_action_find_loaded_modules_exporting_symbol(
             if (module_path.count == 0 && path_exists(exe_mods)) {
                 module_path = lsp_code_action_module_path_from_file(
                     arena, exe_mods, module.info->resolved_path);
+            }
+            if (module_path.count == 0 && current_mods != NULL &&
+                path_exists(current_mods)) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, current_mods, module.info->resolved_path);
+            }
+            if (module_path.count == 0 && program_mods != NULL &&
+                path_exists(program_mods)) {
+                module_path = lsp_code_action_module_path_from_file(
+                    arena, program_mods, module.info->resolved_path);
             }
             if (module_path.count == 0 && current_root != NULL) {
                 module_path = lsp_code_action_module_path_from_file(
