@@ -6,31 +6,158 @@
 -- exposes portable terminal concepts while using platform-specific OS calls
 -- underneath.
 
--- Represents one terminal key byte as a named control key or raw character.
+-- Represents terminal key codes, using ASCII values for byte-sized input and
+-- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
-    None
-    Backspace
-    Tab
-    Enter
-    Escape
-    Space
-    Delete
-    Char(u8)
-}
-
--- Converts a raw terminal input byte into a key code.
-term_key_from_byte :: fn (byte: u8) -> KeyCode {
-    return on byte {
-        0 => None
-        8 => Backspace
-        9 => Tab
-        10 => Enter
-        13 => Enter
-        27 => Escape
-        32 => Space
-        127 => Delete
-        else => Char(byte)
-    }
+    None         = 0
+    Backspace    = 8
+    Tab          = 9
+    LineFeed     = 10
+    Enter        = 13
+    Escape       = 27
+    Space        = 32
+    Exclamation  = 33
+    DoubleQuote  = 34
+    Hash         = 35
+    Dollar       = 36
+    Percent      = 37
+    Ampersand    = 38
+    SingleQuote  = 39
+    LeftParen    = 40
+    RightParen   = 41
+    Star         = 42
+    Plus         = 43
+    Comma        = 44
+    Minus        = 45
+    Dot          = 46
+    Slash        = 47
+    Digit0       = 48
+    Digit1       = 49
+    Digit2       = 50
+    Digit3       = 51
+    Digit4       = 52
+    Digit5       = 53
+    Digit6       = 54
+    Digit7       = 55
+    Digit8       = 56
+    Digit9       = 57
+    Colon        = 58
+    Semicolon    = 59
+    Less         = 60
+    Equal        = 61
+    Greater      = 62
+    Question     = 63
+    At           = 64
+    A            = 65
+    B            = 66
+    C            = 67
+    D            = 68
+    E            = 69
+    F            = 70
+    G            = 71
+    H            = 72
+    I            = 73
+    J            = 74
+    K            = 75
+    L            = 76
+    M            = 77
+    N            = 78
+    O            = 79
+    P            = 80
+    Q            = 81
+    R            = 82
+    S            = 83
+    T            = 84
+    U            = 85
+    V            = 86
+    W            = 87
+    X            = 88
+    Y            = 89
+    Z            = 90
+    LeftBracket  = 91
+    Backslash    = 92
+    RightBracket = 93
+    Caret        = 94
+    Underscore   = 95
+    Backtick     = 96
+    LowerA       = 97
+    LowerB       = 98
+    LowerC       = 99
+    LowerD       = 100
+    LowerE       = 101
+    LowerF       = 102
+    LowerG       = 103
+    LowerH       = 104
+    LowerI       = 105
+    LowerJ       = 106
+    LowerK       = 107
+    LowerL       = 108
+    LowerM       = 109
+    LowerN       = 110
+    LowerO       = 111
+    LowerP       = 112
+    LowerQ       = 113
+    LowerR       = 114
+    LowerS       = 115
+    LowerT       = 116
+    LowerU       = 117
+    LowerV       = 118
+    LowerW       = 119
+    LowerX       = 120
+    LowerY       = 121
+    LowerZ       = 122
+    LeftBrace    = 123
+    Pipe         = 124
+    RightBrace   = 125
+    Tilde        = 126
+    Delete       = 127
+    Insert       = 256
+    Home         = 257
+    End          = 258
+    PageUp       = 259
+    PageDown     = 260
+    ArrowUp      = 261
+    ArrowDown    = 262
+    ArrowLeft    = 263
+    ArrowRight   = 264
+    F1           = 265
+    F2           = 266
+    F3           = 267
+    F4           = 268
+    F5           = 269
+    F6           = 270
+    F7           = 271
+    F8           = 272
+    F9           = 273
+    F10          = 274
+    F11          = 275
+    F12          = 276
+    Shift        = 277
+    Control      = 278
+    Alt          = 279
+    Meta         = 280
+    CapsLock     = 281
+    NumLock      = 282
+    ScrollLock   = 283
+    PrintScreen  = 284
+    Pause        = 285
+    Menu         = 286
+    Numpad0      = 287
+    Numpad1      = 288
+    Numpad2      = 289
+    Numpad3      = 290
+    Numpad4      = 291
+    Numpad5      = 292
+    Numpad6      = 293
+    Numpad7      = 294
+    Numpad8      = 295
+    Numpad9      = 296
+    NumpadAdd    = 297
+    NumpadSub    = 298
+    NumpadMul    = 299
+    NumpadDiv    = 300
+    NumpadDot    = 301
+    NumpadEnter  = 302
 }
 
 on "linux" {
@@ -91,12 +218,12 @@ on "linux" {
         _ := sys_write(STDOUT_FILENO, text.data.as(^void), text.count)
     }
 
-    -- Reads one key byte from terminal input, returning `None` on EOF or error.
-    pub term_get_key :: fn () -> KeyCode {
+    -- Reads one key byte from terminal input, returning `0` on EOF or error.
+    term_get_key_byte :: fn () -> u8 {
         key : [1]u8
         bytes_read := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
-        on bytes_read <= 0 => return None
-        return term_key_from_byte(key[0])
+        on bytes_read <= 0 => return 0
+        return key[0]
     }
 
 }
@@ -167,15 +294,20 @@ on "windows" {
         _ := sys_write(output, text.data.as(^void), text.count)
     }
 
-    -- Reads one key byte from terminal input, returning `None` on EOF or error.
-    pub term_get_key :: fn () -> KeyCode {
+    -- Reads one key byte from terminal input, returning `0` on EOF or error.
+    term_get_key_byte :: fn () -> u8 {
         input := sys_std_input()
         key : [1]u8
         bytes_read := sys_read(input, key[..].data.as(^void), 1)
-        on bytes_read <= 0 => return None
-        return term_key_from_byte(key[0])
+        on bytes_read <= 0 => return 0
+        return key[0]
     }
 
+}
+
+-- Reads one key from terminal input, returning `None` on EOF or error.
+pub term_get_key :: fn () -> KeyCode {
+    return term_get_key_byte().as(KeyCode)
 }
 
 -- Enables or disables the terminal alternate screen buffer.
@@ -220,8 +352,14 @@ test "term_get_size returns a column and row tuple" {
 }
 
 test "terminal key bytes map to key codes" {
-    assert term_key_from_byte(0) == None
-    assert term_key_from_byte(13) == Enter
-    assert term_key_from_byte(27) == Escape
-    assert term_key_from_byte('x') == Char('x')
+    none := 0.as(KeyCode)
+    enter := 13.as(KeyCode)
+    escape := 27.as(KeyCode)
+    lower_x := 'x'.as(KeyCode)
+
+    assert none == None
+    assert enter == Enter
+    assert escape == Escape
+    assert lower_x == LowerX
+    assert KeyCode.LowerX.as(u8) == 'x'
 }

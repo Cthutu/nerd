@@ -8549,6 +8549,88 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
+            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Enum &&
+                llvm_integer_bits(ctx->sema, expr->type_index) > 0) {
+                string enum_type = llvm_type_string(ctx, operand.type_index);
+                string tag       = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                          ", 0\n",
+                          STRINGV(tag),
+                          STRINGV(enum_type),
+                          STRINGV(operand.value));
+
+                u32 target_bits = llvm_integer_bits(ctx->sema, expr->type_index);
+                if (target_bits == 64) {
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = tag,
+                    };
+                }
+
+                string temp = llvm_temp(ctx);
+                string instr = target_bits < 64 ? s("trunc") : s("sext");
+                sb_format(ctx->sb,
+                          "  " STRINGP " = " STRINGP " i64 " STRINGP
+                          " to " STRINGP "\n",
+                          STRINGV(temp),
+                          STRINGV(instr),
+                          STRINGV(tag),
+                          STRINGV(target_type));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
+            }
+
+            if (llvm_integer_bits(ctx->sema, operand.type_index) > 0 &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_Enum) {
+                u32    i64_type = llvm_builtin_type(ctx->sema, STK_I64);
+                string tag      = operand.value;
+                string instr =
+                    llvm_cast_instruction(ctx, operand.type_index, i64_type);
+                if (instr.count > 0) {
+                    tag = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = " STRINGP " " STRINGP
+                              " " STRINGP " to i64\n",
+                              STRINGV(tag),
+                              STRINGV(instr),
+                              STRINGV(source_type),
+                              STRINGV(operand.value));
+                }
+
+                string payload_type = string_format(
+                    ctx->arena,
+                    "i%u",
+                    llvm_enum_storage_payload_bits(ctx->sema,
+                                                   expr->type_index));
+                string with_tag = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue " STRINGP " poison, i64 " STRINGP
+                          ", 0\n",
+                          STRINGV(with_tag),
+                          STRINGV(target_type),
+                          STRINGV(tag));
+
+                string with_payload = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue " STRINGP " "
+                          STRINGP ", " STRINGP " 0, 1\n",
+                          STRINGV(with_payload),
+                          STRINGV(target_type),
+                          STRINGV(with_tag),
+                          STRINGV(payload_type));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = with_payload,
+                };
+            }
+
             string instr = llvm_cast_instruction(
                 ctx, operand.type_index, expr->type_index);
             if (instr.count == 0) {

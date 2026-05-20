@@ -15817,6 +15817,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema->types[target_type].kind != STK_UntypedInteger &&
                 sema->types[target_type].kind != STK_UntypedFloat;
 
+            bool enum_integer_cast =
+                source_type != sema_no_type() &&
+                target_type != sema_no_type() &&
+                ((sema->types[source_type].kind == STK_Enum &&
+                  sema_type_is_integer(sema, target_type)) ||
+                 (sema_type_is_integer(sema, source_type) &&
+                  sema->types[target_type].kind == STK_Enum));
+
             bool string_slice_cast =
                 (source_type == sema_builtin_type(sema, STK_String) &&
                  sema_type_is_u8_slice(sema, target_type)) ||
@@ -15852,7 +15860,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                  sema->types[sema->types[target_type].first_param_type].kind ==
                      STK_Void);
 
-            if (!(primitive_cast || string_slice_cast ||
+            if (!(primitive_cast || enum_integer_cast || string_slice_cast ||
                   untyped_integer_pointer_cast ||
                   pointer_sized_integer_pointer_cast ||
                   pointer_pointer_sized_integer_cast || void_pointer_cast)) {
