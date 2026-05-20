@@ -69,6 +69,18 @@ Reader :: plex {
 
 ## Formatting
 
+Group related constant bindings together without blank lines between each
+binding. When a constant needs a comment, prefer a same-line trailing comment
+over a separate leading comment.
+
+Example:
+
+```nerd
+STDIN_FILENO  :: 0 -- File descriptor for standard input.
+STDOUT_FILENO :: 1 -- File descriptor for standard output.
+STDERR_FILENO :: 2 -- File descriptor for standard error.
+```
+
 Format each changed Nerd source file with `nerd format` before checking it.
 After formatting, run:
 

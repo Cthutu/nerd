@@ -28,6 +28,7 @@
 // | AK_EnumVariant     | Symbol handle     | 0                               |
 // | AK_LogicalNot      | Ast index of rhs  | 0                               |
 // | AK_IntegerNegate   | Ast index of rhs  | 0                               |
+// | AK_BitwiseNot      | Ast index of rhs  | 0                               |
 // | AK_AddressOf       | Ast index of value | 0                              |
 // | AK_Deref           | Ast index of value | 0                              |
 // | AK_IntegerPlus     | Ast index of left | Ast index of right              |
@@ -119,6 +120,7 @@ typedef enum {
     AK_EnumVariant,
     AK_LogicalNot,
     AK_IntegerNegate,
+    AK_BitwiseNot,
     AK_AddressOf,
     AK_Deref,
     AK_IntegerPlus,

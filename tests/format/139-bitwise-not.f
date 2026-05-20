@@ -1,0 +1,3 @@
+main::fn()=>~(0xff & 0x0f)
+¬
+main :: fn () => ~(0xff & 0x0f)

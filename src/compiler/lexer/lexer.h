@@ -71,6 +71,7 @@ typedef enum {
     TK_PipePipeEqual,
     TK_Caret,
     TK_CaretEqual,
+    TK_Tilde,
     TK_Less,
     TK_LessEqual,
     TK_ShiftLeft,

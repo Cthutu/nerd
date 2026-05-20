@@ -1983,6 +1983,7 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
         }
         return false;
     case AK_IntegerNegate:
+    case AK_BitwiseNot:
     case AK_Expression:
     case AK_Statement:
         return sema_expr_is_constantish(ast, sema, node->a);
@@ -2035,11 +2036,12 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
         return node->a != U32_MAX && sema_try_eval_integer_constant(
                                          lexer, ast, sema, node->a, out_value);
     case AK_IntegerNegate:
+    case AK_BitwiseNot:
         if (!sema_try_eval_integer_constant(
                 lexer, ast, sema, node->a, out_value)) {
             return false;
         }
-        *out_value = -*out_value;
+        *out_value = node->kind == AK_BitwiseNot ? ~*out_value : -*out_value;
         return true;
     case AK_IntegerPlus:
     case AK_IntegerMinus:
@@ -6478,6 +6480,7 @@ internal u32 sema_node_find_symbol_ref(const Ast* ast,
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
     case AK_AddressOf:
     case AK_Deref:
         return sema_node_find_symbol_ref(ast, node->a, symbol_handle);
@@ -7258,6 +7261,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       sema);
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
     case AK_AddressOf:
     case AK_Deref:
     case AK_Expression:
@@ -7786,6 +7790,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
         }
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
     case AK_Expression:
     case AK_Statement:
     case AK_Use:
@@ -13474,6 +13479,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
         return sema_node_contains_interpolation(ast, node->a);
     case AK_Cast:
         {
@@ -13690,6 +13696,7 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
         return sema_find_interpolated_string_node(ast, node->a);
     case AK_Cast:
         {
@@ -14022,6 +14029,7 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_Statement:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
         return sema_validate_interpolated_strings(lexer, ast, sema, node->a);
     case AK_Cast:
         {
@@ -15698,6 +15706,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
 
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
         if (!sema_infer_node_type(
                 lexer, ast, sema, node->a, expected_type, &type_index)) {
             return false;
@@ -15712,6 +15721,17 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(lexer, sema, &temp_arena, type_index));
             }
             type_index = sema_builtin_type(sema, STK_Bool);
+            break;
+        }
+        if (node->kind == AK_BitwiseNot) {
+            if (!sema_type_is_integer(sema, type_index)) {
+                return error_0325_invalid_unary_operand(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("~"),
+                    s("integer"),
+                    sema_type_name(lexer, sema, &temp_arena, type_index));
+            }
             break;
         }
         if (!sema_type_is_numeric(sema, type_index)) {
@@ -17798,9 +17818,10 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
         break;
 
     case AK_IntegerNegate:
+    case AK_BitwiseNot:
         ok = sema_try_get_constant(ast, out_sema, node->a, &value);
         if (ok) {
-            value = -value;
+            value = node->kind == AK_BitwiseNot ? ~value : -value;
         }
         break;
 
@@ -17970,6 +17991,7 @@ internal bool sema_fold_node(const Lexer* lex,
             case AK_Expression:
             case AK_Statement:
             case AK_IntegerNegate:
+            case AK_BitwiseNot:
             case AK_InterpPartExpr:
                 sema_push_fold_frame(&stack, node->a);
                 break;
@@ -18341,6 +18363,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_InterpPartExpr:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
     case AK_Deref:
         return sema_validate_assignment_node(lexer, ast, sema, node->a, state);
 
@@ -19414,6 +19437,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_AddressOf:
     case AK_IntegerNegate:
     case AK_LogicalNot:
+    case AK_BitwiseNot:
         return node->a == U32_MAX
                    ? true
                    : sema_validate_loop_control(lexer,

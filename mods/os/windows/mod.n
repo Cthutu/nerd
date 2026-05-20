@@ -5,4 +5,4 @@
 -- Provides the public Windows operating-system module surface by re-exporting
 -- narrower Windows API modules.
 
-pub use os.windows.kernel
+pub use kernel

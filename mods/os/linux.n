@@ -8,32 +8,50 @@
 -- Invokes a Linux syscall by number with up to six integer arguments.
 pub syscall :: intrinsic "syscall" (number: u64, a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> i64
 
--- File descriptor for standard input.
-pub STDIN_FILENO :: 0
+pub STDIN_FILENO  :: 0  -- File descriptor for standard input.
+pub STDOUT_FILENO :: 1  -- File descriptor for standard output.
 
--- File descriptor for standard output.
-pub STDOUT_FILENO :: 1
+pub SYS_READ          :: 0  -- Linux syscall number for `read`.
+pub SYS_WRITE         :: 1  -- Linux syscall number for `write`.
+pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
+pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
+pub SYS_CLOCK_GETTIME :: 228  -- Linux syscall number for `clock_gettime`.
 
--- Linux syscall number for `read`.
-pub SYS_READ :: 0
+pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
 
--- Linux syscall number for `write`.
-pub SYS_WRITE :: 1
-
--- Linux syscall number for `ioctl`.
-pub SYS_IOCTL :: 16
-
--- Linux syscall number for `nanosleep`.
-pub SYS_NANOSLEEP :: 35
-
--- Linux syscall number for `clock_gettime`.
-pub SYS_CLOCK_GETTIME :: 228
-
--- Linux clock identifier for monotonic time.
-pub CLOCK_MONOTONIC :: 1
-
--- Linux terminal request for reading window dimensions.
 pub TIOCGWINSZ :: 0x5413
+                          -- Linux terminal request for reading window
+                          --     dimensions.
+pub TCGETS     :: 0x5401
+                          -- Linux terminal request for reading terminal
+                          --     attributes.
+pub TCSETS     :: 0x5402
+                          -- Linux terminal request for writing terminal
+                          --     attributes immediately.
+
+pub ICANON :: 0x0002  -- Local terminal mode flag for canonical input.
+pub ECHO   :: 0x0008  -- Local terminal mode flag for echoing input.
+pub ISIG   :: 0x0001
+                      -- Local terminal mode flag for signal-generating
+                      --     characters.
+pub IEXTEN :: 0x8000
+                      -- Local terminal mode flag for implementation-defined
+                      --     input processing.
+
+pub ICRNL  :: 0x0100
+                      -- Input terminal mode flag for converting carriage return
+                      --     to newline.
+pub IXON   :: 0x0400  -- Input terminal mode flag for XON/XOFF flow control.
+pub BRKINT :: 0x0002  -- Input terminal mode flag for break interrupt handling.
+pub INPCK  :: 0x0010  -- Input terminal mode flag for parity checking.
+pub ISTRIP :: 0x0020  -- Input terminal mode flag for stripping the eighth bit.
+
+pub OPOST :: 0x0001  -- Output terminal mode flag for implementation-defined output processing.
+
+pub CS8 :: 0x0030  -- Control terminal mode flag selecting 8-bit characters.
+
+pub VMIN  :: 6  -- Control character index for noncanonical read byte count.
+pub VTIME :: 5  -- Control character index for noncanonical read timeout.
 
 -- Describes terminal window dimensions for `TIOCGWINSZ`.
 pub WindowSize :: plex #c {
@@ -41,6 +59,18 @@ pub WindowSize :: plex #c {
     col    u16  -- Number of character columns.
     xpixel u16  -- Width in pixels when provided by the terminal.
     ypixel u16  -- Height in pixels when provided by the terminal.
+}
+
+-- Linux terminal attributes used by `TCGETS` and `TCSETS`.
+pub Termios :: plex #c {
+    iflag  u32
+    oflag  u32
+    cflag  u32
+    lflag  u32
+    line   u8
+    cc     [32]u8
+    ispeed u32
+    ospeed u32
 }
 
 -- Represents the Linux `timespec` structure.

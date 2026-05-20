@@ -357,6 +357,9 @@ internal bool hir_unary_op_from_ast_kind(AstKind kind, HirUnaryOp* out)
     case AK_IntegerNegate:
         *out = HIR_UNARY_Negate;
         return true;
+    case AK_BitwiseNot:
+        *out = HIR_UNARY_BitwiseNot;
+        return true;
     case AK_AddressOf:
         *out = HIR_UNARY_AddressOf;
         return true;

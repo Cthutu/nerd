@@ -518,6 +518,7 @@ internal int format_expr_precedence(const CstNode* node)
         return 60;
     case CK_LogicalNot:
     case CK_IntegerNegate:
+    case CK_BitwiseNot:
     case CK_AddressOf:
         return 70;
     case CK_Call:
@@ -1067,6 +1068,10 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_LogicalNot:
         sb_append_char(sb, '!');
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        break;
+    case CK_BitwiseNot:
+        sb_append_char(sb, '~');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         break;
     case CK_AddressOf:
@@ -2239,6 +2244,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
         return node->token_index;
     case CK_IntegerNegate:
     case CK_LogicalNot:
+    case CK_BitwiseNot:
     case CK_AddressOf:
     case CK_Deref:
     case CK_TypePointer:

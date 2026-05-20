@@ -110,6 +110,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Caret `^`");
     case TK_CaretEqual:
         return string_from_cstr("CaretEqual `^=`");
+    case TK_Tilde:
+        return string_from_cstr("Tilde `~`");
     case TK_Less:
         return string_from_cstr("Less `<`");
     case TK_LessEqual:

@@ -260,6 +260,8 @@ internal cstr hir_unary_op_name(HirUnaryOp op)
         return "logical_not";
     case HIR_UNARY_Negate:
         return "negate";
+    case HIR_UNARY_BitwiseNot:
+        return "bitwise_not";
     case HIR_UNARY_AddressOf:
         return "address_of";
     case HIR_UNARY_Deref:

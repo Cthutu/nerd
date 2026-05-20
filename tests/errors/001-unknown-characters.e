@@ -1,7 +1,7 @@
-~
+`
 ¬
 {
-    "message": "Unexpected character '~'",
+    "message": "Unexpected character '`'",
     "source_file": "tests/errors/001-unknown-characters.e",
     "primary_location": {
         "line": 1,
@@ -13,7 +13,7 @@
             "line": 1,
             "column": 1,
             "length": 1,
-            "message": "Unexpected character '~'"
+            "message": "Unexpected character '`'"
         }
     ],
     "notes": [],

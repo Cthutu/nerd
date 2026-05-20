@@ -235,6 +235,7 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_Symbol:
     case TK_Bang:
     case TK_Minus:
+    case TK_Tilde:
     case TK_Caret:
     case TK_LParen:
     case TK_fn:
@@ -1976,6 +1977,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
     case TK_Minus:
     case TK_Bang:
+    case TK_Tilde:
     case TK_Caret:
         {
             u32 token_index = state->token_index;
@@ -1989,6 +1991,7 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                 state,
                 (CstNode){
                     .kind        = token.kind == TK_Bang    ? CK_LogicalNot
+                                   : token.kind == TK_Tilde ? CK_BitwiseNot
                                    : token.kind == TK_Caret ? CK_AddressOf
                                                             : CK_IntegerNegate,
                     .token_index = token_index,

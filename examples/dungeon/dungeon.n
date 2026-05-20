@@ -1,0 +1,19 @@
+use std.term
+
+main :: fn () {
+    term_raw_mode_enable(yes)
+    term_alternate_screen_enable(yes)
+    term_cursor_enable(no)
+    defer term_cursor_enable(yes)
+    defer term_alternate_screen_enable(no)
+    defer term_raw_mode_enable(no)
+
+    term_cls()
+    term_cursor_move(0, 0)
+    term_print("Dungeon\n")
+    term_print("=======\n\n")
+    term_print("This example will render a generated dungeon map here.\n")
+    term_print("Press any key to exit.")
+
+    _ := term_get_key()
+}

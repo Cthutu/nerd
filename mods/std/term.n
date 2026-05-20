@@ -10,6 +10,43 @@ on "linux" {
 
     use os.linux
 
+    term_original_mode       : Termios
+    term_original_mode_saved : bool
+
+    -- Applies raw terminal input mode and saves the original Linux mode.
+    term_raw_mode_enable_impl :: fn () {
+        current : Termios
+        _ := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
+        term_original_mode       = current
+        term_original_mode_saved = yes
+
+        input_mask := (BRKINT | ICRNL | INPCK | ISTRIP | IXON).as(u32)
+        output_mask := OPOST.as(u32)
+        local_mask := (ECHO | ICANON | IEXTEN | ISIG).as(u32)
+
+        current.iflag &= ~input_mask
+        current.oflag &= ~output_mask
+        current.cflag |= CS8.as(u32)
+        current.lflag &= ~local_mask
+        current.cc[VMIN] = 1
+        current.cc[VTIME] = 0
+
+        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^current).as(^void))
+    }
+
+    -- Restores the saved Linux terminal mode.
+    term_raw_mode_disable_impl :: fn () {
+        _ := sys_ioctl(STDIN_FILENO,
+                       TCSETS.as(u64),
+                       (^term_original_mode).as(^void))
+        term_original_mode_saved = no
+    }
+
+    -- Enables or disables raw terminal input mode.
+    pub term_raw_mode_enable :: fn (enabled: bool) {
+        on enabled => term_raw_mode_enable_impl() else term_raw_mode_disable_impl()
+    }
+
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
     -- size cannot be read.
     pub term_get_size :: fn () -> (u32, u32) {
@@ -22,11 +59,67 @@ on "linux" {
         return (size.col.as(u32), size.row.as(u32))
     }
 
+    -- Writes text directly to the terminal output stream.
+    pub term_print :: fn (text: string) {
+        _ := sys_write(STDOUT_FILENO, text.data.as(^void), text.count)
+    }
+
+    -- Reads one byte from terminal input, returning `0` on EOF or error.
+    pub term_get_key :: fn () -> u8 {
+        key : [1]u8
+        bytes_read := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
+        on bytes_read <= 0 => return 0
+        return key[0]
+    }
+
 }
 
 on "windows" {
 
     use os.windows
+
+    term_original_input_mode  : DWORD
+    term_original_output_mode : DWORD
+    term_original_mode_saved  : bool
+
+    -- Applies raw terminal input mode and saves the original Windows console modes.
+    term_raw_mode_enable_impl :: fn () {
+        input := sys_std_input()
+        output := sys_std_output()
+
+        input_mode  : DWORD
+        output_mode : DWORD
+
+        _ := sys_get_console_mode(input, ^input_mode)
+        _ := sys_get_console_mode(output, ^output_mode)
+        term_original_input_mode  = input_mode
+        term_original_output_mode = output_mode
+        term_original_mode_saved  = yes
+
+        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT).as(DWORD)
+
+        input_mode  &= ~input_mask
+        input_mode  |= ENABLE_VIRTUAL_TERMINAL_INPUT.as(DWORD)
+        output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
+
+        _ := sys_set_console_mode(input, input_mode)
+        _ := sys_set_console_mode(output, output_mode)
+    }
+
+    -- Restores the saved Windows console modes.
+    term_raw_mode_disable_impl :: fn () {
+        input := sys_std_input()
+        output := sys_std_output()
+
+        _ := sys_set_console_mode(input, term_original_input_mode)
+        _ := sys_set_console_mode(output, term_original_output_mode)
+        term_original_mode_saved = no
+    }
+
+    -- Enables or disables raw terminal input mode.
+    pub term_raw_mode_enable :: fn (enabled: bool) {
+        on enabled => term_raw_mode_enable_impl() else term_raw_mode_disable_impl()
+    }
 
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
     -- size cannot be read.
@@ -41,6 +134,55 @@ on "windows" {
         return (columns.as(u32), rows.as(u32))
     }
 
+    -- Writes text directly to the terminal output stream.
+    pub term_print :: fn (text: string) {
+        output := sys_std_output()
+        _ := sys_write(output, text.data.as(^void), text.count)
+    }
+
+    -- Reads one byte from terminal input, returning `0` on EOF or error.
+    pub term_get_key :: fn () -> u8 {
+        input := sys_std_input()
+        key : [1]u8
+        bytes_read := sys_read(input, key[..].data.as(^void), 1)
+        on bytes_read <= 0 => return 0
+        return key[0]
+    }
+
+}
+
+-- Enables or disables the terminal alternate screen buffer.
+pub term_alternate_screen_enable :: fn (enabled: bool) {
+    on enabled => {
+        term_print("\x1b[?1049h")
+    } else {
+        term_print("\x1b[?1049l")
+    }
+}
+
+-- Shows or hides the terminal cursor.
+pub term_cursor_enable :: fn (enabled: bool) {
+    on enabled => {
+        term_print("\x1b[?25h")
+    } else {
+        term_print("\x1b[?25l")
+    }
+}
+
+-- Moves the terminal cursor to zero-based column `x` and row `y`.
+pub term_cursor_move :: fn (x: u32, y: u32) {
+    term_print($"\x1b[{y + 1};{x + 1}H")
+}
+
+-- Clears the screen, clears scrollback history, and moves the cursor to `(0,
+-- 0)`.
+pub term_cls :: fn () {
+    term_print("\x1b[3J\x1b[2J\x1b[H")
+}
+
+-- Scrolls the terminal viewport by one line.
+pub term_scroll :: fn () {
+    term_print("\x1bD")
 }
 
 test "term_get_size returns a column and row tuple" {

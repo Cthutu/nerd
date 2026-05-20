@@ -18,14 +18,38 @@ pub DWORD :: u32
 -- Windows signed 64-bit integer used by performance-counter APIs.
 pub LARGE_INTEGER :: i64
 
--- Pseudo-handle identifier for the standard input stream.
-pub STD_INPUT_HANDLE : DWORD : 0xfffffff6
-
--- Pseudo-handle identifier for the standard output stream.
+pub STD_INPUT_HANDLE  : DWORD : 0xfffffff6
+                                            -- Pseudo-handle identifier for
+                                            --     standard input.
 pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
+                                            -- Pseudo-handle identifier for
+                                            --     standard output.
+pub STD_ERROR_HANDLE  : DWORD : 0xfffffff4
+                                            -- Pseudo-handle identifier for
+                                            --     standard error.
 
--- Pseudo-handle identifier for the standard error stream.
-pub STD_ERROR_HANDLE : DWORD : 0xfffffff4
+pub ENABLE_PROCESSED_INPUT             :: 0x0001
+                                                  -- Input mode flag enabling
+                                                  --     processed Ctrl+C and
+                                                  --     line editing control
+                                                  --     handling.
+pub ENABLE_LINE_INPUT                  :: 0x0002
+                                                  -- Input mode flag enabling
+                                                  --     line-buffered console
+                                                  --     input.
+pub ENABLE_ECHO_INPUT                  :: 0x0004
+                                                  -- Input mode flag echoing
+                                                  --     typed characters.
+pub ENABLE_VIRTUAL_TERMINAL_INPUT      :: 0x0200
+                                                  -- Input mode flag enabling
+                                                  --     terminal escape
+                                                  --     sequences in console
+                                                  --     input.
+pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
+                                                  -- Output mode flag enabling
+                                                  --     terminal escape
+                                                  --     sequences in console
+                                                  --     output.
 
 -- Two-dimensional console coordinate.
 pub Coord :: plex #c {
@@ -67,6 +91,12 @@ ffi "kernel32" {
 
     get_console_screen_buffer_info :: GetConsoleScreenBufferInfo (console_output : HANDLE,
                                                                   buffer_info    : ^ConsoleScreenBufferInfo) -> BOOL
+
+    get_console_mode :: GetConsoleMode (console_handle : HANDLE,
+                                        mode           : ^DWORD) -> BOOL
+
+    set_console_mode :: SetConsoleMode (console_handle : HANDLE,
+                                        mode           : DWORD) -> BOOL
 
     get_last_error :: GetLastError () -> DWORD
 
@@ -117,6 +147,16 @@ pub sys_write :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
 pub sys_get_console_screen_buffer_info :: fn (handle : HANDLE,
                                               info   : ^ConsoleScreenBufferInfo) -> BOOL {
     return get_console_screen_buffer_info(handle, info)
+}
+
+-- Reads a console handle's current mode flags.
+pub sys_get_console_mode :: fn (handle: HANDLE, mode: ^DWORD) -> BOOL {
+    return get_console_mode(handle, mode)
+}
+
+-- Writes a console handle's mode flags.
+pub sys_set_console_mode :: fn (handle: HANDLE, mode: DWORD) -> BOOL {
+    return set_console_mode(handle, mode)
 }
 
 -- Reads the calling thread's last Windows error code.

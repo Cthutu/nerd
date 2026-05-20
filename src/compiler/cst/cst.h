@@ -26,6 +26,7 @@
 // | CK_Group           | Inner node index      | 0                     |
 // | CK_LogicalNot      | Operand node index    | 0                     |
 // | CK_IntegerNegate   | Operand node index    | 0                     |
+// | CK_BitwiseNot      | Operand node index    | 0                     |
 // | CK_AddressOf       | Operand node index    | 0                     |
 // | CK_Deref           | Operand node index    | 0                     |
 // | CK_IntegerPlus     | Left node index       | Right node index      |
@@ -116,6 +117,7 @@ typedef enum {
     CK_Group,
     CK_LogicalNot,
     CK_IntegerNegate,
+    CK_BitwiseNot,
     CK_AddressOf,
     CK_Deref,
     CK_IntegerPlus,

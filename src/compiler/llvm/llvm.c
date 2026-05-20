@@ -5883,6 +5883,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .type_index = expr->type_index,
                     .value      = temp,
                 };
+            case HIR_UNARY_BitwiseNot:
+                sb_format(ctx->sb,
+                          "  " STRINGP " = xor " STRINGP " " STRINGP ", -1\n",
+                          STRINGV(temp),
+                          STRINGV(type),
+                          STRINGV(operand.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = temp,
+                };
             case HIR_UNARY_Deref:
                 {
                     string pointee = llvm_type_string(ctx, expr->type_index);

@@ -36,6 +36,8 @@ string ast_kind_to_string(AstKind kind)
         return s("LogicalNot");
     case AK_IntegerNegate:
         return s("IntegerNegate");
+    case AK_BitwiseNot:
+        return s("BitwiseNot");
     case AK_AddressOf:
         return s("AddressOf");
     case AK_IntegerPlus:
@@ -247,6 +249,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_LogicalNot:
         case AK_IntegerNegate:
+        case AK_BitwiseNot:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "rhs=%u", node->a));
             break;
