@@ -90,6 +90,15 @@ pub VK_F10    :: 0x79  -- Virtual-key code for F10.
 pub VK_F11    :: 0x7a  -- Virtual-key code for F11.
 pub VK_F12    :: 0x7b  -- Virtual-key code for F12.
 
+pub INVALID_HANDLE_VALUE  :: 0xffffffffffffffff
+pub FILE_APPEND_DATA      :: 0x00000004  -- File access right for append writes.
+pub FILE_SHARE_READ       :: 0x00000001  -- File share mode allowing readers.
+pub FILE_SHARE_WRITE      :: 0x00000002  -- File share mode allowing writers.
+pub CREATE_ALWAYS         :: 2  -- File creation mode: overwrite.
+pub OPEN_EXISTING         :: 3  -- File creation mode: open existing.
+pub OPEN_ALWAYS           :: 4  -- File creation mode: open or create.
+pub FILE_ATTRIBUTE_NORMAL :: 0x00000080  -- Normal file attribute.
+
 -- Two-dimensional console coordinate.
 pub Coord :: plex #c {
     x i16  -- Horizontal coordinate.
@@ -127,6 +136,14 @@ pub InputRecord :: plex #c {
 
 ffi "kernel32" {
     get_std_handle :: GetStdHandle (std_handle: DWORD) -> HANDLE
+
+    create_file2 :: CreateFile2 (file_name            : ^u16,
+                                 desired_access       : DWORD,
+                                 share_mode           : DWORD,
+                                 creation_disposition : DWORD,
+                                 extended_parameters  : ^void) -> HANDLE
+
+    close_handle :: CloseHandle (handle: HANDLE) -> BOOL
 
     read_file :: ReadFile (file          : HANDLE,
                            buffer        : ^void,
@@ -171,6 +188,23 @@ ffi "kernel32" {
 -- Returns a handle for one of the standard streams.
 pub sys_get_std_handle :: fn (std_handle: DWORD) -> HANDLE {
     return get_std_handle(std_handle)
+}
+
+-- Opens or creates a file using `CreateFile2`.
+pub sys_create_file2 :: fn (file_name            : ^u16,
+                            desired_access       : DWORD,
+                            share_mode           : DWORD,
+                            creation_disposition : DWORD) -> HANDLE {
+    return create_file2(file_name,
+                        desired_access,
+                        share_mode,
+                        creation_disposition,
+                        nil)
+}
+
+-- Closes a Windows object handle.
+pub sys_close_handle :: fn (handle: HANDLE) -> BOOL {
+    return close_handle(handle)
 }
 
 -- Returns the process standard-input handle.

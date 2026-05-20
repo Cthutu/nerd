@@ -8,6 +8,82 @@ on "windows" {
         _ := sys_message_box(text, "Dungeon key debug")
     }
 
+    debug_log_to_path :: fn (path: []u16, text: string) -> bool {
+        log := sys_create_file2(path.data,
+                                FILE_APPEND_DATA,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                OPEN_ALWAYS)
+        on log.as(usize) == INVALID_HANDLE_VALUE => return no
+
+        _written := sys_write(log, text.data.as(^void), text.count)
+        _newline := sys_write(log, "\n".data.as(^void), 1)
+        _closed := sys_close_handle(log)
+        return yes
+    }
+
+    debug_log :: fn (text: string) {
+        repo_path := [
+            'e'.as(u16),
+            'x'.as(u16),
+            'a'.as(u16),
+            'm'.as(u16),
+            'p'.as(u16),
+            'l'.as(u16),
+            'e'.as(u16),
+            's'.as(u16),
+            '/'.as(u16),
+            'd'.as(u16),
+            'u'.as(u16),
+            'n'.as(u16),
+            'g'.as(u16),
+            'e'.as(u16),
+            'o'.as(u16),
+            'n'.as(u16),
+            '/'.as(u16),
+            'd'.as(u16),
+            'u'.as(u16),
+            'n'.as(u16),
+            'g'.as(u16),
+            'e'.as(u16),
+            'o'.as(u16),
+            'n'.as(u16),
+            '-'.as(u16),
+            'i'.as(u16),
+            'n'.as(u16),
+            'p'.as(u16),
+            'u'.as(u16),
+            't'.as(u16),
+            '.'.as(u16),
+            'l'.as(u16),
+            'o'.as(u16),
+            'g'.as(u16),
+            0.as(u16),
+        ]
+        on debug_log_to_path(repo_path[..], text) => return
+
+        local_path := [
+            'd'.as(u16),
+            'u'.as(u16),
+            'n'.as(u16),
+            'g'.as(u16),
+            'e'.as(u16),
+            'o'.as(u16),
+            'n'.as(u16),
+            '-'.as(u16),
+            'i'.as(u16),
+            'n'.as(u16),
+            'p'.as(u16),
+            'u'.as(u16),
+            't'.as(u16),
+            '.'.as(u16),
+            'l'.as(u16),
+            'o'.as(u16),
+            'g'.as(u16),
+            0.as(u16),
+        ]
+        _ := debug_log_to_path(local_path[..], text)
+    }
+
     debug_windows_record :: fn (record: InputRecord) -> string {
         return $"event_type={record.event_type} key_down={record.key_down} vk={record.virtual_key_code} scan={record.virtual_scan} char={record.unicode_char} control={record.control_state}"
     }
@@ -16,27 +92,29 @@ on "windows" {
         input := sys_std_input()
         mode : DWORD
         mode_ok := sys_get_console_mode(input, ^mode)
-        debug_message($"Windows input probe. GetConsoleMode={mode_ok} mode={mode}. After pressing OK, press q, Q, Escape, or an arrow key. Do not click the terminal.")
-        _ := sys_flush_console_input_buffer(input)
+        debug_log("probe-start")
+        debug_log($"GetConsoleMode={mode_ok} mode={mode}")
+        flush_ok := sys_flush_console_input_buffer(input)
+        debug_log($"initial-flush={flush_ok} last_error={sys_get_last_error()}")
 
         for {
-            debug_message("Waiting for one ReadConsoleInputW record. Press a key now; do "
-                +"not click the terminal.")
-            _ = sys_flush_console_input_buffer(input)
-
             record : InputRecord
             records_read := sys_read_console_input(input, ^record)
+            read_error := sys_get_last_error()
             on records_read <= 0 => {
+                debug_log($"read-failed records_read={records_read} last_error={read_error}")
                 debug_message($"ReadConsoleInputW failed. records_read={records_read} last_error={sys_get_last_error()}")
                 return yes
             }
 
+            record_text := debug_windows_record(record)
+            debug_log(record_text)
+
             on record.event_type != KEY_EVENT => again
             on record.key_down == 0 => again
 
-            debug_message(debug_windows_record(record))
-
             on record.key_down != 0 => {
+                debug_log("key-down")
                 on record.unicode_char == 'q'.as(u16) || record.unicode_char == 'Q'.as(u16) || record.virtual_key_code == VK_ESCAPE => return yes
             }
         }
@@ -49,6 +127,9 @@ on "windows" {
 on "linux" {
 
     debug_message :: fn (text: string) {
+    }
+
+    debug_log :: fn (text: string) {
     }
 
     debug_windows_key_loop :: fn () -> bool {
@@ -112,8 +193,6 @@ main :: fn () {
     defer term_raw_mode_enable(no)
 
     last_key := "none"
-    debug_message("Dungeon starting. Press OK, then press q, Q, Escape, or an "
-        +"arrow key in the terminal.")
     draw(last_key)
 
     on debug_windows_key_loop() => return
