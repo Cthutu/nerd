@@ -2463,6 +2463,12 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index);
+internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
+                                    const HirFunction*   function,
+                                    const HirStmt*       stmt);
+internal bool llvm_emit_return(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt);
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
@@ -2864,6 +2870,18 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
         if (stmt->kind == HIR_STMT_Expr || stmt->kind == HIR_STMT_Break) {
             return llvm_emit_expr(ctx, function, stmt->expr_index);
+        }
+        if (stmt->kind == HIR_STMT_Return) {
+            bool ok = llvm_emit_return(ctx, function, stmt);
+            return (LlvmValue){
+                .ok         = ok,
+                .type_index = ok ? llvm_builtin_type(ctx->sema, STK_Void)
+                                 : sema_no_type(),
+                .value      = s(""),
+            };
+        }
+        if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
+            return (LlvmValue){0};
         }
     }
 
@@ -6955,14 +6973,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
                 }
 
-                if (!ended_with_else && array_count(phi_values) > 0) {
+                if (!ended_with_else) {
                     sb_append_cstr(ctx->sb, "  unreachable\n");
                 }
 
                 if (array_count(phi_values) == 0) {
                     array_free(phi_values);
                     array_free(phi_labels);
-                    ctx->block_terminated = ended_with_else;
+                    ctx->block_terminated = true;
                     return (LlvmValue){
                         .ok         = true,
                         .type_index = expr->type_index,
@@ -7084,7 +7102,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(next_label));
             }
 
-            if (!ended_with_else && array_count(phi_values) > 0) {
+            if (!ended_with_else) {
                 sb_append_cstr(ctx->sb, "  unreachable\n");
             }
 
@@ -7102,7 +7120,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (array_count(phi_values) == 0) {
                 array_free(phi_values);
                 array_free(phi_labels);
-                ctx->block_terminated = ended_with_else;
+                ctx->block_terminated = true;
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = expr->type_index,
