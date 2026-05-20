@@ -1095,15 +1095,15 @@ internal bool lsp_code_action_file_exports_symbol(cstr path, string symbol)
     return found;
 }
 
-internal bool lsp_code_action_should_descend_module_dir(cstr root,
-                                                        cstr dir,
-                                                        string filename)
+internal bool
+lsp_code_action_should_descend_module_dir(cstr root, cstr dir, string filename)
 {
     if (root == NULL || dir == NULL || strcmp(root, dir) == 0) {
         return true;
     }
 
-    return !string_eq_cstr(filename, "mods") && !string_eq_cstr(filename, "_bin");
+    return !string_eq_cstr(filename, "mods") &&
+           !string_eq_cstr(filename, "_bin");
 }
 
 internal void lsp_code_action_find_modules_exporting_symbol_in_dir(
@@ -1180,12 +1180,10 @@ internal void lsp_code_action_find_loaded_modules_exporting_symbol(
         module_source_file_path(arena, doc->program.root_source);
     cstr program_root =
         root_source_path != NULL ? path_dirname(arena, root_source_path) : NULL;
-    cstr current_mods = current_root != NULL
-                            ? path_join(arena, current_root, "mods")
-                            : NULL;
-    cstr program_mods = program_root != NULL
-                            ? path_join(arena, program_root, "mods")
-                            : NULL;
+    cstr current_mods =
+        current_root != NULL ? path_join(arena, current_root, "mods") : NULL;
+    cstr program_mods =
+        program_root != NULL ? path_join(arena, program_root, "mods") : NULL;
 
     for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
         LspModuleView module = {0};

@@ -16,16 +16,16 @@
 
 int shell(cstr command)
 {
-    STARTUPINFOA        si = {0};
-    PROCESS_INFORMATION pi = {0};
-    HANDLE              process = GetCurrentProcess();
-    HANDLE              source_stdin = GetStdHandle(STD_INPUT_HANDLE);
-    HANDLE              stdin_handle = NULL;
+    STARTUPINFOA        si            = {0};
+    PROCESS_INFORMATION pi            = {0};
+    HANDLE              process       = GetCurrentProcess();
+    HANDLE              source_stdin  = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE              stdin_handle  = NULL;
     HANDLE              stdout_handle = NULL;
     HANDLE              stderr_handle = NULL;
     char                stdin_temp_path[MAX_PATH] = {0};
 
-    DWORD stdin_type = GetFileType(source_stdin);
+    DWORD stdin_type                              = GetFileType(source_stdin);
     if (stdin_type == FILE_TYPE_PIPE) {
         char temp_dir[MAX_PATH] = {0};
         if (GetTempPathA(sizeof(temp_dir), temp_dir) != 0 &&
@@ -52,11 +52,8 @@ int shell(cstr command)
                                 NULL) &&
                        bytes_read > 0) {
                     DWORD bytes_written = 0;
-                    WriteFile(temp_input,
-                              buffer,
-                              bytes_read,
-                              &bytes_written,
-                              NULL);
+                    WriteFile(
+                        temp_input, buffer, bytes_read, &bytes_written, NULL);
                 }
                 SetFilePointer(temp_input, 0, NULL, FILE_BEGIN);
                 stdin_handle = temp_input;
@@ -88,11 +85,11 @@ int shell(cstr command)
                     TRUE,
                     DUPLICATE_SAME_ACCESS);
 
-    si.cb            = sizeof(si);
-    si.dwFlags       = STARTF_USESTDHANDLES;
-    si.hStdInput     = stdin_handle;
-    si.hStdOutput    = stdout_handle;
-    si.hStdError     = stderr_handle;
+    si.cb              = sizeof(si);
+    si.dwFlags         = STARTF_USESTDHANDLES;
+    si.hStdInput       = stdin_handle;
+    si.hStdOutput      = stdout_handle;
+    si.hStdError       = stderr_handle;
     char* command_line = (char*)ALLOC(strlen(command) + 1);
     strcpy(command_line, command);
 

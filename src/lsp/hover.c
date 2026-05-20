@@ -915,8 +915,8 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
             const SemaDecl* imported_decl = NULL;
             if (lsp_sema_decl(
                     module.sema, decl->import_decl_index, &imported_decl)) {
-                LspDocument module_doc = *doc;
-                module_doc.source      = module.lexer->source.source;
+                LspDocument module_doc     = *doc;
+                module_doc.source          = module.lexer->source.source;
                 module_doc.front_end.lexer = *module.lexer;
                 module_doc.front_end.ast   = *module.ast;
                 module_doc.front_end.sema  = *module.sema;
@@ -952,7 +952,7 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
          type->kind != STK_Function)) {
         return false;
     }
-    bool has_generic = signature->generic_params_index != U32_MAX;
+    bool  has_generic = signature->generic_params_index != U32_MAX;
     Arena build_arena = {0};
     Arena text_arena  = {0};
     arena_init(&build_arena);
@@ -1116,13 +1116,12 @@ internal string lsp_decl_doc_comment(const LspDocument* doc,
             const SemaDecl* imported_decl = NULL;
             if (lsp_sema_decl(
                     module.sema, decl->import_decl_index, &imported_decl)) {
-                LspDocument module_doc = *doc;
-                module_doc.source      = module.lexer->source.source;
+                LspDocument module_doc     = *doc;
+                module_doc.source          = module.lexer->source.source;
                 module_doc.front_end.lexer = *module.lexer;
                 module_doc.front_end.ast   = *module.ast;
                 module_doc.front_end.sema  = *module.sema;
-                return lsp_decl_doc_comment(
-                    &module_doc, arena, imported_decl);
+                return lsp_decl_doc_comment(&module_doc, arena, imported_decl);
             }
         }
     }
@@ -1149,7 +1148,7 @@ internal string lsp_decl_doc_comment(const LspDocument* doc,
     }
 
     Array(string) lines = NULL;
-    usize         cursor = line_start;
+    usize cursor        = line_start;
     while (cursor > 0) {
         usize line_end = cursor - 1;
         if (line_end > 0 && source.data[line_end - 1] == '\r') {
@@ -1162,9 +1161,8 @@ internal string lsp_decl_doc_comment(const LspDocument* doc,
         }
 
         usize text_start = prev_start;
-        while (text_start < line_end &&
-               (source.data[text_start] == ' ' ||
-                source.data[text_start] == '\t')) {
+        while (text_start < line_end && (source.data[text_start] == ' ' ||
+                                         source.data[text_start] == '\t')) {
             text_start++;
         }
 
@@ -1292,11 +1290,10 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
         decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
         string comment = lsp_decl_doc_comment(doc, arena, decl);
-        string suffix = comment.count == 0
-                            ? s("")
-                            : string_format(arena,
-                                            "\n\n" STRINGP,
-                                            STRINGV(comment));
+        string suffix =
+            comment.count == 0
+                ? s("")
+                : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
         return string_format(arena,
                              STRINGP "\n\n- Kind: " STRINGP STRINGP,
                              STRINGV(lsp_markdown_code_block(
