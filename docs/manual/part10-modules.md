@@ -7,21 +7,23 @@ file.
 
 A module path such as `std.io` names a module by its dotted path. The compiler
 resolves that path in the configured module roots. A path can resolve to a
-single file or to a folder module:
+single file or to a package root:
 
-| Import path | First location tried | Folder-module fallback |
-|-------------|----------------------|------------------------|
-| `std.io`    | `std/io.n`           | `std/io/mod.n`         |
-| `std.term`  | `std/term.n`         | `std/term/mod.n`       |
+| Import path | First location tried | Package-root fallback |
+|-------------|----------------------|-----------------------|
+| `std.io`    | `std/io.n`           | `std/io/mod.n`        |
+| `std.term`  | `std/term.n`         | `std/term/mod.n`      |
 
 If both forms exist, the single `.n` file wins. Use `mod.n` when a module needs
 to own a directory of helper files while still presenting one public module.
+Once a package root exists, external code cannot import through it to lower
+paths. The package root decides which child declarations or modules to expose.
 
 ## Module Parts
 
-A folder module owns its immediate sibling `.n` files as one module scope. The
-root file is `mod.n`; every other `.n` file in the same directory is a module
-part:
+A package root owns its immediate sibling `.n` files as one module scope unless
+it explicitly imports them as child modules. The root file is `mod.n`; every
+other `.n` file in the same directory can be a module part:
 
 ```text
 std/term/mod.n   -- module root
@@ -48,8 +50,16 @@ pub term_init :: fn (term: ^Term) {  -- Term is declared in mod.n
 ```
 
 Use sibling `.n` files for implementation files that belong to the same public
-module. Use a nested folder module, such as `std/term/input/mod.n`, when another
-file should remain a separate module with its own public/private boundary.
+module. If `mod.n` explicitly imports a sibling file, that sibling is treated as
+a private child module and is not directly importable from outside the package
+root:
+
+```nerd
+-- std/term/mod.n
+pub use std.term.input
+```
+
+External code can import `std.term`, but not `std.term.input`.
 
 ## `use`
 

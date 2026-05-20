@@ -27,8 +27,11 @@ intended exit code.
 - `name :: use path` binds a module for qualified access.
 - `pub use path` imports public names and re-exports them from this module.
 - A module path first resolves to `path.n`, then falls back to `path/mod.n`.
+- A `mod.n` fallback forms a package boundary: external imports cannot continue
+  below that path, but `mod.n` can import child files and re-export selected
+  names.
 - In a folder module, immediate sibling `.n` files are parts of the same module
-  scope.
+  scope unless `mod.n` explicitly imports them as child modules.
 
 ## Values
 

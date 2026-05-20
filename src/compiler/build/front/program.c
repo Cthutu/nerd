@@ -437,12 +437,14 @@ internal bool program_mod_ref_matches_path(const Lexer*         lexer,
                                            const AstModulePath* module_path,
                                            cstr                 path)
 {
-    if (module_path->symbol_count != 1) {
+    if (module_path->symbol_count == 0) {
         return false;
     }
 
     string module_name =
-        lex_symbol(lexer, ast->module_path_symbols[module_path->first_symbol]);
+        lex_symbol(lexer,
+                   ast->module_path_symbols[module_path->first_symbol +
+                                            module_path->symbol_count - 1]);
     return string_eq(module_name, path_stem(s(path)));
 }
 

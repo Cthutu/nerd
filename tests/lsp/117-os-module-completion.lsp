@@ -1,4 +1,5 @@
 use os.
+use os.windows.
 
 main :: fn () {}
 ¬
@@ -14,6 +15,20 @@ main :: fn () {}
             "position": {
                 "line": 0,
                 "character": 7
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 1,
+                "character": 15
             }
         }
     }
@@ -81,33 +96,33 @@ main :: fn () {}
                 {
                     "range": {
                         "start": {
-                            "line": 2,
-                            "character": 5
+                            "line": 1,
+                            "character": 0
                         },
                         "end": {
-                            "line": 2,
-                            "character": 6
+                            "line": 1,
+                            "character": 3
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Missing value before Colon `:`",
+                    "message": "Expected Symbol but found Keyword `use`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 2,
-                                        "character": 5
+                                        "line": 1,
+                                        "character": 0
                                     },
                                     "end": {
-                                        "line": 2,
-                                        "character": 6
+                                        "line": 1,
+                                        "character": 3
                                     }
                                 }
                             },
-                            "message": "help: Insert a literal, parenthesized expression, or unary operator"
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
                         }
                     ]
                 }
@@ -127,6 +142,11 @@ main :: fn () {}
                 "kind": 9
             }
         ]
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": []
     },
     {
         "jsonrpc": "2.0",

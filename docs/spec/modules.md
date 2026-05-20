@@ -39,12 +39,18 @@ as a core export take precedence over the implicit import. An explicit
 5. The executable directory's `mods` child.
 
 For `a.b`, the resolver first tries `a/b.n`; if absent, it tries `a/b/mod.n`.
+When a `mod.n` file is found on a path prefix, it forms a package boundary for
+external imports. For example, `a/b/mod.n` makes `a.b` importable, but external
+code cannot import `a.b.c` directly from `a/b/c.n`. The package root can still
+import its own child files and decide what to re-export.
 
 ## Folder Modules And Parts
 
 A folder module uses `mod.n`. The front end can expand module part files from
 the same directory. Part files contribute to the same module analysis rather
-than becoming separate importable modules.
+than becoming separate importable modules. If `mod.n` explicitly imports a
+sibling child file, that file is treated as a private child module instead of an
+implicit part.
 
 ## Platform Guards
 

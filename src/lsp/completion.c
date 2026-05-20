@@ -3564,7 +3564,8 @@ lsp_completion_add_module_dir(Arena* arena, JsonValue* items, cstr dir)
 internal void lsp_completion_add_modules_in_root(Arena*     arena,
                                                  JsonValue* items,
                                                  cstr       root,
-                                                 string     module_path)
+                                                 string     module_path,
+                                                 cstr       current_path)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
@@ -3583,6 +3584,19 @@ internal void lsp_completion_add_modules_in_root(Arena*     arena,
 
     cstr relative = (cstr)sb_to_string(&sb).data;
     cstr dir = module_path.count == 0 ? root : path_join(arena, root, relative);
+    if (module_path.count > 0) {
+        cstr mod_path = path_join(arena, dir, "mod.n");
+        if (path_exists(mod_path) && !path_is_directory(mod_path)) {
+            cstr canonical_mod     = path_canonical(arena, mod_path);
+            cstr canonical_current = current_path != NULL
+                                         ? path_canonical(arena, current_path)
+                                         : NULL;
+            if (canonical_mod == NULL || canonical_current == NULL ||
+                strcmp(canonical_mod, canonical_current) != 0) {
+                return;
+            }
+        }
+    }
     lsp_completion_add_module_dir(arena, items, dir);
 }
 
@@ -3609,14 +3623,20 @@ internal void lsp_completion_add_modules(Arena*             arena,
     cstr current_path =
         module_source_file_path(&temp, doc->front_end.lexer.source);
     if (current_path != NULL) {
-        lsp_completion_add_modules_in_root(
-            arena, items, path_dirname(&temp, current_path), module_path);
+        lsp_completion_add_modules_in_root(arena,
+                                           items,
+                                           path_dirname(&temp, current_path),
+                                           module_path,
+                                           current_path);
     }
 
     cstr root_path = module_source_file_path(&temp, doc->program.root_source);
     if (root_path != NULL) {
-        lsp_completion_add_modules_in_root(
-            arena, items, path_dirname(&temp, root_path), module_path);
+        lsp_completion_add_modules_in_root(arena,
+                                           items,
+                                           path_dirname(&temp, root_path),
+                                           module_path,
+                                           current_path);
     }
 
     cstr lib_path = getenv("NERD_LIB_PATH");
@@ -3635,7 +3655,7 @@ internal void lsp_completion_add_modules(Arena*             arena,
                 memcpy(root, cursor, len);
                 root[len] = '\0';
                 lsp_completion_add_modules_in_root(
-                    arena, items, root, module_path);
+                    arena, items, root, module_path, current_path);
             }
             if (end == NULL) {
                 break;
@@ -3646,7 +3666,8 @@ internal void lsp_completion_add_modules(Arena*             arena,
 
     cstr exe_dir  = path_executable_dir(&temp);
     cstr mods_dir = path_join(&temp, exe_dir, "mods");
-    lsp_completion_add_modules_in_root(arena, items, mods_dir, module_path);
+    lsp_completion_add_modules_in_root(
+        arena, items, mods_dir, module_path, current_path);
 
     arena_done(&temp);
 }

@@ -72,13 +72,81 @@ cstr module_source_file_path(Arena* arena, NerdSource source)
 
 //------------------------------------------------------------------------------
 
+internal bool module_current_path_is(Arena* arena, cstr current_path, cstr path)
+{
+    if (current_path == NULL) {
+        return false;
+    }
+
+    cstr canonical_current = path_canonical(arena, current_path);
+    cstr canonical_path    = path_canonical(arena, path);
+    return canonical_current != NULL && canonical_path != NULL &&
+           strcmp(canonical_current, canonical_path) == 0;
+}
+
+internal cstr module_path_prefix_to_relative(Arena*               arena,
+                                             const Lexer*         lexer,
+                                             const Ast*           ast,
+                                             const AstModulePath* path,
+                                             u32                  count,
+                                             cstr                 extension)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    for (u32 i = 0; i < count && i < path->symbol_count; ++i) {
+        if (i > 0) {
+#if OS_WINDOWS
+            sb_append_char(&sb, '\\');
+#else
+            sb_append_char(&sb, '/');
+#endif
+        }
+        sb_append_string(
+            &sb,
+            lex_symbol(lexer,
+                       ast->module_path_symbols[path->first_symbol + i]));
+    }
+
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+}
+
+internal bool module_path_is_blocked_by_folder_module(Arena*       arena,
+                                                      const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      const AstModulePath* path,
+                                                      cstr                 root,
+                                                      cstr current_path)
+{
+    for (u32 i = 1; i < path->symbol_count; ++i) {
+        cstr module_dir = path_join(
+            arena,
+            root,
+            module_path_prefix_to_relative(arena, lexer, ast, path, i, ""));
+        cstr mod_file = path_join(arena, module_dir, "mod.n");
+        if (!path_exists(mod_file) || path_is_directory(mod_file)) {
+            continue;
+        }
+        return !module_current_path_is(arena, current_path, mod_file);
+    }
+    return false;
+}
+
 internal bool module_path_exists_in_root(Arena*               arena,
                                          const Lexer*         lexer,
                                          const Ast*           ast,
                                          const AstModulePath* path,
                                          cstr                 root,
+                                         cstr                 current_path,
                                          ModuleResolveResult* out_result)
 {
+    if (module_path_is_blocked_by_folder_module(
+            arena, lexer, ast, path, root, current_path)) {
+        return false;
+    }
+
     cstr module_file = path_join(
         arena, root, module_path_to_relative(arena, lexer, ast, path, ".n"));
     if (!path_exists(module_file) || path_is_directory(module_file)) {
@@ -128,11 +196,79 @@ internal cstr module_qualified_to_relative(Arena* arena,
     return (cstr)sb_to_string(&sb).data;
 }
 
+internal cstr module_qualified_prefix_to_relative(Arena* arena,
+                                                  string qualified_name,
+                                                  u32    count,
+                                                  cstr   extension)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    u32 emitted = 0;
+    for (usize i = 0; i < qualified_name.count && emitted < count; ++i) {
+        char ch = (char)qualified_name.data[i];
+        if (ch == '.') {
+            emitted++;
+            if (emitted >= count) {
+                break;
+            }
+#if OS_WINDOWS
+            ch = '\\';
+#else
+            ch = '/';
+#endif
+        }
+        sb_append_char(&sb, ch);
+    }
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
+}
+
+internal u32 module_qualified_segment_count(string qualified_name)
+{
+    if (qualified_name.count == 0) {
+        return 0;
+    }
+
+    u32 count = 1;
+    for (usize i = 0; i < qualified_name.count; ++i) {
+        if (qualified_name.data[i] == '.') {
+            count++;
+        }
+    }
+    return count;
+}
+
+internal bool module_qualified_is_blocked_by_folder_module(
+    Arena* arena, string qualified_name, cstr root, cstr current_path)
+{
+    u32 segment_count = module_qualified_segment_count(qualified_name);
+    for (u32 i = 1; i < segment_count; ++i) {
+        cstr module_dir = path_join(
+            arena,
+            root,
+            module_qualified_prefix_to_relative(arena, qualified_name, i, ""));
+        cstr mod_file = path_join(arena, module_dir, "mod.n");
+        if (!path_exists(mod_file) || path_is_directory(mod_file)) {
+            continue;
+        }
+        return !module_current_path_is(arena, current_path, mod_file);
+    }
+    return false;
+}
+
 internal bool module_qualified_exists_in_root(Arena* arena,
                                               string qualified_name,
                                               cstr   root,
+                                              cstr   current_path,
                                               ModuleResolveResult* out_result)
 {
+    if (module_qualified_is_blocked_by_folder_module(
+            arena, qualified_name, root, current_path)) {
+        return false;
+    }
+
     cstr module_file = path_join(
         arena, root, module_qualified_to_relative(arena, qualified_name, ".n"));
     if (!path_exists(module_file) || path_is_directory(module_file)) {
@@ -169,6 +305,7 @@ internal bool module_path_exists_in_env_roots(Arena*               arena,
                                               const Ast*           ast,
                                               const AstModulePath* path,
                                               cstr                 env_value,
+                                              cstr                 current_path,
                                               ModuleResolveResult* out_result)
 {
     if (env_value == NULL || *env_value == '\0') {
@@ -190,7 +327,7 @@ internal bool module_path_exists_in_env_roots(Arena*               arena,
             memcpy(root, cursor, len);
             root[len] = '\0';
             if (module_path_exists_in_root(
-                    arena, lexer, ast, path, root, out_result)) {
+                    arena, lexer, ast, path, root, current_path, out_result)) {
                 return true;
             }
         }
@@ -207,6 +344,7 @@ internal bool module_path_exists_in_env_roots(Arena*               arena,
 internal bool module_qualified_exists_in_env_roots(Arena* arena,
                                                    string qualified_name,
                                                    cstr   env_value,
+                                                   cstr   current_path,
                                                    ModuleResolveResult* out)
 {
     if (env_value == NULL || *env_value == '\0') {
@@ -228,7 +366,7 @@ internal bool module_qualified_exists_in_env_roots(Arena* arena,
             memcpy(root, cursor, len);
             root[len] = '\0';
             if (module_qualified_exists_in_root(
-                    arena, qualified_name, root, out)) {
+                    arena, qualified_name, root, current_path, out)) {
                 return true;
             }
         }
@@ -330,39 +468,45 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
     cstr current_path = module_source_file_path(arena, lexer->source);
     if (current_path != NULL) {
         cstr current_dir = path_dirname(arena, current_path);
-        if (module_path_exists_in_root(
-                arena, lexer, ast, path, current_dir, out_result)) {
+        if (module_path_exists_in_root(arena,
+                                       lexer,
+                                       ast,
+                                       path,
+                                       current_dir,
+                                       current_path,
+                                       out_result)) {
             return MRS_Found;
         }
     }
 
     cstr root_dir = path_dirname(arena, root_path);
     if (module_path_exists_in_root(
-            arena, lexer, ast, path, root_dir, out_result)) {
+            arena, lexer, ast, path, root_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr cwd = path_canonical(arena, ".");
     if (cwd != NULL &&
-        module_path_exists_in_root(arena, lexer, ast, path, cwd, out_result)) {
+        module_path_exists_in_root(
+            arena, lexer, ast, path, cwd, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr lib_path = getenv("NERD_LIB_PATH");
     if (module_path_exists_in_env_roots(
-            arena, lexer, ast, path, lib_path, out_result)) {
+            arena, lexer, ast, path, lib_path, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr exe_dir = path_executable_dir(arena);
     if (module_path_exists_in_root(
-            arena, lexer, ast, path, exe_dir, out_result)) {
+            arena, lexer, ast, path, exe_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr mods_dir = path_join(arena, exe_dir, "mods");
     if (module_path_exists_in_root(
-            arena, lexer, ast, path, mods_dir, out_result)) {
+            arena, lexer, ast, path, mods_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
@@ -388,38 +532,39 @@ ModuleResolveStatus module_resolve_qualified(Arena*     arena,
     if (current_path != NULL) {
         cstr current_dir = path_dirname(arena, current_path);
         if (module_qualified_exists_in_root(
-                arena, qualified_name, current_dir, out_result)) {
+                arena, qualified_name, current_dir, current_path, out_result)) {
             return MRS_Found;
         }
     }
 
     cstr root_dir = path_dirname(arena, root_path);
     if (module_qualified_exists_in_root(
-            arena, qualified_name, root_dir, out_result)) {
+            arena, qualified_name, root_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr cwd = path_canonical(arena, ".");
-    if (cwd != NULL && module_qualified_exists_in_root(
-                           arena, qualified_name, cwd, out_result)) {
+    if (cwd != NULL &&
+        module_qualified_exists_in_root(
+            arena, qualified_name, cwd, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr lib_path = getenv("NERD_LIB_PATH");
     if (module_qualified_exists_in_env_roots(
-            arena, qualified_name, lib_path, out_result)) {
+            arena, qualified_name, lib_path, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr exe_dir = path_executable_dir(arena);
     if (module_qualified_exists_in_root(
-            arena, qualified_name, exe_dir, out_result)) {
+            arena, qualified_name, exe_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
     cstr mods_dir = path_join(arena, exe_dir, "mods");
     if (module_qualified_exists_in_root(
-            arena, qualified_name, mods_dir, out_result)) {
+            arena, qualified_name, mods_dir, current_path, out_result)) {
         return MRS_Found;
     }
 
