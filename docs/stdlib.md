@@ -11,17 +11,20 @@ API reference.
 ## Current Modules
 
 The current standard modules live under [mods](/home/matt/nerd/mods). The
-library is moving toward three layers:
+library is organised into three layers:
 
 - `core`
-  Language-adjacent helpers with minimal dependencies. This contains the arena
-  API, the temporary arena, language-required traits, and core result types.
-  Every module implicitly imports `core`.
+  Language-support declarations that every module can rely on. This contains
+  the arena API, the temporary arena, language-required traits, and core result
+  types. Every module implicitly imports `core`.
 - `std`
-  Portable higher-level utilities.
-- `sys`
-  Platform and OS bindings such as `sys.linux`. Future platform modules belong
-  here rather than under `std`.
+  Platform-agnostic standard-library modules. `std` APIs should provide
+  portable behaviour even when their implementation delegates to platform
+  modules internally.
+- `os`
+  Platform-specific modules such as `os.linux`. Platform FFI declarations,
+  syscall wrappers, constants, and operating-system details belong here rather
+  than under `std`.
 
 - `core`
   Pointer-stable arena construction, allocation, reset, and release helpers.
@@ -34,8 +37,8 @@ library is moving toward three layers:
 - `std.traits`
   Compatibility module for common trait declarations. Language-required traits
   are canonical in `core`.
-- `sys.linux`
-  Low-level Linux C and syscall-adjacent bindings.
+- `os.linux`
+  Low-level Linux syscall-adjacent bindings.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
