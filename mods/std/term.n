@@ -213,9 +213,35 @@ on "linux" {
         return (size.col.as(u32), size.row.as(u32))
     }
 
-    -- Writes text directly to the terminal output stream.
-    pub term_print :: fn (text: string) {
+    term_write :: fn (text: string) {
         _ := sys_write(STDOUT_FILENO, text.data.as(^void), text.count)
+    }
+
+    term_write_byte :: fn (byte: u8) {
+        data := [byte]
+        _ := sys_write(STDOUT_FILENO, data[..].data.as(^void), 1)
+    }
+
+    -- Writes text directly to the terminal output stream. Linux raw mode
+    -- disables OPOST, so translate line feeds here to keep `\n` portable.
+    pub term_print :: fn (text: string) {
+        start : usize = 0
+        index : usize = 0
+
+        for index < text.count {
+            on text.data[index] == '\n' => {
+                on index > start => term_write(text[start..index])
+
+                on index == 0 || text.data[index - 1] != '\r' => {
+                    term_write_byte('\r')
+                }
+                term_write_byte('\n')
+                start = index + 1
+            }
+            index += 1
+        }
+
+        on start < text.count => term_write(text[start..])
     }
 
     -- Reads one byte from terminal input, returning `0` on EOF or error.
