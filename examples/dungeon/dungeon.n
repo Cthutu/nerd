@@ -4,10 +4,6 @@ on "windows" {
 
     use os.windows
 
-    debug_message :: fn (text: string) {
-        _ := sys_message_box(text, "Dungeon key debug")
-    }
-
     debug_log_to_path :: fn (path: []u16, text: string) -> bool {
         log := sys_create_file2(path.data.as(^void),
                                 FILE_APPEND_DATA,
@@ -89,9 +85,6 @@ on "windows" {
 
 on "linux" {
 
-    debug_message :: fn (text: string) {
-    }
-
     debug_log :: fn (text: string) {
     }
 
@@ -166,7 +159,6 @@ main :: fn () {
                 last_key = key_name(key_code)
                 debug_log($"term_get_key={last_key} code={key_code.as(u32)}")
                 draw(last_key)
-                debug_message(last_key)
 
                 on key_code == LowerQ || key_code == Q || key_code == Escape => break
             }
