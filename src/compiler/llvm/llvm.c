@@ -2469,7 +2469,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         u32                  expr_index);
 
 internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
-                                                     string data,
+                                                     string               data,
                                                      u32    field_index,
                                                      string type);
 
@@ -2480,7 +2480,7 @@ internal string llvm_dynamic_array_header_field_ptr(LlvmFunctionContext* ctx,
                                                     u32 field_index);
 
 internal string llvm_dynamic_array_data_from_header(LlvmFunctionContext* ctx,
-                                                    string               header);
+                                                    string header);
 
 internal string llvm_dynamic_array_header_from_data(LlvmFunctionContext* ctx,
                                                     string               data);
@@ -5280,15 +5280,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     capacity_value = string_format(ctx->arena, "%u", capacity);
                 }
 
-                u64    item_size    = llvm_type_storage_bytes(ctx->sema, item_type);
-                string header       = llvm_temp(ctx);
+                u64 item_size = llvm_type_storage_bytes(ctx->sema, item_type);
+                string header = llvm_temp(ctx);
                 string source_path =
                     llvm_builtin_module_file_global_name_string(ctx->hir,
                                                                 ctx->arena);
                 u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
-                string alloc_bytes = string_format(ctx->arena,
-                                                   "%llu",
-                                                   (unsigned long long)header_bytes);
+                string alloc_bytes = string_format(
+                    ctx->arena, "%llu", (unsigned long long)header_bytes);
                 if (runtime_capacity) {
                     string data_bytes = llvm_temp(ctx);
                     alloc_bytes       = llvm_temp(ctx);
@@ -5309,11 +5308,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     alloc_bytes = string_format(
                         ctx->arena,
                         "%llu",
-                        (unsigned long long)(header_bytes + capacity * item_size));
+                        (unsigned long long)(header_bytes +
+                                             capacity * item_size));
                 }
                 sb_format(ctx->sb,
-                          "  " STRINGP
-                          " = call ptr @nrt_mem_alloc(i64 " STRINGP
+                          "  " STRINGP " = call ptr @nrt_mem_alloc(i64 " STRINGP
                           ", i64 16, ptr " STRINGP ", i32 %u)\n",
                           STRINGV(header),
                           STRINGV(alloc_bytes),
@@ -9789,7 +9788,7 @@ internal string llvm_dynamic_array_header_from_data(LlvmFunctionContext* ctx,
 }
 
 internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
-                                                     string data,
+                                                     string               data,
                                                      u32    field_index,
                                                      string type)
 {
@@ -9870,7 +9869,7 @@ internal bool llvm_dynamic_array_ensure_header(LlvmFunctionContext* ctx,
               STRINGV(current_data),
               STRINGV(slot));
     string header = llvm_dynamic_array_header_from_data(ctx, current_data);
-    *out_header           = header;
+    *out_header   = header;
     ctx->block_terminated = false;
     return true;
 }
@@ -10111,9 +10110,9 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
               "  " STRINGP " = load ptr, ptr " STRINGP "\n",
               STRINGV(data),
               STRINGV(slot.value));
-    header = llvm_dynamic_array_header_from_data(ctx, data);
-    data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
-    count_ptr    = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+    header              = llvm_dynamic_array_header_from_data(ctx, data);
+    data_ptr_ptr        = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
+    count_ptr           = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
     string current_data = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = load ptr, ptr " STRINGP "\n",
@@ -10248,8 +10247,8 @@ internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
               STRINGV(source_path),
               call->source_line);
     string new_data = llvm_dynamic_array_data_from_header(ctx, new_header);
-    data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
-    capacity_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
+    data_ptr_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
+    capacity_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
     sb_format(ctx->sb,
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
@@ -10305,7 +10304,7 @@ internal LlvmValue llvm_emit_dynamic_array_clear(LlvmFunctionContext* ctx,
               STRINGV(clear_label));
 
     sb_format(ctx->sb, STRINGP ":\n", STRINGV(clear_label));
-    string header = llvm_dynamic_array_header_from_data(ctx, data);
+    string header    = llvm_dynamic_array_header_from_data(ctx, data);
     string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
     sb_format(ctx->sb,
               "  store i64 0, ptr " STRINGP "\n"
@@ -10394,12 +10393,11 @@ internal LlvmValue llvm_emit_dynamic_array_pop(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    string data   = target.value;
-    string header = llvm_dynamic_array_header_from_data(ctx, data);
-    string count_ptr =
-        llvm_dynamic_array_header_field_ptr(ctx, header, 1);
-    string count = llvm_temp(ctx);
-    string last  = llvm_temp(ctx);
+    string data      = target.value;
+    string header    = llvm_dynamic_array_header_from_data(ctx, data);
+    string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+    string count     = llvm_temp(ctx);
+    string last      = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = load i64, ptr " STRINGP "\n"
               "  " STRINGP " = sub i64 " STRINGP ", 1\n",
@@ -10456,12 +10454,11 @@ internal LlvmValue llvm_emit_dynamic_array_delete(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    string data   = target.value;
-    string header = llvm_dynamic_array_header_from_data(ctx, data);
-    string count_ptr =
-        llvm_dynamic_array_header_field_ptr(ctx, header, 1);
-    string count = llvm_temp(ctx);
-    string last  = llvm_temp(ctx);
+    string data      = target.value;
+    string header    = llvm_dynamic_array_header_from_data(ctx, data);
+    string count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+    string count     = llvm_temp(ctx);
+    string last      = llvm_temp(ctx);
     sb_format(ctx->sb,
               "  " STRINGP " = load i64, ptr " STRINGP "\n"
               "  " STRINGP " = sub i64 " STRINGP ", 1\n",
@@ -10697,8 +10694,8 @@ internal LlvmValue llvm_emit_dynamic_array_append(LlvmFunctionContext* ctx,
               STRINGV(source_path),
               call->source_line);
     string new_data = llvm_dynamic_array_data_from_header(ctx, new_header);
-    data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
-    capacity_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
+    data_ptr_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
+    capacity_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
     sb_format(ctx->sb,
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
@@ -10718,9 +10715,9 @@ internal LlvmValue llvm_emit_dynamic_array_append(LlvmFunctionContext* ctx,
               "  " STRINGP " = load ptr, ptr " STRINGP "\n",
               STRINGV(data),
               STRINGV(slot.value));
-    header = llvm_dynamic_array_header_from_data(ctx, data);
-    data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
-    count_ptr    = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
+    header              = llvm_dynamic_array_header_from_data(ctx, data);
+    data_ptr_ptr        = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
+    count_ptr           = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
     string current_data = llvm_temp(ctx);
     string index_slot   = llvm_temp(ctx);
     sb_format(ctx->sb,
@@ -10917,8 +10914,8 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
               STRINGV(source_path),
               call->source_line);
     string new_data = llvm_dynamic_array_data_from_header(ctx, new_header);
-    data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
-    capacity_ptr = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
+    data_ptr_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 0);
+    capacity_ptr    = llvm_dynamic_array_header_field_ptr(ctx, new_header, 2);
     sb_format(ctx->sb,
               "  store ptr " STRINGP ", ptr " STRINGP "\n"
               "  store i64 " STRINGP ", ptr " STRINGP "\n"
@@ -10939,7 +10936,7 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
                   "  " STRINGP " = load ptr, ptr " STRINGP "\n",
                   STRINGV(data),
                   STRINGV(slot.value));
-        header = llvm_dynamic_array_header_from_data(ctx, data);
+        header       = llvm_dynamic_array_header_from_data(ctx, data);
         data_ptr_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 0);
         string should_init = llvm_temp(ctx);
         string loop_label  = llvm_label(ctx, "dynarray.resize.init.loop");
@@ -11023,7 +11020,7 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
               "  " STRINGP " = load ptr, ptr " STRINGP "\n",
               STRINGV(data),
               STRINGV(slot.value));
-    header = llvm_dynamic_array_header_from_data(ctx, data);
+    header    = llvm_dynamic_array_header_from_data(ctx, data);
     count_ptr = llvm_dynamic_array_header_field_ptr(ctx, header, 1);
     sb_format(ctx->sb,
               "  store i64 " STRINGP ", ptr " STRINGP "\n",
