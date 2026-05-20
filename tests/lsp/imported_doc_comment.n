@@ -1,0 +1,2 @@
+-- Provides imported hover text.
+pub documented :: fn (value: i32, extra: i32 = 1) => value + extra

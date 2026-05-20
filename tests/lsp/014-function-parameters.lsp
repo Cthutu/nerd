@@ -85,7 +85,7 @@ main :: fn () => add(20, 22)
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nadd :: fn (i32, i32) -> i32\n```\n\n- Kind: function"
+                "value": "```nerd\nadd :: fn (a: i32, b: i32) -> i32\n```\n\n- Kind: function"
             }
         }
     },

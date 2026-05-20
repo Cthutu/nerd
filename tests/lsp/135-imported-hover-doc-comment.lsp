@@ -1,8 +1,7 @@
-use std.io
+-- lsp-uri: __REPO_URI__/tests/lsp/135-imported-hover-doc-comment.input.n
+use imported_doc_comment
 
-main :: fn () {
-    prn("Hello, world!")
-}
+main :: fn () => documented(1)
 ¬
 [
     {
@@ -11,39 +10,11 @@ main :: fn () {
         "method": "textDocument/hover",
         "params": {
             "textDocument": {
-                "uri": "file:///test.n"
+                "uri": "__REPO_URI__/tests/lsp/135-imported-hover-doc-comment.input.n"
             },
             "position": {
                 "line": 2,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/hover",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/hover",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 8
+                "character": 17
             }
         }
     }
@@ -106,27 +77,8 @@ main :: fn () {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
-            "uri": "file:///test.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 0,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 0,
-                            "character": 10
-                        }
-                    },
-                    "severity": 4,
-                    "source": "nerd",
-                    "message": "Unused use `std.io`",
-                    "tags": [
-                        1
-                    ]
-                }
-            ]
+            "uri": "__REPO_URI__/tests/lsp/135-imported-hover-doc-comment.input.n",
+            "diagnostics": []
         }
     },
     {
@@ -135,27 +87,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nmain :: fn () -> void\n```\n\n- Kind: function"
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\n\"Hello, world!\"\n```\n\n- Type: `string`"
+                "value": "```nerd\ndocumented :: fn (value: i32, extra: i32 = 1) -> i32\n```\n\n- Kind: function\n\nProvides imported hover text."
             }
         }
     },

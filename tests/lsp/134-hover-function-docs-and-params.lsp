@@ -1,8 +1,8 @@
-print :: use core
+-- Adds two values with an optional adjustment.
+-- Returns the adjusted total.
+add :: fn (left: i32, right: i32, adjustment: i32 = 0) => left + right + adjustment
 
-main :: fn () {
-    print.prn("Hello")
-}
+main :: fn () => add(1, 2)
 ¬
 [
     {
@@ -14,50 +14,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
+                "line": 2,
                 "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/hover",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 13
             }
         }
     }
@@ -130,51 +88,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprint\n```\n\n- Kind: module\n- Type: `module`"
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 47,
-                    "character": 4
-                },
-                "end": {
-                    "line": 47,
-                    "character": 7
-                }
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
+                "value": "```nerd\nadd :: fn (left: i32, right: i32, adjustment: i32 = 0) -> i32\n```\n\n- Kind: function\n\nAdds two values with an optional adjustment.\nReturns the adjusted total."
             }
         }
     },

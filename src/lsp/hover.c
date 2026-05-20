@@ -907,6 +907,25 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
                                      const SemaDecl*    decl,
                                      string*            out_signature)
 {
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            const SemaDecl* imported_decl = NULL;
+            if (lsp_sema_decl(
+                    module.sema, decl->import_decl_index, &imported_decl)) {
+                LspDocument module_doc = *doc;
+                module_doc.source      = module.lexer->source.source;
+                module_doc.front_end.lexer = *module.lexer;
+                module_doc.front_end.ast   = *module.ast;
+                module_doc.front_end.sema  = *module.sema;
+                return lsp_decl_ast_signature(
+                    &module_doc, arena, imported_decl, out_signature);
+            }
+        }
+    }
+
     if (decl->value_node_index == sema_no_decl() ||
         (decl->kind != SK_GenericFunction &&
          decl->type_index >= array_count(doc->front_end.sema.types))) {
@@ -934,18 +953,6 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         return false;
     }
     bool has_generic = signature->generic_params_index != U32_MAX;
-    bool has_default = false;
-    for (u32 i = 0; i < signature->param_count; ++i) {
-        const AstParam* param = &ast->params[signature->first_param + i];
-        if (param->default_node_index != U32_MAX) {
-            has_default = true;
-            break;
-        }
-    }
-    if (!has_default && !has_generic) {
-        return false;
-    }
-
     Arena build_arena = {0};
     Arena text_arena  = {0};
     arena_init(&build_arena);
@@ -1083,6 +1090,111 @@ internal string lsp_decl_signature(const LspDocument* doc,
         &doc->front_end.lexer, &doc->front_end.sema, arena, decl->type_index);
 }
 
+internal string lsp_trim_comment_text(string text)
+{
+    usize start = 0;
+    usize end   = text.count;
+    if (start < end && text.data[start] == ' ') {
+        start++;
+    }
+    while (end > start &&
+           (text.data[end - 1] == ' ' || text.data[end - 1] == '\t')) {
+        end--;
+    }
+    return (string){.data = text.data + start, .count = end - start};
+}
+
+internal string lsp_decl_doc_comment(const LspDocument* doc,
+                                     Arena*             arena,
+                                     const SemaDecl*    decl)
+{
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            const SemaDecl* imported_decl = NULL;
+            if (lsp_sema_decl(
+                    module.sema, decl->import_decl_index, &imported_decl)) {
+                LspDocument module_doc = *doc;
+                module_doc.source      = module.lexer->source.source;
+                module_doc.front_end.lexer = *module.lexer;
+                module_doc.front_end.ast   = *module.ast;
+                module_doc.front_end.sema  = *module.sema;
+                return lsp_decl_doc_comment(
+                    &module_doc, arena, imported_decl);
+            }
+        }
+    }
+
+    if (decl->bind_node_index == sema_no_decl() ||
+        decl->bind_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("");
+    }
+
+    const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
+    if (bind->token_index >= array_count(doc->front_end.lexer.tokens)) {
+        return s("");
+    }
+
+    string source     = doc->front_end.lexer.source.source;
+    usize  decl_start = doc->front_end.lexer.tokens[bind->token_index].offset;
+    if (decl_start > source.count) {
+        return s("");
+    }
+
+    usize line_start = decl_start;
+    while (line_start > 0 && source.data[line_start - 1] != '\n') {
+        line_start--;
+    }
+
+    Array(string) lines = NULL;
+    usize         cursor = line_start;
+    while (cursor > 0) {
+        usize line_end = cursor - 1;
+        if (line_end > 0 && source.data[line_end - 1] == '\r') {
+            line_end--;
+        }
+
+        usize prev_start = line_end;
+        while (prev_start > 0 && source.data[prev_start - 1] != '\n') {
+            prev_start--;
+        }
+
+        usize text_start = prev_start;
+        while (text_start < line_end &&
+               (source.data[text_start] == ' ' ||
+                source.data[text_start] == '\t')) {
+            text_start++;
+        }
+
+        if (text_start + 2 > line_end || source.data[text_start] != '-' ||
+            source.data[text_start + 1] != '-') {
+            break;
+        }
+
+        string comment = string_from(source.data + text_start + 2,
+                                     line_end - text_start - 2);
+        array_push(lines, lsp_trim_comment_text(comment));
+        cursor = prev_start;
+    }
+
+    if (array_count(lines) == 0) {
+        return s("");
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (u32 i = array_count(lines); i > 0; --i) {
+        if (i != array_count(lines)) {
+            sb_append_char(&sb, '\n');
+        }
+        sb_append_string(&sb, lines[i - 1]);
+    }
+    array_free(lines);
+    return sb_to_string(&sb);
+}
+
 //------------------------------------------------------------------------------
 // Infer the current hover-facing type for one AST node.
 
@@ -1179,8 +1291,14 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
 
     if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
         decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
+        string comment = lsp_decl_doc_comment(doc, arena, decl);
+        string suffix = comment.count == 0
+                            ? s("")
+                            : string_format(arena,
+                                            "\n\n" STRINGP,
+                                            STRINGV(comment));
         return string_format(arena,
-                             STRINGP "\n\n- Kind: " STRINGP,
+                             STRINGP "\n\n- Kind: " STRINGP STRINGP,
                              STRINGV(lsp_markdown_code_block(
                                  arena,
                                  string_format(arena,
@@ -1188,7 +1306,7 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                                STRINGV(name),
                                                STRINGV(inferred_type)))),
                              STRINGV(kind),
-                             STRINGV(inferred_type));
+                             STRINGV(suffix));
     }
 
     if (decl->kind == SK_TypeAlias) {
