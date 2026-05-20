@@ -6,3 +6,4 @@
 -- narrower Windows API modules.
 
 pub use kernel
+pub use user

@@ -1,5 +1,22 @@
 use std.term
 
+on "windows" {
+
+    use os.windows
+
+    debug_message :: fn (text: string) {
+        _ := sys_message_box(text, "Dungeon key debug")
+    }
+
+}
+
+on "linux" {
+
+    debug_message :: fn (text: string) {
+    }
+
+}
+
 key_name :: fn (key: KeyCode) -> string {
     return on key {
         ArrowUp => "ArrowUp"
@@ -55,6 +72,8 @@ main :: fn () {
     defer term_raw_mode_enable(no)
 
     last_key := "none"
+    debug_message("Dungeon starting. Press OK, then press q, Q, Escape, or an "
+        +"arrow key in the terminal.")
     draw(last_key)
 
     for {
@@ -67,6 +86,7 @@ main :: fn () {
                 key_code : KeyCode = code
                 last_key = key_name(key_code)
                 draw(last_key)
+                debug_message(last_key)
 
                 on key_code == LowerQ || key_code == Q || key_code == Escape => break
             }
