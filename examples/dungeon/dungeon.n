@@ -8,11 +8,46 @@ on "windows" {
         _ := sys_message_box(text, "Dungeon key debug")
     }
 
+    debug_windows_record :: fn (record: InputRecord) -> string {
+        return $"event_type={record.event_type} key_down={record.key_down} vk={record.virtual_key_code} scan={record.virtual_scan} char={record.unicode_char} control={record.control_state}"
+    }
+
+    debug_windows_key_loop :: fn () -> bool {
+        input := sys_std_input()
+        mode : DWORD
+        mode_ok := sys_get_console_mode(input, ^mode)
+        debug_message($"Windows input probe. GetConsoleMode={mode_ok} mode={mode}. After pressing OK, click the terminal and press q, Q, Escape, or an arrow key.")
+
+        for {
+            debug_message("Waiting for one ReadConsoleInputW record. Click the terminal, "
+                +"then press a key.")
+
+            record : InputRecord
+            records_read := sys_read_console_input(input, ^record)
+            on records_read <= 0 => {
+                debug_message($"ReadConsoleInputW failed. records_read={records_read} last_error={sys_get_last_error()}")
+                return yes
+            }
+
+            debug_message(debug_windows_record(record))
+
+            on record.event_type == KEY_EVENT && record.key_down != 0 => {
+                on record.unicode_char == 'q'.as(u16) || record.unicode_char == 'Q'.as(u16) || record.virtual_key_code == VK_ESCAPE => return yes
+            }
+        }
+
+        return yes
+    }
+
 }
 
 on "linux" {
 
     debug_message :: fn (text: string) {
+    }
+
+    debug_windows_key_loop :: fn () -> bool {
+        return no
     }
 
 }
@@ -75,6 +110,8 @@ main :: fn () {
     debug_message("Dungeon starting. Press OK, then press q, Q, Escape, or an "
         +"arrow key in the terminal.")
     draw(last_key)
+
+    on debug_windows_key_loop() => return
 
     for {
         key := term_get_key()
