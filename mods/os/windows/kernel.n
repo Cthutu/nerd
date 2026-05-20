@@ -18,38 +18,70 @@ pub DWORD :: u32
 -- Windows signed 64-bit integer used by performance-counter APIs.
 pub LARGE_INTEGER :: i64
 
-pub STD_INPUT_HANDLE  : DWORD : 0xfffffff6
+pub STD_INPUT_HANDLE : DWORD : 0xfffffff6
                                             -- Pseudo-handle identifier for
-                                            --     standard input.
+                                            -- standard input.
 pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
                                             -- Pseudo-handle identifier for
-                                            --     standard output.
-pub STD_ERROR_HANDLE  : DWORD : 0xfffffff4
+                                            -- standard output.
+pub STD_ERROR_HANDLE : DWORD : 0xfffffff4
                                             -- Pseudo-handle identifier for
-                                            --     standard error.
+                                            -- standard error.
 
-pub ENABLE_PROCESSED_INPUT             :: 0x0001
+pub ENABLE_PROCESSED_INPUT :: 0x0001
                                                   -- Input mode flag enabling
-                                                  --     processed Ctrl+C and
-                                                  --     line editing control
-                                                  --     handling.
-pub ENABLE_LINE_INPUT                  :: 0x0002
+                                                  -- processed Ctrl+C and line
+                                                  -- editing control handling.
+pub ENABLE_LINE_INPUT :: 0x0002
                                                   -- Input mode flag enabling
-                                                  --     line-buffered console
-                                                  --     input.
-pub ENABLE_ECHO_INPUT                  :: 0x0004
+                                                  -- line-buffered console
+                                                  -- input.
+pub ENABLE_ECHO_INPUT :: 0x0004
                                                   -- Input mode flag echoing
-                                                  --     typed characters.
-pub ENABLE_VIRTUAL_TERMINAL_INPUT      :: 0x0200
+                                                  -- typed characters.
+pub ENABLE_VIRTUAL_TERMINAL_INPUT :: 0x0200
                                                   -- Input mode flag enabling
-                                                  --     terminal escape
-                                                  --     sequences in console
-                                                  --     input.
+                                                  -- terminal escape sequences
+                                                  -- in console input.
 pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
                                                   -- Output mode flag enabling
-                                                  --     terminal escape
-                                                  --     sequences in console
-                                                  --     output.
+                                                  -- terminal escape sequences
+                                                  -- in console output.
+
+pub WAIT_OBJECT_0 :: 0x00000000
+                                 -- Wait result indicating the handle is
+                                 -- signalled.
+pub WAIT_TIMEOUT :: 0x00000102  -- Wait result indicating the timeout elapsed.
+
+pub KEY_EVENT :: 0x0001  -- Console input-record type for keyboard events.
+
+pub VK_BACK   :: 0x08  -- Virtual-key code for Backspace.
+pub VK_TAB    :: 0x09  -- Virtual-key code for Tab.
+pub VK_RETURN :: 0x0d  -- Virtual-key code for Enter.
+pub VK_ESCAPE :: 0x1b  -- Virtual-key code for Escape.
+pub VK_SPACE  :: 0x20  -- Virtual-key code for Space.
+pub VK_PRIOR  :: 0x21  -- Virtual-key code for PageUp.
+pub VK_NEXT   :: 0x22  -- Virtual-key code for PageDown.
+pub VK_END    :: 0x23  -- Virtual-key code for End.
+pub VK_HOME   :: 0x24  -- Virtual-key code for Home.
+pub VK_LEFT   :: 0x25  -- Virtual-key code for Left Arrow.
+pub VK_UP     :: 0x26  -- Virtual-key code for Up Arrow.
+pub VK_RIGHT  :: 0x27  -- Virtual-key code for Right Arrow.
+pub VK_DOWN   :: 0x28  -- Virtual-key code for Down Arrow.
+pub VK_INSERT :: 0x2d  -- Virtual-key code for Insert.
+pub VK_DELETE :: 0x2e  -- Virtual-key code for Delete.
+pub VK_F1     :: 0x70  -- Virtual-key code for F1.
+pub VK_F2     :: 0x71  -- Virtual-key code for F2.
+pub VK_F3     :: 0x72  -- Virtual-key code for F3.
+pub VK_F4     :: 0x73  -- Virtual-key code for F4.
+pub VK_F5     :: 0x74  -- Virtual-key code for F5.
+pub VK_F6     :: 0x75  -- Virtual-key code for F6.
+pub VK_F7     :: 0x76  -- Virtual-key code for F7.
+pub VK_F8     :: 0x77  -- Virtual-key code for F8.
+pub VK_F9     :: 0x78  -- Virtual-key code for F9.
+pub VK_F10    :: 0x79  -- Virtual-key code for F10.
+pub VK_F11    :: 0x7a  -- Virtual-key code for F11.
+pub VK_F12    :: 0x7b  -- Virtual-key code for F12.
 
 -- Two-dimensional console coordinate.
 pub Coord :: plex #c {
@@ -74,6 +106,18 @@ pub ConsoleScreenBufferInfo :: plex #c {
     maximum_window_size Coord      -- Largest possible window dimensions.
 }
 
+-- Console keyboard input record. This mirrors `INPUT_RECORD` for key events.
+pub InputRecord :: plex #c {
+    event_type       u16
+    _padding         u16
+    key_down         BOOL
+    repeat_count     u16
+    virtual_key_code u16
+    virtual_scan     u16
+    unicode_char     u16
+    control_state    DWORD
+}
+
 ffi "kernel32" {
     get_std_handle :: GetStdHandle (std_handle: DWORD) -> HANDLE
 
@@ -89,6 +133,11 @@ ffi "kernel32" {
                              bytes_written  : ^DWORD,
                              overlapped     : ^void) -> BOOL
 
+    read_console_input :: ReadConsoleInputW (console_input : HANDLE,
+                                             buffer        : ^InputRecord,
+                                             length        : DWORD,
+                                             events_read   : ^DWORD) -> BOOL
+
     get_console_screen_buffer_info :: GetConsoleScreenBufferInfo (console_output : HANDLE,
                                                                   buffer_info    : ^ConsoleScreenBufferInfo) -> BOOL
 
@@ -99,6 +148,9 @@ ffi "kernel32" {
                                         mode           : DWORD) -> BOOL
 
     get_last_error :: GetLastError () -> DWORD
+
+    wait_for_single_object :: WaitForSingleObject (handle       : HANDLE,
+                                                   milliseconds : DWORD) -> DWORD
 
     query_performance_counter :: QueryPerformanceCounter (counter : ^LARGE_INTEGER) -> BOOL
 
@@ -143,6 +195,14 @@ pub sys_write :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
     return bytes_written.as(isize)
 }
 
+-- Reads one Windows console input record.
+pub sys_read_console_input :: fn (handle: HANDLE, record: ^InputRecord) -> isize {
+    events_read : DWORD
+    ok := read_console_input(handle, record, 1, ^events_read)
+    on ok == 0 => return -1
+    return events_read.as(isize)
+}
+
 -- Reads the current console screen-buffer state.
 pub sys_get_console_screen_buffer_info :: fn (handle : HANDLE,
                                               info   : ^ConsoleScreenBufferInfo) -> BOOL {
@@ -162,6 +222,12 @@ pub sys_set_console_mode :: fn (handle: HANDLE, mode: DWORD) -> BOOL {
 -- Reads the calling thread's last Windows error code.
 pub sys_get_last_error :: fn () -> DWORD {
     return get_last_error()
+}
+
+-- Waits for a Windows handle to become signalled.
+pub sys_wait_for_single_object :: fn (handle       : HANDLE,
+                                      milliseconds : DWORD) -> DWORD {
+    return wait_for_single_object(handle, milliseconds)
 }
 
 -- Reads the current high-resolution performance counter.

@@ -226,6 +226,21 @@ on "linux" {
         return key[0]
     }
 
+    -- Reads one byte from terminal input, returning `0` when the timeout elapses.
+    term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
+        current : Termios
+        _ := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
+
+        timeout_mode := current
+        timeout_mode.cc[VMIN] = 0
+        timeout_mode.cc[VTIME] = ((timeout_ms + 99) / 100).as(u8)
+        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^timeout_mode).as(^void))
+
+        key := term_read_byte()
+        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^current).as(^void))
+        return key
+    }
+
 }
 
 on "windows" {
@@ -253,7 +268,6 @@ on "windows" {
         input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT).as(DWORD)
 
         input_mode  &= ~input_mask
-        input_mode  |= ENABLE_VIRTUAL_TERMINAL_INPUT.as(DWORD)
         output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
 
         _ := sys_set_console_mode(input, input_mode)
@@ -303,6 +317,89 @@ on "windows" {
         return key[0]
     }
 
+    -- Reads one byte from terminal input, returning `0` when the timeout elapses.
+    term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
+        input := sys_std_input()
+        wait_result := sys_wait_for_single_object(input, timeout_ms.as(DWORD))
+        on wait_result != WAIT_OBJECT_0 => return 0
+        return term_read_byte()
+    }
+
+    term_windows_virtual_key :: fn (virtual_key: u16) -> Option[KeyCode] {
+        return on virtual_key {
+            VK_BACK => Some(Backspace)
+            VK_TAB => Some(Tab)
+            VK_RETURN => Some(Enter)
+            VK_ESCAPE => Some(Escape)
+            VK_SPACE => Some(Space)
+            VK_PRIOR => Some(PageUp)
+            VK_NEXT => Some(PageDown)
+            VK_END => Some(End)
+            VK_HOME => Some(Home)
+            VK_LEFT => Some(ArrowLeft)
+            VK_UP => Some(ArrowUp)
+            VK_RIGHT => Some(ArrowRight)
+            VK_DOWN => Some(ArrowDown)
+            VK_INSERT => Some(Insert)
+            VK_DELETE => Some(Delete)
+            VK_F1 => Some(F1)
+            VK_F2 => Some(F2)
+            VK_F3 => Some(F3)
+            VK_F4 => Some(F4)
+            VK_F5 => Some(F5)
+            VK_F6 => Some(F6)
+            VK_F7 => Some(F7)
+            VK_F8 => Some(F8)
+            VK_F9 => Some(F9)
+            VK_F10 => Some(F10)
+            VK_F11 => Some(F11)
+            VK_F12 => Some(F12)
+            else => None
+        }
+    }
+
+    term_windows_input_record_key :: fn (record: InputRecord) -> Option[KeyCode] {
+        on record.event_type != KEY_EVENT || record.key_down == 0 => return None
+        on record.unicode_char > 0 && record.unicode_char <= 127 => {
+            return Some(record.unicode_char.as(u8).as(KeyCode))
+        }
+        return term_windows_virtual_key(record.virtual_key_code)
+    }
+
+    term_windows_console_key :: fn () -> Option[KeyCode] {
+        input := sys_std_input()
+        mode : DWORD
+        is_console := sys_get_console_mode(input, ^mode)
+        on is_console == 0 => return None
+
+        for {
+            record : InputRecord
+            records_read := sys_read_console_input(input, ^record)
+            on records_read <= 0 => return None
+
+            key := term_windows_input_record_key(record)
+            on key {
+                Some(_) => return key
+                None => {
+                }
+            }
+        }
+        return None
+    }
+
+    -- Reads one translated terminal key.
+    pub term_get_key :: fn () -> Option[KeyCode] {
+        key := term_windows_console_key()
+        on key {
+            Some(_) => return key
+            None => {
+                byte := term_read_byte()
+                on byte == 0 => return None
+                return Some(byte.as(KeyCode))
+            }
+        }
+    }
+
 }
 
 term_csi_final_key :: fn (final: u8) -> Option[KeyCode] {
@@ -345,6 +442,10 @@ term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> Option[KeyCode] {
 
 term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
     return on final {
+        'A' => Some(ArrowUp)
+        'B' => Some(ArrowDown)
+        'C' => Some(ArrowRight)
+        'D' => Some(ArrowLeft)
         'F' => Some(End)
         'H' => Some(Home)
         'P' => Some(F1)
@@ -379,15 +480,19 @@ term_read_ss3_sequence :: fn () -> Option[KeyCode] {
 }
 
 term_read_escape_sequence :: fn () -> Option[KeyCode] {
-    second := term_read_byte()
+    second := term_read_byte_timeout(25)
     return on second == 0 => Some(Escape) else on (second == '[') => term_read_csi_sequence() else on (second == 'O') => term_read_ss3_sequence() else Some(Escape)
 }
 
--- Reads one translated terminal key, or `None` on EOF/error or an incomplete
--- escape sequence.
-pub term_get_key :: fn () -> Option[KeyCode] {
-    first := term_read_byte()
-    return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
+on "linux" {
+
+    -- Reads one translated terminal key, or `None` on EOF/error or an incomplete
+    -- escape sequence.
+    pub term_get_key :: fn () -> Option[KeyCode] {
+        first := term_read_byte()
+        return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
+    }
+
 }
 
 -- Enables or disables the terminal alternate screen buffer.
@@ -456,6 +561,8 @@ test "terminal escape sequences map to key codes" {
     assert term_csi_tilde_key(5) == Some(PageUp)
     assert term_csi_tilde_key(6) == Some(PageDown)
     assert term_csi_tilde_key(24) == Some(F12)
+    assert term_ss3_key('A') == Some(ArrowUp)
+    assert term_ss3_key('D') == Some(ArrowLeft)
     assert term_ss3_key('P') == Some(F1)
     assert term_ss3_key('S') == Some(F4)
 }
