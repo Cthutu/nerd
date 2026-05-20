@@ -1258,6 +1258,41 @@ llvm_import_for_symbol(const Hir* hir, u32 symbol_handle, u32 type_index)
     return NULL;
 }
 
+internal const HirImport* llvm_import_for_symbol_any_type(const Hir* hir,
+                                                          u32 symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return NULL;
+    }
+
+    for (u32 i = 0; i < array_count(hir->imports); ++i) {
+        const HirImport* import = &hir->imports[i];
+        if (import->symbol_handle == symbol_handle) {
+            return import;
+        }
+    }
+    return NULL;
+}
+
+internal const HirImport* llvm_import_for_symbol_name(const Hir*   hir,
+                                                      const Lexer* lexer,
+                                                      u32 symbol_handle)
+{
+    if (hir == NULL || lexer == NULL || symbol_handle == U32_MAX) {
+        return NULL;
+    }
+
+    string name = lex_symbol(lexer, symbol_handle);
+    for (u32 i = 0; i < array_count(hir->imports); ++i) {
+        const HirImport* import = &hir->imports[i];
+        if (import->symbol_handle != U32_MAX &&
+            string_eq(lex_symbol(lexer, import->symbol_handle), name)) {
+            return import;
+        }
+    }
+    return NULL;
+}
+
 internal const HirImport* llvm_field_import(const Hir*     hir,
                                             const HirExpr* field)
 {
@@ -2463,16 +2498,79 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index);
-internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
+internal bool      llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
+                                         const HirFunction*   function,
+                                         const HirStmt*       stmt);
+internal bool      llvm_emit_return(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt);
-internal bool llvm_emit_return(LlvmFunctionContext* ctx,
-                               const HirFunction*   function,
-                               const HirStmt*       stmt);
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
                                         u32                  expr_index);
+
+internal LlvmValue
+llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  const HirImport*     import,
+                                  u32                  result_type)
+{
+    const HirImport* current_import = import;
+    HirImport        next_import    = {0};
+    for (u32 depth = 0; depth < 16; ++depth) {
+        const Hir*   source_hir         = NULL;
+        const Lexer* source_lexer       = NULL;
+        const Sema*  source_sema        = NULL;
+        u32          source_value_index = U32_MAX;
+        if (current_import == NULL ||
+            !llvm_import_source_value(ctx->sema,
+                                      current_import,
+                                      &source_hir,
+                                      &source_lexer,
+                                      &source_sema,
+                                      &source_value_index)) {
+            return (LlvmValue){0};
+        }
+
+        const HirValue* source_value = &source_hir->values[source_value_index];
+        if (source_value->kind != HIR_VALUE_Constant) {
+            return (LlvmValue){0};
+        }
+
+        if (source_value->value_expr_index != U32_MAX) {
+            LlvmFunctionContext source_ctx = *ctx;
+            source_ctx.hir                 = source_hir;
+            source_ctx.lexer               = source_lexer;
+            source_ctx.sema                = source_sema;
+            LlvmValue result               = llvm_emit_expr(
+                &source_ctx, function, source_value->value_expr_index);
+            ctx->next_temp  = source_ctx.next_temp;
+            ctx->next_label = source_ctx.next_label;
+            if (result.ok && result_type != sema_no_type()) {
+                result.type_index = result_type;
+            }
+            return result;
+        }
+
+        if (source_value->decl_index >= array_count(source_sema->decls)) {
+            return (LlvmValue){0};
+        }
+        const SemaDecl* source_decl =
+            &source_sema->decls[source_value->decl_index];
+        if (source_decl->import_module_index == sema_no_decl()) {
+            return (LlvmValue){0};
+        }
+
+        next_import = (HirImport){
+            .module_index  = source_decl->import_module_index,
+            .decl_index    = source_decl->import_decl_index,
+            .symbol_handle = source_decl->symbol_handle,
+            .type_index    = source_decl->type_index,
+        };
+        current_import = &next_import;
+    }
+    return (LlvmValue){0};
+}
 
 internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
                                                      string               data,
@@ -5558,6 +5656,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                                        binding->target_index),
                 };
             }
+            if (binding->kind == HIR_BINDING_Import) {
+                const HirImport* import =
+                    llvm_binding_import(ctx->hir, expr->ref_index);
+                if (import != NULL) {
+                    return llvm_emit_imported_constant_value(
+                        ctx, function, import, expr->type_index);
+                }
+            }
         }
         u32 value_index = U32_MAX;
         if (llvm_ref_value_index(
@@ -5568,35 +5674,33 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return llvm_emit_expr(ctx, function, value->value_expr_index);
             }
             if (value->kind == HIR_VALUE_Constant) {
-                const HirImport* import = llvm_import_for_symbol(
+                HirImport        decl_import = {0};
+                const HirImport* import      = llvm_import_for_symbol(
                     ctx->hir, expr->symbol_handle, value->type_index);
-                const Hir*   source_hir         = NULL;
-                const Lexer* source_lexer       = NULL;
-                const Sema*  source_sema        = NULL;
-                u32          source_value_index = U32_MAX;
-                if (import != NULL &&
-                    llvm_import_source_value(ctx->sema,
-                                             import,
-                                             &source_hir,
-                                             &source_lexer,
-                                             &source_sema,
-                                             &source_value_index)) {
-                    const HirValue* source_value =
-                        &source_hir->values[source_value_index];
-                    if (source_value->kind == HIR_VALUE_Constant &&
-                        source_value->value_expr_index != U32_MAX) {
-                        LlvmFunctionContext source_ctx = *ctx;
-                        source_ctx.hir                 = source_hir;
-                        source_ctx.lexer               = source_lexer;
-                        source_ctx.sema                = source_sema;
-                        LlvmValue result =
-                            llvm_emit_expr(&source_ctx,
-                                           function,
-                                           source_value->value_expr_index);
-                        ctx->next_temp  = source_ctx.next_temp;
-                        ctx->next_label = source_ctx.next_label;
-                        return result;
+                if (import == NULL) {
+                    import = llvm_import_for_symbol_any_type(
+                        ctx->hir, expr->symbol_handle);
+                }
+                if (import == NULL) {
+                    import = llvm_import_for_symbol_name(
+                        ctx->hir, ctx->lexer, expr->symbol_handle);
+                }
+                if (import == NULL && ctx->sema != NULL &&
+                    value->decl_index < array_count(ctx->sema->decls)) {
+                    const SemaDecl* decl = &ctx->sema->decls[value->decl_index];
+                    if (decl->import_module_index != sema_no_decl()) {
+                        decl_import = (HirImport){
+                            .module_index  = decl->import_module_index,
+                            .decl_index    = decl->import_decl_index,
+                            .symbol_handle = decl->symbol_handle,
+                            .type_index    = decl->type_index,
+                        };
+                        import = &decl_import;
                     }
+                }
+                if (import != NULL) {
+                    return llvm_emit_imported_constant_value(
+                        ctx, function, import, expr->type_index);
                 }
             }
             if (value->kind == HIR_VALUE_Global) {
@@ -8578,7 +8682,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(enum_type),
                           STRINGV(operand.value));
 
-                u32 target_bits = llvm_integer_bits(ctx->sema, expr->type_index);
+                u32 target_bits =
+                    llvm_integer_bits(ctx->sema, expr->type_index);
                 if (target_bits == 64) {
                     return (LlvmValue){
                         .ok         = true,
@@ -8587,7 +8692,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     };
                 }
 
-                string temp = llvm_temp(ctx);
+                string temp  = llvm_temp(ctx);
                 string instr = target_bits < 64 ? s("trunc") : s("sext");
                 sb_format(ctx->sb,
                           "  " STRINGP " = " STRINGP " i64 " STRINGP
@@ -8612,32 +8717,31 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (instr.count > 0) {
                     tag = llvm_temp(ctx);
                     sb_format(ctx->sb,
-                              "  " STRINGP " = " STRINGP " " STRINGP
-                              " " STRINGP " to i64\n",
+                              "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
+                              " to i64\n",
                               STRINGV(tag),
                               STRINGV(instr),
                               STRINGV(source_type),
                               STRINGV(operand.value));
                 }
 
-                string payload_type = string_format(
-                    ctx->arena,
-                    "i%u",
-                    llvm_enum_storage_payload_bits(ctx->sema,
-                                                   expr->type_index));
+                string payload_type =
+                    string_format(ctx->arena,
+                                  "i%u",
+                                  llvm_enum_storage_payload_bits(
+                                      ctx->sema, expr->type_index));
                 string with_tag = llvm_temp(ctx);
                 sb_format(ctx->sb,
-                          "  " STRINGP
-                          " = insertvalue " STRINGP " poison, i64 " STRINGP
-                          ", 0\n",
+                          "  " STRINGP " = insertvalue " STRINGP
+                          " poison, i64 " STRINGP ", 0\n",
                           STRINGV(with_tag),
                           STRINGV(target_type),
                           STRINGV(tag));
 
                 string with_payload = llvm_temp(ctx);
                 sb_format(ctx->sb,
-                          "  " STRINGP " = insertvalue " STRINGP " "
-                          STRINGP ", " STRINGP " 0, 1\n",
+                          "  " STRINGP " = insertvalue " STRINGP " " STRINGP
+                          ", " STRINGP " 0, 1\n",
                           STRINGV(with_payload),
                           STRINGV(target_type),
                           STRINGV(with_tag),

@@ -9,11 +9,12 @@ on "windows" {
     }
 
     debug_log_to_path :: fn (path: []u16, text: string) -> bool {
-        log := sys_create_file2(path.data,
+        log := sys_create_file2(path.data.as(^void),
                                 FILE_APPEND_DATA,
                                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                                 OPEN_ALWAYS)
-        on log.as(usize) == INVALID_HANDLE_VALUE => return no
+        log_value := log.as(usize)
+        on log_value == 0xffffffffffffffff => return no
 
         _written := sys_write(log, text.data.as(^void), text.count)
         _newline := sys_write(log, "\n".data.as(^void), 1)

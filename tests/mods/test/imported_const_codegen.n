@@ -1,0 +1,3 @@
+pub IMPORTED_A :: 4
+pub IMPORTED_B :: 1
+pub IMPORTED_C :: 2

@@ -137,7 +137,7 @@ pub InputRecord :: plex #c {
 ffi "kernel32" {
     get_std_handle :: GetStdHandle (std_handle: DWORD) -> HANDLE
 
-    create_file2 :: CreateFile2 (file_name            : ^u16,
+    create_file2 :: CreateFile2 (file_name            : ^void,
                                  desired_access       : DWORD,
                                  share_mode           : DWORD,
                                  creation_disposition : DWORD,
@@ -191,7 +191,7 @@ pub sys_get_std_handle :: fn (std_handle: DWORD) -> HANDLE {
 }
 
 -- Opens or creates a file using `CreateFile2`.
-pub sys_create_file2 :: fn (file_name            : ^u16,
+pub sys_create_file2 :: fn (file_name            : ^void,
                             desired_access       : DWORD,
                             share_mode           : DWORD,
                             creation_disposition : DWORD) -> HANDLE {
