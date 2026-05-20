@@ -88,14 +88,23 @@ def llvm_escaped_path(path: pathlib.Path) -> str:
     return str(path).replace("\\", "\\5C")
 
 
-def normalize_assert_source_path_lengths(text: str) -> str:
-    pattern = r'(@\.assert\.source_path\.m\d+\.\d+ = .* constant )\[\d+ x i8\] c"([^"]*)\\00"'
+def normalize_llvm_source_path_lengths(text: str) -> str:
+    pattern = r'(@\.(?:assert\.source_path|macro\.file)\.m\d+(?:\.\d+)? = .* constant )\[\d+ x i8\] c"([^"]*)\\00"'
 
     def replace(match: re.Match[str]) -> str:
         count = len(match.group(2)) + 1
         return f'{match.group(1)}[{count} x i8] c"{match.group(2)}\\00"'
 
     return re.sub(pattern, replace, text)
+
+
+def normalize_hir_import_ids(text: str) -> str:
+    text = re.sub(r"module\.\d+\(([^)]+)\)", r"module.\1(\1)", text)
+    return re.sub(r"(from module\.[^ \n]+\.decl\.)\d+", r"\1N", text)
+
+
+def normalize_llvm_imported_module_ids(text: str) -> str:
+    return re.sub(r"@m\d+\.fn\.", "@mN.fn.", text)
 
 
 def normalized_returncode(code: int) -> int:
@@ -266,16 +275,41 @@ def test_language(path: pathlib.Path) -> list[Failure]:
     input_path.write_text(source, encoding="utf-8", newline="\n")
     cleanup_generated_outputs(path)
 
-    proc = run_cmd(
-        [
+    if stdin is not None and os.name == "nt":
+        output_root = input_path.with_suffix("")
+        proc = run_cmd([
             str(NERD),
-            "run",
+            "build",
             "--hir",
             "--llvm",
             str(input_path),
-        ],
-        stdin=stdin,
-    )
+            "--output",
+            str(output_root),
+        ])
+        if proc.returncode == 0:
+            binary_path = pathlib.Path(str(output_root) + ".exe")
+            proc = subprocess.run(
+                [str(binary_path)],
+                cwd=ROOT,
+                env=env(),
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                input=stdin,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+    else:
+        proc = run_cmd(
+            [
+                str(NERD),
+                "run",
+                "--hir",
+                "--llvm",
+                str(input_path),
+            ],
+            stdin=stdin,
+        )
 
     failures: list[Failure] = []
     expected_code = int(expected_exit.strip() or "0")
@@ -300,6 +334,8 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         actual_hir = hir_path.read_text(encoding="utf-8") if hir_path.exists() else ""
         for input_variant in input_variants:
             actual_hir = actual_hir.replace(input_variant, rel(path))
+        expected_hir = normalize_hir_import_ids(expected_hir)
+        actual_hir = normalize_hir_import_ids(actual_hir)
         if not lines_are_subsequence(expected_hir, actual_hir):
             hir_failure = check_equal(path, "hir", expected_hir, actual_hir)
             if hir_failure:
@@ -307,11 +343,13 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     llvm_path = path.parent / f"_{path.stem}.ll"
     if expected_llvm.strip():
-        expected_llvm = normalize_assert_source_path_lengths(expected_llvm)
+        expected_llvm = normalize_llvm_source_path_lengths(expected_llvm)
         actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
         for input_variant in input_variants:
             actual_llvm = actual_llvm.replace(input_variant, rel(path))
-        actual_llvm = normalize_assert_source_path_lengths(actual_llvm)
+        actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
+        expected_llvm = normalize_llvm_imported_module_ids(expected_llvm)
+        actual_llvm = normalize_llvm_imported_module_ids(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:
@@ -350,6 +388,8 @@ def test_hir(path: pathlib.Path) -> list[Failure]:
         failures.append(Failure(path, f"build failed with {proc.returncode}\n{proc.stderr}"))
     else:
         actual_hir = hir_path.read_text(encoding="utf-8") if hir_path.exists() else ""
+        expected_hir = normalize_hir_import_ids(expected_hir)
+        actual_hir = normalize_hir_import_ids(actual_hir)
         if not lines_are_subsequence(expected_hir, actual_hir):
             hir_failure = check_equal(path, "hir", expected_hir, actual_hir)
             if hir_failure:
@@ -399,8 +439,10 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
         for input_variant in input_variants:
             expected_llvm = expected_llvm.replace(input_variant, rel(input_path))
             actual_llvm = actual_llvm.replace(input_variant, rel(input_path))
-        expected_llvm = normalize_assert_source_path_lengths(expected_llvm)
-        actual_llvm = normalize_assert_source_path_lengths(actual_llvm)
+        expected_llvm = normalize_llvm_source_path_lengths(expected_llvm)
+        actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
+        expected_llvm = normalize_llvm_imported_module_ids(expected_llvm)
+        actual_llvm = normalize_llvm_imported_module_ids(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:

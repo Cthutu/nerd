@@ -121,6 +121,10 @@ main :: fn () {}
             {
                 "label": "linux",
                 "kind": 9
+            },
+            {
+                "label": "windows",
+                "kind": 9
             }
         ]
     },

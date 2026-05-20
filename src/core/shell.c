@@ -18,13 +18,98 @@ int shell(cstr command)
 {
     STARTUPINFOA        si = {0};
     PROCESS_INFORMATION pi = {0};
+    HANDLE              process = GetCurrentProcess();
+    HANDLE              source_stdin = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE              stdin_handle = NULL;
+    HANDLE              stdout_handle = NULL;
+    HANDLE              stderr_handle = NULL;
+    char                stdin_temp_path[MAX_PATH] = {0};
 
-    si.cb                  = sizeof(si);
-    char* command_line     = (char*)ALLOC(strlen(command) + 1);
+    DWORD stdin_type = GetFileType(source_stdin);
+    if (stdin_type == FILE_TYPE_PIPE) {
+        char temp_dir[MAX_PATH] = {0};
+        if (GetTempPathA(sizeof(temp_dir), temp_dir) != 0 &&
+            GetTempFileNameA(temp_dir, "nrd", 0, stdin_temp_path) != 0) {
+            SECURITY_ATTRIBUTES sa = {
+                .nLength              = sizeof(sa),
+                .lpSecurityDescriptor = NULL,
+                .bInheritHandle       = TRUE,
+            };
+            HANDLE temp_input = CreateFileA(stdin_temp_path,
+                                            GENERIC_READ | GENERIC_WRITE,
+                                            FILE_SHARE_READ,
+                                            &sa,
+                                            CREATE_ALWAYS,
+                                            FILE_ATTRIBUTE_TEMPORARY,
+                                            NULL);
+            if (temp_input != INVALID_HANDLE_VALUE) {
+                u8    buffer[4096];
+                DWORD bytes_read = 0;
+                while (ReadFile(source_stdin,
+                                buffer,
+                                sizeof(buffer),
+                                &bytes_read,
+                                NULL) &&
+                       bytes_read > 0) {
+                    DWORD bytes_written = 0;
+                    WriteFile(temp_input,
+                              buffer,
+                              bytes_read,
+                              &bytes_written,
+                              NULL);
+                }
+                SetFilePointer(temp_input, 0, NULL, FILE_BEGIN);
+                stdin_handle = temp_input;
+            }
+        }
+    }
+
+    if (stdin_handle == NULL) {
+        DuplicateHandle(process,
+                        source_stdin,
+                        process,
+                        &stdin_handle,
+                        0,
+                        TRUE,
+                        DUPLICATE_SAME_ACCESS);
+    }
+    DuplicateHandle(process,
+                    GetStdHandle(STD_OUTPUT_HANDLE),
+                    process,
+                    &stdout_handle,
+                    0,
+                    TRUE,
+                    DUPLICATE_SAME_ACCESS);
+    DuplicateHandle(process,
+                    GetStdHandle(STD_ERROR_HANDLE),
+                    process,
+                    &stderr_handle,
+                    0,
+                    TRUE,
+                    DUPLICATE_SAME_ACCESS);
+
+    si.cb            = sizeof(si);
+    si.dwFlags       = STARTF_USESTDHANDLES;
+    si.hStdInput     = stdin_handle;
+    si.hStdOutput    = stdout_handle;
+    si.hStdError     = stderr_handle;
+    char* command_line = (char*)ALLOC(strlen(command) + 1);
     strcpy(command_line, command);
 
     if (!CreateProcessA(
-            NULL, command_line, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+            NULL, command_line, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        if (stdin_handle != NULL) {
+            CloseHandle(stdin_handle);
+        }
+        if (stdout_handle != NULL) {
+            CloseHandle(stdout_handle);
+        }
+        if (stderr_handle != NULL) {
+            CloseHandle(stderr_handle);
+        }
+        if (stdin_temp_path[0] != '\0') {
+            path_remove(stdin_temp_path);
+        }
         FREE(command_line);
         return -1;
     }
@@ -36,6 +121,18 @@ int shell(cstr command)
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
+    if (stdin_handle != NULL) {
+        CloseHandle(stdin_handle);
+    }
+    if (stdout_handle != NULL) {
+        CloseHandle(stdout_handle);
+    }
+    if (stderr_handle != NULL) {
+        CloseHandle(stderr_handle);
+    }
+    if (stdin_temp_path[0] != '\0') {
+        path_remove(stdin_temp_path);
+    }
     FREE(command_line);
 
     return (int)exit_code;

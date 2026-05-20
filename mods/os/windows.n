@@ -1,0 +1,8 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides the public Windows operating-system module surface by re-exporting
+-- narrower Windows API modules.
+
+pub use os.windows.kernel

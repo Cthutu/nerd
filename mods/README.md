@@ -58,7 +58,7 @@ The library is organised into three layers:
   portable behaviour even when their implementation delegates to platform
   modules internally.
 - `os`
-  Platform-specific modules such as `os.linux` and future `os.windows`.
+  Platform-specific modules such as `os.linux` and `os.windows`.
   Platform FFI declarations, syscall wrappers, constants, and operating-system
   details belong here rather than in `std`.
 

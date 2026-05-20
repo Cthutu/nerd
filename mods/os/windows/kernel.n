@@ -1,0 +1,140 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides Windows Kernel API bindings used by higher-level NSL modules. This
+-- module exposes raw operating-system handles, console calls, file I/O calls,
+-- and timing calls through small Nerd wrappers.
+
+-- Opaque Windows object handle.
+pub HANDLE :: ^void
+
+-- Windows Boolean result value.
+pub BOOL :: i32
+
+-- Windows unsigned 32-bit integer used by many Kernel APIs.
+pub DWORD :: u32
+
+-- Windows signed 64-bit integer used by performance-counter APIs.
+pub LARGE_INTEGER :: i64
+
+-- Pseudo-handle identifier for the standard input stream.
+pub STD_INPUT_HANDLE : DWORD : 0xfffffff6
+
+-- Pseudo-handle identifier for the standard output stream.
+pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
+
+-- Pseudo-handle identifier for the standard error stream.
+pub STD_ERROR_HANDLE : DWORD : 0xfffffff4
+
+-- Two-dimensional console coordinate.
+pub Coord :: plex #c {
+    x i16  -- Horizontal coordinate.
+    y i16  -- Vertical coordinate.
+}
+
+-- Inclusive console rectangle.
+pub SmallRect :: plex #c {
+    left   i16  -- Left edge.
+    top    i16  -- Top edge.
+    right  i16  -- Right edge.
+    bottom i16  -- Bottom edge.
+}
+
+-- Console screen-buffer state returned by `GetConsoleScreenBufferInfo`.
+pub ConsoleScreenBufferInfo :: plex #c {
+    size                Coord      -- Buffer dimensions.
+    cursor_position     Coord      -- Current cursor position.
+    attributes          u16        -- Current text attributes.
+    window              SmallRect  -- Visible window rectangle.
+    maximum_window_size Coord      -- Largest possible window dimensions.
+}
+
+ffi "kernel32" {
+    get_std_handle :: GetStdHandle (std_handle: DWORD) -> HANDLE
+
+    read_file :: ReadFile (file          : HANDLE,
+                           buffer        : ^void,
+                           bytes_to_read : DWORD,
+                           bytes_read    : ^DWORD,
+                           overlapped    : ^void) -> BOOL
+
+    write_file :: WriteFile (file           : HANDLE,
+                             buffer         : ^void,
+                             bytes_to_write : DWORD,
+                             bytes_written  : ^DWORD,
+                             overlapped     : ^void) -> BOOL
+
+    get_console_screen_buffer_info :: GetConsoleScreenBufferInfo (console_output : HANDLE,
+                                                                  buffer_info    : ^ConsoleScreenBufferInfo) -> BOOL
+
+    get_last_error :: GetLastError () -> DWORD
+
+    query_performance_counter :: QueryPerformanceCounter (counter : ^LARGE_INTEGER) -> BOOL
+
+    query_performance_frequency :: QueryPerformanceFrequency (frequency : ^LARGE_INTEGER) -> BOOL
+
+    sleep :: Sleep (milliseconds: DWORD)
+}
+
+-- Returns a handle for one of the standard streams.
+pub sys_get_std_handle :: fn (std_handle: DWORD) -> HANDLE {
+    return get_std_handle(std_handle)
+}
+
+-- Returns the process standard-input handle.
+pub sys_std_input :: fn () -> HANDLE {
+    return get_std_handle(STD_INPUT_HANDLE)
+}
+
+-- Returns the process standard-output handle.
+pub sys_std_output :: fn () -> HANDLE {
+    return get_std_handle(STD_OUTPUT_HANDLE)
+}
+
+-- Returns the process standard-error handle.
+pub sys_std_error :: fn () -> HANDLE {
+    return get_std_handle(STD_ERROR_HANDLE)
+}
+
+-- Reads bytes from a Windows file or console handle.
+pub sys_read :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
+    bytes_read : DWORD
+    ok := read_file(handle, buffer, count.as(DWORD), ^bytes_read, nil)
+    on ok == 0 => return -1
+    return bytes_read.as(isize)
+}
+
+-- Writes bytes to a Windows file or console handle.
+pub sys_write :: fn (handle: HANDLE, buffer: ^void, count: usize) -> isize {
+    bytes_written : DWORD
+    ok := write_file(handle, buffer, count.as(DWORD), ^bytes_written, nil)
+    on ok == 0 => return -1
+    return bytes_written.as(isize)
+}
+
+-- Reads the current console screen-buffer state.
+pub sys_get_console_screen_buffer_info :: fn (handle : HANDLE,
+                                              info   : ^ConsoleScreenBufferInfo) -> BOOL {
+    return get_console_screen_buffer_info(handle, info)
+}
+
+-- Reads the calling thread's last Windows error code.
+pub sys_get_last_error :: fn () -> DWORD {
+    return get_last_error()
+}
+
+-- Reads the current high-resolution performance counter.
+pub sys_query_performance_counter :: fn (counter: ^LARGE_INTEGER) -> BOOL {
+    return query_performance_counter(counter)
+}
+
+-- Reads the high-resolution performance-counter frequency.
+pub sys_query_performance_frequency :: fn (frequency: ^LARGE_INTEGER) -> BOOL {
+    return query_performance_frequency(frequency)
+}
+
+-- Suspends the current thread for at least the requested milliseconds.
+pub sys_sleep :: fn (milliseconds: DWORD) {
+    sleep(milliseconds)
+}

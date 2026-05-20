@@ -10,14 +10,35 @@ on "linux" {
 
     use os.linux
 
-    -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the
-    -- terminal size cannot be read.
+    -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
+    -- size cannot be read.
     pub term_get_size :: fn () -> (u32, u32) {
         size : WindowSize
-        result := sys_ioctl(STDOUT_FILENO, TIOCGWINSZ, (^size).as(^void))
+        result := sys_ioctl(STDOUT_FILENO,
+                            TIOCGWINSZ.as(u64),
+                            (^size).as(^void))
         on result != 0 => return (0, 0)
 
         return (size.col.as(u32), size.row.as(u32))
+    }
+
+}
+
+on "windows" {
+
+    use os.windows
+
+    -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
+    -- size cannot be read.
+    pub term_get_size :: fn () -> (u32, u32) {
+        output := sys_std_output()
+        info : ConsoleScreenBufferInfo
+        result := sys_get_console_screen_buffer_info(output, ^info)
+        on result == 0 => return (0, 0)
+
+        columns := info.window.right - info.window.left + 1
+        rows := info.window.bottom - info.window.top + 1
+        return (columns.as(u32), rows.as(u32))
     }
 
 }

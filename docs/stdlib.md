@@ -22,9 +22,9 @@ library is organised into three layers:
   portable behaviour even when their implementation delegates to platform
   modules internally.
 - `os`
-  Platform-specific modules such as `os.linux`. Platform FFI declarations,
-  syscall wrappers, constants, and operating-system details belong here rather
-  than under `std`.
+  Platform-specific modules such as `os.linux` and `os.windows`. Platform FFI
+  declarations, syscall wrappers, constants, and operating-system details
+  belong here rather than under `std`.
 
 - `core`
   Pointer-stable arena construction, allocation, reset, and release helpers.
@@ -39,6 +39,9 @@ library is organised into three layers:
   are canonical in `core`.
 - `os.linux`
   Low-level Linux syscall-adjacent bindings.
+- `os.windows`
+  Windows operating-system bindings re-exported from narrower modules such as
+  `os.windows.kernel`.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
