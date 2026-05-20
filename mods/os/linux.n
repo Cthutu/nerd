@@ -20,6 +20,9 @@ pub SYS_READ :: 0
 -- Linux syscall number for `write`.
 pub SYS_WRITE :: 1
 
+-- Linux syscall number for `ioctl`.
+pub SYS_IOCTL :: 16
+
 -- Linux syscall number for `nanosleep`.
 pub SYS_NANOSLEEP :: 35
 
@@ -28,6 +31,17 @@ pub SYS_CLOCK_GETTIME :: 228
 
 -- Linux clock identifier for monotonic time.
 pub CLOCK_MONOTONIC :: 1
+
+-- Linux terminal request for reading window dimensions.
+pub TIOCGWINSZ :: 0x5413
+
+-- Describes terminal window dimensions for `TIOCGWINSZ`.
+pub WindowSize :: plex #c {
+    row    u16  -- Number of character rows.
+    col    u16  -- Number of character columns.
+    xpixel u16  -- Width in pixels when provided by the terminal.
+    ypixel u16  -- Height in pixels when provided by the terminal.
+}
 
 -- Represents the Linux `timespec` structure.
 pub TimeSpec :: plex #c {
@@ -43,6 +57,11 @@ pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
 -- Writes bytes to a file descriptor using the Linux `write` syscall.
 pub sys_write :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+}
+
+-- Applies a Linux `ioctl` request with a pointer argument.
+pub sys_ioctl :: fn (fd: i32, request: u64, arg: ^void) -> i32 {
+    return syscall(SYS_IOCTL, fd.as(u64), request, arg.as(usize).as(u64), 0, 0, 0).as(i32)
 }
 
 -- Reads a Linux clock into a `TimeSpec`.

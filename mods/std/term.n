@@ -1,0 +1,30 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides terminal helpers for interactive command-line programs. This module
+-- exposes portable terminal concepts while using platform-specific OS calls
+-- underneath.
+
+on "linux" {
+
+    use os.linux
+
+    -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the
+    -- terminal size cannot be read.
+    pub term_get_size :: fn () -> (u32, u32) {
+        size : WindowSize
+        result := sys_ioctl(STDOUT_FILENO, TIOCGWINSZ, (^size).as(^void))
+        on result != 0 => return (0, 0)
+
+        return (size.col.as(u32), size.row.as(u32))
+    }
+
+}
+
+test "term_get_size returns a column and row tuple" {
+    size := term_get_size()
+
+    assert size.0 >= 0
+    assert size.1 >= 0
+}
