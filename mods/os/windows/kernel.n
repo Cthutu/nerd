@@ -145,6 +145,8 @@ ffi "kernel32" {
                                              length        : DWORD,
                                              events_read   : ^DWORD) -> BOOL
 
+    flush_console_input_buffer :: FlushConsoleInputBuffer (console_input : HANDLE) -> BOOL
+
     get_console_screen_buffer_info :: GetConsoleScreenBufferInfo (console_output : HANDLE,
                                                                   buffer_info    : ^ConsoleScreenBufferInfo) -> BOOL
 
@@ -208,6 +210,11 @@ pub sys_read_console_input :: fn (handle: HANDLE, record: ^InputRecord) -> isize
     ok := read_console_input(handle, record, 1, ^events_read)
     on ok == 0 => return -1
     return events_read.as(isize)
+}
+
+-- Clears pending console input records from a Windows console handle.
+pub sys_flush_console_input_buffer :: fn (handle: HANDLE) -> BOOL {
+    return flush_console_input_buffer(handle)
 }
 
 -- Reads the current console screen-buffer state.
