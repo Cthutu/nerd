@@ -33,6 +33,7 @@ pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
 
 pub WAIT_OBJECT_0 :: 0x00000000
 pub WAIT_TIMEOUT  :: 0x00000102
+pub CP_UTF8       :: 65001
 
 pub KEY_EVENT :: 0x0001
 
@@ -142,6 +143,14 @@ ffi "kernel32" {
     c_SetConsoleMode :: SetConsoleMode (hConsoleHandle : HANDLE,
                                         dwMode         : DWORD) -> BOOL
 
+    c_GetConsoleCP :: GetConsoleCP () -> DWORD
+
+    c_SetConsoleCP :: SetConsoleCP (wCodePageID: DWORD) -> BOOL
+
+    c_GetConsoleOutputCP :: GetConsoleOutputCP () -> DWORD
+
+    c_SetConsoleOutputCP :: SetConsoleOutputCP (wCodePageID: DWORD) -> BOOL
+
     c_GetLastError :: GetLastError () -> DWORD
 
     c_WaitForSingleObject :: WaitForSingleObject (hHandle        : HANDLE,
@@ -240,6 +249,22 @@ pub GetConsoleMode :: fn (hConsoleHandle: HANDLE, lpMode: ^DWORD) -> BOOL {
 
 pub SetConsoleMode :: fn (hConsoleHandle: HANDLE, dwMode: DWORD) -> BOOL {
     return c_SetConsoleMode(hConsoleHandle, dwMode)
+}
+
+pub GetConsoleCP :: fn () -> DWORD {
+    return c_GetConsoleCP()
+}
+
+pub SetConsoleCP :: fn (wCodePageID: DWORD) -> BOOL {
+    return c_SetConsoleCP(wCodePageID)
+}
+
+pub GetConsoleOutputCP :: fn () -> DWORD {
+    return c_GetConsoleOutputCP()
+}
+
+pub SetConsoleOutputCP :: fn (wCodePageID: DWORD) -> BOOL {
+    return c_SetConsoleOutputCP(wCodePageID)
 }
 
 pub GetLastError :: fn () -> DWORD {

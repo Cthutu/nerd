@@ -7,7 +7,6 @@
 -- underneath.
 
 use std.math
-
 -- Represents terminal key codes, using ASCII values for byte-sized input and
 -- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
@@ -864,6 +863,8 @@ on "windows" {
 
     term_original_input_mode  : DWORD
     term_original_output_mode : DWORD
+    term_original_input_cp    : DWORD
+    term_original_output_cp   : DWORD
     term_original_mode_saved  : bool
 
     -- Applies raw terminal input mode and saves the original Windows console modes.
@@ -878,6 +879,8 @@ on "windows" {
         _ := GetConsoleMode(output, ^output_mode)
         term_original_input_mode  = input_mode
         term_original_output_mode = output_mode
+        term_original_input_cp    = GetConsoleCP()
+        term_original_output_cp   = GetConsoleOutputCP()
         term_original_mode_saved  = yes
 
         input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT).as(DWORD)
@@ -885,6 +888,8 @@ on "windows" {
         input_mode  &= ~input_mask
         output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
 
+        _ := SetConsoleCP(CP_UTF8)
+        _ := SetConsoleOutputCP(CP_UTF8)
         _ := SetConsoleMode(input, input_mode)
         _ := SetConsoleMode(output, output_mode)
     }
@@ -896,6 +901,8 @@ on "windows" {
 
         _ := SetConsoleMode(input, term_original_input_mode)
         _ := SetConsoleMode(output, term_original_output_mode)
+        _ := SetConsoleCP(term_original_input_cp)
+        _ := SetConsoleOutputCP(term_original_output_cp)
         term_original_mode_saved = no
     }
 
