@@ -326,6 +326,25 @@ bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span)
     return false;
 }
 
+bool error_0206_tuple_destructure_requires_parens(NerdSource source,
+                                                  ErrorSpan  span)
+{
+    ErrorInfo error = error_init(
+        source, span, "Tuple destructuring bindings must be parenthesized");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "bare tuple destructuring target starts here");
+    error_add_note(
+        &error,
+        "Comma-separated binding targets are parsed as destructuring only when "
+        "they are wrapped in parentheses");
+    error_add_help(&error,
+                   "Use `(a, b) := value` instead of `a, b := value`");
+    error_render(&error);
+    return false;
+}
+
 bool error_0207_unexpected_operator(NerdSource source,
                                     ErrorSpan  span,
                                     cstr       actual_operator,

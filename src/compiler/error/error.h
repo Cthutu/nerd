@@ -165,6 +165,8 @@ bool error_0205_expected_declaration_or_expression(NerdSource source,
 
 // Used when `:=` appears after an expression that cannot start a binding.
 bool error_0206_invalid_binding_target(NerdSource source, ErrorSpan span);
+bool error_0206_tuple_destructure_requires_parens(NerdSource source,
+                                                  ErrorSpan  span);
 
 // Used when an operator appears in a place where the parser cannot accept one.
 bool error_0207_unexpected_operator(NerdSource source,

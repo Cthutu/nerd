@@ -272,6 +272,42 @@ internal ErrorSpan ast_span_for_token_index(const AstParseState* state,
     };
 }
 
+internal bool ast_symbol_starts_bare_tuple_destructure(
+    const AstParseState* state, ErrorSpan* out_span)
+{
+    if (state->token.kind != TK_Symbol ||
+        ast_peek_kind_at(state, 0) != TK_Comma) {
+        return false;
+    }
+
+    u32 cursor     = state->token.token_index;
+    u32 last_value = cursor;
+    for (;;) {
+        if (ast_kind_at_stream_index(state, cursor) != TK_Symbol) {
+            return false;
+        }
+
+        last_value = cursor;
+        cursor++;
+
+        TokenKind kind = ast_kind_at_stream_index(state, cursor);
+        if (kind == TK_Comma) {
+            cursor++;
+            continue;
+        }
+
+        if (kind == TK_Colon || kind == TK_Equal) {
+            ErrorSpan start =
+                ast_span_for_token_index(state, state->token.token_index);
+            ErrorSpan end = ast_span_for_token_index(state, last_value);
+            *out_span     = (ErrorSpan){.start = start.start, .end = end.end};
+            return true;
+        }
+
+        return false;
+    }
+}
+
 internal void ast_sync_value_indices(AstParseState* state, u32 token_index)
 {
     state->integer_index = 0;
@@ -2650,6 +2686,14 @@ internal bool ast_parse_for_clause_item(AstParseState* state,
         return ast_parse_variable(state, out_node);
     }
 
+    ErrorSpan bare_destructure_span = {0};
+    if (allow_declaration &&
+        ast_symbol_starts_bare_tuple_destructure(
+            state, &bare_destructure_span)) {
+        return error_0206_tuple_destructure_requires_parens(
+            state->lexer->source, bare_destructure_span);
+    }
+
     u32  expr_node                  = 0;
     bool previous_boundary          = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
@@ -3404,6 +3448,13 @@ internal bool ast_parse_block_statement(AstParseState* state)
 
     if (ast_symbol_starts_variable(state)) {
         return ast_parse_variable(state, NULL);
+    }
+
+    ErrorSpan bare_destructure_span = {0};
+    if (ast_symbol_starts_bare_tuple_destructure(
+            state, &bare_destructure_span)) {
+        return error_0206_tuple_destructure_requires_parens(
+            state->lexer->source, bare_destructure_span);
     }
 
     u32 statement_expr_index        = 0;
