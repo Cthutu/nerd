@@ -1,0 +1,21 @@
+on "windows" {
+
+    HANDLE :: ^void
+
+    ffi "kernel32" {
+        GetStdHandle (nStdHandle: u32) -> HANDLE
+    }
+
+    pub local_std_output :: fn () -> HANDLE {
+        return GetStdHandle(0xfffffff5)
+    }
+
+}
+
+on "linux" {
+
+    pub local_std_output :: fn () -> ^void {
+        return nil
+    }
+
+}

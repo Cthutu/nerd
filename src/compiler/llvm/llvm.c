@@ -1002,18 +1002,22 @@ internal string llvm_symbol_name_string(const Lexer* lexer,
     return sb_to_string(&sb);
 }
 
-internal bool llvm_import_source_function(const Sema*      sema,
-                                          const HirImport* import,
-                                          const Hir**      out_hir,
-                                          u32*             out_function_index)
+internal bool llvm_import_source_function_depth(const Sema*      sema,
+                                                const HirImport* import,
+                                                const Hir**      out_hir,
+                                                u32* out_function_index,
+                                                u32  depth)
 {
     if (sema == NULL || sema->program == NULL ||
-        import->module_index >= array_count(sema->program->modules)) {
+        import->module_index >= array_count(sema->program->modules) ||
+        depth > 16) {
         return false;
     }
 
-    const ModuleInfo* module = &sema->program->modules[import->module_index];
-    const Hir*        hir    = &module->front_end.hir;
+    const ModuleInfo* module =
+        &sema->program->modules[import->module_index];
+    const Hir*        hir         = &module->front_end.hir;
+    const Sema*       source_sema = &module->front_end.sema;
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         if (hir->functions[i].decl_index == import->decl_index) {
             *out_hir            = hir;
@@ -1021,7 +1025,34 @@ internal bool llvm_import_source_function(const Sema*      sema,
             return true;
         }
     }
+
+    if (import->decl_index < array_count(source_sema->decls)) {
+        u32 source_symbol =
+            source_sema->decls[import->decl_index].symbol_handle;
+        for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+            const HirBinding* binding = &hir->bindings[i];
+            if (binding->kind == HIR_BINDING_Import &&
+                binding->symbol_handle == source_symbol &&
+                binding->target_index < array_count(hir->imports)) {
+                return llvm_import_source_function_depth(
+                    sema,
+                    &hir->imports[binding->target_index],
+                    out_hir,
+                    out_function_index,
+                    depth + 1);
+            }
+        }
+    }
     return false;
+}
+
+internal bool llvm_import_source_function(const Sema*      sema,
+                                          const HirImport* import,
+                                          const Hir**      out_hir,
+                                          u32*             out_function_index)
+{
+    return llvm_import_source_function_depth(
+        sema, import, out_hir, out_function_index, 0);
 }
 
 internal bool llvm_import_source_generic_function(const Sema*      sema,
