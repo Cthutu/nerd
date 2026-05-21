@@ -150,6 +150,29 @@ main :: fn () {
         "id": 2,
         "result": [
             {
+                "title": "Add use std.math",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use std.math\n\n"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "Fill missing plex fields",
                 "kind": "quickfix",
                 "edit": {

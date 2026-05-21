@@ -34,16 +34,20 @@ key_name :: fn (key: KeyCode) -> string {
 }
 
 draw :: fn (last_key: string, width: u32, height: u32) {
-    term_cls()
-    term_print("Dungeon\n")
-    term_print("=======\n\n")
-    term_print("This example will render a generated dungeon map here.\n\n")
-    term_print("Key translator test\n")
-    term_print("-------------------\n")
-    term_print("Press an arrow key, Home/End, PageUp/PageDown, Insert/Delete, or F1-F12.\n")
-    term_print("Press q or Escape to exit.\n\n")
-    term_print($"Last key: {last_key}\n")
-    term_print($"\nTerminal size: {width}x{height}\n")
+    term_fb_clear()
+    term_fb_box(0, 0, width.as(i32), height.as(i32), BoxStyle.Rounded)
+    term_view(2, 1, width.as(i32) - 4, height.as(i32) - 2)
+
+    term_fb_text(0, 0, "Dungeon", rgb(255, 220, 120))
+    term_fb_text(0, 2, "This example will render a generated dungeon map here.")
+
+    term_fb_text(0, 4, "Key translator test", rgb(160, 220, 255))
+    term_fb_text(0, 5, "Press an arrow key, Home/End, PageUp/PageDown, Insert/Delete, or F1-F12.")
+    term_fb_text(0, 6, "Press q or Escape to exit.")
+
+    term_fb_text(0, 8, $"Last key: {last_key}")
+    term_fb_text(0, 10, $"Terminal size: {width}x{height}")
+    term_view_reset()
 }
 
 main :: fn () {
@@ -56,22 +60,27 @@ main :: fn () {
     draw(last_key, width, height)
 
     for term_loop() {
-        event := term_poll()
-        on event {
-            TermEvent.None => {
-            }
-            TermEvent.KeyDown(key_code) => {
-                last_key = key_name(key_code)
-                draw(last_key, width, height)
+        needs_draw := no
+        for {
+            event := term_poll()
+            on event {
+                TermEvent.None => break
+                TermEvent.KeyDown(key_code) => {
+                    last_key = key_name(key_code)
+                    needs_draw = yes
 
-                on key_code == LowerQ || key_code == Q || key_code == Escape => term_done()
-            }
-            Resize(width, height) => {
-                last_key = "resize"
-                draw(last_key, width, height)
-            }
-            else => {
+                    on key_code == LowerQ || key_code == Q || key_code == Escape => term_done()
+                }
+                Resize(new_width, new_height) => {
+                    width = new_width
+                    height = new_height
+                    last_key = "resize"
+                    needs_draw = yes
+                }
+                else => {
+                }
             }
         }
+        on needs_draw => draw(last_key, width, height)
     }
 }
