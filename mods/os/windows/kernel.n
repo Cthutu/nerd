@@ -120,6 +120,12 @@ ffi "kernel32" {
                               lpNumberOfBytesWritten : ^DWORD,
                               lpOverlapped           : ^void) -> BOOL
 
+    c_WriteConsole :: WriteConsoleW (hConsoleOutput          : HANDLE,
+                                     lpBuffer                : ^void,
+                                     nNumberOfCharsToWrite   : DWORD,
+                                     lpNumberOfCharsWritten  : ^DWORD,
+                                     lpReserved              : ^void) -> BOOL
+
     c_ReadConsoleInput :: ReadConsoleInputW (hConsoleInput        : HANDLE,
                                              lpBuffer             : ^INPUT_RECORD,
                                              nLength              : DWORD,
@@ -194,6 +200,18 @@ pub WriteFile :: fn (hFile                  : HANDLE,
                        nNumberOfBytesToWrite,
                        lpNumberOfBytesWritten,
                        lpOverlapped)
+}
+
+pub WriteConsole :: fn (hConsoleOutput         : HANDLE,
+                        lpBuffer               : ^void,
+                        nNumberOfCharsToWrite  : DWORD,
+                        lpNumberOfCharsWritten : ^DWORD,
+                        lpReserved             : ^void) -> BOOL {
+    return c_WriteConsole(hConsoleOutput,
+                          lpBuffer,
+                          nNumberOfCharsToWrite,
+                          lpNumberOfCharsWritten,
+                          lpReserved)
 }
 
 pub ReadConsoleInput :: fn (hConsoleInput        : HANDLE,

@@ -914,6 +914,38 @@ on "windows" {
     -- Writes text directly to the terminal output stream.
     pub term_print :: fn (text: string) {
         output := GetStdHandle(STD_OUTPUT_HANDLE)
+        mode : DWORD
+        is_console := GetConsoleMode(output, ^mode)
+        on is_console != 0 => {
+            wide : [..]u16
+            index : usize = 0
+            for index < text.count {
+                decoded := term_utf8_decode_at(text, index)
+                on decoded.1 == 0 => break
+
+                ch := decoded.0
+                on ch < 0x10000 => {
+                    wide.push(ch.as(u16))
+                } else {
+                    value := ch - 0x10000
+                    wide.push((0xd800 + (value >> 10)).as(u16))
+                    wide.push((0xdc00 + (value & 0x3ff)).as(u16))
+                }
+                index += decoded.1
+            }
+
+            chars_written : DWORD
+            on wide.count > 0 => {
+                _ := WriteConsole(output,
+                                  wide.data.as(^void),
+                                  wide.count.as(DWORD),
+                                  ^chars_written,
+                                  nil)
+            }
+            wide.free()
+            return
+        }
+
         bytes_written : DWORD
         _ := WriteFile(output,
                        text.data.as(^void),
