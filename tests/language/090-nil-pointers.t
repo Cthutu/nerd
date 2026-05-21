@@ -66,6 +66,8 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [34 x i8] c"tests/language/090-nil-pointers.t\00"
+
 define internal i32 @fn.0({ ptr, i64 } %bytes) {
   %t1 = extractvalue { ptr, i64 } %bytes, 0
   %t2 = extractvalue { ptr, i64 } %bytes, 1
@@ -87,10 +89,10 @@ define internal ptr @fn.1() {
 }
 
 define internal i32 @fn.2() {
-  %local.2 = alloca ptr
-  store ptr null, ptr %local.2
   %local.1 = alloca i32
   store i32 7, ptr %local.1
+  %local.2 = alloca ptr
+  store ptr null, ptr %local.2
   store ptr %local.1, ptr %local.2
   %t0 = load ptr, ptr %local.2
   store i32 9, ptr %t0
@@ -121,3 +123,4 @@ on.end.2:
 @$take_slice = internal alias i32 ({ ptr, i64 }), ptr @fn.0
 @$ret_ptr = internal alias ptr (), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2
+

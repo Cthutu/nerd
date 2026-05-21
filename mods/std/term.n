@@ -190,6 +190,12 @@ TermCell :: plex {
     flags u32
 }
 
+TermOutput :: plex {
+    bytes []u8
+    count usize
+    truncated bool
+}
+
 ClipResult :: plex {
     ok bool
     dst RectI32
@@ -206,6 +212,8 @@ term_done_requested : bool
 term_events         : [..]TermEvent
 term_last_columns   : u32
 term_last_rows      : u32
+term_arena          : arena
+term_arena_ready    : bool
 term_fb_cells       : [..]TermCell
 term_fb_width       : u32
 term_fb_height      : u32
@@ -217,6 +225,25 @@ term_fb_debug_once  : bool
 pub term_fb_debug_present_once :: fn (path: string = "term-debug.log") {
     term_fb_debug_path = path
     term_fb_debug_once = yes
+}
+
+term_arena_ensure :: fn () {
+    on term_arena_ready => return
+
+    term_arena = arena(1024 * 1024, 64 * 1024)
+    term_arena_ready = yes
+}
+
+term_arena_reset :: fn () {
+    term_arena_ensure()
+    term_arena.reset()
+}
+
+term_arena_done :: fn () {
+    on !term_arena_ready => return
+
+    term_arena.done()
+    term_arena_ready = no
 }
 
 pub rgb :: fn (r: u8, g: u8, b: u8) -> Colour {
@@ -663,40 +690,58 @@ pub term_fb_box :: fn (x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyl
     }
 }
 
-term_output_push :: fn (output: ^[..]u8, text: string) {
+term_output_make :: fn (capacity: usize) -> TermOutput {
+    return TermOutput { bytes: term_arena.alloc_bytes(capacity), count: 0, truncated: no }
+}
+
+term_output_push_byte :: fn (output: ^TermOutput, byte: u8) {
+    on output^.count >= output^.bytes.count => {
+        output^.truncated = yes
+        return
+    }
+
+    output^.bytes[output^.count] = byte
+    output^.count += 1
+}
+
+term_output_push :: fn (output: ^TermOutput, text: string) {
     i : usize = 0
     for i < text.count {
-        output^.push(text.data[i])
+        term_output_push_byte(output, text.data[i])
         i += 1
     }
 }
 
-term_output_push_codepoint :: fn (output: ^[..]u8, ch: u32) {
+term_output_push_codepoint :: fn (output: ^TermOutput, ch: u32) {
     on ch < 0x80 => {
-        output^.push(ch.as(u8))
+        term_output_push_byte(output, ch.as(u8))
     } else on (ch < 0x800) => {
-        output^.push((0xc0 | (ch >> 6)).as(u8))
-        output^.push((0x80 | (ch & 0x3f)).as(u8))
+        term_output_push_byte(output, (0xc0 | (ch >> 6)).as(u8))
+        term_output_push_byte(output, (0x80 | (ch & 0x3f)).as(u8))
     } else on (ch < 0x10000) => {
-        output^.push((0xe0 | (ch >> 12)).as(u8))
-        output^.push((0x80 | ((ch >> 6) & 0x3f)).as(u8))
-        output^.push((0x80 | (ch & 0x3f)).as(u8))
+        term_output_push_byte(output, (0xe0 | (ch >> 12)).as(u8))
+        term_output_push_byte(output, (0x80 | ((ch >> 6) & 0x3f)).as(u8))
+        term_output_push_byte(output, (0x80 | (ch & 0x3f)).as(u8))
     } else {
-        output^.push((0xf0 | (ch >> 18)).as(u8))
-        output^.push((0x80 | ((ch >> 12) & 0x3f)).as(u8))
-        output^.push((0x80 | ((ch >> 6) & 0x3f)).as(u8))
-        output^.push((0x80 | (ch & 0x3f)).as(u8))
+        term_output_push_byte(output, (0xf0 | (ch >> 18)).as(u8))
+        term_output_push_byte(output, (0x80 | ((ch >> 12) & 0x3f)).as(u8))
+        term_output_push_byte(output, (0x80 | ((ch >> 6) & 0x3f)).as(u8))
+        term_output_push_byte(output, (0x80 | (ch & 0x3f)).as(u8))
     }
 }
 
-term_output_colour :: fn (output: ^[..]u8, prefix: string, colour: Colour) {
+term_output_colour :: fn (output: ^TermOutput, prefix: string, colour: Colour) {
     r := ((colour >> 16) & 0xff).as(u8)
     g := ((colour >> 8) & 0xff).as(u8)
     b := (colour & 0xff).as(u8)
     term_output_push(output, $"\x1b[{prefix};2;{r};{g};{b}m")
 }
 
-term_fb_debug_dump_present :: fn (output: [..]u8) {
+term_output_string :: fn (output: TermOutput) -> string {
+    return output.bytes[..output.count].as(string)
+}
+
+term_fb_debug_dump_present :: fn (output: TermOutput) {
     on !term_fb_debug_once => return
     term_fb_debug_once = no
 
@@ -705,16 +750,16 @@ term_fb_debug_dump_present :: fn (output: [..]u8) {
     defer _ := log_close(log)
 
     _ := log_append_line(log, $"framebuffer={term_fb_width}x{term_fb_height}")
-    _ := log_append_line(log, $"output_count={output.count} output_capacity={output.capacity}")
+    _ := log_append_line(log, $"output_count={output.count} output_capacity={output.bytes.count} truncated={output.truncated}")
 
     _ := log_append(log, "output_bytes:")
     for i: usize = 0; i < output.count; i += 1 {
-        _ := log_append(log, $" {output[i].as(u32)}")
+        _ := log_append(log, $" {output.bytes[i].as(u32)}")
     }
     _ := log_append(log, "\n")
 
     _ := log_append_line(log, "output_string_begin")
-    _ := log_append(log, output.as(string))
+    _ := log_append(log, term_output_string(output))
     _ := log_append_line(log, "\noutput_string_end")
 
     _ := log_append_line(log, "cells:")
@@ -731,7 +776,9 @@ term_fb_debug_dump_present :: fn (output: [..]u8) {
 term_fb_present :: fn () {
     on !term_fb_ready => return
 
-    output : [4096..]u8
+    term_arena_ensure()
+    output_capacity := term_fb_width.as(usize) * term_fb_height.as(usize) * 64 + 1024
+    output := term_output_make(output_capacity)
     current_ink : Colour = COLOUR_TRANSPARENT
     current_paper : Colour = COLOUR_TRANSPARENT
 
@@ -784,9 +831,8 @@ term_fb_present :: fn () {
     on output.count > 0 => {
         term_output_push(^output, "\x1b[0m")
         term_fb_debug_dump_present(output)
-        term_print(output.as(string))
+        term_print(term_output_string(output))
     }
-    output.free()
 }
 
 on "linux" {
@@ -1277,6 +1323,7 @@ pub term_init :: fn () {
     on term_initialized => return
 
     term_done_requested = no
+    term_arena_ensure()
     term_queue_clear()
     term_raw_mode_enable(yes)
     term_alternate_screen_enable(yes)
@@ -1317,16 +1364,19 @@ pub term_loop :: fn () -> bool {
     on !term_initialized => return no
 
     on term_done_requested => {
+        term_arena_reset()
         term_fb_present()
         term_fb_release()
         term_alternate_screen_enable(no)
         term_raw_mode_enable(no)
         term_queue_clear()
+        term_arena_done()
         term_initialized    = no
         term_done_requested = no
         return no
     }
 
+    term_arena_reset()
     term_fb_ensure()
     term_fb_present()
     term_view_reset()

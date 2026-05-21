@@ -9736,6 +9736,138 @@ internal void llvm_bind_block_function_values(LlvmFunctionContext* ctx,
     }
 }
 
+internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
+                                                 u32 expr_index);
+
+internal void llvm_collect_addressed_locals(LlvmFunctionContext* ctx,
+                                            u32                  block_index);
+
+internal void llvm_mark_addressed_local_base(LlvmFunctionContext* ctx,
+                                             u32                  expr_index)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return;
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_LocalRef && expr->ref_kind == HIR_REF_Local) {
+        llvm_mark_assigned_local(ctx, expr->ref_index);
+        return;
+    }
+    if (expr->kind == HIR_EXPR_Field || expr->kind == HIR_EXPR_TupleField ||
+        expr->kind == HIR_EXPR_Index) {
+        llvm_mark_addressed_local_base(ctx, expr->operand_expr_index);
+    }
+}
+
+internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
+                                                 u32 expr_index)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return;
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_Unary:
+        if (expr->unary_op == HIR_UNARY_AddressOf) {
+            llvm_mark_addressed_local_base(ctx, expr->operand_expr_index);
+        }
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        break;
+    case HIR_EXPR_Binary:
+        llvm_collect_addressed_expr_locals(ctx, expr->lhs_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
+        break;
+    case HIR_EXPR_Assign:
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
+        break;
+    case HIR_EXPR_Call:
+        llvm_collect_addressed_expr_locals(ctx, expr->callee_expr_index);
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            u32 arg_index = expr->first_arg + i;
+            if (arg_index < array_count(ctx->hir->call_args)) {
+                llvm_collect_addressed_expr_locals(
+                    ctx, ctx->hir->call_args[arg_index].expr_index);
+            }
+        }
+        break;
+    case HIR_EXPR_Cast:
+    case HIR_EXPR_Field:
+    case HIR_EXPR_TupleField:
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        break;
+    case HIR_EXPR_Index:
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->extra_expr_index);
+        break;
+    case HIR_EXPR_Block:
+        llvm_collect_addressed_locals(ctx, expr->body_block_index);
+        break;
+    case HIR_EXPR_On:
+        for (u32 i = 0; i < expr->branch_count; ++i) {
+            u32 branch_index = expr->first_branch + i;
+            if (branch_index < array_count(ctx->hir->on_branches)) {
+                const HirOnBranch* branch =
+                    &ctx->hir->on_branches[branch_index];
+                llvm_collect_addressed_expr_locals(ctx,
+                                                   branch->guard_expr_index);
+                llvm_collect_addressed_locals(ctx, branch->body_block_index);
+            }
+        }
+        break;
+    case HIR_EXPR_For:
+        if (expr->for_index < array_count(ctx->hir->fors)) {
+            const HirFor* loop = &ctx->hir->fors[expr->for_index];
+            llvm_collect_addressed_expr_locals(ctx, loop->condition_expr_index);
+            llvm_collect_addressed_expr_locals(ctx, loop->iterable_expr_index);
+            llvm_collect_addressed_locals(ctx, loop->body_block_index);
+            llvm_collect_addressed_locals(ctx, loop->else_block_index);
+            for (u32 i = 0; i < loop->init_stmt_count; ++i) {
+                u32 stmt_index =
+                    ctx->hir->for_init_stmts[loop->first_init_stmt + i];
+                if (stmt_index < array_count(ctx->hir->stmts)) {
+                    const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+                    llvm_collect_addressed_expr_locals(ctx, stmt->expr_index);
+                    llvm_collect_addressed_locals(ctx, stmt->body_block_index);
+                }
+            }
+            for (u32 i = 0; i < loop->update_stmt_count; ++i) {
+                u32 stmt_index =
+                    ctx->hir->for_update_stmts[loop->first_update_stmt + i];
+                if (stmt_index < array_count(ctx->hir->stmts)) {
+                    const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+                    llvm_collect_addressed_expr_locals(ctx, stmt->expr_index);
+                    llvm_collect_addressed_locals(ctx, stmt->body_block_index);
+                }
+            }
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+internal void llvm_collect_addressed_locals(LlvmFunctionContext* ctx,
+                                            u32                  block_index)
+{
+    if (block_index >= array_count(ctx->hir->blocks)) {
+        return;
+    }
+
+    const HirBlock* block = &ctx->hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index >= array_count(ctx->hir->stmts)) {
+            continue;
+        }
+
+        const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        llvm_collect_addressed_expr_locals(ctx, stmt->expr_index);
+        llvm_collect_addressed_locals(ctx, stmt->body_block_index);
+    }
+}
+
 internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
                                            u32                  block_index)
 {
@@ -11972,6 +12104,7 @@ internal void llvm_render_function(StringBuilder*     sb,
         .global_init_value_index = U32_MAX,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
+    llvm_collect_addressed_locals(&ctx, function->body_block_index);
     bool emitted = llvm_initialise_assigned_param_slots(&ctx, function) &&
                    llvm_emit_block(&ctx, function, function->body_block_index);
     if (!emitted || !ctx.block_terminated) {

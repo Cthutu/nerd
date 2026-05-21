@@ -62,7 +62,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [66 x i8] c"tests/language/119-slice-element-pointers.t\00"
+@.macro.file.m0 = private unnamed_addr constant [44 x i8] c"tests/language/119-slice-element-pointers.t\00"
 @.str.m0.0 = private unnamed_addr constant [4 x i8] c"abc\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -106,187 +106,196 @@ define internal i32 @fn.0() {
   %t4 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i64 0
   %t5 = insertvalue { ptr, i64 } poison, ptr %t4, 0
   %t6 = insertvalue { ptr, i64 } %t5, i64 3, 1
-  %t7 = extractvalue { ptr, i64 } %t6, 0
-  %t8 = getelementptr inbounds i32, ptr %t7, i32 2
-  store i32 32, ptr %t8
+  %local.2 = alloca { ptr, i64 }
+  store { ptr, i64 } %t6, ptr %local.2
+  %t7 = load { ptr, i64 }, ptr %local.2
+  %t8 = extractvalue { ptr, i64 } %t7, 0
+  %t9 = getelementptr inbounds i32, ptr %t8, i32 2
+  store i32 32, ptr %t9
   %local.4 = alloca ptr
   store ptr null, ptr %local.4
-  %t9 = load ptr, ptr %local.4
-  %t10 = icmp eq ptr %t9, null
-  br i1 %t10, label %dynarray.alloc.0, label %dynarray.ready.1
+  %t10 = load ptr, ptr %local.4
+  %t11 = icmp eq ptr %t10, null
+  br i1 %t11, label %dynarray.alloc.0, label %dynarray.ready.1
 dynarray.alloc.0:
-  %t11 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 13)
-  %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i64 0, i32 0
-  %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i64 0, i32 1
-  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i64 0, i32 2
-  %t15 = getelementptr inbounds i8, ptr %t11, i64 24
-  store ptr %t15, ptr %t12
-  store i64 0, ptr %t13
+  %t12 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 13)
+  %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i64 0, i32 0
+  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i64 0, i32 1
+  %t15 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i64 0, i32 2
+  %t16 = getelementptr inbounds i8, ptr %t12, i64 24
+  store ptr %t16, ptr %t13
   store i64 0, ptr %t14
-  store ptr %t15, ptr %local.4
+  store i64 0, ptr %t15
+  store ptr %t16, ptr %local.4
   br label %dynarray.ready.1
 dynarray.ready.1:
-  %t16 = load ptr, ptr %local.4
-  %t17 = getelementptr inbounds i8, ptr %t16, i64 -24
-  %t18 = getelementptr inbounds { ptr, i64, i64 }, ptr %t17, i64 0, i32 0
-  %t19 = getelementptr inbounds { ptr, i64, i64 }, ptr %t17, i64 0, i32 1
-  %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %t17, i64 0, i32 2
-  %t21 = load ptr, ptr %t18
-  %t22 = load i64, ptr %t19
+  %t17 = load ptr, ptr %local.4
+  %t18 = getelementptr inbounds i8, ptr %t17, i64 -24
+  %t19 = getelementptr inbounds { ptr, i64, i64 }, ptr %t18, i64 0, i32 0
+  %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %t18, i64 0, i32 1
+  %t21 = getelementptr inbounds { ptr, i64, i64 }, ptr %t18, i64 0, i32 2
+  %t22 = load ptr, ptr %t19
   %t23 = load i64, ptr %t20
-  %t24 = add i64 %t22, 1
-  %t25 = icmp ugt i64 %t24, %t23
-  br i1 %t25, label %dynarray.grow.2, label %dynarray.store.3
+  %t24 = load i64, ptr %t21
+  %t25 = add i64 %t23, 1
+  %t26 = icmp ugt i64 %t25, %t24
+  br i1 %t26, label %dynarray.grow.2, label %dynarray.store.3
 dynarray.grow.2:
-  %t26 = icmp eq i64 %t23, 0
-  %t27 = mul i64 %t23, 2
-  %t28 = select i1 %t26, i64 1, i64 %t27
-  %t29 = mul i64 %t28, 4
-  %t30 = add i64 24, %t29
-  %t31 = call ptr @nrt_mem_realloc(ptr %t17, i64 %t30, i64 16, ptr @.macro.file.m0, i32 13)
-  %t32 = getelementptr inbounds i8, ptr %t31, i64 24
-  %t33 = getelementptr inbounds { ptr, i64, i64 }, ptr %t31, i64 0, i32 0
-  %t34 = getelementptr inbounds { ptr, i64, i64 }, ptr %t31, i64 0, i32 2
-  store ptr %t32, ptr %t33
-  store i64 %t28, ptr %t34
-  store ptr %t32, ptr %local.4
+  %t27 = icmp eq i64 %t24, 0
+  %t28 = mul i64 %t24, 2
+  %t29 = select i1 %t27, i64 1, i64 %t28
+  %t30 = mul i64 %t29, 4
+  %t31 = add i64 24, %t30
+  %t32 = call ptr @nrt_mem_realloc(ptr %t18, i64 %t31, i64 16, ptr @.macro.file.m0, i32 13)
+  %t33 = getelementptr inbounds i8, ptr %t32, i64 24
+  %t34 = getelementptr inbounds { ptr, i64, i64 }, ptr %t32, i64 0, i32 0
+  %t35 = getelementptr inbounds { ptr, i64, i64 }, ptr %t32, i64 0, i32 2
+  store ptr %t33, ptr %t34
+  store i64 %t29, ptr %t35
+  store ptr %t33, ptr %local.4
   br label %dynarray.store.3
 dynarray.store.3:
-  %t35 = load ptr, ptr %local.4
-  %t36 = getelementptr inbounds i8, ptr %t35, i64 -24
-  %t37 = getelementptr inbounds { ptr, i64, i64 }, ptr %t36, i64 0, i32 0
-  %t38 = getelementptr inbounds { ptr, i64, i64 }, ptr %t36, i64 0, i32 1
-  %t39 = load ptr, ptr %t37
-  %t40 = getelementptr inbounds i32, ptr %t39, i64 %t22
-  store i32 5, ptr %t40
-  store i64 %t24, ptr %t38
-  %t41 = load ptr, ptr %local.4
-  %t42 = icmp eq ptr %t41, null
-  br i1 %t42, label %dynarray.alloc.4, label %dynarray.ready.5
+  %t36 = load ptr, ptr %local.4
+  %t37 = getelementptr inbounds i8, ptr %t36, i64 -24
+  %t38 = getelementptr inbounds { ptr, i64, i64 }, ptr %t37, i64 0, i32 0
+  %t39 = getelementptr inbounds { ptr, i64, i64 }, ptr %t37, i64 0, i32 1
+  %t40 = load ptr, ptr %t38
+  %t41 = getelementptr inbounds i32, ptr %t40, i64 %t23
+  store i32 5, ptr %t41
+  store i64 %t25, ptr %t39
+  %t42 = load ptr, ptr %local.4
+  %t43 = icmp eq ptr %t42, null
+  br i1 %t43, label %dynarray.alloc.4, label %dynarray.ready.5
 dynarray.alloc.4:
-  %t43 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 14)
-  %t44 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i64 0, i32 0
-  %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i64 0, i32 1
-  %t46 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i64 0, i32 2
-  %t47 = getelementptr inbounds i8, ptr %t43, i64 24
-  store ptr %t47, ptr %t44
-  store i64 0, ptr %t45
+  %t44 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 14)
+  %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %t44, i64 0, i32 0
+  %t46 = getelementptr inbounds { ptr, i64, i64 }, ptr %t44, i64 0, i32 1
+  %t47 = getelementptr inbounds { ptr, i64, i64 }, ptr %t44, i64 0, i32 2
+  %t48 = getelementptr inbounds i8, ptr %t44, i64 24
+  store ptr %t48, ptr %t45
   store i64 0, ptr %t46
-  store ptr %t47, ptr %local.4
+  store i64 0, ptr %t47
+  store ptr %t48, ptr %local.4
   br label %dynarray.ready.5
 dynarray.ready.5:
-  %t48 = load ptr, ptr %local.4
-  %t49 = getelementptr inbounds i8, ptr %t48, i64 -24
-  %t50 = getelementptr inbounds { ptr, i64, i64 }, ptr %t49, i64 0, i32 0
-  %t51 = getelementptr inbounds { ptr, i64, i64 }, ptr %t49, i64 0, i32 1
-  %t52 = getelementptr inbounds { ptr, i64, i64 }, ptr %t49, i64 0, i32 2
-  %t53 = load ptr, ptr %t50
-  %t54 = load i64, ptr %t51
+  %t49 = load ptr, ptr %local.4
+  %t50 = getelementptr inbounds i8, ptr %t49, i64 -24
+  %t51 = getelementptr inbounds { ptr, i64, i64 }, ptr %t50, i64 0, i32 0
+  %t52 = getelementptr inbounds { ptr, i64, i64 }, ptr %t50, i64 0, i32 1
+  %t53 = getelementptr inbounds { ptr, i64, i64 }, ptr %t50, i64 0, i32 2
+  %t54 = load ptr, ptr %t51
   %t55 = load i64, ptr %t52
-  %t56 = add i64 %t54, 1
-  %t57 = icmp ugt i64 %t56, %t55
-  br i1 %t57, label %dynarray.grow.6, label %dynarray.store.7
+  %t56 = load i64, ptr %t53
+  %t57 = add i64 %t55, 1
+  %t58 = icmp ugt i64 %t57, %t56
+  br i1 %t58, label %dynarray.grow.6, label %dynarray.store.7
 dynarray.grow.6:
-  %t58 = icmp eq i64 %t55, 0
-  %t59 = mul i64 %t55, 2
-  %t60 = select i1 %t58, i64 1, i64 %t59
-  %t61 = mul i64 %t60, 4
-  %t62 = add i64 24, %t61
-  %t63 = call ptr @nrt_mem_realloc(ptr %t49, i64 %t62, i64 16, ptr @.macro.file.m0, i32 14)
-  %t64 = getelementptr inbounds i8, ptr %t63, i64 24
-  %t65 = getelementptr inbounds { ptr, i64, i64 }, ptr %t63, i64 0, i32 0
-  %t66 = getelementptr inbounds { ptr, i64, i64 }, ptr %t63, i64 0, i32 2
-  store ptr %t64, ptr %t65
-  store i64 %t60, ptr %t66
-  store ptr %t64, ptr %local.4
+  %t59 = icmp eq i64 %t56, 0
+  %t60 = mul i64 %t56, 2
+  %t61 = select i1 %t59, i64 1, i64 %t60
+  %t62 = mul i64 %t61, 4
+  %t63 = add i64 24, %t62
+  %t64 = call ptr @nrt_mem_realloc(ptr %t50, i64 %t63, i64 16, ptr @.macro.file.m0, i32 14)
+  %t65 = getelementptr inbounds i8, ptr %t64, i64 24
+  %t66 = getelementptr inbounds { ptr, i64, i64 }, ptr %t64, i64 0, i32 0
+  %t67 = getelementptr inbounds { ptr, i64, i64 }, ptr %t64, i64 0, i32 2
+  store ptr %t65, ptr %t66
+  store i64 %t61, ptr %t67
+  store ptr %t65, ptr %local.4
   br label %dynarray.store.7
 dynarray.store.7:
-  %t67 = load ptr, ptr %local.4
-  %t68 = getelementptr inbounds i8, ptr %t67, i64 -24
-  %t69 = getelementptr inbounds { ptr, i64, i64 }, ptr %t68, i64 0, i32 0
-  %t70 = getelementptr inbounds { ptr, i64, i64 }, ptr %t68, i64 0, i32 1
-  %t71 = load ptr, ptr %t69
-  %t72 = getelementptr inbounds i32, ptr %t71, i64 %t54
-  store i32 6, ptr %t72
-  store i64 %t56, ptr %t70
-  %t73 = load ptr, ptr %local.4
-  %t74 = getelementptr inbounds i8, ptr %t73, i64 -24
-  %t75 = getelementptr inbounds { ptr, i64, i64 }, ptr %t74, i64 0, i32 0
-  %t76 = load ptr, ptr %t75
-  %t77 = getelementptr inbounds i32, ptr %t76, i32 1
-  store i32 7, ptr %t77
-  %t78 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 3 }, 0
-  %t79 = getelementptr inbounds i8, ptr %t78, i32 1
-  %t80 = call i64 @string_builder_mark()
-  %t81 = load [3 x i32], ptr %local.0
-  %t82 = extractvalue [3 x i32] %t81, 1
-  %t83 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t83, i32 %t82)
-  call void @string_builder_append_string(ptr %t83)
-  %t84 = alloca { ptr, i64 }
+  %t68 = load ptr, ptr %local.4
+  %t69 = getelementptr inbounds i8, ptr %t68, i64 -24
+  %t70 = getelementptr inbounds { ptr, i64, i64 }, ptr %t69, i64 0, i32 0
+  %t71 = getelementptr inbounds { ptr, i64, i64 }, ptr %t69, i64 0, i32 1
+  %t72 = load ptr, ptr %t70
+  %t73 = getelementptr inbounds i32, ptr %t72, i64 %t55
+  store i32 6, ptr %t73
+  store i64 %t57, ptr %t71
+  %t74 = load ptr, ptr %local.4
+  %t75 = getelementptr inbounds i8, ptr %t74, i64 -24
+  %t76 = getelementptr inbounds { ptr, i64, i64 }, ptr %t75, i64 0, i32 0
+  %t77 = load ptr, ptr %t76
+  %t78 = getelementptr inbounds i32, ptr %t77, i32 1
+  store i32 7, ptr %t78
+  %local.6 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 3 }, ptr %local.6
+  %t79 = load { ptr, i64 }, ptr %local.6
+  %t80 = extractvalue { ptr, i64 } %t79, 0
+  %t81 = getelementptr inbounds i8, ptr %t80, i32 1
+  %t82 = call i64 @string_builder_mark()
+  %t83 = load [3 x i32], ptr %local.0
+  %t84 = extractvalue [3 x i32] %t83, 1
   %t85 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t85
-  call void @to_string$string(ptr %t84, ptr %t85)
-  call void @string_builder_append_string(ptr %t84)
-  %t86 = extractvalue { ptr, i64 } %t6, 0
-  %t87 = getelementptr inbounds i32, ptr %t86, i32 2
-  %t88 = load i32, ptr %t87
-  %t89 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t89, i32 %t88)
-  call void @string_builder_append_string(ptr %t89)
-  %t90 = alloca { ptr, i64 }
-  %t91 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t91
-  call void @to_string$string(ptr %t90, ptr %t91)
-  call void @string_builder_append_string(ptr %t90)
-  %t92 = load ptr, ptr %local.4
-  %t93 = getelementptr inbounds i8, ptr %t92, i64 -24
-  %t94 = getelementptr inbounds { ptr, i64, i64 }, ptr %t93, i64 0, i32 0
-  %t95 = load ptr, ptr %t94
-  %t96 = getelementptr inbounds i32, ptr %t95, i32 1
-  %t97 = load i32, ptr %t96
-  %t98 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t98, i32 %t97)
-  call void @string_builder_append_string(ptr %t98)
-  %t99 = alloca { ptr, i64 }
-  %t100 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t100
-  call void @to_string$string(ptr %t99, ptr %t100)
-  call void @string_builder_append_string(ptr %t99)
-  %t101 = load i8, ptr %t79
+  call void @to_string$i32(ptr %t85, i32 %t84)
+  call void @string_builder_append_string(ptr %t85)
+  %t86 = alloca { ptr, i64 }
+  %t87 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t87
+  call void @to_string$string(ptr %t86, ptr %t87)
+  call void @string_builder_append_string(ptr %t86)
+  %t88 = load { ptr, i64 }, ptr %local.2
+  %t89 = extractvalue { ptr, i64 } %t88, 0
+  %t90 = getelementptr inbounds i32, ptr %t89, i32 2
+  %t91 = load i32, ptr %t90
+  %t92 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t92, i32 %t91)
+  call void @string_builder_append_string(ptr %t92)
+  %t93 = alloca { ptr, i64 }
+  %t94 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t94
+  call void @to_string$string(ptr %t93, ptr %t94)
+  call void @string_builder_append_string(ptr %t93)
+  %t95 = load ptr, ptr %local.4
+  %t96 = getelementptr inbounds i8, ptr %t95, i64 -24
+  %t97 = getelementptr inbounds { ptr, i64, i64 }, ptr %t96, i64 0, i32 0
+  %t98 = load ptr, ptr %t97
+  %t99 = getelementptr inbounds i32, ptr %t98, i32 1
+  %t100 = load i32, ptr %t99
+  %t101 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t101, i32 %t100)
+  call void @string_builder_append_string(ptr %t101)
   %t102 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t102, i8 %t101)
-  call void @string_builder_append_string(ptr %t102)
   %t103 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t103, i64 %t80)
-  %t104 = load { ptr, i64 }, ptr %t103
-  call void @$prn({ ptr, i64 } %t104)
-  %t105 = load [3 x i32], ptr %local.0
-  %t106 = extractvalue [3 x i32] %t105, 1
-  %t107 = extractvalue { ptr, i64 } %t6, 0
-  %t108 = getelementptr inbounds i32, ptr %t107, i32 2
-  %t109 = load i32, ptr %t108
-  %t110 = add i32 %t106, %t109
-  %t111 = load ptr, ptr %local.4
-  %t112 = getelementptr inbounds i8, ptr %t111, i64 -24
-  %t113 = getelementptr inbounds { ptr, i64, i64 }, ptr %t112, i64 0, i32 0
-  %t114 = load ptr, ptr %t113
-  %t115 = getelementptr inbounds i32, ptr %t114, i32 1
-  %t116 = load i32, ptr %t115
-  %t117 = add i32 %t110, %t116
-  %t118 = load i8, ptr %t79
-  %t119 = zext i8 %t118 to i32
-  %t120 = add i32 %t117, %t119
-  %t121 = load ptr, ptr %local.4
-  %t122 = icmp eq ptr %t121, null
-  br i1 %t122, label %dynarray.free.done.9, label %dynarray.free.8
+  store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t103
+  call void @to_string$string(ptr %t102, ptr %t103)
+  call void @string_builder_append_string(ptr %t102)
+  %t104 = load i8, ptr %t81
+  %t105 = alloca { ptr, i64 }
+  call void @to_string$u8(ptr %t105, i8 %t104)
+  call void @string_builder_append_string(ptr %t105)
+  %t106 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t106, i64 %t82)
+  %t107 = load { ptr, i64 }, ptr %t106
+  call void @$prn({ ptr, i64 } %t107)
+  %t108 = load [3 x i32], ptr %local.0
+  %t109 = extractvalue [3 x i32] %t108, 1
+  %t110 = load { ptr, i64 }, ptr %local.2
+  %t111 = extractvalue { ptr, i64 } %t110, 0
+  %t112 = getelementptr inbounds i32, ptr %t111, i32 2
+  %t113 = load i32, ptr %t112
+  %t114 = add i32 %t109, %t113
+  %t115 = load ptr, ptr %local.4
+  %t116 = getelementptr inbounds i8, ptr %t115, i64 -24
+  %t117 = getelementptr inbounds { ptr, i64, i64 }, ptr %t116, i64 0, i32 0
+  %t118 = load ptr, ptr %t117
+  %t119 = getelementptr inbounds i32, ptr %t118, i32 1
+  %t120 = load i32, ptr %t119
+  %t121 = add i32 %t114, %t120
+  %t122 = load i8, ptr %t81
+  %t123 = zext i8 %t122 to i32
+  %t124 = add i32 %t121, %t123
+  %t125 = load ptr, ptr %local.4
+  %t126 = icmp eq ptr %t125, null
+  br i1 %t126, label %dynarray.free.done.9, label %dynarray.free.8
 dynarray.free.8:
-  %t123 = getelementptr inbounds i8, ptr %t121, i64 -24
-  call void @nrt_mem_free(ptr %t123)
+  %t127 = getelementptr inbounds i8, ptr %t125, i64 -24
+  call void @nrt_mem_free(ptr %t127)
   store ptr null, ptr %local.4
   br label %dynarray.free.done.9
 dynarray.free.done.9:
-  ret i32 %t120
+  ret i32 %t124
 }
 
 @$main = alias i32 (), ptr @fn.0
+

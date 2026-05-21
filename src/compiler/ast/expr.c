@@ -141,7 +141,15 @@ internal bool ast_parse_plex_literal_field_value(AstParseState* state,
         if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
             return false;
         }
-        return ast_parse_expr_bp(state, 0, out_value_node);
+
+        bool previous_boundary             = state->allow_statement_boundary;
+        bool previous_param_separator      = state->stop_before_param_separator;
+        state->allow_statement_boundary    = true;
+        state->stop_before_param_separator = true;
+        bool parsed = ast_parse_expr_bp(state, 0, out_value_node);
+        state->stop_before_param_separator = previous_param_separator;
+        state->allow_statement_boundary    = previous_boundary;
+        return parsed;
     }
 
     return ast_emit_node(state,
