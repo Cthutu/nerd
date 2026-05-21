@@ -5,6 +5,7 @@
 // clang-format on
 
 #include <cli/cli.h>
+#include <compiler/build/back/back.h>
 #include <compiler/build/back/llvm_text.h>
 #include <compiler/build/front/front.h>
 #include <compiler/compiler.h>
@@ -219,6 +220,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
         nerd_cli_param_string(cli_result, "command.params.name", (string){0});
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
+    }
+    if (string_eq_cstr(name, "llvm-tool-output")) {
+        return back_end_llvm_tool_output_self_test() ? 0 : 1;
     }
     if (string_eq_cstr(name, "module-filemap-release")) {
         return nerd_internal_module_filemap_test();

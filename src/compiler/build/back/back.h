@@ -14,3 +14,5 @@ bool back_end_program(const ProgramInfo*        program,
                       const NerdArtifactConfig* artifacts,
                       bool                      verbose,
                       Timing*                   timing);
+
+bool back_end_llvm_tool_output_self_test(void);
