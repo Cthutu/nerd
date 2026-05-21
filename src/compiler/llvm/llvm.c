@@ -1014,9 +1014,8 @@ internal bool llvm_import_source_function_depth(const Sema*      sema,
         return false;
     }
 
-    const ModuleInfo* module =
-        &sema->program->modules[import->module_index];
-    const Hir*        hir         = &module->front_end.hir;
+    const ModuleInfo* module = &sema->program->modules[import->module_index];
+    const Hir*        hir    = &module->front_end.hir;
     const Sema*       source_sema = &module->front_end.sema;
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         if (hir->functions[i].decl_index == import->decl_index) {
@@ -7080,15 +7079,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    if (value.value.count == 0) {
-                        value = llvm_default_value(ctx, expr->type_index);
-                        if (!value.ok) {
-                            array_free(phi_values);
-                            array_free(phi_labels);
-                            return (LlvmValue){0};
-                        }
-                    }
                     if (!ctx->block_terminated) {
+                        if (value.value.count == 0) {
+                            value = llvm_default_value(ctx, expr->type_index);
+                            if (!value.ok) {
+                                array_free(phi_values);
+                                array_free(phi_labels);
+                                return (LlvmValue){0};
+                            }
+                        }
                         string value_label = llvm_label(ctx, "on.value");
                         sb_format(ctx->sb,
                                   "  br label %%" STRINGP "\n" STRINGP ":\n"
@@ -7208,15 +7207,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    if (value.value.count == 0) {
-                        value = llvm_default_value(ctx, expr->type_index);
-                        if (!value.ok) {
-                            array_free(phi_values);
-                            array_free(phi_labels);
-                            return (LlvmValue){0};
-                        }
-                    }
                     if (!ctx->block_terminated) {
+                        if (value.value.count == 0) {
+                            value = llvm_default_value(ctx, expr->type_index);
+                            if (!value.ok) {
+                                array_free(phi_values);
+                                array_free(phi_labels);
+                                return (LlvmValue){0};
+                            }
+                        }
                         string value_label = llvm_label(ctx, "on.value");
                         sb_format(ctx->sb,
                                   "  br label %%" STRINGP "\n" STRINGP ":\n"
@@ -9414,7 +9413,10 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt)
 {
-    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    bool old_discard_expr_value = ctx->discard_expr_value;
+    ctx->discard_expr_value     = false;
+    LlvmValue value         = llvm_emit_expr(ctx, function, stmt->expr_index);
+    ctx->discard_expr_value = old_discard_expr_value;
     if (!value.ok) {
         return false;
     }
@@ -9652,9 +9654,15 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
         return true;
     }
 
-    LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    bool old_discard_expr_value = ctx->discard_expr_value;
+    ctx->discard_expr_value     = false;
+    LlvmValue value         = llvm_emit_expr(ctx, function, stmt->expr_index);
+    ctx->discard_expr_value = old_discard_expr_value;
     if (!value.ok) {
         return false;
+    }
+    if (ctx->block_terminated && value.value.count == 0) {
+        return true;
     }
     if (!llvm_emit_defers_to(ctx, function, 0, false)) {
         return false;
@@ -11964,6 +11972,7 @@ internal void llvm_render_function(StringBuilder*     sb,
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
+    array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
     arena_done(&temp);
     sb_append_cstr(sb, "}\n");
