@@ -107,7 +107,7 @@ dynarray.field.load.1:
   br label %dynarray.field.done.2
 dynarray.field.done.2:
   %t13 = load i64, ptr %t8
-  %t14 = icmp slt i64 %t13, %initial_size
+  %t14 = icmp ult i64 %t13, %initial_size
   %t15 = icmp eq i1 %t14, 1
   br i1 %t15, label %on.body.4, label %on.end.3
 on.body.4:

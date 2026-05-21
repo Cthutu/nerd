@@ -1,0 +1,21 @@
+use std.term
+
+main :: fn () {
+    term_fb_debug_present_once("term-debug.log")
+    term_init()
+    term_cursor_enable(no)
+    defer term_cursor_enable(yes)
+
+    term_fb_clear()
+    term_fb_box(0, 0, 24, 7, BoxStyle.Rounded, rgb(220, 220, 220))
+    term_view(2, 1, 20, 5)
+    term_fb_text(0, 0, "Framebuffer probe", rgb(255, 220, 120), COLOUR_TRANSPARENT)
+    term_fb_text(0, 2, "ASCII: +-+ | | +-+", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+    term_fb_text(0, 3, "Unicode: ╭─╮ │ ╰─╯", rgb(160, 220, 255), COLOUR_TRANSPARENT)
+    term_view_reset()
+
+    _ := term_loop()
+    _ := term_get_key()
+    term_done()
+    _ := term_loop()
+}

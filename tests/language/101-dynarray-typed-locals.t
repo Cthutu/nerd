@@ -211,7 +211,7 @@ for.cond.6:
   %t37 = extractvalue { ptr, i64 } %sep, 1
   %t38 = add i64 %t36, %t37
   %t39 = extractvalue { ptr, i64 } %s, 1
-  %t40 = icmp sle i64 %t38, %t39
+  %t40 = icmp ule i64 %t38, %t39
   br i1 %t40, label %for.body.7, label %for.end.9
 for.body.7:
   %local.5 = alloca i1
@@ -223,7 +223,7 @@ for.cond.10:
   %t41 = load i1, ptr %local.5
   %t42 = load i64, ptr %local.6
   %t43 = extractvalue { ptr, i64 } %sep, 1
-  %t44 = icmp slt i64 %t42, %t43
+  %t44 = icmp ult i64 %t42, %t43
   %t45 = and i1 %t41, %t44
   br i1 %t45, label %for.body.11, label %for.end.13
 for.body.11:

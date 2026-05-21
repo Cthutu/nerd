@@ -7,6 +7,7 @@
 -- underneath.
 
 use std.math
+use std.log
 -- Represents terminal key codes, using ASCII values for byte-sized input and
 -- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
@@ -210,6 +211,13 @@ term_fb_width       : u32
 term_fb_height      : u32
 term_fb_view        : RectI32
 term_fb_ready       : bool
+term_fb_debug_path  : string
+term_fb_debug_once  : bool
+
+pub term_fb_debug_present_once :: fn (path: string = "term-debug.log") {
+    term_fb_debug_path = path
+    term_fb_debug_once = yes
+}
 
 pub rgb :: fn (r: u8, g: u8, b: u8) -> Colour {
     return (r.as(u32) << 16 | b.as(u32) | (g.as(u32) << 8)).as(Colour)
@@ -378,24 +386,24 @@ term_codepoint_width :: fn (ch: u32) -> i32 {
 term_utf8_decode_at :: fn (text: string, index: usize) -> (u32, usize) {
     on index >= text.count => return (0, 0)
 
-    first := text.data[index].as(u8)
-    on first < 0x80 => return (first.as(u32), 1)
+    first := text.data[index].as(u8).as(u32)
+    on first < 0x80 => return (first, 1)
     on (first & 0xe0) == 0xc0 && index + 1 < text.count => {
-        second := text.data[index + 1].as(u8)
-        ch := ((first & 0x1f).as(u32) << 6) | (second & 0x3f).as(u32)
+        second := text.data[index + 1].as(u8).as(u32)
+        ch := ((first & 0x1f) << 6) | (second & 0x3f)
         return (ch, 2)
     }
     on (first & 0xf0) == 0xe0 && index + 2 < text.count => {
-        second := text.data[index + 1].as(u8)
-        third := text.data[index + 2].as(u8)
-        ch := ((first & 0x0f).as(u32) << 12) | ((second & 0x3f).as(u32) << 6) | (third & 0x3f).as(u32)
+        second := text.data[index + 1].as(u8).as(u32)
+        third := text.data[index + 2].as(u8).as(u32)
+        ch := ((first & 0x0f) << 12) | ((second & 0x3f) << 6) | (third & 0x3f)
         return (ch, 3)
     }
     on (first & 0xf8) == 0xf0 && index + 3 < text.count => {
-        second := text.data[index + 1].as(u8)
-        third := text.data[index + 2].as(u8)
-        fourth := text.data[index + 3].as(u8)
-        ch := ((first & 0x07).as(u32) << 18) | ((second & 0x3f).as(u32) << 12) | ((third & 0x3f).as(u32) << 6) | (fourth & 0x3f).as(u32)
+        second := text.data[index + 1].as(u8).as(u32)
+        third := text.data[index + 2].as(u8).as(u32)
+        fourth := text.data[index + 3].as(u8).as(u32)
+        ch := ((first & 0x07) << 18) | ((second & 0x3f) << 12) | ((third & 0x3f) << 6) | (fourth & 0x3f)
         return (ch, 4)
     }
     return (0xfffd, 1)
@@ -501,6 +509,19 @@ pub term_fb_clear :: fn () {
 
 pub term_fb_text :: fn (x: i32, y: i32, text: string, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
+
+    on term_fb_debug_once => {
+        log := log_create(term_fb_debug_path)
+        on log_valid(log) => {
+            _ := log_append_line(log, $"term_fb_text x={x} y={y} count={text.count}")
+            _ := log_append(log, "text_bytes:")
+            for i: usize = 0; i < text.count; i += 1 {
+                _ := log_append(log, $" {text.data[i].as(u32)}")
+            }
+            _ := log_append(log, "\n")
+            _ := log_close(log)
+        }
+    }
 
     text_width := term_text_display_width(text)
     clip := term_clip_rect(RectI32 { x: x, y: y, w: text_width, h: 1 })
@@ -675,6 +696,38 @@ term_output_colour :: fn (output: ^[..]u8, prefix: string, colour: Colour) {
     term_output_push(output, $"\x1b[{prefix};2;{r};{g};{b}m")
 }
 
+term_fb_debug_dump_present :: fn (output: [..]u8) {
+    on !term_fb_debug_once => return
+    term_fb_debug_once = no
+
+    log := log_create(term_fb_debug_path)
+    on !log_valid(log) => return
+    defer _ := log_close(log)
+
+    _ := log_append_line(log, $"framebuffer={term_fb_width}x{term_fb_height}")
+    _ := log_append_line(log, $"output_count={output.count} output_capacity={output.capacity}")
+
+    _ := log_append(log, "output_bytes:")
+    for i: usize = 0; i < output.count; i += 1 {
+        _ := log_append(log, $" {output[i].as(u32)}")
+    }
+    _ := log_append(log, "\n")
+
+    _ := log_append_line(log, "output_string_begin")
+    _ := log_append(log, output.as(string))
+    _ := log_append_line(log, "\noutput_string_end")
+
+    _ := log_append_line(log, "cells:")
+    for y: u32 = 0; y < term_fb_height; y += 1 {
+        for x: u32 = 0; x < term_fb_width; x += 1 {
+            cell := term_fb_cells[term_fb_index(x, y)]
+            on cell.ch != ' '.as(u32) || cell.ink != TERM_DEFAULT_INK || cell.paper != TERM_DEFAULT_PAPER => {
+                _ := log_append_line(log, $"x={x} y={y} ch={cell.ch} flags={cell.flags} ink={cell.ink} paper={cell.paper}")
+            }
+        }
+    }
+}
+
 term_fb_present :: fn () {
     on !term_fb_ready => return
 
@@ -730,6 +783,7 @@ term_fb_present :: fn () {
 
     on output.count > 0 => {
         term_output_push(^output, "\x1b[0m")
+        term_fb_debug_dump_present(output)
         term_print(output.as(string))
     }
     output.free()
@@ -1339,11 +1393,56 @@ test "rgb packs 24-bit colour channels" {
     assert rgb(0x12, 0x34, 0x56) == 0x123456.as(Colour)
 }
 
+test "utf-8 decoder handles ascii terminal glyphs" {
+    decoded := term_utf8_decode_at("A", 0)
+
+    assert decoded.0 == 'A'.as(u32)
+    assert decoded.1 == 1.as(usize)
+}
+
 test "utf-8 decoder handles non-ascii terminal glyphs" {
     decoded := term_utf8_decode_at("╭", 0)
 
     assert decoded.0 == 0x256d.as(u32)
-    assert decoded.1 == 3
+    assert decoded.1 == 3.as(usize)
+}
+
+test "string literal count in term tests" {
+    text := "ASCII"
+
+    assert text.count == 5
+}
+
+test "terminal codepoint width counts ascii glyph" {
+    assert term_codepoint_width(65.as(u32)) == 1
+}
+
+test "utf-8 decoder handles ascii glyph offsets" {
+    text := "ASCII"
+
+    assert term_utf8_decode_at(text, 0).0 == 'A'.as(u32)
+    assert term_utf8_decode_at(text, 1).0 == 'S'.as(u32)
+    assert term_utf8_decode_at(text, 2).0 == 'C'.as(u32)
+    assert term_utf8_decode_at(text, 3).0 == 'I'.as(u32)
+    assert term_utf8_decode_at(text, 4).0 == 'I'.as(u32)
+}
+
+test "terminal text width sums ascii glyphs" {
+    text := "ASCII"
+
+    assert term_text_display_width(text) == 5
+}
+
+test "framebuffer text stores ascii codepoints" {
+    term_fb_release()
+    term_fb_resize(8, 3)
+
+    term_fb_text(0, 0, "AB", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+
+    assert term_fb_cells[term_fb_index(0, 0)].ch == 'A'.as(u32)
+    assert term_fb_cells[term_fb_index(1, 0)].ch == 'B'.as(u32)
+
+    term_fb_release()
 }
 
 test "dynamic byte arrays preserve utf-8 bytes when cast to string" {
@@ -1355,7 +1454,7 @@ test "dynamic byte arrays preserve utf-8 bytes when cast to string" {
     decoded := term_utf8_decode_at(bytes.as(string), 0)
 
     assert decoded.0 == 0x256d.as(u32)
-    assert decoded.1 == 3
+    assert decoded.1 == 3.as(usize)
     bytes.free()
 }
 

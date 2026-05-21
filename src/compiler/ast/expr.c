@@ -1901,9 +1901,20 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                         array_free(arg_nodes);
                         return false;
                     }
-                } else if (!ast_parse_expr_bp(state, 0, &right_node)) {
-                    array_free(arg_nodes);
-                    return false;
+                } else {
+                    bool previous_boundary = state->allow_statement_boundary;
+                    bool previous_param_separator =
+                        state->stop_before_param_separator;
+                    state->allow_statement_boundary    = true;
+                    state->stop_before_param_separator = true;
+                    bool parsed = ast_parse_expr_bp(state, 0, &right_node);
+                    state->stop_before_param_separator =
+                        previous_param_separator;
+                    state->allow_statement_boundary = previous_boundary;
+                    if (!parsed) {
+                        array_free(arg_nodes);
+                        return false;
+                    }
                 }
                 array_push(arg_nodes, right_node);
                 if (state->token.kind == TK_Comma) {

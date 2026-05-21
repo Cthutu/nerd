@@ -487,7 +487,7 @@ dynarray.field.load.18:
   br label %dynarray.field.done.19
 dynarray.field.done.19:
   %t43 = load i64, ptr %t38
-  %t44 = icmp slt i64 %t43, 4
+  %t44 = icmp ult i64 %t43, 4
   %t45 = icmp eq i1 %t44, 1
   br i1 %t45, label %on.body.21, label %on.end.20
 on.body.21:
@@ -889,7 +889,7 @@ dynarray.field.load.64:
   br label %dynarray.field.done.65
 dynarray.field.done.65:
   %t273 = load i64, ptr %t268
-  %t274 = icmp slt i64 %t273, 10
+  %t274 = icmp ult i64 %t273, 10
   %t275 = icmp eq i1 %t274, 1
   br i1 %t275, label %on.body.67, label %on.end.66
 on.body.67:

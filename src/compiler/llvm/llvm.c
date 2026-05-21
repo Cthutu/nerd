@@ -3994,7 +3994,9 @@ internal bool llvm_emit_pointer_arithmetic(LlvmFunctionContext* ctx,
     return false;
 }
 
-internal string llvm_compare_instruction(HirBinaryOp op)
+internal string llvm_compare_instruction(const Sema* sema,
+                                         u32         type_index,
+                                         HirBinaryOp op)
 {
     switch (op) {
     case HIR_BINARY_Equal:
@@ -4002,13 +4004,17 @@ internal string llvm_compare_instruction(HirBinaryOp op)
     case HIR_BINARY_NotEqual:
         return s("ne");
     case HIR_BINARY_Less:
-        return s("slt");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ult")
+                                                               : s("slt");
     case HIR_BINARY_LessEqual:
-        return s("sle");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ule")
+                                                               : s("sle");
     case HIR_BINARY_Greater:
-        return s("sgt");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ugt")
+                                                               : s("sgt");
     case HIR_BINARY_GreaterEqual:
-        return s("sge");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("uge")
+                                                               : s("sge");
     default:
         return (string){0};
     }
@@ -5766,7 +5772,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     case HIR_EXPR_Binary:
         {
-            string cmp = llvm_compare_instruction(expr->binary_op);
+            string cmp = llvm_compare_instruction(
+                ctx->sema, expr->type_index, expr->binary_op);
             if (cmp.count > 0) {
                 LlvmValue lhs =
                     llvm_emit_expr(ctx, function, expr->lhs_expr_index);
@@ -5776,6 +5783,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
+                cmp = llvm_compare_instruction(
+                    ctx->sema, lhs.type_index, expr->binary_op);
                 string       type = llvm_type_string(ctx, lhs.type_index);
                 string       temp = llvm_temp(ctx);
                 SemaTypeKind lhs_kind =
