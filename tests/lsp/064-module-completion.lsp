@@ -120,6 +120,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "ffi_name_collision",
+                "kind": 9
+            },
+            {
                 "label": "folder_mod",
                 "kind": 9
             },
@@ -133,6 +137,10 @@ main :: fn () {}
             },
             {
                 "label": "generics",
+                "kind": 9
+            },
+            {
+                "label": "imported_const_codegen",
                 "kind": 9
             },
             {

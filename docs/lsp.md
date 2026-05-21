@@ -121,7 +121,7 @@ Completion is semantic where possible:
   document URI remaining valid across requests, because relative module imports
   are resolved from the active document path.
 - `payload.` inside an `on` branch can complete fields for an enum payload
-  binder such as `Variant(as payload) => { payload. }` even while the member
+  binder such as `Variant(payload) => { payload. }` even while the member
   access is syntactically incomplete. Imported enum payloads such as
   `event : module.Event` use the same module-part fallback as module completion
   so payload fields remain available from public plex types in imported files.

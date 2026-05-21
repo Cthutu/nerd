@@ -337,6 +337,7 @@ typedef struct {
 
 typedef enum : u32 {
     CPK_Value,
+    CPK_ForValue,
     CPK_Ignore,
     CPK_Bind,
     CPK_Equal,

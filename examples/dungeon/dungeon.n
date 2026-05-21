@@ -33,7 +33,7 @@ key_name :: fn (key: KeyCode) -> string {
     }
 }
 
-draw :: fn (last_key: string) {
+draw :: fn (last_key: string, width: u32, height: u32) {
     term_cls()
     term_cursor_move(0, 0)
     term_print("Dungeon\n")
@@ -44,31 +44,34 @@ draw :: fn (last_key: string) {
     term_print("Press an arrow key, Home/End, PageUp/PageDown, Insert/Delete, or F1-F12.\n")
     term_print("Press q or Escape to exit.\n\n")
     term_print($"Last key: {last_key}\n")
+    term_print($"\nTerminal size: {width}x{height}\n")
 }
 
 main :: fn () {
-    term_raw_mode_enable(yes)
-    term_alternate_screen_enable(yes)
+    term_init()
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
-    defer term_alternate_screen_enable(no)
-    defer term_raw_mode_enable(no)
 
     last_key := "none"
-    draw(last_key)
+    (width, height) := term_get_size()
+    draw(last_key, width, height)
 
-    for {
-        key := term_get_key()
-        on key {
-            None => {
-                last_key = "none"
+    for term_loop() {
+        event := term_poll()
+        on event {
+            TermEvent.None => {
             }
-            Some(as code) => {
-                key_code : KeyCode = code
+            TermEvent.KeyDown(key_code) => {
                 last_key = key_name(key_code)
-                draw(last_key)
+                draw(last_key, width, height)
 
-                on key_code == LowerQ || key_code == Q || key_code == Escape => break
+                on key_code == LowerQ || key_code == Q || key_code == Escape => term_done()
+            }
+            Resize(width, height) => {
+                last_key = "resize"
+                draw(last_key, width, height)
+            }
+            else => {
             }
         }
     }

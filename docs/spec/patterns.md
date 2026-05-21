@@ -6,7 +6,8 @@ coverage, guards, and binders are checked in `src/compiler/sema/sema.c`.
 ## Pattern Forms
 
 ```bnf
-pattern ::= 'as' IDENT
+pattern ::= IDENT
+          | 'for' expression
           | ('==' | '!=' | '<' | '<=' | '>' | '>=') expression
           | '_'
           | '(' pattern-list? ')'
@@ -18,8 +19,9 @@ pattern ::= 'as' IDENT
           | expression
 ```
 
-`_` ignores a value. `as name` binds the whole matched value. Branch-level
-`as name` binds the scrutinee for that branch.
+`_` ignores a value. A bare name binds the matched value. `for expression`
+matches against a runtime value or expression instead of binding a new name.
+Branch-level `as name` binds the scrutinee for that branch.
 
 ## Structural Patterns
 
@@ -49,6 +51,9 @@ on maybe {
 
 The parser accepts qualified variants such as `module.Type.Variant(...)` when
 the dotted path resolves semantically.
+
+Unit enum variants can be written bare when the scrutinee type provides the
+enum context, such as `None => 0`.
 
 ## Ranges And Comparisons
 

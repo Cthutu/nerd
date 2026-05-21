@@ -1948,6 +1948,7 @@ internal HirPatternKind hir_pattern_kind_from_ast(AstPatternKind kind)
 {
     switch (kind) {
     case APK_Value:
+    case APK_ForValue:
         return HIR_PATTERN_Value;
     case APK_Ignore:
         return HIR_PATTERN_Ignore;
@@ -1999,6 +2000,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:

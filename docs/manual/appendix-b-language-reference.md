@@ -135,7 +135,8 @@ intended exit code.
 - Condition-chain form: `on { condition => expr }`.
 - Value-producing forms must be exhaustive.
 - Statement forms may be partial.
-- Pattern binders use `as name`.
+- Bare identifiers in patterns bind by default. Use `for name` to compare with
+  an existing runtime value.
 - Pattern guards use `on condition`.
 
 ## Loops

@@ -509,7 +509,7 @@ Maybe :: enum {
 
 value_or_zero :: fn (value: Maybe) -> i32 {
     return on value {
-        Some(as x) => x  -- bind the payload
+        Some(x) => x  -- bind the payload
         None => 0
     }
 }

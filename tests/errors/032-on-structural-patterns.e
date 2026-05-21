@@ -54,7 +54,7 @@ main :: fn () => on Point { x: 1, y: 2 } {
 }
 ¬
 main :: fn () => on (1, 2) {
-    (1, x) => 1
+    (1, for x) => 1
     else => 0
 }
 ¬
@@ -63,13 +63,13 @@ main :: fn () => on (1, 2) {
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {
         "line": 2,
-        "column": 9
+        "column": 13
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 9,
+            "column": 13,
             "length": 1,
             "message": "This symbol is not defined"
         }

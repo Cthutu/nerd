@@ -66,6 +66,25 @@ internal bool compiler_cmd_run_is_module_llvm(string filename, cstr base_name)
     return true;
 }
 
+internal bool compiler_cmd_run_is_module_llvm_stem(string filename,
+                                                   string base_stem)
+{
+    if (filename.count <= base_stem.count + 4 ||
+        memcmp(filename.data, base_stem.data, base_stem.count) != 0 ||
+        filename.data[base_stem.count] != '.' ||
+        filename.data[base_stem.count + 1] != 'm' ||
+        !compiler_cmd_string_ends_with_cstr(filename, ".ll")) {
+        return false;
+    }
+
+    for (usize i = base_stem.count + 2; i + 3 < filename.count; ++i) {
+        if (filename.data[i] < '0' || filename.data[i] > '9') {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool compiler_cmd_run_has_generated_suffix(string filename,
                                                     cstr   base_name,
                                                     cstr   suffix)
@@ -98,16 +117,24 @@ internal bool compiler_cmd_run_is_generated_for(string filename, cstr base_name)
         compiler_cmd_run_has_generated_suffix(filename, base_name, ".nrt.o") ||
         compiler_cmd_run_has_generated_suffix(filename, base_name, ".pdb") ||
         compiler_cmd_run_has_generated_stem_suffix(
+            filename, base_stem, ".link.ll") ||
+        compiler_cmd_run_has_generated_stem_suffix(
+            filename, base_stem, ".nrt.o") ||
+        compiler_cmd_run_has_generated_stem_suffix(
             filename, base_stem, ".pdb")) {
         return true;
     }
-    return compiler_cmd_run_is_module_llvm(filename, base_name);
+    return compiler_cmd_run_is_module_llvm(filename, base_name) ||
+           compiler_cmd_run_is_module_llvm_stem(filename, base_stem);
 }
 
 internal void compiler_cmd_run_cleanup_generated_for_binary(Arena* arena,
                                                             cstr   binary_path)
 {
-    cstr    dir_path  = path_dirname(arena, binary_path);
+    cstr dir_path = path_dirname(arena, binary_path);
+    if (dir_path == NULL || dir_path[0] == '\0') {
+        dir_path = ".";
+    }
     string  base      = path_filename(s(binary_path));
     cstr    base_name = compiler_cmd_copy_path(arena, base);
     void*   mark      = arena_store(arena);
@@ -144,16 +171,48 @@ internal void compiler_cmd_run_cleanup_generated(
                                                   artifacts->binary_path);
 }
 
+internal void compiler_cmd_run_remove_known_binary_artifacts(Arena* arena,
+                                                             cstr   binary_path)
+{
+    path_remove(binary_path);
+    path_remove((cstr)string_format(arena, "%s.link.ll", binary_path).data);
+    path_remove((cstr)string_format(arena, "%s.nrt.o", binary_path).data);
+    path_remove((cstr)string_format(arena, "%s.pdb", binary_path).data);
+    for (u32 i = 1; i < 32; ++i) {
+        path_remove(
+            (cstr)string_format(arena, "%s.m%u.ll", binary_path, i).data);
+    }
+
+    cstr   dir_path = path_dirname(arena, binary_path);
+    string stem     = path_stem(s(binary_path));
+    cstr   dir = (dir_path != NULL && dir_path[0] != '\0') ? dir_path : ".";
+    StringBuilder stem_builder = {0};
+    sb_init(&stem_builder, arena);
+    sb_append_string(&stem_builder, stem);
+    sb_append_null(&stem_builder);
+    cstr stem_path =
+        path_join(arena, dir, (cstr)sb_to_string(&stem_builder).data);
+    path_remove((cstr)string_format(arena, "%s.link.ll", stem_path).data);
+    path_remove((cstr)string_format(arena, "%s.nrt.o", stem_path).data);
+    path_remove((cstr)string_format(arena, "%s.pdb", stem_path).data);
+    for (u32 i = 1; i < 32; ++i) {
+        path_remove((cstr)string_format(arena, "%s.m%u.ll", stem_path, i).data);
+    }
+}
+
 internal void compiler_cmd_run_cleanup_failed_compile(
     Arena* arena, const NerdArtifactConfig* artifacts, cstr output_root)
 {
     compiler_cmd_run_cleanup_generated(arena, artifacts, false);
+    compiler_cmd_run_remove_known_binary_artifacts(arena,
+                                                   artifacts->binary_path);
 
     path_remove(artifacts->hir_path);
     path_remove(artifacts->llvm_path);
 
     cstr build_binary = compiler_cmd_build_binary_path(arena, output_root);
     compiler_cmd_run_cleanup_generated_for_binary(arena, build_binary);
+    compiler_cmd_run_remove_known_binary_artifacts(arena, build_binary);
 }
 
 //------------------------------------------------------------------------------

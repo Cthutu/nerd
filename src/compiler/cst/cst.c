@@ -2720,6 +2720,13 @@ internal bool cst_symbol_is_underscore(const Lexer* lexer, u32 symbol_handle)
     return string_eq_cstr(lex_symbol(lexer, symbol_handle), "_");
 }
 
+internal bool cst_symbol_starts_with_uppercase(const Lexer* lexer,
+                                               u32          symbol_handle)
+{
+    string name = lex_symbol(lexer, symbol_handle);
+    return name.count > 0 && name.data[0] >= 'A' && name.data[0] <= 'Z';
+}
+
 internal bool
 cst_emit_pattern(CstParseState* state, CstPattern pattern, u32* out_pattern)
 {
@@ -3132,6 +3139,22 @@ internal CstPatternKind cst_comparison_pattern_kind(TokenKind kind)
 
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 {
+    if (cst_current_token(state).kind == TK_for) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        u32 value_node = 0;
+        if (!cst_parse_expr_bp(state, 0, &value_node)) {
+            return false;
+        }
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = CPK_ForValue,
+                                    .token_index = token_index,
+                                    .a           = value_node,
+                                },
+                                out_pattern);
+    }
+
     if (cst_current_token(state).kind == TK_as) {
         cst_advance(state);
         if (cst_current_token(state).kind != TK_Symbol ||
@@ -3201,6 +3224,22 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
     }
     if (cst_pattern_starts_enum_variant(state)) {
         return cst_parse_enum_variant_pattern(state, out_pattern);
+    }
+
+    if (cst_current_token(state).kind == TK_Symbol &&
+        !cst_symbol_starts_with_uppercase(state->lexer,
+                                          cst_current_symbol_handle(state))) {
+        u32 token_index = state->token_index;
+        u32 symbol      = cst_current_symbol_handle(state);
+        cst_advance(state);
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = CPK_Bind,
+                                    .token_index = token_index,
+                                    .a           = symbol,
+                                    .b           = U32_MAX,
+                                },
+                                out_pattern);
     }
 
     u32 start_node = 0;

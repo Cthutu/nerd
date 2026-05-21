@@ -148,7 +148,8 @@ normally.
 
 Block-form `on` currently supports:
 
-- value patterns, including literals, constants, and in-scope variables
+- value patterns, including literals, constants, and explicit `for` runtime
+  values
 - comma-separated alternatives
 - integer ranges through `..` and `..=`
 - explicit comparison patterns through `==`, `!=`, `<`, `<=`, `>`, and `>=`
@@ -162,6 +163,9 @@ Range endpoints and explicit comparison values are checked semantically against
 the scrutinee type. Empty integer ranges are rejected with a dedicated semantic
 error when both endpoints are compile-time constants. Relational comparison
 patterns require numeric scrutinees.
+
+Bare names in patterns bind by default. To compare against an existing runtime
+variable, write `for name`.
 
 Scrutinee-less condition-chain `on` is written `on { condition => expr ... }`.
 Each non-`else` branch condition must have type `bool`. Value-producing

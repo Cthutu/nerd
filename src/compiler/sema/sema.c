@@ -5888,6 +5888,7 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
             return true;
         }
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -6694,6 +6695,7 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -7550,6 +7552,7 @@ internal void sema_collect_pattern_deps(const Ast*  ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -12177,6 +12180,7 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -13551,6 +13555,10 @@ internal bool sema_infer_expr_block_type(const Lexer* lexer,
             arena_done(&temp_arena);
             return false;
         }
+        if (stmt->kind == AK_Return || stmt->kind == AK_ReturnExpr) {
+            definitely_exits = true;
+            break;
+        }
         i = ast_block_statement_end_exclusive(ast, i) - 1;
     }
 
@@ -14004,6 +14012,7 @@ internal bool sema_pattern_contains_interpolation(const Ast* ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -14059,6 +14068,7 @@ internal u32 sema_find_interpolated_string_pattern(const Ast* ast,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -14329,6 +14339,7 @@ internal bool sema_validate_interpolated_string_pattern(const Lexer* lexer,
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:
@@ -18329,6 +18340,7 @@ internal bool sema_validate_assignment_pattern(const Lexer*     lexer,
 
     switch (pattern->kind) {
     case APK_Value:
+    case APK_ForValue:
     case APK_Equal:
     case APK_NotEqual:
     case APK_Less:

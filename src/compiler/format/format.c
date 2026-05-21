@@ -784,6 +784,10 @@ internal void format_emit_pattern(StringBuilder* sb,
     case CPK_Value:
         format_emit_expr(sb, cst, lexer, pattern->a, 0);
         break;
+    case CPK_ForValue:
+        sb_append_cstr(sb, "for ");
+        format_emit_expr(sb, cst, lexer, pattern->a, 0);
+        break;
     case CPK_Equal:
     case CPK_NotEqual:
     case CPK_Less:
@@ -806,8 +810,6 @@ internal void format_emit_pattern(StringBuilder* sb,
         if (pattern->b != U32_MAX) {
             format_emit_pattern(sb, cst, lexer, pattern->b, explicit_binds);
             sb_append_cstr(sb, " as ");
-        } else if (explicit_binds) {
-            sb_append_cstr(sb, "as ");
         }
         sb_append_string(sb, lex_symbol(lexer, pattern->a));
         break;

@@ -23,6 +23,7 @@ typedef enum {
     BACK_END_LLVM_TOOL_DIAG_NONE,
     BACK_END_LLVM_TOOL_DIAG_SOURCE_ERROR,
     BACK_END_LLVM_TOOL_DIAG_UNDEFINED_SYMBOL,
+    BACK_END_LLVM_TOOL_DIAG_MISSING_FILE,
 } BackEndLlvmToolDiagnosticKind;
 
 typedef struct {
@@ -286,6 +287,32 @@ back_end_parse_lld_undefined_symbol(string                     output,
     return false;
 }
 
+internal bool back_end_parse_lld_missing_file(string                     output,
+                                              BackEndLlvmToolDiagnostic* out)
+{
+    cstr   prefix        = "lld-link: error: could not open '";
+    cstr   suffix        = "': no such file or directory";
+    usize  prefix_len    = back_end_cstr_len(prefix);
+    usize  suffix_offset = 0;
+    usize  cursor        = 0;
+    string line          = {0};
+    while (back_end_next_line(output, &cursor, &line)) {
+        if (!back_end_string_starts_with_cstr(line, prefix) ||
+            !back_end_string_find_cstr(line, suffix, &suffix_offset) ||
+            suffix_offset < prefix_len) {
+            continue;
+        }
+
+        out->kind    = BACK_END_LLVM_TOOL_DIAG_MISSING_FILE;
+        out->tool    = s("lld-link");
+        out->message = s("could not open file");
+        out->path =
+            string_from(line.data + prefix_len, suffix_offset - prefix_len);
+        return true;
+    }
+    return false;
+}
+
 internal bool back_end_parse_llvm_tool_output(string                     output,
                                               BackEndLlvmToolDiagnostic* out)
 {
@@ -294,6 +321,9 @@ internal bool back_end_parse_llvm_tool_output(string                     output,
         return true;
     }
     if (back_end_parse_lld_undefined_symbol(output, out)) {
+        return true;
+    }
+    if (back_end_parse_lld_missing_file(output, out)) {
         return true;
     }
     return false;
@@ -359,6 +389,20 @@ internal bool back_end_report_llvm_tool_failure(Arena*      arena,
             result.exit_code,
             STRINGV(diagnostic.symbol),
             STRINGV(diagnostic.reference),
+            combined_llvm_path,
+            runtime_object_path,
+            STRINGV(command));
+    }
+
+    if (diagnostic.kind == BACK_END_LLVM_TOOL_DIAG_MISSING_FILE) {
+        return error_runtime(
+            "LLVM linker could not open a required file (exit code %d)\n"
+            "File: " STRINGP "\n"
+            "Generated LLVM: %s\n"
+            "Runtime object: %s\n"
+            "Command: " STRINGP,
+            result.exit_code,
+            STRINGV(diagnostic.path),
             combined_llvm_path,
             runtime_object_path,
             STRINGV(command));
@@ -691,6 +735,22 @@ bool back_end_llvm_tool_output_self_test(void)
                         "C:\\Users\\matt\\AppData\\Local\\Temp\\quill.o:"
                         "(m1.fn.5)")) {
         eprn("Failed to parse lld undefined-symbol diagnostic");
+        return false;
+    }
+
+    string lld_missing_file_output =
+        s("lld-link: error: could not open "
+          "'nerd_missing_link_cleanup_test_library.lib': no such file or "
+          "directory\n"
+          "clang: error: linker command failed with exit code 1 "
+          "(use -v to see invocation)\n");
+    diagnostic = (BackEndLlvmToolDiagnostic){0};
+    if (!back_end_parse_llvm_tool_output(lld_missing_file_output,
+                                         &diagnostic) ||
+        diagnostic.kind != BACK_END_LLVM_TOOL_DIAG_MISSING_FILE ||
+        !string_eq_cstr(diagnostic.path,
+                        "nerd_missing_link_cleanup_test_library.lib")) {
+        eprn("Failed to parse lld missing-file diagnostic");
         return false;
     }
 

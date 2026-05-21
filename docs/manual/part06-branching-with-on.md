@@ -105,15 +105,16 @@ bucket :: fn (value: i32) -> string {
 
 `..` excludes the end. `..=` includes the end.
 
-Pattern values may come from variables that are already in scope:
+Use `for` when a pattern should compare against a variable that is already in
+scope:
 
 ```nerd
 name := "matt"
 details := (42, "matt")
 
 on details {
-    (42, name) => prn($"Hello {name}!")  -- compares with the outer name value
-    (42, as matched) => prn(matched)     -- binds the tuple field
+    (42, for name) => prn($"Hello {name}!")  -- compares with the outer name value
+    (42, matched) => prn(matched)            -- binds the tuple field
 }
 ```
 

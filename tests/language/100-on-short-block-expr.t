@@ -28,8 +28,8 @@ bind main = fn.1
 func fn.0(s: string, sep: string) -> [..]string {
   expr <unknown> default
   let parts: [..]string = <unknown> default
-  expr <unknown> on <unknown> equal(<unknown> field(string local.1(sep), count), <unknown> 0) {
-    value(<unknown> yes) => {
+  expr void on bool equal(usize field(string local.1(sep), count), usize 0) {
+    value(bool yes) => {
       expr void call fn (string) -> void field([..]string local.2(parts), push)(string local.0(s))
       return [..]string local.2(parts)
     }
@@ -43,12 +43,12 @@ func fn.1() -> i32 {
       return i32 1
     }
   }
-  expr <unknown> on <unknown> equal(<unknown> field([..]string local.3(parts), count), <unknown> 2) {
-    value(<unknown> yes) => {
+  expr void on bool equal(usize field([..]string local.3(parts), count), usize 2) {
+    value(bool yes) => {
       return i32 2
     }
     else => {
-      return <unknown> 0
+      return i32 0
     }
   }
   return <unknown> 0

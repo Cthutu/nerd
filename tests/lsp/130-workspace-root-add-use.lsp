@@ -151,6 +151,29 @@ Graphics :: plex {
                         ]
                     }
                 }
+            },
+            {
+                "title": "Add use os.windows.user",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "__REPO_URI__/tests/lsp/130-workspace-root-add-use/tiny_engine/graphics.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use os.windows.user\n\n"
+                            }
+                        ]
+                    }
+                }
             }
         ]
     },

@@ -339,6 +339,7 @@ typedef struct {
 
 typedef enum : u32 {
     APK_Value,
+    APK_ForValue,
     APK_Ignore,
     APK_Bind,
     APK_Equal,

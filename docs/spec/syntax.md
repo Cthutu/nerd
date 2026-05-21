@@ -418,7 +418,8 @@ the previous branch expression.
 ## Patterns
 
 ```bnf
-pattern         ::= 'as' IDENT
+pattern         ::= IDENT
+                  | 'for' expression
                   | comparison-pattern
                   | '_'
                   | tuple-pattern
@@ -449,6 +450,10 @@ enum-variant-pattern
 
 range-pattern   ::= expression '..' expression
                   | expression '..=' expression
+
+A bare identifier in a pattern binds the matched value unless it is resolved as
+an enum variant by the expected enum type. Use `for expression` to compare with
+an existing runtime value.
 ```
 
 ## Types

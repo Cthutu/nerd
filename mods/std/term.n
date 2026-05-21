@@ -160,6 +160,19 @@ pub KeyCode :: enum {
     NumpadEnter  = 302
 }
 
+pub TermEvent :: enum {
+    None
+    KeyDown(KeyCode)
+    KeyUp(KeyCode)
+    Resize(u32, u32)
+}
+
+term_initialized    : bool
+term_done_requested : bool
+term_events         : [..]TermEvent
+term_last_columns   : u32
+term_last_rows      : u32
+
 on "linux" {
 
     use os.linux
@@ -267,6 +280,19 @@ on "linux" {
         return key
     }
 
+    term_poll_key :: fn () -> Option[KeyCode] {
+        first := term_read_byte_timeout(0)
+        return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
+    }
+
+    term_poll_event_impl :: fn () -> TermEvent {
+        key := term_poll_key()
+        return on key {
+            Some(code) => TermEvent.KeyDown(code)
+            None => TermEvent.None
+        }
+    }
+
 }
 
 on "windows" {
@@ -358,6 +384,12 @@ on "windows" {
         return term_read_byte()
     }
 
+    term_input_is_console :: fn () -> bool {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        mode : DWORD
+        return GetConsoleMode(input, ^mode) != 0
+    }
+
     term_windows_virtual_key :: fn (virtual_key: u16) -> Option[KeyCode] {
         return on virtual_key {
             VK_BACK => Some(Backspace)
@@ -392,7 +424,7 @@ on "windows" {
     }
 
     term_windows_input_record_key :: fn (record : INPUT_RECORD) -> Option[KeyCode] {
-        on record.EventType != KEY_EVENT || record.bKeyDown == 0 => return None
+        on record.EventType != KEY_EVENT => return None
         on record.UnicodeChar > 0 && record.UnicodeChar <= 127 => {
             return Some(record.UnicodeChar.as(u8).as(KeyCode))
         }
@@ -414,7 +446,9 @@ on "windows" {
 
             key := term_windows_input_record_key(record)
             on key {
-                Some(_) => return key
+                Some(_) => {
+                    on record.bKeyDown != 0 => return key
+                }
                 None => {
                 }
             }
@@ -432,6 +466,44 @@ on "windows" {
                 on byte == 0 => return None
                 return Some(byte.as(KeyCode))
             }
+        }
+    }
+
+    term_windows_console_event :: fn () -> TermEvent {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        mode : DWORD
+        is_console := GetConsoleMode(input, ^mode)
+        on is_console == 0 => return TermEvent.None
+
+        wait_result := WaitForSingleObject(input, 0)
+        on wait_result != WAIT_OBJECT_0 => return TermEvent.None
+
+        record       : INPUT_RECORD
+        records_read : DWORD
+
+        ok := ReadConsoleInput(input, ^record, 1, ^records_read)
+        on ok == 0 || records_read == 0 => return TermEvent.None
+
+        key := term_windows_input_record_key(record)
+        on key {
+            Some(code) => {
+                on record.bKeyDown != 0 => return TermEvent.KeyDown(code) else return TermEvent.KeyUp(code)
+            }
+            None => return TermEvent.None
+        }
+        return TermEvent.None
+    }
+
+    term_poll_event_impl :: fn () -> TermEvent {
+        event := term_windows_console_event()
+        on term_input_is_console() => return event
+
+        on event {
+            TermEvent.None => {
+                byte := term_read_byte_timeout(0)
+                return on byte == 0 => TermEvent.None else TermEvent.KeyDown(byte.as(KeyCode))
+            }
+            else => return event
         }
     }
 
@@ -556,12 +628,85 @@ pub term_cursor_move :: fn (x: u32, y: u32) {
 -- Clears the screen, clears scrollback history, and moves the cursor to `(0,
 -- 0)`.
 pub term_cls :: fn () {
-    term_print("\x1b[3J\x1b[2J\x1b[H")
+    term_print("\x1b[H\x1b[2J\x1b[3J\x1b[H")
 }
 
 -- Scrolls the terminal viewport by one line.
 pub term_scroll :: fn () {
     term_print("\x1bD")
+}
+
+term_queue_clear :: fn () {
+    term_events.clear()
+}
+
+term_queue_push :: fn (event: TermEvent) {
+    term_events.push(event)
+}
+
+-- Enters terminal application mode.
+pub term_init :: fn () {
+    on term_initialized => return
+
+    term_done_requested = no
+    term_queue_clear()
+    term_raw_mode_enable(yes)
+    term_alternate_screen_enable(yes)
+
+    size := term_get_size()
+    term_last_columns = size.0
+    term_last_rows    = size.1
+    term_initialized  = yes
+}
+
+-- Requests that the terminal loop exits on its next iteration.
+pub term_done :: fn () {
+    term_done_requested = yes
+}
+
+term_queue_resize_event :: fn () {
+    size := term_get_size()
+    columns := size.0
+    rows := size.1
+
+    on columns == term_last_columns && rows == term_last_rows => return
+
+    term_last_columns = columns
+    term_last_rows    = rows
+    term_queue_push(TermEvent.Resize(columns, rows))
+}
+
+-- Advances terminal event processing and returns `no` after `term_done`.
+pub term_loop :: fn () -> bool {
+    on !term_initialized => return no
+
+    on term_done_requested => {
+        term_alternate_screen_enable(no)
+        term_raw_mode_enable(no)
+        term_queue_clear()
+        term_initialized    = no
+        term_done_requested = no
+        return no
+    }
+
+    event := term_poll_event_impl()
+    on event {
+        TermEvent.None => {
+        }
+        else => term_queue_push(event)
+    }
+
+    term_queue_resize_event()
+    return yes
+}
+
+-- Returns the next queued terminal event, or `TermEvent.None`.
+pub term_poll :: fn () -> TermEvent {
+    on term_events.count == 0 => return TermEvent.None
+
+    event := term_events[0]
+    term_events.delete(0)
+    return event
 }
 
 test "term_get_size returns a column and row tuple" {
@@ -600,4 +745,37 @@ test "terminal escape sequences map to key codes" {
     assert term_ss3_key('D') == Some(ArrowLeft)
     assert term_ss3_key('P') == Some(F1)
     assert term_ss3_key('S') == Some(F4)
+}
+
+test "terminal events poll in queue order" {
+    term_queue_clear()
+    term_queue_push(TermEvent.KeyDown(KeyCode.LowerA))
+    term_queue_push(TermEvent.Resize(80, 25))
+
+    first := term_poll()
+    first_seen := no
+    on first {
+        KeyDown(_) => first_seen = yes
+        else => {
+        }
+    }
+    assert first_seen
+
+    second := term_poll()
+    second_seen := no
+    on second {
+        Resize(_, _) => second_seen = yes
+        else => {
+        }
+    }
+    assert second_seen
+    assert term_poll() == TermEvent.None
+}
+
+test "terminal loop is inactive before init" {
+    term_initialized    = no
+    term_done_requested = no
+    term_queue_clear()
+
+    assert !term_loop()
 }

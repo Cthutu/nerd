@@ -45,47 +45,47 @@ bind main = fn.1
 func fn.0(s: string, sep: string) -> [..]string {
   expr <unknown> default
   let parts: [..]string = <unknown> default
-  expr <unknown> on <unknown> equal(<unknown> field(string local.1(sep), count), <unknown> 0) {
-    value(<unknown> yes) => {
+  expr void on bool equal(usize field(string local.1(sep), count), usize 0) {
+    value(bool yes) => {
       expr void call fn (string) -> void field([..]string local.2(parts), push)(string local.0(s))
       return [..]string local.2(parts)
     }
   }
   let start: usize = usize 0
   let i: usize = usize 0
-  expr <unknown> for condition {
-    condition <unknown> less_equal(<unknown> add(usize local.4(i), <unknown> field(string local.1(sep), count)), <unknown> field(string local.0(s), count))
+  expr void for condition {
+    condition bool less_equal(usize add(usize local.4(i), usize field(string local.1(sep), count)), usize field(string local.0(s), count))
     body {
       let matched: bool = bool yes
-      expr <unknown> for c_style {
+      expr void for c_style {
     init {
       let j: usize = usize 0
     }
-    condition <unknown> logical_and(bool local.5(matched), <unknown> less(usize local.6(j), <unknown> field(string local.1(sep), count)))
+    condition bool logical_and(bool local.5(matched), bool less(usize local.6(j), usize field(string local.1(sep), count)))
     body {
-      expr <unknown> on <unknown> not_equal(<unknown> index(<unknown> field(string local.0(s), data), <unknown> add(usize local.4(i), usize local.6(j))), <unknown> index(<unknown> field(string local.1(sep), data), usize local.6(j))) {
-    value(<unknown> yes) => {
-      assign bool local.5(matched) = <unknown> no
+      expr void on bool not_equal(u8 index(^u8 field(string local.0(s), data), usize add(usize local.4(i), usize local.6(j))), u8 index(^u8 field(string local.1(sep), data), usize local.6(j))) {
+    value(bool yes) => {
+      assign bool local.5(matched) = bool no
     }
   }
     }
     update {
-      assign usize local.6(j) = <unknown> add(usize local.6(j), <unknown> 1)
+      assign usize local.6(j) = usize add(usize local.6(j), usize 1)
     }
   }
-      expr <unknown> on bool local.5(matched) {
-    value(<unknown> yes) => {
-      expr <unknown> call <unknown> field([..]string local.2(parts), push)(<unknown> slice(string local.0(s), usize local.3(start), usize local.4(i)))
-      assign usize local.4(i) = <unknown> add(usize local.4(i), <unknown> field(string local.1(sep), count))
+      expr void on bool local.5(matched) {
+    value(bool yes) => {
+      expr void call fn (string) -> void field([..]string local.2(parts), push)(string slice(string local.0(s), usize local.3(start), usize local.4(i)))
+      assign usize local.4(i) = usize add(usize local.4(i), usize field(string local.1(sep), count))
       assign usize local.3(start) = usize local.4(i)
     }
     else => {
-      assign usize local.4(i) = <unknown> add(usize local.4(i), <unknown> 1)
+      assign usize local.4(i) = usize add(usize local.4(i), usize 1)
     }
   }
     }
   }
-  expr <unknown> call <unknown> field([..]string local.2(parts), push)(<unknown> slice(string local.0(s), usize local.3(start), <none>))
+  expr void call fn (string) -> void field([..]string local.2(parts), push)(string slice(string local.0(s), usize local.3(start), <none>))
   return [..]string local.2(parts)
 }
 func fn.1() -> i32 {

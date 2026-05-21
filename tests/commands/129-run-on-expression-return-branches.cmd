@@ -2,7 +2,7 @@ use std.io
 
 read :: fn (value: Option[u8]) -> u8 {
     return on value {
-        Some(as byte) => {
+        Some(byte) => {
             copied : u8 = byte
             return copied
         }

@@ -8,7 +8,7 @@ main :: fn () -> i32 {
     return flags.value.as(i32)
 }
 ¬
-0
+3
 ¬
 
 ¬

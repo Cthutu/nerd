@@ -5,14 +5,14 @@ main :: fn () {
     name := "matt"
 
     on details {
-        (42, name) => prn($"Hello {name}!")
+        (42, for name) => prn($"Hello {name}!")
         else => prn("Whatever!")
     }
 
     other := "jane"
     on details {
-        (42, other) => prn("wrong")
-        (42, as matched) => prn($"Matched {matched}.")
+        (42, for other) => prn("wrong")
+        (42, matched) => prn($"Matched {matched}.")
     }
 }
 ¬

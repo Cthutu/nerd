@@ -339,8 +339,7 @@ bool error_0206_tuple_destructure_requires_parens(NerdSource source,
         &error,
         "Comma-separated binding targets are parsed as destructuring only when "
         "they are wrapped in parentheses");
-    error_add_help(&error,
-                   "Use `(a, b) := value` instead of `a, b := value`");
+    error_add_help(&error, "Use `(a, b) := value` instead of `a, b := value`");
     error_render(&error);
     return false;
 }

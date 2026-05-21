@@ -244,9 +244,10 @@ Type.size
 ```nerd
 literal
 _
-as name
+name
+for name
 Variant()
-Variant(as name)
+Variant(name)
 { field: pattern }
 Type { field: pattern }
 left, right
