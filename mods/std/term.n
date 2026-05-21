@@ -927,17 +927,6 @@ on "windows" {
     -- Writes text directly to the terminal output stream.
     pub term_print :: fn (text: string) {
         output := GetStdHandle(STD_OUTPUT_HANDLE)
-        mode : DWORD
-        is_console := GetConsoleMode(output, ^mode)
-        on is_console != 0 => {
-            chars_written : DWORD
-            _ := WriteConsole(output,
-                              text.data.as(^void),
-                              text.count.as(DWORD),
-                              ^chars_written,
-                              nil)
-            return
-        }
 
         bytes_written : DWORD
         _ := WriteFile(output,
@@ -1057,21 +1046,24 @@ on "windows" {
         is_console := GetConsoleMode(input, ^mode)
         on is_console == 0 => return TermEvent.None
 
-        wait_result := WaitForSingleObject(input, 0)
-        on wait_result != WAIT_OBJECT_0 => return TermEvent.None
+        for {
+            wait_result := WaitForSingleObject(input, 0)
+            on wait_result != WAIT_OBJECT_0 => return TermEvent.None
 
-        record       : INPUT_RECORD
-        records_read : DWORD
+            record       : INPUT_RECORD
+            records_read : DWORD
 
-        ok := ReadConsoleInput(input, ^record, 1, ^records_read)
-        on ok == 0 || records_read == 0 => return TermEvent.None
+            ok := ReadConsoleInput(input, ^record, 1, ^records_read)
+            on ok == 0 || records_read == 0 => return TermEvent.None
 
-        key := term_windows_input_record_key(record)
-        on key {
-            Some(code) => {
-                on record.bKeyDown != 0 => return TermEvent.KeyDown(code) else return TermEvent.KeyUp(code)
+            key := term_windows_input_record_key(record)
+            on key {
+                Some(code) => {
+                    on record.bKeyDown != 0 => return TermEvent.KeyDown(code) else return TermEvent.KeyUp(code)
+                }
+                None => {
+                }
             }
-            None => return TermEvent.None
         }
         return TermEvent.None
     }
