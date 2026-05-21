@@ -35,7 +35,6 @@ key_name :: fn (key: KeyCode) -> string {
 
 draw :: fn (last_key: string, width: u32, height: u32) {
     term_cls()
-    term_cursor_move(0, 0)
     term_print("Dungeon\n")
     term_print("=======\n\n")
     term_print("This example will render a generated dungeon map here.\n\n")
