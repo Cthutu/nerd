@@ -1339,7 +1339,7 @@ pub term_init :: fn () {
     term_initialized  = yes
 }
 
--- Requests that the terminal loop exits on its next iteration.
+-- Signals that `term_loop` should clean up and exit on its next call.
 pub term_done :: fn () {
     term_done_requested = yes
 }
@@ -1359,7 +1359,7 @@ term_queue_resize_event :: fn () {
     term_queue_push(TermEvent.Resize(columns, rows))
 }
 
--- Advances terminal event processing and returns `no` after `term_done`.
+-- Presents, polls events, and performs deferred cleanup after `term_done`.
 pub term_loop :: fn () -> bool {
     on !term_initialized => return no
 
@@ -1531,6 +1531,23 @@ test "terminal events poll in queue order" {
     }
     assert second_seen
     assert term_poll() == TermEvent.None
+}
+
+test "term_done only signals loop shutdown" {
+    term_initialized    = yes
+    term_done_requested = no
+    term_queue_clear()
+    term_queue_push(TermEvent.KeyDown(KeyCode.LowerA))
+
+    term_done()
+
+    assert term_done_requested
+    assert term_initialized
+    assert term_events.count == 1
+
+    term_initialized    = no
+    term_done_requested = no
+    term_queue_clear()
 }
 
 test "terminal loop is inactive before init" {
