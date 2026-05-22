@@ -5,6 +5,38 @@
 -- Provides terminal helpers for interactive command-line programs. This module
 -- exposes portable terminal concepts while using platform-specific OS calls
 -- underneath.
+--
+-- Application lifecycle:
+-- - `term_init()` enters raw mode and the alternate screen, prepares the
+--   framebuffer, and queues an initial resize event.
+-- - `term_run()` drives hook-based applications until `term_done()` is called.
+--   Use `term_hook_simulation()` for input/state updates and
+--   `term_hook_presentation()` for framebuffer drawing.
+-- - `term_loop()`/`term_step()` are lower-level alternatives for applications
+--   that want to poll `TermEvent` values manually with `term_poll()`.
+-- - `term_done()` only requests shutdown. Cleanup happens inside the next
+--   terminal step so raw mode and alternate screen are restored in one place.
+--
+-- Framebuffer drawing:
+-- - `term_fb_clear`, `term_fb_put`, `term_fb_text`, `term_fb_fill_rect`,
+--   `term_fb_paint_rect`, and `term_fb_box` write to a retained terminal
+--   framebuffer.
+-- - The framebuffer tracks dirty cells and is presented by the terminal loop.
+--   Hook-based applications should draw from the presentation hook.
+-- - `term_view` clips drawing to a rectangular view. The view is reset to the
+--   full terminal size each terminal step.
+--
+-- Input:
+-- - `TermKeyboard` snapshots are provided to simulation hooks with key down,
+--   pressed, and released state. Use `term_key_down`, `term_key_pressed`, and
+--   `term_key_released` instead of indexing the snapshot arrays directly.
+-- - Manual-loop applications can consume queued `TermEvent` values with
+--   `term_poll()`.
+--
+-- Direct terminal helpers:
+-- - `term_print`, `term_cls`, `term_cursor_move`, `term_cursor_enable`,
+--   `term_raw_mode_enable`, and `term_alternate_screen_enable` are available
+--   for code that needs direct terminal control.
 
 use std.math
 use std.time
