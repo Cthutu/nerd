@@ -64,10 +64,10 @@ declare ptr @$input({ ptr, i64 })
 declare i32 @fcntl(i32, i32, ...)
 
 define internal void @fn.1() {
+  %t3 = alloca { ptr, i64 }
   %t0 = call i32 @fcntl(i32 0, i32 1, i32 0)
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 8 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)

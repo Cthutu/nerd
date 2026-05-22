@@ -124,6 +124,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "ffi_name_collision_peer",
+                "kind": 9
+            },
+            {
                 "label": "folder_mod",
                 "kind": 9
             },

@@ -314,6 +314,32 @@ internal bool back_end_parse_lld_missing_file(string                     output,
     return false;
 }
 
+internal bool back_end_parse_ld_missing_library(string output,
+                                                BackEndLlvmToolDiagnostic* out)
+{
+    cstr   prefix        = "/usr/bin/ld: cannot find ";
+    cstr   suffix        = ": No such file or directory";
+    usize  prefix_len    = back_end_cstr_len(prefix);
+    usize  suffix_offset = 0;
+    usize  cursor        = 0;
+    string line          = {0};
+    while (back_end_next_line(output, &cursor, &line)) {
+        if (!back_end_string_starts_with_cstr(line, prefix) ||
+            !back_end_string_find_cstr(line, suffix, &suffix_offset) ||
+            suffix_offset < prefix_len) {
+            continue;
+        }
+
+        out->kind    = BACK_END_LLVM_TOOL_DIAG_MISSING_FILE;
+        out->tool    = s("ld");
+        out->message = s("could not find library");
+        out->path =
+            string_from(line.data + prefix_len, suffix_offset - prefix_len);
+        return true;
+    }
+    return false;
+}
+
 internal bool back_end_parse_lld_locked_output(string output,
                                                BackEndLlvmToolDiagnostic* out)
 {
@@ -387,6 +413,9 @@ internal bool back_end_parse_llvm_tool_output(string                     output,
         return true;
     }
     if (back_end_parse_lld_missing_file(output, out)) {
+        return true;
+    }
+    if (back_end_parse_ld_missing_library(output, out)) {
         return true;
     }
     if (back_end_parse_lld_locked_output(output, out)) {

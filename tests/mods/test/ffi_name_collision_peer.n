@@ -4,7 +4,7 @@ on "windows" {
         GetStdHandle (nStdHandle: u32) -> ^void
     }
 
-    pub local_os_value :: fn () -> ^void {
+    pub peer_os_value :: fn () -> ^void {
         return GetStdHandle(0xfffffff5)
     }
 
@@ -16,7 +16,7 @@ on "linux" {
         getpid () -> i32
     }
 
-    pub local_os_value :: fn () -> i32 {
+    pub peer_os_value :: fn () -> i32 {
         return getpid()
     }
 

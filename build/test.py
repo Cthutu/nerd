@@ -665,6 +665,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     if command in {"build", "b"} and current_platform() == "windows":
         executable = pathlib.Path(f"{executable}.exe")
 
+    cleanup_generated_outputs(path)
+
     if run_mode == "clean-llvm" and command in {"run", "r"}:
         for stale in (
             cwd / f"_{path.stem}.out.link.ll",
@@ -752,6 +754,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             shutil.rmtree(cwd, ignore_errors=True)
         else:
             input_path.unlink(missing_ok=True)
+            cleanup_generated_outputs(path)
         executable.unlink(missing_ok=True)
         debug_symbols.unlink(missing_ok=True)
     return failures

@@ -1,9 +1,9 @@
-use std.io
-use test.ffi_name_collision
+left :: use test.ffi_name_collision
+right :: use test.ffi_name_collision_peer
 
 main :: fn () {
-    _ := input("> ")
-    _ := local_std_output()
+    _ := left.local_os_value()
+    _ := right.peer_os_value()
 }
 ¬
 0
