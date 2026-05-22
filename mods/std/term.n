@@ -191,7 +191,7 @@ pub KeyCode :: enum {
     NumpadEnter  = 302
 }
 
-TermEvent :: enum {
+TermInputEvent :: enum {
     None
     KeyDown(KeyCode)
     KeyUp(KeyCode)
@@ -1099,16 +1099,16 @@ on "linux" {
         return key
     }
 
-    term_poll_key :: fn () -> Option[KeyCode] {
+    term_read_key_nonblocking :: fn () -> Option[KeyCode] {
         first := term_read_byte_timeout(0)
         return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
     }
 
-    term_poll_event_impl :: fn () -> TermEvent {
-        key := term_poll_key()
+    term_read_input_event_impl :: fn () -> TermInputEvent {
+        key := term_read_key_nonblocking()
         return on key {
-            Some(code) => TermEvent.KeyDown(code)
-            None => TermEvent.None
+            Some(code) => TermInputEvent.KeyDown(code)
+            None => TermInputEvent.None
         }
     }
 
@@ -1297,42 +1297,42 @@ on "windows" {
         }
     }
 
-    term_windows_console_event :: fn () -> TermEvent {
+    term_windows_console_event :: fn () -> TermInputEvent {
         input := GetStdHandle(STD_INPUT_HANDLE)
         mode : DWORD
         is_console := GetConsoleMode(input, ^mode)
-        on is_console == 0 => return TermEvent.None
+        on is_console == 0 => return TermInputEvent.None
 
         for {
             wait_result := WaitForSingleObject(input, 0)
-            on wait_result != WAIT_OBJECT_0 => return TermEvent.None
+            on wait_result != WAIT_OBJECT_0 => return TermInputEvent.None
 
             record       : INPUT_RECORD
             records_read : DWORD
 
             ok := ReadConsoleInput(input, ^record, 1, ^records_read)
-            on ok == 0 || records_read == 0 => return TermEvent.None
+            on ok == 0 || records_read == 0 => return TermInputEvent.None
 
             key := term_windows_input_record_key(record)
             on key {
                 Some(code) => {
-                    on record.bKeyDown != 0 => return TermEvent.KeyDown(code) else return TermEvent.KeyUp(code)
+                    on record.bKeyDown != 0 => return TermInputEvent.KeyDown(code) else return TermInputEvent.KeyUp(code)
                 }
                 None => {
                 }
             }
         }
-        return TermEvent.None
+        return TermInputEvent.None
     }
 
-    term_poll_event_impl :: fn () -> TermEvent {
+    term_read_input_event_impl :: fn () -> TermInputEvent {
         event := term_windows_console_event()
         on term_input_is_console() => return event
 
         on event {
-            TermEvent.None => {
+            TermInputEvent.None => {
                 byte := term_read_byte_timeout(0)
-                return on byte == 0 => TermEvent.None else TermEvent.KeyDown(byte.as(KeyCode))
+                return on byte == 0 => TermInputEvent.None else TermInputEvent.KeyDown(byte.as(KeyCode))
             }
             else => return event
         }
@@ -1526,7 +1526,7 @@ pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
     return term_key_index_valid(index) && keyboard.released[index]
 }
 
-term_keyboard_record_event :: fn (event: TermEvent) {
+term_keyboard_record_event :: fn (event: TermInputEvent) {
     on event {
         KeyDown(key) => {
             index := term_key_index(key)
@@ -1547,7 +1547,7 @@ term_keyboard_record_event :: fn (event: TermEvent) {
     }
 }
 
-term_event_record :: fn (event: TermEvent) {
+term_event_record :: fn (event: TermInputEvent) {
     term_keyboard_record_event(event)
 }
 
@@ -1590,7 +1590,7 @@ pub term_valid :: fn () -> bool {
 }
 
 -- Registers a simulation callback. The callback runs from
--- `term_step`/`term_run` no more often than `interval`, receives accumulated
+-- `term_run` no more often than `interval`, receives accumulated
 -- keyboard edges, and is skipped while the terminal is below its requested
 -- minimum size.
 pub term_hook_simulation :: fn (interval: Duration, callback: TermSimulateFn) {
@@ -1702,8 +1702,7 @@ pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
     term_hooks_reset_timing(current)
 }
 
--- Signals that `term_step`/`term_run` should clean up and exit on its next
--- call.
+-- Signals that `term_run` should clean up and exit on its next iteration.
 pub term_done :: fn () {
     term_done_requested = yes
 }
@@ -1724,7 +1723,7 @@ term_resize_if_needed :: fn () {
 
 -- Advances terminal state by one iteration, runs registered hooks, presents the
 -- framebuffer, drains input, and performs deferred cleanup after `term_done`.
-term_step :: fn () -> bool {
+term_run_step :: fn () -> bool {
     on !term_initialised => return no
 
     on term_done_requested => {
@@ -1747,9 +1746,9 @@ term_step :: fn () -> bool {
     term_arena_reset()
     term_fb_ensure()
 
-    event := term_poll_event_impl()
+    event := term_read_input_event_impl()
     on event {
-        TermEvent.None => {
+        TermInputEvent.None => {
         }
         else => term_event_record(event)
     }
@@ -1783,14 +1782,10 @@ term_step :: fn () -> bool {
     return yes
 }
 
-term_loop :: fn () -> bool {
-    return term_step()
-}
-
 -- Runs terminal steps until `term_done` is called. Hook-based applications use
 -- this instead of writing their own loop body.
 pub term_run :: fn () {
-    for term_step() {
+    for term_run_step() {
         sleep_ms(1)
     }
 }
@@ -2111,7 +2106,7 @@ test "terminal events record keyboard state directly" {
     term_keyboard_clear()
     term_hook_simulation(50.as(Duration), term_noop_simulate)
 
-    term_event_record(TermEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
     keyboard := term_keyboard_snapshot()
 
     assert keyboard.down[KeyCode.LowerQ.as(u32).as(usize)]
@@ -2124,7 +2119,7 @@ test "terminal events record keyboard state directly" {
 test "terminal keyboard state records edges" {
     term_keyboard_clear()
 
-    term_event_record(TermEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
     index := KeyCode.LowerQ.as(u32).as(usize)
     keyboard := term_keyboard_snapshot()
     assert keyboard.down[index]
@@ -2140,7 +2135,7 @@ test "terminal keyboard state records edges" {
     assert !keyboard.pressed[index]
     assert !keyboard.released[index]
 
-    term_event_record(TermEvent.KeyUp(KeyCode.LowerQ))
+    term_event_record(TermInputEvent.KeyUp(KeyCode.LowerQ))
     keyboard = term_keyboard_snapshot()
     assert !keyboard.down[index]
     assert !keyboard.pressed[index]
@@ -2165,12 +2160,11 @@ test "term_done only signals loop shutdown" {
     term_done_requested = no
 }
 
-test "terminal loop is inactive before init" {
+test "terminal run step is inactive before init" {
     term_initialised    = no
     term_done_requested = no
 
-    assert !term_loop()
-    assert !term_step()
+    assert !term_run_step()
 }
 
 test "terminal minimum size detects undersized axes" {
