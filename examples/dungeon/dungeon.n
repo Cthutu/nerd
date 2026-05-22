@@ -391,7 +391,7 @@ dungeon_draw :: fn (width: u32, height: u32) {
     status_y := map_height.as(i32)
     term_fb_fill_rect(0, status_y, width.as(i32), height.as(i32) - status_y, ' '.as(u32), text_ink, rgb(0, 0, 0))
     term_fb_text(1, status_y, $"rooms {rooms.count}  seed {seed}  size {map_width}x{map_height}", text_ink, rgb(0, 0, 0))
-    term_fb_text(1, status_y + 1, "r regenerate   q/Esc exit", rgb(150, 185, 150), rgb(0, 0, 0))
+    term_fb_text(1, status_y + 1, "any key regenerates   q/Esc exit", rgb(150, 185, 150), rgb(0, 0, 0))
 
     on offset_x != 0 => {
     }
@@ -405,11 +405,13 @@ dungeon_simulate :: fn (sim: TermSimulate) {
         return
     }
 
-    on term_key_pressed(sim.keyboard, LowerR) ||
-       term_key_pressed(sim.keyboard, R) => {
-        seed = now()
-        random_seed(seed)
-        generated = no
+    for i: usize = 0; i < TERM_KEY_CODE_COUNT.as(usize); i += 1 {
+        on sim.keyboard.pressed[i] => {
+            seed = now()
+            random_seed(seed)
+            generated = no
+            return
+        }
     }
 }
 
