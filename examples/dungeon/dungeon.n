@@ -1,4 +1,7 @@
 use std.term
+use std.time
+
+last_key : string
 
 key_name :: fn (key: KeyCode) -> string {
     return on key {
@@ -50,37 +53,57 @@ draw :: fn (last_key: string, width: u32, height: u32) {
     term_view_reset()
 }
 
+record_key :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+    on term_key_pressed(keyboard, key) => {
+        last_key = key_name(key)
+        return yes
+    }
+    return no
+}
+
+dungeon_simulate :: fn (sim: TermSimulate) {
+    on record_key(sim.keyboard, ArrowUp) ||
+       record_key(sim.keyboard, ArrowDown) ||
+       record_key(sim.keyboard, ArrowLeft) ||
+       record_key(sim.keyboard, ArrowRight) ||
+       record_key(sim.keyboard, Home) ||
+       record_key(sim.keyboard, End) ||
+       record_key(sim.keyboard, Insert) ||
+       record_key(sim.keyboard, Delete) ||
+       record_key(sim.keyboard, PageUp) ||
+       record_key(sim.keyboard, PageDown) ||
+       record_key(sim.keyboard, F1) ||
+       record_key(sim.keyboard, F2) ||
+       record_key(sim.keyboard, F3) ||
+       record_key(sim.keyboard, F4) ||
+       record_key(sim.keyboard, F5) ||
+       record_key(sim.keyboard, F6) ||
+       record_key(sim.keyboard, F7) ||
+       record_key(sim.keyboard, F8) ||
+       record_key(sim.keyboard, F9) ||
+       record_key(sim.keyboard, F10) ||
+       record_key(sim.keyboard, F11) ||
+       record_key(sim.keyboard, F12) ||
+       record_key(sim.keyboard, LowerQ) ||
+       record_key(sim.keyboard, Q) ||
+       record_key(sim.keyboard, Escape) => {
+        on term_key_pressed(sim.keyboard, LowerQ) ||
+           term_key_pressed(sim.keyboard, Q) ||
+           term_key_pressed(sim.keyboard, Escape) => term_done()
+    }
+}
+
+dungeon_present :: fn (present: TermPresent) {
+    draw(last_key, present.width, present.height)
+}
+
 main :: fn () {
+    last_key = "none"
     term_init()
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
-    last_key := "none"
-    (width, height) := term_get_size()
-    draw(last_key, width, height)
-
-    for term_loop() {
-        needs_draw := no
-        for {
-            event := term_poll()
-            on event {
-                TermEvent.None => break
-                TermEvent.KeyDown(key_code) => {
-                    last_key = key_name(key_code)
-                    needs_draw = yes
-
-                    on key_code == LowerQ || key_code == Q || key_code == Escape => term_done()
-                }
-                Resize(new_width, new_height) => {
-                    width = new_width
-                    height = new_height
-                    last_key = "resize"
-                    needs_draw = yes
-                }
-                else => {
-                }
-            }
-        }
-        on needs_draw => draw(last_key, width, height)
-    }
+    term_hook_simulation(from_ms(16), dungeon_simulate)
+    term_hook_presentation(from_ms(16), dungeon_present)
+    term_run()
 }

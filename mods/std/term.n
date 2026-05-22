@@ -8,12 +8,10 @@
 --
 -- Application lifecycle:
 -- - `term_init()` enters raw mode and the alternate screen, prepares the
---   framebuffer, and queues an initial resize event.
+--   framebuffer, and captures the initial terminal size.
 -- - `term_run()` drives hook-based applications until `term_done()` is called.
 --   Use `term_hook_simulation()` for input/state updates and
 --   `term_hook_presentation()` for framebuffer drawing.
--- - `term_loop()`/`term_step()` are lower-level alternatives for applications
---   that want to poll `TermEvent` values manually with `term_poll()`.
 -- - `term_done()` only requests shutdown. Cleanup happens inside the next
 --   terminal step so raw mode and alternate screen are restored in one place.
 --
@@ -30,8 +28,6 @@
 -- - `TermKeyboard` snapshots are provided to simulation hooks with key down,
 --   pressed, and released state. Use `term_key_down`, `term_key_pressed`, and
 --   `term_key_released` instead of indexing the snapshot arrays directly.
--- - Manual-loop applications can consume queued `TermEvent` values with
---   `term_poll()`.
 --
 -- Direct terminal helpers:
 -- - `term_print`, `term_cls`, `term_cursor_move`, `term_cursor_enable`,
@@ -195,11 +191,10 @@ pub KeyCode :: enum {
     NumpadEnter  = 302
 }
 
-pub TermEvent :: enum {
+TermEvent :: enum {
     None
     KeyDown(KeyCode)
     KeyUp(KeyCode)
-    Resize(u32, u32)
 }
 
 pub Colour :: u32
@@ -278,7 +273,6 @@ TERM_MAX_FRAMEBUFFER_CELLS :: 1000000
 
 term_initialised       : bool
 term_done_requested    : bool
-term_events            : [..]TermEvent
 term_last_columns      : u32
 term_last_rows         : u32
 term_min_width         : u32
@@ -1473,10 +1467,6 @@ pub term_scroll :: fn () {
     term_print("\x1bD")
 }
 
-term_queue_clear :: fn () {
-    on term_events.count > 0 => term_events.clear()
-}
-
 term_key_index :: fn (key: KeyCode) -> usize {
     return key.as(u32).as(usize)
 }
@@ -1557,16 +1547,8 @@ term_keyboard_record_event :: fn (event: TermEvent) {
     }
 }
 
-term_queue_push :: fn (event: TermEvent) {
-    term_keyboard_record_event(event)
-    term_events.push(event)
-}
-
 term_event_record :: fn (event: TermEvent) {
     term_keyboard_record_event(event)
-
-    on term_simulate_hook_set || term_present_hook_set => return
-    term_events.push(event)
 }
 
 term_too_small :: fn () -> bool {
@@ -1703,7 +1685,6 @@ pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
     term_min_width      = min_width
     term_min_height     = min_height
     term_arena_ensure()
-    term_queue_clear()
     term_keyboard_clear()
     term_raw_mode_enable(yes)
     term_alternate_screen_enable(yes)
@@ -1715,7 +1696,6 @@ pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
     on term_last_rows == 0 => term_last_rows = 1
     term_fb_ensure()
     term_fb_clear()
-    term_event_record(TermEvent.Resize(term_last_columns, term_last_rows))
     term_present_ready = no
     term_initialised   = yes
     current := now()
@@ -1728,7 +1708,7 @@ pub term_done :: fn () {
     term_done_requested = yes
 }
 
-term_queue_resize_event :: fn () {
+term_resize_if_needed :: fn () {
     size := term_get_size()
     columns := size.0
     rows := size.1
@@ -1740,12 +1720,11 @@ term_queue_resize_event :: fn () {
 
     term_last_columns = columns
     term_last_rows    = rows
-    term_event_record(TermEvent.Resize(columns, rows))
 }
 
 -- Advances terminal state by one iteration, runs registered hooks, presents the
--- framebuffer, polls events, and performs deferred cleanup after `term_done`.
-pub term_step :: fn () -> bool {
+-- framebuffer, drains input, and performs deferred cleanup after `term_done`.
+term_step :: fn () -> bool {
     on !term_initialised => return no
 
     on term_done_requested => {
@@ -1754,7 +1733,6 @@ pub term_step :: fn () -> bool {
         term_fb_release()
         term_alternate_screen_enable(no)
         term_raw_mode_enable(no)
-        term_queue_clear()
         term_arena_done()
         term_keyboard_clear()
         term_initialised    = no
@@ -1776,7 +1754,7 @@ pub term_step :: fn () -> bool {
         else => term_event_record(event)
     }
 
-    term_queue_resize_event()
+    term_resize_if_needed()
 
     current := now()
     term_view_reset()
@@ -1805,28 +1783,16 @@ pub term_step :: fn () -> bool {
     return yes
 }
 
--- Compatibility name for the original single-step terminal loop API.
-pub term_loop :: fn () -> bool {
+term_loop :: fn () -> bool {
     return term_step()
 }
 
 -- Runs terminal steps until `term_done` is called. Hook-based applications use
--- this instead of writing their own `for term_loop()` body.
+-- this instead of writing their own loop body.
 pub term_run :: fn () {
-    term_queue_clear()
-
     for term_step() {
         sleep_ms(1)
     }
-}
-
--- Returns the next queued terminal event, or `TermEvent.None`.
-pub term_poll :: fn () -> TermEvent {
-    on term_events.count == 0 => return TermEvent.None
-
-    event := term_events[0]
-    term_events.delete(0)
-    return event
 }
 
 term_noop_simulate :: fn (_sim: TermSimulate) {
@@ -1977,6 +1943,76 @@ test "framebuffer cell helpers guard out of bounds access" {
     term_fb_release()
 }
 
+test "framebuffer resize keeps dimensions and cell count consistent" {
+    term_fb_release()
+
+    assert term_fb_resize(3, 2)
+    assert term_fb_width == 3
+    assert term_fb_height == 2
+    assert term_fb_cells.count == 6
+
+    assert term_fb_resize(5, 3)
+    assert term_fb_width == 5
+    assert term_fb_height == 3
+    assert term_fb_cells.count == 15
+
+    assert term_fb_resize(2, 1)
+    assert term_fb_width == 2
+    assert term_fb_height == 1
+    assert term_fb_cells.count == 2
+
+    term_fb_release()
+}
+
+test "framebuffer resize preserves overlapping cells" {
+    term_fb_release()
+    assert term_fb_resize(3, 2)
+
+    term_fb_put(0, 0, 'A'.as(u32))
+    term_fb_put(1, 0, 'B'.as(u32))
+    term_fb_put(2, 0, 'C'.as(u32))
+    term_fb_put(0, 1, 'D'.as(u32))
+    term_fb_put(1, 1, 'E'.as(u32))
+    term_fb_put(2, 1, 'F'.as(u32))
+
+    assert term_fb_resize(5, 3)
+    assert term_fb_cell_ch(0, 0) == 'A'.as(u32)
+    assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
+    assert term_fb_cell_ch(2, 0) == 'C'.as(u32)
+    assert term_fb_cell_ch(0, 1) == 'D'.as(u32)
+    assert term_fb_cell_ch(1, 1) == 'E'.as(u32)
+    assert term_fb_cell_ch(2, 1) == 'F'.as(u32)
+    assert term_fb_cell_ch(3, 0) == ' '.as(u32)
+    assert term_fb_cell_ch(4, 2) == ' '.as(u32)
+
+    assert term_fb_resize(2, 1)
+    assert term_fb_cell_ch(0, 0) == 'A'.as(u32)
+    assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
+    assert term_fb_cells.count == 2
+
+    term_fb_release()
+}
+
+test "framebuffer resize rejection leaves state unchanged" {
+    term_fb_release()
+    assert term_fb_resize(3, 2)
+    term_fb_put(1, 1, 'X'.as(u32))
+
+    assert !term_fb_resize(0, 2)
+    assert term_fb_width == 3
+    assert term_fb_height == 2
+    assert term_fb_cells.count == 6
+    assert term_fb_cell_ch(1, 1) == 'X'.as(u32)
+
+    assert !term_fb_resize((TERM_MAX_FRAMEBUFFER_CELLS + 1).as(u32), 1)
+    assert term_fb_width == 3
+    assert term_fb_height == 2
+    assert term_fb_cells.count == 6
+    assert term_fb_cell_ch(1, 1) == 'X'.as(u32)
+
+    term_fb_release()
+}
+
 test "terminal framebuffer prepare returns draw rect and source offsets" {
     term_fb_release()
     assert term_fb_resize(5, 3)
@@ -2071,34 +2107,8 @@ test "dynamic byte arrays preserve utf-8 bytes when cast to string" {
     bytes.free()
 }
 
-test "terminal events poll in queue order" {
-    term_queue_clear()
-    term_queue_push(TermEvent.KeyDown(KeyCode.LowerA))
-    term_queue_push(TermEvent.Resize(80, 25))
-
-    first := term_poll()
-    first_seen := no
-    on first {
-        KeyDown(_) => first_seen = yes
-        else => {
-        }
-    }
-    assert first_seen
-
-    second := term_poll()
-    second_seen := no
-    on second {
-        Resize(_, _) => second_seen = yes
-        else => {
-        }
-    }
-    assert second_seen
-    assert term_poll() == TermEvent.None
-}
-
-test "terminal hook mode records keyboard without growing poll queue" {
+test "terminal events record keyboard state directly" {
     term_keyboard_clear()
-    term_queue_clear()
     term_hook_simulation(50.as(Duration), term_noop_simulate)
 
     term_event_record(TermEvent.KeyDown(KeyCode.LowerQ))
@@ -2106,18 +2116,15 @@ test "terminal hook mode records keyboard without growing poll queue" {
 
     assert keyboard.down[KeyCode.LowerQ.as(u32).as(usize)]
     assert keyboard.pressed[KeyCode.LowerQ.as(u32).as(usize)]
-    assert term_events.count == 0
 
     term_hooks_clear()
     term_keyboard_clear()
-    term_queue_clear()
 }
 
 test "terminal keyboard state records edges" {
     term_keyboard_clear()
-    term_queue_clear()
 
-    term_queue_push(TermEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(TermEvent.KeyDown(KeyCode.LowerQ))
     index := KeyCode.LowerQ.as(u32).as(usize)
     keyboard := term_keyboard_snapshot()
     assert keyboard.down[index]
@@ -2133,7 +2140,7 @@ test "terminal keyboard state records edges" {
     assert !keyboard.pressed[index]
     assert !keyboard.released[index]
 
-    term_queue_push(TermEvent.KeyUp(KeyCode.LowerQ))
+    term_event_record(TermEvent.KeyUp(KeyCode.LowerQ))
     keyboard = term_keyboard_snapshot()
     assert !keyboard.down[index]
     assert !keyboard.pressed[index]
@@ -2143,30 +2150,24 @@ test "terminal keyboard state records edges" {
     assert term_key_released(keyboard, KeyCode.LowerQ)
 
     term_keyboard_clear()
-    term_queue_clear()
 }
 
 test "term_done only signals loop shutdown" {
     term_initialised    = yes
     term_done_requested = no
-    term_queue_clear()
-    term_queue_push(TermEvent.KeyDown(KeyCode.LowerA))
 
     term_done()
 
     assert term_done_requested
     assert term_initialised
-    assert term_events.count == 1
 
     term_initialised    = no
     term_done_requested = no
-    term_queue_clear()
 }
 
 test "terminal loop is inactive before init" {
     term_initialised    = no
     term_done_requested = no
-    term_queue_clear()
 
     assert !term_loop()
     assert !term_step()
