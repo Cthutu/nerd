@@ -331,6 +331,11 @@ term_fb_index :: fn (x: u32, y: u32) -> usize {
     return (y * term_fb_width + x).as(usize)
 }
 
+term_normalise_size :: fn (width: i32, height: i32) -> (u32, u32) {
+    on width <= 0 || height <= 0 => return (0, 0)
+    return (width.as(u32), height.as(u32))
+}
+
 term_fb_default_cell :: fn () -> TermCell {
     return TermCell { ch: ' '.as(u32) ink: TERM_DEFAULT_INK paper: TERM_DEFAULT_PAPER flags: CELL_DIRTY }
 }
@@ -1100,7 +1105,7 @@ on "windows" {
 
         columns := info.srWindow.Right - info.srWindow.Left + 1
         rows := info.srWindow.Bottom - info.srWindow.Top + 1
-        return (columns.as(u32), rows.as(u32))
+        return term_normalise_size(columns.as(i32), rows.as(i32))
     }
 
     -- Writes text directly to the terminal output stream.
@@ -1806,6 +1811,28 @@ test "string literal count in term tests" {
 
 test "terminal codepoint width counts ascii glyph" {
     assert term_codepoint_width(65.as(u32)) == 1
+}
+
+test "terminal size normalisation rejects transient invalid rectangles" {
+    valid := term_normalise_size(80, 25)
+    assert valid.0 == 80
+    assert valid.1 == 25
+
+    zero_width := term_normalise_size(0, 25)
+    assert zero_width.0 == 0
+    assert zero_width.1 == 0
+
+    zero_height := term_normalise_size(80, 0)
+    assert zero_height.0 == 0
+    assert zero_height.1 == 0
+
+    negative_width := term_normalise_size(-1, 25)
+    assert negative_width.0 == 0
+    assert negative_width.1 == 0
+
+    negative_height := term_normalise_size(80, -1)
+    assert negative_height.0 == 0
+    assert negative_height.1 == 0
 }
 
 test "utf-8 decoder handles ascii glyph offsets" {
