@@ -1405,6 +1405,21 @@ term_keyboard_snapshot :: fn () -> TermKeyboard {
     return keyboard
 }
 
+pub term_key_down :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+    index := term_key_index(key)
+    return term_key_index_valid(index) && keyboard.down[index]
+}
+
+pub term_key_pressed :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+    index := term_key_index(key)
+    return term_key_index_valid(index) && keyboard.pressed[index]
+}
+
+pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+    index := term_key_index(key)
+    return term_key_index_valid(index) && keyboard.released[index]
+}
+
 term_keyboard_record_event :: fn (event: TermEvent) {
     on event {
         KeyDown(key) => {
@@ -1487,6 +1502,18 @@ pub term_hook_presentation :: fn (interval: Duration, callback: TermPresentFn) {
     term_present_hook     = callback
     term_present_hook_set = yes
     term_present_ran      = no
+}
+
+-- Clears registered terminal callbacks and their timing state.
+pub term_hooks_clear :: fn () {
+    term_simulate_hook_set = no
+    term_present_hook_set  = no
+    term_simulate_interval = 0
+    term_present_interval  = 0
+    term_simulate_last     = 0
+    term_present_last      = 0
+    term_simulate_ran      = no
+    term_present_ran       = no
 }
 
 term_hook_due :: fn (last     : Instant,
@@ -1612,6 +1639,7 @@ pub term_step :: fn () -> bool {
         term_present_ready  = no
         term_simulate_ran   = no
         term_present_ran    = no
+        term_hooks_clear()
         return no
     }
 
@@ -1674,6 +1702,12 @@ pub term_poll :: fn () -> TermEvent {
     event := term_events[0]
     term_events.delete(0)
     return event
+}
+
+term_noop_simulate :: fn (_sim: TermSimulate) {
+}
+
+term_noop_present :: fn (_present: TermPresent) {
 }
 
 test "term_get_size returns a column and row tuple" {
@@ -1818,6 +1852,9 @@ test "terminal keyboard state records edges" {
     assert keyboard.down[index]
     assert keyboard.pressed[index]
     assert !keyboard.released[index]
+    assert term_key_down(keyboard, KeyCode.LowerQ)
+    assert term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
 
     term_keyboard_clear_edges()
     keyboard = term_keyboard_snapshot()
@@ -1830,6 +1867,9 @@ test "terminal keyboard state records edges" {
     assert !keyboard.down[index]
     assert !keyboard.pressed[index]
     assert keyboard.released[index]
+    assert !term_key_down(keyboard, KeyCode.LowerQ)
+    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert term_key_released(keyboard, KeyCode.LowerQ)
 
     term_keyboard_clear()
     term_queue_clear()
@@ -1900,6 +1940,23 @@ test "terminal hook due runs first tick then by interval" {
     assert term_hook_due(100.as(Instant), 50.as(Duration), 100.as(Instant), no)
     assert !term_hook_due(100.as(Instant), 50.as(Duration), 120.as(Instant), yes)
     assert term_hook_due(100.as(Instant), 50.as(Duration), 150.as(Instant), yes)
+}
+
+test "terminal hooks clear resets registered callbacks" {
+    term_hook_simulation(50.as(Duration), term_noop_simulate)
+    term_hook_presentation(50.as(Duration), term_noop_present)
+
+    assert term_simulate_hook_set
+    assert term_present_hook_set
+
+    term_hooks_clear()
+
+    assert !term_simulate_hook_set
+    assert !term_present_hook_set
+    assert term_simulate_interval == 0
+    assert term_present_interval == 0
+    assert !term_simulate_ran
+    assert !term_present_ran
 }
 
 test "too-small renderer marks warning background" {

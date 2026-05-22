@@ -107,14 +107,10 @@ matrix_draw :: fn (width: u32, height: u32) {
     term_fb_text(2, 2, "q / Esc exits", matrix_green_dim, rgb(0, 0, 0))
 }
 
-matrix_key_pressed :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
-    return keyboard.pressed[key.as(u32).as(usize)]
-}
-
 matrix_simulate :: fn (sim: TermSimulate) {
-    on matrix_key_pressed(sim.keyboard, LowerQ) ||
-       matrix_key_pressed(sim.keyboard, Q) ||
-       matrix_key_pressed(sim.keyboard, Escape) => {
+    on term_key_pressed(sim.keyboard, LowerQ) ||
+       term_key_pressed(sim.keyboard, Q) ||
+       term_key_pressed(sim.keyboard, Escape) => {
         term_done()
         return
     }
