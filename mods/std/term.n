@@ -263,7 +263,7 @@ TermOutput :: plex {
     truncated bool
 }
 
-ClipResult :: plex {
+PreparedRect :: plex {
     ok       bool
     rect     RectI32
     x_offset i32
@@ -494,12 +494,17 @@ term_fb_ensure :: fn () {
     }
 }
 
-term_clip_rect :: fn (rect: RectI32) -> ClipResult {
+term_fb_prepare_rect :: fn (rect: RectI32) -> PreparedRect {
+    on !term_fb_ready || rect.is_empty() => {
+        empty := RectI32 { x: 0 y: 0 w: 0 h: 0 }
+        return PreparedRect { ok: no rect: empty x_offset: 0 y_offset: 0 }
+    }
+
     absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
     clipped := absolute.intersection(term_fb_view).intersection(term_fb_screen_rect())
-    on clipped.is_empty() => return ClipResult { ok: no rect: clipped x_offset: 0 y_offset: 0 }
+    on clipped.is_empty() => return PreparedRect { ok: no rect: clipped x_offset: 0 y_offset: 0 }
 
-    return ClipResult { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }
+    return PreparedRect { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }
 }
 
 term_fb_apply_colour :: fn (cell: ^TermCell, ink: Colour, paper: Colour) {
@@ -596,12 +601,10 @@ pub term_fb_put :: fn (x     : i32,
                        ch    : u32,
                        ink   : Colour = COLOUR_TRANSPARENT,
                        paper : Colour = COLOUR_TRANSPARENT) {
-    on !term_fb_ready => return
-
     width := term_codepoint_width(ch)
     on width <= 0 => return
 
-    clip := term_clip_rect(RectI32 { x y w: width h: 1 })
+    clip := term_fb_prepare_rect(RectI32 { x y w: width h: 1 })
     on !clip.ok || clip.x_offset != 0 || clip.rect.w < width => return
 
     term_fb_put_clipped(clip.rect.x.as(u32), clip.rect.y.as(u32), ch, ink, paper, clip.rect.w)
@@ -614,9 +617,7 @@ pub term_fb_fill_rect :: fn (x     : i32,
                              ch    : u32 = ' '.as(u32),
                              ink   : Colour = COLOUR_TRANSPARENT,
                              paper : Colour = COLOUR_TRANSPARENT) {
-    on !term_fb_ready => return
-
-    clip := term_clip_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w h })
     on !clip.ok => return
 
     char_width := term_codepoint_width(ch)
@@ -659,9 +660,7 @@ pub term_fb_paint_rect :: fn (x     : i32,
                               h     : i32,
                               ink   : Colour = COLOUR_TRANSPARENT,
                               paper : Colour = COLOUR_TRANSPARENT) {
-    on !term_fb_ready => return
-
-    clip := term_clip_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w h })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -700,10 +699,8 @@ pub term_fb_text :: fn (x     : i32,
                         text  : string,
                         ink   : Colour = COLOUR_TRANSPARENT,
                         paper : Colour = COLOUR_TRANSPARENT) {
-    on !term_fb_ready => return
-
     text_width := term_text_display_width(text)
-    clip := term_clip_rect(RectI32 { x y w: text_width h: 1 })
+    clip := term_fb_prepare_rect(RectI32 { x y w: text_width h: 1 })
     on !clip.ok => return
 
     byte_index : usize = 0
@@ -845,7 +842,7 @@ pub term_fb_box :: fn (x     : i32,
         }
     }
 
-    clip := term_clip_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w h })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -1971,12 +1968,12 @@ test "framebuffer cell helpers guard out of bounds access" {
     term_fb_release()
 }
 
-test "terminal clipping returns draw rect and source offsets" {
+test "terminal framebuffer prepare returns draw rect and source offsets" {
     term_fb_release()
     assert term_fb_resize(5, 3)
     term_view(1, 0, 3, 3)
 
-    clip := term_clip_rect(RectI32 { x: -1 y: 1 w: 5 h: 1 })
+    clip := term_fb_prepare_rect(RectI32 { x: -1 y: 1 w: 5 h: 1 })
 
     assert clip.ok
     assert clip.rect.x == 1
@@ -1985,6 +1982,19 @@ test "terminal clipping returns draw rect and source offsets" {
     assert clip.rect.h == 1
     assert clip.x_offset == 1
     assert clip.y_offset == 0
+
+    term_fb_release()
+}
+
+test "terminal framebuffer prepare rejects unavailable draw surfaces" {
+    term_fb_release()
+
+    unready := term_fb_prepare_rect(RectI32 { x: 0 y: 0 w: 1 h: 1 })
+    assert !unready.ok
+
+    assert term_fb_resize(5, 3)
+    empty := term_fb_prepare_rect(RectI32 { x: 0 y: 0 w: 0 h: 1 })
+    assert !empty.ok
 
     term_fb_release()
 }
