@@ -264,10 +264,10 @@ TermOutput :: plex {
 }
 
 ClipResult :: plex {
-    ok    bool
-    dst   RectI32
-    src_x i32
-    src_y i32
+    ok       bool
+    rect     RectI32
+    x_offset i32
+    y_offset i32
 }
 
 CELL_DIRTY     :: 1
@@ -497,14 +497,43 @@ term_fb_ensure :: fn () {
 term_clip_rect :: fn (rect: RectI32) -> ClipResult {
     absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
     clipped := absolute.intersection(term_fb_view).intersection(term_fb_screen_rect())
-    on clipped.is_empty() => return ClipResult { ok: no dst: clipped src_x: 0 src_y: 0 }
+    on clipped.is_empty() => return ClipResult { ok: no rect: clipped x_offset: 0 y_offset: 0 }
 
-    return ClipResult { ok: yes dst: clipped src_x: clipped.x - absolute.x src_y: clipped.y - absolute.y }
+    return ClipResult { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }
 }
 
 term_fb_apply_colour :: fn (cell: ^TermCell, ink: Colour, paper: Colour) {
     on ink != COLOUR_TRANSPARENT => cell^.ink = ink
     on paper != COLOUR_TRANSPARENT => cell^.paper = paper
+}
+
+term_fb_put_clipped :: fn (x     : u32,
+                           y     : u32,
+                           ch    : u32,
+                           ink   : Colour,
+                           paper : Colour,
+                           cells : i32) {
+    on !term_fb_index_valid(x, y) => return
+
+    width := term_codepoint_width(ch)
+    on width <= 0 || width > cells => return
+
+    term_fb_clear_wide_link(x, y)
+    index := term_fb_index(x, y)
+    term_fb_cells[index].ch = ch
+    term_fb_apply_colour(^term_fb_cells[index], ink, paper)
+    term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
+    term_fb_cells[index].flags |= CELL_DIRTY
+
+    on width == 2 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+        term_fb_clear_wide_link(x + 1, y)
+        tail_index := term_fb_index(x + 1, y)
+        term_fb_cells[index].flags |= CELL_WIDE_HEAD
+        term_fb_cells[tail_index].ch = 0
+        term_fb_cells[tail_index].ink = term_fb_cells[index].ink
+        term_fb_cells[tail_index].paper = term_fb_cells[index].paper
+        term_fb_cells[tail_index].flags = CELL_DIRTY | CELL_WIDE_TAIL
+    }
 }
 
 term_codepoint_width :: fn (ch: u32) -> i32 {
@@ -573,28 +602,9 @@ pub term_fb_put :: fn (x     : i32,
     on width <= 0 => return
 
     clip := term_clip_rect(RectI32 { x y w: width h: 1 })
-    on !clip.ok || clip.src_x != 0 || clip.dst.w < width => return
+    on !clip.ok || clip.x_offset != 0 || clip.rect.w < width => return
 
-    dx := clip.dst.x.as(u32)
-    dy := clip.dst.y.as(u32)
-    on !term_fb_index_valid(dx, dy) => return
-
-    term_fb_clear_wide_link(dx, dy)
-    index := term_fb_index(dx, dy)
-    term_fb_cells[index].ch = ch
-    term_fb_apply_colour(^term_fb_cells[index], ink, paper)
-    term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
-    term_fb_cells[index].flags |= CELL_DIRTY
-
-    on width == 2 && dx + 1 < term_fb_width && term_fb_index_valid(dx + 1, dy) => {
-        term_fb_clear_wide_link(dx + 1, dy)
-        tail_index := term_fb_index(dx + 1, dy)
-        term_fb_cells[index].flags |= CELL_WIDE_HEAD
-        term_fb_cells[tail_index].ch = 0
-        term_fb_cells[tail_index].ink = term_fb_cells[index].ink
-        term_fb_cells[tail_index].paper = term_fb_cells[index].paper
-        term_fb_cells[tail_index].flags = CELL_DIRTY | CELL_WIDE_TAIL
-    }
+    term_fb_put_clipped(clip.rect.x.as(u32), clip.rect.y.as(u32), ch, ink, paper, clip.rect.w)
 }
 
 pub term_fb_fill_rect :: fn (x     : i32,
@@ -613,12 +623,12 @@ pub term_fb_fill_rect :: fn (x     : i32,
     yy : i32 = 0
     xx : i32 = 0
 
-    for yy < clip.dst.h {
+    for yy < clip.rect.h {
         xx = 0
-        for xx < clip.dst.w {
+        for xx < clip.rect.w {
             on char_width == 1 => {
-                dx := (clip.dst.x + xx).as(u32)
-                dy := (clip.dst.y + yy).as(u32)
+                dx := (clip.rect.x + xx).as(u32)
+                dy := (clip.rect.y + yy).as(u32)
                 on !term_fb_index_valid(dx, dy) => {
                     xx += 1
                     again
@@ -630,11 +640,12 @@ pub term_fb_fill_rect :: fn (x     : i32,
                 term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
                 term_fb_cells[index].flags |= CELL_DIRTY
             } else {
-                term_fb_put(clip.dst.x - term_fb_view.x + xx,
-                            clip.dst.y - term_fb_view.y + yy,
-                            ch,
-                            ink,
-                            paper)
+                term_fb_put_clipped((clip.rect.x + xx).as(u32),
+                                    (clip.rect.y + yy).as(u32),
+                                    ch,
+                                    ink,
+                                    paper,
+                                    clip.rect.w - xx)
             }
             xx += 1
         }
@@ -656,11 +667,11 @@ pub term_fb_paint_rect :: fn (x     : i32,
     yy : i32 = 0
     xx : i32 = 0
 
-    for yy < clip.dst.h {
+    for yy < clip.rect.h {
         xx = 0
-        for xx < clip.dst.w {
-            dx := (clip.dst.x + xx).as(u32)
-            dy := (clip.dst.y + yy).as(u32)
+        for xx < clip.rect.w {
+            dx := (clip.rect.x + xx).as(u32)
+            dy := (clip.rect.y + yy).as(u32)
             on !term_fb_index_valid(dx, dy) => {
                 xx += 1
                 again
@@ -698,16 +709,16 @@ pub term_fb_text :: fn (x     : i32,
     byte_index : usize = 0
     source_col : i32   = 0
 
-    end_col := clip.src_x + clip.dst.w
+    end_col := clip.x_offset + clip.rect.w
 
     for byte_index < text.count {
         decoded := term_utf8_decode_at(text, byte_index)
         on decoded.1 == 0 => return
 
         width := term_codepoint_width(decoded.0)
-        on source_col >= clip.src_x && source_col + width <= end_col => {
-            draw_x := clip.dst.x - term_fb_view.x + source_col - clip.src_x
-            term_fb_put(draw_x, y, decoded.0, ink, paper)
+        on source_col >= clip.x_offset && source_col + width <= end_col => {
+            draw_x := clip.rect.x + source_col - clip.x_offset
+            term_fb_put_clipped(draw_x.as(u32), clip.rect.y.as(u32), decoded.0, ink, paper, end_col - source_col)
         }
 
         source_col += width
@@ -733,6 +744,44 @@ term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
         current    += 1
     }
     return ' '.as(u32)
+}
+
+term_box_cell :: fn (source_x      : i32,
+                     source_y      : i32,
+                     width         : i32,
+                     height        : i32,
+                     top_left      : u32,
+                     top           : u32,
+                     top_right     : u32,
+                     left          : u32,
+                     fill          : u32,
+                     right         : u32,
+                     bottom_left   : u32,
+                     bottom        : u32,
+                     bottom_right  : u32) -> u32 {
+    on width == 1 && height == 1 => return fill
+
+    on width == 1 => {
+        on source_y == 0 => return top
+        on source_y == height - 1 => return bottom
+        return left
+    }
+
+    on height == 1 => {
+        on source_x == 0 => return left
+        on source_x == width - 1 => return right
+        return top
+    }
+
+    on source_x == 0 && source_y == 0 => return top_left
+    on source_x == width - 1 && source_y == 0 => return top_right
+    on source_x == 0 && source_y == height - 1 => return bottom_left
+    on source_x == width - 1 && source_y == height - 1 => return bottom_right
+    on source_y == 0 => return top
+    on source_y == height - 1 => return bottom
+    on source_x == 0 => return left
+    on source_x == width - 1 => return right
+    return fill
 }
 
 pub term_fb_box :: fn (x     : i32,
@@ -796,51 +845,38 @@ pub term_fb_box :: fn (x     : i32,
         }
     }
 
-    term_fb_fill_rect(x, y, w, h, fill, ink, paper)
+    clip := term_clip_rect(RectI32 { x y w h })
+    on !clip.ok => return
 
-    on w == 1 && h == 1 => {
-        term_fb_put(x, y, fill, ink, paper)
-        return
-    }
+    yy : i32 = 0
+    xx : i32 = 0
 
-    on w == 1 => {
-        term_fb_put(x, y, top, ink, paper)
-        yy : i32 = 1
-        for yy < h - 1 {
-            term_fb_put(x, y + yy, left, ink, paper)
-            yy += 1
-        }
-        term_fb_put(x, y + h - 1, bottom, ink, paper)
-        return
-    }
-
-    on h == 1 => {
-        term_fb_put(x, y, left, ink, paper)
-        xx : i32 = 1
-        for xx < w - 1 {
-            term_fb_put(x + xx, y, top, ink, paper)
+    for yy < clip.rect.h {
+        xx = 0
+        for xx < clip.rect.w {
+            source_x := clip.x_offset + xx
+            source_y := clip.y_offset + yy
+            ch := term_box_cell(source_x,
+                                source_y,
+                                w,
+                                h,
+                                top_left,
+                                top,
+                                top_right,
+                                left,
+                                fill,
+                                right,
+                                bottom_left,
+                                bottom,
+                                bottom_right)
+            term_fb_put_clipped((clip.rect.x + xx).as(u32),
+                                (clip.rect.y + yy).as(u32),
+                                ch,
+                                ink,
+                                paper,
+                                clip.rect.w - xx)
             xx += 1
         }
-        term_fb_put(x + w - 1, y, right, ink, paper)
-        return
-    }
-
-    term_fb_put(x, y, top_left, ink, paper)
-    term_fb_put(x + w - 1, y, top_right, ink, paper)
-    term_fb_put(x, y + h - 1, bottom_left, ink, paper)
-    term_fb_put(x + w - 1, y + h - 1, bottom_right, ink, paper)
-
-    xx : i32 = 1
-    for xx < w - 1 {
-        term_fb_put(x + xx, y, top, ink, paper)
-        term_fb_put(x + xx, y + h - 1, bottom, ink, paper)
-        xx += 1
-    }
-
-    yy : i32 = 1
-    for yy < h - 1 {
-        term_fb_put(x, y + yy, left, ink, paper)
-        term_fb_put(x + w - 1, y + yy, right, ink, paper)
         yy += 1
     }
 }
@@ -1931,6 +1967,74 @@ test "framebuffer cell helpers guard out of bounds access" {
     assert term_fb_cell_ink(0, 2) == TERM_DEFAULT_INK
     assert term_fb_cell_paper(2, 2) == TERM_DEFAULT_PAPER
     assert term_fb_cell_flags(2, 0) == 0
+
+    term_fb_release()
+}
+
+test "terminal clipping returns draw rect and source offsets" {
+    term_fb_release()
+    assert term_fb_resize(5, 3)
+    term_view(1, 0, 3, 3)
+
+    clip := term_clip_rect(RectI32 { x: -1 y: 1 w: 5 h: 1 })
+
+    assert clip.ok
+    assert clip.rect.x == 1
+    assert clip.rect.y == 1
+    assert clip.rect.w == 3
+    assert clip.rect.h == 1
+    assert clip.x_offset == 1
+    assert clip.y_offset == 0
+
+    term_fb_release()
+}
+
+test "framebuffer text clips through view using source offsets" {
+    term_fb_release()
+    assert term_fb_resize(4, 2)
+    term_view(1, 0, 2, 1)
+
+    term_fb_text(-1, 0, "ABCD", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+
+    assert term_fb_cell_ch(0, 0) == ' '.as(u32)
+    assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
+    assert term_fb_cell_ch(2, 0) == 'C'.as(u32)
+    assert term_fb_cell_ch(3, 0) == ' '.as(u32)
+
+    term_fb_release()
+}
+
+test "framebuffer wide glyphs do not spill outside clipped view" {
+    term_fb_release()
+    assert term_fb_resize(4, 1)
+    term_view(1, 0, 1, 1)
+
+    bytes : [..]u8
+    bytes.push(0xe7)
+    bytes.push(0x95)
+    bytes.push(0x8c)
+    term_fb_text(0, 0, bytes.as(string), COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+
+    assert term_fb_cell_ch(1, 0) == ' '.as(u32)
+    assert term_fb_cell_ch(2, 0) == ' '.as(u32)
+
+    bytes.free()
+    term_fb_release()
+}
+
+test "framebuffer box clips through view using source offsets" {
+    term_fb_release()
+    assert term_fb_resize(5, 3)
+    term_view(1, 0, 3, 3)
+
+    term_fb_box(-1, 0, 5, 3)
+
+    assert term_fb_cell_ch(0, 0) == ' '.as(u32)
+    assert term_fb_cell_ch(1, 0) == 0x2500.as(u32)
+    assert term_fb_cell_ch(2, 0) == 0x2500.as(u32)
+    assert term_fb_cell_ch(3, 0) == 0x2500.as(u32)
+    assert term_fb_cell_ch(1, 1) == ' '.as(u32)
+    assert term_fb_cell_ch(3, 1) == ' '.as(u32)
 
     term_fb_release()
 }
