@@ -46,7 +46,7 @@ on "linux" {
     }
 
     pub log_valid :: fn (log: LogFile) -> bool {
-        return log.fd >= 0
+        return log.fd > 0
     }
 
     pub log_append :: fn (log: LogFile, text: string) -> bool {
@@ -99,7 +99,7 @@ on "windows" {
 
     pub log_valid :: fn (log: LogFile) -> bool {
         handle := log.handle.as(usize)
-        return handle != INVALID_HANDLE_VALUE
+        return handle != 0 && handle != INVALID_HANDLE_VALUE
     }
 
     pub log_append :: fn (log: LogFile, text: string) -> bool {

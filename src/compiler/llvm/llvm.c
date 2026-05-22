@@ -3846,7 +3846,9 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     };
 }
 
-internal string llvm_binary_instruction(HirBinaryOp op)
+internal string llvm_binary_instruction(const Sema* sema,
+                                        u32         type_index,
+                                        HirBinaryOp op)
 {
     switch (op) {
     case HIR_BINARY_Add:
@@ -3856,9 +3858,11 @@ internal string llvm_binary_instruction(HirBinaryOp op)
     case HIR_BINARY_Multiply:
         return s("mul");
     case HIR_BINARY_Divide:
-        return s("sdiv");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("udiv")
+                                                               : s("sdiv");
     case HIR_BINARY_Modulo:
-        return s("srem");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("urem")
+                                                               : s("srem");
     case HIR_BINARY_BitwiseAnd:
         return s("and");
     case HIR_BINARY_BitwiseXor:
@@ -3868,7 +3872,8 @@ internal string llvm_binary_instruction(HirBinaryOp op)
     case HIR_BINARY_ShiftLeft:
         return s("shl");
     case HIR_BINARY_ShiftRight:
-        return s("ashr");
+        return llvm_type_is_unsigned_integer(sema, type_index) ? s("lshr")
+                                                               : s("ashr");
     case HIR_BINARY_LogicalAnd:
         return s("and");
     case HIR_BINARY_LogicalOr:
@@ -5919,11 +5924,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = temp,
                 };
             }
-            string instr = llvm_binary_instruction(expr->binary_op);
-            if (instr.count == 0) {
-                return (LlvmValue){0};
-            }
-
             LlvmValue lhs = llvm_emit_expr(ctx, function, expr->lhs_expr_index);
             LlvmValue rhs = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
             if (!lhs.ok || !rhs.ok) {
@@ -5951,8 +5951,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     result_type = rhs.type_index;
                 }
             }
-            string type = llvm_type_string(ctx, result_type);
-            string temp = llvm_temp(ctx);
+            string type  = llvm_type_string(ctx, result_type);
+            string temp  = llvm_temp(ctx);
+            string instr = llvm_binary_instruction(
+                ctx->sema, result_type, expr->binary_op);
+            if (instr.count == 0) {
+                return (LlvmValue){0};
+            }
             if (llvm_float_bits(ctx->sema, result_type) > 0) {
                 instr = llvm_float_binary_instruction(expr->binary_op);
                 if (instr.count == 0) {
