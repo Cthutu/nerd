@@ -304,7 +304,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             "positional",
                                             NULL,
                                             NULL,
-                                            "Source snippet to compile",
+                                            "Source file or snippet to "
+                                            "compile. Defaults to main.n, "
+                                            "then <folder>.n",
                                             false));
         json_array_push(
             build_flags,
@@ -397,8 +399,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             "positional",
                                             NULL,
                                             NULL,
-                                            "Source file to check",
-                                            true));
+                                            "Source file to check. Defaults "
+                                            "to main.n, then <folder>.n",
+                                            false));
         json_array_push(commands,
                         nerd_cli_make_command(arena,
                                               "check",
@@ -565,20 +568,60 @@ nerd_cli_flag_bool(const JsonValue* cli_result, cstr path, bool fallback)
     return json_bool(value);
 }
 
+internal string nerd_default_source_path(Arena* arena, string input)
+{
+    if (input.count > 0) {
+        return input;
+    }
+
+    cstr cwd = path_canonical(arena, ".");
+    if (cwd == NULL) {
+        error_runtime("Failed to resolve current working directory");
+        return (string){0};
+    }
+
+    cstr main_path = path_join(arena, cwd, "main.n");
+    if (path_exists(main_path) && !path_is_directory(main_path)) {
+        return s(main_path);
+    }
+
+    string        folder   = path_filename(s(cwd));
+    StringBuilder filename = {0};
+    sb_init(&filename, arena);
+    sb_append_string(&filename, folder);
+    sb_append_cstr(&filename, ".n");
+    sb_append_null(&filename);
+
+    cstr folder_path =
+        path_join(arena, cwd, (cstr)sb_to_string(&filename).data);
+    if (path_exists(folder_path) && !path_is_directory(folder_path)) {
+        return s(folder_path);
+    }
+
+    error_runtime("No source file specified and neither `%s` nor `%s` exists",
+                  main_path,
+                  folder_path);
+    return (string){0};
+}
+
 internal NerdBuildConfig
 nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 {
     Arena* source_arena = &temp_arena;
     string source_arg =
-        nerd_cli_param_string(cli_result, "command.params.source", s("42"));
+        nerd_cli_param_string(cli_result, "command.params.source", (string){0});
+    string resolved_source_arg =
+        source_arg.count == 0
+            ? nerd_default_source_path(source_arena, source_arg)
+            : source_arg;
     string source_path     = {0};
-    string source_text     = source_arg;
+    string source_text     = resolved_source_arg;
 
     char source_cstr[4096] = {0};
-    ASSERT(source_arg.count < sizeof(source_cstr),
+    ASSERT(resolved_source_arg.count < sizeof(source_cstr),
            "Source path too long for CLI handling");
-    memcpy(source_cstr, source_arg.data, source_arg.count);
-    source_cstr[source_arg.count] = '\0';
+    memcpy(source_cstr, resolved_source_arg.data, resolved_source_arg.count);
+    source_cstr[resolved_source_arg.count] = '\0';
 
     if (path_exists(source_cstr) && !path_is_directory(source_cstr)) {
         FileMap map       = {0};
@@ -617,11 +660,15 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 internal NerdCheckConfig
 nerd_check_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 {
+    Arena* arena = &temp_arena;
+    string input = nerd_default_source_path(
+        arena,
+        nerd_cli_param_string(cli_result, "command.params.input", (string){0}));
+
     return (NerdCheckConfig){
         .source =
             (NerdSource){
-                .source_path = nerd_cli_param_string(
-                    cli_result, "command.params.input", (string){0}),
+                .source_path = input,
             },
         .release =
             nerd_cli_flag_bool(cli_result, "command.flags.release", false),
@@ -666,41 +713,9 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
                                                  Array(string) keywords)
 {
     Arena* arena = &temp_arena;
-    string input =
-        nerd_cli_param_string(cli_result, "command.params.input", (string){0});
-
-    if (input.count == 0) {
-        cstr cwd = path_canonical(arena, ".");
-        if (cwd == NULL) {
-            error_runtime("Failed to resolve current working directory");
-        } else {
-            cstr main_path = path_join(arena, cwd, "main.n");
-            if (path_exists(main_path) && !path_is_directory(main_path)) {
-                input = s(main_path);
-            } else {
-                string folder          = path_filename(s(cwd));
-
-                StringBuilder filename = {0};
-                sb_init(&filename, arena);
-                sb_append_string(&filename, folder);
-                sb_append_cstr(&filename, ".n");
-                sb_append_null(&filename);
-
-                cstr folder_path =
-                    path_join(arena, cwd, (cstr)sb_to_string(&filename).data);
-                if (path_exists(folder_path) &&
-                    !path_is_directory(folder_path)) {
-                    input = s(folder_path);
-                } else {
-                    error_runtime(
-                        "No source file specified and neither `%s` nor `%s` "
-                        "exists",
-                        main_path,
-                        folder_path);
-                }
-            }
-        }
-    }
+    string input = nerd_default_source_path(
+        arena,
+        nerd_cli_param_string(cli_result, "command.params.input", (string){0}));
 
     return (NerdRunConfig){
         .source =
@@ -860,11 +875,16 @@ internal int nerd_run_with_cli(int argc, char** argv)
     if (string_eq_cstr(name, "build") || string_eq_cstr(name, "b")) {
         NerdBuildConfig config =
             nerd_build_config_from_json(cli_result, cli_keywords);
-        result = compiler_cmd_build(&config);
+        result = config.source.source.count == 0 &&
+                         config.source.source_path.count == 0
+                     ? 1
+                     : compiler_cmd_build(&config);
     } else if (string_eq_cstr(name, "check")) {
         NerdCheckConfig config =
             nerd_check_config_from_json(cli_result, cli_keywords);
-        result = compiler_cmd_check(&config);
+        result = config.source.source_path.count == 0
+                     ? 1
+                     : compiler_cmd_check(&config);
     } else if (string_eq_cstr(name, "run") || string_eq_cstr(name, "r")) {
         NerdRunConfig config =
             nerd_run_config_from_json(cli_result, cli_keywords);
