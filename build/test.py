@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import shlex
 import subprocess
 import sys
@@ -647,8 +648,18 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     command = parts[5].strip() if len(parts) > 5 and parts[5].strip() else "run"
     expected_stderr = parts[6] if len(parts) > 6 else ""
 
+    default_run_mode = run_mode in {"default-main", "default-folder"}
     cwd = path.parent
+    if default_run_mode:
+        cwd = path.parent / f"_{path.stem.replace('-', '_')}_cwd"
+        shutil.rmtree(cwd, ignore_errors=True)
+        cwd.mkdir(parents=True)
+
     input_path = cwd / f"{path.stem}.input.n"
+    if run_mode == "default-main":
+        input_path = cwd / "main.n"
+    elif run_mode == "default-folder":
+        input_path = cwd / f"{cwd.name}.n"
     input_path.write_text(source, encoding="utf-8", newline="\n")
     executable = input_path.with_suffix("")
     if command in {"build", "b"} and current_platform() == "windows":
@@ -677,7 +688,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
         args.append("--keep")
-    if command not in {"explain", "internal-test"}:
+    if command not in {"explain", "internal-test"} and not default_run_mode:
         args.append(str(input_path.name))
     proc = run_cmd(args, cwd=cwd)
 
@@ -737,7 +748,10 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             names = ", ".join(item.name for item in leftovers)
             failures.append(Failure(path, f"expected LLVM run to clean generated files, found: {names}"))
     if not failures:
-        input_path.unlink(missing_ok=True)
+        if default_run_mode:
+            shutil.rmtree(cwd, ignore_errors=True)
+        else:
+            input_path.unlink(missing_ok=True)
         executable.unlink(missing_ok=True)
         debug_symbols.unlink(missing_ok=True)
     return failures
