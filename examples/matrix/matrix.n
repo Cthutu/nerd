@@ -107,28 +107,24 @@ matrix_draw :: fn (width: u32, height: u32) {
     term_fb_text(2, 2, "q / Esc exits", matrix_green_dim, rgb(0, 0, 0))
 }
 
-matrix_handle_events :: fn (width: ^u32, height: ^u32) -> bool {
-    needs_draw := no
+matrix_key_pressed :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+    return keyboard.pressed[key.as(u32).as(usize)]
+}
 
-    for {
-        event := term_poll()
-        on event {
-            TermEvent.None => break
-            TermEvent.KeyDown(key_code) => {
-                on key_code == LowerQ || key_code == Q || key_code == Escape => term_done()
-            }
-            Resize(new_width, new_height) => {
-                width^ = new_width
-                height^ = new_height
-                matrix_columns_resize(width^, height^)
-                needs_draw = yes
-            }
-            else => {
-            }
-        }
+matrix_simulate :: fn (sim: TermSimulate) {
+    on matrix_key_pressed(sim.keyboard, LowerQ) ||
+       matrix_key_pressed(sim.keyboard, Q) ||
+       matrix_key_pressed(sim.keyboard, Escape) => {
+        term_done()
+        return
     }
 
-    return needs_draw
+    matrix_update(sim.width, sim.height)
+}
+
+matrix_present :: fn (present: TermPresent) {
+    matrix_columns_resize(present.width, present.height)
+    matrix_draw(present.width, present.height)
 }
 
 main :: fn () {
@@ -137,15 +133,9 @@ main :: fn () {
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
-    width  : u32 = 1
-    height : u32 = 1
-
-    for term_loop() {
-        _ := matrix_handle_events(^width, ^height)
-        matrix_update(width, height)
-        matrix_draw(width, height)
-        sleep_ms(33)
-    }
+    term_hook_simulation(from_ms(33), matrix_simulate)
+    term_hook_presentation(from_ms(33), matrix_present)
+    term_run()
 
     columns.free()
 }

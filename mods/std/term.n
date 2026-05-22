@@ -7,6 +7,8 @@
 -- underneath.
 
 use std.math
+use std.time
+
 -- Represents terminal key codes, using ASCII values for byte-sized input and
 -- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
@@ -170,11 +172,43 @@ pub TermEvent :: enum {
 
 pub Colour :: u32
 
-pub TERM_DEFAULT_INK   :: 0xdcdcdc.as(Colour)
-pub TERM_DEFAULT_PAPER :: 0x000000.as(Colour)
-pub COLOUR_TRANSPARENT :: 0xffffffff.as(Colour)
+pub TERM_DEFAULT_INK        :: 0xdcdcdc.as(Colour)
+pub TERM_DEFAULT_PAPER      :: 0x000000.as(Colour)
+pub COLOUR_TRANSPARENT      :: 0xffffffff.as(Colour)
 pub TERM_DEFAULT_MIN_WIDTH  :: 80
 pub TERM_DEFAULT_MIN_HEIGHT :: 25
+pub TERM_KEY_CODE_COUNT     :: 303
+
+pub TermKeyboard :: plex {
+    down     [TERM_KEY_CODE_COUNT]bool
+    pressed  [TERM_KEY_CODE_COUNT]bool
+    released [TERM_KEY_CODE_COUNT]bool
+}
+
+pub TermMouse :: plex {
+    x        i32
+    y        i32
+    buttons  u32
+    pressed  u32
+    released u32
+}
+
+pub TermSimulate :: plex {
+    dt       Duration
+    width    u32
+    height   u32
+    keyboard TermKeyboard
+    mouse    TermMouse
+}
+
+pub TermPresent :: plex {
+    dt     Duration
+    width  u32
+    height u32
+}
+
+pub TermSimulateFn :: fn (TermSimulate)
+pub TermPresentFn  :: fn (TermPresent)
 
 pub BoxStyle :: enum {
     Single
@@ -185,21 +219,21 @@ pub BoxStyle :: enum {
 }
 
 TermCell :: plex {
-    ch u32
-    ink Colour
+    ch    u32
+    ink   Colour
     paper Colour
     flags u32
 }
 
 TermOutput :: plex {
-    bytes []u8
-    count usize
+    bytes     []u8
+    count     usize
     truncated bool
 }
 
 ClipResult :: plex {
-    ok bool
-    dst RectI32
+    ok    bool
+    dst   RectI32
     src_x i32
     src_y i32
 }
@@ -208,26 +242,40 @@ CELL_DIRTY     :: 1
 CELL_WIDE_HEAD :: 2
 CELL_WIDE_TAIL :: 4
 
-term_initialized    : bool
-term_done_requested : bool
-term_events         : [..]TermEvent
-term_last_columns   : u32
-term_last_rows      : u32
-term_min_width      : u32
-term_min_height     : u32
-term_present_ready  : bool
-term_arena          : arena
-term_arena_ready    : bool
-term_fb_cells       : [..]TermCell
-term_fb_width       : u32
-term_fb_height      : u32
-term_fb_view        : RectI32
-term_fb_ready       : bool
+term_initialised       : bool
+term_done_requested    : bool
+term_events            : [..]TermEvent
+term_last_columns      : u32
+term_last_rows         : u32
+term_min_width         : u32
+term_min_height        : u32
+term_present_ready     : bool
+term_arena             : arena
+term_arena_ready       : bool
+term_fb_cells          : [..]TermCell
+term_fb_width          : u32
+term_fb_height         : u32
+term_fb_view           : RectI32
+term_fb_ready          : bool
+term_keyboard_down     : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pressed  : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_released : [TERM_KEY_CODE_COUNT]bool
+term_mouse             : TermMouse
+term_simulate_hook     : TermSimulateFn
+term_simulate_hook_set : bool
+term_simulate_interval : Duration
+term_simulate_last     : Instant
+term_simulate_ran      : bool
+term_present_hook      : TermPresentFn
+term_present_hook_set  : bool
+term_present_interval  : Duration
+term_present_last      : Instant
+term_present_ran       : bool
 
 term_arena_ensure :: fn () {
     on term_arena_ready => return
 
-    term_arena = arena(1024 * 1024, 64 * 1024)
+    term_arena       = arena(1024 * 1024, 64 * 1024)
     term_arena_ready = yes
 }
 
@@ -252,11 +300,11 @@ term_fb_index :: fn (x: u32, y: u32) -> usize {
 }
 
 term_fb_default_cell :: fn () -> TermCell {
-    return TermCell { ch: ' '.as(u32), ink: TERM_DEFAULT_INK, paper: TERM_DEFAULT_PAPER, flags: CELL_DIRTY }
+    return TermCell { ch: ' '.as(u32) ink: TERM_DEFAULT_INK paper: TERM_DEFAULT_PAPER flags: CELL_DIRTY }
 }
 
 term_fb_screen_rect :: fn () -> RectI32 {
-    return RectI32 { x: 0, y: 0, w: term_fb_width.as(i32), h: term_fb_height.as(i32) }
+    return RectI32 { x: 0 y: 0 w: term_fb_width.as(i32) h: term_fb_height.as(i32) }
 }
 
 pub term_view_reset :: fn () {
@@ -264,7 +312,7 @@ pub term_view_reset :: fn () {
 }
 
 pub term_view :: fn (x: i32, y: i32, w: i32, h: i32) {
-    requested := RectI32 { x: x, y: y, w: w, h: h }
+    requested := RectI32 { x y w h }
     term_fb_view = requested.intersection(term_fb_screen_rect())
 }
 
@@ -320,7 +368,7 @@ term_fb_cell_flags :: fn (x: u32, y: u32) -> u32 {
 
 term_fb_resize :: fn (width: u32, height: u32) {
     new_count := (width * height).as(usize)
-    new_cells: [new_count..]TermCell
+    new_cells : [new_count..]TermCell
     new_cells.resize_undefined_to(new_count)
 
     i : usize = 0
@@ -350,17 +398,17 @@ term_fb_resize :: fn (width: u32, height: u32) {
         i += 1
     }
     new_cells.free()
-    term_fb_width = width
+    term_fb_width  = width
     term_fb_height = height
-    term_fb_ready = yes
+    term_fb_ready  = yes
     term_view_reset()
 }
 
 term_fb_release :: fn () {
     term_fb_cells.clear()
-    term_fb_width = 0
+    term_fb_width  = 0
     term_fb_height = 0
-    term_fb_ready = no
+    term_fb_ready  = no
     term_view_reset()
 }
 
@@ -379,11 +427,11 @@ term_fb_ensure :: fn () {
 }
 
 term_clip_rect :: fn (rect: RectI32) -> ClipResult {
-    absolute := RectI32 { x: rect.x + term_fb_view.x, y: rect.y + term_fb_view.y, w: rect.w, h: rect.h }
+    absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
     clipped := absolute.intersection(term_fb_view).intersection(term_fb_screen_rect())
-    on clipped.is_empty() => return ClipResult { ok: no, dst: clipped, src_x: 0, src_y: 0 }
+    on clipped.is_empty() => return ClipResult { ok: no dst: clipped src_x: 0 src_y: 0 }
 
-    return ClipResult { ok: yes, dst: clipped, src_x: clipped.x - absolute.x, src_y: clipped.y - absolute.y }
+    return ClipResult { ok: yes dst: clipped src_x: clipped.x - absolute.x src_y: clipped.y - absolute.y }
 }
 
 term_fb_apply_colour :: fn (cell: ^TermCell, ink: Colour, paper: Colour) {
@@ -434,8 +482,9 @@ term_utf8_decode_at :: fn (text: string, index: usize) -> (u32, usize) {
 }
 
 term_text_display_width :: fn (text: string) -> i32 {
-    width : i32 = 0
+    width : i32   = 0
     index : usize = 0
+
     for index < text.count {
         decoded := term_utf8_decode_at(text, index)
         on decoded.1 == 0 => return width
@@ -445,13 +494,17 @@ term_text_display_width :: fn (text: string) -> i32 {
     return width
 }
 
-pub term_fb_put :: fn (x: i32, y: i32, ch: u32, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
+pub term_fb_put :: fn (x     : i32,
+                       y     : i32,
+                       ch    : u32,
+                       ink   : Colour = COLOUR_TRANSPARENT,
+                       paper : Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
 
     width := term_codepoint_width(ch)
     on width <= 0 => return
 
-    clip := term_clip_rect(RectI32 { x: x, y: y, w: width, h: 1 })
+    clip := term_clip_rect(RectI32 { x y w: width h: 1 })
     on !clip.ok || clip.src_x != 0 || clip.dst.w < width => return
 
     dx := clip.dst.x.as(u32)
@@ -475,15 +528,22 @@ pub term_fb_put :: fn (x: i32, y: i32, ch: u32, ink: Colour = COLOUR_TRANSPARENT
     }
 }
 
-pub term_fb_fill_rect :: fn (x: i32, y: i32, w: i32, h: i32, ch: u32 = ' '.as(u32), ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
+pub term_fb_fill_rect :: fn (x     : i32,
+                             y     : i32,
+                             w     : i32,
+                             h     : i32,
+                             ch    : u32 = ' '.as(u32),
+                             ink   : Colour = COLOUR_TRANSPARENT,
+                             paper : Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
 
-    clip := term_clip_rect(RectI32 { x: x, y: y, w: w, h: h })
+    clip := term_clip_rect(RectI32 { x y w h })
     on !clip.ok => return
 
     char_width := term_codepoint_width(ch)
     yy : i32 = 0
     xx : i32 = 0
+
     for yy < clip.dst.h {
         xx = 0
         for xx < clip.dst.w {
@@ -497,7 +557,11 @@ pub term_fb_fill_rect :: fn (x: i32, y: i32, w: i32, h: i32, ch: u32 = ' '.as(u3
                 term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
                 term_fb_cells[index].flags |= CELL_DIRTY
             } else {
-                term_fb_put(clip.dst.x - term_fb_view.x + xx, clip.dst.y - term_fb_view.y + yy, ch, ink, paper)
+                term_fb_put(clip.dst.x - term_fb_view.x + xx,
+                            clip.dst.y - term_fb_view.y + yy,
+                            ch,
+                            ink,
+                            paper)
             }
             xx += 1
         }
@@ -505,14 +569,20 @@ pub term_fb_fill_rect :: fn (x: i32, y: i32, w: i32, h: i32, ch: u32 = ' '.as(u3
     }
 }
 
-pub term_fb_paint_rect :: fn (x: i32, y: i32, w: i32, h: i32, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
+pub term_fb_paint_rect :: fn (x     : i32,
+                              y     : i32,
+                              w     : i32,
+                              h     : i32,
+                              ink   : Colour = COLOUR_TRANSPARENT,
+                              paper : Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
 
-    clip := term_clip_rect(RectI32 { x: x, y: y, w: w, h: h })
+    clip := term_clip_rect(RectI32 { x y w h })
     on !clip.ok => return
 
     yy : i32 = 0
     xx : i32 = 0
+
     for yy < clip.dst.h {
         xx = 0
         for xx < clip.dst.w {
@@ -528,18 +598,29 @@ pub term_fb_paint_rect :: fn (x: i32, y: i32, w: i32, h: i32, ink: Colour = COLO
 }
 
 pub term_fb_clear :: fn () {
-    term_fb_fill_rect(0, 0, term_fb_view.w, term_fb_view.h, ' '.as(u32), TERM_DEFAULT_INK, TERM_DEFAULT_PAPER)
+    term_fb_fill_rect(0,
+                      0,
+                      term_fb_view.w,
+                      term_fb_view.h,
+                      ' '.as(u32),
+                      TERM_DEFAULT_INK,
+                      TERM_DEFAULT_PAPER)
 }
 
-pub term_fb_text :: fn (x: i32, y: i32, text: string, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
+pub term_fb_text :: fn (x     : i32,
+                        y     : i32,
+                        text  : string,
+                        ink   : Colour = COLOUR_TRANSPARENT,
+                        paper : Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
 
     text_width := term_text_display_width(text)
-    clip := term_clip_rect(RectI32 { x: x, y: y, w: text_width, h: 1 })
+    clip := term_clip_rect(RectI32 { x y w: text_width h: 1 })
     on !clip.ok => return
 
     byte_index : usize = 0
-    source_col : i32 = 0
+    source_col : i32   = 0
+
     end_col := clip.src_x + clip.dst.w
 
     for byte_index < text.count {
@@ -565,66 +646,73 @@ term_fb_text_centered :: fn (y: i32, text: string, ink: Colour, paper: Colour) {
 
 term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
     byte_index : usize = 0
-    current : usize = 0
+    current    : usize = 0
+
     for byte_index < chars.count {
         decoded := term_utf8_decode_at(chars, byte_index)
         on decoded.1 == 0 => return ' '.as(u32)
         on current == cell_index => return decoded.0
         byte_index += decoded.1
-        current += 1
+        current    += 1
     }
     return ' '.as(u32)
 }
 
-pub term_fb_box :: fn (x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyle.Single, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
-    top_left : u32 = 0x250c
-    top : u32 = 0x2500
-    top_right : u32 = 0x2510
-    left : u32 = 0x2502
-    fill : u32 = ' '.as(u32)
-    right : u32 = 0x2502
-    bottom_left : u32 = 0x2514
-    bottom : u32 = 0x2500
+pub term_fb_box :: fn (x     : i32,
+                       y     : i32,
+                       w     : i32,
+                       h     : i32,
+                       style : BoxStyle = BoxStyle.Single,
+                       ink   : Colour = COLOUR_TRANSPARENT,
+                       paper : Colour = COLOUR_TRANSPARENT) {
+    top_left     : u32 = 0x250c
+    top          : u32 = 0x2500
+    top_right    : u32 = 0x2510
+    left         : u32 = 0x2502
+    fill         : u32 = ' '.as(u32)
+    right        : u32 = 0x2502
+    bottom_left  : u32 = 0x2514
+    bottom       : u32 = 0x2500
     bottom_right : u32 = 0x2518
 
     on w <= 0 || h <= 0 => return
 
     on style {
         Double => {
-            top_left = 0x2554
-            top = 0x2550
-            top_right = 0x2557
-            left = 0x2551
-            right = 0x2551
-            bottom_left = 0x255a
-            bottom = 0x2550
+            top_left     = 0x2554
+            top          = 0x2550
+            top_right    = 0x2557
+            left         = 0x2551
+            right        = 0x2551
+            bottom_left  = 0x255a
+            bottom       = 0x2550
             bottom_right = 0x255d
         }
         Rounded => {
-            top_left = 0x256d
-            top_right = 0x256e
-            bottom_left = 0x2570
+            top_left     = 0x256d
+            top_right    = 0x256e
+            bottom_left  = 0x2570
             bottom_right = 0x256f
         }
         Heavy => {
-            top_left = 0x250f
-            top = 0x2501
-            top_right = 0x2513
-            left = 0x2503
-            right = 0x2503
-            bottom_left = 0x2517
-            bottom = 0x2501
+            top_left     = 0x250f
+            top          = 0x2501
+            top_right    = 0x2513
+            left         = 0x2503
+            right        = 0x2503
+            bottom_left  = 0x2517
+            bottom       = 0x2501
             bottom_right = 0x251b
         }
         Custom(chars) => {
-            top_left = term_box_string_char(chars, 0)
-            top = term_box_string_char(chars, 1)
-            top_right = term_box_string_char(chars, 2)
-            left = term_box_string_char(chars, 3)
-            fill = term_box_string_char(chars, 4)
-            right = term_box_string_char(chars, 5)
-            bottom_left = term_box_string_char(chars, 6)
-            bottom = term_box_string_char(chars, 7)
+            top_left     = term_box_string_char(chars, 0)
+            top          = term_box_string_char(chars, 1)
+            top_right    = term_box_string_char(chars, 2)
+            left         = term_box_string_char(chars, 3)
+            fill         = term_box_string_char(chars, 4)
+            right        = term_box_string_char(chars, 5)
+            bottom_left  = term_box_string_char(chars, 6)
+            bottom       = term_box_string_char(chars, 7)
             bottom_right = term_box_string_char(chars, 8)
         }
         else => {
@@ -681,11 +769,12 @@ pub term_fb_box :: fn (x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyl
 }
 
 term_output_make :: fn (capacity: usize) -> TermOutput {
-    return TermOutput { bytes: term_arena.alloc_bytes(capacity), count: 0, truncated: no }
+    return TermOutput { bytes: term_arena.alloc_bytes(capacity) count: 0 truncated: no }
 }
 
 term_output_push_byte :: fn (output: ^TermOutput, byte: u8) {
-    on output^.count >= output^.bytes.count => {
+    capacity := output^.bytes.count
+    on output^.count >= capacity => {
         output^.truncated = yes
         return
     }
@@ -737,11 +826,12 @@ term_fb_present :: fn () {
     term_arena_ensure()
     output_capacity := term_fb_width.as(usize) * term_fb_height.as(usize) * 64 + 1024
     output := term_output_make(output_capacity)
-    current_ink : Colour = COLOUR_TRANSPARENT
+    current_ink   : Colour = COLOUR_TRANSPARENT
     current_paper : Colour = COLOUR_TRANSPARENT
 
     x : u32 = 0
     y : u32 = 0
+
     for y < term_fb_height {
         x = 0
         for x < term_fb_width {
@@ -1271,7 +1361,73 @@ term_queue_clear :: fn () {
     on term_events.count > 0 => term_events.clear()
 }
 
+term_key_index :: fn (key: KeyCode) -> usize {
+    return key.as(u32).as(usize)
+}
+
+term_key_index_valid :: fn (index: usize) -> bool {
+    return index < TERM_KEY_CODE_COUNT.as(usize)
+}
+
+term_keyboard_clear :: fn () {
+    i : usize = 0
+    for i < TERM_KEY_CODE_COUNT.as(usize) {
+        term_keyboard_down[i] = no
+        term_keyboard_pressed[i] = no
+        term_keyboard_released[i] = no
+        i += 1
+    }
+}
+
+term_keyboard_clear_edges :: fn () {
+    i : usize = 0
+    for i < TERM_KEY_CODE_COUNT.as(usize) {
+        term_keyboard_pressed[i] = no
+        term_keyboard_released[i] = no
+        i += 1
+    }
+
+    term_mouse.pressed = 0
+    term_mouse.released = 0
+}
+
+term_keyboard_snapshot :: fn () -> TermKeyboard {
+    keyboard : TermKeyboard
+
+    i : usize = 0
+    for i < TERM_KEY_CODE_COUNT.as(usize) {
+        keyboard.down[i] = term_keyboard_down[i]
+        keyboard.pressed[i] = term_keyboard_pressed[i]
+        keyboard.released[i] = term_keyboard_released[i]
+        i += 1
+    }
+
+    return keyboard
+}
+
+term_keyboard_record_event :: fn (event: TermEvent) {
+    on event {
+        KeyDown(key) => {
+            index := term_key_index(key)
+            on term_key_index_valid(index) => {
+                on !term_keyboard_down[index] => term_keyboard_pressed[index] = yes
+                term_keyboard_down[index] = yes
+            }
+        }
+        KeyUp(key) => {
+            index := term_key_index(key)
+            on term_key_index_valid(index) => {
+                on term_keyboard_down[index] => term_keyboard_released[index] = yes
+                term_keyboard_down[index] = no
+            }
+        }
+        else => {
+        }
+    }
+}
+
 term_queue_push :: fn (event: TermEvent) {
+    term_keyboard_record_event(event)
     term_events.push(event)
 }
 
@@ -1283,7 +1439,13 @@ term_draw_too_small :: fn () {
     ink := rgb(255, 235, 180)
     paper := rgb(72, 18, 28)
 
-    term_fb_fill_rect(0, 0, term_fb_width.as(i32), term_fb_height.as(i32), ' '.as(u32), ink, paper)
+    term_fb_fill_rect(0,
+                      0,
+                      term_fb_width.as(i32),
+                      term_fb_height.as(i32),
+                      ' '.as(u32),
+                      ink,
+                      paper)
 
     message := "Terminal too small"
     detail := $"Need at least {term_min_width}x{term_min_height}"
@@ -1301,15 +1463,98 @@ term_draw_too_small :: fn () {
     }
 }
 
+-- Returns whether the terminal is initialised and large enough for the current
+-- app's minimum size.
+pub term_valid :: fn () -> bool {
+    return term_initialised && !term_too_small()
+}
+
+-- Registers a simulation callback. The callback runs from
+-- `term_step`/`term_run` no more often than `interval`, receives accumulated
+-- keyboard edges, and is skipped while the terminal is below its requested
+-- minimum size.
+pub term_hook_simulation :: fn (interval: Duration, callback: TermSimulateFn) {
+    term_simulate_interval = interval
+    term_simulate_hook     = callback
+    term_simulate_hook_set = yes
+    term_simulate_ran      = no
+}
+
+-- Registers a presentation callback. The callback runs immediately before the
+-- framebuffer is presented, so drawing code writes into the current frame.
+pub term_hook_presentation :: fn (interval: Duration, callback: TermPresentFn) {
+    term_present_interval = interval
+    term_present_hook     = callback
+    term_present_hook_set = yes
+    term_present_ran      = no
+}
+
+term_hook_due :: fn (last     : Instant,
+                     interval : Duration,
+                     current  : Instant,
+                     ran      : bool) -> bool {
+    on !ran => return yes
+    return elapsed(last, current) >= interval
+}
+
+term_hooks_reset_timing :: fn (current: Instant) {
+    term_simulate_last = current
+    term_present_last  = current
+    term_simulate_ran  = no
+    term_present_ran   = no
+    term_keyboard_clear_edges()
+}
+
+term_run_simulation_hook :: fn (current: Instant) {
+    on !term_simulate_hook_set => return
+    on !term_hook_due(term_simulate_last, term_simulate_interval, current, term_simulate_ran) => return
+
+    dt : Duration = 0
+    on term_simulate_ran => dt = elapsed(term_simulate_last, current)
+
+    term_simulate_last = current
+    term_simulate_ran  = yes
+
+    sim := TermSimulate {
+        dt
+        width    : term_last_columns
+        height   : term_last_rows
+        keyboard : term_keyboard_snapshot()
+        mouse    : term_mouse
+    }
+    term_simulate_hook(sim)
+    term_keyboard_clear_edges()
+}
+
+term_run_presentation_hook :: fn (current: Instant) {
+    on !term_present_hook_set => return
+    on !term_hook_due(term_present_last, term_present_interval, current, term_present_ran) => return
+
+    dt : Duration = 0
+    on term_present_ran => dt = elapsed(term_present_last, current)
+
+    term_present_last = current
+    term_present_ran  = yes
+
+    present := TermPresent {
+        dt
+        width  : term_last_columns
+        height : term_last_rows
+    }
+    term_present_hook(present)
+}
+
 -- Enters terminal application mode.
-pub term_init :: fn (min_width: u32 = TERM_DEFAULT_MIN_WIDTH, min_height: u32 = TERM_DEFAULT_MIN_HEIGHT) {
-    on term_initialized => return
+pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
+                     min_height : u32 = TERM_DEFAULT_MIN_HEIGHT) {
+    on term_initialised => return
 
     term_done_requested = no
-    term_min_width = min_width
-    term_min_height = min_height
+    term_min_width      = min_width
+    term_min_height     = min_height
     term_arena_ensure()
     term_queue_clear()
+    term_keyboard_clear()
     term_raw_mode_enable(yes)
     term_alternate_screen_enable(yes)
 
@@ -1322,10 +1567,13 @@ pub term_init :: fn (min_width: u32 = TERM_DEFAULT_MIN_WIDTH, min_height: u32 = 
     term_fb_clear()
     term_queue_push(TermEvent.Resize(term_last_columns, term_last_rows))
     term_present_ready = no
-    term_initialized   = yes
+    term_initialised   = yes
+    current := now()
+    term_hooks_reset_timing(current)
 }
 
--- Signals that `term_loop` should clean up and exit on its next call.
+-- Signals that `term_step`/`term_run` should clean up and exit on its next
+-- call.
 pub term_done :: fn () {
     term_done_requested = yes
 }
@@ -1345,9 +1593,10 @@ term_queue_resize_event :: fn () {
     term_queue_push(TermEvent.Resize(columns, rows))
 }
 
--- Presents, polls events, and performs deferred cleanup after `term_done`.
-pub term_loop :: fn () -> bool {
-    on !term_initialized => return no
+-- Advances terminal state by one iteration, runs registered hooks, presents the
+-- framebuffer, polls events, and performs deferred cleanup after `term_done`.
+pub term_step :: fn () -> bool {
+    on !term_initialised => return no
 
     on term_done_requested => {
         term_arena_reset()
@@ -1357,24 +1606,17 @@ pub term_loop :: fn () -> bool {
         term_raw_mode_enable(no)
         term_queue_clear()
         term_arena_done()
-        term_initialized    = no
+        term_keyboard_clear()
+        term_initialised    = no
         term_done_requested = no
         term_present_ready  = no
+        term_simulate_ran   = no
+        term_present_ran    = no
         return no
     }
 
     term_arena_reset()
     term_fb_ensure()
-    -- `term_init` queues the initial Resize event. Skip the first presentation so
-    -- framebuffer apps can process that event and draw their first frame before
-    -- anything is written to the terminal.
-    on term_present_ready => {
-        on term_too_small() => term_draw_too_small()
-        term_fb_present()
-    } else {
-        term_present_ready = yes
-    }
-    term_view_reset()
 
     event := term_poll_event_impl()
     on event {
@@ -1384,7 +1626,45 @@ pub term_loop :: fn () -> bool {
     }
 
     term_queue_resize_event()
+
+    current := now()
+    term_view_reset()
+
+    on term_too_small() => {
+        term_hooks_reset_timing(current)
+        term_draw_too_small()
+        term_fb_present()
+        term_present_ready = yes
+        return yes
+    }
+
+    term_run_simulation_hook(current)
+    term_view_reset()
+    term_run_presentation_hook(current)
+
+    -- `term_init` queues the initial Resize event. Skip the first presentation so
+    -- framebuffer apps can process that event and draw their first frame before
+    -- anything is written to the terminal.
+    on term_present_ready => {
+        term_fb_present()
+    } else {
+        term_present_ready = yes
+    }
+
     return yes
+}
+
+-- Compatibility name for the original single-step terminal loop API.
+pub term_loop :: fn () -> bool {
+    return term_step()
+}
+
+-- Runs terminal steps until `term_done` is called. Hook-based applications use
+-- this instead of writing their own `for term_loop()` body.
+pub term_run :: fn () {
+    for term_step() {
+        sleep_ms(1)
+    }
 }
 
 -- Returns the next queued terminal event, or `TermEvent.None`.
@@ -1528,8 +1808,35 @@ test "terminal events poll in queue order" {
     assert term_poll() == TermEvent.None
 }
 
+test "terminal keyboard state records edges" {
+    term_keyboard_clear()
+    term_queue_clear()
+
+    term_queue_push(TermEvent.KeyDown(KeyCode.LowerQ))
+    index := KeyCode.LowerQ.as(u32).as(usize)
+    keyboard := term_keyboard_snapshot()
+    assert keyboard.down[index]
+    assert keyboard.pressed[index]
+    assert !keyboard.released[index]
+
+    term_keyboard_clear_edges()
+    keyboard = term_keyboard_snapshot()
+    assert keyboard.down[index]
+    assert !keyboard.pressed[index]
+    assert !keyboard.released[index]
+
+    term_queue_push(TermEvent.KeyUp(KeyCode.LowerQ))
+    keyboard = term_keyboard_snapshot()
+    assert !keyboard.down[index]
+    assert !keyboard.pressed[index]
+    assert keyboard.released[index]
+
+    term_keyboard_clear()
+    term_queue_clear()
+}
+
 test "term_done only signals loop shutdown" {
-    term_initialized    = yes
+    term_initialised    = yes
     term_done_requested = no
     term_queue_clear()
     term_queue_push(TermEvent.KeyDown(KeyCode.LowerA))
@@ -1537,43 +1844,68 @@ test "term_done only signals loop shutdown" {
     term_done()
 
     assert term_done_requested
-    assert term_initialized
+    assert term_initialised
     assert term_events.count == 1
 
-    term_initialized    = no
+    term_initialised    = no
     term_done_requested = no
     term_queue_clear()
 }
 
 test "terminal loop is inactive before init" {
-    term_initialized    = no
+    term_initialised    = no
     term_done_requested = no
     term_queue_clear()
 
     assert !term_loop()
+    assert !term_step()
 }
 
 test "terminal minimum size detects undersized axes" {
-    term_min_width = 80
+    term_min_width  = 80
     term_min_height = 25
 
     term_last_columns = 80
-    term_last_rows = 25
+    term_last_rows    = 25
     assert !term_too_small()
 
     term_last_columns = 79
-    term_last_rows = 25
+    term_last_rows    = 25
     assert term_too_small()
 
     term_last_columns = 80
-    term_last_rows = 24
+    term_last_rows    = 24
     assert term_too_small()
+}
+
+test "term_valid requires initialisation and minimum size" {
+    term_initialised  = no
+    term_min_width    = 80
+    term_min_height   = 25
+    term_last_columns = 80
+    term_last_rows    = 25
+
+    assert !term_valid()
+
+    term_initialised = yes
+    assert term_valid()
+
+    term_last_columns = 79
+    assert !term_valid()
+
+    term_initialised = no
+}
+
+test "terminal hook due runs first tick then by interval" {
+    assert term_hook_due(100.as(Instant), 50.as(Duration), 100.as(Instant), no)
+    assert !term_hook_due(100.as(Instant), 50.as(Duration), 120.as(Instant), yes)
+    assert term_hook_due(100.as(Instant), 50.as(Duration), 150.as(Instant), yes)
 }
 
 test "too-small renderer marks warning background" {
     term_fb_release()
     term_fb_resize(10, 3)
-    term_min_width = 80
+    term_min_width  = 80
     term_min_height = 25
 
     term_draw_too_small()
