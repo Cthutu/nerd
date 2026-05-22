@@ -24,6 +24,7 @@ typedef enum {
     BACK_END_LLVM_TOOL_DIAG_SOURCE_ERROR,
     BACK_END_LLVM_TOOL_DIAG_UNDEFINED_SYMBOL,
     BACK_END_LLVM_TOOL_DIAG_MISSING_FILE,
+    BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT,
 } BackEndLlvmToolDiagnosticKind;
 
 typedef struct {
@@ -313,6 +314,68 @@ internal bool back_end_parse_lld_missing_file(string                     output,
     return false;
 }
 
+internal bool back_end_parse_lld_locked_output(string output,
+                                               BackEndLlvmToolDiagnostic* out)
+{
+    cstr   prefix            = "lld-link: error: could not open '";
+    cstr   permission_suffix = "': Permission denied";
+    cstr   access_suffix     = "': Access is denied";
+    usize  prefix_len        = back_end_cstr_len(prefix);
+    usize  permission_offset = 0;
+    usize  access_offset     = 0;
+    usize  cursor            = 0;
+    string line              = {0};
+    while (back_end_next_line(output, &cursor, &line)) {
+        bool permission_denied =
+            back_end_string_find_cstr(
+                line, permission_suffix, &permission_offset) &&
+            permission_offset >= prefix_len;
+        bool access_denied =
+            back_end_string_find_cstr(line, access_suffix, &access_offset) &&
+            access_offset >= prefix_len;
+        if (!back_end_string_starts_with_cstr(line, prefix) ||
+            (!permission_denied && !access_denied)) {
+            continue;
+        }
+
+        usize suffix_offset =
+            permission_denied ? permission_offset : access_offset;
+        out->kind    = BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT;
+        out->tool    = s("lld-link");
+        out->message = s("could not open output file");
+        out->path =
+            string_from(line.data + prefix_len, suffix_offset - prefix_len);
+        return true;
+    }
+    return false;
+}
+
+internal bool back_end_parse_clang_locked_output(string output,
+                                                 BackEndLlvmToolDiagnostic* out)
+{
+    cstr   prefix        = "clang: error: unable to open output file '";
+    cstr   suffix        = "': Permission denied";
+    usize  prefix_len    = back_end_cstr_len(prefix);
+    usize  suffix_offset = 0;
+    usize  cursor        = 0;
+    string line          = {0};
+    while (back_end_next_line(output, &cursor, &line)) {
+        if (!back_end_string_starts_with_cstr(line, prefix) ||
+            !back_end_string_find_cstr(line, suffix, &suffix_offset) ||
+            suffix_offset < prefix_len) {
+            continue;
+        }
+
+        out->kind    = BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT;
+        out->tool    = s("clang");
+        out->message = s("could not open output file");
+        out->path =
+            string_from(line.data + prefix_len, suffix_offset - prefix_len);
+        return true;
+    }
+    return false;
+}
+
 internal bool back_end_parse_llvm_tool_output(string                     output,
                                               BackEndLlvmToolDiagnostic* out)
 {
@@ -324,6 +387,12 @@ internal bool back_end_parse_llvm_tool_output(string                     output,
         return true;
     }
     if (back_end_parse_lld_missing_file(output, out)) {
+        return true;
+    }
+    if (back_end_parse_lld_locked_output(output, out)) {
+        return true;
+    }
+    if (back_end_parse_clang_locked_output(output, out)) {
         return true;
     }
     return false;
@@ -398,6 +467,23 @@ internal bool back_end_report_llvm_tool_failure(Arena*      arena,
         return error_runtime(
             "LLVM linker could not open a required file (exit code %d)\n"
             "File: " STRINGP "\n"
+            "Generated LLVM: %s\n"
+            "Runtime object: %s\n"
+            "Command: " STRINGP,
+            result.exit_code,
+            STRINGV(diagnostic.path),
+            combined_llvm_path,
+            runtime_object_path,
+            STRINGV(command));
+    }
+
+    if (diagnostic.kind == BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT) {
+        return error_runtime(
+            "Could not write the output executable (exit code %d)\n"
+            "File: " STRINGP "\n"
+            "The existing executable is probably still running or locked by "
+            "another process. Stop that process, or build to a different "
+            "output path with `-o`.\n"
             "Generated LLVM: %s\n"
             "Runtime object: %s\n"
             "Command: " STRINGP,
@@ -751,6 +837,36 @@ bool back_end_llvm_tool_output_self_test(void)
         !string_eq_cstr(diagnostic.path,
                         "nerd_missing_link_cleanup_test_library.lib")) {
         eprn("Failed to parse lld missing-file diagnostic");
+        return false;
+    }
+
+    string lld_locked_output =
+        s("lld-link: error: could not open "
+          "'C:\\Users\\matt\\nerd\\examples\\dungeon\\_dungeon.out.exe': "
+          "Permission denied\n"
+          "clang: error: linker command failed with exit code 1 "
+          "(use -v to see invocation)\n");
+    diagnostic = (BackEndLlvmToolDiagnostic){0};
+    if (!back_end_parse_llvm_tool_output(lld_locked_output, &diagnostic) ||
+        diagnostic.kind != BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT ||
+        !string_eq_cstr(diagnostic.path,
+                        "C:\\Users\\matt\\nerd\\examples\\dungeon\\_dungeon."
+                        "out.exe")) {
+        eprn("Failed to parse lld locked-output diagnostic");
+        return false;
+    }
+
+    string clang_locked_output =
+        s("clang: error: unable to open output file "
+          "'C:\\Users\\matt\\nerd\\examples\\dungeon\\_dungeon.out.exe': "
+          "Permission denied\n");
+    diagnostic = (BackEndLlvmToolDiagnostic){0};
+    if (!back_end_parse_llvm_tool_output(clang_locked_output, &diagnostic) ||
+        diagnostic.kind != BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT ||
+        !string_eq_cstr(diagnostic.path,
+                        "C:\\Users\\matt\\nerd\\examples\\dungeon\\_dungeon."
+                        "out.exe")) {
+        eprn("Failed to parse clang locked-output diagnostic");
         return false;
     }
 
