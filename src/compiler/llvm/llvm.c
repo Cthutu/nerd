@@ -9760,6 +9760,34 @@ internal void llvm_mark_addressed_local_base(LlvmFunctionContext* ctx,
     }
 }
 
+internal void llvm_mark_mutated_local_base(LlvmFunctionContext* ctx,
+                                           u32                  expr_index,
+                                           bool                 direct)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return;
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_LocalRef && expr->ref_kind == HIR_REF_Local) {
+        if (direct) {
+            llvm_mark_assigned_local(ctx, expr->ref_index);
+            return;
+        }
+
+        u32          type_index = llvm_local_type(ctx, expr->ref_index);
+        SemaTypeKind kind       = llvm_type_kind(ctx->sema, type_index);
+        if (kind == STK_Array || kind == STK_Plex || kind == STK_Tuple) {
+            llvm_mark_assigned_local(ctx, expr->ref_index);
+        }
+        return;
+    }
+    if (expr->kind == HIR_EXPR_Field || expr->kind == HIR_EXPR_TupleField ||
+        expr->kind == HIR_EXPR_Index) {
+        llvm_mark_mutated_local_base(ctx, expr->operand_expr_index, false);
+    }
+}
+
 internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
                                                  u32 expr_index)
 {
@@ -9885,11 +9913,7 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
         if (stmt->kind == HIR_STMT_Assign &&
             stmt->target_expr_index < array_count(ctx->hir->exprs)) {
-            const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
-            if (target->kind == HIR_EXPR_LocalRef &&
-                target->ref_kind == HIR_REF_Local) {
-                llvm_mark_assigned_local(ctx, target->ref_index);
-            }
+            llvm_mark_mutated_local_base(ctx, stmt->target_expr_index, true);
         }
         if (stmt->kind == HIR_STMT_DestructureAssign) {
             for (u32 j = 0; j < stmt->body_block_index; ++j) {
@@ -9924,11 +9948,7 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
             }
             if (expr->kind == HIR_EXPR_Assign &&
                 expr->lhs_expr_index < array_count(ctx->hir->exprs)) {
-                const HirExpr* target = &ctx->hir->exprs[expr->lhs_expr_index];
-                if (target->kind == HIR_EXPR_LocalRef &&
-                    target->ref_kind == HIR_REF_Local) {
-                    llvm_mark_assigned_local(ctx, target->ref_index);
-                }
+                llvm_mark_mutated_local_base(ctx, expr->lhs_expr_index, true);
             }
             if (expr->kind == HIR_EXPR_For &&
                 expr->for_index < array_count(ctx->hir->fors)) {
@@ -9944,13 +9964,8 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
                         if (init_stmt->kind == HIR_STMT_Assign &&
                             init_stmt->target_expr_index <
                                 array_count(ctx->hir->exprs)) {
-                            const HirExpr* init_target =
-                                &ctx->hir->exprs[init_stmt->target_expr_index];
-                            if (init_target->kind == HIR_EXPR_LocalRef &&
-                                init_target->ref_kind == HIR_REF_Local) {
-                                llvm_mark_assigned_local(
-                                    ctx, init_target->ref_index);
-                            }
+                            llvm_mark_mutated_local_base(
+                                ctx, init_stmt->target_expr_index, true);
                         }
                         if (init_stmt->kind == HIR_STMT_Block) {
                             llvm_collect_assigned_locals(
@@ -9967,14 +9982,8 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
                         if (update_stmt->kind == HIR_STMT_Assign &&
                             update_stmt->target_expr_index <
                                 array_count(ctx->hir->exprs)) {
-                            const HirExpr* update_target =
-                                &ctx->hir
-                                     ->exprs[update_stmt->target_expr_index];
-                            if (update_target->kind == HIR_EXPR_LocalRef &&
-                                update_target->ref_kind == HIR_REF_Local) {
-                                llvm_mark_assigned_local(
-                                    ctx, update_target->ref_index);
-                            }
+                            llvm_mark_mutated_local_base(
+                                ctx, update_stmt->target_expr_index, true);
                         }
                         if (update_stmt->kind == HIR_STMT_Block) {
                             llvm_collect_assigned_locals(
