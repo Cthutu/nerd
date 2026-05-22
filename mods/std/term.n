@@ -2007,6 +2007,32 @@ test "framebuffer resize rejection leaves state unchanged" {
     term_fb_release()
 }
 
+test "framebuffer resize and clipped drawing stay within bounds" {
+    term_fb_release()
+
+    for i: u32 = 0; i < 200; i += 1 {
+        width := (i % 9) + 1
+        height := ((i * 3) % 7) + 1
+        assert term_fb_resize(width, height)
+        assert term_fb_width == width
+        assert term_fb_height == height
+        assert term_fb_cells.count == width.as(usize) * height.as(usize)
+
+        term_view(-1, -1, width.as(i32) + 2, height.as(i32) + 2)
+        term_fb_fill_rect(-3, -2, width.as(i32) + 6, height.as(i32) + 4, '.'.as(u32), rgb(20, 200, 80), rgb(0, 12, 0))
+        term_fb_paint_rect(-2, 0, width.as(i32) + 4, height.as(i32), rgb(160, 255, 160), COLOUR_TRANSPARENT)
+        term_fb_text(-4, 0, "resize clipping regression", rgb(230, 255, 230), COLOUR_TRANSPARENT)
+        term_fb_box(-2, -1, width.as(i32) + 4, height.as(i32) + 2, BoxStyle.Custom("abcdefghi"), rgb(80, 220, 120), COLOUR_TRANSPARENT)
+
+        assert term_fb_cells.count == width.as(usize) * height.as(usize)
+        assert term_fb_index_valid(width - 1, height - 1)
+        assert !term_fb_index_valid(width, height - 1)
+        assert !term_fb_index_valid(width - 1, height)
+    }
+
+    term_fb_release()
+}
+
 test "terminal framebuffer prepare returns draw rect and source offsets" {
     term_fb_release()
     assert term_fb_resize(5, 3)
