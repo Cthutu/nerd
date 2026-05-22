@@ -1562,6 +1562,13 @@ term_queue_push :: fn (event: TermEvent) {
     term_events.push(event)
 }
 
+term_event_record :: fn (event: TermEvent) {
+    term_keyboard_record_event(event)
+
+    on term_simulate_hook_set || term_present_hook_set => return
+    term_events.push(event)
+}
+
 term_too_small :: fn () -> bool {
     return term_last_columns < term_min_width || term_last_rows < term_min_height
 }
@@ -1708,7 +1715,7 @@ pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
     on term_last_rows == 0 => term_last_rows = 1
     term_fb_ensure()
     term_fb_clear()
-    term_queue_push(TermEvent.Resize(term_last_columns, term_last_rows))
+    term_event_record(TermEvent.Resize(term_last_columns, term_last_rows))
     term_present_ready = no
     term_initialised   = yes
     current := now()
@@ -1733,7 +1740,7 @@ term_queue_resize_event :: fn () {
 
     term_last_columns = columns
     term_last_rows    = rows
-    term_queue_push(TermEvent.Resize(columns, rows))
+    term_event_record(TermEvent.Resize(columns, rows))
 }
 
 -- Advances terminal state by one iteration, runs registered hooks, presents the
@@ -1766,7 +1773,7 @@ pub term_step :: fn () -> bool {
     on event {
         TermEvent.None => {
         }
-        else => term_queue_push(event)
+        else => term_event_record(event)
     }
 
     term_queue_resize_event()
@@ -1806,6 +1813,8 @@ pub term_loop :: fn () -> bool {
 -- Runs terminal steps until `term_done` is called. Hook-based applications use
 -- this instead of writing their own `for term_loop()` body.
 pub term_run :: fn () {
+    term_queue_clear()
+
     for term_step() {
         sleep_ms(1)
     }
@@ -2085,6 +2094,23 @@ test "terminal events poll in queue order" {
     }
     assert second_seen
     assert term_poll() == TermEvent.None
+}
+
+test "terminal hook mode records keyboard without growing poll queue" {
+    term_keyboard_clear()
+    term_queue_clear()
+    term_hook_simulation(50.as(Duration), term_noop_simulate)
+
+    term_event_record(TermEvent.KeyDown(KeyCode.LowerQ))
+    keyboard := term_keyboard_snapshot()
+
+    assert keyboard.down[KeyCode.LowerQ.as(u32).as(usize)]
+    assert keyboard.pressed[KeyCode.LowerQ.as(u32).as(usize)]
+    assert term_events.count == 0
+
+    term_hooks_clear()
+    term_keyboard_clear()
+    term_queue_clear()
 }
 
 test "terminal keyboard state records edges" {
