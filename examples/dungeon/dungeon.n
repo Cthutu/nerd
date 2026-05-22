@@ -1,109 +1,434 @@
+use std.random
 use std.term
 use std.time
 
-last_key : string
-
-key_name :: fn (key: KeyCode) -> string {
-    return on key {
-        ArrowUp => "ArrowUp"
-        ArrowDown => "ArrowDown"
-        ArrowLeft => "ArrowLeft"
-        ArrowRight => "ArrowRight"
-        Home => "Home"
-        End => "End"
-        Insert => "Insert"
-        Delete => "Delete"
-        PageUp => "PageUp"
-        PageDown => "PageDown"
-        F1 => "F1"
-        F2 => "F2"
-        F3 => "F3"
-        F4 => "F4"
-        F5 => "F5"
-        F6 => "F6"
-        F7 => "F7"
-        F8 => "F8"
-        F9 => "F9"
-        F10 => "F10"
-        F11 => "F11"
-        F12 => "F12"
-        Escape => "Escape"
-        Enter => "Enter"
-        Space => "Space"
-        LowerQ => "LowerQ"
-        Q => "Q"
-        else => $"code {key.as(u32)}"
-    }
+Tile :: enum {
+    Wall
+    Floor
+    Door
 }
 
-draw :: fn (last_key: string, width: u32, height: u32) {
-    term_fb_clear()
-    term_fb_box(0, 0, width.as(i32), height.as(i32), BoxStyle.Rounded)
-    term_view(2, 1, width.as(i32) - 4, height.as(i32) - 2)
-
-    term_fb_text(0, 0, "Dungeon", rgb(255, 220, 120))
-    term_fb_text(0, 2, "This example will render a generated dungeon map here.")
-
-    term_fb_text(0, 4, "Key translator test", rgb(160, 220, 255))
-    term_fb_text(0, 5, "Press an arrow key, Home/End, PageUp/PageDown, Insert/Delete, or F1-F12.")
-    term_fb_text(0, 6, "Press q or Escape to exit.")
-
-    term_fb_text(0, 8, $"Last key: {last_key}")
-    term_fb_text(0, 10, $"Terminal size: {width}x{height}")
-    term_view_reset()
+Cell :: plex {
+    tile   Tile
+    region i32
 }
 
-record_key :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
-    on term_key_pressed(keyboard, key) => {
-        last_key = key_name(key)
-        return yes
+Room :: plex {
+    x i32
+    y i32
+    w i32
+    h i32
+}
+
+Pos :: plex {
+    x i32
+    y i32
+}
+
+Connector :: plex {
+    x i32
+    y i32
+    a i32
+    b i32
+}
+
+cells      : [..]Cell
+rooms      : [..]Room
+connectors : [..]Connector
+map_width  : u32
+map_height : u32
+seed       : u64
+generated  : bool
+
+stone_dark  :: rgb(8, 10, 14)
+stone_mid   :: rgb(18, 24, 32)
+stone_light :: rgb(30, 37, 48)
+floor_dark  :: rgb(42, 34, 26)
+floor_mid   :: rgb(70, 54, 38)
+floor_light :: rgb(112, 86, 54)
+door_ink    :: rgb(190, 140, 70)
+text_ink    :: rgb(224, 212, 176)
+
+dungeon_index :: fn (x: i32, y: i32) -> usize {
+    return (y.as(u32) * map_width + x.as(u32)).as(usize)
+}
+
+dungeon_in_bounds :: fn (x: i32, y: i32) -> bool {
+    return x >= 0 && y >= 0 && x < map_width.as(i32) && y < map_height.as(i32)
+}
+
+dungeon_inner :: fn (x: i32, y: i32) -> bool {
+    return x > 0 && y > 0 && x < map_width.as(i32) - 1 && y < map_height.as(i32) - 1
+}
+
+dungeon_cell :: fn (x: i32, y: i32) -> Cell {
+    on !dungeon_in_bounds(x, y) => return Cell { tile: Tile.Wall region: -1 }
+    return cells[dungeon_index(x, y)]
+}
+
+dungeon_set :: fn (x: i32, y: i32, tile: Tile, region: i32) {
+    on !dungeon_in_bounds(x, y) => return
+    cells[dungeon_index(x, y)] = Cell { tile region }
+}
+
+dungeon_passable :: fn (x: i32, y: i32) -> bool {
+    cell := dungeon_cell(x, y)
+    return cell.tile == Tile.Floor || cell.tile == Tile.Door
+}
+
+rand_i32 :: fn (min: i32, max: i32) -> i32 {
+    return random_range_i64(min.as(i64), max.as(i64)).as(i32)
+}
+
+rand_odd :: fn (min: i32, max: i32) -> i32 {
+    value := rand_i32(min, max)
+    on value % 2 == 0 => value += 1
+    on value > max => value -= 2
+    return value
+}
+
+dungeon_room_overlaps :: fn (room: Room) -> bool {
+    for existing in rooms {
+        on room.x < existing.x + existing.w + 1 &&
+           room.x + room.w + 1 > existing.x &&
+           room.y < existing.y + existing.h + 1 &&
+           room.y + room.h + 1 > existing.y => return yes
     }
     return no
 }
 
+dungeon_add_room :: fn (room: Room, region: i32) {
+    rooms.push(room)
+
+    for y: i32 = room.y; y < room.y + room.h; y += 1 {
+        for x: i32 = room.x; x < room.x + room.w; x += 1 {
+            dungeon_set(x, y, Tile.Floor, region)
+        }
+    }
+}
+
+dungeon_add_rooms :: fn (region: ^i32) {
+    attempts := (map_width * map_height / 18).as(i32)
+    on attempts < 40 => attempts = 40
+    on attempts > 180 => attempts = 180
+
+    for attempt: i32 = 0; attempt < attempts; attempt += 1 {
+        max_w := map_width.as(i32) / 5
+        max_h := map_height.as(i32) / 4
+        on max_w < 5 => max_w = 5
+        on max_h < 5 => max_h = 5
+        on max_w > 13 => max_w = 13
+        on max_h > 9 => max_h = 9
+
+        w := rand_odd(3, max_w)
+        h := rand_odd(3, max_h)
+
+        on map_width.as(i32) - w - 2 <= 1 || map_height.as(i32) - h - 2 <= 1 => again
+
+        x := rand_odd(1, map_width.as(i32) - w - 2)
+        y := rand_odd(1, map_height.as(i32) - h - 2)
+        room := Room { x y w h }
+
+        on !dungeon_room_overlaps(room) => {
+            dungeon_add_room(room, region^)
+            region^ += 1
+        }
+    }
+}
+
+dungeon_direction_dx :: fn (direction: i32) -> i32 {
+    return on direction {
+        0 => 0
+        1 => 1
+        2 => 0
+        else => -1
+    }
+}
+
+dungeon_direction_dy :: fn (direction: i32) -> i32 {
+    return on direction {
+        0 => -1
+        1 => 0
+        2 => 1
+        else => 0
+    }
+}
+
+dungeon_can_carve :: fn (x: i32, y: i32, direction: i32) -> bool {
+    dx := dungeon_direction_dx(direction)
+    dy := dungeon_direction_dy(direction)
+    target_x := x + dx * 2
+    target_y := y + dy * 2
+    return dungeon_inner(target_x, target_y) && dungeon_cell(target_x, target_y).tile == Tile.Wall
+}
+
+dungeon_carve_maze :: fn (start_x: i32, start_y: i32, region: i32) {
+    stack : [..]Pos
+    stack.push(Pos { x: start_x y: start_y })
+    dungeon_set(start_x, start_y, Tile.Floor, region)
+
+    for stack.count > 0 {
+        current := stack[stack.count - 1]
+        candidates : [..]i32
+
+        for direction: i32 = 0; direction < 4; direction += 1 {
+            on dungeon_can_carve(current.x, current.y, direction) => candidates.push(direction)
+        }
+
+        on candidates.count == 0 => {
+            _ := stack.pop()
+            candidates.free()
+            again
+        }
+
+        direction := candidates[random_range_u64(0, candidates.count.as(u64) - 1).as(usize)]
+        candidates.free()
+
+        dx := dungeon_direction_dx(direction)
+        dy := dungeon_direction_dy(direction)
+        dungeon_set(current.x + dx, current.y + dy, Tile.Floor, region)
+        dungeon_set(current.x + dx * 2, current.y + dy * 2, Tile.Floor, region)
+        stack.push(Pos { x: current.x + dx * 2 y: current.y + dy * 2 })
+    }
+
+    stack.free()
+}
+
+dungeon_add_mazes :: fn (region: ^i32) {
+    for y: i32 = 1; y < map_height.as(i32); y += 2 {
+        for x: i32 = 1; x < map_width.as(i32); x += 2 {
+            on dungeon_cell(x, y).tile == Tile.Wall => {
+                dungeon_carve_maze(x, y, region^)
+                region^ += 1
+            }
+        }
+    }
+}
+
+dungeon_find_connectors :: fn () {
+    connectors.clear()
+
+    for y: i32 = 1; y < map_height.as(i32) - 1; y += 1 {
+        for x: i32 = 1; x < map_width.as(i32) - 1; x += 1 {
+            on dungeon_cell(x, y).tile != Tile.Wall => again
+
+            a : i32 = -1
+            b : i32 = -1
+
+            for direction: i32 = 0; direction < 4; direction += 1 {
+                dx := dungeon_direction_dx(direction)
+                dy := dungeon_direction_dy(direction)
+                region := dungeon_cell(x + dx, y + dy).region
+                on region < 0 => again
+                on a < 0 => {
+                    a = region
+                } else {
+                    on region != a && b < 0 => b = region
+                }
+            }
+
+            on a >= 0 && b >= 0 => connectors.push(Connector { x y a b })
+        }
+    }
+}
+
+region_find :: fn (parents: [..]i32, value: i32) -> i32 {
+    current := value
+    for parents[current.as(usize)] != current {
+        current = parents[current.as(usize)]
+    }
+    return current
+}
+
+region_union :: fn (parents: [..]i32, a: i32, b: i32) {
+    root_a := region_find(parents, a)
+    root_b := region_find(parents, b)
+    on root_a != root_b => parents[root_b.as(usize)] = root_a
+}
+
+dungeon_connect_regions :: fn (region_count: i32) {
+    dungeon_find_connectors()
+
+    parents : [..]i32
+    parents.resize_to(region_count.as(usize))
+    for i: i32 = 0; i < region_count; i += 1 {
+        parents[i.as(usize)] = i
+    }
+
+    for connectors.count > 0 {
+        index := random_range_u64(0, connectors.count.as(u64) - 1).as(usize)
+        connector := connectors[index]
+        connectors.swap_delete(index)
+
+        root_a := region_find(parents, connector.a)
+        root_b := region_find(parents, connector.b)
+        extra_loop := random_range_u64(0, 18) == 0
+
+        on root_a != root_b || extra_loop => {
+            dungeon_set(connector.x, connector.y, Tile.Door, connector.a)
+            region_union(parents, root_a, root_b)
+        }
+    }
+
+    parents.free()
+}
+
+dungeon_remove_dead_ends :: fn () {
+    changed := yes
+
+    for changed {
+        changed = no
+
+        for y: i32 = 1; y < map_height.as(i32) - 1; y += 1 {
+            for x: i32 = 1; x < map_width.as(i32) - 1; x += 1 {
+                on !dungeon_passable(x, y) => again
+
+                exits := 0
+                for direction: i32 = 0; direction < 4; direction += 1 {
+                    dx := dungeon_direction_dx(direction)
+                    dy := dungeon_direction_dy(direction)
+                    on dungeon_passable(x + dx, y + dy) => exits += 1
+                }
+
+                on exits <= 1 => {
+                    dungeon_set(x, y, Tile.Wall, -1)
+                    changed = yes
+                }
+            }
+        }
+    }
+}
+
+dungeon_generation_width :: fn (terminal_width: u32) -> u32 {
+    width := terminal_width
+    on width % 2 == 0 => width -= 1
+    return width
+}
+
+dungeon_generation_height :: fn (terminal_height: u32) -> u32 {
+    height := terminal_height
+    on height > 3 => height -= 2
+    on height % 2 == 0 => height -= 1
+    return height
+}
+
+dungeon_generate :: fn (terminal_width: u32, terminal_height: u32) {
+    map_width = dungeon_generation_width(terminal_width)
+    map_height = dungeon_generation_height(terminal_height)
+
+    cells.clear()
+    rooms.clear()
+    connectors.clear()
+    cells.resize_to((map_width * map_height).as(usize))
+
+    for i: usize = 0; i < cells.count; i += 1 {
+        cells[i] = Cell { tile: Tile.Wall region: -1 }
+    }
+
+    region : i32 = 0
+    dungeon_add_rooms(^region)
+    dungeon_add_mazes(^region)
+    dungeon_connect_regions(region)
+    dungeon_remove_dead_ends()
+    generated = yes
+}
+
+dungeon_hash :: fn (x: u32, y: u32) -> u32 {
+    value := x.as(u64) * 1103515245 + y.as(u64) * 12345 + seed
+    value ^= value >> 11
+    value ^= value << 7
+    return (value & 0xffff).as(u32)
+}
+
+dungeon_colour_step :: fn (base: Colour, amount: u32) -> Colour {
+    r := ((base >> 16) & 0xff) + amount
+    g := ((base >> 8) & 0xff) + amount
+    b := (base & 0xff) + amount
+    on r > 255 => r = 255
+    on g > 255 => g = 255
+    on b > 255 => b = 255
+    return rgb(r.as(u8), g.as(u8), b.as(u8))
+}
+
+dungeon_draw_cell :: fn (x: u32, y: u32) {
+    cell := dungeon_cell(x.as(i32), y.as(i32))
+    noise := dungeon_hash(x, y) % 28
+
+    on cell.tile {
+        Tile.Wall => {
+            paper := stone_light
+            on noise < 8 => paper = stone_dark else {
+                on noise < 18 => paper = stone_mid
+            }
+            term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), paper, paper)
+        }
+        Tile.Floor => {
+            paper := dungeon_colour_step(floor_dark, noise / 3)
+            ink := dungeon_colour_step(floor_mid, noise)
+            term_fb_put(x.as(i32), y.as(i32), '.'.as(u32), ink, paper)
+        }
+        Tile.Door => {
+            term_fb_put(x.as(i32), y.as(i32), '+'.as(u32), door_ink, floor_dark)
+        }
+    }
+}
+
+dungeon_draw :: fn (width: u32, height: u32) {
+    on !generated ||
+       map_width != dungeon_generation_width(width) ||
+       map_height != dungeon_generation_height(height) => dungeon_generate(width, height)
+
+    term_fb_clear()
+    term_fb_fill_rect(0, 0, width.as(i32), height.as(i32), ' '.as(u32), text_ink, rgb(0, 0, 0))
+
+    offset_x := ((width - map_width) / 2).as(i32)
+    for y: u32 = 0; y < map_height; y += 1 {
+        for x: u32 = 0; x < map_width; x += 1 {
+            dungeon_draw_cell(x, y)
+        }
+    }
+
+    status_y := map_height.as(i32)
+    term_fb_fill_rect(0, status_y, width.as(i32), height.as(i32) - status_y, ' '.as(u32), text_ink, rgb(0, 0, 0))
+    term_fb_text(1, status_y, $"rooms {rooms.count}  seed {seed}  size {map_width}x{map_height}", text_ink, rgb(0, 0, 0))
+    term_fb_text(1, status_y + 1, "r regenerate   q/Esc exit", rgb(150, 185, 150), rgb(0, 0, 0))
+
+    on offset_x != 0 => {
+    }
+}
+
 dungeon_simulate :: fn (sim: TermSimulate) {
-    on record_key(sim.keyboard, ArrowUp) ||
-       record_key(sim.keyboard, ArrowDown) ||
-       record_key(sim.keyboard, ArrowLeft) ||
-       record_key(sim.keyboard, ArrowRight) ||
-       record_key(sim.keyboard, Home) ||
-       record_key(sim.keyboard, End) ||
-       record_key(sim.keyboard, Insert) ||
-       record_key(sim.keyboard, Delete) ||
-       record_key(sim.keyboard, PageUp) ||
-       record_key(sim.keyboard, PageDown) ||
-       record_key(sim.keyboard, F1) ||
-       record_key(sim.keyboard, F2) ||
-       record_key(sim.keyboard, F3) ||
-       record_key(sim.keyboard, F4) ||
-       record_key(sim.keyboard, F5) ||
-       record_key(sim.keyboard, F6) ||
-       record_key(sim.keyboard, F7) ||
-       record_key(sim.keyboard, F8) ||
-       record_key(sim.keyboard, F9) ||
-       record_key(sim.keyboard, F10) ||
-       record_key(sim.keyboard, F11) ||
-       record_key(sim.keyboard, F12) ||
-       record_key(sim.keyboard, LowerQ) ||
-       record_key(sim.keyboard, Q) ||
-       record_key(sim.keyboard, Escape) => {
-        on term_key_pressed(sim.keyboard, LowerQ) ||
-           term_key_pressed(sim.keyboard, Q) ||
-           term_key_pressed(sim.keyboard, Escape) => term_done()
+    on term_key_pressed(sim.keyboard, LowerQ) ||
+       term_key_pressed(sim.keyboard, Q) ||
+       term_key_pressed(sim.keyboard, Escape) => {
+        term_done()
+        return
+    }
+
+    on term_key_pressed(sim.keyboard, LowerR) ||
+       term_key_pressed(sim.keyboard, R) => {
+        seed = now()
+        random_seed(seed)
+        generated = no
     }
 }
 
 dungeon_present :: fn (present: TermPresent) {
-    draw(last_key, present.width, present.height)
+    dungeon_draw(present.width, present.height)
 }
 
 main :: fn () {
-    last_key = "none"
-    term_init()
+    seed = now()
+    random_seed(seed)
+    term_init(41, 19)
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
     term_hook_simulation(from_ms(16), dungeon_simulate)
-    term_hook_presentation(from_ms(16), dungeon_present)
+    term_hook_presentation(from_ms(100), dungeon_present)
     term_run()
+
+    cells.free()
+    rooms.free()
+    connectors.free()
 }
